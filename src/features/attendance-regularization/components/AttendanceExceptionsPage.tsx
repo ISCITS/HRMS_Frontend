@@ -17,6 +17,7 @@ import {
   Grid,
   MenuItem,
   Paper,
+  Snackbar,
   Stack,
   Table,
   TableBody,
@@ -100,6 +101,10 @@ export default function AttendanceExceptionsPage() {
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnWorking, setBlnWorking] = useState(false);
   const [strError, setStrError] = useState("");
+  const [objSnackbar, setObjSnackbar] = useState<{
+    strSeverity: "success" | "error";
+    strMessage: string;
+  } | null>(null);
 
   const loadQueue = useCallback(async () => {
     setBlnLoading(true);
@@ -209,13 +214,21 @@ export default function AttendanceExceptionsPage() {
       setObjDialog(null);
       setStrReason("");
       setStrResolutionCode("");
+      setObjDetail(null);
+      setObjSelected(null);
       await loadQueue();
+      setObjSnackbar({
+        strSeverity: "success",
+        strMessage: t("action_success", "Action completed successfully."),
+      });
     } catch (objError) {
-      setStrError(
-        objError instanceof Error
-          ? objError.message
-          : t("action_failed", "Unable to complete exception action."),
-      );
+      setObjSnackbar({
+        strSeverity: "error",
+        strMessage:
+          objError instanceof Error
+            ? objError.message
+            : t("action_failed", "Unable to complete exception action."),
+      });
     } finally {
       setBlnWorking(false);
     }
@@ -843,11 +856,39 @@ export default function AttendanceExceptionsPage() {
               {blnCanReview ? (
                 <Button
                   data-control-id="attendance-exceptions.detail.review.button"
-                  onClick={() =>
-                    void attendanceRegularizationService
-                      .exceptionAction(objSelected.intID, "under-review")
-                      .then(loadQueue)
-                  }
+                  disabled={blnWorking}
+                  onClick={async () => {
+                    setBlnWorking(true);
+                    try {
+                      await attendanceRegularizationService.exceptionAction(
+                        objSelected.intID,
+                        "under-review",
+                      );
+                      setObjDetail(null);
+                      setObjSelected(null);
+                      await loadQueue();
+                      setObjSnackbar({
+                        strSeverity: "success",
+                        strMessage: t(
+                          "action_success",
+                          "Action completed successfully.",
+                        ),
+                      });
+                    } catch (objError) {
+                      setObjSnackbar({
+                        strSeverity: "error",
+                        strMessage:
+                          objError instanceof Error
+                            ? objError.message
+                            : t(
+                                "action_failed",
+                                "Unable to complete exception action.",
+                              ),
+                      });
+                    } finally {
+                      setBlnWorking(false);
+                    }
+                  }}
                 >
                   {t("mark_under_review", "Mark Under Review")}
                 </Button>
@@ -1020,6 +1061,22 @@ export default function AttendanceExceptionsPage() {
           </Button>
         </DialogActions>
       </Dialog>
+      <Snackbar
+        data-control-id="attendance-exceptions.feedback.snackbar"
+        open={Boolean(objSnackbar)}
+        autoHideDuration={4000}
+        onClose={() => setObjSnackbar(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setObjSnackbar(null)}
+          severity={objSnackbar?.strSeverity ?? "success"}
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          {objSnackbar?.strMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
