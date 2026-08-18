@@ -20,13 +20,13 @@ import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
 
 type ToastState = { blnOpen: boolean; strMessage: string; strSeverity: "success" | "error" };
-type SearchForm = { code: string; name: string; planCode: string };
+type SearchForm = { code: string; name: string; planCode: string; department: string };
 type BulkAssignState = { blnOpen: boolean; intLeavePlanID: number; dtEffectiveFrom: string; intLeaveYear: number; strReason: string; blnReplace: boolean };
 
 const strToday = new Date().toISOString().slice(0, 10);
 const intCurrentYear = new Date().getFullYear();
 const objBulkDefaults: BulkAssignState = { blnOpen: false, intLeavePlanID: 0, dtEffectiveFrom: strToday, intLeaveYear: intCurrentYear, strReason: "", blnReplace: false };
-const dicEmptySearch: SearchForm = { code: "", name: "", planCode: "" };
+const dicEmptySearch: SearchForm = { code: "", name: "", planCode: "", department: "all" };
 
 function StatusPill({ strStatus }: { strStatus: string }) {
   const blnActive = (strStatus || "").trim().toLowerCase() === "active";
@@ -72,15 +72,24 @@ export default function EmployeeLeaveAssignmentPanel() {
     [lstCurrentPlans],
   );
 
+  // Department options come from the loaded employees, so the dropdown only ever offers departments
+  // that can actually match a row.
+  const lstDepartmentOptions = useMemo(
+    () => Array.from(new Set(lstEmployees.map((objEmployee) => objEmployee.strDepartmentName).filter((strName): strName is string => Boolean(strName)))).sort((strA, strB) => strA.localeCompare(strB)),
+    [lstEmployees],
+  );
+
   const lstFiltered = useMemo(() => {
     const strCode = dicSearchApplied.code.trim().toLowerCase();
     const strName = dicSearchApplied.name.trim().toLowerCase();
     const strPlanCode = dicSearchApplied.planCode.trim().toLowerCase();
+    const strDepartment = dicSearchApplied.department;
     return lstEmployees.filter((objEmployee) => {
       const blnCode = !strCode || objEmployee.strEmployeeCode.toLowerCase().includes(strCode);
       const blnName = !strName || objEmployee.strFullName.toLowerCase().includes(strName);
       const blnPlanCode = !strPlanCode || (dicPlanCodeByEmployee.get(objEmployee.intID) ?? "").toLowerCase().includes(strPlanCode);
-      return blnCode && blnName && blnPlanCode;
+      const blnDepartment = strDepartment === "all" || (objEmployee.strDepartmentName ?? "") === strDepartment;
+      return blnCode && blnName && blnPlanCode && blnDepartment;
     });
   }, [lstEmployees, dicSearchApplied, dicPlanCodeByEmployee]);
 
@@ -92,7 +101,7 @@ export default function EmployeeLeaveAssignmentPanel() {
   }
 
   function applySearch(dicSearch: SearchForm) {
-    const dicNext = { code: dicSearch.code.trim(), name: dicSearch.name.trim(), planCode: dicSearch.planCode.trim() };
+    const dicNext = { ...dicSearch, code: dicSearch.code.trim(), name: dicSearch.name.trim(), planCode: dicSearch.planCode.trim() };
     setDicSearchDraft(dicNext);
     setDicSearchApplied(dicNext);
   }
@@ -236,8 +245,8 @@ export default function EmployeeLeaveAssignmentPanel() {
     <Box sx={{ display: "flex", flexDirection: "column", gap: 1, pb: 2 }}>
       {/* Search / filter card */}
       <Box className={styles.controlsCard}>
-        {/* Employee Code, Employee Name and Leave Plan Code share one row with the action buttons. */}
-        <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, minmax(0, 1fr)) auto" }, alignItems: "center", mt: 1 }}>
+        {/* Employee Code, Employee Name, Leave Plan Code and Department share one row with the buttons. */}
+        <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(4, minmax(0, 1fr)) auto" }, alignItems: "center", mt: 1 }}>
           <TextField
             size="small"
             value={dicSearchDraft.code}
@@ -265,6 +274,20 @@ export default function EmployeeLeaveAssignmentPanel() {
             inputProps={{ "data-control-id": "employee-leave-plan.list.search-plan-code.input" }}
             fullWidth
           />
+          <TextField
+            select
+            size="small"
+            label={t("filter_department", "Department")}
+            value={dicSearchDraft.department}
+            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, department: objEvent.target.value }))}
+            inputProps={{ "data-control-id": "employee-leave-plan.list.department.select" }}
+            fullWidth
+          >
+            <MenuItem value="all">{t("filter_all_departments", "All Departments")}</MenuItem>
+            {lstDepartmentOptions.map((strDepartment) => (
+              <MenuItem key={strDepartment} value={strDepartment}>{strDepartment}</MenuItem>
+            ))}
+          </TextField>
           <Box sx={{ display: "flex", gap: 1, gridColumn: { xs: "auto", sm: "1 / -1", lg: "auto" }, justifyContent: { sm: "flex-end" }, whiteSpace: "nowrap" }}>
             <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applySearch(dicSearchDraft)} disabled={blnLoading} data-control-id="employee-leave-plan.list.search.button">
               {t("search", "Search")}
