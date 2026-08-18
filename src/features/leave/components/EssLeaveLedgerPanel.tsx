@@ -118,16 +118,11 @@ function buildTransactionText(objRow: LeaveLedgerDto): string {
   return strRange ? `${strLabel} : ${strRange}` : strLabel;
 }
 
-// The date the movement actually happened. For leave-application rows the stored
-// transaction_date is the leave's start date, so we show the real action timestamp
-// (transaction_on) instead; other rows keep their business transaction_date.
+// The date the movement actually happened. The stored transaction_date is a business date that can be
+// backdated (a leave's start date, or a plan's effective date for opening balance / entitlement rows),
+// so every row shows the real action timestamp (transaction_on) and falls back only if it is missing.
 function ledgerDisplayDate(objRow: LeaveLedgerDto): string {
-  const strSource = (objRow.strSourceType ?? "").toLowerCase();
-  const strIso =
-    strSource === "leave_application"
-      ? objRow.dtTransactionOn ?? objRow.dtTransactionDate
-      : objRow.dtTransactionDate;
-  return formatLedgerDate(strIso);
+  return formatLedgerDate(objRow.dtTransactionOn ?? objRow.dtTransactionDate);
 }
 
 function formatNumber(intValue: number): string {
@@ -318,7 +313,7 @@ export default function EssLeaveLedgerPanel({ blnHrMode = false }: { blnHrMode?:
               }}
               sx={{
                 ...objHeaderSelectSx,
-                minWidth: { xs: "100%", sm: 250 },
+                minWidth: { xs: "100%", sm: 360 },
                 "& .MuiAutocomplete-clearIndicator": { display: "none" },
                 "& .MuiAutocomplete-popupIndicator": { color: "white" },
               }}
@@ -392,8 +387,8 @@ export default function EssLeaveLedgerPanel({ blnHrMode = false }: { blnHrMode?:
               <Table size="small" stickyHeader>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Date</TableCell>
-                    <TableCell>Transaction</TableCell>
+                    <TableCell>Transaction Date</TableCell>
+                    <TableCell>Description</TableCell>
                     <TableCell align="right">Credit</TableCell>
                     <TableCell align="right">Debit</TableCell>
                     <TableCell align="right">Hold</TableCell>

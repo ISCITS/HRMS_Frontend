@@ -66,6 +66,9 @@ export type LanguageOption = { intID: number; strLabel: string; strCode?: string
 export type LeavePlanLanguages = { lstLanguages: LanguageOption[]; intDefaultLanguageID: number; intSecondaryLanguageID: number | null };
 export type LeavePlanFilters = { strSearch?: string; blnIsActive?: boolean; dtEffectiveOn?: string };
 
+/** One row of the company-wide "current plan per employee" lookup used by the assignment list. */
+export type EmployeeCurrentPlan = { intEmployeeID: number; intLeavePlanID: number; strPlanCode: string; strPlanName: string };
+
 export type EmployeeLeavePlanAssignment = {
   intID: number;
   intEmployeeID: number;

@@ -19,10 +19,10 @@ import { useActionRights } from "@/features/security/hooks/useActionRights";
 import type { LeavePlan, LeavePlanFilters } from "@/features/leave-plan/types/LeavePlanTypes";
 
 type ToastState = { blnOpen: boolean; strMessage: string; strSeverity: "success" | "error" };
-type SearchForm = { search: string; status: "all" | "active" | "inactive"; effectiveOn: string };
+type SearchForm = { code: string; name: string; status: "all" | "active" | "inactive" };
 type ConfirmState = { strTitle: string; strMessage: string; strConfirmLabel: string; fnOnConfirm: () => Promise<void> } | null;
 
-const dicEmptySearch: SearchForm = { search: "", status: "all", effectiveOn: "" };
+const dicEmptySearch: SearchForm = { code: "", name: "", status: "all" };
 
 function formatDate(strValue: string | null): string {
   if (!strValue) return "—";
@@ -45,9 +45,9 @@ export default function LeavePlanListPanel() {
   const { canDo, blnLoading: blnRightsLoading } = useActionRights();
 
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>({
-    search: objSearchParams.get("search") ?? "",
+    code: objSearchParams.get("code") ?? "",
+    name: objSearchParams.get("name") ?? "",
     status: (objSearchParams.get("status") as SearchForm["status"]) || "all",
-    effectiveOn: objSearchParams.get("effectiveOn") ?? "",
   });
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicSearchDraft);
   const [objConfirm, setObjConfirm] = useState<ConfirmState>(null);
@@ -55,13 +55,23 @@ export default function LeavePlanListPanel() {
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
   const [lstSelectedIds, setLstSelectedIds] = useState<number[]>([]);
 
+  // Status stays a server filter; plan code and plan name are matched client-side because the
+  // API's single `search` param spans both fields and cannot answer them separately.
   const objFilters = useMemo<LeavePlanFilters>(() => ({
-    strSearch: dicSearchApplied.search.trim() || undefined,
     blnIsActive: dicSearchApplied.status === "all" ? undefined : dicSearchApplied.status === "active",
-    dtEffectiveOn: dicSearchApplied.effectiveOn || undefined,
   }), [dicSearchApplied]);
 
   const { lstPlans, blnLoading, strError, setPlanStatus, deletePlan } = useLeavePlans(objFilters);
+
+  const lstFilteredPlans = useMemo(() => {
+    const strCode = dicSearchApplied.code.trim().toLowerCase();
+    const strName = dicSearchApplied.name.trim().toLowerCase();
+    return lstPlans.filter((objPlan) => {
+      const blnCode = !strCode || objPlan.strPlanCode.toLowerCase().includes(strCode);
+      const blnName = !strName || (objPlan.strDisplayName || objPlan.strPlanName).toLowerCase().includes(strName);
+      return blnCode && blnName;
+    });
+  }, [lstPlans, dicSearchApplied]);
   // The Leave Plans menu grants the generic action set (view/edit/add/...); older ESS-style
   // setups use the compound LEAVE_VIEW/LEAVE_MANAGE codes, so accept either.
   const blnCanView = canDo("LEAVE_PLANS", "VIEW") || canDo("LEAVE_PLANS", "LEAVE_VIEW");
@@ -72,7 +82,7 @@ export default function LeavePlanListPanel() {
   }
 
   function applySearch(dicSearch: SearchForm) {
-    const dicNext = { ...dicSearch, search: dicSearch.search.trim() };
+    const dicNext = { ...dicSearch, code: dicSearch.code.trim(), name: dicSearch.name.trim() };
     setDicSearchDraft(dicNext);
     setDicSearchApplied(dicNext);
   }
@@ -82,21 +92,9 @@ export default function LeavePlanListPanel() {
     objRouter.push(`${strPath}${blnView ? "?mode=view" : ""}`);
   }
 
-  function confirmDeactivate(objPlan: LeavePlan) {
-    setObjConfirm({
-      strTitle: t("deactivate_title", "Deactivate Leave Plan"),
-      strMessage: t("deactivate_confirm", "Deactivate this Leave Plan? Existing history remains available and it can be re-activated from the editor."),
-      strConfirmLabel: t("deactivate", "Deactivate"),
-      fnOnConfirm: async () => {
-        await setPlanStatus(objPlan.intID, false);
-        showToast(t("deactivated_success", "Leave plan deactivated successfully."), "success");
-      },
-    });
-  }
-
   // ---- Multi/single row selection + bulk actions (mirrors Salary Components) ----
-  const blnAllSelected = lstPlans.length > 0 && lstPlans.every((objPlan) => lstSelectedIds.includes(objPlan.intID));
-  const blnSomeSelected = !blnAllSelected && lstPlans.some((objPlan) => lstSelectedIds.includes(objPlan.intID));
+  const blnAllSelected = lstFilteredPlans.length > 0 && lstFilteredPlans.every((objPlan) => lstSelectedIds.includes(objPlan.intID));
+  const blnSomeSelected = !blnAllSelected && lstFilteredPlans.some((objPlan) => lstSelectedIds.includes(objPlan.intID));
 
   function toggleSelection(intID: number) {
     setLstSelectedIds((lstPrev) => (lstPrev.includes(intID) ? lstPrev.filter((intValue) => intValue !== intID) : [...lstPrev, intID]));
@@ -104,10 +102,10 @@ export default function LeavePlanListPanel() {
 
   function toggleSelectAll() {
     if (blnAllSelected) {
-      setLstSelectedIds((lstPrev) => lstPrev.filter((intID) => !lstPlans.some((objPlan) => objPlan.intID === intID)));
+      setLstSelectedIds((lstPrev) => lstPrev.filter((intID) => !lstFilteredPlans.some((objPlan) => objPlan.intID === intID)));
       return;
     }
-    setLstSelectedIds((lstPrev) => [...new Set([...lstPrev, ...lstPlans.map((objPlan) => objPlan.intID)])]);
+    setLstSelectedIds((lstPrev) => [...new Set([...lstPrev, ...lstFilteredPlans.map((objPlan) => objPlan.intID)])]);
   }
 
   function bulkStatus(blnActive: boolean) {
@@ -151,7 +149,7 @@ export default function LeavePlanListPanel() {
 
   function exportCsv() {
     const strHeader = [t("table_plan_code", "Plan Code"), t("table_plan_name", "Plan Name"), t("table_effective_from", "Effective From"), t("table_effective_to", "Effective To"), t("table_assigned_employees", "Current Assigned Employees"), t("table_status", "Status")].join(",");
-    const strRows = lstPlans.map((objPlan) => [objPlan.strPlanCode, objPlan.strDisplayName || objPlan.strPlanName, objPlan.dtEffectiveFrom, objPlan.dtEffectiveTo ?? "", objPlan.intAssignedEmployeeCount ?? 0, objPlan.blnIsActive ? t("status_active", "Active") : t("status_inactive", "Inactive")].map((strCell) => `"${String(strCell).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const strRows = lstFilteredPlans.map((objPlan) => [objPlan.strPlanCode, objPlan.strDisplayName || objPlan.strPlanName, objPlan.dtEffectiveFrom, objPlan.dtEffectiveTo ?? "", objPlan.intAssignedEmployeeCount ?? 0, objPlan.blnIsActive ? t("status_active", "Active") : t("status_inactive", "Inactive")].map((strCell) => `"${String(strCell).replace(/"/g, '""')}"`).join(",")).join("\n");
     const strUrl = URL.createObjectURL(new Blob([`﻿${strHeader}\n${strRows}`], { type: "text/csv;charset=utf-8" }));
     const objLink = document.createElement("a");
     objLink.href = strUrl;
@@ -162,7 +160,7 @@ export default function LeavePlanListPanel() {
 
   const lstPlanRows = useMemo(
     () =>
-      lstPlans.map((objPlan) => ({
+      lstFilteredPlans.map((objPlan) => ({
         id: objPlan.intID,
         select: (
           <Checkbox
@@ -177,10 +175,8 @@ export default function LeavePlanListPanel() {
             rowKey={objPlan.intID}
             blnCanView
             blnCanEdit={blnCanManage}
-            blnCanDelete={blnCanManage && objPlan.blnIsActive}
             onView={() => openEditor(objPlan, true)}
             onEdit={() => openEditor(objPlan)}
-            onDelete={() => confirmDeactivate(objPlan)}
           />
         ),
         strPlanCode: objPlan.strPlanCode,
@@ -191,7 +187,7 @@ export default function LeavePlanListPanel() {
         blnStatus: <StatusPill blnActive={objPlan.blnIsActive} strActive={t("status_active", "Active")} strInactive={t("status_inactive", "Inactive")} />,
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [lstPlans, blnCanManage, lstSelectedIds],
+    [lstFilteredPlans, blnCanManage, lstSelectedIds],
   );
 
   const lstPlanColumns = useMemo<CommonTableColumn<(typeof lstPlanRows)[number]>[]>(
@@ -203,7 +199,7 @@ export default function LeavePlanListPanel() {
             checked={blnAllSelected}
             indeterminate={blnSomeSelected}
             onChange={toggleSelectAll}
-            disabled={lstPlans.length === 0}
+            disabled={lstFilteredPlans.length === 0}
             inputProps={{ "data-control-id": "leave-plan.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>}
           />
         ),
@@ -221,7 +217,7 @@ export default function LeavePlanListPanel() {
       { field: "blnStatus", headerName: t("table_status", "Status"), sortable: false, width: 120 },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [t, blnAllSelected, blnSomeSelected, lstPlans.length],
+    [t, blnAllSelected, blnSomeSelected, lstFilteredPlans.length],
   );
 
   const objTransparentTableSx = { p: 0, boxShadow: "none", background: "transparent" } as const;
@@ -238,7 +234,8 @@ export default function LeavePlanListPanel() {
             gridTemplateColumns: {
               xs: "1fr",
               sm: "repeat(2, minmax(0, 1fr))",
-              lg: "minmax(260px, 1.2fr) minmax(160px, 0.7fr) minmax(190px, 0.85fr) auto",
+              // Plan code and plan name each take half the width the single search box used to have.
+              lg: "minmax(130px, 0.6fr) minmax(130px, 0.6fr) minmax(160px, 0.7fr) auto",
             },
             alignItems: "center",
             mt: 1,
@@ -246,11 +243,20 @@ export default function LeavePlanListPanel() {
         >
           <TextField
             size="small"
-            value={dicSearchDraft.search}
-            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, search: objEvent.target.value }))}
+            value={dicSearchDraft.code}
+            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, code: objEvent.target.value }))}
             onKeyDown={(objEvent) => objEvent.key === "Enter" && applySearch(dicSearchDraft)}
-            placeholder={t("search_placeholder", "Search plan code or name")}
-            inputProps={{ "data-control-id": "leave-plan.list.search.input" }}
+            placeholder={t("search_code_placeholder", "Search plan code")}
+            inputProps={{ "data-control-id": "leave-plan.list.search-code.input" }}
+            fullWidth
+          />
+          <TextField
+            size="small"
+            value={dicSearchDraft.name}
+            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, name: objEvent.target.value }))}
+            onKeyDown={(objEvent) => objEvent.key === "Enter" && applySearch(dicSearchDraft)}
+            placeholder={t("search_name_placeholder", "Search plan name")}
+            inputProps={{ "data-control-id": "leave-plan.list.search-name.input" }}
             fullWidth
           />
           <TextField
@@ -266,16 +272,6 @@ export default function LeavePlanListPanel() {
             <MenuItem value="active">{t("status_active", "Active")}</MenuItem>
             <MenuItem value="inactive">{t("status_inactive", "Inactive")}</MenuItem>
           </TextField>
-          <TextField
-            type="date"
-            size="small"
-            label={t("filter_effective_on", "Effective On")}
-            value={dicSearchDraft.effectiveOn}
-            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, effectiveOn: objEvent.target.value }))}
-            InputLabelProps={{ shrink: true }}
-            inputProps={{ "data-control-id": "leave-plan.list.effective-on.input" }}
-            fullWidth
-          />
           <Box sx={{ display: "flex", gap: 1, justifyContent: { sm: "flex-end" }, whiteSpace: "nowrap" }}>
             <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applySearch(dicSearchDraft)} disabled={blnLoading} data-control-id="leave-plan.list.search.button">
               {t("search", "Search")}
@@ -330,7 +326,7 @@ export default function LeavePlanListPanel() {
                     {t("add_button", "Add Leave Plan")}
                   </Button>
                 ) : null}
-                <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={exportCsv} disabled={!lstPlans.length} data-control-id="leave-plan.list.export.button">
+                <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={exportCsv} disabled={!lstFilteredPlans.length} data-control-id="leave-plan.list.export.button">
                   {t("export_excel", "Export Excel")}
                 </Button>
               </Stack>
