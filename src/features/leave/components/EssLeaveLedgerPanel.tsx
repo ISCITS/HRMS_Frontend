@@ -26,7 +26,6 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { employeeService } from "@/features/employee/services/employeeService";
-import { strEssHeaderGradient, strHrHeaderGradient } from "@/features/leave/components/leaveHeaderStyles";
 import { leaveService } from "@/features/leave/services/leaveService";
 import type { LeaveLedgerDto, LedgerEmployeeDto } from "@/features/leave/types";
 
@@ -282,27 +281,10 @@ export default function EssLeaveLedgerPanel({ blnHrMode = false }: { blnHrMode?:
       );
   }, [lstGroups]);
 
-  return (
-    <Stack spacing={1.5}>
-      <Paper
-        sx={{
-          p: { xs: 1.5, md: 2 },
-          borderRadius: "20px",
-          background: blnHrMode ? strHrHeaderGradient : strEssHeaderGradient,
-          color: "white",
-          boxShadow: "0 14px 28px rgba(2, 6, 23, 0.18)",
-        }}
-      >
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2} alignItems={{ xs: "flex-start", sm: "center" }} justifyContent="space-between">
-          <Stack direction="row" spacing={1.2} alignItems="center">
-            <Box sx={{ width: 46, height: 46, borderRadius: "50%", backgroundColor: "rgba(255,255,255,0.2)", display: "grid", placeItems: "center" }}>
-              <ReceiptLongRoundedIcon />
-            </Box>
-            <Box>
-              <Typography sx={{ fontWeight: 800, fontSize: "1rem" }}>{blnHrMode ? "Leave Ledger" : "My Leave Ledger"}</Typography>
-            </Box>
-          </Stack>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2} sx={{ width: { xs: "100%", sm: "auto" } }}>
+  // The filter row is identical in both modes; only the surrounding header differs (ESS uses the
+  // common page banner, HR keeps the original gradient card).
+  const objHeaderFilters = (
+    <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2} sx={{ width: { xs: "100%", sm: "auto" }, position: "relative", zIndex: 1 }}>
             <Autocomplete
               size="small"
               options={lstEmployees}
@@ -359,9 +341,44 @@ export default function EssLeaveLedgerPanel({ blnHrMode = false }: { blnHrMode?:
                 </MenuItem>
               ))}
             </TextField>
+    </Stack>
+  );
+
+  return (
+    <Stack spacing={1.5}>
+      {blnHrMode ? (
+        <Paper
+          sx={{
+            p: { xs: 1.5, md: 2 },
+            borderRadius: "20px",
+            background: "linear-gradient(135deg, #0b3f70 0%, #0a66a3 52%, #0e7490 100%)",
+            color: "white",
+            boxShadow: "0 14px 28px rgba(2, 6, 23, 0.18)",
+          }}
+        >
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2} alignItems={{ xs: "flex-start", sm: "center" }} justifyContent="space-between">
+            <Stack direction="row" spacing={1.2} alignItems="center">
+              <Box sx={{ width: 46, height: 46, borderRadius: "50%", backgroundColor: "rgba(255,255,255,0.2)", display: "grid", placeItems: "center" }}>
+                <ReceiptLongRoundedIcon />
+              </Box>
+              <Box>
+                <Typography sx={{ fontWeight: 800, fontSize: "1rem" }}>Leave Ledger</Typography>
+              </Box>
+            </Stack>
+            {objHeaderFilters}
           </Stack>
-        </Stack>
-      </Paper>
+        </Paper>
+      ) : (
+        <Box className="pageBanner" data-control-id="ess.leave-ledger.header.banner" sx={{ flexWrap: { xs: "wrap", md: "nowrap" } }}>
+          <Box className="bannerDots" />
+          <Box className="bannerIcon"><ReceiptLongRoundedIcon sx={{ fontSize: 30 }} /></Box>
+          <Box className="bannerDivider" />
+          <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
+            <Typography component="h1" className="bannerTitle">My Leave Ledger</Typography>
+          </Box>
+          {objHeaderFilters}
+        </Box>
+      )}
 
       {objSelectedEmployee && !objSelectedEmployee.blnIsSelf ? (
         <Alert severity="info" variant="outlined" sx={{ borderRadius: "12px", py: 0.25 }}>

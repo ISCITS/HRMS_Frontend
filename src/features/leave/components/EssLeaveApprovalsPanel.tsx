@@ -3,7 +3,6 @@
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import EssTeamCalendarPage from "@/features/leave/components/EssTeamCalendarPage";
-import { strEssHeaderGradient } from "@/features/leave/components/leaveHeaderStyles";
 import CancelRoundedIcon from "@mui/icons-material/CancelRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
@@ -229,14 +228,18 @@ export default function EssLeaveApprovalsPanel() {
   ];
 
   return <Stack spacing={2}>
-    <Paper sx={{ p: { xs: 1.75, md: 2.25 }, borderRadius: "20px", background: strEssHeaderGradient, color: "white", boxShadow: "0 14px 28px rgba(2,6,23,.18)" }}>
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ xs: "stretch", sm: "center" }} justifyContent="space-between">
-        <Stack direction="row" spacing={1.4} alignItems="center"><Box sx={{ width: 48, height: 48, borderRadius: "14px", bgcolor: "rgba(255,255,255,.18)", display: "grid", placeItems: "center" }}><FactCheckRoundedIcon /></Box><Box><Typography component="h1" sx={{ fontWeight: 800, fontSize: "1.08rem" }}>{t("page_title", "Leave Approvals")}</Typography><Typography sx={{ fontSize: ".82rem", color: "rgba(241,245,249,.92)" }}>{t("page_subtitle", "Review and act on your team's leave requests.")}</Typography></Box></Stack>
-        <Stack direction="row" spacing={1}>
-          <Button data-controlid="ess.leave.approvals.refresh" variant="contained" startIcon={<RefreshRoundedIcon />} onClick={() => void fnLoadAll()} sx={{ bgcolor: "white", color: "#0b3f70", fontWeight: 800, "&:hover": { bgcolor: "#e2e8f0" } }}>{t("refresh", "Refresh")}</Button>
-        </Stack>
+    <Box className="pageBanner" data-control-id="ess.leave.approvals.header.banner">
+      <Box className="bannerDots" />
+      <Box className="bannerIcon"><FactCheckRoundedIcon sx={{ fontSize: 30 }} /></Box>
+      <Box className="bannerDivider" />
+      <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
+        <Typography component="h1" className="bannerTitle">{t("page_title", "Leave Approvals")}</Typography>
+        <Typography component="p" className="bannerSubTitle">{t("page_subtitle", "Review and act on your team's leave requests.")}</Typography>
+      </Box>
+      <Stack direction="row" spacing={1} sx={{ position: "relative", zIndex: 1 }}>
+        <Button data-controlid="ess.leave.approvals.refresh" variant="contained" startIcon={<RefreshRoundedIcon />} onClick={() => void fnLoadAll()} sx={{ bgcolor: "white", color: "#0b3f70", fontWeight: 800, "&:hover": { bgcolor: "#e2e8f0" } }}>{t("refresh", "Refresh")}</Button>
       </Stack>
-    </Paper>
+    </Box>
 
     <Grid container spacing={1.25}>
       {lstCards.map((objCard) => <Grid item xs={6} md={3} key={objCard.strKey}><Paper sx={{ p: 1.75, borderRadius: "16px", border: "1px solid #e2e8f0", height: "100%" }}><Stack direction="row" spacing={1.25} alignItems="center"><Box sx={{ width: 44, height: 44, borderRadius: "12px", bgcolor: `${objCard.strColor}18`, color: objCard.strColor, display: "grid", placeItems: "center" }}>{objCard.objIcon}</Box><Box>{blnLoading ? <Skeleton width={40} height={30} /> : <Typography sx={{ fontWeight: 800, fontSize: "1.5rem", lineHeight: 1 }}>{objCard.intValue}</Typography>}<Typography sx={{ fontSize: ".72rem", color: "#64748b", fontWeight: 600 }}>{objCard.strLabel}</Typography></Box></Stack></Paper></Grid>)}

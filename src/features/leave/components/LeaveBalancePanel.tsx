@@ -15,7 +15,6 @@ import {
 import { useEffect, useState } from "react";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
-import { strEssHeaderGradient } from "@/features/leave/components/leaveHeaderStyles";
 import { leaveService } from "@/features/leave/services/leaveService";
 import type { LeaveBalanceDto } from "@/features/leave/types";
 
@@ -53,27 +52,19 @@ export default function LeaveBalancePanel() {
 
   return (
     <Stack spacing={1.5}>
-      <Paper
-        sx={{
-          p: { xs: 1.5, md: 2 },
-          borderRadius: "20px",
-          background: strEssHeaderGradient,
-          color: "white",
-          boxShadow: "0 14px 28px rgba(2, 6, 23, 0.18)",
-        }}
-      >
-        <Stack direction="row" spacing={1.2} alignItems="center">
-          <Box sx={{ width: 46, height: 46, borderRadius: "50%", backgroundColor: "rgba(255,255,255,0.2)", display: "grid", placeItems: "center" }}>
-            <BeachAccessRoundedIcon />
-          </Box>
-          <Box>
-            <Typography sx={{ fontWeight: 800, fontSize: "1rem" }}>My Leave Balance</Typography>
-            <Typography sx={{ fontSize: "0.82rem", color: "rgba(241,245,249,0.92)" }}>
-              Available balance is credited minus availed and held (pending) leave.
-            </Typography>
-          </Box>
-        </Stack>
-      </Paper>
+      <Box className="pageBanner" data-control-id="ess.leave-balance.header.banner">
+        <Box className="bannerDots" />
+        <Box className="bannerIcon">
+          <BeachAccessRoundedIcon sx={{ fontSize: 30 }} />
+        </Box>
+        <Box className="bannerDivider" />
+        <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
+          <Typography component="h1" className="bannerTitle">My Leave Balance</Typography>
+          <Typography component="p" className="bannerSubTitle">
+            Available balance is credited minus availed and held (pending) leave.
+          </Typography>
+        </Box>
+      </Box>
 
       {blnLoading ? (
         <Box sx={{ display: "grid", placeItems: "center", py: 6 }}>
