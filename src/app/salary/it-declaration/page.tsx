@@ -692,10 +692,12 @@ export default function SalaryEssDeclarationsPage() {
       strLabel = t("view", "View");
     }
 
+    const blnRowIsEditable = !blnLocked && blnCanEditDeclaration;
     return (
       <Tooltip title={strLabel}>
         <IconButton
-          data-controlid="salary.it-declaration.back.button"
+          controlId={`salary.it-declaration.row.${blnRowIsEditable ? "edit" : "view"}.button`}
+          data-row-key={objRow.intItemID ?? objRow.strSection}
           size="small"
           onClick={() => openEditModal(objRow)}
           sx={{ color: "var(--app-primary-color, #1d4ed8)" }}
