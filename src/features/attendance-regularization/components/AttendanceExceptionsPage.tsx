@@ -1,6 +1,5 @@
 "use client";
 
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
@@ -27,7 +26,7 @@ import { useRouter } from "next/navigation";
 import LookupChip, {
   lookupLabel,
 } from "@/features/attendance-regularization/components/LookupChip";
-import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import CommonDataGrid, { type DataGridColumn } from "@/components/ui/CommonDataGrid";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import styles from "@/components/master/MasterScreen.module.css";
@@ -44,6 +43,8 @@ import type {
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { authHelpers } from "@/lib/auth";
+
+const intExceptionGridFetchSize = 100;
 
 function monthStart() {
   const objDate = new Date();
@@ -68,7 +69,6 @@ export default function AttendanceExceptionsPage() {
     strFromDate: monthStart(),
     strToDate: todayIso(),
   });
-  const [intPage, setIntPage] = useState(1);
   const [setSelected, setSetSelected] = useState<Set<number>>(new Set());
   const [objSelected, setObjSelected] = useState<ExceptionRecord | null>(null);
   const [objDetail, setObjDetail] = useState<Record<string, unknown> | null>(
@@ -111,7 +111,7 @@ export default function AttendanceExceptionsPage() {
         attendanceRegularizationService.getHrLookups(
           intLanguageID || authHelpers.getLanguageID() || undefined,
         ),
-        attendanceRegularizationService.listExceptions(objFilters, intPage, 25),
+        attendanceRegularizationService.listExceptions(objFilters, 1, intExceptionGridFetchSize),
       ]);
       setObjLookups(objLookupResult);
       setObjList(objQueueResult);
@@ -124,7 +124,7 @@ export default function AttendanceExceptionsPage() {
     } finally {
       setBlnLoading(false);
     }
-  }, [intLanguageID, intPage, objFilters, t]);
+  }, [intLanguageID, objFilters, t]);
 
   useEffect(() => {
     void loadQueue();
@@ -266,7 +266,6 @@ export default function AttendanceExceptionsPage() {
 
   function clearFilters() {
     setObjFilters({ strFromDate: monthStart(), strToDate: todayIso() });
-    setIntPage(1);
     setSetSelected(new Set());
   }
 
@@ -278,7 +277,7 @@ export default function AttendanceExceptionsPage() {
     () =>
       (objList?.lstItems ?? []).map((objItem) => ({
         id: objItem.intID,
-        select: (
+        rowSelect: (
           <Checkbox
             data-control-id={`attendance-exceptions.${objItem.intID}.select.checkbox`}
             checked={setSelected.has(objItem.intID)}
@@ -313,6 +312,7 @@ export default function AttendanceExceptionsPage() {
             lstOptions={lstSeverities}
             strCode={objItem.strSeverityCode}
             strFallback={t("unavailable", "Unavailable")}
+            blnHideIcon
           />
         ),
         exceptionStatus: (
@@ -320,6 +320,7 @@ export default function AttendanceExceptionsPage() {
             lstOptions={lstStatuses}
             strCode={objItem.strExceptionStatus}
             strFallback={t("unavailable", "Unavailable")}
+            blnHideIcon
           />
         ),
         punchRequest: objItem.intRequestID
@@ -330,10 +331,10 @@ export default function AttendanceExceptionsPage() {
     [objList, setSelected, lstTypes, lstSeverities, lstStatuses, t], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
-  const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
+  const lstTableColumns = useMemo<DataGridColumn<(typeof lstTableRows)[number]>[]>(
     () => [
       {
-        field: "select",
+        field: "rowSelect",
         headerName: (
           <Checkbox
             data-control-id="attendance-exceptions.select-page.checkbox"
@@ -389,7 +390,7 @@ export default function AttendanceExceptionsPage() {
       {/* Keep actions and severity summaries in one row so the queue begins below a single toolbar. */}
       <Paper className={styles.controlsCard}>
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="stretch">
-          {blnCanGenerate || blnCanExport ? (
+          {blnCanGenerate ? (
             <>
             {blnCanGenerate ? (
               <Button
@@ -408,22 +409,6 @@ export default function AttendanceExceptionsPage() {
                 }
               >
                 {t("generate", "Generate")}
-              </Button>
-            ) : null}
-            {blnCanExport ? (
-              <Button
-                data-control-id="attendance-exceptions.export.button"
-                variant="outlined"
-                startIcon={<DownloadRoundedIcon />}
-                disabled={blnWorking}
-                sx={{ minWidth: 124, minHeight: 48, flex: "0 0 auto" }}
-                onClick={() =>
-                  void attendanceRegularizationService.exportExceptions(
-                    objFilters,
-                  )
-                }
-              >
-                {t("export", "Export")}
               </Button>
             ) : null}
             </>
@@ -637,21 +622,28 @@ export default function AttendanceExceptionsPage() {
               <MenuItem value="desc">{t("descending", "Descending")}</MenuItem>
             </TextField>
           </Grid>
-          <Grid item xs={12} lg={2.5}>
+          <Grid item xs={12} lg="auto" sx={{ ml: { lg: "auto" } }}>
             <Stack
               direction="row"
               spacing={1}
               justifyContent="flex-end"
               alignItems="stretch"
               className={styles.filterActions}
-              sx={{ height: "100%" }}
+              sx={{
+                height: "100%",
+                minWidth: { lg: 224 },
+                "& .MuiButton-root": {
+                  flex: "0 0 auto",
+                  minWidth: 104,
+                  px: 2,
+                },
+              }}
             >
               <Button
                 data-control-id="attendance-exceptions.search.button"
                 className={styles.primaryButton}
                 startIcon={<SearchRoundedIcon />}
                 onClick={() => {
-                  setIntPage(1);
                   void loadQueue();
                 }}
               >
@@ -698,16 +690,19 @@ export default function AttendanceExceptionsPage() {
       <Paper className={styles.tableCard} sx={{ position: "relative", minHeight: blnLoading ? 160 : undefined }}>
         <BlockingLoader blnOpen={blnLoading} blnLocal strLabel={t("loading", "Loading...")} />
         {blnLoading ? null : (
-          <CommonTable
+          <CommonDataGrid
             columns={lstTableColumns}
             rows={lstTableRows}
             rowIdField="id"
             defaultPageSize={25}
-            pageSizeOptions={[25]}
-            hideToolbar
+            pageSizeOptions={[25, 50, 100]}
+            showExportOptions={blnCanExport}
+            showPaginationSummary
             minTableWidth={1250}
+            exportFileName="attendance_exceptions"
             emptyMessage={t("no_exceptions", "No exceptions found.")}
             testIdPrefix="attendance-exceptions.list"
+            withPaper={false}
             onRowDoubleClick={(objRow) => {
               const objException = objList?.lstItems.find((objItem) => objItem.intID === objRow.id);
               if (objException) void openDetail(objException);
@@ -715,23 +710,6 @@ export default function AttendanceExceptionsPage() {
           />
         )}
       </Paper>
-      <Stack direction="row" justifyContent="flex-end">
-        <Button
-          data-control-id="attendance-exceptions.previous-page.button"
-          disabled={intPage <= 1}
-          onClick={() => setIntPage((intValue) => intValue - 1)}
-        >
-          {t("previous", "Previous")}
-        </Button>
-        <Typography sx={{ p: 1 }}>{intPage}</Typography>
-        <Button
-          data-control-id="attendance-exceptions.next-page.button"
-          disabled={(objList?.lstItems.length ?? 0) < 25}
-          onClick={() => setIntPage((intValue) => intValue + 1)}
-        >
-          {t("next", "Next")}
-        </Button>
-      </Stack>
       <Dialog
         data-control-id="attendance-exceptions.detail.dialog"
         open={Boolean(objDetail)}

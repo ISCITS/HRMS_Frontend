@@ -216,12 +216,7 @@ export default function WorkHolidayRequestsPage({ blnEssManagerMode = false }: {
       {/* AppShell already provides the screen title, so the workbench starts with its status and tabs. */}
       {strNotice ? <Alert data-control-id="work-on-holiday.workbench.success.alert" severity="success" onClose={() => setStrNotice("")}>{strNotice}</Alert> : null}
       {strError || strListError ? <Alert data-control-id="work-on-holiday.workbench.error.alert" severity="error" onClose={() => setStrError("")}>{strError || strListError}</Alert> : null}
-      {blnCanOnBehalf ? (
-        <Stack direction="row" justifyContent="flex-end">
-          <Button data-control-id="work-on-holiday.workbench.on-behalf.open.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => setBlnOnBehalfOpen(true)}>{t("create_on_behalf", "Create on Behalf")}</Button>
-        </Stack>
-      ) : null}
-      <Paper><Tabs value={Math.min(intTab, Math.max(lstTabs.length - 1, 0))} onChange={changeTab} variant="scrollable" aria-label={t("workbench_tabs", "Work on Holiday work queues")}>{lstTabs.map((objTab) => <Tab data-control-id={`work-on-holiday.workbench.${objTab.strCode}.tab`} key={objTab.strCode} label={objTab.strLabel} />)}</Tabs></Paper>
+      <Paper className={styles.workbenchTabsCard}><Tabs value={Math.min(intTab, Math.max(lstTabs.length - 1, 0))} onChange={changeTab} variant="scrollable" aria-label={t("workbench_tabs", "Work on Holiday work queues")}>{lstTabs.map((objTab) => <Tab data-control-id={`work-on-holiday.workbench.${objTab.strCode}.tab`} key={objTab.strCode} label={objTab.strLabel} />)}</Tabs></Paper>
       <Paper className={styles.controlsCard}>
         <Box
           component="form"
@@ -242,8 +237,35 @@ export default function WorkHolidayRequestsPage({ blnEssManagerMode = false }: {
           <Box className={styles.searchActions}><Button data-control-id="work-on-holiday.workbench.clear.button" type="button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearRequestFilters}>{t("clear", "Clear")}</Button></Box>
         </Box>
       </Paper>
-      {blnLoading ? <CircularProgress aria-label={t("loading", "Loading")} /> : null}
-      {blnListEnabled ? <CommonDataGrid columns={lstColumns} rows={lstRows} rowIdField="intID" showExportOptions showPaginationSummary defaultPageSize={20} pageSizeOptions={[20, 50, 100]} exportFileName="work_on_holiday_requests" testIdPrefix="work-on-holiday-workbench" emptyMessage={t("empty_requests", "No matching requests found.")} /> : null}
+      {blnLoading ? (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
+          <CircularProgress aria-label={t("loading", "Loading")} />
+        </Box>
+      ) : null}
+      {blnListEnabled ? (
+        <CommonDataGrid
+          columns={lstColumns}
+          rows={lstRows}
+          rowIdField="intID"
+          showExportOptions
+          showPaginationSummary
+          defaultPageSize={20}
+          pageSizeOptions={[20, 50, 100]}
+          exportFileName="work_on_holiday_requests"
+          testIdPrefix="work-on-holiday-workbench"
+          emptyMessage={t("empty_requests", "No matching requests found.")}
+          toolbarLeft={blnCanOnBehalf ? (
+            <Button
+              data-control-id="work-on-holiday.workbench.on-behalf.open.button"
+              className={styles.primaryButton}
+              startIcon={<AddRoundedIcon />}
+              onClick={() => setBlnOnBehalfOpen(true)}
+            >
+              {t("create_on_behalf", "Create on Behalf")}
+            </Button>
+          ) : null}
+        />
+      ) : null}
       <WorkHolidayDetailDrawer objDetail={objDetail} blnOpen={Boolean(objDetail)} blnLoading={blnDetailLoading} blnCanApprove={blnCanApprove} blnCanReject={blnCanReject} blnCanSendBack={blnCanSendBack} blnCanVerify={blnCanVerify} blnCanPost={blnCanPost} blnCanReverse={blnCanReverse} blnActionMode={blnActionMode} fnOnClose={closeDetailDrawer} fnOnRefresh={async () => { await reload(); if (objDetail) await loadDetail(objDetail.intID); }} fnOnConflict={(strMessage) => setStrError(`${t("concurrency_conflict", "This request changed. The latest record has been loaded.")} ${strMessage}`)} />
       <Dialog data-control-id="work-on-holiday.on-behalf.dialog" open={blnOnBehalfOpen} onClose={() => setBlnOnBehalfOpen(false)} fullWidth maxWidth="lg">
         <DialogTitle sx={{ fontWeight: 800 }}>{t("create_on_behalf", "Create On Behalf")}</DialogTitle>
