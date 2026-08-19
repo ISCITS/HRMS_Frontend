@@ -24,10 +24,12 @@ import {
   Typography,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import styles from "@/components/master/MasterScreen.module.css";
+import { employeeService } from "@/features/employee/services/employeeService";
+import type { EmployeeListRecord } from "@/features/employee/types";
 import { leaveService } from "@/features/leave/services/leaveService";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
 import type {
@@ -66,7 +68,14 @@ const lstRuleOperators = ["EQUALS", "NOT_EQUALS", "GREATER_THAN", "LESS_THAN", "
 // POC standard option sets (India POC simplification). Advanced/legacy codes are hidden from these
 // dropdowns but preserved on old records via `optsWithCurrent`, which re-adds a stored value that is
 // no longer in the standard list so it still displays and round-trips on save.
-const lstPocApproverSources = ["REPORTING_MANAGER", "LINE_MANAGER", "HR"];
+// FIXED_EMPLOYEE ("Specific User") routes the step to one named employee, chosen per step.
+const strFixedEmployeeSource = "FIXED_EMPLOYEE";
+const lstPocApproverSources = [
+  { code: "REPORTING_MANAGER", label: "REPORTING MANAGER" },
+  { code: "LINE_MANAGER", label: "LINE MANAGER" },
+  { code: "HR", label: "HR" },
+  { code: strFixedEmployeeSource, label: "Specific User" },
+];
 const lstPocNoActionRules = [
   { code: "NONE", label: "No Automatic Action" },
   { code: "AUTO_APPROVE", label: "Auto Approve" },
@@ -290,8 +299,32 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
   // Field-level validation messages shown inline below the control (not as a generic toast).
   const [dicFieldErrors, setDicFieldErrors] = useState<{ strTypeCode?: string; strTypeName?: string }>({});
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
+  const [lstEmployeeOptions, setLstEmployeeOptions] = useState<EmployeeListRecord[]>([]);
+  const [blnEmployeesLoading, setBlnEmployeesLoading] = useState(false);
 
   const objPolicy = objForm.objPolicy ?? emptyPolicy();
+
+  // The employee list backs the "Specific User" approver only, so it is fetched the first time a step
+  // uses that source (either freshly selected or loaded from a saved policy) instead of on every open.
+  // The one-shot guard is a ref, not state: a state flag in the dependency array would re-run this
+  // effect and fire its cleanup mid-flight, discarding the response that is already on its way.
+  const blnNeedsEmployees = objForm.lstApprovalSteps.some((objStep) => objStep.strApproverSourceCode === strFixedEmployeeSource);
+  const refEmployeesRequested = useRef(false);
+  useEffect(() => {
+    if (!blnNeedsEmployees || refEmployeesRequested.current) return;
+    refEmployeesRequested.current = true;
+    let blnMounted = true;
+    setBlnEmployeesLoading(true);
+    employeeService.getEmployees()
+      .then((lstResult) => { if (blnMounted) setLstEmployeeOptions(lstResult.filter((objEmployee) => !objEmployee.blnIsPartialSave)); })
+      .catch(() => {
+        // Allow a later retry (re-selecting the source) instead of leaving the dropdown empty forever.
+        refEmployeesRequested.current = false;
+        if (blnMounted) setLstEmployeeOptions([]);
+      })
+      .finally(() => { if (blnMounted) setBlnEmployeesLoading(false); });
+    return () => { blnMounted = false; };
+  }, [blnNeedsEmployees]);
 
   function showToast(strMessage: string, strSeverity: "success" | "error") {
     setObjToast({ blnOpen: true, strMessage, strSeverity });
@@ -777,19 +810,48 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
             <Box sx={objFullCellSx}><Divider><Chip label="Approval steps" size="small" /></Divider></Box>
             {objForm.lstApprovalSteps.map((objStep, intIndex) => (
               <Box sx={objFullCellSx} key={intIndex}>
-                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                {/* Top-aligned: the Employee field carries helper text, and centering would lift its
+                    input above the rest of the row. */}
+                <Stack direction="row" spacing={1} alignItems="flex-start" flexWrap="wrap" useFlexGap>
                   <TextField label="Step" type="number" size="small" value={objStep.intStepNo} onChange={(e) => updateStep(intIndex, { intStepNo: Number(e.target.value) || 1 })} sx={{ width: 80 }} {...objInputProps} />
-                  <TextField label="Approver" select size="small" value={objStep.strApproverSourceCode} onChange={(e) => updateStep(intIndex, { strApproverSourceCode: e.target.value })} sx={{ width: 200 }} {...objInputProps}>
-                    {/* POC approvers: Reporting Manager, Line Manager, HR. Fixed Role / Specific Employee are
+                  <TextField
+                    label="Approver"
+                    select
+                    size="small"
+                    value={objStep.strApproverSourceCode}
+                    // Switching away from "Specific User" drops the employee so a stale id is never saved.
+                    onChange={(e) => updateStep(intIndex, { strApproverSourceCode: e.target.value, intFixedEmployeeID: e.target.value === strFixedEmployeeSource ? objStep.intFixedEmployeeID ?? null : null })}
+                    sx={{ width: 200 }}
+                    {...objInputProps}
+                  >
+                    {/* POC approvers: Reporting Manager, Line Manager, HR, Specific User. Fixed Role is
                         advanced-only; a legacy stored value is re-added so it displays and round-trips. */}
-                    {optsWithCurrent(lstPocApproverSources.map((c) => ({ code: c, label: c.replace(/_/g, " ") })), objStep.strApproverSourceCode).map((o) => <MenuItem key={o.code} value={o.code}>{o.label}</MenuItem>)}
+                    {optsWithCurrent(lstPocApproverSources, objStep.strApproverSourceCode).map((o) => <MenuItem key={o.code} value={o.code}>{o.label}</MenuItem>)}
                   </TextField>
+                  {objStep.strApproverSourceCode === strFixedEmployeeSource ? (
+                    <TextField
+                      label="Employee"
+                      select
+                      size="small"
+                      value={lstEmployeeOptions.some((objEmployee) => objEmployee.intID === objStep.intFixedEmployeeID) ? String(objStep.intFixedEmployeeID) : ""}
+                      onChange={(e) => updateStep(intIndex, { intFixedEmployeeID: Number(e.target.value) || null })}
+                      error={!objStep.intFixedEmployeeID}
+                      helperText={!objStep.intFixedEmployeeID ? "Select the approving employee." : undefined}
+                      sx={{ width: 260 }}
+                      {...objInputProps}
+                    >
+                      <MenuItem value="">{blnEmployeesLoading ? "Loading employees..." : "Select Employee"}</MenuItem>
+                      {lstEmployeeOptions.map((objEmployee) => (
+                        <MenuItem key={objEmployee.intID} value={String(objEmployee.intID)}>{objEmployee.strEmployeeCode} - {objEmployee.strFullName}</MenuItem>
+                      ))}
+                    </TextField>
+                  ) : null}
                   <TextField label="Action Due Within (Days)" type="number" size="small" value={objStep.intNoActionAfterDays ?? ""} onChange={(e) => updateStep(intIndex, { intNoActionAfterDays: toNum(e.target.value) })} sx={{ width: 170 }} {...objInputProps} />
                   <TextField label="If No Action" select size="small" value={objStep.strNoActionRuleCode} onChange={(e) => updateStep(intIndex, { strNoActionRuleCode: e.target.value })} sx={{ width: 200 }} {...objInputProps}>
                     {optsWithCurrent(lstPocNoActionRules, objStep.strNoActionRuleCode).map((o) => <MenuItem key={o.code} value={o.code}>{o.label}</MenuItem>)}
                   </TextField>
                   {/* POC: Action Required hidden — active steps are treated as action-required by default. */}
-                  {!blnReadOnly ? <IconButton size="small" color="error" onClick={() => removeStep(intIndex)}><DeleteOutlineRoundedIcon fontSize="small" /></IconButton> : null}
+                  {!blnReadOnly ? <IconButton size="small" color="error" onClick={() => removeStep(intIndex)} sx={{ mt: 0.5 }}><DeleteOutlineRoundedIcon fontSize="small" /></IconButton> : null}
                 </Stack>
               </Box>
             ))}
