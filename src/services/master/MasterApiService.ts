@@ -18,6 +18,7 @@ export type DepartmentApiRecord = {
   strDepartmentName: string;
   strDepartmentDescription?: string | null;
   strManagerName?: string | null;
+  intEmployeeCount?: number;
   blnIsActive: boolean;
   intCompanyID: number;
   intTenantID: number;

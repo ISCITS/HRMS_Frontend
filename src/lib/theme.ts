@@ -251,6 +251,18 @@ export const getTheme = (mode: PaletteMode, preset: ThemePreset = "ocean") => {
           }
         }
       },
+      MuiFormControlLabel: {
+        styleOverrides: {
+          root: {
+            "& > .MuiSwitch-root": {
+              order: 2
+            },
+            "& > .MuiSwitch-root + .MuiFormControlLabel-label": {
+              order: 1
+            }
+          }
+        }
+      },
       MuiOutlinedInput: {
         styleOverrides: {
           root: {

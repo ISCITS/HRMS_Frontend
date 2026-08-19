@@ -328,7 +328,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
           sx={{ px: 1.5, pt: 1.25 }}
         >
           <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ md: "center" }} sx={{ width: { xs: "100%", lg: "auto" } }}>
-            {!hideToolbar ? <Box sx={{ display: "flex", alignItems: "center", minHeight: 40 }}>{toolbarLeft}</Box> : null}
+            {toolbarLeft ? <Box sx={{ display: "flex", alignItems: "center", minHeight: 40 }}>{toolbarLeft}</Box> : null}
             {!hideToolbar && showExportOptions ? (
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                 <Button data-controlid={`${testIdPrefix}.export-excel.button`} className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportExcel}>

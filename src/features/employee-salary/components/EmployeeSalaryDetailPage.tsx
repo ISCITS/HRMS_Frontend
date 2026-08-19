@@ -2464,17 +2464,17 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
         {blnShowFlexiBenefitAllocation ? (
           <Box>
             <Box className={`${styles.tableCard} ${styles.revisionCard}`}>
-              <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }} spacing={1.5} sx={{ pb: 1, pl: "10px" }}>
-                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
-                  {t("employee_salary_flexi_benefit_allocation", "Flexi Allocation and Benefits")}
-                </Typography>
-              </Stack>
               <CommonDataGrid
                 columns={lstRevisionFlexiColumns}
                 rows={lstRevisionFlexiDataGridRows}
                 rowIdField="intSalaryComponentID"
                 showPaginationSummary
                 hideToolbar
+                toolbarLeft={(
+                  <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
+                    {t("employee_salary_flexi_benefit_allocation", "Flexi Allocation and Benefits")}
+                  </Typography>
+                )}
                 minTableWidth={1260}
                 emptyMessage={t("employee_salary_no_flexi_allocations_found", "No flexi allocation lines found.")}
                 testIdPrefix="employee-salary.revision.flexi-allocation-benefits"
@@ -2935,17 +2935,17 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
           </Box>
           {blnShowFlexiBenefitAllocation ? (
             <Box className={`${styles.tableCard} ${styles.revisionCard}`}>
-              <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }} spacing={1.5} sx={{ pb: 1, pl: "10px" }}>
-                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
-                  {t("employee_salary_flexi_benefit_allocation", "Flexi Allocation and Benefits")}
-                </Typography>
-              </Stack>
               <CommonDataGrid
                 columns={lstRevisionFlexiCompactColumns}
                 rows={lstRevisionFlexiCompactDataGridRows}
                 rowIdField="intSalaryComponentID"
                 showPaginationSummary
                 hideToolbar
+                toolbarLeft={(
+                  <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
+                    {t("employee_salary_flexi_benefit_allocation", "Flexi Allocation and Benefits")}
+                  </Typography>
+                )}
                 minTableWidth={1020}
                 emptyMessage={t("employee_salary_no_flexi_allocations_found", "No flexi allocation lines found.")}
                 testIdPrefix="employee-salary.revision.flexi-allocation-benefits-compact"
@@ -3057,17 +3057,17 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
       <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 4fr) minmax(260px, 1fr)" }, alignItems: "start" }}>
         <Stack spacing={1.5} sx={{ minWidth: 0 }}>
           <Box className={styles.tableCard} id="flexi-component">
-          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }} spacing={1.5} sx={{ pb: 1, pl: "10px" }}>
-            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
-              {t("employee_salary_component_lines", "Component Lines")}
-            </Typography>
-          </Stack>
           <CommonDataGrid
             columns={lstComponentColumns}
             rows={lstComponentDataGridRows}
             rowIdField="intEmployeeSalaryComponentID"
             showPaginationSummary
             hideToolbar
+            toolbarLeft={(
+              <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
+                {t("employee_salary_salary_structure", "Salary Structure")}
+              </Typography>
+            )}
             minTableWidth={980}
             emptyMessage={t("employee_salary_no_component_lines_found", "No salary component lines found.")}
             testIdPrefix="employee-salary.detail.salary-structure"
@@ -3077,40 +3077,17 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
 
         {(
           <Box className={styles.tableCard}>
-            <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }} spacing={1.5} sx={{ pb: 1, pl: "10px" }}>
-              <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
-                {blnHasFlexiBucket
-                  ? t("employee_salary_eligible_flexi_components", "Flexi Allocation and Benefits")
-                  : t("employee_salary_flexi_benefit_allocation", "Flexi Allocation and Benefits")}
-              </Typography>
-              {blnHasFlexiBucket ? (
-                <Button
-                  data-controlid="employee-salary.detail.flexi-allocation-benefits.review.button"
-                  size="small"
-                  variant="contained"
-                  className={styles.primaryButton}
-                  disabled={!intFlexiDeclarationID}
-                  onClick={() => {
-                    if (!intFlexiDeclarationID) {
-                      return;
-                    }
-                    const objParams = new URLSearchParams();
-                    objParams.set("intDeclarationID", String(intFlexiDeclarationID));
-                    objParams.set("source", "employee_salary");
-                    objParams.set("returnTo", `/employee-salary/${intEmployeeID}`);
-                    objRouter.push(`/salary/flexi-pay-declaration?${objParams.toString()}`);
-                  }}
-                >
-                  {strFlexiActionLabel}
-                </Button>
-              ) : null}
-            </Stack>
             {!blnHasFlexiBucket ? (
-              <Alert severity={blnHasFlexiAllocations ? "error" : "info"} sx={{ mb: 1.25 }}>
-                {blnHasFlexiAllocations
-                  ? t("employee_salary_flexi_allocation_without_bucket", "Flexi allocation cannot exist without Flexi Bucket amount.")
-                  : t("employee_salary_flexi_not_enabled", "Flexi Pay is not enabled for this employee's salary structure.")}
-              </Alert>
+              <>
+                <Typography sx={{ fontWeight: 800, color: "#0f172a", px: 1.5, pt: 1.25, minHeight: 40, display: "flex", alignItems: "center" }}>
+                  {t("employee_salary_flexi_benefit_allocation", "Flexi Allocation and Benefits")}
+                </Typography>
+                <Alert severity={blnHasFlexiAllocations ? "error" : "info"} sx={{ mb: 1.25 }}>
+                  {blnHasFlexiAllocations
+                    ? t("employee_salary_flexi_allocation_without_bucket", "Flexi allocation cannot exist without Flexi Bucket amount.")
+                    : t("employee_salary_flexi_not_enabled", "Flexi Pay is not enabled for this employee's salary structure.")}
+                </Alert>
+              </>
             ) : null}
             {blnHasFlexiBucket ? (
             <CommonDataGrid
@@ -3119,6 +3096,32 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
               rowIdField="intSalaryComponentID"
               showPaginationSummary
               hideToolbar
+              toolbarLeft={(
+                <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>
+                  <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
+                    {t("employee_salary_eligible_flexi_components", "Flexi Allocation and Benefits")}
+                  </Typography>
+                  <Button
+                    data-controlid="employee-salary.detail.flexi-allocation-benefits.review.button"
+                    size="small"
+                    variant="contained"
+                    className={styles.primaryButton}
+                    disabled={!intFlexiDeclarationID}
+                    onClick={() => {
+                      if (!intFlexiDeclarationID) {
+                        return;
+                      }
+                      const objParams = new URLSearchParams();
+                      objParams.set("intDeclarationID", String(intFlexiDeclarationID));
+                      objParams.set("source", "employee_salary");
+                      objParams.set("returnTo", `/employee-salary/${intEmployeeID}`);
+                      objRouter.push(`/salary/flexi-pay-declaration?${objParams.toString()}`);
+                    }}
+                  >
+                    {strFlexiActionLabel}
+                  </Button>
+                </Stack>
+              )}
               minTableWidth={1130}
               emptyMessage={t("employee_salary_no_flexi_components_found", "No flexi components found.")}
               testIdPrefix="employee-salary.detail.flexi-allocation-benefits"
@@ -3242,17 +3245,17 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
       {lstHistoryRows.length > 0 ? (
       <Box>
         <Box className={styles.tableCard}>
-          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }} spacing={1.5} sx={{ pb: 1, pl: "10px" }}>
-            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
-              {t("employee_salary_revision_history", "Revision History")}
-            </Typography>
-          </Stack>
           <CommonDataGrid
             columns={lstHistoryColumns}
             rows={lstHistoryDataGridRows}
             rowIdField="intEmployeeSalaryStructureID"
             showPaginationSummary
             hideToolbar
+            toolbarLeft={(
+              <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
+                {t("employee_salary_revision_history", "Revision History")}
+              </Typography>
+            )}
             minTableWidth={1110}
             emptyMessage={t("employee_salary_no_revisions_found", "No salary revisions found.")}
             testIdPrefix="employee-salary.detail.revision-history"

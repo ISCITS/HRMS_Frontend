@@ -93,7 +93,7 @@ function mapDepartmentRecord(dicRecord: DepartmentApiRecord): DepartmentRecord {
     code: dicRecord.strDepartmentCode,
     name: dicRecord.strDepartmentName,
     status: dicRecord.blnIsActive ? "Active" : "Inactive",
-    employeeCount: 0
+    employeeCount: dicRecord.intEmployeeCount ?? 0
   };
 }
 
@@ -206,7 +206,6 @@ export default function DepartmentMasterPanel() {
     confirmDeactivateMessage: t("confirm_deactivate_message", "Are you sure you want to mark this department as inactive?"),
     fieldName: t("field_name", dicConstant.departments.fields.name),
     fieldCode: t("field_code", dicConstant.departments.fields.code),
-    fieldEmployees: t("field_employees", "Employees"),
     fieldIsActive: t("field_is_active", "Is Active"),
     saving: t("saving", "Saving..."),
     validationNameRequired: t("validation_name_required", dicConstant.departments.validation.nameRequired),
@@ -892,15 +891,6 @@ export default function DepartmentMasterPanel() {
                 error={Boolean(dicErrors.code)}
                 helperText={dicErrors.code}
                 sx={{ "& .MuiFormLabel-asterisk": { color: "#dc2626" } }}
-                fullWidth
-              />
-              <TextField
-                controlId="department-master.dialog.employee-count.input"
-                label={dicDepartmentLabels.fieldEmployees}
-                value={strMode === "add" ? "0" : lstDepartments.find((dicDepartment) => dicDepartment.id === strEditingDepartmentId)?.employeeCount ?? 0}
-                inputProps={{ "controlId": "department-master.dialog.employee-count.input" }}
-                disabled
-                sx={{ gridColumn: { xs: "auto", sm: "1 / -1" } }}
                 fullWidth
               />
             </Box>

@@ -304,7 +304,6 @@ export default function PayrollCycleEditorPage({
               <FormControlLabel
                 control={<ActiveStatusSwitch testId="payroll-cycles.editor.active.switch" blnIsActive={dicForm.blnIsActive} onChange={(blnChecked) => updateField("blnIsActive", blnChecked)} disabled={blnFieldDisabled} />}
                 label={dicForm.blnIsActive ? t("active") : t("inactive")}
-                labelPlacement="start"
                 sx={{
                   m: 0,
                   gap: 1,
