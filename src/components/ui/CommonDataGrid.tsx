@@ -480,7 +480,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
               paginatedRows.map((row, index) => {
                 const strRowKey = rowIdField ? String(row[rowIdField]) : `${page}-${index}`;
                 return (
-                <Tooltip key={strRowKey} title={strRowDoubleClickTooltip} placement="top" arrow>
+                <Tooltip key={strRowKey} title={strRowDoubleClickTooltip} placement="top" arrow disableFocusListener>
                   <TableRow
                     data-controlid={`${testIdPrefix}.row`}
                     data-row-key={strRowKey}
