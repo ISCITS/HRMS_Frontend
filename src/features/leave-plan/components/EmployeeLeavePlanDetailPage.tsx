@@ -32,9 +32,24 @@ const objSectionSx = { borderRadius: "24px", p: 2.5, border: "1px solid rgba(148
 // Real collapsible section card (the previous Accordion helpers never actually collapsed). Collapsed
 // by default per the guide for Replace / Leave Plan History / Recent Transactions; `blnOpen`/`title`
 // drive the clickable header. `objAction` renders controls (e.g. year picker) in the header row.
-type CollapsibleCardProps = PropsWithChildren<{ strTitle: string; blnDefaultOpen?: boolean; objAction?: ReactNode }>;
-function CollapsibleCard({ strTitle, blnDefaultOpen = false, objAction, children }: CollapsibleCardProps) {
-  const [blnOpen, setBlnOpen] = useState(blnDefaultOpen);
+// `blnOpen`/`fnOnOpenChange` make the card controlled (used by Replace, so the Save buttons can open
+// it); `blnKeepMounted` keeps the body in the DOM while collapsed, which the assignment form needs
+// for the header/footer submit buttons to reach it.
+type CollapsibleCardProps = PropsWithChildren<{
+  strTitle: string;
+  blnDefaultOpen?: boolean;
+  objAction?: ReactNode;
+  blnOpen?: boolean;
+  fnOnOpenChange?: (blnNext: boolean) => void;
+  blnKeepMounted?: boolean;
+}>;
+function CollapsibleCard({ strTitle, blnDefaultOpen = false, objAction, blnOpen: blnControlledOpen, fnOnOpenChange, blnKeepMounted = false, children }: CollapsibleCardProps) {
+  const [blnInternalOpen, setBlnInternalOpen] = useState(blnDefaultOpen);
+  const blnOpen = blnControlledOpen ?? blnInternalOpen;
+  const setBlnOpen = (fnNext: (blnPrev: boolean) => boolean) => {
+    if (fnOnOpenChange) fnOnOpenChange(fnNext(blnOpen));
+    else setBlnInternalOpen(fnNext);
+  };
   return (
     <Paper sx={objSectionSx}>
       <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, justifyContent: "space-between", alignItems: { sm: "center" }, gap: 1.5 }}>
@@ -44,7 +59,7 @@ function CollapsibleCard({ strTitle, blnDefaultOpen = false, objAction, children
         </Box>
         {objAction ? <Box onClick={(objEvent) => objEvent.stopPropagation()}>{objAction}</Box> : null}
       </Box>
-      <Collapse in={blnOpen} unmountOnExit>
+      <Collapse in={blnOpen} unmountOnExit={!blnKeepMounted}>
         <Box sx={{ mt: 2, "& .MuiTableHead-root .MuiTableCell-root": { textTransform: "capitalize" } }}>{children}</Box>
       </Collapse>
     </Paper>
@@ -116,6 +131,7 @@ export default function EmployeeLeavePlanDetailPage({ intEmployeeID, strMode = "
   const { canDo, blnLoading: blnRightsLoading } = useActionRights();
   const [intLeaveYear, setIntLeaveYear] = useState(new Date().getFullYear());
   const [objMovement, setObjMovement] = useState<MovementDialog>(null);
+  const [blnReplaceOpen, setBlnReplaceOpen] = useState(false);
   const [objPendingAssignment, setObjPendingAssignment] = useState<EmployeePlanAssignRequest | null>(null);
   const [objImpact, setObjImpact] = useState<ReplacementImpact | null>(null);
   const [strActionError, setStrActionError] = useState("");
@@ -252,7 +268,7 @@ export default function EmployeeLeavePlanDetailPage({ intEmployeeID, strMode = "
         <Typography sx={{ color: "#64748b", mt: 0.75 }}>{t("detail_subtitle", "Assignment, yearly balances, and append-only ledger history.")}</Typography>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ width: { xs: "100%", sm: "auto" } }}>
           <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/leave/plan-assignments")} sx={{ borderRadius: "14px", height: 38, minHeight: 38, py: 0, px: 2.25, minWidth: 100, fontSize: "0.9rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }} data-control-id="employee-leave-plan.detail.back.button">{t("back_button", "Back")}</Button>
-          {blnCanManage ? <Button type="submit" form="employee-leave-plan-assignment-form" className={styles.primaryButton} startIcon={<SaveRoundedIcon />} disabled={blnSaving} sx={{ borderRadius: "14px", height: 38, minHeight: 38, py: 0, px: 2.25, minWidth: 168, fontSize: "0.9rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }} data-control-id="employee-leave-plan.detail.save.button">{blnSaving ? t("saving", "Saving...") : t("save_leave_plan", "Save Leave Plan")}</Button> : null}
+          {blnCanManage ? <Button onClick={() => { setBlnReplaceOpen(true); void objAssignmentForm.handleSubmit(submitAssignment)(); }} className={styles.primaryButton} startIcon={<SaveRoundedIcon />} disabled={blnSaving} sx={{ borderRadius: "14px", height: 38, minHeight: 38, py: 0, px: 2.25, minWidth: 168, fontSize: "0.9rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }} data-control-id="employee-leave-plan.detail.save.button">{blnSaving ? t("saving", "Saving...") : t("save_leave_plan", "Save Leave Plan")}</Button> : null}
         </Stack>
       </Stack>
     </Paper>
@@ -286,7 +302,7 @@ export default function EmployeeLeavePlanDetailPage({ intEmployeeID, strMode = "
     </SectionCard>
 
     {/* 3. Replace Leave Plan — collapsed by default. */}
-    {blnCanManage ? <CollapsibleCard strTitle={objCurrent ? t("section_replace_plan", "Replace Leave Plan") : t("section_assign_plan", "Assign Leave Plan")}>
+    {blnCanManage ? <CollapsibleCard strTitle={objCurrent ? t("section_replace_plan", "Replace Leave Plan") : t("section_assign_plan", "Assign Leave Plan")} blnOpen={blnReplaceOpen} fnOnOpenChange={setBlnReplaceOpen} blnKeepMounted>
       {objCurrent ? <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>{t("replace_hint", "Select a plan to assign it for its validity period. Effective From / To are auto-filled from the plan. The current assignment is superseded automatically and kept in Leave Plan History.")}</Typography> : null}
       <Box id="employee-leave-plan-assignment-form" component="form" onSubmit={objAssignmentForm.handleSubmit(submitAssignment)}><Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "2fr 1fr 1fr 2fr" }, gap: 1 }}>
       <Controller name="intLeavePlanID" control={objAssignmentForm.control} render={({ field }) => <TextField select {...field} value={field.value || ""} label={t("select_plan", "Leave Plan")} error={Boolean(objAssignmentForm.formState.errors.intLeavePlanID)} helperText={objAssignmentForm.formState.errors.intLeavePlanID?.message} inputProps={{ "data-control-id": "employee-leave-plan.assignment.plan.select" }} onChange={(objEvent) => { const intNewPlanID = Number(objEvent.target.value); field.onChange(intNewPlanID); applyPlanDefaults(intNewPlanID); }}><MenuItem value="" data-control-id="employee-leave-plan.assignment.plan.empty.option">{t("select_plan_placeholder", "Select Plan")}</MenuItem>{lstPlans.filter((objPlan) => objPlan.blnIsActive).map((objPlan) => <MenuItem key={objPlan.intID} value={objPlan.intID} data-control-id={`employee-leave-plan.assignment.plan.${objPlan.intID}.option`}>{objPlan.strPlanCode} - {objPlan.strDisplayName || objPlan.strPlanName}</MenuItem>)}</TextField>} />
@@ -314,6 +330,23 @@ export default function EmployeeLeavePlanDetailPage({ intEmployeeID, strMode = "
     <CollapsibleCard strTitle={t("section_plan_history", "Leave Plan History")}>
       <TableContainer><Table size="small"><TableHead><TableRow>{["plan", "effective_from", "effective_to", "status", "reason"].map((strKey) => <TableCell key={strKey} sx={{ fontWeight: 800 }}>{t(`history_${strKey}`, strKey.replaceAll("_", " "))}</TableCell>)}</TableRow></TableHead><TableBody>{!(objOverview?.lstAssignments.length) ? <TableRow><TableCell colSpan={5} align="center">{t("no_assignment_history", "No plan history.")}</TableCell></TableRow> : objOverview.lstAssignments.map((objRow) => <TableRow key={objRow.intID}><TableCell>{dicPlanNames[objRow.intLeavePlanID] ?? `#${objRow.intLeavePlanID}`}</TableCell><TableCell>{formatDate(objRow.dtEffectiveFrom)}</TableCell><TableCell>{formatDate(objRow.dtEffectiveTo)}</TableCell><TableCell>{objRow.strAssignmentStatus}</TableCell><TableCell>{objRow.strAssignmentReason ?? "—"}</TableCell></TableRow>)}</TableBody></Table></TableContainer>
     </CollapsibleCard>
+
+    {/* Footer actions, mirroring the Leave Plan editor. Saving opens the Replace/Assign section first
+        so any validation message is visible instead of firing inside a collapsed card. */}
+    {blnCanManage ? (
+      <Stack direction="row" justifyContent="flex-end" spacing={1} sx={{ mt: 1 }}>
+        <Button onClick={() => objRouter.push("/leave/plan-assignments")} disabled={blnSaving} data-control-id="employee-leave-plan.detail.cancel.button">{t("cancel", "Cancel")}</Button>
+        <Button
+          variant="contained"
+          startIcon={<SaveRoundedIcon />}
+          disabled={blnSaving}
+          onClick={() => { setBlnReplaceOpen(true); void objAssignmentForm.handleSubmit(submitAssignment)(); }}
+          data-control-id="employee-leave-plan.detail.save.bottom.button"
+        >
+          {blnSaving ? t("saving", "Saving...") : t("save_leave_plan", "Save Leave Plan")}
+        </Button>
+      </Stack>
+    ) : null}
 
     <Dialog open={Boolean(objPendingAssignment)} onClose={() => !blnSaving && setObjPendingAssignment(null)} fullWidth maxWidth="sm" PaperProps={{ "data-control-id": "employee-leave-plan.replace.dialog" } as Record<string, string>}><DialogTitle>{t("replace_confirm_title", "Confirm Plan Replacement")}</DialogTitle><DialogContent><Typography sx={{ mb: 1.5 }}>{t("replace_confirm_message", "The current Plan will be end-dated and replaced from the selected effective date. Continue?")}</Typography>
       {/* Pre-save impact summary (§7): retained / added / removed-frozen and any blocking Leave Types. */}
