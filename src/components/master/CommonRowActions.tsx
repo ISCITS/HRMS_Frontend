@@ -3,7 +3,7 @@
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
-import { Box } from "@mui/material";
+import { Box, Tooltip } from "@mui/material";
 
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/components/master/MasterScreen.module.css";
@@ -23,6 +23,8 @@ type CommonRowActionsProps = {
   viewIconColor?: string;
   editIconColor?: string;
   deleteIconColor?: string;
+  viewTooltip?: string;
+  editTooltip?: string;
   onView?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
@@ -44,6 +46,8 @@ export default function CommonRowActions({
   viewIconColor = "#6D6D6D",
   editIconColor = "var(--app-primary-color)",
   deleteIconColor = "#DC2626",
+  viewTooltip = "View Details",
+  editTooltip = "Edit Details",
   onView,
   onEdit,
   onDelete,
@@ -58,14 +62,18 @@ export default function CommonRowActions({
   return (
     <Box className={styles.actionCell}>
       {blnCanView && onView ? (
-        <button {...objRowDataProps} data-controlid={strViewButtonControlId} className={`${styles.iconButton} ${styles.viewIcon}`} style={{ color: viewIconColor }} type="button" onClick={onView}>
-          <VisibilityRoundedIcon data-testid={undefined} data-controlid={`${strViewButtonControlId}.icon`} fontSize="small" />
-        </button>
+        <Tooltip title={viewTooltip} arrow>
+          <button {...objRowDataProps} data-controlid={strViewButtonControlId} aria-label={viewTooltip} className={`${styles.iconButton} ${styles.viewIcon}`} style={{ color: viewIconColor }} type="button" onClick={onView}>
+            <VisibilityRoundedIcon data-testid={undefined} data-controlid={`${strViewButtonControlId}.icon`} fontSize="small" />
+          </button>
+        </Tooltip>
       ) : null}
       {blnCanEdit && onEdit ? (
-        <button {...objRowDataProps} data-controlid={strEditButtonControlId} className={`${styles.iconButton} ${styles.editIcon}`} style={{ color: editIconColor }} type="button" onClick={onEdit}>
-          <EditRoundedIcon data-testid={undefined} data-controlid={`${strEditButtonControlId}.icon`} fontSize="small" />
-        </button>
+        <Tooltip title={editTooltip} arrow>
+          <button {...objRowDataProps} data-controlid={strEditButtonControlId} aria-label={editTooltip} className={`${styles.iconButton} ${styles.editIcon}`} style={{ color: editIconColor }} type="button" onClick={onEdit}>
+            <EditRoundedIcon data-testid={undefined} data-controlid={`${strEditButtonControlId}.icon`} fontSize="small" />
+          </button>
+        </Tooltip>
       ) : null}
       {blnCanDelete && onDelete ? (
         <button {...objRowDataProps} data-controlid={strDeleteButtonControlId} className={`${styles.iconButton} ${styles.deleteIcon}`} style={{ color: deleteIconColor }} type="button" onClick={onDelete}>

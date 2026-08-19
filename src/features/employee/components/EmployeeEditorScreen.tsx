@@ -1255,10 +1255,6 @@ export default function EmployeeEditorScreen({
 
   const objPageActionConfig = getFooterActionConfig();
   const fnHandleBack = () => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      objRouter.back();
-      return;
-    }
     objRouter.push(strBackRoute);
   };
 
@@ -1297,8 +1293,8 @@ export default function EmployeeEditorScreen({
             </Typography>
           ) : null}
         </Box>
-        {!blnViewOnly ? (
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ width: { xs: "100%", sm: "auto" } }}>
+        {/* Keep navigation available in view mode while retaining save actions only for editable modes. */}
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ width: { xs: "100%", sm: "auto" } }}>
             <Button
               data-controlid="employee.editor.back.button"
               className={styles.secondaryButton}
@@ -1323,7 +1319,7 @@ export default function EmployeeEditorScreen({
                 }
               }}
             >
-              {t("back_button", dicConstant.common.cancel)}
+              {t("back_button", "Back")}
             </Button>
             {objPageActionConfig ? (
               <Button
@@ -1383,8 +1379,7 @@ export default function EmployeeEditorScreen({
                 {objPageActionConfig.strLabel}
               </Button>
             ) : null}
-          </Stack>
-        ) : null}
+        </Stack>
       </Stack>
 
       <Paper sx={{ borderRadius: "26px", border: "1px solid rgba(148,163,184,0.24)", p: { xs: 2, md: 3 } }}>
@@ -1510,7 +1505,8 @@ export default function EmployeeEditorScreen({
         </Stack>
       </Paper>
 
-      {strMode === "edit" && !blnHideSalarySummaryCard ? (
+      {/* Existing employees expose the same salary snapshot in edit and view modes. */}
+      {strMode !== "add" && !blnHideSalarySummaryCard ? (
         <EmployeeSalarySummaryCard
           intEmployeeID={intResolvedEmployeeID}
           blnHideOpenPageButton={blnHideSalaryOpenPageButton}

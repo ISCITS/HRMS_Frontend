@@ -16,6 +16,7 @@ import {
   TableRow,
   TableSortLabel,
   TextField,
+  Tooltip,
   Typography,
   Theme
 } from "@mui/material";
@@ -114,6 +115,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   const strExportExcelLabel = t("export_excel", dicConstant.common.exportExcel);
   const strExportPdfLabel = t("export_pdf", dicConstant.common.exportPdf);
   const strPaginationSeparator = t("pagination_separator", dicConstant.common.paginationSeparator);
+  const strRowDoubleClickTooltip = t("row_double_click_tooltip", "Double-click on a row to open details");
   const strResolvedEmptyMessage = emptyMessage || t("empty_message", dicConstant.commonDataGrid.emptyMessage);
   const orderedColumns = useMemo(() => {
     const getColumnPriority = (column: DataGridColumn<T>) => {
@@ -429,7 +431,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                       width: column.width,
                       bgcolor: "background.paper",
                       color: "text.secondary",
-                      fontWeight: 600,
+                      fontWeight: 700,
                       borderBottom: "1px solid",
                       borderColor: "divider",
                       whiteSpace: "normal",
@@ -438,6 +440,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                       px: 1,
                       py: 0.5,
                       "& .MuiTableSortLabel-root": {
+                        fontWeight: 700,
                         maxWidth: "100%",
                         whiteSpace: "normal"
                       },
@@ -477,50 +480,51 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
               paginatedRows.map((row, index) => {
                 const strRowKey = rowIdField ? String(row[rowIdField]) : `${page}-${index}`;
                 return (
-                <TableRow
-                  key={strRowKey}
-                  data-controlid={`${testIdPrefix}.row`}
-                  data-row-key={strRowKey}
-                  hover
-                  onDoubleClick={(objEvent) => handleRowDoubleClick(row, objEvent)}
-                  sx={[
-                    {
-                      height: 50,
-                      "& td": {
-                        borderBottom: "1px solid",
-                        borderColor: "divider",
-                        verticalAlign: "middle"
-                      }
-                    },
-                    getRowSx?.(row) ?? {}
-                  ] as SxProps<Theme>}
-                >
-                  {orderedColumns.map((column) => {
-                    const strField = String(column.field);
-                    const blnIsActionColumn = strField === "action" || strField === "rowActions";
-                    const strAlign = column.align ?? (strField === "select" || blnIsActionColumn ? "center" : "left");
-                    return (
-                      <TableCell
-                        key={`${String(column.field)}-${index}`}
-                        align={strAlign}
-                        data-controlid={`${testIdPrefix}.row.${strField}.cell`}
-                        data-row-key={strRowKey}
-                        sx={{
-                          whiteSpace: "normal",
-                          overflowWrap: "anywhere",
-                          px: 1,
-                          py: 0.5
-                        }}
-                      >
-                        {blnIsActionColumn ? (
-                          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%" }}>
-                            {row[column.field]}
-                          </Box>
-                        ) : row[column.field]}
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
+                <Tooltip key={strRowKey} title={strRowDoubleClickTooltip} placement="top" arrow>
+                  <TableRow
+                    data-controlid={`${testIdPrefix}.row`}
+                    data-row-key={strRowKey}
+                    hover
+                    onDoubleClick={(objEvent) => handleRowDoubleClick(row, objEvent)}
+                    sx={[
+                      {
+                        height: 50,
+                        "& td": {
+                          borderBottom: "1px solid",
+                          borderColor: "divider",
+                          verticalAlign: "middle"
+                        }
+                      },
+                      getRowSx?.(row) ?? {}
+                    ] as SxProps<Theme>}
+                  >
+                    {orderedColumns.map((column) => {
+                      const strField = String(column.field);
+                      const blnIsActionColumn = strField === "action" || strField === "rowActions";
+                      const strAlign = column.align ?? (strField === "select" || blnIsActionColumn ? "center" : "left");
+                      return (
+                        <TableCell
+                          key={`${String(column.field)}-${index}`}
+                          align={strAlign}
+                          data-controlid={`${testIdPrefix}.row.${strField}.cell`}
+                          data-row-key={strRowKey}
+                          sx={{
+                            whiteSpace: "normal",
+                            overflowWrap: "anywhere",
+                            px: 1,
+                            py: 0.5
+                          }}
+                        >
+                          {blnIsActionColumn ? (
+                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%" }}>
+                              {row[column.field]}
+                            </Box>
+                          ) : row[column.field]}
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
+                </Tooltip>
                 );
               })
             )}

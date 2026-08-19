@@ -694,7 +694,7 @@ export default function DepartmentMasterPanel() {
               {dicDepartment.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}
             </span>
           ),
-          employeeCount: String(dicDepartment.employeeCount),
+          employeeCount: dicDepartment.employeeCount,
         };
       }),
     [blnCanChangeStatus, blnCanDelete, blnCanEdit, blnCanView, dicCommonLabels.statusActive, dicCommonLabels.statusInactive, lstFilteredDepartments, lstSelectedIds]

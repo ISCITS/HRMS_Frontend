@@ -23,10 +23,18 @@ import type { EmployeeListRecord, EmployeeStatus } from "@/features/employee/typ
 type SearchForm = {
   name: string;
   code: string;
+  department: string;
+  designation: string;
   status: "All" | EmployeeStatus;
 };
 
-const dicEmptySearch: SearchForm = { name: "", code: "", status: "All" };
+const dicEmptySearch: SearchForm = {
+  name: "",
+  code: "",
+  department: "All",
+  designation: "All",
+  status: "All",
+};
 
 type ConfirmDialogState = {
   strTitle: string;
@@ -66,7 +74,7 @@ function getWorkerTypeLabel(blnIsWorker: boolean, t: (strKey: string, strFallbac
 }
 
 function getPartialSaveLabel(blnIsPartialSave: boolean, t: (strKey: string, strFallback?: string) => string) {
-  return blnIsPartialSave ? t("partial_save_yes", "Yes") : t("partial_save_no", "No");
+  return blnIsPartialSave ? t("partial_save_yes", "Yes") : t("partial_save_no", "Partial");
 }
 
 export default function EmployeeMasterListPanel() {
@@ -160,11 +168,25 @@ export default function EmployeeMasterListPanel() {
   const blnReadOnly = isReadOnlyModule("EMPLOYEE");
   const blnCanChangeStatus = blnCanEdit;
 
+  const lstDepartmentOptions = useMemo(() => Array.from(new Set(
+    lstEmployees
+      .map((dicEmployee) => dicEmployee.strDepartmentName?.trim())
+      .filter((strDepartment): strDepartment is string => Boolean(strDepartment))
+  )).sort((strFirst, strSecond) => strFirst.localeCompare(strSecond)), [lstEmployees]);
+
+  const lstDesignationOptions = useMemo(() => Array.from(new Set(
+    lstEmployees
+      .map((dicEmployee) => dicEmployee.strDesignationName?.trim())
+      .filter((strDesignation): strDesignation is string => Boolean(strDesignation))
+  )).sort((strFirst, strSecond) => strFirst.localeCompare(strSecond)), [lstEmployees]);
+
   const lstFilteredEmployees = useMemo(() => lstEmployees.filter((dicEmployee) => {
     const blnNameMatch = !dicSearchApplied.name || dicEmployee.strFullName.toLowerCase().includes(dicSearchApplied.name.toLowerCase());
     const blnCodeMatch = !dicSearchApplied.code || dicEmployee.strEmployeeCode.toLowerCase().includes(dicSearchApplied.code.toLowerCase());
+    const blnDepartmentMatch = dicSearchApplied.department === "All" || dicEmployee.strDepartmentName?.trim() === dicSearchApplied.department;
+    const blnDesignationMatch = dicSearchApplied.designation === "All" || dicEmployee.strDesignationName?.trim() === dicSearchApplied.designation;
     const blnStatusMatch = dicSearchApplied.status === "All" || dicEmployee.strEmploymentStatus === dicSearchApplied.status;
-    return blnNameMatch && blnCodeMatch && blnStatusMatch;
+    return blnNameMatch && blnCodeMatch && blnDepartmentMatch && blnDesignationMatch && blnStatusMatch;
   }), [dicSearchApplied, lstEmployees]);
   const blnAllFilteredSelected = lstFilteredEmployees.length > 0 && lstFilteredEmployees.every((dicEmployee) => lstSelectedIDs.includes(dicEmployee.intID));
   const blnSomeFilteredSelected = !blnAllFilteredSelected && lstFilteredEmployees.some((dicEmployee) => lstSelectedIDs.includes(dicEmployee.intID));
@@ -289,7 +311,7 @@ export default function EmployeeMasterListPanel() {
       headerName: t("grid_joining_date", dicConstant.employeeMaster.grid.joiningDate),
       sortAccessor: (dicRow) => dicRow.joiningDateSortValue
     },
-    { field: "workerType", headerName: t("field_worker", "Worker") },
+    { field: "workerType", headerName: t("grid_worker", "Worker Category") },
     { field: "partialSave", headerName: t("grid_partial_save", "Partial Save"), sortable: false, filterable: false, width: 140 },
     { field: "status", headerName: t("grid_status", dicConstant.employeeMaster.grid.status), sortable: false, filterable: false, width: 130 }
   ], [blnAllFilteredSelected, blnSomeFilteredSelected, lstFilteredEmployees.length, t]);
@@ -308,9 +330,21 @@ export default function EmployeeMasterListPanel() {
             {t("read_only_mode", "You have view-only access for Employee.")}
           </Typography>
         ) : null}
-        <Box className={styles.searchRow}>
+        <Box className={styles.employeeSearchRow}>
           <TextField data-controlid="employee.master-list.search.code.input" inputProps={{ "data-controlid": "employee.master-list.search.code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={t("search_code_placeholder", dicConstant.employeeMaster.search.codePlaceholder)} fullWidth />
           <TextField data-controlid="employee.master-list.search.name.input" inputProps={{ "data-controlid": "employee.master-list.search.name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={t("search_name_placeholder", dicConstant.employeeMaster.search.namePlaceholder)} fullWidth />
+          <TextField data-controlid="employee.master-list.search.department.select" inputProps={{ "data-controlid": "employee.master-list.search.department.select" }} select label={t("field_department", dicConstant.employeeMaster.fields.department)} value={dicSearchDraft.department} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, department: objEvent.target.value }))} fullWidth>
+            <MenuItem value="All">{t("all", "All")}</MenuItem>
+            {lstDepartmentOptions.map((strDepartment) => (
+              <MenuItem key={strDepartment} value={strDepartment}>{strDepartment}</MenuItem>
+            ))}
+          </TextField>
+          <TextField data-controlid="employee.master-list.search.designation.select" inputProps={{ "data-controlid": "employee.master-list.search.designation.select" }} select label={t("field_designation", dicConstant.employeeMaster.fields.designation)} value={dicSearchDraft.designation} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, designation: objEvent.target.value }))} fullWidth>
+            <MenuItem value="All">{t("all", "All")}</MenuItem>
+            {lstDesignationOptions.map((strDesignation) => (
+              <MenuItem key={strDesignation} value={strDesignation}>{strDesignation}</MenuItem>
+            ))}
+          </TextField>
           <TextField data-controlid="employee.master-list.search.status.select" inputProps={{ "data-controlid": "employee.master-list.search.status.select" }} select label={t("search_status_placeholder", dicConstant.employeeMaster.search.statusPlaceholder)} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
               <MenuItem value="All">All</MenuItem>
               <MenuItem value="Active">{dicConstant.common.statusActive}</MenuItem>
