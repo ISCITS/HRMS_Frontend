@@ -96,6 +96,11 @@ export default function LeaveSettingsPanel() {
   const [blnSearching, setBlnSearching] = useState(false);
   const refSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Attendance HR approver candidates are narrowed to employees holding ATTENDANCE_MANAGE rights.
+  const [lstAttendanceEmployeeOptions, setLstAttendanceEmployeeOptions] = useState<ApproverEmployeeDto[]>([]);
+  const [blnAttendanceSearching, setBlnAttendanceSearching] = useState(false);
+  const refAttendanceSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   function showToast(strMessage: string, strSeverity: "success" | "error") {
     setObjToast({ blnOpen: true, strMessage, strSeverity });
   }
@@ -150,6 +155,20 @@ export default function LeaveSettingsPanel() {
     }, 300);
   }
 
+  function runAttendanceEmployeeSearch(strText: string) {
+    if (refAttendanceSearchTimer.current) clearTimeout(refAttendanceSearchTimer.current);
+    refAttendanceSearchTimer.current = setTimeout(async () => {
+      setBlnAttendanceSearching(true);
+      try {
+        setLstAttendanceEmployeeOptions(await settingsService.searchAttendanceApproverEmployees(strText));
+      } catch {
+        setLstAttendanceEmployeeOptions([]);
+      } finally {
+        setBlnAttendanceSearching(false);
+      }
+    }, 300);
+  }
+
   const intMaxDay = lstDaysInMonth[intMonth - 1] ?? 31;
   const lstDayOptions = useMemo(() => Array.from({ length: intMaxDay }, (_, i) => i + 1), [intMaxDay]);
   const strYearStartPreview = `${String(Math.min(intDay, intMaxDay)).padStart(2, "0")} ${lstMonths[intMonth - 1]}`;
@@ -189,23 +208,27 @@ export default function LeaveSettingsPanel() {
     fnSetValue: (objNext: ApproverEmployeeDto | null) => void,
     objSnapshot: ApproverSnapshotDto | null,
     blnRequired: boolean,
+    blnAttendanceScope: boolean = false,
   ) {
     const blnSavedInactive = Boolean(objSnapshot) && (!objSnapshot!.blnIsActive || !objSnapshot!.blnHasActiveUser);
+    const lstOptions = blnAttendanceScope ? lstAttendanceEmployeeOptions : lstEmployeeOptions;
+    const blnIsSearching = blnAttendanceScope ? blnAttendanceSearching : blnSearching;
+    const fnRunSearch = blnAttendanceScope ? runAttendanceEmployeeSearch : runEmployeeSearch;
     return (
       <Box>
         <Autocomplete
           disabled={blnReadOnly}
           value={objValue}
-          options={lstEmployeeOptions}
-          loading={blnSearching}
+          options={lstOptions}
+          loading={blnIsSearching}
           isOptionEqualToValue={(objA, objB) => objA.intEmployeeID === objB.intEmployeeID}
           getOptionLabel={optionLabel}
           filterOptions={(objOptions) => objOptions}
           onChange={(_objEvent, objNext) => fnSetValue(objNext)}
           onInputChange={(_objEvent, strText, strReason) => {
-            if (strReason === "input") runEmployeeSearch(strText);
+            if (strReason === "input") fnRunSearch(strText);
           }}
-          onOpen={() => runEmployeeSearch("")}
+          onOpen={() => fnRunSearch("")}
           renderInput={(objParams) => (
             <TextField
               {...objParams}
@@ -216,7 +239,7 @@ export default function LeaveSettingsPanel() {
                 ...objParams.InputProps,
                 endAdornment: (
                   <>
-                    {blnSearching ? <CircularProgress color="inherit" size={16} /> : null}
+                    {blnIsSearching ? <CircularProgress color="inherit" size={16} /> : null}
                     {objParams.InputProps.endAdornment}
                   </>
                 ),
@@ -400,6 +423,7 @@ export default function LeaveSettingsPanel() {
                 setObjAttPrimary,
                 objAttPrimarySnapshot,
                 strAttSource === "HR",
+                true,
               )}
               {renderApproverField(
                 "Alternate HR Attendance Approver",
@@ -408,6 +432,7 @@ export default function LeaveSettingsPanel() {
                 setObjAttAlternate,
                 objAttAlternateSnapshot,
                 false,
+                true,
               )}
             </Box>
 

@@ -527,6 +527,8 @@ export default function AttendanceExceptionsPage() {
                   strExceptionTypeCode: objEvent.target.value || undefined,
                 }))
               }
+              SelectProps={{ displayEmpty: true }}
+              InputLabelProps={{ shrink: true }}
             >
               <MenuItem value="">{t("all", "All")}</MenuItem>
               {lstTypes.map((objOption) => (
@@ -552,6 +554,8 @@ export default function AttendanceExceptionsPage() {
                   strExceptionStatus: objEvent.target.value || undefined,
                 }))
               }
+              SelectProps={{ displayEmpty: true }}
+              InputLabelProps={{ shrink: true }}
             >
               <MenuItem value="">{t("all", "All")}</MenuItem>
               {lstStatuses.map((objOption) => (
@@ -594,6 +598,8 @@ export default function AttendanceExceptionsPage() {
                   strSortBy: (objEvent.target.value || undefined) as ExceptionFilters["strSortBy"],
                 }))
               }
+              SelectProps={{ displayEmpty: true }}
+              InputLabelProps={{ shrink: true }}
             >
               <MenuItem value="">{t("default_priority", "Default Priority")}</MenuItem>
               <MenuItem value="severity">{t("severity", "Severity")}</MenuItem>
