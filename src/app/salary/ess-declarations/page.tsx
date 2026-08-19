@@ -298,13 +298,22 @@ export default function SalaryEssDeclarationsPage() {
       declared: formatCurrency(objRow.decDeclaredAmount),
       approved: formatCurrency(objRow.decApprovedAmount),
       lastUpdated: formatDateLabel(objRow.strLastUpdated),
-      action: (
-        <Stack direction="row" spacing={0.6} flexWrap="wrap" useFlexGap justifyContent="center">
-          <Button controlId="salary.ess-declarations.row.open.button" data-row-key={objRow.intDeclarationID} size="small" variant="outlined" onClick={() => void openDeclaration(objRow.strFinancialYearCode, objRow.strTaxRegime)}>
-            {blnCanEdit && canEditDeclarationByStatus(objRow.strStatus) ? t("continue", "Continue") : t("view", "View")}
-          </Button>
-        </Stack>
-      ),
+      action: (() => {
+        const blnRowGoesToEdit = blnCanEdit && canEditDeclarationByStatus(objRow.strStatus);
+        return (
+          <Stack direction="row" spacing={0.6} flexWrap="wrap" useFlexGap justifyContent="center">
+            <Button
+              controlId={`salary.ess-declarations.row.${blnRowGoesToEdit ? "edit" : "view"}.button`}
+              data-row-key={objRow.intDeclarationID}
+              size="small"
+              variant="outlined"
+              onClick={() => void openDeclaration(objRow.strFinancialYearCode, objRow.strTaxRegime)}
+            >
+              {blnRowGoesToEdit ? t("continue", "Continue") : t("view", "View")}
+            </Button>
+          </Stack>
+        );
+      })(),
     }));
   }, [blnCanEdit, lstFilteredRows, strBusyKey, t]);
 
