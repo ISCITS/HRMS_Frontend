@@ -5,7 +5,7 @@ import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle,
-  Divider, Grid, MenuItem, Paper, Stack,
+  Divider, Grid, MenuItem, Paper,
   TextField, Typography,
 } from "@mui/material";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -258,7 +258,7 @@ export default function RegularizationRequestsPage({ blnEssManagerMode = false }
     workDate: objRequest.dtWorkDate,
     type: lookupLabel(lstTypes, objRequest.strRequestTypeCode, t("unavailable", "Unavailable")),
     requestStatus: (
-      <LookupChip lstOptions={lstStatuses} strCode={objRequest.strRequestStatus} strFallback={t("unavailable", "Unavailable")} />
+      <LookupChip lstOptions={lstStatuses} strCode={objRequest.strRequestStatus} strFallback={t("unavailable", "Unavailable")} blnHideIcon />
     ),
   }));
   const lstTableColumns: CommonTableColumn<(typeof lstTableRows)[number]>[] = [
@@ -272,21 +272,15 @@ export default function RegularizationRequestsPage({ blnEssManagerMode = false }
   return (
     <Box className={styles.page} sx={{ "& .MuiOutlinedInput-root": { borderRadius: "9px" }, "& .MuiAlert-root": { borderRadius: "9px" } }}>
       <BlockingLoader blnOpen={blnWorking} strLabel={t("working", "Please wait...")} />
-      {/* AppShell owns the title; retain only the contextual action when authorized. */}
-      {blnCanCreateOnBehalf ? <Stack direction="row" justifyContent="flex-end"><Button data-control-id="regularization-requests.on-behalf.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => setBlnOnBehalfOpen(true)}>{t("create_on_behalf", "Create on Behalf")}</Button></Stack> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       <Paper className={styles.controlsCard}>
-        <Grid container spacing={1} alignItems="center">
-          <Grid item xs={12} sm={6} md={3}><TextField fullWidth data-control-id="regularization-requests.from-date.input" type="date" label={t("from_date", "From Date")} value={strFromDate} onChange={(objEvent) => setStrFromDate(objEvent.target.value)} InputLabelProps={{ shrink: true }} /></Grid>
-          <Grid item xs={12} sm={6} md={3}><TextField fullWidth data-control-id="regularization-requests.to-date.input" type="date" label={t("to_date", "To Date")} value={strToDate} onChange={(objEvent) => setStrToDate(objEvent.target.value)} InputLabelProps={{ shrink: true }} /></Grid>
-          <Grid item xs={12} sm={6} md={3}><TextField fullWidth data-control-id="regularization-requests.status.select" select label={t("status", "Status")} value={strStatus} onChange={(objEvent) => setStrStatus(objEvent.target.value)}><MenuItem value="">{t("all", "All")}</MenuItem>{lstStatuses.map((objOption) => <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>{objOption.strDisplayName}</MenuItem>)}</TextField></Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Stack direction="row" spacing={1} className={styles.filterActions}>
-              <Button fullWidth data-control-id="regularization-requests.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => void loadData()}>{t("search", "Search")}</Button>
-              <Button fullWidth data-control-id="regularization-requests.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters}>{t("clear", "Clear")}</Button>
-            </Stack>
-          </Grid>
-        </Grid>
+        <Box className={styles.searchRow} sx={{ gridTemplateColumns: "minmax(190px,.65fr) minmax(190px,.65fr) minmax(220px,.8fr) auto auto !important" }}>
+          <TextField data-control-id="regularization-requests.from-date.input" type="date" label={t("from_date", "From Date")} value={strFromDate} onChange={(objEvent) => setStrFromDate(objEvent.target.value)} InputLabelProps={{ shrink: true }} size="small" />
+          <TextField data-control-id="regularization-requests.to-date.input" type="date" label={t("to_date", "To Date")} value={strToDate} onChange={(objEvent) => setStrToDate(objEvent.target.value)} InputLabelProps={{ shrink: true }} size="small" />
+          <TextField data-control-id="regularization-requests.status.select" select label={t("status", "Status")} value={strStatus} onChange={(objEvent) => setStrStatus(objEvent.target.value)} size="small" SelectProps={{ displayEmpty: true, renderValue: (objValue) => objValue ? lookupLabel(lstStatuses, String(objValue), String(objValue)) : t("all", "All") }} InputLabelProps={{ shrink: true }}><MenuItem value="">{t("all", "All")}</MenuItem>{lstStatuses.map((objOption) => <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>{objOption.strDisplayName}</MenuItem>)}</TextField>
+          <Box className={styles.searchActions}><Button data-control-id="regularization-requests.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => void loadData()}>{t("search", "Search")}</Button></Box>
+          <Box className={styles.searchActions}><Button data-control-id="regularization-requests.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters}>{t("clear", "Clear")}</Button></Box>
+        </Box>
       </Paper>
       <Paper className={styles.tableCard} sx={{ position: "relative", minHeight: blnLoading ? 160 : undefined }}>
         <BlockingLoader blnOpen={blnLoading} blnLocal strLabel={t("loading", "Loading...")} />
@@ -300,6 +294,7 @@ export default function RegularizationRequestsPage({ blnEssManagerMode = false }
             showPaginationSummary
             minTableWidth={850}
             emptyMessage={t("empty", "No requests found.")}
+            toolbarLeft={blnCanCreateOnBehalf ? <Button data-control-id="regularization-requests.on-behalf.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => setBlnOnBehalfOpen(true)}>{t("create_on_behalf", "Create on Behalf")}</Button> : undefined}
             testIdPrefix="regularization-requests.list"
             onRowDoubleClick={(objRow) => void openDetail(Number(objRow.id))}
           />

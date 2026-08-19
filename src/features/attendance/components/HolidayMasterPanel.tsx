@@ -305,7 +305,7 @@ export default function HolidayMasterPanel() {
           {(objOptions.lstYears.length ? objOptions.lstYears : [objSearchDraft.intYear]).map((intYear) => <MenuItem key={intYear} value={intYear}>{intYear}</MenuItem>)}
         </TextField>
         <TextField controlId="holiday-master.search.text.input" size="small" label={t("search", "Search code or name")} value={objSearchDraft.strSearch} onChange={(objEvent) => setObjSearchDraft((objPrevious) => ({ ...objPrevious, strSearch: objEvent.target.value }))} />
-        <TextField controlId="holiday-master.search.type.select" select size="small" label={t("field_type", "Holiday Type")} value={objSearchDraft.strHolidayTypeCode} onChange={(objEvent) => setObjSearchDraft((objPrevious) => ({ ...objPrevious, strHolidayTypeCode: objEvent.target.value }))}>
+        <TextField controlId="holiday-master.search.type.select" select size="small" label={t("field_type", "Holiday Type")} value={objSearchDraft.strHolidayTypeCode} onChange={(objEvent) => setObjSearchDraft((objPrevious) => ({ ...objPrevious, strHolidayTypeCode: objEvent.target.value }))} SelectProps={{ displayEmpty: true }} InputLabelProps={{ shrink: true }}>
           <MenuItem value="">{t("all_types", "All Types")}</MenuItem>
           {objOptions.lstHolidayTypes.map((objType) => <MenuItem key={objType.strValueCode} value={objType.strValueCode}>{objType.strDisplayName}</MenuItem>)}
         </TextField>

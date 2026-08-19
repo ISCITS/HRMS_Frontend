@@ -31,9 +31,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
+import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { ATTENDANCE_STATUS_COLORS, type AttendanceDayDto } from "@/features/attendance/dto";
 import { useMyAttendance } from "@/features/attendance/hooks/useMyAttendance";
-import type { MyAttendancePunch } from "@/features/attendance/types/MyAttendanceTypes";
+import { attendanceService } from "@/features/attendance/services/attendanceService";
+import type { MyAttendanceOverview, MyAttendancePunch } from "@/features/attendance/types/MyAttendanceTypes";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
@@ -43,7 +45,7 @@ type ToastState = {
   strSeverity: "success" | "error";
 };
 
-const lstWeekdays = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+const lstWeekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function toLocalISO(objDate: Date) {
   return `${objDate.getFullYear()}-${String(objDate.getMonth() + 1).padStart(2, "0")}-${String(objDate.getDate()).padStart(2, "0")}`;
@@ -186,6 +188,9 @@ export default function EssAttendancePanel() {
   const [blnPunchDialogOpen, setBlnPunchDialogOpen] = useState(false);
   const [blnPolicyDialogOpen, setBlnPolicyDialogOpen] = useState(false);
   const [blnTimelineDialogOpen, setBlnTimelineDialogOpen] = useState(false);
+  const [objSelectedOverview, setObjSelectedOverview] = useState<MyAttendanceOverview | null>(null);
+  const [blnTimelineLoading, setBlnTimelineLoading] = useState(false);
+  const [strTimelineError, setStrTimelineError] = useState("");
   const [objToast, setObjToast] = useState<ToastState>({
     blnOpen: false,
     strMessage: "",
@@ -252,9 +257,10 @@ export default function EssAttendancePanel() {
   const objSelectedDay = dicDaysByDate[strSelectedDate] ?? (
     objOverview?.dtDate === strSelectedDate ? objOverview.objDay : null
   );
+  const lstSelectedPunches = objSelectedOverview?.dtDate === strSelectedDate ? objSelectedOverview.lstPunches : [];
   const objPunchTimeline = useMemo(
-    () => buildPunchTimelineRows(objOverview?.dtDate === strSelectedDate ? objOverview.lstPunches : []),
-    [objOverview?.dtDate, objOverview?.lstPunches, strSelectedDate],
+    () => buildPunchTimelineRows(lstSelectedPunches),
+    [lstSelectedPunches],
   );
   const blnSelectedDayEligibleForRegularization = Boolean(
     objSelectedDay
@@ -295,6 +301,37 @@ export default function EssAttendancePanel() {
     if (blnRightsLoading || !blnCanViewMyAttendance) return;
     void loadSelectedMonth();
   }, [blnCanViewMyAttendance, blnRightsLoading, loadSelectedMonth]);
+
+  useEffect(() => {
+    if (blnRightsLoading || !blnCanViewMyAttendance) return;
+
+    let blnCancelled = false;
+    setBlnTimelineLoading(true);
+    setStrTimelineError("");
+
+    attendanceService.getMyAttendanceOverview(strSelectedDate)
+      .then((objResult) => {
+        if (!blnCancelled) {
+          setObjSelectedOverview(objResult);
+        }
+      })
+      .catch(async (objError) => {
+        const objHandledError = await createApiRequestError(objError);
+        if (!blnCancelled) {
+          setObjSelectedOverview(null);
+          setStrTimelineError(objHandledError.message);
+        }
+      })
+      .finally(() => {
+        if (!blnCancelled) {
+          setBlnTimelineLoading(false);
+        }
+      });
+
+    return () => {
+      blnCancelled = true;
+    };
+  }, [blnCanViewMyAttendance, blnRightsLoading, strSelectedDate]);
 
   const lstCalendarCells = useMemo(() => {
     const intYear = objMonth.getFullYear();
@@ -686,7 +723,11 @@ export default function EssAttendancePanel() {
         ) : (
           <>
             <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 0.5, mb: 0.5 }}>
-              {lstWeekdays.map((strDay) => <Typography key={strDay} align="center" fontWeight={800} color="text.secondary">{t(`weekday_${strDay}`, strDay)}</Typography>)}
+              {lstWeekdays.map((strDay) => (
+                <Typography key={strDay} align="center" fontWeight={800} color="text.secondary">
+                  {t(`weekday_${strDay.toLowerCase()}`, strDay)}
+                </Typography>
+              ))}
             </Box>
             <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 0.5 }}>
               {lstCalendarCells.map((strDate, intIndex) => {
@@ -860,7 +901,13 @@ export default function EssAttendancePanel() {
             "&::-webkit-scrollbar-thumb": { backgroundColor: "#9aabb9", borderRadius: 8 },
           }}
         >
-          {objPunchTimeline.lstRows.length > 0 ? (
+          {blnTimelineLoading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
+              <BlockingLoader blnOpen blnLocal strLabel={t("loading", "Loading")} />
+            </Box>
+          ) : strTimelineError ? (
+            <Alert severity="error">{strTimelineError}</Alert>
+          ) : objPunchTimeline.lstRows.length > 0 ? (
             <Stack spacing={0.75}>
               {objPunchTimeline.lstRows.map((objPunch) => (
                 <Box

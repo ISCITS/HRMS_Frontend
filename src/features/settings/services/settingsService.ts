@@ -47,6 +47,16 @@ export const settingsService = {
     return objResult.Data ?? [];
   },
 
+  async searchAttendanceApproverEmployees(strSearch: string): Promise<ApproverEmployeeDto[]> {
+    const strQuery = strSearch.trim() ? `?q=${encodeURIComponent(strSearch.trim())}` : "";
+    const objResult = await requestApi<ApproverEmployeeDto[]>({
+      strPath: `/settings/attendance/approver-employees${strQuery}`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: SETTINGS_VIEW,
+    });
+    return objResult.Data ?? [];
+  },
+
   async saveLeaveConfig(objPayload: LeaveSettingsSaveRequest): Promise<LeaveSettingsConfigDto> {
     const objResult = await requestApi<LeaveSettingsConfigDto>({
       strPath: "/settings/leave/config",
