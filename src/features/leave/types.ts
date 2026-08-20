@@ -462,11 +462,21 @@ export type LeaveWorkflowDto = {
 };
 
 // A row in the approver queue: the serialized application + workflow cursor + enterprise-UX tags.
+export type LeaveBackupCommitmentDto = {
+  intApplicationID: number;
+  intEmployeeID: number;
+  strEmployeeName: string | null;
+  strSessions: string;
+};
+
 export type LeaveQueueItemDto = LeaveApplicationDto & {
   objWorkflow?: LeaveWorkflowDto | null;
   intCurrentStepNo?: number | null;
   blnIsDelegated?: boolean;
   blnIsOverdue?: boolean;
+  // Leave of other employees that this applicant is the assigned backup for, on the very sessions
+  // they are requesting off. Non-empty means a replacement backup is required before approval.
+  lstBackupCommitments?: LeaveBackupCommitmentDto[];
   blnIsConfidential?: boolean;
   blnIsMasked?: boolean;
   dtLastActionOn?: string | null;

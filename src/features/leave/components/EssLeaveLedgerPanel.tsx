@@ -127,10 +127,13 @@ function ledgerDisplayDate(objRow: LeaveLedgerDto): string {
 }
 
 // Remarks cell: the movement's own remark with the request's backup resource appended when one was
-// assigned, e.g. "Approved by anil · Backup Resource : Ms Priya Nair".
+// assigned, e.g. "Approved by anil · Backup Resource : Ms Priya Nair". The backup is assigned while
+// approving, so it is shown only on the approval (UTILIZATION) row — never on "Leave Applied", where
+// no backup existed yet.
 function ledgerRemarks(objRow: LeaveLedgerDto): string {
   const strRemark = objRow.strUserRemarks ?? objRow.strTransactionRemarks ?? "";
-  const strBackup = (objRow.strBackupResourceName ?? "").trim();
+  const blnApprovalRow = (objRow.strTransactionType ?? "").toUpperCase() === "UTILIZATION";
+  const strBackup = blnApprovalRow ? (objRow.strBackupResourceName ?? "").trim() : "";
   if (!strBackup) return strRemark || "-";
   const strBackupLabel = `Backup Resource : ${strBackup}`;
   return strRemark ? `${strRemark} · ${strBackupLabel}` : strBackupLabel;
