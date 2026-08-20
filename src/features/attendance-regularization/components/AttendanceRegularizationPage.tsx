@@ -2,7 +2,6 @@
 
 import AttachFileRoundedIcon from "@mui/icons-material/AttachFileRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import EventRepeatRoundedIcon from "@mui/icons-material/EventRepeatRounded";
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
@@ -503,17 +502,6 @@ export default function AttendanceRegularizationPage() {
   return (
     <Box className={styles.page} sx={{ overflowX: "hidden", overflowY: "scroll", pb: 2, pr: 0.5, scrollbarGutter: "stable", scrollbarWidth: "thin", "&::-webkit-scrollbar": { width: 9 }, "&::-webkit-scrollbar-track": { backgroundColor: "#eef4f8", borderRadius: 8 }, "&::-webkit-scrollbar-thumb": { backgroundColor: "#9aabb9", borderRadius: 8, border: "2px solid #eef4f8" }, "& .MuiOutlinedInput-root": { borderRadius: "9px" }, "& .MuiAlert-root": { borderRadius: "9px" } }}>
       <BlockingLoader blnOpen={blnSaving} strLabel={t("working", "Please wait...")} />
-      <Box className="pageBanner" data-control-id="attendance-regularization.header.banner" sx={{ minHeight: 96, py: { xs: 1.5, md: 2 }, px: { xs: 1.5, md: 2.5 }, alignItems: "center", flexWrap: "nowrap" }}>
-        <Box className="bannerDots" />
-        <Box className="bannerIcon" sx={{ flex: "0 0 54px" }}>
-          <EventRepeatRoundedIcon sx={{ fontSize: 30 }} />
-        </Box>
-        <Box className="bannerDivider" sx={{ flex: "0 0 1px" }} />
-        <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
-          <Typography component="h1" className="bannerTitle" sx={{ fontSize: { xs: "1.35rem", md: "1.75rem" }, lineHeight: 1.18, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t("page_title", "Attendance Regularization")}</Typography>
-          <Typography component="p" className="bannerSubTitle" sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t("page_subtitle", "Request corrections and follow their approval history.")}</Typography>
-        </Box>
-      </Box>
       <Paper className={styles.controlsCard} sx={{ pt: "0 !important", pb: "0 !important" }}>
         <Tabs value={intTab} onChange={(_, intValue) => setIntTab(intValue)}>
           <Tab data-control-id="attendance-regularization.new-request.tab" label={t("new_request_tab", "New Request")} />

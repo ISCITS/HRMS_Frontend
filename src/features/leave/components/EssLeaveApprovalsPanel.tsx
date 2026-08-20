@@ -393,9 +393,29 @@ function BackupResourceEditor({ objItem, lstEmployees, blnProcessing, strRule, f
 }) {
   const [intSelection, setIntSelection] = useState<number | "">(objItem.intBackupEmployeeID ?? "");
   useEffect(() => { setIntSelection(objItem.intBackupEmployeeID ?? ""); }, [objItem.intID, objItem.intBackupEmployeeID]);
-  const strRequirement = strRule === "MANDATORY" ? fnLabel("backup_required", "Required") : strRule === "NOT_REQUIRED" ? fnLabel("backup_not_required_req", "Not required") : fnLabel("backup_optional", "Optional");
+  // Covering someone else's leave on these sessions makes a replacement backup mandatory, whatever
+  // the Leave Type rule says — the server blocks approval until one is assigned.
+  const lstCommitments = objItem.lstBackupCommitments ?? [];
+  const strRequirement = lstCommitments.length
+    ? fnLabel("backup_required", "Required")
+    : strRule === "MANDATORY" ? fnLabel("backup_required", "Required") : strRule === "NOT_REQUIRED" ? fnLabel("backup_not_required_req", "Not required") : fnLabel("backup_optional", "Optional");
   return <Box>
     <Typography sx={{ fontSize: ".72rem", color: "#64748b", mb: .5 }}>{fnLabel("backup_resource", "Backup Resource")} · {strRequirement}</Typography>
+    {lstCommitments.length ? (
+      <Alert severity="warning" sx={{ mb: 1, py: 0.25 }} data-controlid="ess.leave.approvals.backup.commitment.alert">
+        <Typography sx={{ fontSize: ".78rem", fontWeight: 700 }}>
+          {fnLabel("backup_commitment_title", "This employee is an assigned backup resource")}
+        </Typography>
+        {lstCommitments.map((objCommitment) => (
+          <Typography key={objCommitment.intApplicationID} sx={{ fontSize: ".76rem" }}>
+            • {objCommitment.strEmployeeName ?? `#${objCommitment.intEmployeeID}`} — {objCommitment.strSessions}
+          </Typography>
+        ))}
+        <Typography sx={{ fontSize: ".76rem", mt: .25 }}>
+          {fnLabel("backup_commitment_hint", "Assign a replacement backup before approving this request.")}
+        </Typography>
+      </Alert>
+    ) : null}
     <Stack direction="row" spacing={1} alignItems="center">
       <TextField select size="small" fullWidth value={intSelection === "" ? "" : String(intSelection)} onChange={(objEvent) => setIntSelection(objEvent.target.value ? Number(objEvent.target.value) : "")} data-controlid="ess.leave.approvals.backup.select">
         <MenuItem value="">{fnLabel("backup_none_option", "— Select colleague —")}</MenuItem>

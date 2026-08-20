@@ -7,7 +7,6 @@ import {
   Alert,
   Box,
   Button,
-  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
@@ -20,7 +19,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useCallback, useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import LookupChip, {
@@ -32,7 +31,6 @@ import BlockingLoader from "@/components/shared/BlockingLoader";
 import styles from "@/components/master/MasterScreen.module.css";
 import { attendanceRegularizationService } from "@/features/attendance-regularization/services/attendanceRegularizationService";
 import type {
-  BulkActionResult,
   DateContext,
   ExceptionFilters,
   ExceptionList,
@@ -69,13 +67,12 @@ export default function AttendanceExceptionsPage() {
     strFromDate: monthStart(),
     strToDate: todayIso(),
   });
-  const [setSelected, setSetSelected] = useState<Set<number>>(new Set());
   const [objSelected, setObjSelected] = useState<ExceptionRecord | null>(null);
   const [objDetail, setObjDetail] = useState<Record<string, unknown> | null>(
     null,
   );
   const [objDialog, setObjDialog] = useState<{
-    strAction: "ignore" | "resolve" | "bulk-ignore" | "create-request";
+    strAction: "ignore" | "resolve" | "create-request";
     objException?: ExceptionRecord;
   } | null>(null);
   const [strReason, setStrReason] = useState("");
@@ -92,9 +89,6 @@ export default function AttendanceExceptionsPage() {
       strProposedRemark: "",
       strEmployeeReason: "",
     });
-  const [objBulkResult, setObjBulkResult] = useState<BulkActionResult | null>(
-    null,
-  );
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnWorking, setBlnWorking] = useState(false);
   const [strError, setStrError] = useState("");
@@ -142,13 +136,11 @@ export default function AttendanceExceptionsPage() {
   const blnCanReview = canDoAny("ATT_EXCEPTION_REVIEW");
   const blnCanResolve = canDoAny("ATT_EXCEPTION_RESOLVE");
   const blnCanIgnore = canDoAny("ATT_EXCEPTION_IGNORE");
-  const blnCanBulkIgnore = canDoAny("ATT_EXCEPTION_BULK_IGNORE");
   const blnCanCreateRequest = canDoAny("ATT_EXCEPTION_CREATE_REQUEST");
 
   async function runDialogAction() {
     if (!objDialog) return;
     setBlnWorking(true);
-    setObjBulkResult(null);
     try {
       if (
         objDialog.strAction === "ignore" &&
@@ -173,19 +165,6 @@ export default function AttendanceExceptionsPage() {
             strResolutionCode: strResolutionCode.trim(),
             strResolutionRemarks: strReason.trim(),
           },
-        );
-      } else if (objDialog.strAction === "bulk-ignore" && strReason.trim()) {
-        const objResult = await attendanceRegularizationService.bulkIgnore(
-          Array.from(setSelected),
-          strReason.trim(),
-        );
-        setObjBulkResult(objResult);
-        setSetSelected(
-          new Set(
-            objResult.lstResults
-              .filter((objItem) => !objItem.blnSuccess)
-              .map((objItem) => objItem.intExceptionID),
-          ),
         );
       } else if (
         objDialog.strAction === "create-request" &&
@@ -266,36 +245,12 @@ export default function AttendanceExceptionsPage() {
 
   function clearFilters() {
     setObjFilters({ strFromDate: monthStart(), strToDate: todayIso() });
-    setSetSelected(new Set());
   }
-
-  const blnAllPageSelected =
-    Boolean(objList?.lstItems.length) &&
-    (objList?.lstItems.every((objItem) => setSelected.has(objItem.intID)) ?? false);
 
   const lstTableRows = useMemo(
     () =>
       (objList?.lstItems ?? []).map((objItem) => ({
         id: objItem.intID,
-        rowSelect: (
-          <Checkbox
-            data-control-id={`attendance-exceptions.${objItem.intID}.select.checkbox`}
-            checked={setSelected.has(objItem.intID)}
-            onChange={(objEvent) =>
-              setSetSelected((setValue) => {
-                const setNext = new Set(setValue);
-                if (objEvent.target.checked) setNext.add(objItem.intID);
-                else setNext.delete(objItem.intID);
-                return setNext;
-              })
-            }
-            inputProps={
-              {
-                "data-control-id": `attendance-exceptions.${objItem.intID}.select.checkbox`,
-              } as InputHTMLAttributes<HTMLInputElement>
-            }
-          />
-        ),
         action: (
           <CommonRowActions
             testIdPrefix={`attendance-exceptions.${objItem.intID}`}
@@ -328,36 +283,11 @@ export default function AttendanceExceptionsPage() {
           : objItem.strExceptionMessage,
         age: `${objItem.intAgeingDays} ${t("days", "days")}`,
       })),
-    [objList, setSelected, lstTypes, lstSeverities, lstStatuses, t], // eslint-disable-line react-hooks/exhaustive-deps
+    [objList, lstTypes, lstSeverities, lstStatuses, t], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const lstTableColumns = useMemo<DataGridColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      {
-        field: "rowSelect",
-        headerName: (
-          <Checkbox
-            data-control-id="attendance-exceptions.select-page.checkbox"
-            checked={blnAllPageSelected}
-            onChange={(objEvent) =>
-              setSetSelected(
-                objEvent.target.checked
-                  ? new Set(objList?.lstItems.map((objItem) => objItem.intID))
-                  : new Set(),
-              )
-            }
-            inputProps={
-              {
-                "data-control-id": "attendance-exceptions.select-page.checkbox",
-              } as InputHTMLAttributes<HTMLInputElement>
-            }
-          />
-        ),
-        sortable: false,
-        filterable: false,
-        exportable: false,
-        width: 56,
-      },
       { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 90 },
       { field: "employee", headerName: t("employee", "Employee"), width: 170 },
       { field: "date", headerName: t("date", "Date"), width: 120 },
@@ -367,7 +297,7 @@ export default function AttendanceExceptionsPage() {
       { field: "punchRequest", headerName: t("punch_request", "Punch / Request"), width: 240 },
       { field: "age", headerName: t("age", "Age"), width: 110 },
     ],
-    [blnAllPageSelected, objList, t],
+    [t],
   );
 
   if (blnRightsLoading) return <BlockingLoader blnOpen strLabel={t("loading", "Loading...")} />;
@@ -667,32 +597,6 @@ export default function AttendanceExceptionsPage() {
           </Grid>
         </Grid>
       </Paper>
-      {setSelected.size > 0 ? (
-        <Alert
-          severity="info"
-          action={
-            <Stack direction="row">
-              {blnCanBulkIgnore ? (
-                <Button
-                  data-control-id="attendance-exceptions.bulk-ignore.button"
-                  onClick={() => setObjDialog({ strAction: "bulk-ignore" })}
-                >
-                  {t("bulk_ignore", "Bulk Ignore")}
-                </Button>
-              ) : null}
-            </Stack>
-          }
-        >
-          {t("selected_count", "Selected")}: {setSelected.size}
-        </Alert>
-      ) : null}
-      {objBulkResult ? (
-        <Alert severity={objBulkResult.intFailureCount ? "warning" : "success"}>
-          {t("bulk_result", "Bulk action completed")}:{" "}
-          {objBulkResult.intSuccessCount} {t("succeeded", "succeeded")},{" "}
-          {objBulkResult.intFailureCount} {t("failed", "failed")}.
-        </Alert>
-      ) : null}
       <Paper className={styles.tableCard} sx={{ position: "relative", minHeight: blnLoading ? 160 : undefined }}>
         <BlockingLoader blnOpen={blnLoading} blnLocal strLabel={t("loading", "Loading...")} />
         {blnLoading ? null : (

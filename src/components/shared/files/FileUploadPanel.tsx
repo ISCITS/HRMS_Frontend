@@ -38,6 +38,7 @@ type FileUploadPanelProps = {
   disabledMessage?: string;
   emptyMessage?: string;
   uploadLabel?: string;
+  uploadPresentation?: "button" | "dropzone";
   // Read-only mode: still lists existing documents, but hides upload/replace/delete controls
   // (e.g. the caller's edit-rights check failed, or the record itself is locked/read-only).
   readOnly?: boolean;
@@ -61,6 +62,7 @@ export default function FileUploadPanel({
   disabledMessage = "Save the record above before attaching documents.",
   emptyMessage = "No documents uploaded yet.",
   uploadLabel = "Upload Document",
+  uploadPresentation = "button",
   readOnly = false,
   embedded = false,
   layout = "stack",
@@ -176,6 +178,43 @@ export default function FileUploadPanel({
     }
   }
 
+  const nodeFileList = blnLoadingList ? (
+    <Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>Loading documents...</Typography>
+  ) : (
+    <FileList
+      lstFiles={lstFiles}
+      controlIdPrefix={controlIdPrefix}
+      disabled={readOnly}
+      emptyMessage={emptyMessage}
+      layout={layout}
+      intBusyFileID={intBusyFileID}
+      intReplacingFileID={intReplacingFileID}
+      intReplaceProgress={objReplace.progress}
+      onPreview={(objFile) => void handlePreview(objFile)}
+      onDelete={readOnly ? undefined : (objFile) => void handleDelete(objFile)}
+      onReplace={readOnly ? undefined : (objFile, objNewFile) => void handleReplace(objFile, objNewFile)}
+      onReplaceValidationError={(strMessage) => setStrError(strMessage)}
+    />
+  );
+
+  const nodeUpload = !readOnly ? (
+    <Stack spacing={0.4} alignItems="flex-start" sx={{ width: "100%" }}>
+      <FileUploadButton
+        controlId={`${controlIdPrefix}.upload.button`}
+        label={uploadPresentation === "dropzone" ? "Click to upload or drag and drop" : uploadLabel}
+        presentation={uploadPresentation}
+        helperText={uploadPresentation === "dropzone" ? `PDF, JPG or PNG, up to ${MAX_UPLOAD_SIZE_LABEL}.` : undefined}
+        isUploading={objUpload.isUploading}
+        progress={objUpload.progress}
+        onFilesSelected={(lstSelected) => void handleUpload(lstSelected)}
+        onValidationError={(strMessage) => setStrError(strMessage)}
+      />
+      <Typography sx={{ fontSize: "0.7rem", color: "#94a3b8" }}>
+        {uploadPresentation === "dropzone" ? "Accepted formats: " : ""}PDF, JPG or PNG, up to {MAX_UPLOAD_SIZE_LABEL}.
+      </Typography>
+    </Stack>
+  ) : null;
+
   const objContent = (
     <Stack spacing={1.1}>
         {embedded ? <Divider sx={{ my: 0.5 }} /> : null}
@@ -196,40 +235,20 @@ export default function FileUploadPanel({
               </Alert>
             ) : null}
 
-            {blnLoadingList ? (
-              <Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>Loading documents...</Typography>
+            {uploadPresentation === "dropzone" && nodeUpload ? (
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.1fr 0.9fr" }, gap: { xs: 1.25, md: 2 }, alignItems: "start" }}>
+                {nodeUpload}
+                <Stack spacing={0.65} sx={{ minWidth: 0 }}>
+                  <Typography sx={{ fontSize: "0.74rem", fontWeight: 700, color: "text.secondary" }}>Document Status</Typography>
+                  {nodeFileList}
+                </Stack>
+              </Box>
             ) : (
-              <FileList
-                lstFiles={lstFiles}
-                controlIdPrefix={controlIdPrefix}
-                disabled={readOnly}
-                emptyMessage={emptyMessage}
-                layout={layout}
-                intBusyFileID={intBusyFileID}
-                intReplacingFileID={intReplacingFileID}
-                intReplaceProgress={objReplace.progress}
-                onPreview={(objFile) => void handlePreview(objFile)}
-                onDelete={readOnly ? undefined : (objFile) => void handleDelete(objFile)}
-                onReplace={readOnly ? undefined : (objFile, objNewFile) => void handleReplace(objFile, objNewFile)}
-                onReplaceValidationError={(strMessage) => setStrError(strMessage)}
-              />
+              <>
+                {nodeFileList}
+                {nodeUpload}
+              </>
             )}
-
-            {!readOnly ? (
-              <Stack spacing={0.4} alignItems="flex-start">
-                <FileUploadButton
-                  controlId={`${controlIdPrefix}.upload.button`}
-                  label={uploadLabel}
-                  isUploading={objUpload.isUploading}
-                  progress={objUpload.progress}
-                  onFilesSelected={(lstSelected) => void handleUpload(lstSelected)}
-                  onValidationError={(strMessage) => setStrError(strMessage)}
-                />
-                <Typography sx={{ fontSize: "0.7rem", color: "#94a3b8" }}>
-                  PDF, JPG or PNG, up to {MAX_UPLOAD_SIZE_LABEL}.
-                </Typography>
-              </Stack>
-            ) : null}
           </>
         )}
     </Stack>

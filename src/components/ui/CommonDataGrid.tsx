@@ -1,6 +1,7 @@
 "use client";
 
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import {
   Box,
   Button,
@@ -16,7 +17,6 @@ import {
   TableRow,
   TableSortLabel,
   TextField,
-  Tooltip,
   Typography,
   Theme
 } from "@mui/material";
@@ -68,6 +68,7 @@ export type CommonDataGridProps<T extends Record<string, ReactNode>> = {
   withPaper?: boolean;
   sx?: SxProps<Theme>;
   testIdPrefix?: string;
+  hideRowClickHint?: boolean;
 };
 
 // Renders a generic client-side data grid with filter, sort, pagination, and optional export.
@@ -89,7 +90,8 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   emptyMessage = dicConstant.commonDataGrid.emptyMessage,
   withPaper = true,
   sx,
-  testIdPrefix = "common-data-grid"
+  testIdPrefix = "common-data-grid",
+  hideRowClickHint = false
 }: CommonDataGridProps<T>) {
   const { t } = useModuleLabels("common_data_grid");
   /*
@@ -115,7 +117,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   const strExportExcelLabel = t("export_excel", dicConstant.common.exportExcel);
   const strExportPdfLabel = t("export_pdf", dicConstant.common.exportPdf);
   const strPaginationSeparator = t("pagination_separator", dicConstant.common.paginationSeparator);
-  const strRowDoubleClickTooltip = t("row_double_click_tooltip", "Double-click on a row to open details");
+  const strRowDoubleClickHint = t("row_double_click_tooltip", "Double-click on a row to open details");
   const strResolvedEmptyMessage = emptyMessage || t("empty_message", dicConstant.commonDataGrid.emptyMessage);
   const orderedColumns = useMemo(() => {
     const getColumnPriority = (column: DataGridColumn<T>) => {
@@ -341,6 +343,22 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                 </Button>
               </Stack>
             ) : null}
+            {!hideToolbar ? (
+              <Stack
+                direction="row"
+                spacing={0.75}
+                alignItems="center"
+                sx={{ color: "text.secondary", minHeight: 40 }}
+              >
+                <InfoOutlinedIcon sx={{ fontSize: 18, flexShrink: 0 }} aria-hidden="true" />
+                <Typography
+                  variant="body2"
+                  sx={{ fontSize: "13px", fontWeight: 400, color: "#64748b" }}
+                >
+                  {strRowDoubleClickHint}
+                </Typography>
+              </Stack>
+            ) : null}
           </Stack>
           {showPaginationSummary ? (
             <Stack
@@ -480,8 +498,8 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
               paginatedRows.map((row, index) => {
                 const strRowKey = rowIdField ? String(row[rowIdField]) : `${page}-${index}`;
                 return (
-                <Tooltip key={strRowKey} title={strRowDoubleClickTooltip} placement="top" arrow disableFocusListener>
                   <TableRow
+                    key={strRowKey}
                     data-controlid={`${testIdPrefix}.row`}
                     data-row-key={strRowKey}
                     hover
@@ -524,7 +542,6 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                       );
                     })}
                   </TableRow>
-                </Tooltip>
                 );
               })
             )}

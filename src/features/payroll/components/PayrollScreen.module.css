@@ -30,8 +30,8 @@
 .controlsCard,
 .tableCard,
 .dialogShell {
-  background: #ffffff;
-  border: 1px solid rgba(187, 213, 232, 0.7);
+  background: var(--app-surface-color);
+  border: 1px solid var(--app-card-border-color);
   border-radius: var(--app-card-radius);
   box-shadow: var(--app-shadow-soft);
 }
@@ -50,11 +50,11 @@
 }
 
 .title {
-  color: #1f2937;
-  font-size: clamp(1.35rem, 1.9vw, 1.75rem);
-  font-weight: 800;
+  color: var(--app-page-heading-color);
+  font-size: var(--app-page-heading-size);
+  font-weight: var(--app-page-heading-weight);
   margin: 0;
-  line-height: 1.05;
+  line-height: var(--app-page-heading-line-height);
 }
 
 .headerActions {
@@ -98,25 +98,33 @@
 }
 
 .primaryButton {
-  background: var(--app-primary-color) !important;
-  border-radius: 9px !important;
-  box-shadow: 0 12px 24px rgba(29, 93, 150, 0.22) !important;
-  color: #fff !important;
-  font-weight: 700 !important;
-  font-size: 0.84rem !important;
-  min-height: 34px;
-  padding: 0 10px !important;
+  background: var(--app-button-primary-background) !important;
+  border-radius: var(--app-button-radius) !important;
+  box-shadow: var(--app-button-primary-shadow) !important;
+  color: var(--app-button-primary-text) !important;
+  font-weight: var(--app-button-font-weight) !important;
+  font-size: var(--app-button-font-size) !important;
+  min-height: var(--app-button-height);
+  padding: 0 var(--app-button-horizontal-padding) !important;
+}
+
+.primaryButton:hover {
+  background: var(--app-button-primary-hover) !important;
 }
 
 .secondaryButton {
-  background: rgba(255, 255, 255, 0.86) !important;
-  border: 1px solid var(--app-secondary-border) !important;
-  border-radius: 9px !important;
-  color: var(--app-primary-color) !important;
-  font-weight: 700 !important;
-  font-size: 0.84rem !important;
-  min-height: 34px;
-  padding: 0 10px !important;
+  background: var(--app-button-secondary-background) !important;
+  border: 1px solid var(--app-button-secondary-border) !important;
+  border-radius: var(--app-button-radius) !important;
+  color: var(--app-button-secondary-text) !important;
+  font-weight: var(--app-button-font-weight) !important;
+  font-size: var(--app-button-font-size) !important;
+  min-height: var(--app-button-height);
+  padding: 0 var(--app-button-horizontal-padding) !important;
+}
+
+.secondaryButton:hover {
+  background: var(--app-grid-row-hover-background) !important;
 }
 
 .fnfCreateTitleBlock {
@@ -433,14 +441,14 @@
 }
 
 .table thead th {
-  border-bottom: 1px solid #d9e6ef;
-  color: #1c242d;
-  font-size: 0.83rem;
+  background: var(--app-grid-header-background);
+  border-bottom: 1px solid var(--app-grid-border-color);
+  color: var(--app-grid-header-color);
+  font-size: var(--app-grid-header-font-size);
   font-weight: 700;
-  padding: 8px 10px;
+  padding: var(--app-grid-cell-padding-block) var(--app-grid-cell-padding-inline);
   text-align: left;
   white-space: nowrap;
-  background: rgba(255, 255, 255, 0.82);
   position: sticky;
   top: 0;
   z-index: 1;
@@ -451,7 +459,7 @@
 }
 
 .table thead th:not(:last-child)::after {
-  background: #d9e6ef;
+  background: var(--app-grid-border-color);
   content: "";
   height: 18px;
   position: absolute;
@@ -462,12 +470,16 @@
 }
 
 .table tbody td {
-  border-bottom: 1px solid #d9e6ef;
-  color: #25313d;
-  font-size: 0.86rem;
-  padding: 6px 10px;
+  border-bottom: 1px solid var(--app-grid-border-color);
+  color: var(--app-grid-row-color);
+  font-size: var(--app-grid-row-font-size);
+  padding: var(--app-grid-cell-padding-block) var(--app-grid-cell-padding-inline);
   vertical-align: middle;
   white-space: nowrap;
+}
+
+.table tbody tr:hover {
+  background: var(--app-grid-row-hover-background);
 }
 
 .resultLinesTable {

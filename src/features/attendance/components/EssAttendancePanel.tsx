@@ -417,15 +417,18 @@ export default function EssAttendancePanel() {
 
   return (
     <Stack spacing={1.5}>
-      <Box className="pageBanner" data-control-id="ess.my-attendance.header.banner" sx={{ flexWrap: { xs: "wrap", md: "nowrap" } }}>
-        <Box className="bannerDots" />
-        <Box className="bannerIcon">
-          <AccessTimeRoundedIcon sx={{ fontSize: 30 }} />
-        </Box>
-        <Box className="bannerDivider" />
-        <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
-          <Typography component="h1" className="bannerTitle">{t("page_title", "My Attendance")}</Typography>
-        </Box>
+      <Paper
+        data-control-id="ess.my-attendance.controls.toolbar"
+        sx={{
+          px: { xs: 1, md: 1.25 },
+          py: 1,
+          borderRadius: "10px",
+          display: "flex",
+          justifyContent: "flex-end",
+          boxShadow: "none",
+          border: "1px solid rgba(31, 91, 142, 0.18)",
+        }}
+      >
         <Stack
           direction="row"
           spacing={0.75}
@@ -509,7 +512,7 @@ export default function EssAttendancePanel() {
           </TextField>
           <Button data-control-id="ess.my-attendance.today.button" variant="outlined" onClick={goToToday} sx={{ minWidth: 72, px: 1.5 }}>{t("today", "Today")}</Button>
         </Stack>
-      </Box>
+      </Paper>
 
       {strError ? (
         <Alert
