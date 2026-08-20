@@ -68,6 +68,7 @@ export type CommonDataGridProps<T extends Record<string, ReactNode>> = {
   withPaper?: boolean;
   sx?: SxProps<Theme>;
   testIdPrefix?: string;
+  hideRowClickHint?: boolean;
 };
 
 // Renders a generic client-side data grid with filter, sort, pagination, and optional export.
@@ -89,7 +90,8 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   emptyMessage = dicConstant.commonDataGrid.emptyMessage,
   withPaper = true,
   sx,
-  testIdPrefix = "common-data-grid"
+  testIdPrefix = "common-data-grid",
+  hideRowClickHint = false
 }: CommonDataGridProps<T>) {
   const { t } = useModuleLabels("common_data_grid");
   /*
@@ -479,9 +481,9 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
             ) : (
               paginatedRows.map((row, index) => {
                 const strRowKey = rowIdField ? String(row[rowIdField]) : `${page}-${index}`;
-                return (
-                <Tooltip key={strRowKey} title={strRowDoubleClickTooltip} placement="top" arrow disableFocusListener>
+                const rowElement = (
                   <TableRow
+                    key={hideRowClickHint ? strRowKey : undefined}
                     data-controlid={`${testIdPrefix}.row`}
                     data-row-key={strRowKey}
                     hover
@@ -524,6 +526,15 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                       );
                     })}
                   </TableRow>
+                );
+
+                if (hideRowClickHint) {
+                  return rowElement;
+                }
+
+                return (
+                <Tooltip key={strRowKey} title={strRowDoubleClickTooltip} placement="top" arrow disableFocusListener>
+                  {rowElement}
                 </Tooltip>
                 );
               })
