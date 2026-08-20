@@ -14,10 +14,8 @@ import {
   DialogContent,
   DialogTitle,
   MenuItem,
-  Paper,
   Stack,
   TextField,
-  Typography,
 } from "@mui/material";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -391,61 +389,12 @@ export default function HrItDeclarationListPage() {
   ];
 
   return (
-    <Stack spacing={0.8} className={styles.page}>
+    <Box className={styles.page}>
       {(blnListLoading || blnRightsLoading) ? <BlockingLoader blnOpen strLabel={t("IT_DECLARATION_LOADING_IT_DECLARATIONS", "Loading IT declarations...")} /> : null}
       {!blnRightsLoading && !blnCanView ? <Alert severity="warning">{t("IT_DECLARATION_NO_PERMISSION", "You do not have permission to view this screen.")}</Alert> : null}
       {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
 
-      <Paper
-        sx={{
-          p: 1.2,
-          borderRadius: "20px",
-          border: "1px solid #2E73B8 !important",
-          background:
-            "linear-gradient(90deg, #1D5D96 0%, #2E73B8 50%, #5A9FD8 100%)",
-          boxShadow: "0 8px 20px rgba(11, 47, 99, 0.22)",
-        }}
-      >
-        <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1} flexWrap="wrap">
-          <Box>
-            <Typography sx={{ fontWeight: 800, fontSize: "1.08rem", color: "#f8fcff" }}>{t("IT_DECLARATION_DASHBOARD_TITLE", "IT Declaration")}</Typography>
-            <Typography sx={{ color: "rgba(239,252,255,0.92)", fontSize: "0.82rem" }}>
-              {t("IT_DECLARATION_HR_WORKSPACE_SUBTITLE", "HR employee declaration workspace")}
-            </Typography>
-          </Box>
-          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-            {blnCanAdd ? (
-              <Button
-                variant="contained"
-                startIcon={<AddCircleOutlineRoundedIcon />}
-                onClick={openAddDeclarationDialog}
-                sx={{
-                  minHeight: 25,
-                  px: 1.6,
-                  borderRadius: "9px",
-                  textTransform: "none",
-                  fontWeight: 800,
-                  color: "#111827",
-                  backgroundColor: "#f59e0b",
-                  boxShadow: "none",
-                  "&:hover": {
-                    backgroundColor: "#F7FAFF",
-                    boxShadow: "none",
-                  },
-                }}
-              >
-                {t("IT_DECLARATION_ADD_DECLARATION", "Add Declaration")}
-              </Button>
-            ) : null}
-            <Box sx={{ border: "1px solid rgba(255,255,255,0.45)", borderRadius: "8px", px: 1, py: 0.55, minWidth: 112, backgroundColor: "rgba(8,47,73,0.28)" }}>
-              <Typography sx={{ color: "rgba(226,232,240,0.95)", fontSize: "0.72rem", lineHeight: 1 }}>{t("IT_DECLARATION_RECORDS", "Records")}</Typography>
-              <Typography sx={{ color: "#ffffff", fontWeight: 800, fontSize: "0.9rem", lineHeight: 1.2, mt: 0.2 }}>{lstRows.length}</Typography>
-            </Box>
-          </Stack>
-        </Stack>
-      </Paper>
-
-      <Paper className={styles.controlsCard} sx={{ p: 1.2, borderRadius: "10px", border: "1px solid #dbe3ef" }}>
+      <Box className={styles.controlsCard}>
         <Box className={styles.searchRow}>
           <Autocomplete
             options={lstEmployees}
@@ -520,15 +469,29 @@ export default function HrItDeclarationListPage() {
             ) : null}
           </Box>
         </Box>
-      </Paper>
+      </Box>
 
-      <Box className={styles.tableCard} sx={{ mt: 0 }}>
+      <Box className={styles.tableCard}>
         <CommonTable
           columns={lstTableColumns}
           rows={lstTableRows}
           rowIdField="id"
           showPaginationSummary
           minTableWidth={1400}
+          toolbarLeft={(
+            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+              {blnCanAdd ? (
+                <Button
+                  className={styles.primaryButton}
+                  startIcon={<AddCircleOutlineRoundedIcon />}
+                  onClick={openAddDeclarationDialog}
+                  controlId="hr-it-declaration.list.add.button"
+                >
+                  {t("IT_DECLARATION_ADD_DECLARATION", "Add Declaration")}
+                </Button>
+              ) : null}
+            </Box>
+          )}
           emptyMessage={
             blnHasSearched || blnFiltersHydrated
               ? t("IT_DECLARATION_NO_RECORDS_SELECTED_FILTERS", "No IT declarations found for the selected filters.")
@@ -604,6 +567,6 @@ export default function HrItDeclarationListPage() {
           </Button>
         </DialogActions>
       </Dialog>
-    </Stack>
+    </Box>
   );
 }

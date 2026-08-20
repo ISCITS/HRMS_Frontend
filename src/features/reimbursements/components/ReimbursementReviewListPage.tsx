@@ -352,8 +352,8 @@ export default function ReimbursementReviewListPage() {
   }
 
   return (
-    <Stack spacing={1.4}>
-      <Paper sx={{ p: 1.1, borderRadius: "8px", border: "1px solid #dbe3ef" }}>
+    <Box className={styles.page}>
+      <Box className={styles.controlsCard}>
         <Stack spacing={1.1}>
           <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center" useFlexGap>
             <TextField select size="small" label="Status" value={dicFilters.strStatus} onChange={(objEvent) => setDicFilters({ ...dicFilters, strStatus: objEvent.target.value })} sx={{ minWidth: 160 }} controlId="reimbursements.review-list.status.select">
@@ -393,7 +393,7 @@ export default function ReimbursementReviewListPage() {
             </Box>
           </Stack>
         </Stack>
-      </Paper>
+      </Box>
 
       {strRightsError ? <Alert severity="warning" sx={{ borderRadius: "8px" }}>{strRightsError}</Alert> : null}
       {strError ? <Alert severity="error" sx={{ borderRadius: "8px" }}>{strError}</Alert> : null}
@@ -407,7 +407,7 @@ export default function ReimbursementReviewListPage() {
       ) : null}
 
       {blnCanView ? (
-        <Paper sx={{ borderRadius: "8px", border: "1px solid #dbe3ef", overflow: "hidden" }}>
+        <Box className={styles.tableCard}>
           <CommonTable
             columns={lstTableColumns}
             rows={lstTableRows}
@@ -426,7 +426,7 @@ export default function ReimbursementReviewListPage() {
             withPaper={false}
             sx={{ p: 0, boxShadow: "none", background: "transparent" }}
           />
-        </Paper>
+        </Box>
       ) : null}
       <Dialog open={blnCreateDialogOpen} onClose={() => setBlnCreateDialogOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Add Reimbursement</DialogTitle>
@@ -442,6 +442,6 @@ export default function ReimbursementReviewListPage() {
           <Button size="small" className={styles.primaryButton} onClick={proceedToCreateForEmployee} controlId="reimbursements.review-list.create.proceed.button">Proceed</Button>
         </DialogActions>
       </Dialog>
-    </Stack>
+    </Box>
   );
 }
