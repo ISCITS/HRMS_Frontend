@@ -126,6 +126,16 @@ function ledgerDisplayDate(objRow: LeaveLedgerDto): string {
   return formatLedgerDate(objRow.dtTransactionOn ?? objRow.dtTransactionDate);
 }
 
+// Remarks cell: the movement's own remark with the request's backup resource appended when one was
+// assigned, e.g. "Approved by anil · Backup Resource : Ms Priya Nair".
+function ledgerRemarks(objRow: LeaveLedgerDto): string {
+  const strRemark = objRow.strUserRemarks ?? objRow.strTransactionRemarks ?? "";
+  const strBackup = (objRow.strBackupResourceName ?? "").trim();
+  if (!strBackup) return strRemark || "-";
+  const strBackupLabel = `Backup Resource : ${strBackup}`;
+  return strRemark ? `${strRemark} · ${strBackupLabel}` : strBackupLabel;
+}
+
 function formatNumber(intValue: number): string {
   return intValue ? Number(intValue).toString() : "-";
 }
@@ -455,7 +465,7 @@ export default function EssLeaveLedgerPanel({ blnHrMode = false }: { blnHrMode?:
                                       {displayBalance(objRow)}
                                     </TableCell>
                                     <TableCell sx={{ maxWidth: 260, whiteSpace: "normal", wordBreak: "break-word", color: "text.secondary" }}>
-                                      {objRow.strUserRemarks ?? objRow.strTransactionRemarks ?? "-"}
+                                      {ledgerRemarks(objRow)}
                                     </TableCell>
                                   </TableRow>
                                 );

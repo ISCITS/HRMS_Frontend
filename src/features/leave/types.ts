@@ -317,6 +317,8 @@ export type LeaveLedgerDto = {
   dtLeaveFromDate: string | null;
   dtLeaveToDate: string | null;
   strUserRemarks: string | null;
+  // Backup resource assigned to the source leave request, if any.
+  strBackupResourceName: string | null;
 };
 
 export type LedgerEmployeeDto = {
