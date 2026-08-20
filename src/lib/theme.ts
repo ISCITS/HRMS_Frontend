@@ -201,20 +201,24 @@ export const getTheme = (mode: PaletteMode, preset: ThemePreset = "ocean") => {
         },
         styleOverrides: {
           root: {
-            borderRadius: 12,
+            borderRadius: "var(--app-button-radius)",
             textTransform: "none",
-            fontWeight: 600,
-            padding: "10px 16px"
+            fontWeight: "var(--app-button-font-weight)",
+            fontSize: "var(--app-button-font-size)",
+            minHeight: "var(--app-button-height)",
+            padding: "0 var(--app-button-horizontal-padding)"
           },
           containedPrimary: {
-            backgroundColor: "#2563eb",
+            backgroundColor: "var(--app-button-primary-background)",
+            color: "var(--app-button-primary-text)",
+            boxShadow: "var(--app-button-primary-shadow)",
             "&:hover": {
-              backgroundColor: "#1d4ed8"
+              backgroundColor: "var(--app-button-primary-hover)"
             }
           },
           outlined: {
-            borderColor: mode === "light" ? "#cbd5e1" : "#475569",
-            color: mode === "light" ? "#334155" : "#cbd5e1",
+            borderColor: "var(--app-button-secondary-border)",
+            color: "var(--app-button-secondary-text)",
             "&:hover": {
               borderColor: mode === "light" ? "#94a3b8" : "#64748b",
               backgroundColor: mode === "light" ? "rgba(148,163,184,0.08)" : "rgba(148,163,184,0.12)"

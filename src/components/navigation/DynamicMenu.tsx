@@ -24,11 +24,11 @@ type DynamicMenuProps = {
 
 const objMenuIconSx = { color: "inherit" };
 const objSidebarPalette = {
-  menuIcon: "#5E7FA5",
-  menuText: "#2F4E6F",
-  hoverBackground: "#EAF3FC",
-  activeBackground: "#DCEBFA",
-  activeAccent: "#1D5D96",
+  menuIcon: "var(--app-menu-icon-color)",
+  menuText: "var(--app-menu-text-color)",
+  hoverBackground: "var(--app-menu-hover-background)",
+  activeBackground: "var(--app-menu-active-background)",
+  activeAccent: "var(--app-menu-active-color)",
 };
 
 function getAutomationProps(strControlId?: string) {

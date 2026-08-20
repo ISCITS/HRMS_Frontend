@@ -1,8 +1,9 @@
 "use client";
 
+import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import { Box, Button, CircularProgress, LinearProgress, Typography, type ButtonProps } from "@mui/material";
-import { useRef, type ChangeEvent, type ReactNode } from "react";
+import { useRef, type ChangeEvent, type DragEvent, type ReactNode } from "react";
 
 import { validateFileForUpload } from "@/hooks/useFileUpload";
 import { ALLOWED_DOCUMENT_ACCEPT } from "@/lib/fileUploadConstants";
@@ -38,6 +39,8 @@ type FileUploadButtonProps = {
   size?: ButtonProps["size"];
   variant?: ButtonProps["variant"];
   color?: ButtonProps["color"];
+  presentation?: "button" | "dropzone";
+  helperText?: string;
   startIcon?: ReactNode;
   sx?: ButtonProps["sx"];
   onFilesSelected: (lstFiles: File[]) => void;
@@ -57,6 +60,8 @@ export default function FileUploadButton({
   size = "small",
   variant = "outlined",
   color = "primary",
+  presentation = "button",
+  helperText,
   startIcon,
   sx,
   onFilesSelected,
@@ -64,9 +69,7 @@ export default function FileUploadButton({
 }: FileUploadButtonProps) {
   const objInputRef = useRef<HTMLInputElement | null>(null);
 
-  function handleFileInputChange(objEvent: ChangeEvent<HTMLInputElement>) {
-    const lstSelectedFiles = Array.from(objEvent.target.files ?? []);
-    objEvent.target.value = "";
+  function processSelectedFiles(lstSelectedFiles: File[]) {
     if (lstSelectedFiles.length === 0) {
       return;
     }
@@ -86,10 +89,24 @@ export default function FileUploadButton({
     }
   }
 
+  function handleFileInputChange(objEvent: ChangeEvent<HTMLInputElement>) {
+    const lstSelectedFiles = Array.from(objEvent.target.files ?? []);
+    objEvent.target.value = "";
+    processSelectedFiles(lstSelectedFiles);
+  }
+
+  function handleDrop(objEvent: DragEvent<HTMLElement>) {
+    objEvent.preventDefault();
+    if (disabled || isUploading) {
+      return;
+    }
+    processSelectedFiles(Array.from(objEvent.dataTransfer.files ?? []));
+  }
+
   const blnShowDeterminateProgress = isUploading && typeof progress === "number" && progress > 0 && progress < 100;
 
   return (
-    <Box sx={{ display: "inline-flex", flexDirection: "column", gap: 0.5, minWidth: blnShowDeterminateProgress ? 160 : undefined }}>
+    <Box sx={{ display: presentation === "dropzone" ? "flex" : "inline-flex", flexDirection: "column", gap: 0.5, width: presentation === "dropzone" ? "100%" : undefined, minWidth: blnShowDeterminateProgress ? 160 : undefined }}>
       <Button
         controlId={controlId}
         component="label"
@@ -97,10 +114,37 @@ export default function FileUploadButton({
         variant={variant}
         color={color}
         disabled={disabled || isUploading}
-        startIcon={isUploading ? <CircularProgress size={14} color="inherit" /> : startIcon ?? <UploadFileRoundedIcon />}
-        sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px", ...sx }}
+        startIcon={isUploading ? <CircularProgress size={14} color="inherit" /> : startIcon ?? (presentation === "dropzone" ? <CloudUploadOutlinedIcon /> : <UploadFileRoundedIcon />)}
+        onDragOver={presentation === "dropzone" ? (objEvent) => objEvent.preventDefault() : undefined}
+        onDrop={presentation === "dropzone" ? handleDrop : undefined}
+        sx={{
+          textTransform: "none",
+          fontWeight: 700,
+          borderRadius: "8px",
+          ...(presentation === "dropzone" ? {
+            width: "100%",
+            minHeight: 70,
+            justifyContent: "flex-start",
+            px: 2,
+            py: 1.25,
+            borderStyle: "dashed",
+            borderWidth: "1.5px",
+            color: "text.primary",
+            textAlign: "left",
+            "& .MuiButton-startIcon": { color: "text.secondary", mr: 1.25 },
+            "&:hover": { borderStyle: "dashed", borderWidth: "1.5px" }
+          } : {}),
+          ...sx
+        }}
       >
-        {isUploading ? "Uploading..." : hasExistingFile ? replaceLabel : label}
+        {presentation === "dropzone" ? (
+          <Box>
+            <Typography component="span" sx={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "text.primary" }}>
+              {isUploading ? "Uploading..." : hasExistingFile ? replaceLabel : label}
+            </Typography>
+            {helperText ? <Typography component="span" sx={{ display: "block", mt: 0.2, fontSize: "0.72rem", fontWeight: 400, color: "text.secondary" }}>{helperText}</Typography> : null}
+          </Box>
+        ) : isUploading ? "Uploading..." : hasExistingFile ? replaceLabel : label}
         <input
           ref={objInputRef}
           hidden

@@ -1,12 +1,10 @@
 "use client";
 
-import AccountBalanceRoundedIcon from "@mui/icons-material/AccountBalanceRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import {
   Alert,
   Box,
   Button,
-  Chip,
   CircularProgress,
   FormControlLabel,
   Grid,
@@ -16,6 +14,7 @@ import {
   TextField,
   Typography
 } from "@mui/material";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
@@ -41,6 +40,7 @@ const dicEmptyForm: EmployeeBankFormValues = {
 };
 
 export default function EssMyBankDetailsPage() {
+  const objRouter = useRouter();
   const { t } = useModuleLabels("my-bank-details", "Unable to load bank details labels.");
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(["MY_BANK_DETAILS"]);
   const [intEmployeeID, setIntEmployeeID] = useState<number | null>(null);
@@ -85,7 +85,7 @@ export default function EssMyBankDetailsPage() {
 
         setObjFormOptions(dicOptions);
         setIntBankAccountID(dicBank.intID ?? null);
-        setDicForm({
+        const dicLoadedForm: EmployeeBankFormValues = {
           intBankID: dicBank.intBankID ?? "",
           strAccountHolderName: dicBank.strAccountHolderName ?? "",
           strAccountNumber: dicBank.strAccountNumber ?? "",
@@ -97,7 +97,8 @@ export default function EssMyBankDetailsPage() {
           blnSecondaryIsActive: dicBank.blnSecondaryIsActive ?? false,
           blnIsPrimary: dicBank.blnIsPrimary ?? true,
           blnIsActive: dicBank.blnIsActive ?? true
-        });
+        };
+        setDicForm(dicLoadedForm);
       } catch (objError: unknown) {
         if (blnMounted) {
           setStrError(objError instanceof Error ? objError.message : t("error_load_bank_details", "Unable to load bank details."));
@@ -145,24 +146,29 @@ export default function EssMyBankDetailsPage() {
         strAccountNumber: dicForm.strAccountNumber.trim()
       });
       setIntBankAccountID(dicSaved.intID ?? intBankAccountID);
-      setDicForm((dicPrevious) => ({
-        ...dicPrevious,
-        intBankID: dicSaved.intBankID ?? dicPrevious.intBankID,
-        strAccountHolderName: dicSaved.strAccountHolderName ?? dicPrevious.strAccountHolderName,
-        strAccountNumber: dicSaved.strAccountNumber ?? dicPrevious.strAccountNumber,
+      const dicNextForm: EmployeeBankFormValues = {
+        ...dicForm,
+        intBankID: dicSaved.intBankID ?? dicForm.intBankID,
+        strAccountHolderName: dicSaved.strAccountHolderName ?? dicForm.strAccountHolderName,
+        strAccountNumber: dicSaved.strAccountNumber ?? dicForm.strAccountNumber,
         strIfscCode: dicSaved.strIfscCode ?? "",
         intSecondaryBankID: dicSaved.intSecondaryBankID ?? "",
         strSecondaryAccountHolderName: dicSaved.strSecondaryAccountHolderName ?? "",
         strSecondaryAccountNumber: dicSaved.strSecondaryAccountNumber ?? "",
         strSecondaryIfscCode: dicSaved.strSecondaryIfscCode ?? "",
         blnSecondaryIsActive: dicSaved.blnSecondaryIsActive ?? false
-      }));
+      };
+      setDicForm(dicNextForm);
       setStrSuccess(t("success_saved", "Bank details saved successfully."));
     } catch (objError: unknown) {
       setStrError(objError instanceof Error ? objError.message : t("error_save_bank_details", "Unable to save bank details."));
     } finally {
       setBlnSaving(false);
     }
+  }
+
+  function onCancelChanges() {
+    objRouter.back();
   }
 
   if (blnLoading) {
@@ -188,52 +194,21 @@ export default function EssMyBankDetailsPage() {
   }
 
   return (
-    <Stack spacing={0}>
-      <Box className="pageBanner">
-        <Box className="bannerDots" />
-        <Box className="bannerIcon">
-          <AccountBalanceRoundedIcon sx={{ fontSize: 34 }} />
-        </Box>
-        <Box className="bannerDivider" />
-        <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
-          <Typography component="h1" className="bannerTitle">
-            {t("page_title", "My Bank Details")}
-          </Typography>
-          <Typography component="p" className="bannerSubTitle">
-            {t("subtitle", "Keep your account information updated for salary and reimbursements.")}
-          </Typography>
-        </Box>
-        <Chip
-          label={t("primary_account", "Primary Account")}
-          sx={{
-            position: "relative",
-            zIndex: 1,
-            alignSelf: "flex-start",
-            fontWeight: 700,
-            color: "white",
-            borderColor: "rgba(255,255,255,0.5)",
-            backgroundColor: "rgba(255,255,255,0.12)",
-          }}
-          variant="outlined"
-        />
-      </Box>
-
-      <Paper
+    <Paper
         sx={{
-          p: { xs: 1.5, md: 2 },
-          borderRadius: "20px",
+          p: { xs: 1.5, md: 2.25 },
+          borderRadius: "12px",
           border: "1px solid #e2e8f0",
           boxShadow: "0 10px 20px rgba(15,23,42,0.05)"
         }}
       >
-        {/* <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 1.5 }}>
-          <AccountBalanceRoundedIcon sx={{ color: "#0284c7" }} />
-          <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "0.96rem" }}>{t("page_title", "My Bank Details")}</Typography>
-        </Stack> */}
-
         {strRightsError ? <Alert severity="warning" sx={{ mb: 1.5 }}>{strRightsError}</Alert> : null}
         {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
         {strSuccess ? <Alert severity="success" sx={{ mb: 1.5 }}>{strSuccess}</Alert> : null}
+
+        <Typography component="h2" sx={{ mb: 1.5, fontWeight: 800, color: "text.primary", fontSize: "0.96rem" }}>
+          {t("primary_account", "Primary Bank Account")}
+        </Typography>
 
         <Grid container spacing={1.5}>
           <Grid item xs={12} md={6}>
@@ -241,6 +216,7 @@ export default function EssMyBankDetailsPage() {
               controlId="ess.my-bank-details.bank.select"
               fullWidth
               select
+              required
               label={t("field_bank", "Bank")}
               value={dicForm.intBankID}
               onChange={(objEvent) => {
@@ -258,6 +234,7 @@ export default function EssMyBankDetailsPage() {
             <TextField
               controlId="ess.my-bank-details.account-holder-name.input"
               fullWidth
+              required
               label={t("field_account_holder_name", "Account Holder Name")}
               value={dicForm.strAccountHolderName}
               onChange={(objEvent) => {
@@ -270,6 +247,7 @@ export default function EssMyBankDetailsPage() {
             <TextField
               controlId="ess.my-bank-details.account-number.input"
               fullWidth
+              required
               label={t("field_account_number", "Account Number")}
               value={dicForm.strAccountNumber}
               onChange={(objEvent) => {
@@ -298,7 +276,7 @@ export default function EssMyBankDetailsPage() {
             p: { xs: 1.5, md: 2 },
             border: "1px solid #e2e8f0",
             borderRadius: "16px",
-            backgroundColor: "#f8fafc"
+            backgroundColor: (objTheme) => objTheme.palette.mode === "light" ? "#f8fafc" : "rgba(255,255,255,0.03)"
           }}
         >
           <Stack
@@ -308,8 +286,8 @@ export default function EssMyBankDetailsPage() {
             spacing={1}
             sx={{ mb: dicForm.blnSecondaryIsActive ? 1.5 : 0 }}
           >
-            <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "0.96rem" }}>
-              {t("field_secondary_bank_details", "Secondary Bank Details")}
+            <Typography sx={{ fontWeight: 800, color: "text.primary", fontSize: "0.96rem" }}>
+              {t("field_secondary_bank_details", "Secondary Bank Account")}
             </Typography>
             <FormControlLabel
               control={
@@ -331,7 +309,7 @@ export default function EssMyBankDetailsPage() {
                   disabled={!blnCanModify}
                 />
               }
-              label={t("field_secondary_bank_active", "Secondary Bank Active")}
+              label={t("field_secondary_bank_active", "Active")}
               sx={{ m: 0 }}
             />
           </Stack>
@@ -344,7 +322,7 @@ export default function EssMyBankDetailsPage() {
                   fullWidth
                   select
                   required
-                  label={t("field_secondary_bank", "Secondary Bank")}
+                  label={t("field_bank", "Bank")}
                   value={dicForm.intSecondaryBankID}
                   onChange={(objEvent) => {
                     setDicForm((dicPrevious) => ({ ...dicPrevious, intSecondaryBankID: Number(objEvent.target.value) || "" }));
@@ -362,7 +340,7 @@ export default function EssMyBankDetailsPage() {
                   controlId="ess.my-bank-details.secondary-account-holder-name.input"
                   fullWidth
                   required
-                  label={t("field_secondary_account_holder_name", "Secondary Account Holder Name")}
+                  label={t("field_account_holder_name", "Account Holder Name")}
                   value={dicForm.strSecondaryAccountHolderName}
                   onChange={(objEvent) => {
                     setDicForm((dicPrevious) => ({ ...dicPrevious, strSecondaryAccountHolderName: objEvent.target.value }));
@@ -375,7 +353,7 @@ export default function EssMyBankDetailsPage() {
                   controlId="ess.my-bank-details.secondary-account-number.input"
                   fullWidth
                   required
-                  label={t("field_secondary_account_number", "Secondary Account Number")}
+                  label={t("field_account_number", "Account Number")}
                   value={dicForm.strSecondaryAccountNumber}
                   onChange={(objEvent) => {
                     setDicForm((dicPrevious) => ({ ...dicPrevious, strSecondaryAccountNumber: objEvent.target.value }));
@@ -387,7 +365,7 @@ export default function EssMyBankDetailsPage() {
                 <TextField
                   controlId="ess.my-bank-details.secondary-ifsc-code.input"
                   fullWidth
-                  label={t("field_secondary_ifsc_code", "Secondary IFSC Code")}
+                  label={t("field_ifsc_code", "IFSC Code")}
                   value={dicForm.strSecondaryIfscCode}
                   onChange={(objEvent) => {
                     setDicForm((dicPrevious) => ({ ...dicPrevious, strSecondaryIfscCode: objEvent.target.value.toUpperCase() }));
@@ -413,23 +391,39 @@ export default function EssMyBankDetailsPage() {
           disabledMessage={t("documents_disabled_message", "Save your bank details below before uploading a supporting document.")}
           emptyMessage={t("documents_empty", "No bank proof documents uploaded yet.")}
           uploadLabel={t("documents_upload", "Upload Bank Proof")}
+          uploadPresentation="dropzone"
         />
 
         {blnCanSaveAction ? (
-          <Stack direction="row" justifyContent="flex-end" sx={{ mt: 2 }}>
+          <Stack
+            direction="row"
+            spacing={1}
+            justifyContent="flex-end"
+            sx={{ mt: 2, mx: { xs: -1.5, md: -2.25 }, mb: { xs: -1.5, md: -2.25 }, px: { xs: 1.5, md: 2.25 }, py: 1.25, borderTop: "1px solid", borderColor: "divider" }}
+          >
+            <Button
+              controlId="ess.my-bank-details.cancel.button"
+              variant="outlined"
+              color="primary"
+              disabled={blnSaving}
+              onClick={onCancelChanges}
+              sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px", minWidth: 96 }}
+            >
+              {t("cancel", "Cancel")}
+            </Button>
             <Button
               controlId="ess.my-bank-details.save.button"
               variant="contained"
+              color="primary"
               startIcon={<SaveRoundedIcon />}
               disabled={blnSaving || !blnCanSave}
               onClick={onSaveBankDetails}
-              sx={{ textTransform: "none", fontWeight: 700, borderRadius: "10px" }}
+              sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px", minWidth: 128 }}
             >
               {blnSaving ? t("saving", "Saving...") : t("save", "Save")}
             </Button>
           </Stack>
         ) : null}
-      </Paper>
-    </Stack>
+    </Paper>
   );
 }

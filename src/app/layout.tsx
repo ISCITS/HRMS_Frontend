@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className="app-theme">
       <body>
         {/* Emotion cache + MUI theme providers for all routes */}
         <ThemeRegistry>

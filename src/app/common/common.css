@@ -1,4 +1,5 @@
-:root {
+.app-theme {
+  /* Typography and page */
   --app-font-family: 'Inter var', Roboto, Helvetica Neue, Arial, sans-serif;
   --app-header-color: #1c2536;
   --app-text-color: #334155;
@@ -7,6 +8,7 @@
   --app-surface-muted: #f8fbfd;
   --app-bg-color: #f5f8fa;
   --app-border-color: #d9e6ef;
+  --app-card-border-color: rgba(187, 213, 232, 0.7);
   --app-divider-color: #d9e6ef;
   --app-primary-color: #1d5d96;
   --app-primary-hover: #174c7b;
@@ -17,10 +19,115 @@
   --app-success-color: #2f7e3d;
   --app-warning-color: #ef6b00;
   --app-danger-color: #e73a3a;
+
+  /* Application banner */
+  --app-banner-background: linear-gradient(90deg, #f7faff 0%, #e6f0fc 45%, #d5e7f8 100%);
+  --app-banner-text-color: #0f172a;
+  --app-banner-border-color: rgba(255, 255, 255, 0.6);
+  --app-banner-shadow: 0 10px 30px rgba(59, 130, 246, 0.08), 0 6px 18px rgba(168, 85, 247, 0.08);
+
+  /* Navigation menu */
+  --app-menu-background: linear-gradient(180deg, #fcfdff 0%, #f5f9fe 45%, #eef5fc 100%);
+  --app-menu-surface: rgba(255, 255, 255, 0.86);
+  --app-menu-border-color: #d7e4f2;
+  --app-menu-text-color: #2f4e6f;
+  --app-menu-icon-color: #5e7fa5;
+  --app-menu-hover-background: #eaf3fc;
+  --app-menu-active-background: #dcebfa;
+  --app-menu-active-color: #1d5d96;
+
+  /* Buttons and controls */
+  --app-button-height: 34px;
+  --app-button-radius: 9px;
+  --app-button-font-size: 0.84rem;
+  --app-button-font-weight: 700;
+  --app-button-horizontal-padding: 10px;
+  --app-button-primary-background: var(--app-primary-color);
+  --app-button-primary-hover: var(--app-primary-hover);
+  --app-button-primary-text: #ffffff;
+  --app-button-primary-shadow: 0 12px 24px rgba(29, 93, 150, 0.22);
+  --app-button-secondary-background: rgba(255, 255, 255, 0.86);
+  --app-button-secondary-text: var(--app-primary-color);
+  --app-button-secondary-border: var(--app-secondary-border);
+
+  /* Page headings and icons */
+  --app-page-heading-color: #1f2937;
+  --app-page-heading-size: clamp(1.35rem, 1.9vw, 1.75rem);
+  --app-page-heading-weight: 800;
+  --app-page-heading-line-height: 1.05;
+  --app-icon-color: var(--app-primary-color);
+  --app-icon-muted-color: #5e7fa5;
+  --app-icon-active-color: var(--app-primary-color);
+
+  /* Shared grid */
+  --app-grid-background: #ffffff;
+  --app-grid-header-background: #ffffff;
+  --app-grid-header-color: #5b6f8f;
+  --app-grid-header-font-size: 0.83rem;
+  --app-grid-row-color: #1f2937;
+  --app-grid-row-font-size: 0.86rem;
+  --app-grid-row-height: 50px;
+  --app-grid-row-hover-background: #f8fbff;
+  --app-grid-row-selected-background: var(--app-primary-soft);
+  --app-grid-border-color: #d9e2ec;
+  --app-grid-view-action-color: #6d6d6d;
+  --app-grid-edit-action-color: #17639b;
+  --app-grid-cell-padding-block: 6px;
+  --app-grid-cell-padding-inline: 10px;
+
+  /* Shape and elevation */
   --app-shadow-soft: 0 16px 38px rgba(31, 93, 150, 0.1);
   --app-card-radius: 24px;
-  --app-btn-radius: 10px;
   --app-input-radius: 14px;
+}
+
+.app-banner {
+  background: var(--app-banner-background);
+  border-color: var(--app-banner-border-color);
+  box-shadow: var(--app-banner-shadow);
+  color: var(--app-banner-text-color);
+}
+
+.app-menu {
+  background: var(--app-menu-background);
+  border-color: var(--app-menu-border-color);
+  color: var(--app-menu-text-color);
+}
+
+.app-page-heading {
+  color: var(--app-page-heading-color);
+  font-size: var(--app-page-heading-size);
+  font-weight: var(--app-page-heading-weight);
+  line-height: var(--app-page-heading-line-height);
+  margin: 0;
+}
+
+.app-icon {
+  color: var(--app-icon-color);
+}
+
+.app-icon-muted {
+  color: var(--app-icon-muted-color);
+}
+
+.app-grid {
+  background: var(--app-grid-background);
+  color: var(--app-grid-row-color);
+}
+
+.app-grid thead th {
+  background: var(--app-grid-header-background);
+  border-color: var(--app-grid-border-color);
+  color: var(--app-grid-header-color);
+}
+
+.app-grid tbody td {
+  border-color: var(--app-grid-border-color);
+  color: var(--app-grid-row-color);
+}
+
+.app-grid tbody tr:hover {
+  background: var(--app-grid-row-hover-background);
 }
 
 .app-header {
@@ -54,11 +161,12 @@
 
 .app-btn {
   border: none;
-  border-radius: var(--app-btn-radius);
-  padding: 0.65rem 1.1rem;
+  border-radius: var(--app-button-radius);
+  min-height: var(--app-button-height);
+  padding: 0 var(--app-button-horizontal-padding);
   font-family: var(--app-font-family);
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: var(--app-button-font-size);
+  font-weight: var(--app-button-font-weight);
   cursor: pointer;
   transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
 }
@@ -73,9 +181,13 @@
 }
 
 .app-btn-primary {
-  background: var(--app-primary-color);
-  color: #ffffff;
-  box-shadow: 0 6px 16px rgba(29, 93, 150, 0.24);
+  background: var(--app-button-primary-background);
+  color: var(--app-button-primary-text);
+  box-shadow: var(--app-button-primary-shadow);
+}
+
+.app-btn-primary:hover {
+  background: var(--app-button-primary-hover);
 }
 
 .app-btn-secondary {
@@ -85,8 +197,8 @@
 
 .app-btn-outline {
   background: transparent;
-  color: var(--app-primary-color);
-  border: 1px solid var(--app-primary-color);
+  color: var(--app-button-secondary-text);
+  border: 1px solid var(--app-button-secondary-border);
 }
 
 .app-mui-text-field .MuiFormLabel-asterisk {
@@ -161,7 +273,7 @@
 .app-mui-button-primary.MuiButton-root {
   min-height: 52px;
   border-radius: var(--app-input-radius);
-  background-color: var(--app-primary-color);
+  background-color: var(--app-button-primary-background);
   font-weight: 600;
   box-shadow: 0 6px 16px rgba(29, 93, 150, 0.35);
   transition: all 0.15s ease;
@@ -169,7 +281,7 @@
 
 .app-mui-button-primary.MuiButton-root:hover {
   transform: translateY(-1px);
-  background-color: var(--app-primary-hover);
+  background-color: var(--app-button-primary-hover);
 }
 
 .app-mui-button-primary.MuiButton-root:active {

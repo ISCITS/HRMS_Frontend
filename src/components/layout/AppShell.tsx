@@ -60,8 +60,8 @@ const strModuleLabelsLoadStartEventName = "hrms:module-label-load-start";
 const strModuleLabelsLoadEndEventName = "hrms:module-label-load-end";
 const strAvatarRefreshEventName = "hrms:avatar-refresh";
 const intLanguageSwitchSettledDelayMs = 900;
-const strSharedHeaderGradient = "linear-gradient(90deg, #F7FAFF 0%, #E6F0FC 45%, #D5E7F8 100%)";
-const strSidebarGradient = "linear-gradient(180deg, #FCFDFF 0%, #F5F9FE 45%, #EEF5FC 100%)";
+const strSharedHeaderGradient = "var(--app-banner-background)";
+const strSidebarGradient = "var(--app-menu-background)";
 
 function getAutomationProps(strControlId?: string) {
   return strControlId ? ({ "data-controlid": strControlId } as const) : {};
@@ -996,7 +996,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           minHeight: 0,
           borderRadius: "24px",
           overflow: "hidden",
-          backgroundColor: "rgba(255,255,255,0.86)",
+          backgroundColor: "var(--app-menu-surface)",
           backdropFilter: "blur(22px)",
           border: "1px solid rgba(148, 163, 184, 0.16)",
           boxShadow: "0 18px 40px rgba(15, 23, 42, 0.08)"
@@ -1008,7 +1008,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             height: `${intTopBarHeight}px`,
             flexShrink: 0,
             background: strSharedHeaderGradient,
-            color: "#0f172a",
+            color: "var(--app-banner-text-color)",
             display: "flex",
             alignItems: "center",
             boxSizing: "border-box"
@@ -1024,7 +1024,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 placeItems: "center",
                 backgroundColor: "rgba(37, 99, 235, 0.12)",
                 border: "1px solid rgba(37, 99, 235, 0.18)",
-                color: "#2563eb"
+                color: "var(--app-icon-active-color)"
               }}
             >
               <SpaceDashboardRoundedIcon />
@@ -1185,7 +1185,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           flexDirection: "column",
           alignItems: "center",
           background: strSidebarGradient,
-          borderRight: "1px solid #D7E4F2",
+          borderRight: "1px solid var(--app-menu-border-color)",
           boxShadow: "8px 0 24px rgba(15, 23, 42, 0.08)",
           overflow: "hidden",
           cursor: "pointer",
@@ -1211,13 +1211,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
               sx={{
                 width: 40,
                 height: 40,
-                border: "1px solid #D7E4F2",
+                border: "1px solid var(--app-menu-border-color)",
                 backgroundColor: "#ffffff",
-                color: "#5E7FA5",
+                color: "var(--app-menu-icon-color)",
                 boxShadow: "0 8px 20px rgba(15, 23, 42, 0.08)",
                 "&:hover": {
-                  backgroundColor: "#EAF3FC",
-                  color: "#1D5D96",
+                  backgroundColor: "var(--app-menu-hover-background)",
+                  color: "var(--app-menu-active-color)",
                 }
               }}
               {...getAutomationProps("app-shell.desktop-menu-toggle.button")}
@@ -1255,7 +1255,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             display: "grid",
             placeItems: "center",
             flexShrink: 0,
-            color: "#1D5D96",
+            color: "var(--app-menu-active-color)",
           }}
         >
           <LogoutRoundedIcon />
@@ -1332,9 +1332,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
               mb: 1.5,
               px: { xs: 0.25, sm: 0.75 },
               background: strSharedHeaderGradient,
-              border: "1px solid rgba(255, 255, 255, 0.6)",
-              boxShadow:
-                "0 10px 30px rgba(59, 130, 246, 0.08), 0 6px 18px rgba(168, 85, 247, 0.08)"
+              border: "1px solid var(--app-banner-border-color)",
+              boxShadow: "var(--app-banner-shadow)"
             }}
           >
             <Toolbar sx={{ gap: 1.5, height: `${intTopBarHeight}px`, minHeight: `${intTopBarHeight}px !important`, boxSizing: "border-box", alignItems: "center" }}>
@@ -1356,7 +1355,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 <Typography
                   sx={{
                     fontSize: { xs: "1.02rem", md: "1.28rem", lg: "1.42rem" },
-                    color: "#0f172a",
+                    color: "var(--app-banner-text-color)",
                     textTransform: "none",
                     letterSpacing: "normal",
                     fontWeight: 700,
@@ -1364,7 +1363,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                     whiteSpace: "nowrap"
                   }}
                 >
-                  {blnEssDashboardActive
+                  {blnEssOnlyNavigation || blnEssDashboardActive
                     ? tCommon("ess_app_title", "Employee Self Service")
                     : tCommon("app_title", "Human Resource Management System")}
                 </Typography>

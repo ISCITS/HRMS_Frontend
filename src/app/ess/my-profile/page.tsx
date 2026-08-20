@@ -3,10 +3,17 @@
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import PhotoCameraRoundedIcon from "@mui/icons-material/PhotoCameraRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
-import AccountBalanceRoundedIcon from "@mui/icons-material/AccountBalanceRounded";
 import BadgeRoundedIcon from "@mui/icons-material/BadgeRounded";
-import HomeWorkRoundedIcon from "@mui/icons-material/HomeWorkRounded";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
+import WorkOutlineRoundedIcon from "@mui/icons-material/WorkOutlineRounded";
+import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
+import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
+import PhoneOutlinedIcon from "@mui/icons-material/PhoneOutlined";
+import ApartmentOutlinedIcon from "@mui/icons-material/ApartmentOutlined";
+import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
+import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
+import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import {
   Alert,
   Avatar,
@@ -17,18 +24,22 @@ import {
   Divider,
   Grid,
   IconButton,
+  LinearProgress,
   Paper,
   Stack,
+  Tab,
+  Tabs,
   Typography
 } from "@mui/material";
 import { useRouter } from "next/navigation";
-import { ChangeEvent, useEffect, useState } from "react";
+import { ChangeEvent, type ReactElement, useEffect, useState } from "react";
 
 import { employeeService } from "@/features/employee/services/employeeService";
-import type { EmployeeAddressRecord, EmployeeDetailRecord, EmployeeFormOptions, EmployeeStatutoryRecord } from "@/features/employee/types";
+import type { EmployeeAddressRecord, EmployeeDetailRecord, EmployeeFamilyDetailRecord, EmployeeFormOptions, EmployeeStatutoryRecord } from "@/features/employee/types";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useAuthenticatedAvatar } from "@/hooks/useAuthenticatedAvatar";
+import { fileUploadService, type FileMetadataDto } from "@/lib/fileUploadService";
 import type { CurrentUserContext } from "@/models/AuthModels";
 import { authApiService } from "@/services";
 
@@ -45,20 +56,25 @@ function formatDate(strDate: string | null, strNotAvailable: string) {
   return new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(objDate);
 }
 
-function ProfileField({ strLabel, strValue }: { strLabel: string; strValue: string }) {
+function DetailRow({ strLabel, strValue }: { strLabel: string; strValue: string }) {
   return (
-    <Box
-      sx={{
-        p: 1.05,
-        borderRadius: "12px",
-        border: "1px solid rgba(148,163,184,0.2)",
-        background: "linear-gradient(180deg, rgba(248,250,252,0.8) 0%, rgba(241,245,249,0.65) 100%)",
-        minHeight: 66
-      }}
-    >
-      <Typography sx={{ fontSize: "0.76rem", color: "#64748b", fontWeight: 700, mb: 0.2 }}>{strLabel}</Typography>
-      <Typography sx={{ fontSize: "0.9rem", color: "#0f172a", fontWeight: 600 }}>{strValue}</Typography>
-    </Box>
+    <Grid container sx={{ minHeight: 43, alignItems: "center", borderBottom: "1px solid #e9edf3", py: 0.55 }}>
+      <Grid item xs={5} sm={4.5}>
+        <Typography sx={{ color: "#667085", fontSize: "0.7rem", fontWeight: 600 }}>{strLabel}</Typography>
+      </Grid>
+      <Grid item xs={7} sm={7.5}>
+        <Typography sx={{ color: "#172033", fontSize: "0.74rem", fontWeight: 600, overflowWrap: "anywhere" }}>{strValue}</Typography>
+      </Grid>
+    </Grid>
+  );
+}
+
+function SidebarLine({ objIcon, strValue }: { objIcon: ReactElement; strValue: string }) {
+  return (
+    <Stack direction="row" spacing={1} alignItems="center">
+      <Box sx={{ color: "#667085", display: "flex", "& svg": { fontSize: 15 } }}>{objIcon}</Box>
+      <Typography sx={{ color: "#344054", fontSize: "0.7rem", overflowWrap: "anywhere", minWidth: 0 }}>{strValue}</Typography>
+    </Stack>
   );
 }
 
@@ -83,6 +99,9 @@ export default function EssMyProfilePage() {
   const [objFormOptions, setObjFormOptions] = useState<EmployeeFormOptions | null>(null);
   const [objAddress, setObjAddress] = useState<EmployeeAddressRecord | null>(null);
   const [objStatutory, setObjStatutory] = useState<EmployeeStatutoryRecord | null>(null);
+  const [lstFamily, setLstFamily] = useState<EmployeeFamilyDetailRecord[]>([]);
+  const [lstDocuments, setLstDocuments] = useState<FileMetadataDto[]>([]);
+  const [strActiveTab, setStrActiveTab] = useState("personal");
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnAvatarUpdating, setBlnAvatarUpdating] = useState(false);
   const [strError, setStrError] = useState("");
@@ -136,7 +155,9 @@ export default function EssMyProfilePage() {
           employeeService.getFormOptions(),
           Promise.allSettled([
             employeeService.getEmployeeAddress(intCurrentEmployeeID),
-            employeeService.getEmployeeStatutory(intCurrentEmployeeID)
+            employeeService.getEmployeeStatutory(intCurrentEmployeeID),
+            employeeService.getEmployeeFamilyDetails(intCurrentEmployeeID),
+            fileUploadService.listFiles({ strModule: "PROFILE" })
           ])
         ]);
 
@@ -153,6 +174,12 @@ export default function EssMyProfilePage() {
 
         if (lstProfileDetails[1].status === "fulfilled") {
           setObjStatutory(lstProfileDetails[1].value);
+        }
+        if (lstProfileDetails[2].status === "fulfilled") {
+          setLstFamily(lstProfileDetails[2].value);
+        }
+        if (lstProfileDetails[3].status === "fulfilled") {
+          setLstDocuments(lstProfileDetails[3].value);
         }
       } catch (objError: unknown) {
         if (blnMounted) {
@@ -270,216 +297,139 @@ export default function EssMyProfilePage() {
     }
   }
 
+  const strManager = resolveLookupLabel(objFormOptions?.lstManagers, objEmployee?.intManagerEmployeeID ?? null, strNotAvailable);
+  const strLocation = resolveLookupLabel(objFormOptions?.lstLocations, objEmployee?.intLocationID ?? null, strNotAvailable);
+  const strDepartment = resolveLookupLabel(objFormOptions?.lstDepartments, objEmployee?.intDepartmentID ?? null, strNotAvailable);
+  const strDesignation = resolveLookupLabel(objFormOptions?.lstDesignations, objEmployee?.intDesignationID ?? null, strNotAvailable);
+  const objEmergencyContact = lstFamily.find((objMember) => Boolean(objMember.strContactNumber)) ?? null;
+  const lstCompletionValues = [
+    objEmployee?.strFirstName,
+    objEmployee?.strLastName,
+    objEmployee?.dtDateOfBirth,
+    objEmployee?.strGender,
+    objEmployee?.strMobileNumber,
+    objEmployee?.strPersonalEmail,
+    objEmployee?.strWorkEmail,
+    objEmployee?.dtDateOfJoining,
+    objEmployee?.intEmploymentTypeID,
+    objEmployee?.intDepartmentID,
+    objEmployee?.intDesignationID,
+    objEmployee?.intLocationID,
+    objAddress?.strAddressLine1,
+    objAddress?.strCityName,
+    objAddress?.intCountryID,
+    objStatutory?.strPanNumber,
+    objStatutory?.strUanNumber
+  ];
+  const intProfileCompletion = Math.round((lstCompletionValues.filter(Boolean).length / lstCompletionValues.length) * 100);
+
+  const dicTabSx = {
+    minHeight: 48,
+    minWidth: { xs: 105, sm: 115 },
+    px: 1.2,
+    textTransform: "none",
+    color: "#475467",
+    fontSize: "0.7rem",
+    fontWeight: 600,
+    "&.Mui-selected": { color: "#1769e0" },
+    "& .MuiTab-iconWrapper": { mr: 0.7, mb: "0 !important" },
+    "& svg": { fontSize: 17 }
+  } as const;
+
   return (
-    <Stack spacing={0} sx={{ position: "relative" }}>
-      <Box className="pageBanner">
-        <Box className="bannerDots" />
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          justifyContent="space-between"
-          alignItems={{ xs: "flex-start", md: "center" }}
-          spacing={1.2}
-          sx={{ position: "relative", zIndex: 1, width: "100%" }}
-        >
-          <Stack direction="row" spacing={1.1} alignItems="center" sx={{ flex: "1 1 auto", minWidth: 0 }}>
-            <Box sx={{ position: "relative", width: 56, height: 56 }}>
-              <Avatar
-                src={strAuthenticatedAvatarUrl || undefined}
-                sx={{
-                  width: 56,
-                  height: 56,
-                  background: "rgba(255,255,255,0.2)",
-                  color: "#f8fafc",
-                  fontWeight: 800,
-                  fontSize: "1.05rem",
-                  border: "2px solid rgba(255,255,255,0.2)"
-                }}
-              >
-                {strInitial}
-              </Avatar>
-              <IconButton
-                component="label"
-                size="small"
-                disabled={blnAvatarUpdating || !blnCanEditProfile}
-                sx={{
-                  position: "absolute",
-                  right: -4,
-                  bottom: -4,
-                  width: 24,
-                  height: 24,
-                  backgroundColor: "#ffffff",
-                  color: "#0f172a",
-                  boxShadow: "0 8px 18px rgba(15,23,42,0.24)",
-                  "&:hover": { backgroundColor: "#e2e8f0" },
-                  "&.Mui-disabled": { backgroundColor: "#cbd5e1", color: "#475569" }
-                }}
-              >
-                {blnAvatarUpdating ? <CircularProgress size={14} color="inherit" /> : <EditRoundedIcon sx={{ fontSize: 14 }} />}
+    <Box>
+      {strRightsError ? <Typography sx={{ mb: 1, color: "#b45309", fontSize: "0.78rem" }}>{strRightsError}</Typography> : null}
+      {strError ? <Alert severity="error" sx={{ mb: 1.5, borderRadius: "8px" }} onClose={() => setStrError("")}>{strError}</Alert> : null}
+
+      <Grid container spacing={1.5} alignItems="stretch">
+        <Grid item xs={12} md={3} lg={2.6}>
+          <Paper elevation={0} sx={{ height: "100%", p: 1.6, border: "1px solid #e1e7ef", borderRadius: "9px", boxShadow: "0 4px 15px rgba(15,23,42,0.05)" }}>
+            <Stack alignItems="center" sx={{ pt: 0.6 }}>
+              <Avatar src={strAuthenticatedAvatarUrl || undefined} sx={{ width: 92, height: 92, bgcolor: "#e8eef8", color: "#334155", fontWeight: 800, fontSize: "1.5rem" }}>{strInitial}</Avatar>
+              <Typography sx={{ mt: 1, color: "#172033", fontWeight: 800, fontSize: "1rem", textAlign: "center" }}>{strTitleName}</Typography>
+              <Typography sx={{ color: "#667085", fontSize: "0.68rem", fontWeight: 600 }}>{valueOrNotAvailable(objEmployee?.strEmployeeCode)}</Typography>
+              <Chip size="small" label={translateKnownValue(objEmployee?.strEmploymentStatus)} sx={{ mt: 0.8, height: 21, bgcolor: "#ecfdf3", color: "#15803d", "& .MuiChip-label": { px: 0.9, fontSize: "0.65rem", fontWeight: 700 } }} />
+            </Stack>
+
+            <Divider sx={{ my: 1.35 }} />
+            <Stack spacing={1.15}>
+              <SidebarLine objIcon={<WorkOutlineRoundedIcon />} strValue={strManager} />
+              <SidebarLine objIcon={<ApartmentOutlinedIcon />} strValue={strDepartment} />
+              <SidebarLine objIcon={<LocationOnOutlinedIcon />} strValue={strLocation} />
+              <SidebarLine objIcon={<EmailOutlinedIcon />} strValue={valueOrNotAvailable(objEmployee?.strWorkEmail)} />
+              <SidebarLine objIcon={<PhoneOutlinedIcon />} strValue={valueOrNotAvailable(objEmployee?.strMobileNumber)} />
+            </Stack>
+
+            <Divider sx={{ my: 1.35 }} />
+            <Stack spacing={0.8}>
+              <Button component="label" variant="outlined" fullWidth startIcon={blnAvatarUpdating ? <CircularProgress size={13} /> : <PhotoCameraRoundedIcon />} disabled={blnAvatarUpdating || !blnCanEditProfile} sx={{ minHeight: 31, borderRadius: "4px", textTransform: "none", fontWeight: 700, fontSize: "0.68rem" }}>
+                {t("change_photo", "Change Photo")}
                 <input hidden type="file" accept="image/png,image/jpeg,image/webp" onChange={handleAvatarUpload} />
-              </IconButton>
-            </Box>
-            <Box>
-              <Typography sx={{ fontWeight: 800, color: "white", fontSize: "1rem", lineHeight: 1.2 }}>{strTitleName}</Typography>
-              <Typography sx={{ color: "rgba(241,245,249,0.9)", fontSize: "0.82rem" }}>{valueOrNotAvailable(objEmployee?.strEmployeeCode)}</Typography>
-              <Stack direction="row" spacing={0.75} sx={{ mt: 0.55 }}>
-                <Chip
-                  size="small"
-                  label={translateKnownValue(objEmployee?.strEmploymentStatus || t("unknown", "Unknown"))}
-                  color={objEmployee?.strEmploymentStatus === "Active" ? "success" : "default"}
-                  sx={{ height: 22, "& .MuiChip-label": { fontWeight: 700, px: 0.9, fontSize: "0.72rem" } }}
-                />
-                <Chip
-                  size="small"
-                  label={objEmployee?.blnIsEssEnabled ? t("ess_enabled", "ESS Enabled") : t("ess_disabled", "ESS Disabled")}
-                  variant="outlined"
-                  sx={{ borderColor: "rgba(255,255,255,0.45)", color: "white", height: 22, "& .MuiChip-label": { fontWeight: 700, px: 0.9, fontSize: "0.72rem" } }}
-                />
-              </Stack>
-            </Box>
-          </Stack>
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={1}
-            alignItems={{ xs: "stretch", sm: "center" }}
-            justifyContent="flex-end"
-            sx={{
-              width: { xs: "100%", md: "auto" },
-              alignSelf: { xs: "stretch", md: "center" },
-              flex: { md: "0 0 auto" },
-              ml: { md: "auto" }
-            }}
-          >
-            <Button
-              component="label"
-              variant="outlined"
-              startIcon={blnAvatarUpdating ? <CircularProgress size={16} color="inherit" /> : <PhotoCameraRoundedIcon />}
-              disabled={blnAvatarUpdating || !blnCanEditProfile}
-              sx={{
-                borderRadius: "12px",
-                textTransform: "none",
-                fontWeight: 700,
-                px: 1.4,
-                py: 0.65,
-                fontSize: "0.82rem",
-                borderColor: "rgba(255,255,255,0.55)",
-                color: "white"
-              }}
-            >
-              {t("upload", "Upload")}
-              <input hidden type="file" accept="image/png,image/jpeg,image/webp" onChange={handleAvatarUpload} />
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<DeleteOutlineRoundedIcon />}
-              onClick={handleAvatarDelete}
-              disabled={blnAvatarUpdating || !strAvatarUrl || !blnCanEditProfile}
-              sx={{
-                borderRadius: "12px",
-                textTransform: "none",
-                fontWeight: 700,
-                px: 1.4,
-                py: 0.65,
-                fontSize: "0.82rem",
-                borderColor: "rgba(255,255,255,0.4)",
-                color: "white"
-              }}
-            >
-              {t("remove", "Remove")}
-            </Button>
-            {blnCanEditProfile ? (
-              <Button
-                controlId="ess.my-profile.edit.button"
-                variant="contained"
-                startIcon={<EditRoundedIcon />}
-                onClick={() => objRouter.push(`/ess/my-profile/edit/${intEmployeeID}`)}
-                sx={{
-                  borderRadius: "12px",
-                  textTransform: "none",
-                  fontWeight: 700,
-                  px: 1.4,
-                  py: 0.65,
-                  fontSize: "0.82rem",
-                  backgroundColor: "white",
-                  color: "#0f172a",
-                  "&:hover": { backgroundColor: "#e2e8f0" }
-                }}
-              >
-                {t("edit", "Edit")}
               </Button>
-            ) : null}
-          </Stack>
-        </Stack>
-      </Box>
+              {blnCanEditProfile ? (
+                <Button controlId="ess.my-profile.edit.button" variant="contained" fullWidth startIcon={<EditRoundedIcon />} onClick={() => objRouter.push(`/ess/my-profile/edit/${intEmployeeID}`)} sx={{ minHeight: 31, borderRadius: "4px", textTransform: "none", fontWeight: 700, fontSize: "0.68rem", boxShadow: "none" }}>
+                  {t("edit_profile", "Edit Profile")}
+                </Button>
+              ) : null}
+              {strAvatarUrl && blnCanEditProfile ? (
+                <Button size="small" color="inherit" startIcon={<DeleteOutlineRoundedIcon />} onClick={handleAvatarDelete} disabled={blnAvatarUpdating} sx={{ textTransform: "none", color: "#667085", fontSize: "0.63rem" }}>{t("remove_photo", "Remove photo")}</Button>
+              ) : null}
+            </Stack>
 
-      <Paper sx={{ p: { xs: 1.5, md: 2 }, borderRadius: "20px", border: "1px solid #e2e8f0", boxShadow: "0 10px 20px rgba(15,23,42,0.05)" }}>
-        {strRightsError ? <Typography sx={{ mb: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography> : null}
-        {strError ? (
-          <Alert severity="error" sx={{ mb: 1.5, borderRadius: "8px" }} onClose={() => setStrError("")}>
-            {strError}
-          </Alert>
-        ) : null}
-        <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 1 }}>
-          <PersonRoundedIcon sx={{ color: "#0284c7" }} />
-          <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "0.96rem" }}>{t("section_personal_information", "Personal Information")}</Typography>
-        </Stack>
-        <Grid container spacing={1.5}>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel={t("field_first_name", "First Name")} strValue={valueOrNotAvailable(objEmployee?.strFirstName)} /></Grid>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel={t("field_middle_name", "Middle Name")} strValue={valueOrNotAvailable(objEmployee?.strMiddleName)} /></Grid>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel={t("field_last_name", "Last Name")} strValue={valueOrNotAvailable(objEmployee?.strLastName)} /></Grid>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel={t("field_date_of_birth", "Date of Birth")} strValue={formatDate(objEmployee?.dtDateOfBirth ?? null, strNotAvailable)} /></Grid>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel={t("field_gender", "Gender")} strValue={translateKnownValue(objEmployee?.strGender)} /></Grid>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel={t("field_mobile_number", "Mobile Number")} strValue={valueOrNotAvailable(objEmployee?.strMobileNumber)} /></Grid>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel={t("field_personal_email", "Personal Email")} strValue={valueOrNotAvailable(objEmployee?.strPersonalEmail)} /></Grid>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel={t("field_work_email", "Work Email")} strValue={valueOrNotAvailable(objEmployee?.strWorkEmail)} /></Grid>
+            {/* <Divider sx={{ my: 1.35 }} />
+            <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.65 }}>
+              <Typography sx={{ fontSize: "0.68rem", fontWeight: 700, color: "#344054" }}>{t("profile_completion", "Profile Completion")}</Typography>
+              <Typography sx={{ fontSize: "0.68rem", fontWeight: 800, color: "#344054" }}>{intProfileCompletion}%</Typography>
+            </Stack>
+            <LinearProgress variant="determinate" value={intProfileCompletion} sx={{ height: 6, borderRadius: 4, bgcolor: "#e7ebf1", "& .MuiLinearProgress-bar": { borderRadius: 4, bgcolor: "#1769e0" } }} />
+           */}
+          
+          </Paper>
         </Grid>
 
-        <Divider sx={{ my: 1.5 }} />
+        <Grid item xs={12} md={9} lg={9.4}>
+          <Paper elevation={0} sx={{ minHeight: { md: 560 }, border: "1px solid #e1e7ef", borderRadius: "9px", boxShadow: "0 4px 15px rgba(15,23,42,0.05)", overflow: "hidden" }}>
+            <Box sx={{ px: { xs: 0.5, sm: 1.5 }, overflowX: "auto" }}>
+              <Tabs value={strActiveTab} onChange={(_objEvent, strValue: string) => setStrActiveTab(strValue)} variant="scrollable" scrollButtons={false} sx={{ minHeight: 49, borderBottom: "1px solid #e7ebf1", "& .MuiTabs-indicator": { height: 2, bgcolor: "#1769e0" } }}>
+                <Tab value="personal" icon={<PersonRoundedIcon />} iconPosition="start" label={t("tab_personal", "Personal Information")} sx={dicTabSx} />
+                <Tab value="employment" icon={<BadgeRoundedIcon />} iconPosition="start" label={t("tab_employment", "Employment Information")} sx={dicTabSx} />
+                <Tab value="address" icon={<LocationOnOutlinedIcon />} iconPosition="start" label={t("tab_address", "Address")} sx={dicTabSx} />
+                <Tab value="statutory" icon={<ShieldOutlinedIcon />} iconPosition="start" label={t("tab_statutory", "Statutory")} sx={dicTabSx} />
+                {/* <Tab value="documents" icon={<DescriptionOutlinedIcon />} iconPosition="start" label={t("tab_documents", "Documents")} sx={dicTabSx} /> */}
+              </Tabs>
+            </Box>
 
-        <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 1 }}>
-          <BadgeRoundedIcon sx={{ color: "#0284c7" }} />
-          <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "0.96rem" }}>{t("section_employment_information", "Employment Information")}</Typography>
-        </Stack>
-        <Grid container spacing={1.5}>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel={t("field_date_of_joining", "Date of Joining")} strValue={formatDate(objEmployee?.dtDateOfJoining ?? null, strNotAvailable)} /></Grid>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel={t("field_employment_type", "Employment Type")} strValue={translateKnownValue(resolveLookupLabel(objFormOptions?.lstEmploymentTypes, objEmployee?.intEmploymentTypeID ?? null, strNotAvailable))} /></Grid>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel={t("field_department", "Department")} strValue={resolveLookupLabel(objFormOptions?.lstDepartments, objEmployee?.intDepartmentID ?? null, strNotAvailable)} /></Grid>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel={t("field_designation", "Designation")} strValue={resolveLookupLabel(objFormOptions?.lstDesignations, objEmployee?.intDesignationID ?? null, strNotAvailable)} /></Grid>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel={t("field_grade", "Grade")} strValue={resolveLookupLabel(objFormOptions?.lstGrades, objEmployee?.intGradeID ?? null, strNotAvailable)} /></Grid>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel={t("field_location", "Location")} strValue={resolveLookupLabel(objFormOptions?.lstLocations, objEmployee?.intLocationID ?? null, strNotAvailable)} /></Grid>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel={t("field_cost_center", "Cost Center")} strValue={resolveLookupLabel(objFormOptions?.lstCostCenters, objEmployee?.intCostCenterID ?? null, strNotAvailable)} /></Grid>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel={t("field_manager", "Manager")} strValue={resolveLookupLabel(objFormOptions?.lstManagers, objEmployee?.intManagerEmployeeID ?? null, strNotAvailable)} /></Grid>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel={t("field_date_of_exit", "Date of Exit")} strValue={formatDate(objEmployee?.dtDateOfExit ?? null, strNotAvailable)} /></Grid>
+            <Box sx={{ p: { xs: 1.5, sm: 2.2 } }}>
+              {strActiveTab === "personal" ? (
+                <Stack spacing={2.1}>
+                  <Box>
+                    <Typography sx={{ color: "#172033", fontSize: "0.85rem", fontWeight: 800, mb: 0.75 }}>{t("section_personal_information", "Personal Information")}</Typography>
+                    <DetailRow strLabel={t("field_full_name", "Full Name")} strValue={strFullName} />
+                    <DetailRow strLabel={t("field_date_of_birth", "Date of Birth")} strValue={formatDate(objEmployee?.dtDateOfBirth ?? null, strNotAvailable)} />
+                    <DetailRow strLabel={t("field_gender", "Gender")} strValue={translateKnownValue(objEmployee?.strGender)} />
+                    <DetailRow strLabel={t("field_mobile_number", "Mobile Number")} strValue={valueOrNotAvailable(objEmployee?.strMobileNumber)} />
+                    <DetailRow strLabel={t("field_personal_email", "Personal Email")} strValue={valueOrNotAvailable(objEmployee?.strPersonalEmail)} />
+                    <DetailRow strLabel={t("field_work_email", "Work Email")} strValue={valueOrNotAvailable(objEmployee?.strWorkEmail)} />
+                  </Box>
+                </Stack>
+              ) : null}
+
+              {strActiveTab === "employment" ? <Box><Typography sx={{ color: "#172033", fontSize: "0.85rem", fontWeight: 800, mb: 0.75 }}>{t("section_employment_information", "Employment Information")}</Typography><DetailRow strLabel={t("field_employee_code", "Employee Code")} strValue={valueOrNotAvailable(objEmployee?.strEmployeeCode)} /><DetailRow strLabel={t("field_date_of_joining", "Date of Joining")} strValue={formatDate(objEmployee?.dtDateOfJoining ?? null, strNotAvailable)} /><DetailRow strLabel={t("field_employment_type", "Employment Type")} strValue={translateKnownValue(resolveLookupLabel(objFormOptions?.lstEmploymentTypes, objEmployee?.intEmploymentTypeID ?? null, strNotAvailable))} /><DetailRow strLabel={t("field_department", "Department")} strValue={strDepartment} /><DetailRow strLabel={t("field_designation", "Designation")} strValue={strDesignation} /><DetailRow strLabel={t("field_grade", "Grade")} strValue={resolveLookupLabel(objFormOptions?.lstGrades, objEmployee?.intGradeID ?? null, strNotAvailable)} /><DetailRow strLabel={t("field_location", "Location")} strValue={strLocation} /><DetailRow strLabel={t("field_cost_center", "Cost Center")} strValue={resolveLookupLabel(objFormOptions?.lstCostCenters, objEmployee?.intCostCenterID ?? null, strNotAvailable)} /><DetailRow strLabel={t("field_manager", "Manager")} strValue={strManager} /><DetailRow strLabel={t("field_date_of_exit", "Date of Exit")} strValue={formatDate(objEmployee?.dtDateOfExit ?? null, strNotAvailable)} /></Box> : null}
+
+              {strActiveTab === "address" ? <Box><Typography sx={{ color: "#172033", fontSize: "0.85rem", fontWeight: 800, mb: 0.75 }}>{t("section_address", "Address")}</Typography><DetailRow strLabel={t("field_address_type", "Address Type")} strValue={translateKnownValue(objAddress?.strAddressType)} /><DetailRow strLabel={t("field_address_line_1", "Address Line 1")} strValue={valueOrNotAvailable(objAddress?.strAddressLine1)} /><DetailRow strLabel={t("field_address_line_2", "Address Line 2")} strValue={valueOrNotAvailable(objAddress?.strAddressLine2)} /><DetailRow strLabel={t("field_city", "City")} strValue={valueOrNotAvailable(objAddress?.strCityName)} /><DetailRow strLabel={t("field_state", "State")} strValue={resolveLookupLabel(objFormOptions?.lstStates, objAddress?.intStateID ?? null, strNotAvailable)} /><DetailRow strLabel={t("field_country", "Country")} strValue={resolveLookupLabel(objFormOptions?.lstCountries, objAddress?.intCountryID ?? null, strNotAvailable)} /><DetailRow strLabel={t("field_postal_code", "Postal Code")} strValue={valueOrNotAvailable(objAddress?.strPostalCode)} /></Box> : null}
+
+              {strActiveTab === "statutory" ? <Box><Typography sx={{ color: "#172033", fontSize: "0.85rem", fontWeight: 800, mb: 0.75 }}>{t("section_statutory", "Statutory Information")}</Typography><DetailRow strLabel={t("field_pan", "PAN")} strValue={valueOrNotAvailable(objStatutory?.strPanNumber)} /><DetailRow strLabel={t("field_uan", "UAN")} strValue={valueOrNotAvailable(objStatutory?.strUanNumber)} /><DetailRow strLabel={t("field_esi_number", "ESI Number")} strValue={valueOrNotAvailable(objStatutory?.strEsiNumber)} /><DetailRow strLabel={t("field_pf_number", "PF Number")} strValue={valueOrNotAvailable(objStatutory?.strPfNumber)} /><DetailRow strLabel={t("field_tax_regime", "Tax Regime")} strValue={translateKnownValue(objStatutory?.strTaxRegimeCode)} /><DetailRow strLabel={t("field_pf_applicable", "PF Applicable")} strValue={objStatutory?.blnPfApplicable ? t("yes", "Yes") : t("no", "No")} /><DetailRow strLabel={t("field_esi_applicable", "ESI Applicable")} strValue={objStatutory?.blnEsiApplicable ? t("yes", "Yes") : t("no", "No")} /></Box> : null}
+
+              {/* {strActiveTab === "documents" ? (
+                <Box>
+                  <Typography sx={{ color: "#172033", fontSize: "0.85rem", fontWeight: 800, mb: 1 }}>{t("section_documents", "Documents")}</Typography>
+                  {lstDocuments.length ? <Stack>{lstDocuments.map((objDocument) => <Stack key={objDocument.intFileID} direction="row" justifyContent="space-between" alignItems="center" sx={{ py: 1, borderBottom: "1px solid #e9edf3" }}><Box sx={{ minWidth: 0 }}><Typography sx={{ fontSize: "0.74rem", fontWeight: 700, color: "#344054", overflowWrap: "anywhere" }}>{objDocument.strDocumentType || objDocument.strOriginalFileName}</Typography><Typography sx={{ mt: 0.2, fontSize: "0.64rem", color: "#667085" }}>{objDocument.strOriginalFileName}</Typography></Box><IconButton size="small" aria-label={t("view_document", "View document")} onClick={() => fileUploadService.previewFile(objDocument.intFileID).catch(() => setStrError(t("error_preview_document", "Unable to open the document.")))}><VisibilityOutlinedIcon sx={{ fontSize: 18, color: "#1769e0" }} /></IconButton></Stack>)}</Stack> : <Typography sx={{ py: 3, textAlign: "center", color: "#667085", fontSize: "0.74rem" }}>{t("no_documents", "No documents available.")}</Typography>}
+                </Box>
+              ) : null} */}
+            </Box>
+          </Paper>
         </Grid>
-
-        <Divider sx={{ my: 1.5 }} />
-
-        <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 1 }}>
-          <HomeWorkRoundedIcon sx={{ color: "#0284c7" }} />
-          <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "0.96rem" }}>{t("section_address", "Address")}</Typography>
-        </Stack>
-        <Grid container spacing={1.5}>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel={t("field_address_type", "Address Type")} strValue={translateKnownValue(objAddress?.strAddressType)} /></Grid>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel={t("field_address_line_1", "Address Line 1")} strValue={valueOrNotAvailable(objAddress?.strAddressLine1)} /></Grid>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel={t("field_address_line_2", "Address Line 2")} strValue={valueOrNotAvailable(objAddress?.strAddressLine2)} /></Grid>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel={t("field_city", "City")} strValue={valueOrNotAvailable(objAddress?.strCityName)} /></Grid>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel={t("field_state", "State")} strValue={resolveLookupLabel(objFormOptions?.lstStates, objAddress?.intStateID ?? null, strNotAvailable)} /></Grid>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel={t("field_country", "Country")} strValue={resolveLookupLabel(objFormOptions?.lstCountries, objAddress?.intCountryID ?? null, strNotAvailable)} /></Grid>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel={t("field_postal_code", "Postal Code")} strValue={valueOrNotAvailable(objAddress?.strPostalCode)} /></Grid>
-        </Grid>
-
-        <Divider sx={{ my: 1.5 }} />
-
-        <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 1 }}>
-          <AccountBalanceRoundedIcon sx={{ color: "#0284c7" }} />
-          <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "0.96rem" }}>{t("section_statutory", "Statutory")}</Typography>
-        </Stack>
-        <Grid container spacing={1.5}>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel={t("field_pan", "PAN")} strValue={valueOrNotAvailable(objStatutory?.strPanNumber)} /></Grid>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel={t("field_uan", "UAN")} strValue={valueOrNotAvailable(objStatutory?.strUanNumber)} /></Grid>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel={t("field_esi_number", "ESI Number")} strValue={valueOrNotAvailable(objStatutory?.strEsiNumber)} /></Grid>
-          <Grid item xs={12} sm={6} md={4}><ProfileField strLabel={t("field_tax_regime", "Tax Regime")} strValue={translateKnownValue(objStatutory?.strTaxRegimeCode)} /></Grid>
-        </Grid>
-      </Paper>
-    </Stack>
+      </Grid>
+    </Box>
   );
 }
