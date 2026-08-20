@@ -576,8 +576,10 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
 
   const objInputProps = { disabled: blnReadOnly } as const;
 
+  // Stack spacing / fieldset gap are 12px so every card sits the same distance apart as the app
+  // header does from the toolbar below it.
   return (
-    <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5, pb: 4 }}>
+    <Stack spacing={1.5} sx={{ height: "100%", overflow: "auto", pr: 0.5, pb: 4 }}>
       {/* Header (matches the Salary Component editor chrome) */}
       <Paper
         sx={{
@@ -589,7 +591,10 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
         }}
       >
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={1.5}>
-          <Typography sx={{ color: "#64748b" }}>Enterprise leave type &amp; policy configuration.</Typography>
+          {/* The page title lives here rather than in the app-shell header (see blnLeaveTypeEditorRoute). */}
+          <Typography component="h1" sx={{ fontWeight: 800, fontSize: { xs: "1.1rem", md: "1.28rem" }, color: "#0f172a" }}>
+            {strMode === "new" ? "New Leave Type" : strMode === "view" ? "View Leave Type" : "Edit Leave Type"}
+          </Typography>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ width: { xs: "100%", sm: "auto" } }}>
             <Button
               className={styles.secondaryButton}
@@ -614,7 +619,9 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
         </Stack>
       </Paper>
 
-      <fieldset disabled={blnReadOnly} style={{ border: 0, margin: "20px 0 0 0", padding: 0, minWidth: 0, display: "flex", flexDirection: "column", gap: "20px" }}>
+      {/* The 12px top margin is set here rather than left to the Stack: an inline margin outranks the
+          Stack's spacing class, so relying on it would leave this one seam flush. */}
+      <fieldset disabled={blnReadOnly} style={{ border: 0, margin: "12px 0 0 0", padding: 0, minWidth: 0, display: "flex", flexDirection: "column", gap: "12px" }}>
       {/* A. Basic Information */}
       <Paper sx={objSectionSx}>
         <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>Basic Information</Typography>
