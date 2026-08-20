@@ -209,7 +209,7 @@ export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }:
   if (blnLoading || blnRightsLoading) return <Box sx={{ py: 10, textAlign: "center" }}><CircularProgress /><Typography sx={{ mt: 1 }}>{t("editor_loading", "Loading Leave Plan...")}</Typography></Box>;
 
   return (
-    <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5, pb: 4 }} component="form" onSubmit={handleSubmit(submitForm, onInvalidForm)}>
+    <Stack spacing={1.5} sx={{ height: "100%", overflow: "auto", pr: 0.5, pb: 4 }} component="form" onSubmit={handleSubmit(submitForm, onInvalidForm)}>
       {/* Header (matches the Salary Component editor chrome) */}
       <Paper
         sx={{
@@ -221,7 +221,14 @@ export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }:
         }}
       >
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={1.5}>
-          <Typography sx={{ color: "#64748b" }}>{t("editor_subtitle", "Maintain plan rules, entitlements, and translations.")}</Typography>
+          {/* The page title lives here rather than in the app-shell header (see blnLeavePlanEditorRoute). */}
+          <Typography component="h1" sx={{ fontWeight: 800, fontSize: { xs: "1.1rem", md: "1.28rem" }, color: "#0f172a" }}>
+            {strMode === "new"
+              ? t("editor_title_new", "New Leave Plan")
+              : strMode === "view"
+                ? t("editor_title_view", "View Leave Plan")
+                : t("editor_title_edit", "Edit Leave Plan")}
+          </Typography>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ width: { xs: "100%", sm: "auto" } }}>
             <Button
               className={styles.secondaryButton}
@@ -250,7 +257,9 @@ export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }:
 
       {strError ? <Alert severity="error">{strError}</Alert> : null}
 
-      <fieldset disabled={blnReadOnly || blnSaving} style={{ border: 0, padding: 0, margin: "20px 0 0 0", minWidth: 0, display: "flex", flexDirection: "column", gap: "20px" }}>
+      {/* The 12px top margin is set here rather than left to the Stack: an inline margin outranks the
+          Stack's spacing class, so relying on it would leave this one seam flush. */}
+      <fieldset disabled={blnReadOnly || blnSaving} style={{ border: 0, padding: 0, margin: "12px 0 0 0", minWidth: 0, display: "flex", flexDirection: "column", gap: "12px" }}>
         {/* A. Basic Information */}
         <Paper sx={objSectionSx}>
           <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{t("section_basic_information", "Basic Information")}</Typography>

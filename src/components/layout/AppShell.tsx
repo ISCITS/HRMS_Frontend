@@ -911,6 +911,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const blnEmployeeSalaryEditorRoute = /^\/employee-salary\/\d+(?:\/revise)?$/.test(strLowerPathname);
   const blnSalaryComponentEditorRoute = /^\/salary-components\/(?:add|(?:edit|view)\/\d+)$/.test(strLowerPathname);
   const blnSalaryStructureEditorRoute = /^\/salary-structures\/(?:add|edit\/\d+)$/.test(strLowerPathname);
+  // The Leave Type / Leave Plan editors carry their own title in the Back/Save toolbar, like the
+  // salary editors.
+  const blnLeaveTypeEditorRoute = /^\/leave\/leave-types\/(?:new|\d+)$/.test(strLowerPathname);
+  const blnLeavePlanEditorRoute = /^\/leave\/plans\/(?:new|\d+)$/.test(strLowerPathname);
+  const blnLeaveAssignmentEditorRoute = /^\/leave\/plan-assignments\/\d+$/.test(strLowerPathname);
+  const blnLeaveApprovalsRoute = strLowerPathname === "/leave/approvals" || strLowerPathname === "/hr/leave/requests-approvals";
   const blnEmployeeReimbursementFormContext =
     Boolean(strLowerPathname.match(/^\/ess\/reimbursements(\/new|\/\d+(\/edit)?)?$/)) &&
     Boolean(objSearchParams.get("employee_id"));
@@ -1449,7 +1455,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
               <Box sx={{ flex: 1, minWidth: 0 }} />
 
-              {(blnDashboardRoute && blnEssDashboardActive) || blnEmployeeSalaryEditorRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute ? null : (
+              {(blnDashboardRoute && blnEssDashboardActive) || blnEmployeeSalaryEditorRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute ? null : (
                 <Box
                   sx={{
                     display: "flex",
