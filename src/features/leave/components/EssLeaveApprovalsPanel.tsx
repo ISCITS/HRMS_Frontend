@@ -228,18 +228,18 @@ export default function EssLeaveApprovalsPanel() {
   ];
 
   return <Stack spacing={2}>
-    <Stack direction="row" justifyContent="flex-end">
-      <Button data-controlid="ess.leave.approvals.refresh" variant="outlined" startIcon={<RefreshRoundedIcon />} onClick={() => void fnLoadAll()}>{t("refresh", "Refresh")}</Button>
-    </Stack>
-
+    {/* Refresh sits at the right end of the tab bar rather than in its own row above the cards. */}
     <Grid container spacing={1.25}>
       {lstCards.map((objCard) => <Grid item xs={6} md={3} key={objCard.strKey}><Paper sx={{ p: 1.75, borderRadius: "16px", border: "1px solid #e2e8f0", height: "100%" }}><Stack direction="row" spacing={1.25} alignItems="center"><Box sx={{ width: 44, height: 44, borderRadius: "12px", bgcolor: `${objCard.strColor}18`, color: objCard.strColor, display: "grid", placeItems: "center" }}>{objCard.objIcon}</Box><Box>{blnLoading ? <Skeleton width={40} height={30} /> : <Typography sx={{ fontWeight: 800, fontSize: "1.5rem", lineHeight: 1 }}>{objCard.intValue}</Typography>}<Typography sx={{ fontSize: ".72rem", color: "#64748b", fontWeight: 600 }}>{objCard.strLabel}</Typography></Box></Stack></Paper></Grid>)}
     </Grid>
 
     <Paper sx={{ borderRadius: "18px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
-      <Tabs value={intTab} onChange={(_objEvent, intValue) => setIntTab(intValue)} variant="scrollable" scrollButtons="auto" sx={{ borderBottom: "1px solid #e2e8f0", px: 1 }}>
-        {lstTabLabels.map((strLabel) => <Tab key={strLabel} label={strLabel} sx={{ fontWeight: 700, textTransform: "none" }} />)}
-      </Tabs>
+      <Stack direction="row" alignItems="center" sx={{ borderBottom: "1px solid #e2e8f0", pr: 1.5 }}>
+        <Tabs value={intTab} onChange={(_objEvent, intValue) => setIntTab(intValue)} variant="scrollable" scrollButtons="auto" sx={{ flex: 1, minWidth: 0, px: 1 }}>
+          {lstTabLabels.map((strLabel) => <Tab key={strLabel} label={strLabel} sx={{ fontWeight: 700, textTransform: "none" }} />)}
+        </Tabs>
+        <Button data-controlid="ess.leave.approvals.refresh" variant="outlined" size="small" startIcon={<RefreshRoundedIcon />} onClick={() => void fnLoadAll()} sx={{ flexShrink: 0, whiteSpace: "nowrap", ml: 1 }}>{t("refresh", "Refresh")}</Button>
+      </Stack>
 
       {strError ? <Box sx={{ p: 2 }}><Alert severity="error" action={<Button color="inherit" size="small" onClick={() => void fnLoadAll()}>{t("retry", "Retry")}</Button>}>{strError}</Alert></Box> : null}
 
