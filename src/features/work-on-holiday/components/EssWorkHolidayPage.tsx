@@ -5,7 +5,6 @@ import AttachFileRoundedIcon from "@mui/icons-material/AttachFileRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import EventAvailableRoundedIcon from "@mui/icons-material/EventAvailableRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
@@ -349,17 +348,6 @@ export default function EssWorkHolidayPage() {
   if (!blnCanView && !blnCanCreate) return <Alert data-control-id="work-on-holiday.ess.unauthorized.alert" severity="warning">{strRightsError || t("unauthorized", "Work on Holiday access is not available. Ask your administrator to assign the ESS Work on Holiday rights.")}</Alert>;
   return (
     <Stack spacing={2}>
-      <Box className="pageBanner" data-control-id="work-on-holiday.ess.header.banner">
-        <Box className="bannerDots" />
-        <Box className="bannerIcon">
-          <EventAvailableRoundedIcon sx={{ fontSize: 30 }} />
-        </Box>
-        <Box className="bannerDivider" />
-        <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
-          <Typography component="h1" className="bannerTitle">{t("ess_page_title", "Work on Holiday")}</Typography>
-          <Typography component="p" className="bannerSubTitle">{t("ess_page_subtitle", "Request approval and track attendance or Comp-Off credit.")}</Typography>
-        </Box>
-      </Box>
       {strNotice ? <Alert data-control-id="work-on-holiday.ess.success.alert" severity="success" onClose={() => setStrNotice("")}>{strNotice}</Alert> : null}
       {strError || strListError ? <Alert data-control-id="work-on-holiday.ess.error.alert" severity="error">{strError || strListError}</Alert> : null}
       <Paper><Tabs value={intTab} onChange={changeTab} variant="scrollable" aria-label={t("ess_tabs", "Work on Holiday sections")}><Tab data-control-id="work-on-holiday.ess.new.tab" label={t("tab_new_request", "New Request")} disabled={!blnCanCreate} /><Tab data-control-id="work-on-holiday.ess.my.tab" label={t("tab_my_requests", "My Requests")} /><Tab data-control-id="work-on-holiday.ess.earned.tab" label={t("tab_earned_comp_off", "Earned Comp-Off")} /></Tabs></Paper>
