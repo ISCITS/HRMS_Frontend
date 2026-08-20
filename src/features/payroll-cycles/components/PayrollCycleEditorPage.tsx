@@ -180,16 +180,16 @@ export default function PayrollCycleEditorPage({
   }
 
   return (
-    <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
+    <Stack spacing={1.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
       <Paper
         sx={{
-          borderRadius: "28px",
-          p: { xs: 2, md: 3 },
+          borderRadius: "var(--app-card-radius)",
+          p: "10px",
           border: "1px solid rgba(148,163,184,0.18)",
           background: "linear-gradient(135deg, #f8fbff 0%, #eef7f4 48%, #f8fafc 100%)"
         }}
       >
-        <Stack spacing={2}>
+        <Stack spacing={1.25}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
             <Box>
               <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
@@ -256,20 +256,20 @@ export default function PayrollCycleEditorPage({
             </Stack>
           </Stack>
 
-          <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
-            <Paper sx={{ p: 2, borderRadius: "22px", flex: 1, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(148,163,184,0.14)" }}>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1.25}>
+            <Paper sx={{ p: "10px", borderRadius: "var(--app-card-radius)", flex: 1, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(148,163,184,0.14)" }}>
               <Typography sx={{ color: "#64748b", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("summary_group")}</Typography>
               <Typography sx={{ mt: 0.75, fontWeight: 800, color: "#0f172a" }}>
                 {dicPayrollGroupByID.get(Number(dicForm.intPayrollGroupID))?.strLabel ?? t("not_selected")}
               </Typography>
             </Paper>
-            <Paper sx={{ p: 2, borderRadius: "22px", flex: 1, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(148,163,184,0.14)" }}>
+            <Paper sx={{ p: "10px", borderRadius: "var(--app-card-radius)", flex: 1, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(148,163,184,0.14)" }}>
               <Typography sx={{ color: "#64748b", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("summary_period")}</Typography>
               <Typography sx={{ mt: 0.75, fontWeight: 800, color: "#0f172a" }}>
                 {dicForm.strPeriodType || t("not_selected")}
               </Typography>
             </Paper>
-            <Paper sx={{ p: 2, borderRadius: "22px", flex: 1, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(148,163,184,0.14)" }}>
+            <Paper sx={{ p: "10px", borderRadius: "var(--app-card-radius)", flex: 1, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(148,163,184,0.14)" }}>
               <Typography sx={{ color: "#64748b", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("summary_cutoff")}</Typography>
               <Typography sx={{ mt: 0.75, fontWeight: 800, color: "#0f172a" }}>
                 {dicForm.intCutoffDay.trim() ? `Day ${dicForm.intCutoffDay.trim()}` : t("cutoff_open")}
@@ -285,13 +285,13 @@ export default function PayrollCycleEditorPage({
 
       <Paper
         sx={{
-          borderRadius: "24px",
-          p: { xs: 2, md: 3 },
+          borderRadius: "var(--app-card-radius)",
+          p: "10px",
           border: "1px solid rgba(187, 213, 232, 0.7)",
           boxShadow: "var(--app-shadow-soft)"
         }}
       >
-        <Stack spacing={2.5}>
+        <Stack spacing={1.5}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "flex-start" }} spacing={1.5}>
             <Box>
               <Typography sx={{ color: "#0f172a", fontWeight: 800, fontSize: "1.05rem" }}>{t("basic_information")}</Typography>
@@ -323,7 +323,7 @@ export default function PayrollCycleEditorPage({
             sx={{
               display: "grid",
               gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" },
-              gap: 2
+              gap: 1.25
             }}
           >
             <TextField

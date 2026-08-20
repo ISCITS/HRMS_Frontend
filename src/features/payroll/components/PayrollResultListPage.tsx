@@ -478,7 +478,7 @@ export default function PayrollResultListPage({
                         setStrError(t("payslip_not_generated", "Payslip could not be generated for this employee."));
                         return;
                       }
-                      objRouter.push(blnEssMode ? `/ess/my-payslips/document/${dicRow.intPayslipID}` : `/reports/payslips/document/${dicRow.intPayslipID}`);
+                      window.open(blnEssMode ? `/ess/my-payslips/document/${dicRow.intPayslipID}` : `/reports/payslips/document/${dicRow.intPayslipID}`, "_blank", "noopener,noreferrer");
                     }}
                   >
                     {t("view_payslip", "View")}

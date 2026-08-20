@@ -277,9 +277,9 @@ export default function TaxRuleMaintenancePage({ intTaxRegimeID, strRuleType }: 
   }
 
   return (
-    <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
-      <Paper sx={{ borderRadius: "28px", p: { xs: 2, md: 3 }, border: "1px solid rgba(148,163,184,0.18)", background: "linear-gradient(135deg, #fffdf5 0%, #f7fbff 60%, #f8fafc 100%)" }}>
-        <Stack spacing={2}>
+    <Stack spacing={1.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
+      <Paper sx={{ borderRadius: "var(--app-card-radius)", p: "10px", border: "1px solid rgba(148,163,184,0.18)", background: "linear-gradient(135deg, #fffdf5 0%, #f7fbff 60%, #f8fafc 100%)" }}>
+        <Stack spacing={1.25}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
             <Box>
               <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>{getTitle()}</Typography>

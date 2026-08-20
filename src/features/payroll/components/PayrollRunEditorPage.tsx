@@ -193,25 +193,25 @@ export default function PayrollRunEditorPage() {
 
   return (
     <Stack
-      spacing={2.5}
+      spacing={1.5}
       className={payrollStyles.page}
       sx={{
         minHeight: "100%",
         height: "auto",
         overflowX: "hidden",
         overflowY: "visible",
-        pb: 3,
+        pb: 2,
       }}
     >
       <Paper
         sx={{
-          borderRadius: "28px",
-          p: { xs: 2, md: 3 },
+          borderRadius: "var(--app-card-radius)",
+          p: "10px",
           border: "1px solid rgba(148,163,184,0.18)",
           background: "linear-gradient(135deg, #f8fbff 0%, #eef7f4 45%, #f8fafc 100%)",
         }}
       >
-        <Stack spacing={2}>
+        <Stack spacing={1.25}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
             <Box>
               <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
@@ -259,13 +259,13 @@ export default function PayrollRunEditorPage() {
 
       <Paper
         sx={{
-          borderRadius: "24px",
-          p: { xs: 2, md: 3 },
+          borderRadius: "var(--app-card-radius)",
+          p: "10px",
           border: "1px solid rgba(187, 213, 232, 0.7)",
           boxShadow: "var(--app-shadow-soft)",
         }}
       >
-        <Stack spacing={2.5}>
+        <Stack spacing={1.5}>
           <Box>
             <Typography sx={{ color: "#0f172a", fontWeight: 800, fontSize: "1.05rem" }}>
               {t("basic_information", "Basic Information")}
@@ -278,7 +278,7 @@ export default function PayrollRunEditorPage() {
           <Box
             sx={{
               display: "grid",
-              gap: 2,
+              gap: 1.25,
               gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
             }}
           >

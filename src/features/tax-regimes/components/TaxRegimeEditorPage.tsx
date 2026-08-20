@@ -223,8 +223,8 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegi
   }
 
   return (
-    <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
-      <Paper sx={{ borderRadius: "28px", px: { xs: 2, md: 3 }, py: { xs: 1.5, md: 2 }, border: "1px solid rgba(148,163,184,0.18)", background: "linear-gradient(135deg, #fff9ef 0%, #f4f7ff 55%, #f8fafc 100%)" }}>
+    <Stack spacing={1.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
+      <Paper sx={{ borderRadius: "var(--app-card-radius)", p: "10px", border: "1px solid rgba(148,163,184,0.18)", background: "linear-gradient(135deg, #fff9ef 0%, #f4f7ff 55%, #f8fafc 100%)" }}>
         <Stack spacing={1.25}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
             <Box>
@@ -263,10 +263,10 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegi
       {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
       {blnReadOnly ? <Alert severity="info">{t("read_only_mode", "You have view-only access for Tax Regimes.")}</Alert> : null}
 
-      <Paper sx={{ borderRadius: "24px", p: { xs: 2, md: 3 }, border: "1px solid rgba(187, 213, 232, 0.7)", boxShadow: "var(--app-shadow-soft)" }}>
-        <Stack spacing={2.5}>
+      <Paper sx={{ borderRadius: "var(--app-card-radius)", p: "10px", border: "1px solid rgba(187, 213, 232, 0.7)", boxShadow: "var(--app-shadow-soft)" }}>
+        <Stack spacing={1.5}>
           <Typography sx={{ color: "#0f172a", fontWeight: 800, fontSize: "1.05rem" }}>{t("basic_information", "Basic Information")}</Typography>
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" }, gap: 2 }}>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" }, gap: 1.25 }}>
             <TextField label={t("regime_code", "Regime Code")} value={dicForm.strRegimeCode} onChange={(objEvent) => updateField("strRegimeCode", objEvent.target.value.toUpperCase())} disabled={blnFieldDisabled || strMode === "edit"} fullWidth helperText={strMode === "edit" ? t("regime_code_read_only", "Regime code is immutable after creation.") : t("regime_code_help", "Use a stable, business-friendly regime code.")} />
             <TextField label={t("country", "Country")} select value={dicForm.strCountryCode} onChange={(objEvent) => updateField("strCountryCode", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth>
               {(objFormOptions?.lstCountries ?? []).map((dicOption) => (
@@ -301,7 +301,7 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegi
             <FormControlLabel control={<ActiveStatusSwitch blnIsActive={dicForm.blnIsActive} onChange={(blnChecked) => updateField("blnIsActive", blnChecked)} disabled={blnFieldDisabled} />} label={dicForm.blnIsActive ? t("active", "Active") : t("inactive", "Inactive")} />
           </Box>
 
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(4, minmax(0, 1fr))" }, gap: 2 }}>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(4, minmax(0, 1fr))" }, gap: 1.25 }}>
             <TextField label={t("standard_deduction_amount", "Default Standard Deduction Amount")} value={dicForm.decStandardDeductionAmount} onChange={(objEvent) => updateField("decStandardDeductionAmount", objEvent.target.value)} disabled={blnFieldDisabled} />
             <TextField label={t("cess_rate_percent", "Cess Rate % Summary")} value={dicForm.decCessRatePercent} onChange={(objEvent) => updateField("decCessRatePercent", objEvent.target.value)} disabled={blnFieldDisabled} />
             <TextField label={t("calculation_priority", "Calculation Priority")} value={dicForm.intCalculationPriority} onChange={(objEvent) => updateField("intCalculationPriority", objEvent.target.value)} disabled={blnFieldDisabled} />
@@ -313,11 +313,11 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegi
         </Stack>
       </Paper>
 
-      <Paper sx={{ borderRadius: "24px", p: { xs: 2, md: 3 }, border: "1px solid rgba(148,163,184,0.18)" }}>
-        <Stack spacing={2}>
+      <Paper sx={{ borderRadius: "var(--app-card-radius)", p: "10px", border: "1px solid rgba(148,163,184,0.18)" }}>
+        <Stack spacing={1.25}>
           <Typography sx={{ color: "#0f172a", fontWeight: 800, fontSize: "1.05rem" }}>{t("multilingual_text", "Regime Name Translations")}</Typography>
           {dicForm.lstTexts.map((dicText) => (
-            <Box key={dicText.strRowID} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "200px 1fr 1fr" }, gap: 2 }}>
+            <Box key={dicText.strRowID} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "200px 1fr 1fr" }, gap: 1.25 }}>
               <TextField label={t("language", "Language")} value={dicText.strLanguageName} disabled fullWidth />
               <TextField label={t("regime_name", "Regime Name")} value={dicText.strRegimeName} onChange={(objEvent) => updateTextRow(dicText.strRowID, "strRegimeName", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth />
               <TextField label={t("description", "Description")} value={dicText.strDescription} onChange={(objEvent) => updateTextRow(dicText.strRowID, "strDescription", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth />
@@ -327,10 +327,10 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID }: TaxRegi
       </Paper>
 
       {strMode !== "add" && intTaxRegimeID ? (
-        <Paper sx={{ borderRadius: "24px", p: { xs: 2, md: 3 }, border: "1px solid rgba(148,163,184,0.18)" }}>
-          <Stack spacing={2}>
+        <Paper sx={{ borderRadius: "var(--app-card-radius)", p: "10px", border: "1px solid rgba(148,163,184,0.18)" }}>
+          <Stack spacing={1.25}>
             <Typography sx={{ color: "#0f172a", fontWeight: 800, fontSize: "1.05rem" }}>{t("manage_tax_rules", "Manage Tax Rules")}</Typography>
-            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(4, minmax(0, 1fr))" }, gap: 2 }}>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(4, minmax(0, 1fr))" }, gap: 1.25 }}>
               <Button variant="outlined" onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${intTaxRegimeID}/standard-deduction`)}>{t("manage_standard_deduction", "Standard Deduction")}</Button>
               <Button variant="outlined" onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${intTaxRegimeID}/rebate`)}>{t("manage_rebate", "Rebate")}</Button>
               <Button variant="outlined" onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${intTaxRegimeID}/surcharge`)}>{t("manage_surcharge", "Surcharge")}</Button>

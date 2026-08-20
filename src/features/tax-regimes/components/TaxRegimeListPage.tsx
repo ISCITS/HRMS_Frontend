@@ -114,7 +114,7 @@ export default function TaxRegimeListPage() {
       lstFilteredRows.map((dicRow) => ({
         id: dicRow.intID,
         action: (
-          <Box className={styles.actionCell}>
+          <Box className={styles.actionCell} sx={{ flexWrap: "wrap", whiteSpace: "normal", rowGap: 0.5 }}>
             <CommonRowActions
               testIdPrefix="tax-regimes.list.row"
               rowKey={dicRow.intID}
@@ -160,7 +160,7 @@ export default function TaxRegimeListPage() {
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 280 },
+      { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 340 },
       { field: "strRegimeCode", headerName: t("regime_code", "Regime Code"), width: 130 },
       { field: "strRegimeName", headerName: t("regime_name", "Regime Name"), sortable: false, filterable: false, width: 130 },
       { field: "strCountryCode", headerName: t("country", "Country"), width: 130 },
@@ -193,7 +193,7 @@ export default function TaxRegimeListPage() {
   }
 
   return (
-    <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
+    <Stack spacing={1.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
       <Box className={styles.controlsCard}>
         <Box
           className={styles.searchRow}

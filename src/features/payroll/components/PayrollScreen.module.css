@@ -1,9 +1,9 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  height: calc(100vh - 124px);
-  margin-top: -4px;
+  gap: 12px;
+  height: 100%;
+  margin: 0;
   min-height: 0;
   overflow: hidden;
 }
@@ -37,7 +37,7 @@
 }
 
 .controlsCard {
-  padding: 8px 12px;
+  padding: 10px;
   flex: 0 0 auto;
 }
 
@@ -45,7 +45,7 @@
   align-items: center;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 10px;
   justify-content: space-between;
 }
 
@@ -84,7 +84,7 @@
   flex-wrap: wrap;
   gap: 10px;
   justify-content: space-between;
-  padding: 10px 12px 8px;
+  padding: 10px;
 }
 
 .listUtilityActions {
@@ -203,21 +203,18 @@
   display: grid;
   gap: 10px;
   grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) auto;
-  margin-top: 6px;
 }
 
 .bankFileSearchPanel {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-top: 6px;
 }
 
 .payslipSearchPanel {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-top: 6px;
   width: fit-content;
   max-width: 100%;
 }
@@ -258,7 +255,6 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-top: 6px;
 }
 
 .payrollRegisterSearchLinePrimary {
@@ -279,7 +275,6 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-top: 6px;
 }
 
 .statutorySearchLinePrimary {
@@ -300,7 +295,6 @@
   display: grid;
   gap: 10px;
   grid-template-columns: repeat(3, minmax(170px, 220px));
-  margin-top: 6px;
 }
 
 .searchActions {
@@ -319,7 +313,6 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 6px;
 }
 
 .reportSearchField {
@@ -403,7 +396,7 @@
   flex: 1 1 auto;
   flex-direction: column;
   overflow: hidden;
-  padding: 10px 10px 0;
+  padding: 10px;
   min-height: 0;
 }
 
@@ -419,7 +412,7 @@
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  padding: 16px;
+  padding: 10px;
   scrollbar-gutter: stable;
 }
 

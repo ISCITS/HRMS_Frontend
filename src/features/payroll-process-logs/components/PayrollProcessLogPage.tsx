@@ -208,7 +208,7 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
   }
 
   return (
-    <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
+    <Stack spacing={1.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
       {blnRunScoped ? (
         <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
           <Button

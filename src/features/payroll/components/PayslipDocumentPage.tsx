@@ -63,7 +63,7 @@ export default function PayslipDocumentPage({ intPayslipID, strBackRoute }: Pays
 
   return (
     <Box className={styles.page}>
-      <Box className={styles.topBar}>
+      <Box className={styles.topBar} style={{ justifyContent: "flex-end" }}>
         <Button
           className={styles.secondaryButton}
           startIcon={<ArrowBackRoundedIcon />}

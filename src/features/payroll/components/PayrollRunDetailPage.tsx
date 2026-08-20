@@ -580,9 +580,9 @@ function PayrollRunDetailPageLegacy({
   const objSectionCardSx = {
     background: "#ffffff",
     border: "1px solid rgba(148,163,184,0.18)",
-    borderRadius: "24px",
+    borderRadius: "var(--app-card-radius)",
     boxShadow: "none",
-    p: 2.5,
+    p: "10px",
   };
 
   const objSectionTitleSx = {
@@ -600,12 +600,12 @@ function PayrollRunDetailPageLegacy({
       sx={{
         display: "flex",
         flexDirection: "column",
-        gap: 2.5,
+        gap: 1.5,
         height: "100%",
         minHeight: 0,
         overflowX: "hidden",
         overflowY: "auto",
-        pb: 3,
+        pb: 2,
         pr: 0.5,
       }}
     >
@@ -708,9 +708,9 @@ function PayrollRunDetailPageLegacy({
         className={styles.controlsCard}
         sx={{
           border: "1px solid rgba(148,163,184,0.18)",
-          borderRadius: "28px",
+          borderRadius: "var(--app-card-radius)",
           boxShadow: "none",
-          p: { xs: 2, md: 3 },
+          p: "10px",
         }}
       >
         <Box className={styles.controlsHeader}>
@@ -755,7 +755,7 @@ function PayrollRunDetailPageLegacy({
           display: "flex",
           flexDirection: "column",
           flex: "0 0 auto",
-          gap: 2.5,
+          gap: 1.5,
           minHeight: 0,
           overflow: "visible",
         }}

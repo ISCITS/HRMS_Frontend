@@ -548,7 +548,7 @@ export default function EmployeePayrollInputEditorPage({
 
   return (
     <Stack
-      spacing={2.5}
+      spacing={1.5}
       sx={{
         display: "flex",
         flexDirection: "column",
@@ -563,15 +563,15 @@ export default function EmployeePayrollInputEditorPage({
     >
       <Paper
         sx={{
-          borderRadius: "16px",
-          p: { xs: 1.5, md: 2.1 },
+          borderRadius: "var(--app-card-radius)",
+          p: "10px",
           border: "1px solid rgba(214, 225, 244, 0.95)",
           boxShadow: "0 12px 28px rgba(156, 176, 208, 0.14)",
           background:
             "linear-gradient(90deg, rgba(228,241,252,0.96) 0%, rgba(222,232,250,0.96) 36%, rgba(228,224,248,0.96) 72%, rgba(238,220,245,0.96) 100%)",
         }}
       >
-        <Stack spacing={2}>
+        <Stack spacing={1.25}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
             <Box>
               {/* <Typography sx={{ fontSize: { xs: "1.65rem", md: "1.9rem" }, fontWeight: 900, color: "#10275b", letterSpacing: "-0.04em" }}>
@@ -641,8 +641,8 @@ export default function EmployeePayrollInputEditorPage({
       {dicSelectedRun?.blnIsLocked && blnSelectedRunProcessed ? <Alert severity="info">{t("processed_run_input_warning", "This payroll run is processed. Unlock the payroll input to edit LWP, LOP, or payroll adjustments, then reprocess payroll to refresh results.")}</Alert> : null}
 
       <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", lg: "repeat(2, minmax(0, 1fr))" }, alignItems: "start" }}>
-        <Paper sx={{ borderRadius: "16px", p: { xs: 1.25, md: 1.6 }, border: "1px solid rgba(198,210,236,0.82)", boxShadow: "0 10px 22px rgba(126,147,190,0.10)" }}>
-          <Stack spacing={1.1}>
+        <Paper sx={{ borderRadius: "var(--app-card-radius)", p: "10px", border: "1px solid rgba(198,210,236,0.82)", boxShadow: "0 10px 22px rgba(126,147,190,0.10)" }}>
+          <Stack spacing={1.25}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
               <Box sx={{ width: 34, height: 34, borderRadius: "10px", display: "grid", placeItems: "center", background: "linear-gradient(180deg, #f0ebff 0%, #e7e1ff 100%)", color: "#5c46ff" }}>
                 <PersonOutlineRoundedIcon />
@@ -696,8 +696,8 @@ export default function EmployeePayrollInputEditorPage({
           </Stack>
         </Paper>
 
-        <Paper sx={{ borderRadius: "16px", p: { xs: 1.25, md: 1.6 }, border: "1px solid rgba(198,210,236,0.82)", boxShadow: "0 10px 22px rgba(126,147,190,0.10)" }}>
-          <Stack spacing={1.1}>
+        <Paper sx={{ borderRadius: "var(--app-card-radius)", p: "10px", border: "1px solid rgba(198,210,236,0.82)", boxShadow: "0 10px 22px rgba(126,147,190,0.10)" }}>
+          <Stack spacing={1.25}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
               <Box sx={{ width: 34, height: 34, borderRadius: "10px", display: "grid", placeItems: "center", background: "linear-gradient(180deg, #e4f2ff 0%, #d8ecff 100%)", color: "#2463eb" }}>
                 <CalendarMonthOutlinedIcon />
@@ -721,9 +721,9 @@ export default function EmployeePayrollInputEditorPage({
         </Paper>
       </Box>
 
-      <Paper sx={{ borderRadius: "16px", p: 0, border: "1px solid rgba(198,210,236,0.82)", boxShadow: "0 10px 22px rgba(126,147,190,0.10)", overflow: "hidden" }}>
+      <Paper sx={{ borderRadius: "var(--app-card-radius)", p: 0, border: "1px solid rgba(198,210,236,0.82)", boxShadow: "0 10px 22px rgba(126,147,190,0.10)", overflow: "hidden" }}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1.25, mb: 0.75, flexWrap: "wrap" }}>
-          <Box sx={{ px: { xs: 1.5, md: 2 }, pt: { xs: 1.5, md: 2 }, pb: 0 }}>
+          <Box sx={{ px: "10px", pt: "10px", pb: 0 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 0.75 }}>
               <Box sx={{ width: 34, height: 34, borderRadius: "10px", display: "grid", placeItems: "center", background: "linear-gradient(180deg, #ddfbef 0%, #ccf8e6 100%)", color: "#08a85f" }}>
                 <PaymentsOutlinedIcon />
@@ -736,7 +736,7 @@ export default function EmployeePayrollInputEditorPage({
               {t("line_help", "Capture additions, deductions, arrears, and recoveries at salary component level.")}
             </Typography>
           </Box>
-          {blnCanSave ? <Button className={styles.secondaryButton} startIcon={<AddRoundedIcon />} onClick={addLine} disabled={blnFormLocked} sx={{ mr: { xs: 1.5, md: 2 }, mt: { xs: 0, md: 1.5 }, minHeight: 34, borderRadius: "12px !important", borderColor: "#6a56ff !important", color: "#4b31ff !important", px: 1.5, fontSize: "0.8rem !important" }}>
+          {blnCanSave ? <Button className={styles.secondaryButton} startIcon={<AddRoundedIcon />} onClick={addLine} disabled={blnFormLocked} sx={{ mr: "10px", mt: { xs: 0, md: 1.5 }, minHeight: 34, borderRadius: "12px !important", borderColor: "#6a56ff !important", color: "#4b31ff !important", px: 1.5, fontSize: "0.8rem !important" }}>
             {t("add_line", "Add Payroll Adjustments")}
           </Button> : null}
         </Box>
@@ -798,13 +798,13 @@ export default function EmployeePayrollInputEditorPage({
           </table>
         </Box>
 
-        <Box sx={{ mt: 0, display: "flex", justifyContent: "flex-end", gap: 1.25, alignItems: "center", flexWrap: "wrap", px: { xs: 1.5, md: 2 }, py: 1.4, background: "linear-gradient(180deg, rgba(246,248,255,0.82) 0%, rgba(241,245,255,0.98) 100%)", borderTop: "1px solid rgba(220,228,245,0.92)" }}>
+        <Box sx={{ mt: 0, display: "flex", justifyContent: "flex-end", gap: 1.25, alignItems: "center", flexWrap: "wrap", px: "10px", py: "10px", background: "linear-gradient(180deg, rgba(246,248,255,0.82) 0%, rgba(241,245,255,0.98) 100%)", borderTop: "1px solid rgba(220,228,245,0.92)" }}>
           <Typography sx={{ color: "#50658f", fontWeight: 700, fontSize: "0.9rem" }}>{t("total_lines", "Total Input Value:")}</Typography>
           <Typography sx={{ fontWeight: 900, color: "#3928ff", fontSize: "1.1rem" }}>{formatAmount(decTotalLines)}</Typography>
         </Box>
       </Paper>
 
-      <Paper sx={{ borderRadius: "16px", p: { xs: 1.25, md: 1.6 }, border: "1px solid rgba(198,210,236,0.82)", boxShadow: "0 10px 22px rgba(126,147,190,0.10)" }}>
+      <Paper sx={{ borderRadius: "var(--app-card-radius)", p: "10px", border: "1px solid rgba(198,210,236,0.82)", boxShadow: "0 10px 22px rgba(126,147,190,0.10)" }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1.5 }}>
           <Box sx={{ width: 34, height: 34, borderRadius: "10px", display: "grid", placeItems: "center", background: "linear-gradient(180deg, #efeaff 0%, #e7e1ff 100%)", color: "#5d41ff" }}>
             <TextsmsOutlinedIcon />
