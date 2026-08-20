@@ -1,7 +1,6 @@
 "use client";
 
 import AddCircleOutlineRoundedIcon from "@mui/icons-material/AddCircleOutlineRounded";
-import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
@@ -347,21 +346,6 @@ export default function SalaryEssDeclarationsPage() {
 
   return (
     <Box className={styles.page}>
-      <Box className="pageBanner">
-        <Box className="bannerDots" />
-        <Box className="bannerIcon">
-          <CalendarMonthRoundedIcon sx={{ fontSize: 30 }} />
-        </Box>
-        <Box className="bannerDivider" />
-        <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
-          <Typography component="h1" className="bannerTitle">
-            {t("dashboard_title", "IT Declaration")}
-          </Typography>
-          <Typography component="p" className="bannerSubTitle">
-            {t("financial_year_dashboard", "Financial Year Dashboard")}
-          </Typography>
-        </Box>
-      </Box>
       {strRightsError ? <Alert severity="warning">{strRightsError}</Alert> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
 

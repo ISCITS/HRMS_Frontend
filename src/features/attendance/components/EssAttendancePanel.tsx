@@ -437,8 +437,6 @@ export default function EssAttendancePanel() {
           flexWrap="wrap"
           useFlexGap
           sx={{
-            position: "relative",
-            zIndex: 1,
             ml: { md: "auto" },
             maxWidth: "100%",
             rowGap: 0.75,

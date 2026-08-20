@@ -1,6 +1,7 @@
 "use client";
 
 import AddCircleOutlineRoundedIcon from "@mui/icons-material/AddCircleOutlineRounded";
+import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import {
@@ -467,6 +468,22 @@ export default function HrItDeclarationListPage() {
                 {t("IT_DECLARATION_SEARCH", "Search")}
               </Button>
             ) : null}
+            <Button
+              className={styles.secondaryButton}
+              variant="outlined"
+              startIcon={<ClearRoundedIcon />}
+              onClick={() => {
+                setObjSearchEmployee(null);
+                setStrSearchFinancialYearCode("");
+                setStrSearchRegime("Old Regime");
+                setLstRows([]);
+                setBlnHasSearched(false);
+                setStrError("");
+              }}
+              controlId="hr-it-declaration.clear.button"
+            >
+              {t("IT_DECLARATION_CLEAR", "Clear")}
+            </Button>
           </Box>
         </Box>
       </Box>

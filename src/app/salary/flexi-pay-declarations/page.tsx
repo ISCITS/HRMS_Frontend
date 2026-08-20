@@ -1,7 +1,6 @@
 "use client";
 
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
-import AccountBalanceWalletOutlinedIcon from "@mui/icons-material/AccountBalanceWalletOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import {
   Alert,
@@ -195,18 +194,6 @@ export default function SalaryFlexiPayDeclarationsRoute() {
 
       <Box className="pageBanner">
         <Box className="bannerDots" />
-        <Box className="bannerIcon">
-          <AccountBalanceWalletOutlinedIcon sx={{ fontSize: 30 }} />
-        </Box>
-        <Box className="bannerDivider" />
-        <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
-          <Typography component="h1" className="bannerTitle">
-            {t("page_title", "Flexi Pay Declaration")}
-          </Typography>
-          <Typography component="p" className="bannerSubTitle">
-            {t("employee_declaration_list", "Employee declaration list")}
-          </Typography>
-        </Box>
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ position: "relative", zIndex: 1 }}>
           <Chip size="small" label={`${t("financial_year", "Financial Year")} ${objListRow.strFinancialYearCode}`} sx={objBannerChipSx} />
           <Chip size="small" label={`${t("history", "History")} ${objListRow.intHistoryCount}`} sx={objBannerChipSx} />

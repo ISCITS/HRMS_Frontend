@@ -1,6 +1,5 @@
 "use client";
 
-import BeachAccessRoundedIcon from "@mui/icons-material/BeachAccessRounded";
 import {
   Alert,
   Box,
@@ -52,20 +51,6 @@ export default function LeaveBalancePanel() {
 
   return (
     <Stack spacing={1.5}>
-      <Box className="pageBanner" data-control-id="ess.leave-balance.header.banner">
-        <Box className="bannerDots" />
-        <Box className="bannerIcon">
-          <BeachAccessRoundedIcon sx={{ fontSize: 30 }} />
-        </Box>
-        <Box className="bannerDivider" />
-        <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
-          <Typography component="h1" className="bannerTitle">My Leave Balance</Typography>
-          <Typography component="p" className="bannerSubTitle">
-            Available balance is credited minus availed and held (pending) leave.
-          </Typography>
-        </Box>
-      </Box>
-
       {blnLoading ? (
         <Box sx={{ display: "grid", placeItems: "center", py: 6 }}>
           <CircularProgress />

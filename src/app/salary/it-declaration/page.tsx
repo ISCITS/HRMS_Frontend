@@ -100,7 +100,6 @@ type SectionEditEntry = {
 
 const lstStepper = ["Select Tax Regime", "Enter Declarations", "Compare Tax", "Final Submit"];
 const strDefaultFinancialYearCode = "2025-2026";
-const intDeclarationTableMaxHeight = 420;
 const dicInvestmentOptionsFallbackBySection: Record<string, string[]> = {
   "80C": ["Employee Provident Fund (EPF)", "Public Provident Fund (PPF)", "ELSS", "Life Insurance Premium", "NSC", "5-Year Tax Saving FD", "Tuition Fees", "Principal Repayment (Home Loan)"],
   "80CCD(1B)": ["Employee NPS Contribution"],
@@ -478,6 +477,41 @@ export default function SalaryEssDeclarationsPage() {
   const intHrEmployeeID = Number(objSearchParams.get("employeeId") || 0);
   const intRouteDeclarationID = Number(objSearchParams.get("declarationId") || 0);
   const blnHrMode = intHrEmployeeID > 0 || intRouteDeclarationID > 0;
+  const strHeaderBg = blnHrMode ? "#ffffff" : "linear-gradient(100deg, #0f4b8b 0%, #0d6ca1 64%, #0d7f9c 100%)";
+  const strHeaderBorder = blnHrMode ? "1px solid #dbe3ef" : "1px solid rgba(37, 99, 235, 0.2)";
+  const strHeaderTextColor = blnHrMode ? "#0f172a" : "#f8fcff";
+  const strHeaderSubTextColor = blnHrMode ? "#64748b" : "rgba(239,252,255,0.92)";
+  const strHeaderMutedTextColor = blnHrMode ? "#64748b" : "rgba(239,252,255,0.85)";
+  const strHeaderBackButtonColor = blnHrMode ? "#16324f" : "#e2e8f0";
+  const strHeaderBackButtonHoverBg = blnHrMode ? "rgba(14,61,109,0.04)" : "rgba(255,255,255,0.08)";
+  const objHeaderCompareTaxSx = blnHrMode
+    ? {
+        minHeight: 30, borderRadius: "8px", backgroundColor: "#ffffff", color: "#16324f", fontWeight: 800, fontSize: "0.76rem", textTransform: "none" as const, border: "1px solid #b6c2d2", boxShadow: "none",
+        "&:hover": { backgroundColor: "rgba(14,61,109,0.04)", borderColor: "#8ea3bc", boxShadow: "none" },
+        "&.Mui-disabled": { backgroundColor: "rgba(148,163,184,0.15)", color: "rgba(22,50,79,0.35)", borderColor: "#d1d5db" },
+      }
+    : {
+        minHeight: 30, borderRadius: "8px", backgroundColor: "#ffffff", color: "#0f4b8b", fontWeight: 800, fontSize: "0.76rem", textTransform: "none" as const, boxShadow: "none",
+        "&:hover": { backgroundColor: "#e0f2fe", boxShadow: "none" },
+        "&.Mui-disabled": { backgroundColor: "rgba(255,255,255,0.35)", color: "rgba(255,255,255,0.78)" },
+      };
+  const objHeaderRadioGroupSx = blnHrMode
+    ? {
+        mr: { md: 0.5 },
+        "& .MuiFormControlLabel-label": { color: "#16324f", fontSize: "0.8rem" },
+        "& .MuiFormControlLabel-root.Mui-disabled .MuiFormControlLabel-label": { color: "rgba(22,50,79,0.55)" },
+        "& .MuiRadio-root": { color: "#5a7aa6" },
+        "& .MuiRadio-root.Mui-disabled": { color: "rgba(22,50,79,0.35)" },
+        "& .Mui-checked": { color: "#0f4b8b !important" },
+      }
+    : {
+        mr: { md: 0.5 },
+        "& .MuiFormControlLabel-label": { color: "rgba(239,252,255,0.95)", fontSize: "0.8rem" },
+        "& .MuiFormControlLabel-root.Mui-disabled .MuiFormControlLabel-label": { color: "rgba(239,252,255,0.82)" },
+        "& .MuiRadio-root": { color: "rgba(239,252,255,0.95)" },
+        "& .MuiRadio-root.Mui-disabled": { color: "rgba(239,252,255,0.75)" },
+        "& .Mui-checked": { color: "#ffffff !important" },
+      };
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(
     blnHrMode
       ? ["HR_IT_DECLARATION", "it_declaration_review", "IT_DECLARATION_REVIEW", "PAYROLL_IT_DECLARATION"]
@@ -1537,45 +1571,31 @@ export default function SalaryEssDeclarationsPage() {
   }
 
   return (
-    <Stack spacing={0.7} sx={{ pb: 1, pr: 0.2 }}>
+    <Stack spacing={0.7} sx={{ pb: 1, pr: 0.2, height: "calc(100vh - 124px)", overflow: "hidden" }}>
       <BlockingLoader blnOpen={blnSaving} strLabel={strSavingLabel} intZIndex={1800} />
 
-      <Paper sx={{ p: 0.9, borderRadius: "12px", border: "1px solid rgba(37, 99, 235, 0.2)", background: "linear-gradient(100deg, #0f4b8b 0%, #0d6ca1 64%, #0d7f9c 100%)", color: "#f8fcff" }}>
+      <Paper sx={{ p: 0.9, borderRadius: "12px", border: strHeaderBorder, background: strHeaderBg, color: strHeaderTextColor }}>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }} gap={1}>
-          <Stack spacing={0.5} alignItems="flex-start">
-            <Button
-              size="small"
-              startIcon={<ArrowBackRoundedIcon />}
-              sx={{ color: "#e2e8f0", minHeight: 22, px: 0.5, "&:hover": { backgroundColor: "rgba(255,255,255,0.08)" } }}
-              onClick={() => objRouter.push(strBackPath)}
-            >
-              {t("back", "Back")}
-            </Button>
-            <Stack direction="row" spacing={0.9} alignItems="center" sx={{ mt: 0.1 }}>
-              <AccountBalanceWalletOutlinedIcon sx={{ fontSize: 18 }} />
-              <Box>
-                <Stack direction="row" spacing={0.7} alignItems="center" flexWrap="wrap" sx={{ mb: 0.2 }}>
-                  <Typography sx={{ color: "#f8fcff", fontWeight: 800, fontSize: "0.98rem", lineHeight: 1.2 }}>{t("page_title", "Income Tax Declaration")}</Typography>
-                  <ITDeclarationStatusBadge strStatus={strDeclarationStatus || "draft"} strLabel={getStatusLabel(strDeclarationStatus || "draft")} />
-                </Stack>
-                <Typography sx={{ color: "rgba(239,252,255,0.92)", fontSize: "0.74rem", lineHeight: 1.2 }}>{t("financial_year", "Financial Year")} {strFinancialYearCode}</Typography>
-              </Box>
-            </Stack>
+          <Stack spacing={0.3} alignItems="flex-start">
+            <ITDeclarationStatusBadge strStatus={strDeclarationStatus || "draft"} strLabel={getStatusLabel(strDeclarationStatus || "draft")} />
+            <Typography sx={{ color: strHeaderSubTextColor, fontSize: "0.74rem", lineHeight: 1.2 }}>{t("financial_year", "Financial Year")} {strFinancialYearCode}</Typography>
           </Stack>
           <Stack spacing={0.5} alignItems={{ xs: "flex-start", md: "flex-end" }}>
             <Stack direction="row" spacing={0.8} flexWrap="wrap" justifyContent={{ xs: "flex-start", md: "flex-end" }} alignItems="center">
+              <Button
+                size="small"
+                startIcon={<ArrowBackRoundedIcon />}
+                sx={{ color: strHeaderBackButtonColor, minHeight: 30, px: 0.8, "&:hover": { backgroundColor: strHeaderBackButtonHoverBg } }}
+                onClick={() => objRouter.push(strBackPath)}
+                controlId="salary.it-declaration.back.button"
+              >
+                {t("back", "Back")}
+              </Button>
               <RadioGroup
                 row
                 value={strSelectedRegime || "Old Regime"}
                 onChange={(objEvent) => { setStrSelectedRegime(objEvent.target.value as Regime); setBlnRegimeDirty(true); }}
-                sx={{
-                  mr: { md: 0.5 },
-                  "& .MuiFormControlLabel-label": { color: "rgba(239,252,255,0.95)", fontSize: "0.8rem" },
-                  "& .MuiFormControlLabel-root.Mui-disabled .MuiFormControlLabel-label": { color: "rgba(239,252,255,0.82)" },
-                  "& .MuiRadio-root": { color: "rgba(239,252,255,0.95)" },
-                  "& .MuiRadio-root.Mui-disabled": { color: "rgba(239,252,255,0.75)" },
-                  "& .Mui-checked": { color: "#ffffff !important" },
-                }}
+                sx={objHeaderRadioGroupSx}
               >
                 <FormControlLabel disabled={blnRegimeSwitchDisabled} value="Old Regime" control={<Radio size="small" />} label={`${getRegimeLabel("Old Regime")}${objDerivedCalc.strRecommendedRegime === "Old Regime" ? ` (${t("recommended", "Recommended")})` : ""}`} />
                 <FormControlLabel disabled={blnRegimeSwitchDisabled} value="New Regime" control={<Radio size="small" />} label={getRegimeLabel("New Regime")} />
@@ -1583,7 +1603,7 @@ export default function SalaryEssDeclarationsPage() {
               {blnDraftLikeActionsAllowed && !blnHideActionButtons ? (
                 <>
                   {blnCanCompareDeclaration ? (
-                    <Button variant="contained" size="small" onClick={() => void runCompareAndOpenModal()} disabled={!intDeclarationID && !blnHasAnyFilled} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#ffffff", color: "#0f4b8b", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#e0f2fe", boxShadow: "none" }, "&.Mui-disabled": { backgroundColor: "rgba(255,255,255,0.35)", color: "rgba(255,255,255,0.78)" } }} data-controlid="salary.it-declaration.compare-tax.button">
+                    <Button variant="contained" size="small" onClick={() => void runCompareAndOpenModal()} disabled={!intDeclarationID && !blnHasAnyFilled} sx={objHeaderCompareTaxSx} data-controlid="salary.it-declaration.compare-tax.button">
                       {t("compare_tax", "Compare Tax")}
                     </Button>
                   ) : null}
@@ -1599,17 +1619,17 @@ export default function SalaryEssDeclarationsPage() {
                   ) : null}
                 </>
               ) : blnLocked && intDeclarationID && blnCanCompareDeclaration ? (
-                <Button variant="contained" size="small" onClick={() => void runCompareAndOpenModal()} sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#ffffff", color: "#0f4b8b", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#e0f2fe", boxShadow: "none" } }} data-controlid="salary.it-declaration.compare-tax.button">
+                <Button variant="contained" size="small" onClick={() => void runCompareAndOpenModal()} sx={objHeaderCompareTaxSx} data-controlid="salary.it-declaration.compare-tax.button">
                   {t("compare_tax", "Compare Tax")}
                 </Button>
               ) : null}
             </Stack>
             {!objRegimeConfig.blnAllowEmployeeOptOut ? (
               <>
-                <Typography sx={{ fontSize: "0.72rem", color: "rgba(239,252,255,0.85)" }}>
+                <Typography sx={{ fontSize: "0.72rem", color: strHeaderMutedTextColor }}>
                   {t("regime_locked_by_policy", "Regime is locked by policy. Default regime:")} {getRegimeLabel(objRegimeConfig.strDefaultRegime)}
                 </Typography>
-                <Typography sx={{ fontSize: "0.72rem", color: "rgba(239,252,255,0.85)" }}>
+                <Typography sx={{ fontSize: "0.72rem", color: strHeaderMutedTextColor }}>
                   {t("default_new_regime_warning", "If you do not submit your IT declaration before the deadline, the New Tax Regime will be applied by default.")}
                 </Typography>
               </>
@@ -1713,10 +1733,10 @@ export default function SalaryEssDeclarationsPage() {
           ))}
         </Stack>
       </Paper>
-      <Grid container spacing={0.6}>
-        <Grid item xs={12} lg={9}>
-          <Paper sx={{ p: 1.1, borderRadius: "10px", border: "1px solid #dbe3ef" }}>
-            <Stack direction="row" alignItems="center" justifyContent="space-between" mb={0.8} flexWrap="wrap" rowGap={0.6}>
+      <Grid container spacing={0.6} sx={{ flex: "1 1 auto", minHeight: 0, overflow: "hidden" }}>
+        <Grid item xs={12} lg={9} sx={{ height: "100%", minHeight: 0 }}>
+          <Paper sx={{ p: 1.1, borderRadius: "10px", border: "1px solid #dbe3ef", height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" mb={0.8} flexWrap="wrap" rowGap={0.6} sx={{ flex: "0 0 auto" }}>
               <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "0.95rem" }}>{t("your_declarations", "Your Declarations")}</Typography>
               <Stack direction="row" alignItems="center" spacing={1}>
                 <TextField
@@ -1738,7 +1758,7 @@ export default function SalaryEssDeclarationsPage() {
                 <Button variant="outlined" size="small" sx={{ minHeight: 28, py: 0.1, fontSize: "0.75rem" }} onClick={() => void loadDeclaration()} disabled={blnLocked || !blnCanViewDeclaration}>{t("refresh_amounts", "Refresh Amounts")}</Button>
               </Stack>
             </Stack>
-            <Box sx={{ height: intDeclarationTableMaxHeight, borderRadius: "8px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
+            <Box sx={{ flex: "1 1 auto", minHeight: 0, borderRadius: "8px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
               <CommonTable
                 columns={lstDeclarationColumns}
                 rows={lstDeclarationGridRows}
@@ -1753,9 +1773,9 @@ export default function SalaryEssDeclarationsPage() {
           </Paper>
         </Grid>
 
-        <Grid item xs={12} lg={3}>
-          <Paper sx={{ p: 1.1, borderRadius: "10px", border: "1px solid #dbe3ef", height: "100%" }}>
-            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.4 }}>
+        <Grid item xs={12} lg={3} sx={{ height: "100%", minHeight: 0 }}>
+          <Paper sx={{ p: 1.1, borderRadius: "10px", border: "1px solid #dbe3ef", height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.4, flex: "0 0 auto" }}>
               <Typography sx={{ fontWeight: 800, fontSize: "0.95rem" }}>{t("tax_summary_live", "Tax Summary (Live)")}</Typography>
               <Tooltip title={t("view_detailed_tax_calculation", "View detailed tax calculation")}>
                 <IconButton size="small" onClick={() => setBlnTaxCalcInfoOpen(true)} sx={{ color: "#475569" }}>
@@ -1763,7 +1783,7 @@ export default function SalaryEssDeclarationsPage() {
                 </IconButton>
               </Tooltip>
             </Stack>
-            <Stack spacing={0.45}>
+            <Stack spacing={0.45} sx={{ flex: "1 1 auto", minHeight: 0, overflow: "auto" }}>
               <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>{t("gross_salary", "Gross Salary")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objDerivedCalc.decGrossSalary)}</Typography></Stack>
               <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>{t("total_exemptions", "Total Exemptions")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objDerivedCalc.decExemptions)}</Typography></Stack>
               <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>{t("total_deductions", "Total Deductions")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objTaxSummary.decDeductions || 0)}</Typography></Stack>

@@ -228,18 +228,9 @@ export default function EssLeaveApprovalsPanel() {
   ];
 
   return <Stack spacing={2}>
-    <Box className="pageBanner" data-control-id="ess.leave.approvals.header.banner">
-      <Box className="bannerDots" />
-      <Box className="bannerIcon"><FactCheckRoundedIcon sx={{ fontSize: 30 }} /></Box>
-      <Box className="bannerDivider" />
-      <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
-        <Typography component="h1" className="bannerTitle">{t("page_title", "Leave Approvals")}</Typography>
-        <Typography component="p" className="bannerSubTitle">{t("page_subtitle", "Review and act on your team's leave requests.")}</Typography>
-      </Box>
-      <Stack direction="row" spacing={1} sx={{ position: "relative", zIndex: 1 }}>
-        <Button data-controlid="ess.leave.approvals.refresh" variant="contained" startIcon={<RefreshRoundedIcon />} onClick={() => void fnLoadAll()} sx={{ bgcolor: "white", color: "#0b3f70", fontWeight: 800, "&:hover": { bgcolor: "#e2e8f0" } }}>{t("refresh", "Refresh")}</Button>
-      </Stack>
-    </Box>
+    <Stack direction="row" justifyContent="flex-end">
+      <Button data-controlid="ess.leave.approvals.refresh" variant="outlined" startIcon={<RefreshRoundedIcon />} onClick={() => void fnLoadAll()}>{t("refresh", "Refresh")}</Button>
+    </Stack>
 
     <Grid container spacing={1.25}>
       {lstCards.map((objCard) => <Grid item xs={6} md={3} key={objCard.strKey}><Paper sx={{ p: 1.75, borderRadius: "16px", border: "1px solid #e2e8f0", height: "100%" }}><Stack direction="row" spacing={1.25} alignItems="center"><Box sx={{ width: 44, height: 44, borderRadius: "12px", bgcolor: `${objCard.strColor}18`, color: objCard.strColor, display: "grid", placeItems: "center" }}>{objCard.objIcon}</Box><Box>{blnLoading ? <Skeleton width={40} height={30} /> : <Typography sx={{ fontWeight: 800, fontSize: "1.5rem", lineHeight: 1 }}>{objCard.intValue}</Typography>}<Typography sx={{ fontSize: ".72rem", color: "#64748b", fontWeight: 600 }}>{objCard.strLabel}</Typography></Box></Stack></Paper></Grid>)}

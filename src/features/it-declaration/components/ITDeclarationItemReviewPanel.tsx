@@ -4,11 +4,10 @@ import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import ThumbDownAltOutlinedIcon from "@mui/icons-material/ThumbDownAltOutlined";
 import ThumbUpAltOutlinedIcon from "@mui/icons-material/ThumbUpAltOutlined";
-import { Alert, Box, Button, Grid, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Paper, Stack, TextField, Typography } from "@mui/material";
 import { IconButton, Tooltip } from "@mui/material";
 import { useState } from "react";
 
-import styles from "@/components/master/MasterScreen.module.css";
 import ITDeclarationStatusBadge from "@/features/it-declaration/components/ITDeclarationStatusBadge";
 import type { HrItDeclarationItemRecord, HrItDeclarationProofRecord } from "@/features/it-declaration/services/itDeclarationService";
 
@@ -105,9 +104,7 @@ export default function ITDeclarationItemReviewPanel({
   const strDeductionName = getInvestmentDisplayName(objItem);
   const intVerifiedProofCount = lstProofs.filter((objProof) => String(objProof.strVerificationStatus || "").toLowerCase() === "verified").length;
   const intRejectedProofCount = lstProofs.filter((objProof) => String(objProof.strVerificationStatus || "").toLowerCase() === "rejected").length;
-  const strProofTone = intVerifiedProofCount > 0 ? "#15803d" : lstProofs.length > 0 ? "#b45309" : "#b45309";
-  const strProofBackground = intVerifiedProofCount > 0 ? "#f0fdf4" : "#fff7ed";
-  const strProofBorder = intVerifiedProofCount > 0 ? "#bbf7d0" : "#fed7aa";
+  const strProofTone = intVerifiedProofCount > 0 ? "var(--app-success-color)" : "var(--app-warning-color)";
 
   async function runWithValidation(strAction: "approve" | "reject") {
     if (strAction === "approve" && blnApprovedAmountInvalid) {
@@ -126,117 +123,116 @@ export default function ITDeclarationItemReviewPanel({
   }
 
   return (
-    <Paper sx={{ px: 1, py: 1.15, pr: { xs: 1.2, md: 1.4 }, border: "3px solid #94a3b8", borderRadius: "8px", boxShadow: "0 5px 16px rgba(15,23,42,0.1)", backgroundColor: "#ffffff" }}>
-      <Grid container spacing={2} alignItems="stretch">
-        <Grid item xs={12}>
-          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", sm: "flex-start" }} spacing={1}>
-            <Stack spacing={0.6} sx={{ minWidth: 0 }}>
-              <Stack direction="row" spacing={0.8} alignItems="center" flexWrap="wrap" useFlexGap>
-                <Typography sx={{ fontWeight: 900, color: "#0f172a" }}>{strDeductionName}</Typography>
-                <ITDeclarationStatusBadge strStatus={objItem.strItemStatus} />
-              </Stack>
-              {objItem.strEmployeeRemarks ? <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>Employee: {objItem.strEmployeeRemarks}</Typography> : null}
-              {objItem.strReviewerRemarks ? <Typography sx={{ color: "#b45309", fontSize: "0.8rem" }}>Reviewer: {objItem.strReviewerRemarks}</Typography> : null}
-            </Stack>
-            <Box sx={{ flex: { xs: "1 1 auto", sm: "0 0 245px" }, px: 1, py: 0.7, borderRadius: "8px", border: `1px solid ${strProofBorder}`, backgroundColor: strProofBackground }}>
-              <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography sx={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 800 }}>Proof Status</Typography>
-                  <Typography sx={{ fontSize: "0.84rem", color: strProofTone, fontWeight: 900, overflowWrap: "anywhere" }}>
-                    {lstProofs.length === 0 ? "No proof uploaded" : `${lstProofs.length} uploaded | ${intVerifiedProofCount} verified${intRejectedProofCount ? ` | ${intRejectedProofCount} rejected` : ""}`}
-                  </Typography>
-                </Box>
-                <Stack direction="row" spacing={0.5}>
-                  <Tooltip title="View Document">
-                    <span>
-                      <IconButton
-                        size="small"
-                        onClick={() => objPrimaryProof && fnPreviewProof?.(objPrimaryProof.intProofID)}
-                        disabled={!objPrimaryProof || !fnPreviewProof}
-                        controlId="it-declaration.review.proof.view.icon-button"
-                        sx={{ border: "1px solid #cbd5e1", borderRadius: "8px", p: 0.45, backgroundColor: "#ffffff" }}
-                      >
-                        <VisibilityRoundedIcon sx={{ fontSize: 17 }} />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-                  <Tooltip title="Download Document">
-                    <span>
-                      <IconButton
-                        size="small"
-                        onClick={() => objPrimaryProof && fnDownloadProof?.(objPrimaryProof.intProofID)}
-                        disabled={!objPrimaryProof || !fnDownloadProof}
-                        controlId="it-declaration.review.proof.download.icon-button"
-                        sx={{ border: "1px solid #cbd5e1", borderRadius: "8px", p: 0.45, backgroundColor: "#ffffff" }}
-                      >
-                        <DownloadRoundedIcon sx={{ fontSize: 17 }} />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-                </Stack>
-              </Stack>
-            </Box>
+    <Paper sx={{ p: 1.1, border: "1px solid var(--app-border-color)", borderRadius: "var(--app-btn-radius)", boxShadow: "var(--app-shadow-soft)", backgroundColor: "var(--app-surface-color)" }}>
+      <Stack spacing={0.9}>
+        <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={0.6}>
+          <Stack direction="row" spacing={0.8} alignItems="center" flexWrap="wrap" useFlexGap>
+            <Typography sx={{ fontWeight: 900, color: "var(--app-header-color)" }}>{strDeductionName}</Typography>
+            <ITDeclarationStatusBadge strStatus={objItem.strItemStatus} />
           </Stack>
-        </Grid>
-        <Grid item xs={12}>
-          <Stack spacing={0.8}>
-            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-              <Box sx={{ flex: "1 1 150px", minWidth: { xs: "calc(50% - 4px)", sm: 150 }, px: 1, py: 0.8, borderRadius: "8px", border: "1px solid #e2e8f0", backgroundColor: "#f8fafc" }}>
-                <Typography sx={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 800 }}>Declared</Typography>
-                <Typography sx={{ fontSize: "1.05rem", fontWeight: 900, color: "#0f172a" }}>{objInrFormatter.format(Number(objItem.decDeclaredAmount || 0))}</Typography>
-              </Box>
-              <Box sx={{ flex: "1 1 150px", minWidth: { xs: "calc(50% - 4px)", sm: 150 }, px: 1, py: 0.8, borderRadius: "8px", border: "1px solid #dbeafe", backgroundColor: "#eff6ff" }}>
-                <Typography sx={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 800 }}>Current Approved</Typography>
-                <Typography sx={{ fontSize: "1.05rem", fontWeight: 900, color: "#0f172a" }}>{objInrFormatter.format(Number(objItem.decApprovedAmount || 0))}</Typography>
-              </Box>
-            </Stack>
+          <Stack direction="row" spacing={0.6} alignItems="center">
+            <Typography sx={{ fontSize: "0.76rem", color: strProofTone, fontWeight: 700, overflowWrap: "anywhere" }}>
+              {lstProofs.length === 0 ? "No proof uploaded" : `${lstProofs.length} uploaded · ${intVerifiedProofCount} verified${intRejectedProofCount ? ` · ${intRejectedProofCount} rejected` : ""}`}
+            </Typography>
+            <Tooltip title="View Document">
+              <span>
+                <IconButton
+                  size="small"
+                  onClick={() => objPrimaryProof && fnPreviewProof?.(objPrimaryProof.intProofID)}
+                  disabled={!objPrimaryProof || !fnPreviewProof}
+                  controlId="it-declaration.review.proof.view.icon-button"
+                  sx={{ color: "var(--app-muted-color)" }}
+                >
+                  <VisibilityRoundedIcon sx={{ fontSize: 17 }} />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title="Download Document">
+              <span>
+                <IconButton
+                  size="small"
+                  onClick={() => objPrimaryProof && fnDownloadProof?.(objPrimaryProof.intProofID)}
+                  disabled={!objPrimaryProof || !fnDownloadProof}
+                  controlId="it-declaration.review.proof.download.icon-button"
+                  sx={{ color: "var(--app-muted-color)" }}
+                >
+                  <DownloadRoundedIcon sx={{ fontSize: 17 }} />
+                </IconButton>
+              </span>
+            </Tooltip>
           </Stack>
-        </Grid>
-        <Grid item xs={12}>
-          <Stack spacing={0.8}>
-            <Typography sx={{ fontSize: "0.78rem", color: "#334155", fontWeight: 900 }}>Review Decision</Typography>
-            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "190px minmax(0, 1fr)" }, gap: 0.8, alignItems: "start" }}>
-              <TextField
-                size="small"
-                label="Approved amount"
-                controlId="it-declaration.review.approved-amount.input"
-                type="number"
-                value={strApprovedAmount}
-                onChange={(e) => setStrApprovedAmount(e.target.value)}
-                disabled={blnDisableApprovalActions}
-                error={blnApprovedAmountInvalid}
-                helperText={strApprovedAmountHelperText}
-                inputProps={{ min: 0, max: decApprovalAvailableForItem == null ? decDeclaredAmount : Math.min(decDeclaredAmount, decApprovalAvailableForItem), step: "0.01" }}
-                sx={{ width: "100%" }}
-              />
-              <TextField size="small" label="Review remarks" value={strRemarks} onChange={(e) => setStrRemarks(e.target.value)} multiline minRows={1} disabled={blnLocked || blnItemFinalized} controlId="it-declaration.review.remarks.input" />
-            </Box>
-            {strError ? <Alert severity="error" onClose={() => setStrError("")} sx={{ width: "100%" }}>{strError}</Alert> : null}
+        </Stack>
+        {objItem.strEmployeeRemarks ? <Typography sx={{ color: "var(--app-muted-color)", fontSize: "0.8rem" }}>Employee: {objItem.strEmployeeRemarks}</Typography> : null}
+        {objItem.strReviewerRemarks ? <Typography sx={{ color: "var(--app-warning-color)", fontSize: "0.8rem" }}>Reviewer: {objItem.strReviewerRemarks}</Typography> : null}
+
+        <Stack direction="row" spacing={2.2}>
+          <Stack>
+            <Typography sx={{ fontSize: "0.68rem", color: "var(--app-muted-color)", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.03em" }}>Declared</Typography>
+            <Typography sx={{ fontSize: "0.98rem", fontWeight: 800, color: "var(--app-header-color)" }}>{objInrFormatter.format(Number(objItem.decDeclaredAmount || 0))}</Typography>
           </Stack>
-        </Grid>
-        <Grid item xs={12}>
-          <Stack
-            direction="row"
-            spacing={0.65}
-            useFlexGap
-            flexWrap="wrap"
-            justifyContent="flex-end"
-            sx={{
-              "& .MuiButton-root": {
-                minHeight: 31,
-                px: 1.1,
-                borderRadius: "8px",
-                textTransform: "none",
-                fontSize: "0.74rem",
-                fontWeight: 800,
-              },
-            }}
+          <Stack>
+            <Typography sx={{ fontSize: "0.68rem", color: "var(--app-muted-color)", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.03em" }}>Approved</Typography>
+            <Typography sx={{ fontSize: "0.98rem", fontWeight: 800, color: "var(--app-header-color)" }}>{objInrFormatter.format(Number(objItem.decApprovedAmount || 0))}</Typography>
+          </Stack>
+        </Stack>
+
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "150px minmax(0, 1fr)" }, gap: 0.8, alignItems: "start" }}>
+          <TextField
+            size="small"
+            label="Approved amount"
+            controlId="it-declaration.review.approved-amount.input"
+            type="number"
+            value={strApprovedAmount}
+            onChange={(e) => setStrApprovedAmount(e.target.value)}
+            disabled={blnDisableApprovalActions}
+            error={blnApprovedAmountInvalid}
+            helperText={strApprovedAmountHelperText}
+            inputProps={{ min: 0, max: decApprovalAvailableForItem == null ? decDeclaredAmount : Math.min(decDeclaredAmount, decApprovalAvailableForItem), step: "0.01" }}
+            sx={{ width: "100%" }}
+          />
+          <TextField size="small" label="Remarks" placeholder="Optional" value={strRemarks} onChange={(e) => setStrRemarks(e.target.value)} disabled={blnLocked || blnItemFinalized} controlId="it-declaration.review.remarks.input" />
+        </Box>
+        {strError ? <Alert severity="error" onClose={() => setStrError("")} sx={{ width: "100%" }}>{strError}</Alert> : null}
+
+        <Stack
+          direction="row"
+          spacing={0.65}
+          sx={{
+            "& .MuiButton-root": {
+              minHeight: 31,
+              px: 1.1,
+              borderRadius: "var(--app-btn-radius)",
+              textTransform: "none",
+              fontSize: "0.74rem",
+              fontWeight: 800,
+              boxShadow: "none",
+            },
+          }}
+        >
+          <Button
+            size="small"
+            variant="contained"
+            startIcon={<ThumbUpAltOutlinedIcon />}
+            disabled={blnDisableApprovalActions || blnApprovedAmountInvalid}
+            onClick={() => void runWithValidation("approve")}
+            controlId="it-declaration.review.approve.button"
+            sx={{ backgroundColor: "var(--app-success-color)", "&:hover": { backgroundColor: "#25692f", boxShadow: "none" }, "&.Mui-disabled": { backgroundColor: "rgba(47,126,61,0.35)", color: "rgba(255,255,255,0.85)" } }}
           >
-            <Button size="small" variant="outlined" color="error" startIcon={<ThumbDownAltOutlinedIcon />} disabled={blnDisableRejectActions} onClick={() => void runWithValidation("reject")} controlId="it-declaration.review.reject.button">Reject Item</Button>
-            <Button className={styles.primaryButton} size="small" variant="contained" startIcon={<ThumbUpAltOutlinedIcon />} disabled={blnDisableApprovalActions || blnApprovedAmountInvalid} onClick={() => void runWithValidation("approve")} controlId="it-declaration.review.approve.button">Approve Item</Button>
-          </Stack>
-        </Grid>
-      </Grid>
+            Approve
+          </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<ThumbDownAltOutlinedIcon />}
+            disabled={blnDisableRejectActions}
+            onClick={() => void runWithValidation("reject")}
+            controlId="it-declaration.review.reject.button"
+            sx={{ borderColor: "var(--app-danger-color)", color: "var(--app-danger-color)", "&:hover": { borderColor: "#c4302f", backgroundColor: "rgba(231,58,58,0.06)" } }}
+          >
+            Reject
+          </Button>
+        </Stack>
+      </Stack>
     </Paper>
   );
 }

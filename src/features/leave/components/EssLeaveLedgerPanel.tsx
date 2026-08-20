@@ -38,15 +38,6 @@ type LeaveTypeGroup = { intLeaveTypeID: number; strLabel: string; lstRows: Leave
 const intCurrentYear = new Date().getFullYear();
 const lstYearOptions = Array.from({ length: 6 }, (_, intIndex) => intCurrentYear - intIndex);
 const intLedgerColumnCount = 7;
-// The header dropdowns share one white-on-gradient look.
-const objHeaderSelectSx = {
-  minWidth: 160,
-  "& .MuiInputBase-root": { backgroundColor: "rgba(255,255,255,0.16)", color: "white", borderRadius: "12px" },
-  "& .MuiInputBase-input, & .MuiSelect-select": { color: "white" },
-  "& .MuiInputLabel-root": { color: "rgba(241,245,249,0.9)" },
-  "& .MuiSvgIcon-root": { color: "white" },
-  "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.4)" },
-} as const;
 
 function prettify(strValue: string): string {
   return (
@@ -295,10 +286,7 @@ export default function EssLeaveLedgerPanel({ blnHrMode = false }: { blnHrMode?:
       );
   }, [lstGroups]);
 
-  // The filter row is identical in both modes; only the surrounding header differs (ESS uses the
-  // common page banner, HR keeps the standard white filter card used by the other HR list screens).
-  // ESS paints the fields white-on-gradient; HR leaves them with the default outlined look.
-  const objFilterSx = blnHrMode ? {} : objHeaderSelectSx;
+  // The filter row is identical in both modes; both now render inside the standard white filter card.
   const objHeaderFilters = (
     <>
       <Autocomplete
@@ -311,10 +299,8 @@ export default function EssLeaveLedgerPanel({ blnHrMode = false }: { blnHrMode?:
           if (objNext) setObjSelectedEmployee(objNext);
         }}
         sx={{
-          ...objFilterSx,
           minWidth: { xs: "100%", sm: 360 },
           "& .MuiAutocomplete-clearIndicator": { display: "none" },
-          ...(blnHrMode ? {} : { "& .MuiAutocomplete-popupIndicator": { color: "white" } }),
         }}
         renderInput={(objParams) => (
           <TextField
@@ -333,7 +319,7 @@ export default function EssLeaveLedgerPanel({ blnHrMode = false }: { blnHrMode?:
         value={strLeaveTypeFilter}
         onChange={(objEvent) => setStrLeaveTypeFilter(objEvent.target.value)}
         controlId="ess.leave-ledger.type.select"
-        sx={{ ...objFilterSx, minWidth: 160 }}
+        sx={{ minWidth: 160 }}
       >
         <MenuItem value="all">All Leave Types</MenuItem>
         {lstLeaveTypeOptions.map((objOption) => (
@@ -349,7 +335,7 @@ export default function EssLeaveLedgerPanel({ blnHrMode = false }: { blnHrMode?:
         value={String(intLeaveYear)}
         onChange={(objEvent) => setIntLeaveYear(Number(objEvent.target.value))}
         controlId="ess.leave-ledger.year.select"
-        sx={{ ...objFilterSx, minWidth: 130 }}
+        sx={{ minWidth: 130 }}
       >
         {lstYearOptions.map((intYear) => (
           <MenuItem key={intYear} value={String(intYear)}>
@@ -362,33 +348,19 @@ export default function EssLeaveLedgerPanel({ blnHrMode = false }: { blnHrMode?:
 
   return (
     <Stack spacing={1.5}>
-      {blnHrMode ? (
-        <Box className={styles.controlsCard} data-control-id="leave-ledger.filters.card">
-          <Box
-            sx={{
-              display: "grid",
-              gap: 1.25,
-              gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "minmax(260px, 1.4fr) minmax(160px, 0.8fr) minmax(130px, 0.6fr)" },
-              alignItems: "center",
-              mt: 1,
-            }}
-          >
-            {objHeaderFilters}
-          </Box>
+      <Box className={styles.controlsCard} data-control-id="leave-ledger.filters.card">
+        <Box
+          sx={{
+            display: "grid",
+            gap: 1.25,
+            gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "minmax(260px, 1.4fr) minmax(160px, 0.8fr) minmax(130px, 0.6fr)" },
+            alignItems: "center",
+            mt: 1,
+          }}
+        >
+          {objHeaderFilters}
         </Box>
-      ) : (
-        <Box className="pageBanner" data-control-id="ess.leave-ledger.header.banner" sx={{ flexWrap: { xs: "wrap", md: "nowrap" } }}>
-          <Box className="bannerDots" />
-          <Box className="bannerIcon"><ReceiptLongRoundedIcon sx={{ fontSize: 30 }} /></Box>
-          <Box className="bannerDivider" />
-          <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
-            <Typography component="h1" className="bannerTitle">My Leave Ledger</Typography>
-          </Box>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2} sx={{ width: { xs: "100%", sm: "auto" }, position: "relative", zIndex: 1 }}>
-            {objHeaderFilters}
-          </Stack>
-        </Box>
-      )}
+      </Box>
 
       {objSelectedEmployee && !objSelectedEmployee.blnIsSelf ? (
         <Alert severity="info" variant="outlined" sx={{ borderRadius: "12px", py: 0.25 }}>

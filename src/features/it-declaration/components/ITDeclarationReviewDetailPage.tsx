@@ -1,12 +1,7 @@
 "use client";
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
-import AccountBalanceWalletOutlinedIcon from "@mui/icons-material/AccountBalanceWalletOutlined";
-import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
-import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
-import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
-import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Paper, Snackbar, Stack, TextField, Typography } from "@mui/material";
-import type { ReactNode } from "react";
+import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, LinearProgress, Paper, Snackbar, Stack, TextField, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -138,33 +133,27 @@ function countItemsByStatus(lstItems: HrItDeclarationItemRecord[], lstStatuses: 
 }
 
 function SectionStat({ strLabel, strValue, strTone = "default" }: { strLabel: string; strValue: string; strTone?: "default" | "success" | "warning" | "danger" }) {
-  const dicTone = {
-    default: { backgroundColor: "#ffffff", borderColor: "#e2e8f0", color: "#0f172a" },
-    success: { backgroundColor: "#f0fdf4", borderColor: "#bbf7d0", color: "#166534" },
-    warning: { backgroundColor: "#fff7ed", borderColor: "#fed7aa", color: "#9a3412" },
-    danger: { backgroundColor: "#fef2f2", borderColor: "#fecaca", color: "#991b1b" },
+  const dicToneColor = {
+    default: "var(--app-header-color)",
+    success: "var(--app-success-color)",
+    warning: "var(--app-warning-color)",
+    danger: "var(--app-danger-color)",
   }[strTone];
   return (
-    <Box sx={{ minWidth: 94, px: 1, py: 0.65, borderRadius: "8px", border: `1px solid ${dicTone.borderColor}`, backgroundColor: dicTone.backgroundColor }}>
-      <Typography sx={{ color: "#64748b", fontSize: "0.68rem", fontWeight: 800 }}>{strLabel}</Typography>
-      <Typography sx={{ color: dicTone.color, fontSize: "0.9rem", fontWeight: 900 }}>{strValue}</Typography>
-    </Box>
+    <Stack sx={{ minWidth: 74 }}>
+      <Typography sx={{ color: "var(--app-muted-color)", fontSize: "0.66rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.03em" }}>{strLabel}</Typography>
+      <Typography sx={{ color: dicToneColor, fontSize: "0.86rem", fontWeight: 800 }}>{strValue}</Typography>
+    </Stack>
   );
 }
 
-function SummaryMetric({ strLabel, strValue, objIcon }: { strLabel: string; strValue: string; objIcon: ReactNode }) {
+function SummaryMetric({ strLabel, strValue, strCaption }: { strLabel: string; strValue: string; strCaption?: string }) {
   return (
-    <Paper sx={{ p: 1.2, borderRadius: "8px", border: "1px solid #dbe3ef", boxShadow: "0 3px 10px rgba(15,23,42,0.04)", backgroundColor: "#ffffff" }}>
-      <Stack direction="row" spacing={1} alignItems="center">
-        <Stack sx={{ width: 34, height: 34, borderRadius: "8px", backgroundColor: "#eff6ff", color: "#1d4ed8" }} alignItems="center" justifyContent="center">
-          {objIcon}
-        </Stack>
-        <Stack>
-          <Typography sx={{ fontSize: "0.74rem", color: "#64748b", fontWeight: 700 }}>{strLabel}</Typography>
-          <Typography sx={{ fontSize: "0.98rem", color: "#0f172a", fontWeight: 800 }}>{strValue}</Typography>
-        </Stack>
-      </Stack>
-    </Paper>
+    <Box sx={{ px: 1.1, py: 0.7, flex: "1 1 200px", minWidth: 0 }}>
+      <Typography sx={{ fontSize: "0.64rem", color: "var(--app-muted-color)", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.03em" }}>{strLabel}</Typography>
+      <Typography sx={{ fontSize: "1.05rem", color: "var(--app-header-color)", fontWeight: 800, lineHeight: 1.2, mt: 0.1 }}>{strValue}</Typography>
+      {strCaption ? <Typography sx={{ fontSize: "0.68rem", color: "var(--app-muted-color)", mt: 0.05 }}>{strCaption}</Typography> : null}
+    </Box>
   );
 }
 
@@ -221,17 +210,18 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
   const [blnDismissNotFound, setBlnDismissNotFound] = useState(false);
   const [blnDismissNoItems, setBlnDismissNoItems] = useState(false);
   const objHeaderControlSx = {
-    height: 34,
     minHeight: 34,
     px: 1.5,
     py: 0.5,
-    borderRadius: "8px",
+    borderRadius: "var(--app-btn-radius)",
     textTransform: "none",
     fontWeight: 700,
     fontSize: "0.76rem",
-    lineHeight: 1.2,
     whiteSpace: "nowrap",
-    alignSelf: "stretch",
+    color: "var(--app-header-color)",
+    "&:hover": {
+      backgroundColor: "var(--app-primary-soft)",
+    },
     "& .MuiButton-startIcon": {
       marginRight: "6px",
     },
@@ -448,123 +438,183 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
     }
     return Array.from(dicGroups.values());
   }, [lstItems, lstProofs, dicCategoryRuleBySection]);
+  const intDecidedItemsCount = useMemo(() => countItemsByStatus(lstItems, ["approved", "rejected"]), [lstItems]);
+  const intReviewProgressPercent = lstItems.length > 0 ? Math.round((intDecidedItemsCount / lstItems.length) * 100) : 0;
+  const decDeclaredTotal = Number(objDetail?.decDeclaredTotalAmount || 0);
+  const decApprovedTotal = Number(objDetail?.decApprovedTotalAmount || 0);
+  const intApprovedPercent = decDeclaredTotal > 0 ? Math.round((decApprovedTotal / decDeclaredTotal) * 100) : 0;
 
   if (blnLoading || blnRightsLoading) return <BlockingLoader blnOpen strLabel="Loading IT declaration detail..." />;
   if (!objDetail) return blnDismissNotFound ? null : <Alert severity="error" onClose={() => setBlnDismissNotFound(true)}>{strError || "Declaration not found."}</Alert>;
 
   return (
-    <Stack spacing={1.4}>
-      <Paper sx={{ p: 1.35, borderRadius: "8px", border: "1px solid #bbf7d0", backgroundColor: "#f0fdf4", boxShadow: "0 3px 10px rgba(15,23,42,0.04)" }}>
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
-          <Stack spacing={0.35}>
-            <Typography sx={{ fontWeight: 900, color: "#0f172a", fontSize: "1.08rem" }}>{objDetail.strEmployeeName} ({objDetail.strEmployeeCode})</Typography>
-            <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>
-              FY: {objDetail.strFinancialYearCode} | Regime: {objDetail.strTaxRegime} | Declaration Ref: {objDetail.strDeclarationCode || "-"}
-            </Typography>
+    <Stack sx={{ height: "calc(100vh - 124px)", overflow: "hidden" }}>
+      <Paper sx={{ p: 0.9, borderRadius: "var(--app-card-radius)", border: "1px solid var(--app-border-color)", backgroundColor: "var(--app-surface-color)", boxShadow: "var(--app-shadow-soft)", flex: "0 0 auto", position: "sticky", top: 0, zIndex: 2 }}>
+        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }} spacing={1}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Button variant="text" startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/it-declaration-review")} controlId="it-declaration.review-detail.back.button" sx={objHeaderControlSx}>Back</Button>
+            <Stack spacing={0.2}>
+              <Typography sx={{ fontWeight: 900, color: "var(--app-header-color)", fontSize: "0.98rem" }}>{objDetail.strEmployeeName} ({objDetail.strEmployeeCode})</Typography>
+              <Typography sx={{ color: "var(--app-muted-color)", fontSize: "0.76rem" }}>
+                FY: {objDetail.strFinancialYearCode} | Regime: {objDetail.strTaxRegime} | Declaration Ref: {objDetail.strDeclarationCode || "-"}
+              </Typography>
+            </Stack>
           </Stack>
           <Stack direction="row" spacing={1} alignItems="center" justifyContent={{ xs: "flex-start", md: "flex-end" }} flexWrap="wrap" useFlexGap>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <ITDeclarationStatusBadge strStatus={objDetail.strStatus} />
-            </Stack>
-            <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap" justifyContent={{ xs: "flex-start", md: "flex-end" }} alignItems="stretch">
-              <ITDeclarationActionBar
-                blnLocked={blnLocked}
-                blnCanRelease={blnCanReleaseHeader}
-                blnCanLock={blnCanLockHeader}
-                blnCanApprove={blnCanApproveHeader}
-                blnCanReject={blnCanRejectHeader}
-                fnApproveAll={() => setStrConfirm("approve_all")}
-                fnRejectHeader={() => setStrConfirm("reject")}
-                fnRelease={() => setStrConfirm("release")}
-                fnLock={() => setStrConfirm("lock")}
-              />
-            </Stack>
-            <Button size="small" variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/it-declaration-review")} controlId="it-declaration.review-detail.back.button" sx={objHeaderControlSx}>Back</Button>
+            <ITDeclarationStatusBadge strStatus={objDetail.strStatus} />
+            <ITDeclarationActionBar
+              blnLocked={blnLocked}
+              blnCanRelease={blnCanReleaseHeader}
+              blnCanLock={blnCanLockHeader}
+              blnCanApprove={blnCanApproveHeader}
+              blnCanReject={blnCanRejectHeader}
+              fnApproveAll={() => setStrConfirm("approve_all")}
+              fnRejectHeader={() => setStrConfirm("reject")}
+              fnRelease={() => setStrConfirm("release")}
+              fnLock={() => setStrConfirm("lock")}
+            />
           </Stack>
         </Stack>
       </Paper>
+
+      <Stack spacing={1} sx={{ flex: "1 1 auto", minHeight: 0, overflow: "auto", pt: 1 }}>
       {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
 
-      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))" }, gap: 1.1 }}>
-        <SummaryMetric strLabel="Total Declared Amount" strValue={objInrFormatter.format(Number(objDetail.decDeclaredTotalAmount || 0))} objIcon={<ReceiptLongOutlinedIcon fontSize="small" />} />
-        <SummaryMetric strLabel="Total Approved Amount" strValue={objInrFormatter.format(Number(objDetail.decApprovedTotalAmount || 0))} objIcon={<PaymentsOutlinedIcon fontSize="small" />} />
-        <SummaryMetric strLabel="Proof Pending" strValue={`${objDetail.intProofPendingCount || 0}`} objIcon={<FactCheckOutlinedIcon fontSize="small" />} />
-        <SummaryMetric strLabel="Total Declaration Items" strValue={`${lstItems.length}`} objIcon={<AccountBalanceWalletOutlinedIcon fontSize="small" />} />
+      <Box sx={{ display: "flex", flexWrap: "wrap", border: "1px solid var(--app-border-color)", borderRadius: "var(--app-card-radius)", backgroundColor: "var(--app-surface-color)", boxShadow: "var(--app-shadow-soft)", overflow: "hidden" }}>
+        <Box sx={{ flex: "1 1 200px", minWidth: 0, borderRight: { xs: "none", sm: "1px solid var(--app-border-color)" }, borderBottom: { xs: "1px solid var(--app-border-color)", sm: "none" } }}>
+          <SummaryMetric strLabel="Total Declared" strValue={objInrFormatter.format(decDeclaredTotal)} strCaption={`across ${lstItems.length} item${lstItems.length === 1 ? "" : "s"}`} />
+        </Box>
+        <Box sx={{ flex: "1 1 200px", minWidth: 0, borderRight: { xs: "none", sm: "1px solid var(--app-border-color)" }, borderBottom: { xs: "1px solid var(--app-border-color)", sm: "none" } }}>
+          <SummaryMetric strLabel="Total Approved" strValue={objInrFormatter.format(decApprovedTotal)} strCaption={`${intApprovedPercent}% of declared`} />
+        </Box>
+        <Box sx={{ flex: "1 1 200px", minWidth: 0, borderRight: { xs: "none", sm: "1px solid var(--app-border-color)" }, borderBottom: { xs: "1px solid var(--app-border-color)", sm: "none" } }}>
+          <SummaryMetric strLabel="Proof Pending" strValue={`${objDetail.intProofPendingCount || 0}`} strCaption="awaiting verification" />
+        </Box>
+        <Box sx={{ flex: "1 1 200px", minWidth: 0 }}>
+          <SummaryMetric strLabel="Declaration Items" strValue={`${lstItems.length}`} strCaption={`across ${lstSectionGroups.length} section${lstSectionGroups.length === 1 ? "" : "s"}`} />
+        </Box>
       </Box>
+
+      {lstItems.length > 0 ? (
+        <Box sx={{ px: 1.1, py: 0.7, border: "1px solid var(--app-border-color)", borderRadius: "var(--app-card-radius)", backgroundColor: "var(--app-surface-color)" }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.4 }}>
+            <Typography sx={{ fontSize: "0.78rem", fontWeight: 800, color: "var(--app-header-color)" }}>Review progress</Typography>
+            <Typography sx={{ fontSize: "0.74rem", color: "var(--app-muted-color)", fontWeight: 700 }}>{intDecidedItemsCount} of {lstItems.length} items decided</Typography>
+          </Stack>
+          <LinearProgress
+            variant="determinate"
+            value={intReviewProgressPercent}
+            sx={{ height: 5, borderRadius: 999, backgroundColor: "var(--app-border-color)", "& .MuiLinearProgress-bar": { backgroundColor: "var(--app-accent-orange)", borderRadius: 999 } }}
+          />
+        </Box>
+      ) : null}
 
       <Stack spacing={1.1}>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }} spacing={1}>
           <Box>
-            <Typography sx={{ fontWeight: 900, color: "#0f172a" }}>Deduction Review ({lstItems.length} items)</Typography>
-            <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{lstSectionGroups.length} deduction sections with declared rows and proof actions.</Typography>
+            <Typography sx={{ fontWeight: 900, color: "var(--app-header-color)" }}>Deduction Review ({lstItems.length} items)</Typography>
+            <Typography sx={{ color: "var(--app-muted-color)", fontSize: "0.82rem" }}>{lstSectionGroups.length} deduction sections with declared rows and proof actions.</Typography>
           </Box>
         </Stack>
 
-        {lstSectionGroups.map((objGroup) => {
-          const intApprovedCount = countItemsByStatus(objGroup.lstItems, ["approved"]);
-          const intRejectedCount = countItemsByStatus(objGroup.lstItems, ["rejected"]);
-          const intProofPendingCount = countItemsByStatus(objGroup.lstItems, ["proof_pending"]);
-          const intPendingCount = objGroup.lstItems.length - intApprovedCount - intRejectedCount - intProofPendingCount;
-          return (
-          <Paper key={`${objGroup.strSection}-${objGroup.strDescription}`} sx={{ border: "1px solid #fed7aa", borderRadius: "8px", overflow: "hidden", boxShadow: "0 3px 10px rgba(15,23,42,0.04)", backgroundColor: "#ffffff" }}>
-            <Stack direction={{ xs: "column", lg: "row" }} justifyContent="space-between" spacing={1.2} sx={{ px: 1.2, py: 1, backgroundColor: "#fff7ed", borderBottom: "1px solid #fdba74" }}>
-              <Box sx={{ minWidth: 220 }}>
-                <Typography sx={{ fontWeight: 900, color: "#0f172a" }}>{objGroup.strDescription ? `${objGroup.strSection} - ${objGroup.strDescription}` : objGroup.strSection}</Typography>
-                <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{objGroup.lstItems.length} declared row{objGroup.lstItems.length === 1 ? "" : "s"} | {objGroup.lstProofs.length} uploaded proof{objGroup.lstProofs.length === 1 ? "" : "s"}</Typography>
-              </Box>
-              <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap" justifyContent={{ xs: "flex-start", lg: "flex-end" }}>
-                <SectionStat strLabel="Declared" strValue={objInrFormatter.format(objGroup.decDeclaredAmount)} />
-                {objGroup.decMaxLimitAmount != null ? <SectionStat strLabel="Max Limit" strValue={objInrFormatter.format(objGroup.decMaxLimitAmount)} /> : null}
-                <SectionStat strLabel="Approved" strValue={objInrFormatter.format(objGroup.decApprovedAmount)} strTone={objGroup.decApprovedAmount > 0 ? "success" : "default"} />
-                <SectionStat strLabel="Pending" strValue={`${Math.max(0, intPendingCount)}`} strTone={intPendingCount > 0 ? "warning" : "default"} />
-                <SectionStat strLabel="Proof Pending" strValue={`${intProofPendingCount}`} strTone={intProofPendingCount > 0 ? "warning" : "default"} />
-                <SectionStat strLabel="Rejected" strValue={`${intRejectedCount}`} strTone={intRejectedCount > 0 ? "danger" : "default"} />
-              </Stack>
-            </Stack>
-            <Box
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" }, gap: 1.1, alignItems: "start" }}>
+          {lstSectionGroups.map((objGroup) => {
+            const intApprovedCount = countItemsByStatus(objGroup.lstItems, ["approved"]);
+            const intRejectedCount = countItemsByStatus(objGroup.lstItems, ["rejected"]);
+            const intProofPendingCount = countItemsByStatus(objGroup.lstItems, ["proof_pending"]);
+            const intPendingCount = objGroup.lstItems.length - intApprovedCount - intRejectedCount - intProofPendingCount;
+            const blnMultiItemSection = objGroup.lstItems.length > 1;
+            const intSectionLimitPercent = objGroup.decMaxLimitAmount ? Math.min(100, Math.round((objGroup.decDeclaredAmount / objGroup.decMaxLimitAmount) * 100)) : null;
+            return (
+            <Paper
+              key={`${objGroup.strSection}-${objGroup.strDescription}`}
               sx={{
-                display: "grid",
-                gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" },
-                gap: 1.3,
-                p: 1,
-                alignItems: "stretch",
+                gridColumn: { xs: "auto", md: blnMultiItemSection ? "1 / -1" : "auto" },
+                border: "1px solid var(--app-border-color)",
+                borderRadius: "var(--app-card-radius)",
+                overflow: "hidden",
+                boxShadow: "var(--app-shadow-soft)",
+                backgroundColor: "var(--app-surface-color)",
               }}
             >
-              {objGroup.lstItems.map((objItem, intIndex) => {
-                const intCurrentItemID = objItem.intItemID ?? 0;
-                const lstItemProofs = lstProofs.filter((objProof) => objProof.intItemID === intCurrentItemID);
-                const objItemWithSectionRule = {
-                  ...objItem,
-                  decMaxLimitAmount: objGroup.decMaxLimitAmount ?? objItem.decMaxLimitAmount ?? objItem.decMaxEligibleAmount,
-                  strMaxLimitAppliedAt: objGroup.strMaxLimitAppliedAt ?? objItem.strMaxLimitAppliedAt,
-                  blnProofRequired: dicCategoryRuleBySection.get(normalizeDeclarationSection(objItem.strSection))?.blnProofRequired ?? objItem.blnProofRequired,
-                };
-                return (
-                  <ITDeclarationItemReviewPanel
-                    key={objItem.intItemID ?? `it-item-${intIndex}-${objItem.strSection}-${objItem.strInvestmentName}`}
-                    objItem={objItemWithSectionRule}
-                    blnLocked={blnLocked || !blnItemActionsAllowedStatus}
-                    blnCanApprove={blnCanApprove}
-                    blnCanReject={blnCanReject}
-                    lstProofs={lstItemProofs}
-                    decSectionMaxLimit={objGroup.decMaxLimitAmount}
-                    decOtherApprovedAmount={Math.max(0, objGroup.decApprovedAmount - Number(objItem.decApprovedAmount || 0))}
-                    fnPreviewProof={(intProofID) => void previewProof(intProofID)}
-                    fnDownloadProof={(intProofID) => void downloadProof(intProofID)}
-                    fnAction={(strAction, objPayload) => handleItemAction(objItem.intItemID ?? 0, strAction, objPayload)}
-                  />
-                );
-              })}
-            </Box>
-          </Paper>
-          );
-        })}
+              <Box sx={{ px: 1.2, py: 1, backgroundColor: "var(--app-surface-muted)", borderBottom: "1px solid var(--app-border-color)" }}>
+                <Stack direction={{ xs: "column", lg: "row" }} justifyContent="space-between" spacing={1.2}>
+                  <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 220 }}>
+                    <Box sx={{ px: 0.8, py: 0.2, borderRadius: "999px", backgroundColor: "var(--app-primary-soft)", color: "var(--app-primary-color)", fontSize: "0.68rem", fontWeight: 800, whiteSpace: "nowrap" }}>{objGroup.strSection}</Box>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography sx={{ fontWeight: 900, color: "var(--app-header-color)" }}>{objGroup.strDescription ? `${objGroup.strSection} - ${objGroup.strDescription}` : `Section ${objGroup.strSection}`}</Typography>
+                      <Typography sx={{ color: "var(--app-muted-color)", fontSize: "0.8rem" }}>{objGroup.lstItems.length} declared row{objGroup.lstItems.length === 1 ? "" : "s"} · {objGroup.lstProofs.length} uploaded proof{objGroup.lstProofs.length === 1 ? "" : "s"}</Typography>
+                    </Box>
+                  </Stack>
+                  <Stack direction="row" spacing={1.4} useFlexGap flexWrap="wrap" justifyContent={{ xs: "flex-start", lg: "flex-end" }}>
+                    <SectionStat strLabel="Declared" strValue={objInrFormatter.format(objGroup.decDeclaredAmount)} />
+                    {objGroup.decMaxLimitAmount != null ? <SectionStat strLabel="Max Limit" strValue={objInrFormatter.format(objGroup.decMaxLimitAmount)} /> : null}
+                    <SectionStat strLabel="Approved" strValue={objInrFormatter.format(objGroup.decApprovedAmount)} strTone={objGroup.decApprovedAmount > 0 ? "success" : "default"} />
+                    <SectionStat strLabel="Pending" strValue={`${Math.max(0, intPendingCount)}`} strTone={intPendingCount > 0 ? "warning" : "default"} />
+                    <SectionStat strLabel="Proof Pending" strValue={`${intProofPendingCount}`} strTone={intProofPendingCount > 0 ? "warning" : "default"} />
+                    <SectionStat strLabel="Rejected" strValue={`${intRejectedCount}`} strTone={intRejectedCount > 0 ? "danger" : "default"} />
+                  </Stack>
+                </Stack>
+                {intSectionLimitPercent != null ? (
+                  <Box sx={{ mt: 1 }}>
+                    <LinearProgress
+                      variant="determinate"
+                      value={intSectionLimitPercent}
+                      sx={{ height: 5, borderRadius: 999, backgroundColor: "var(--app-border-color)", "& .MuiLinearProgress-bar": { backgroundColor: "var(--app-accent-orange)", borderRadius: 999 } }}
+                    />
+                    <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.3 }}>
+                      <Typography sx={{ fontSize: "0.68rem", color: "var(--app-muted-color)" }}>{objInrFormatter.format(objGroup.decDeclaredAmount)} declared</Typography>
+                      <Typography sx={{ fontSize: "0.68rem", color: "var(--app-muted-color)" }}>{objInrFormatter.format(objGroup.decMaxLimitAmount || 0)} limit</Typography>
+                    </Stack>
+                  </Box>
+                ) : null}
+              </Box>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: blnMultiItemSection ? { xs: "1fr", lg: "repeat(2, minmax(0, 1fr))" } : "1fr",
+                  gap: 1,
+                  p: 1,
+                  alignItems: "stretch",
+                }}
+              >
+                {objGroup.lstItems.map((objItem, intIndex) => {
+                  const intCurrentItemID = objItem.intItemID ?? 0;
+                  const lstItemProofs = lstProofs.filter((objProof) => objProof.intItemID === intCurrentItemID);
+                  const objItemWithSectionRule = {
+                    ...objItem,
+                    decMaxLimitAmount: objGroup.decMaxLimitAmount ?? objItem.decMaxLimitAmount ?? objItem.decMaxEligibleAmount,
+                    strMaxLimitAppliedAt: objGroup.strMaxLimitAppliedAt ?? objItem.strMaxLimitAppliedAt,
+                    blnProofRequired: dicCategoryRuleBySection.get(normalizeDeclarationSection(objItem.strSection))?.blnProofRequired ?? objItem.blnProofRequired,
+                  };
+                  return (
+                    <ITDeclarationItemReviewPanel
+                      key={objItem.intItemID ?? `it-item-${intIndex}-${objItem.strSection}-${objItem.strInvestmentName}`}
+                      objItem={objItemWithSectionRule}
+                      blnLocked={blnLocked || !blnItemActionsAllowedStatus}
+                      blnCanApprove={blnCanApprove}
+                      blnCanReject={blnCanReject}
+                      lstProofs={lstItemProofs}
+                      decSectionMaxLimit={objGroup.decMaxLimitAmount}
+                      decOtherApprovedAmount={Math.max(0, objGroup.decApprovedAmount - Number(objItem.decApprovedAmount || 0))}
+                      fnPreviewProof={(intProofID) => void previewProof(intProofID)}
+                      fnDownloadProof={(intProofID) => void downloadProof(intProofID)}
+                      fnAction={(strAction, objPayload) => handleItemAction(objItem.intItemID ?? 0, strAction, objPayload)}
+                    />
+                  );
+                })}
+              </Box>
+            </Paper>
+            );
+          })}
+        </Box>
         {lstItems.length === 0 && !blnDismissNoItems ? <Alert severity="info" onClose={() => setBlnDismissNoItems(true)}>No declaration items found.</Alert> : null}
       </Stack>
 
       {objDetail.objHraDetails ? <DeclarationDetailPanel strTitle="HRA Details" objDetails={objDetail.objHraDetails} /> : null}
       {objDetail.objHomeLoanDetails ? <DeclarationDetailPanel strTitle="Home Loan Details" objDetails={objDetail.objHomeLoanDetails} /> : null}
       {objDetail.objPreviousEmployerDetails ? <DeclarationDetailPanel strTitle="Previous Employer Details" objDetails={objDetail.objPreviousEmployerDetails} /> : null}
+      </Stack>
 
       <Dialog open={Boolean(strConfirm)} onClose={() => setStrConfirm(null)} maxWidth="sm" fullWidth controlId="it-declaration.review-detail.confirm.dialog">
         <DialogTitle>Confirm Action</DialogTitle>

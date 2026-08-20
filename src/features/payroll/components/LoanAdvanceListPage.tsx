@@ -2,7 +2,6 @@
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import RequestQuoteRoundedIcon from "@mui/icons-material/RequestQuoteRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { Alert, Box, Button, MenuItem, TextField, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
@@ -317,32 +316,9 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
 
   return (
     <Box className={styles.page}>
-      {blnIsEssMode ? (
-        <Box className="pageBanner" sx={{ display: "block", borderRadius: "18px", p: { xs: 2, md: 2.5 } }}>
-          <Box className="bannerDots" />
-          <Box sx={{ display: "flex", gap: 2, alignItems: { xs: "flex-start", md: "center" }, flexDirection: { xs: "column", md: "row" }, position: "relative", zIndex: 1 }}>
-            <Box sx={{ display: "flex", gap: 2, alignItems: "center", minWidth: 0 }}>
-              <Box className="bannerIcon">
-                <RequestQuoteRoundedIcon sx={{ fontSize: 34 }} />
-              </Box>
-              <Box className="bannerDivider" sx={{ display: { xs: "none", md: "block" } }} />
-              <Box sx={{ minWidth: 0 }}>
-                <Typography component="h1" className="bannerTitle">
-                  {t("page_title", "Loans and Advances")}
-                </Typography>
-                <Typography component="p" className="bannerSubTitle">
-                  {t("subtitle", "Track requests, check statuses, and search your loan and advance records.")}
-                </Typography>
-              </Box>
-            </Box>
-          </Box>
-        </Box>
-      ) : (
-        <Box className={styles.controlsCard}>
-          {objFilters}
-        </Box>
-      )}
-      {blnIsEssMode ? <Box className={styles.controlsCard}>{objFilters}</Box> : null}
+      <Box className={styles.controlsCard}>
+        {objFilters}
+      </Box>
       {strRightsError || strLabelError ? <Alert severity="warning">{strRightsError || strLabelError}</Alert> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {!blnCanView && !blnRightsLoading ? <Alert severity="warning">{blnIsEssMode ? t("ess_no_access", "ESS loans and advances access is not available for your user group.") : t("no_access", "Loans and advances access is not available for your user group.")}</Alert> : null}

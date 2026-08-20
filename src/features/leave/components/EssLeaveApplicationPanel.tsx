@@ -451,16 +451,11 @@ export default function EssLeaveApplicationPanel() {
   const intPendingCount = lstApplications.filter((objApplication) => objApplication.strStatus === "pending").length;
 
   return <Stack spacing={2}>
-    <Box className="pageBanner" data-control-id="ess.leave.header.banner">
-      <Box className="bannerDots" />
-      <Box className="bannerIcon"><EventAvailableRoundedIcon sx={{ fontSize: 30 }} /></Box>
-      <Box className="bannerDivider" />
-      <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
-        <Typography component="h1" className="bannerTitle">{t("page_title", "My Leave")}</Typography>
-        <Typography component="p" className="bannerSubTitle">{t("page_subtitle", "View balances, apply for leave and track every request.")}</Typography>
-      </Box>
-      {blnCanManage && !blnRightsLoading ? <Stack direction="row" sx={{ position: "relative", zIndex: 1 }}><Button data-controlid="ess.leave.apply.open" variant="contained" startIcon={<AddRoundedIcon />} onClick={() => fnOpenNewForm()} sx={{ bgcolor: "white", color: "#0b3f70", fontWeight: 800, "&:hover": { bgcolor: "#e2e8f0" } }}>{t("apply_leave", "Apply Leave")}</Button></Stack> : null}
-    </Box>
+    {blnCanManage && !blnRightsLoading ? (
+      <Stack direction="row" justifyContent="flex-end">
+        <Button data-controlid="ess.leave.apply.open" variant="contained" startIcon={<AddRoundedIcon />} onClick={() => fnOpenNewForm()}>{t("apply_leave", "Apply Leave")}</Button>
+      </Stack>
+    ) : null}
 
     {blnLoading ? <LoadingSkeleton /> : strLoadError ? <Paper sx={{ p: 3, borderRadius: "18px", border: "1px solid #fecaca", textAlign: "center" }}><Alert severity="error" sx={{ mb: 2 }}>{strLoadError}</Alert><Button startIcon={<RefreshRoundedIcon />} variant="outlined" onClick={() => void fnLoadAll()}>{t("retry", "Retry")}</Button></Paper> : <>
       <Paper id="leave-applications" sx={{ borderRadius: "18px", border: "1px solid #e2e8f0", overflow: "hidden" }}>

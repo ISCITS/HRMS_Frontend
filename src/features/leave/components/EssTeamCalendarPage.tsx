@@ -168,19 +168,6 @@ export default function EssTeamCalendarPage({
   const intNameWidth = 168;
 
   return <Stack spacing={2}>
-    {blnEmbedded ? null : <Paper sx={{ p: { xs: 1.75, md: 2.25 }, borderRadius: "20px", background: "linear-gradient(135deg,#0b3f70 0%,#0a66a3 52%,#0e7490 100%)", color: "white", boxShadow: "0 14px 28px rgba(2,6,23,.18)" }}>
-      <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }} justifyContent="space-between">
-        <Stack direction="row" spacing={1.4} alignItems="center"><Box sx={{ width: 48, height: 48, borderRadius: "14px", bgcolor: "rgba(255,255,255,.18)", display: "grid", placeItems: "center" }}><CalendarMonthRoundedIcon /></Box><Box><Typography component="h1" sx={{ fontWeight: 800, fontSize: "1.08rem" }}>{t("page_title", "Team Calendar")}</Typography><Typography sx={{ fontSize: ".82rem", color: "rgba(241,245,249,.92)" }}>{t("page_subtitle", "Leave, holidays and availability across your team.")}</Typography></Box></Stack>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <ToggleButtonGroup exclusive size="small" value={strView} onChange={(_objEvent, strValue) => strValue && setStrView(strValue)} sx={{ bgcolor: "white", borderRadius: 1 }}>
-            <ToggleButton data-controlid="ess.team.calendar.view.month" value="month" sx={{ textTransform: "none", fontWeight: 700 }}>{t("month", "Month")}</ToggleButton>
-            <ToggleButton data-controlid="ess.team.calendar.view.week" value="week" sx={{ textTransform: "none", fontWeight: 700 }}>{t("week", "Week")}</ToggleButton>
-          </ToggleButtonGroup>
-          <Button data-controlid="ess.team.calendar.refresh" variant="contained" startIcon={<RefreshRoundedIcon />} onClick={() => void fnLoad()} sx={{ bgcolor: "white", color: "#0b3f70", fontWeight: 800, "&:hover": { bgcolor: "#e2e8f0" } }}>{t("refresh", "Refresh")}</Button>
-        </Stack>
-      </Stack>
-    </Paper>}
-
     <Paper sx={{ borderRadius: "18px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
       <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ md: "center" }} justifyContent="space-between" sx={{ p: 1.5, borderBottom: "1px solid #e2e8f0" }}>
         <Stack direction="row" spacing={.5} alignItems="center" sx={{ flexWrap: "wrap" }}>
@@ -189,11 +176,11 @@ export default function EssTeamCalendarPage({
           <Typography sx={{ fontWeight: 800, minWidth: 160, textAlign: "center" }}>{strRangeLabel}</Typography>
           <Button data-controlid="ess.team.calendar.next" size="small" onClick={() => fnShift(1)} endIcon={<ChevronRightRoundedIcon />}>{t("next", "Next")}</Button>
           <Button data-controlid="ess.team.calendar.today" size="small" variant="outlined" onClick={() => setDtAnchor(new Date())}>{t("today", "Today")}</Button>
-          {blnEmbedded ? <ToggleButtonGroup exclusive size="small" value={strView} onChange={(_objEvent, strValue) => strValue && setStrView(strValue)}>
+          <ToggleButtonGroup exclusive size="small" value={strView} onChange={(_objEvent, strValue) => strValue && setStrView(strValue)}>
             <ToggleButton data-controlid="ess.team.calendar.view.month" value="month" sx={{ textTransform: "none", fontWeight: 700 }}>{t("month", "Month")}</ToggleButton>
             <ToggleButton data-controlid="ess.team.calendar.view.week" value="week" sx={{ textTransform: "none", fontWeight: 700 }}>{t("week", "Week")}</ToggleButton>
-          </ToggleButtonGroup> : null}
-          {blnEmbedded ? <Button data-controlid="ess.team.calendar.refresh.embedded" size="small" startIcon={<RefreshRoundedIcon />} onClick={() => void fnLoad()}>{t("refresh", "Refresh")}</Button> : null}
+          </ToggleButtonGroup>
+          <Button data-controlid="ess.team.calendar.refresh.embedded" size="small" startIcon={<RefreshRoundedIcon />} onClick={() => void fnLoad()}>{t("refresh", "Refresh")}</Button>
         </Stack>
         <Stack direction="row" spacing={1.5} sx={{ flexWrap: "wrap" }}>
           {[[t("approved", "Approved"), "#16a34a"], [t("pending", "Pending"), "#f59e0b"], [t("holiday", "Holiday"), "#fdba74"], [t("weekly_off", "Weekly Off"), "#cbd5e1"]].map(([strLabel, strColor]) => <Stack key={strLabel} direction="row" spacing={.5} alignItems="center"><Box sx={{ width: 12, height: 12, borderRadius: "3px", bgcolor: strColor }} /><Typography sx={{ fontSize: ".72rem", color: "#64748b" }}>{strLabel}</Typography></Stack>)}

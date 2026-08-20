@@ -96,7 +96,6 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
     return intEmployeeID > 0 ? intEmployeeID : null;
   }, [objSearchParams]);
   const strSourceContext = normalizeHeaderValue(objSearchParams.get("source"));
-  const blnEmployeeReimbursementSource = strSourceContext === "employee-reimbursement";
 
   const blnCanView = canViewAny() || canDoAny("list") || canDoAny("view");
   const blnCanCreateOnBehalf = Boolean(intSelectedEmployeeID) && (canDoAny("add") || canDoAny("create"));
@@ -126,19 +125,11 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
     : intSelectedEmployeeID
       ? `Employee #${intSelectedEmployeeID}`
       : "";
-  const strEmployeeReimbursementTitle = strMode === "create"
-    ? t("add_claim_reimbursement", "Add Claim Reimbursement")
-    : strMode === "edit"
-      ? t("edit_claim_reimbursement", "Edit Claim Reimbursement")
-      : t("view_claim_reimbursement", "View Claim Reimbursement");
-  const strReviewReimbursementsTitle = t("review_reimbursements", "Review Reimbursements");
   const strClaimReferenceLabel = `${t("claim_ref", "Claim Ref #")}: ${objClaim?.intID ? getClaimReferenceNumber(objClaim) || "-" : "-"}`;
   const strPageTitle = normalizeHeaderValue(
-    intSelectedEmployeeID
-      ? `${blnEmployeeReimbursementSource ? strEmployeeReimbursementTitle : strReviewReimbursementsTitle} - ${strClaimReferenceLabel}${strSelectedEmployeeLabel ? ` - ${strSelectedEmployeeLabel}` : ""}`
-      : objClaim?.intID
-      ? strClaimReferenceLabel
-      : t("new_reimbursement_claim", "New Reimbursement Claim")
+    objClaim?.intID
+      ? `${strClaimReferenceLabel}${strSelectedEmployeeLabel ? ` - ${strSelectedEmployeeLabel}` : ""}`
+      : `${t("new_reimbursement_claim", "New Reimbursement Claim")}${strSelectedEmployeeLabel ? ` - ${strSelectedEmployeeLabel}` : ""}`
   );
   const objDetailActionButtonSx = { minHeight: 30, px: 1.15, py: 0.25, borderRadius: "8px", fontSize: "0.75rem", textTransform: "none" };
 

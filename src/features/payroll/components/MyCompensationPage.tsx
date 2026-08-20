@@ -335,22 +335,6 @@ export default function MyCompensationPage() {
 
   return (
     <Stack spacing={1}>
-      <Box className="pageBanner" data-control-id="ess.my-compensation.header.banner" sx={{ flexWrap: { xs: "wrap", md: "nowrap" } }}>
-        <Box className="bannerDots" />
-        <Box className="bannerIcon">
-          <AccountBalanceWalletOutlinedIcon sx={{ fontSize: 30 }} />
-        </Box>
-        <Box className="bannerDivider" />
-        <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
-          <Typography component="h1" className="bannerTitle">
-            {t("page_title", "My Compensation")}
-          </Typography>
-          <Typography component="p" className="bannerSubTitle">
-            {t("page_subtitle", "View your compensation details and how your CTC is structured.")}
-          </Typography>
-        </Box>
-      </Box>
-
       {strError ? <Alert severity="error">{strError}</Alert> : null}
 
       <Box
