@@ -79,12 +79,26 @@ export type EmployeeAvatarSummary = {
   strProfilePhotoUrl?: string | null;
 };
 
+export type PortalCode = "ESS" | "HRMS";
+
 export type AuthSuccessData = {
   objToken: TokenPayload;
   objTenant: TenantSummary;
   objUser: UserSummary;
   strHomeRoute: string;
   blnPasswordResetRequired: boolean;
+  // Portal context. A dual-access user arrives with no active context and must pick one
+  // ("Continue To"); single-portal users are activated directly by the server.
+  strActiveContext?: PortalCode | null;
+  lstAvailablePortals?: PortalCode[];
+  blnRequiresPortalSelection?: boolean;
+};
+
+export type PortalContextData = {
+  strActiveContext: PortalCode;
+  lstAvailablePortals: PortalCode[];
+  objToken: TokenPayload;
+  strHomeRoute: string;
 };
 
 export type AuthOtpChallengeData = {

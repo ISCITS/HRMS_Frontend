@@ -193,6 +193,8 @@ export default function EmployeeEditorScreen({
     strDegreeName: ""
   });
   const [intResolvedEmployeeID, setIntResolvedEmployeeID] = useState<number | null>(intEmployeeID ?? null);
+  const [blnEmployeeHasUserAccount, setBlnEmployeeHasUserAccount] = useState(false);
+  const [blnCreatingUserAccount, setBlnCreatingUserAccount] = useState(false);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnBasicSaving, setBlnBasicSaving] = useState(false);
   const [blnAddressSaving, setBlnAddressSaving] = useState(false);
@@ -444,6 +446,25 @@ export default function EmployeeEditorScreen({
     const strTagName = objTarget.tagName;
     if (strTagName === "INPUT" || strTagName === "TEXTAREA" || objTarget.getAttribute("role") === "combobox") {
       objLastFocusedFieldRef.current = objTarget;
+    }
+  }
+
+  // Create User Account: available once the employee is saved and has no linked user. The user is
+  // created and linked server-side in one transaction, with ESS Access ON and HRMS Access OFF, and a
+  // single-use password — never a shared default.
+  async function createUserAccountForEmployee() {
+    if (!intResolvedEmployeeID) {
+      return;
+    }
+    setBlnCreatingUserAccount(true);
+    try {
+      await employeeService.createUserAccount(intResolvedEmployeeID);
+      setBlnEmployeeHasUserAccount(true);
+      openAlertDialog("success", t("user_account_created", "User account created and linked to this employee."));
+    } catch (objError) {
+      openAlertDialog("error", objError instanceof Error ? objError.message : t("error_create_user_account", "Unable to create the user account."));
+    } finally {
+      setBlnCreatingUserAccount(false);
     }
   }
 
@@ -1551,11 +1572,27 @@ export default function EmployeeEditorScreen({
               <Box>
                 <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2} sx={{ mb: 1.5 }}>
                   <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{t("section_identity_employment", "Identity & Employment")}</Typography>
-                  <FormControlLabel
-                    control={<Switch checked={dicBasicForm.blnIsEssEnabled} onChange={(_, blnChecked) => updateBasicField("blnIsEssEnabled", blnChecked)} disabled={blnViewOnly} inputProps={{ "data-controlid": "employee.editor.ess-enabled.switch" } as InputHTMLAttributes<HTMLInputElement>} />}
-                    label={t("field_ess_enabled", dicConstant.employeeMaster.fields.essEnabled)}
-                    sx={{ m: 0, flexShrink: 0 }}
-                  />
+                  <Stack direction="row" alignItems="center" spacing={1.5} sx={{ flexShrink: 0 }}>
+                    {!blnViewOnly && intResolvedEmployeeID && !blnEmployeeHasUserAccount ? (
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => void createUserAccountForEmployee()}
+                        disabled={blnCreatingUserAccount}
+                        data-controlid="employee.editor.create-user-account.button"
+                        sx={{ whiteSpace: "nowrap" }}
+                      >
+                        {blnCreatingUserAccount
+                          ? t("creating_user_account", "Creating...")
+                          : t("action_create_user_account", "Create User Account")}
+                      </Button>
+                    ) : null}
+                    <FormControlLabel
+                      control={<Switch checked={dicBasicForm.blnIsEssEnabled} onChange={(_, blnChecked) => updateBasicField("blnIsEssEnabled", blnChecked)} disabled={blnViewOnly} inputProps={{ "data-controlid": "employee.editor.ess-enabled.switch" } as InputHTMLAttributes<HTMLInputElement>} />}
+                      label={t("field_ess_enabled", dicConstant.employeeMaster.fields.essEnabled)}
+                      sx={{ m: 0, flexShrink: 0 }}
+                    />
+                  </Stack>
                 </Stack>
                 <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(3, minmax(0, 1fr))" } }}>
                   <TextField data-controlid="employee.editor.date-of-joining.input" inputProps={{ "data-controlid": "employee.editor.date-of-joining.input" }} type="date" label={renderRequiredLabel(t("field_date_of_joining", dicConstant.employeeMaster.fields.dateOfJoining))} inputRef={dicFieldRefs.dtDateOfJoining} value={dicBasicForm.dtDateOfJoining} onChange={(objEvent) => updateBasicField("dtDateOfJoining", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfJoining)} helperText={dicBasicErrors.dtDateOfJoining} InputLabelProps={{ shrink: true }} disabled={blnViewOnly} fullWidth />
