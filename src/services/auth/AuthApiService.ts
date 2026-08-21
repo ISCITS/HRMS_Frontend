@@ -15,6 +15,8 @@ import {
   type AuthLoginData,
   type AuthOtpChallengeData,
   type AuthSuccessData,
+  type PortalCode,
+  type PortalContextData,
   type CurrentUserContext,
   type DashboardResponse,
   type GoogleMfaChallengeData,
@@ -219,6 +221,22 @@ export const authApiService = {
     });
     if (!isGoogleMfaChallengeData(objResult.Data)) {
       persistAuthenticatedSession(objResult.Data);
+    }
+    return objResult;
+  },
+
+  // Activates ESS or HRMS for a dual-access identity ("Continue To", and portal switching). The
+  // server revalidates the choice and re-issues the token carrying the active context.
+  async selectPortalContext(strPortal: PortalCode) {
+    const objResult = await requestApi<PortalContextData>({
+      strPath: "auth/context",
+      strMethod: ApiRequestMethod.Post,
+      objBody: { strPortal },
+      strMenuAction: "AUTH_PORTAL_CONTEXT"
+    });
+    if (objResult.Data?.objToken?.strAccessToken) {
+      // Same session, new active context: only the token is refreshed.
+      authHelpers.setAuthenticatedSession(objResult.Data.objToken.strAccessToken);
     }
     return objResult;
   },

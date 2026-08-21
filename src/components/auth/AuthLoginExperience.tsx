@@ -31,6 +31,7 @@ import type {
 import { getPostLoginRoute } from "@/lib/RouteGuard";
 import { authApiService } from "@/services";
 import { clsApiRequestError, isGoogleMfaChallengeData, isOtpChallengeData, resolveErrorMessage } from "@/services/auth/AuthApiService";
+import type { AuthSuccessData, PortalCode } from "@/models/AuthModels";
  
 type AuthLoginExperienceProps = {
   strMode: "generic" | "tenant";
@@ -53,6 +54,28 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
   const [objTenantAuthDetails, setObjTenantAuthDetails] = useState<TenantAuthDetails | null>(null);
   const [objOtpChallenge, setObjOtpChallenge] = useState<AuthOtpChallengeData | null>(null);
   const [objGoogleMfaChallenge, setObjGoogleMfaChallenge] = useState<GoogleMfaChallengeData | null>(null);
+  // Dual-access identity: the server authenticates but activates no portal, so the user chooses.
+  const [lstPortalChoices, setLstPortalChoices] = useState<PortalCode[]>([]);
+  const [blnPortalSwitching, setBlnPortalSwitching] = useState(false);
+
+  function completeAuthentication(objAuthData: AuthSuccessData) {
+    if (objAuthData.blnRequiresPortalSelection && (objAuthData.lstAvailablePortals?.length ?? 0) > 1) {
+      setLstPortalChoices(objAuthData.lstAvailablePortals ?? []);
+      return;
+    }
+    objRouter.replace(getPostLoginRoute(objAuthData.strHomeRoute));
+  }
+
+  async function selectPortal(strPortal: PortalCode) {
+    setBlnPortalSwitching(true);
+    try {
+      const objResult = await authApiService.selectPortalContext(strPortal);
+      objRouter.replace(getPostLoginRoute(objResult.Data.strHomeRoute));
+    } catch (objError) {
+      setStrError(resolveErrorMessage(objError));
+      setBlnPortalSwitching(false);
+    }
+  }
   const [blnUseBackupCode, setBlnUseBackupCode] = useState(false);
   const [lstBackupCodes, setLstBackupCodes] = useState<string[]>([]);
   const [blnTenantLoading, setBlnTenantLoading] = useState(strMode === "tenant");
@@ -310,7 +333,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
           setBlnUseBackupCode(false);
           return;
         }
-        objRouter.replace(getPostLoginRoute(objResult.Data.strHomeRoute));
+        completeAuthentication(objResult.Data);
         return;
       }
  
@@ -333,7 +356,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
           setBlnUseBackupCode(false);
           return;
         }
-        objRouter.replace(getPostLoginRoute(objResult.Data.strHomeRoute));
+        completeAuthentication(objResult.Data);
         return;
       }
  
@@ -354,7 +377,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         setBlnUseBackupCode(false);
         return;
       }
-      objRouter.replace(getPostLoginRoute(objResult.Data.strHomeRoute));
+      completeAuthentication(objResult.Data);
     } catch (objError) {
       if (objError instanceof clsApiRequestError) {
         const intRemainingSeconds = extractRemainingSeconds(objError.objData);
@@ -663,8 +686,32 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
               <Typography className={styles.welcomeTitle}>{getLoginLabel("welcomeTitle")}</Typography>
               <Typography className={styles.welcomeSubtitle}>{getLoginLabel("welcomeSubtitle")}</Typography>
             </Box>
-            <Typography className={styles.title}>{blnOtpStep ? getLoginLabel("verifyOtpTitle") : getLoginLabel("signInButton")}</Typography>
+            <Typography className={styles.title}>
+              {lstPortalChoices.length > 1
+                ? getLoginLabel("continueToTitle")
+                : blnOtpStep
+                  ? getLoginLabel("verifyOtpTitle")
+                  : getLoginLabel("signInButton")}
+            </Typography>
  
+            {lstPortalChoices.length > 1 ? (
+              <Stack spacing={2} sx={{ mt: 3 }}>
+                <Typography sx={{ color: "#64748b" }}>{getLoginLabel("continueToSubtitle")}</Typography>
+                {lstPortalChoices.map((strPortal) => (
+                  <Button
+                    key={strPortal}
+                    variant={strPortal === "HRMS" ? "contained" : "outlined"}
+                    size="large"
+                    disabled={blnPortalSwitching}
+                    onClick={() => void selectPortal(strPortal)}
+                    data-controlid={`auth.login.portal.${strPortal.toLowerCase()}.button`}
+                  >
+                    {strPortal === "HRMS" ? getLoginLabel("portalHrms") : getLoginLabel("portalEss")}
+                  </Button>
+                ))}
+                {strError ? <Alert severity="error">{strError}</Alert> : null}
+              </Stack>
+            ) : (
             <Stack component="form" onSubmit={handleLoginSubmit} spacing={2.25} sx={{ mt: 3 }}>
               <Box>
                 <Typography className={styles.fieldLabel}>
@@ -783,6 +830,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                 </Typography>
               </Box>
             </Stack>
+            )}
           </Box>
         </Box>
       </Box>
@@ -961,6 +1009,10 @@ function formatDuration(intSeconds: number): string {
 }
  
 type LoginLabelKey =
+  | "continueToTitle"
+  | "continueToSubtitle"
+  | "portalHrms"
+  | "portalEss"
   | "forgotPassword"
   | "heroImageAlt"
   | "loginIdLabel"
@@ -1004,6 +1056,10 @@ const dicLoginFallbacks: Record<LoginLabelKey, string> = {
   resolvedWorkspaceLabel: "Resolved workspace",
   resolvingTenantStatus: "Resolving tenant...",
   signInButton: "Sign In",
+  continueToTitle: "Continue To",
+  continueToSubtitle: "This account can access both portals. Choose where to continue.",
+  portalHrms: "HRMS",
+  portalEss: "Employee Self Service",
   ssoCallbackTitle: enMessages.auth.ssoCallbackTitle,
   ssoRedirectStatus: "Workspace verified. Redirecting to Microsoft sign-in.",
   tenantSubtitle: enMessages.auth.tenantSubtitle,
@@ -1028,6 +1084,10 @@ const dicLoginServerKeyMap: Record<LoginLabelKey, string> = {
   passwordPlaceholder: "password_placeholder",
   resendOtpButton: "resend_otp_button",
   resendOtpCountdown: "resend_otp_countdown",
+  continueToTitle: "continue_to_title",
+  continueToSubtitle: "continue_to_subtitle",
+  portalHrms: "portal_hrms",
+  portalEss: "portal_ess",
   resendingOtpButton: "resending_otp_button",
   resolvedWorkspaceLabel: "resolved_workspace_label",
   resolvingTenantStatus: "resolving_tenant_status",

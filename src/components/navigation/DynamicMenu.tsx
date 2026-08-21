@@ -819,6 +819,7 @@ function buildEssOnlyMenu(lstItems: MenuItem[]): MenuItem[] {
   const objPayrollGroup = buildSyntheticMenuGroup("ESS_PAYROLL_BENEFITS", "Compensation & Benifits", [
     buildSyntheticMenuLeaf("My Compensation", "ESS_MY_COMPENSATION", "/ess/my-compensation", findItem("/ess/my-compensation")),
     buildSyntheticMenuLeaf("Payslips", "ESS_MY_PAYSLIPS", "/ess/my-payslips", findItem("/ess/my-payslips", "/reports/payslips")),
+    buildSyntheticMenuLeaf("My Form 16", "MY_FORM16", "/ess/my-form16", findItem("/ess/my-form16")),
     buildSyntheticMenuLeaf("IT Declaration", "ESS_IT_DECLARATION", "/ess/it-declaration", findItem("/ess/it-declaration", "/salary/ess-declarations", "/salary/it-declaration")),
     buildSyntheticMenuLeaf("Flexi Pay Declaration", "ESS_FLEXI_PAY_DECLARATION", "/salary/flexi-pay-declaration", findItem("/salary/flexi-pay-declaration", "/salary/flexi-pay-declarations")),
     buildSyntheticMenuLeaf("Reimbursements & Claims", "ESS_REIMBURSEMENTS", "/ess/reimbursements", findItem("/ess/reimbursements", "/payroll/reimbursements")),

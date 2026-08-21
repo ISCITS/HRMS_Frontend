@@ -1042,3 +1042,79 @@ export type PayslipGenerateAllSummary = {
     strPayslipStatus: string | null;
   }[];
 };
+
+export type Form16ListRecord = {
+  intForm16ID: number;
+  strForm16Number: string;
+  strFinancialYearCode: string;
+  strGenerationStatus: string;
+  intSupersededForm16ID: number | null;
+  dtGeneratedOn: string | null;
+  dtPeriodStart: string | null;
+  dtPeriodEnd: string | null;
+  decGrossSalary: number;
+  decTotalTaxDeducted: number;
+  strEmployeeCode: string | null;
+  strEmployeeName: string | null;
+};
+
+export type Form16QuarterlyBreakdown = {
+  strQuarterCode: string;
+  dtQuarterStart: string;
+  dtQuarterEnd: string;
+  decTaxableAmount: number;
+  decTaxDeducted: number;
+  decTaxDeposited: number;
+};
+
+export type Form16DeclarationBreakupRow = {
+  strSectionCode: string;
+  strCategoryName: string;
+  decDeclaredAmount: number;
+  decEligibleAmount: number;
+};
+
+export type Form16PreviewRecord = {
+  intForm16ID: number;
+  strForm16Number: string;
+  strFinancialYearCode: string;
+  strAssessmentYear: string;
+  strGenerationStatus: string;
+  dtPeriodStart: string | null;
+  dtPeriodEnd: string | null;
+  dtGeneratedOn: string | null;
+  dicCompany: {
+    strCompanyName: string;
+    strCompanyAddress: string | null;
+    strCompanyTan: string | null;
+    strCompanyPan: string | null;
+  };
+  dicEmployee: {
+    strEmployeeCode: string;
+    strEmployeeName: string;
+    strPanNumber: string | null;
+    strWorkEmail: string | null;
+  };
+  strTaxRegimeLabel: string | null;
+  dicAnnualSummary: Record<string, number>;
+  lstQuarterlyBreakdown: Form16QuarterlyBreakdown[];
+  lstDeclarationBreakup: Form16DeclarationBreakupRow[];
+  decYtdReconciliationVariance: number;
+  strSignatoryName: string | null;
+  strSignatoryDesignation: string | null;
+};
+
+export type Form16GenerateResultRow = {
+  intEmployeeID: number;
+  blnSuccess: boolean;
+  intForm16ID: number | null;
+  strForm16Number: string | null;
+  strEmployeeName: string | null;
+  strMessage: string | null;
+};
+
+export type Form16GenerateCompanySummary = {
+  intGeneratedCount: number;
+  intFailedCount: number;
+  lstResults: Form16GenerateResultRow[];
+};

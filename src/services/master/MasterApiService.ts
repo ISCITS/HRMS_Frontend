@@ -93,6 +93,10 @@ export type UserApiRecord = {
   intUserGroupID: number | null;
   strUserGroupCode: string | null;
   strUserGroupName: string | null;
+  blnIsEssAccessEnabled?: boolean;
+  blnIsHrmsAccessEnabled?: boolean;
+  intEssUserGroupID?: number | null;
+  intHrmsUserGroupID?: number | null;
   strEmployeeName?: string | null;
   blnIsActive: boolean;
   blnIsLocked: boolean;
@@ -102,11 +106,16 @@ export type UserFormOptionApiRecord = {
   intID: number;
   strLabel: string;
   strCode?: string;
+  // tbluser_group.group_type: HR | ESS | BOTH. Drives which portal dropdown may offer the group.
+  strGroupType?: string | null;
+  // Employee options only: set when the employee is already linked to a user.
+  intLinkedUserID?: number | null;
 };
 
 export type UserFormOptionsApiRecord = {
   lstLanguages: UserFormOptionApiRecord[];
   lstUserGroups: UserFormOptionApiRecord[];
+  lstEmployees?: UserFormOptionApiRecord[];
   objMfaPolicy?: {
     strTenantMfaFlag?: string | null;
     strTenantMfaType?: string | null;
@@ -2188,7 +2197,11 @@ export const masterApiService = {
     strSsoLoginMapping: string | null;
     intPreferredLanguageID: number | null;
     intEmployeeID?: number | null;
-    intUserGroupID: number;
+    intUserGroupID?: number | null;
+    blnIsEssAccessEnabled?: boolean;
+    blnIsHrmsAccessEnabled?: boolean;
+    intEssUserGroupID?: number | null;
+    intHrmsUserGroupID?: number | null;
     blnIsActive: boolean;
   }) {
     const objEncryptedBody = {
@@ -2216,7 +2229,11 @@ export const masterApiService = {
     strSsoLoginMapping: string | null;
     intPreferredLanguageID: number | null;
     intEmployeeID?: number | null;
-    intUserGroupID: number;
+    intUserGroupID?: number | null;
+    blnIsEssAccessEnabled?: boolean;
+    blnIsHrmsAccessEnabled?: boolean;
+    intEssUserGroupID?: number | null;
+    intHrmsUserGroupID?: number | null;
     blnIsActive: boolean;
   }) {
     const objEncryptedBody = {
@@ -2434,6 +2451,17 @@ export const masterApiService = {
       strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs },
       strMenuAction: MasterMenuAction.StateBulkDelete
+    });
+  },
+
+  // Creates and links an ESS user for an employee that has none (Employee Master -> Create User
+  // Account). Identity is derived server-side from the employee record.
+  createEmployeeUserAccount(intEmployeeID: number, objBody: { intEssUserGroupID?: number | null }) {
+    return requestApi<UserApiRecord>({
+      strPath: buildApiPath(MasterApiResource.Employee, intEmployeeID, "user-account"),
+      strMethod: ApiRequestMethod.Post,
+      objBody,
+      strMenuAction: MasterMenuAction.UserCreate
     });
   },
 

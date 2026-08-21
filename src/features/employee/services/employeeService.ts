@@ -98,6 +98,13 @@ function mapEmployeeDetailRecord(dicRecord: EmployeeDetailApiRecord): EmployeeDe
 }
 
 export const employeeService = {
+  // Employee Master -> Create User Account. Server derives the identity from the employee record and
+  // links the two in one transaction.
+  async createUserAccount(intEmployeeID: number, intEssUserGroupID?: number | null) {
+    const objResult = await masterApiService.createEmployeeUserAccount(intEmployeeID, { intEssUserGroupID });
+    return objResult.Data;
+  },
+
   async getEmployees(): Promise<EmployeeListRecord[]> {
     const objResult = await masterApiService.getEmployees();
     return objResult.Data;
