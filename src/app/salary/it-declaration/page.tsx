@@ -636,7 +636,8 @@ export default function SalaryEssDeclarationsPage() {
 
   const blnLocked = strFlowStatus === "SUBMITTED" || strDeclarationStatus === "submitted";
   const strDeclarationStatusNormalized = String(strDeclarationStatus || "").trim().toLowerCase();
-  const blnHideActionButtons = blnLocked || ["approved", "locked"].includes(strDeclarationStatusNormalized);
+  const blnDeclarationReadOnly = blnLocked || ["approved", "locked"].includes(strDeclarationStatusNormalized);
+  const blnHideActionButtons = blnDeclarationReadOnly;
   const blnDraftLikeActionsAllowed = ["draft", "released"].includes(strDeclarationStatusNormalized);
   const blnCanViewDeclaration = blnHrMode
     ? (canViewAny() || canDoAny("view") || canDoAny("review"))
@@ -648,7 +649,7 @@ export default function SalaryEssDeclarationsPage() {
   const blnCanDraftDeclaration = canDoAny("draft");
   const blnCanSubmitDeclaration = canDoAny("submit");
   const blnRegimeSwitchDisabled =
-    blnLocked ||
+    blnDeclarationReadOnly ||
     blnHideActionButtons ||
     !blnDraftLikeActionsAllowed ||
     !blnCanEditDeclaration ||
@@ -708,7 +709,7 @@ export default function SalaryEssDeclarationsPage() {
 
     let objIcon: React.ReactNode = null;
     let strLabel = "";
-    if (blnLocked) {
+    if (blnDeclarationReadOnly) {
       if (!blnCanViewDeclaration || !blnHasAmount) return strDash;
       objIcon = <VisibilityRoundedIcon fontSize="small" />;
       strLabel = t("view", "View");
@@ -726,7 +727,7 @@ export default function SalaryEssDeclarationsPage() {
       strLabel = t("view", "View");
     }
 
-    const blnRowIsEditable = !blnLocked && blnCanEditDeclaration;
+    const blnRowIsEditable = !blnDeclarationReadOnly && blnCanEditDeclaration;
     return (
       <Tooltip title={strLabel}>
         <IconButton
@@ -768,7 +769,7 @@ export default function SalaryEssDeclarationsPage() {
       ),
       action: renderDeclarationRowAction(objRow),
     }));
-  }, [blnCanEditDeclaration, blnCanViewDeclaration, blnLocked, blnStarted, lstFilteredSectionRows, t]);
+  }, [blnCanEditDeclaration, blnCanViewDeclaration, blnDeclarationReadOnly, blnStarted, lstFilteredSectionRows, t]);
   const lstDeclarationColumns: CommonTableColumn<(typeof lstDeclarationGridRows)[number]>[] = [
     { field: "category", headerName: t("category", "Category"), width: 110 },
     { field: "section", headerName: t("section", "Section"), width: 80, sortable: false },
@@ -1253,7 +1254,7 @@ export default function SalaryEssDeclarationsPage() {
   }
 
   async function saveDraft() {
-    if (blnLocked || !blnCanDraftDeclaration) return;
+    if (blnDeclarationReadOnly || !blnCanDraftDeclaration) return;
     setBlnSaving(true);
     setStrSavingLabel(t("saving_draft", "Saving draft..."));
     setStrError("");
@@ -1280,7 +1281,7 @@ export default function SalaryEssDeclarationsPage() {
   }
 
   function openEditModal(objRow: DeclarationRow) {
-    if (!blnStarted && !blnLocked) {
+    if (!blnStarted && !blnDeclarationReadOnly) {
       openRegimeModal();
       return;
     }
@@ -1840,7 +1841,7 @@ export default function SalaryEssDeclarationsPage() {
         <DialogContent sx={{ pt: "8px !important", pb: "6px !important" }}>
           <Stack spacing={1}>
             <Stack direction="row" justifyContent="space-between" alignItems="center">
-              {!blnLocked && blnCanEditDeclaration ? (
+              {!blnDeclarationReadOnly && blnCanEditDeclaration ? (
                 <Button
                   variant="contained"
                   size="small"
@@ -1875,7 +1876,7 @@ export default function SalaryEssDeclarationsPage() {
                               objCurrent.strClientKey === objEntry.strClientKey ? { ...objCurrent, strInvestmentName: strValue } : objCurrent
                             )));
                           }}
-                          readOnly={blnLocked || !blnCanEditDeclaration}
+                          readOnly={blnDeclarationReadOnly || !blnCanEditDeclaration}
                           renderInput={(params) => {
                             const strCurrentName = objEntry.strInvestmentName.trim().toLowerCase();
                             const intDuplicateCount = lstSectionEditEntries.filter((objCurrent) => objCurrent.strInvestmentName.trim().toLowerCase() === strCurrentName && strCurrentName).length;
@@ -1888,7 +1889,7 @@ export default function SalaryEssDeclarationsPage() {
                                 size="small"
                                 error={blnDuplicate || blnMandatoryMissing}
                                 helperText={blnDuplicate ? t("duplicate_investment_not_allowed", "Duplicate investment is not allowed.") : blnMandatoryMissing ? t("investment_name_mandatory", "Investment name is mandatory.") : undefined}
-                                InputProps={{ ...params.InputProps, readOnly: blnLocked || !blnCanEditDeclaration }}
+                                InputProps={{ ...params.InputProps, readOnly: blnDeclarationReadOnly || !blnCanEditDeclaration }}
                                 sx={{ "& .MuiInputBase-root": { minHeight: 34 } }}
                                 fullWidth
                               />
@@ -1911,12 +1912,12 @@ export default function SalaryEssDeclarationsPage() {
                           sx={{ "& .MuiInputBase-root": { minHeight: 34 } }}
                           error={!objEntry.strAmountInput.trim() || Number((objEntry.strAmountInput || "").replace(/[^\d.]/g, "") || 0) <= 0}
                           helperText={!objEntry.strAmountInput.trim() ? t("declared_amount_mandatory", "Declared amount is mandatory.") : Number((objEntry.strAmountInput || "").replace(/[^\d.]/g, "") || 0) <= 0 ? t("amount_greater_than_zero", "Amount must be greater than zero.") : undefined}
-                          InputProps={{ readOnly: blnLocked || !blnCanEditDeclaration }}
+                          InputProps={{ readOnly: blnDeclarationReadOnly || !blnCanEditDeclaration }}
                           fullWidth
                         />
                       </Box>
                       <Stack direction="row" spacing={0.45} alignItems="center" sx={{ width: { xs: "100%", lg: "15%" }, pt: { lg: 0.25 } }}>
-                        {!blnLocked && blnCanEditDeclaration ? (
+                        {!blnDeclarationReadOnly && blnCanEditDeclaration ? (
                           <FileUploadButton
                             controlId={`salary.it-declaration.proof-upload.${objEntry.strClientKey}`}
                             label={t("upload", "Upload")}
@@ -1944,7 +1945,7 @@ export default function SalaryEssDeclarationsPage() {
                             }}
                           />
                         ) : null}
-                        {!blnLocked && blnCanEditDeclaration ? (
+                        {!blnDeclarationReadOnly && blnCanEditDeclaration ? (
                           <Tooltip title={t("delete", "Delete")}>
                             <IconButton
                               size="small"
@@ -2020,8 +2021,8 @@ export default function SalaryEssDeclarationsPage() {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={closeEditModal}>{blnLocked ? t("close", "Close") : t("cancel", "Cancel")}</Button>
-          {!blnLocked ? (
+          <Button onClick={closeEditModal}>{blnDeclarationReadOnly ? t("close", "Close") : t("cancel", "Cancel")}</Button>
+          {!blnDeclarationReadOnly ? (
             <Button variant="contained" onClick={() => void saveDeclarationEdit()} disabled={blnSaveEditDisabled || blnModalSaving || !blnCanEditDeclaration}>
               {blnModalSaving ? <CircularProgress size={16} color="inherit" /> : t("save", "Save")}
             </Button>
