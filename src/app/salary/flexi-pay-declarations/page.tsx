@@ -62,6 +62,28 @@ function getStatusColor(strStatus?: string | null): "default" | "warning" | "suc
   return "default";
 }
 
+const objChipBaseSx = {
+  border: "1px solid",
+  fontWeight: 700,
+  "& .MuiChip-label": {
+    px: 1.25,
+  },
+};
+
+function getStatusChipSx(strStatus?: string | null) {
+  const strValue = String(strStatus || "draft").toLowerCase();
+  if (["approved", "locked"].includes(strValue)) {
+    return { ...objChipBaseSx, color: "#067647", backgroundColor: "#ecfdf3", borderColor: "#abefc6" };
+  }
+  if (strValue === "submitted") {
+    return { ...objChipBaseSx, color: "#175cd3", backgroundColor: "#eff8ff", borderColor: "#b2ddff" };
+  }
+  if (["returned", "rejected", "cancelled"].includes(strValue)) {
+    return { ...objChipBaseSx, color: "#b42318", backgroundColor: "#fef3f2", borderColor: "#fecdca" };
+  }
+  return { ...objChipBaseSx, color: "#b54708", backgroundColor: "#fffaeb", borderColor: "#fedf89" };
+}
+
 export default function SalaryFlexiPayDeclarationsRoute() {
   const objRouter = useRouter();
   const { t } = useFlexiPayDeclarationLabels();
@@ -69,15 +91,6 @@ export default function SalaryFlexiPayDeclarationsRoute() {
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
   const [objSummary, setObjSummary] = useState<FlexiDeclarationSummaryRecord | null>(null);
-  const objBannerChipSx = {
-    color: "#000000",
-    backgroundColor: "#ffffff",
-    border: "1px solid rgba(15, 23, 42, 0.1)",
-    "& .MuiChip-label": {
-      color: "#000000",
-      fontWeight: 500,
-    },
-  };
 
   const getTranslatedStatus = useCallback((strStatus?: string | null) => {
     const strStatusKey = getStatusLabelKey(strStatus);
@@ -192,14 +205,19 @@ export default function SalaryFlexiPayDeclarationsRoute() {
     <Stack spacing={0} className={styles.page}>
       {strError ? <Alert severity="error">{strError}</Alert> : null}
 
-      <Box className="pageBanner">
-        <Box className="bannerDots" />
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ position: "relative", zIndex: 1 }}>
-          <Chip size="small" label={`${t("financial_year", "Financial Year")} ${objListRow.strFinancialYearCode}`} sx={objBannerChipSx} />
-          <Chip size="small" label={`${t("history", "History")} ${objListRow.intHistoryCount}`} sx={objBannerChipSx} />
-          <Chip size="small" label={getTranslatedStatus(objListRow.strStatus)} sx={objBannerChipSx} />
-        </Stack>
-      </Box>
+      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ px: 2, py: 1.5 }}>
+        <Chip
+          size="small"
+          label={`${t("financial_year", "Financial Year")} ${objListRow.strFinancialYearCode}`}
+          sx={{ ...objChipBaseSx, color: "#175cd3", backgroundColor: "#eff8ff", borderColor: "#b2ddff" }}
+        />
+        <Chip
+          size="small"
+          label={`${t("history", "History")} ${objListRow.intHistoryCount}`}
+          sx={{ ...objChipBaseSx, color: "#6941c6", backgroundColor: "#f4f3ff", borderColor: "#d9d6fe" }}
+        />
+        <Chip size="small" label={getTranslatedStatus(objListRow.strStatus)} sx={getStatusChipSx(objListRow.strStatus)} />
+      </Stack>
 
       {objSummary && !objSummary.blnCanDeclare ? (
         <Alert severity="info" icon={<InfoOutlinedIcon fontSize="inherit" />}>

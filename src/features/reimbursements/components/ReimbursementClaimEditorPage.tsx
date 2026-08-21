@@ -532,17 +532,17 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
   return (
     <Stack spacing={1.4}>
       <BlockingLoader blnOpen={blnLoading || blnRightsLoading} strLabel={t("loading_claim", "Loading reimbursement claim...")} />
-      <Paper sx={{ p: 0.9, borderRadius: "12px", border: "1px solid rgba(37, 99, 235, 0.2)", background: "linear-gradient(100deg, #0f4b8b 0%, #0d6ca1 64%, #0d7f9c 100%)", color: "#f8fcff" }}>
+      <Paper sx={{ p: 0.9, borderRadius: "12px", border: "1px solid #dbe3ef", backgroundColor: "#ffffff", color: "#0f172a", boxShadow: "none" }}>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} gap={1}>
           <Stack direction="row" spacing={1} alignItems="center">
-            <ReceiptLongOutlinedIcon sx={{ fontSize: 20 }} />
+            <ReceiptLongOutlinedIcon sx={{ fontSize: 20, color: "#0b3f73" }} />
             <Box>
-              <Typography sx={{ color: "#f8fcff", fontWeight: 800, fontSize: "1rem" }}>{strPageTitle}</Typography>
-              <Typography sx={{ color: "rgba(239,252,255,0.92)", fontSize: "0.74rem" }}>{blnReadOnly ? t("view_claim_details_subtitle", "View claim details and reviewer/payroll status.") : t("edit_claim_subtitle", "Add expense items, upload proof, and submit for review.")}</Typography>
+              <Typography sx={{ color: "#0f172a", fontWeight: 800, fontSize: "1rem" }}>{strPageTitle}</Typography>
+              <Typography sx={{ color: "#64748b", fontSize: "0.74rem" }}>{blnReadOnly ? t("view_claim_details_subtitle", "View claim details and reviewer/payroll status.") : t("edit_claim_subtitle", "Add expense items, upload proof, and submit for review.")}</Typography>
             </Box>
           </Stack>
           <Stack direction="row" spacing={0.8} flexWrap="wrap" justifyContent={{ xs: "flex-start", md: "flex-end" }} alignItems="center">
-            {blnShowClaimStatusBadge && objClaim ? <ReimbursementClaimStatusBadge strStatus={objClaim.strClaimStatus} size="medium" strTextColorOverride={objClaim.strClaimStatus === "pushed_to_payroll" ? "#111827" : "#f8fcff"} /> : null}
+            {blnShowClaimStatusBadge && objClaim ? <ReimbursementClaimStatusBadge strStatus={objClaim.strClaimStatus} size="medium" /> : null}
             {blnReadOnly && blnCanEdit && objClaim && canEditReimbursementClaim(objClaim.strClaimStatus) ? (
               <Button variant="contained" size="small" startIcon={<EditRoundedIcon />} onClick={() => objRouter.push(buildEssClaimRoute(objClaim.intID, "edit"))} sx={{ ...objDetailActionButtonSx, backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, boxShadow: "none", "&:hover": { backgroundColor: "#0a355f", boxShadow: "none" } }}>{t("edit", "Edit")}</Button>
             ) : null}
@@ -558,7 +558,7 @@ export default function ReimbursementClaimEditorPage({ intClaimID, strMode }: { 
             {blnShowSubmit ? (
               <Button variant="contained" size="small" startIcon={<SendRoundedIcon />} onClick={() => void submitClaim()} disabled={blnSaving} controlId="reimbursements.claim-editor.submit.button" sx={{ ...objDetailActionButtonSx, backgroundColor: "#f59e0b", color: "#111827", fontWeight: 800, boxShadow: "none", "&:hover": { backgroundColor: "#d97706", boxShadow: "none" }, "&.Mui-disabled": { backgroundColor: "rgba(245,158,11,0.38)", color: "rgba(17,24,39,0.52)" } }}>{t("submit", "Submit")}</Button>
             ) : null}
-            <Button variant="outlined" size="small" startIcon={<ArrowBackRoundedIcon />} onClick={() => window.history.back()} controlId="reimbursements.claim-editor.back.button" sx={{ ...objDetailActionButtonSx, borderColor: "rgba(248,252,255,0.78)", color: "#f8fcff", fontWeight: 800, "&:hover": { borderColor: "#ffffff", backgroundColor: "rgba(255,255,255,0.1)" } }}>{t("back", "Back")}</Button>
+            <Button variant="outlined" size="small" startIcon={<ArrowBackRoundedIcon />} onClick={() => window.history.back()} controlId="reimbursements.claim-editor.back.button" sx={{ ...objDetailActionButtonSx, borderColor: "#98a2b3", color: "#344054", fontWeight: 800, "&:hover": { borderColor: "#667085", backgroundColor: "#f8fafc" } }}>{t("back", "Back")}</Button>
           </Stack>
         </Stack>
       </Paper>

@@ -269,10 +269,13 @@ export default function ReimbursementReviewListPage() {
         strClaimTitle: objClaim.strClaimTitle || "",
         strEmployee: getEmployeeLabel(objClaim, mapEmployees) || "-",
         dtClaimDate: formatDateLabel(objClaim.dtClaimDate),
+        dtClaimDateSort: objClaim.dtClaimDate || "",
         strStatus: <ReimbursementStatusBadge strStatus={objClaim.strClaimStatus} />,
         strStatusSort: formatStatusLabel(objClaim.strClaimStatus),
         decClaimedAmount: formatCurrency(objClaim.decClaimedAmount),
+        decClaimedAmountSort: Number(objClaim.decClaimedAmount ?? 0),
         decApprovedAmount: formatCurrency(objClaim.decApprovedAmount),
+        decApprovedAmountSort: Number(objClaim.decApprovedAmount ?? 0),
         strPaymentStatus: getPaymentStatusLabel(objClaim),
       })),
     [blnCanEditEssReimbursement, blnCanViewEssReimbursement, blnEmployeeReimbursementContext, lstFilteredClaims, mapEmployees, objRouter]
@@ -284,7 +287,7 @@ export default function ReimbursementReviewListPage() {
       { field: "strClaimReference", headerName: "Claim Ref #", filterable: false, width: 150, sortAccessor: (objRow) => String(objRow.strClaimReferenceSort) },
       { field: "strClaimTitle", headerName: "Claim Purpose", width: 220 },
       { field: "strEmployee", headerName: "Employee", width: 230 },
-      { field: "dtClaimDate", headerName: "Claim Date", width: 140 },
+      { field: "dtClaimDate", headerName: "Claim Date", width: 140, sortAccessor: (objRow) => String(objRow.dtClaimDateSort) },
       { field: "strStatus", headerName: "Status", align: "left", filterable: false, width: 160, sortAccessor: (objRow) => String(objRow.strStatusSort) },
       {
         field: "decClaimedAmount",
@@ -296,6 +299,7 @@ export default function ReimbursementReviewListPage() {
         ),
         align: "right",
         width: 170,
+        sortAccessor: (objRow) => objRow.decClaimedAmountSort,
       },
       {
         field: "decApprovedAmount",
@@ -307,6 +311,7 @@ export default function ReimbursementReviewListPage() {
         ),
         align: "right",
         width: 180,
+        sortAccessor: (objRow) => objRow.decApprovedAmountSort,
       },
       { field: "strPaymentStatus", headerName: "Payment Status", width: 160 },
     ],

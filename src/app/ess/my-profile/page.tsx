@@ -1,19 +1,16 @@
 "use client";
 
-import EditRoundedIcon from "@mui/icons-material/EditRounded";
+// import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import PhotoCameraRoundedIcon from "@mui/icons-material/PhotoCameraRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
-import BadgeRoundedIcon from "@mui/icons-material/BadgeRounded";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import WorkOutlineRoundedIcon from "@mui/icons-material/WorkOutlineRounded";
 import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
 import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 import PhoneOutlinedIcon from "@mui/icons-material/PhoneOutlined";
 import ApartmentOutlinedIcon from "@mui/icons-material/ApartmentOutlined";
-import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
-import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
 import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
 import {
   Alert,
   Avatar,
@@ -23,23 +20,20 @@ import {
   CircularProgress,
   Divider,
   Grid,
-  IconButton,
-  LinearProgress,
   Paper,
   Stack,
   Tab,
   Tabs,
   Typography
 } from "@mui/material";
-import { useRouter } from "next/navigation";
+// import { useRouter } from "next/navigation";
 import { ChangeEvent, type ReactElement, useEffect, useState } from "react";
 
 import { employeeService } from "@/features/employee/services/employeeService";
-import type { EmployeeAddressRecord, EmployeeDetailRecord, EmployeeFamilyDetailRecord, EmployeeFormOptions, EmployeeStatutoryRecord } from "@/features/employee/types";
+import type { EmployeeAddressRecord, EmployeeDetailRecord, EmployeeExperienceRecord, EmployeeFamilyDetailRecord, EmployeeFormOptions, EmployeeQualificationRecord } from "@/features/employee/types";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useAuthenticatedAvatar } from "@/hooks/useAuthenticatedAvatar";
-import { fileUploadService, type FileMetadataDto } from "@/lib/fileUploadService";
 import type { CurrentUserContext } from "@/models/AuthModels";
 import { authApiService } from "@/services";
 
@@ -60,21 +54,37 @@ function DetailRow({ strLabel, strValue }: { strLabel: string; strValue: string 
   return (
     <Grid container sx={{ minHeight: 43, alignItems: "center", borderBottom: "1px solid #e9edf3", py: 0.55 }}>
       <Grid item xs={5} sm={4.5}>
-        <Typography sx={{ color: "#667085", fontSize: "0.7rem", fontWeight: 600 }}>{strLabel}</Typography>
+        <Typography sx={{ color: "#667085", typography: "body2", fontWeight: 600 }}>{strLabel}</Typography>
       </Grid>
       <Grid item xs={7} sm={7.5}>
-        <Typography sx={{ color: "#172033", fontSize: "0.74rem", fontWeight: 600, overflowWrap: "anywhere" }}>{strValue}</Typography>
+        <Typography sx={{ color: "#172033", typography: "body2", fontWeight: 600, overflowWrap: "anywhere" }}>{strValue}</Typography>
       </Grid>
     </Grid>
   );
 }
 
-function SidebarLine({ objIcon, strValue }: { objIcon: ReactElement; strValue: string }) {
+function SidebarLine({ objIcon, strValue, strIconColor }: { objIcon: ReactElement; strValue: string; strIconColor: string }) {
   return (
     <Stack direction="row" spacing={1} alignItems="center">
-      <Box sx={{ color: "#667085", display: "flex", "& svg": { fontSize: 15 } }}>{objIcon}</Box>
-      <Typography sx={{ color: "#344054", fontSize: "0.7rem", overflowWrap: "anywhere", minWidth: 0 }}>{strValue}</Typography>
+      <Box sx={{ color: strIconColor, display: "flex", "& svg": { fontSize: 15 } }}>{objIcon}</Box>
+      <Typography sx={{ color: "#344054", typography: "body2", overflowWrap: "anywhere", minWidth: 0 }}>{strValue}</Typography>
     </Stack>
+  );
+}
+
+const dicReadOnlyCardSx = {
+  borderRadius: "9px",
+  overflow: "hidden",
+  background: "linear-gradient(180deg, rgba(248, 250, 252, 0.98) 0%, #ffffff 88px)"
+} as const;
+
+function ReadOnlyCard({ lstRows }: { lstRows: Array<{ strLabel: string; strValue: string }> }) {
+  return (
+    <Paper variant="outlined" sx={dicReadOnlyCardSx}>
+      <Box sx={{ px: 1.5 }}>
+        {lstRows.map((objRow) => <DetailRow key={objRow.strLabel} strLabel={objRow.strLabel} strValue={objRow.strValue} />)}
+      </Box>
+    </Paper>
   );
 }
 
@@ -90,7 +100,7 @@ function resolveLookupLabel(
 }
 
 export default function EssMyProfilePage() {
-  const objRouter = useRouter();
+  // const objRouter = useRouter();
   const { t } = useModuleLabels("my-profile");
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(["MY_PROFILE"]);
   const [intEmployeeID, setIntEmployeeID] = useState<number | null>(null);
@@ -98,10 +108,10 @@ export default function EssMyProfilePage() {
   const [objEmployee, setObjEmployee] = useState<EmployeeDetailRecord | null>(null);
   const [objFormOptions, setObjFormOptions] = useState<EmployeeFormOptions | null>(null);
   const [objAddress, setObjAddress] = useState<EmployeeAddressRecord | null>(null);
-  const [objStatutory, setObjStatutory] = useState<EmployeeStatutoryRecord | null>(null);
+  const [lstExperiences, setLstExperiences] = useState<EmployeeExperienceRecord[]>([]);
+  const [lstQualifications, setLstQualifications] = useState<EmployeeQualificationRecord[]>([]);
   const [lstFamily, setLstFamily] = useState<EmployeeFamilyDetailRecord[]>([]);
-  const [lstDocuments, setLstDocuments] = useState<FileMetadataDto[]>([]);
-  const [strActiveTab, setStrActiveTab] = useState("personal");
+  const [strActiveTab, setStrActiveTab] = useState("basicInfo");
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnAvatarUpdating, setBlnAvatarUpdating] = useState(false);
   const [strError, setStrError] = useState("");
@@ -155,9 +165,9 @@ export default function EssMyProfilePage() {
           employeeService.getFormOptions(),
           Promise.allSettled([
             employeeService.getEmployeeAddress(intCurrentEmployeeID),
-            employeeService.getEmployeeStatutory(intCurrentEmployeeID),
-            employeeService.getEmployeeFamilyDetails(intCurrentEmployeeID),
-            fileUploadService.listFiles({ strModule: "PROFILE" })
+            employeeService.getEmployeeExperiences(intCurrentEmployeeID),
+            employeeService.getEmployeeQualifications(intCurrentEmployeeID),
+            employeeService.getEmployeeFamilyDetails(intCurrentEmployeeID)
           ])
         ]);
 
@@ -173,13 +183,13 @@ export default function EssMyProfilePage() {
         }
 
         if (lstProfileDetails[1].status === "fulfilled") {
-          setObjStatutory(lstProfileDetails[1].value);
+          setLstExperiences(lstProfileDetails[1].value);
         }
         if (lstProfileDetails[2].status === "fulfilled") {
-          setLstFamily(lstProfileDetails[2].value);
+          setLstQualifications(lstProfileDetails[2].value);
         }
         if (lstProfileDetails[3].status === "fulfilled") {
-          setLstDocuments(lstProfileDetails[3].value);
+          setLstFamily(lstProfileDetails[3].value);
         }
       } catch (objError: unknown) {
         if (blnMounted) {
@@ -301,135 +311,216 @@ export default function EssMyProfilePage() {
   const strLocation = resolveLookupLabel(objFormOptions?.lstLocations, objEmployee?.intLocationID ?? null, strNotAvailable);
   const strDepartment = resolveLookupLabel(objFormOptions?.lstDepartments, objEmployee?.intDepartmentID ?? null, strNotAvailable);
   const strDesignation = resolveLookupLabel(objFormOptions?.lstDesignations, objEmployee?.intDesignationID ?? null, strNotAvailable);
-  const objEmergencyContact = lstFamily.find((objMember) => Boolean(objMember.strContactNumber)) ?? null;
-  const lstCompletionValues = [
-    objEmployee?.strFirstName,
-    objEmployee?.strLastName,
-    objEmployee?.dtDateOfBirth,
-    objEmployee?.strGender,
-    objEmployee?.strMobileNumber,
-    objEmployee?.strPersonalEmail,
-    objEmployee?.strWorkEmail,
-    objEmployee?.dtDateOfJoining,
-    objEmployee?.intEmploymentTypeID,
-    objEmployee?.intDepartmentID,
-    objEmployee?.intDesignationID,
-    objEmployee?.intLocationID,
-    objAddress?.strAddressLine1,
-    objAddress?.strCityName,
-    objAddress?.intCountryID,
-    objStatutory?.strPanNumber,
-    objStatutory?.strUanNumber
-  ];
-  const intProfileCompletion = Math.round((lstCompletionValues.filter(Boolean).length / lstCompletionValues.length) * 100);
-
+  const strLineManager = resolveLookupLabel(objFormOptions?.lstManagers, objEmployee?.intLineManagerEmployeeID ?? null, strNotAvailable);
+  const strPayrollGroup = resolveLookupLabel(objFormOptions?.lstPayrollGroups, objEmployee?.intPayrollGroupID ?? null, strNotAvailable);
+  const strPreferredLanguage = resolveLookupLabel(objFormOptions?.lstLanguages, objEmployee?.intPreferredLanguageID ?? null, strNotAvailable);
   const dicTabSx = {
     minHeight: 48,
     minWidth: { xs: 105, sm: 115 },
     px: 1.2,
     textTransform: "none",
     color: "#475467",
-    fontSize: "0.7rem",
+    typography: "button",
     fontWeight: 600,
-    "&.Mui-selected": { color: "#1769e0" },
+    "&.Mui-selected": {
+      color: "var(--app-primary-color)",
+      "& svg": { color: "var(--app-primary-color)" }
+    },
     "& .MuiTab-iconWrapper": { mr: 0.7, mb: "0 !important" },
     "& svg": { fontSize: 17 }
   } as const;
 
   return (
-    <Box>
-      {strRightsError ? <Typography sx={{ mb: 1, color: "#b45309", fontSize: "0.78rem" }}>{strRightsError}</Typography> : null}
+    <Box sx={{ height: { xs: "auto", md: "100%" }, minHeight: 0, overflow: { xs: "visible", md: "hidden" }, display: "flex", flexDirection: "column", px: "12px" }}>
+      {strRightsError ? <Typography sx={{ mb: 1, color: "#b45309", typography: "body2" }}>{strRightsError}</Typography> : null}
       {strError ? <Alert severity="error" sx={{ mb: 1.5, borderRadius: "8px" }} onClose={() => setStrError("")}>{strError}</Alert> : null}
 
-      <Grid container spacing={1.5} alignItems="stretch">
-        <Grid item xs={12} md={3} lg={2.6}>
-          <Paper elevation={0} sx={{ height: "100%", p: 1.6, border: "1px solid #e1e7ef", borderRadius: "9px", boxShadow: "0 4px 15px rgba(15,23,42,0.05)" }}>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(240px, 3fr) minmax(0, 9fr)", lg: "minmax(260px, 2.6fr) minmax(0, 9.4fr)" },
+          gap: "12px",
+          flex: { md: 1 },
+          height: { xs: "auto", md: 0 },
+          minHeight: 0,
+          overflow: { xs: "visible", md: "hidden" }
+        }}
+      >
+        <Box sx={{ display: "flex", minHeight: 0, overflow: "hidden" }}>
+          <Paper elevation={0} sx={{ width: "100%", height: "100%", p: 1.6, border: "1px solid #e1e7ef", borderRadius: "9px", boxShadow: "0 4px 15px rgba(15,23,42,0.05)" }}>
             <Stack alignItems="center" sx={{ pt: 0.6 }}>
               <Avatar src={strAuthenticatedAvatarUrl || undefined} sx={{ width: 92, height: 92, bgcolor: "#e8eef8", color: "#334155", fontWeight: 800, fontSize: "1.5rem" }}>{strInitial}</Avatar>
-              <Typography sx={{ mt: 1, color: "#172033", fontWeight: 800, fontSize: "1rem", textAlign: "center" }}>{strTitleName}</Typography>
-              <Typography sx={{ color: "#667085", fontSize: "0.68rem", fontWeight: 600 }}>{valueOrNotAvailable(objEmployee?.strEmployeeCode)}</Typography>
-              <Chip size="small" label={translateKnownValue(objEmployee?.strEmploymentStatus)} sx={{ mt: 0.8, height: 21, bgcolor: "#ecfdf3", color: "#15803d", "& .MuiChip-label": { px: 0.9, fontSize: "0.65rem", fontWeight: 700 } }} />
+              <Typography sx={{ mt: 1, color: "#172033", typography: "h6", fontWeight: 800, textAlign: "center" }}>{strTitleName}</Typography>
+              <Typography sx={{ color: "#667085", typography: "body2", fontWeight: 600 }}>{valueOrNotAvailable(objEmployee?.strEmployeeCode)}</Typography>
+              <Chip size="small" label={translateKnownValue(objEmployee?.strEmploymentStatus)} sx={{ mt: 0.8, height: 24, bgcolor: "#ecfdf3", color: "#15803d", "& .MuiChip-label": { px: 0.9, typography: "caption", fontWeight: 700 } }} />
             </Stack>
 
             <Divider sx={{ my: 1.35 }} />
             <Stack spacing={1.15}>
-              <SidebarLine objIcon={<WorkOutlineRoundedIcon />} strValue={strManager} />
-              <SidebarLine objIcon={<ApartmentOutlinedIcon />} strValue={strDepartment} />
-              <SidebarLine objIcon={<LocationOnOutlinedIcon />} strValue={strLocation} />
-              <SidebarLine objIcon={<EmailOutlinedIcon />} strValue={valueOrNotAvailable(objEmployee?.strWorkEmail)} />
-              <SidebarLine objIcon={<PhoneOutlinedIcon />} strValue={valueOrNotAvailable(objEmployee?.strMobileNumber)} />
+              <SidebarLine objIcon={<WorkOutlineRoundedIcon />} strValue={strManager} strIconColor="#2563eb" />
+              <SidebarLine objIcon={<ApartmentOutlinedIcon />} strValue={strDepartment} strIconColor="#7c3aed" />
+              <SidebarLine objIcon={<LocationOnOutlinedIcon />} strValue={strLocation} strIconColor="#e11d48" />
+              <SidebarLine objIcon={<EmailOutlinedIcon />} strValue={valueOrNotAvailable(objEmployee?.strWorkEmail)} strIconColor="#0891b2" />
+              <SidebarLine objIcon={<PhoneOutlinedIcon />} strValue={valueOrNotAvailable(objEmployee?.strMobileNumber)} strIconColor="#16a34a" />
             </Stack>
 
             <Divider sx={{ my: 1.35 }} />
             <Stack spacing={0.8}>
-              <Button component="label" variant="outlined" fullWidth startIcon={blnAvatarUpdating ? <CircularProgress size={13} /> : <PhotoCameraRoundedIcon />} disabled={blnAvatarUpdating || !blnCanEditProfile} sx={{ minHeight: 31, borderRadius: "4px", textTransform: "none", fontWeight: 700, fontSize: "0.68rem" }}>
+              <Button component="label" variant="outlined" fullWidth startIcon={blnAvatarUpdating ? <CircularProgress size={13} /> : <PhotoCameraRoundedIcon />} disabled={blnAvatarUpdating || !blnCanEditProfile} sx={{ minHeight: 34, borderRadius: "4px", textTransform: "none", fontWeight: 700 }}>
                 {t("change_photo", "Change Photo")}
                 <input hidden type="file" accept="image/png,image/jpeg,image/webp" onChange={handleAvatarUpload} />
               </Button>
-              {blnCanEditProfile ? (
-                <Button controlId="ess.my-profile.edit.button" variant="contained" fullWidth startIcon={<EditRoundedIcon />} onClick={() => objRouter.push(`/ess/my-profile/edit/${intEmployeeID}`)} sx={{ minHeight: 31, borderRadius: "4px", textTransform: "none", fontWeight: 700, fontSize: "0.68rem", boxShadow: "none" }}>
+              {/* {blnCanEditProfile ? (
+                <Button controlId="ess.my-profile.edit.button" variant="contained" fullWidth startIcon={<EditRoundedIcon />} onClick={() => objRouter.push(`/ess/my-profile/edit/${intEmployeeID}`)} sx={{ minHeight: 34, borderRadius: "4px", textTransform: "none", fontWeight: 700, boxShadow: "none" }}>
                   {t("edit_profile", "Edit Profile")}
                 </Button>
-              ) : null}
+              ) : null} */}
               {strAvatarUrl && blnCanEditProfile ? (
-                <Button size="small" color="inherit" startIcon={<DeleteOutlineRoundedIcon />} onClick={handleAvatarDelete} disabled={blnAvatarUpdating} sx={{ textTransform: "none", color: "#667085", fontSize: "0.63rem" }}>{t("remove_photo", "Remove photo")}</Button>
+                <Button size="small" color="inherit" startIcon={<DeleteOutlineRoundedIcon />} onClick={handleAvatarDelete} disabled={blnAvatarUpdating} sx={{ textTransform: "none", color: "#667085" }}>{t("remove_photo", "Remove photo")}</Button>
               ) : null}
             </Stack>
 
-            {/* <Divider sx={{ my: 1.35 }} />
-            <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.65 }}>
-              <Typography sx={{ fontSize: "0.68rem", fontWeight: 700, color: "#344054" }}>{t("profile_completion", "Profile Completion")}</Typography>
-              <Typography sx={{ fontSize: "0.68rem", fontWeight: 800, color: "#344054" }}>{intProfileCompletion}%</Typography>
-            </Stack>
-            <LinearProgress variant="determinate" value={intProfileCompletion} sx={{ height: 6, borderRadius: 4, bgcolor: "#e7ebf1", "& .MuiLinearProgress-bar": { borderRadius: 4, bgcolor: "#1769e0" } }} />
-           */}
-          
           </Paper>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} md={9} lg={9.4}>
-          <Paper elevation={0} sx={{ minHeight: { md: 560 }, border: "1px solid #e1e7ef", borderRadius: "9px", boxShadow: "0 4px 15px rgba(15,23,42,0.05)", overflow: "hidden" }}>
-            <Box sx={{ px: { xs: 0.5, sm: 1.5 }, overflowX: "auto" }}>
-              <Tabs value={strActiveTab} onChange={(_objEvent, strValue: string) => setStrActiveTab(strValue)} variant="scrollable" scrollButtons={false} sx={{ minHeight: 49, borderBottom: "1px solid #e7ebf1", "& .MuiTabs-indicator": { height: 2, bgcolor: "#1769e0" } }}>
-                <Tab value="personal" icon={<PersonRoundedIcon />} iconPosition="start" label={t("tab_personal", "Personal Information")} sx={dicTabSx} />
-                <Tab value="employment" icon={<BadgeRoundedIcon />} iconPosition="start" label={t("tab_employment", "Employment Information")} sx={dicTabSx} />
-                <Tab value="address" icon={<LocationOnOutlinedIcon />} iconPosition="start" label={t("tab_address", "Address")} sx={dicTabSx} />
-                <Tab value="statutory" icon={<ShieldOutlinedIcon />} iconPosition="start" label={t("tab_statutory", "Statutory")} sx={dicTabSx} />
-                {/* <Tab value="documents" icon={<DescriptionOutlinedIcon />} iconPosition="start" label={t("tab_documents", "Documents")} sx={dicTabSx} /> */}
+        <Box sx={{ display: "flex", minHeight: 0, overflow: "hidden" }}>
+          <Paper elevation={0} sx={{ width: "100%", height: { md: "100%" }, minHeight: 0, display: "flex", flexDirection: "column", border: "1px solid #e1e7ef", borderRadius: "9px", boxShadow: "0 4px 15px rgba(15,23,42,0.05)", overflow: "hidden" }}>
+            <Box sx={{ px: { xs: 0.5, sm: 1.5 }, overflowX: "auto", flexShrink: 0 }}>
+              <Tabs value={strActiveTab} onChange={(_objEvent, strValue: string) => setStrActiveTab(strValue)} variant="scrollable" scrollButtons={false} sx={{ minHeight: 49, borderBottom: "1px solid #e7ebf1", "& .MuiTabs-indicator": { height: 2, bgcolor: "var(--app-primary-color)" } }}>
+                <Tab value="basicInfo" icon={<PersonRoundedIcon />} iconPosition="start" label={t("tab_personal", "Personal Information")} sx={dicTabSx} />
+                <Tab value="contactDetails" icon={<PhoneOutlinedIcon />} iconPosition="start" label={t("tab_employment", "Employment Information")} sx={dicTabSx} />
+                <Tab value="experience" icon={<WorkOutlineRoundedIcon />} iconPosition="start" label={t("tab_experience", "Experience")} sx={dicTabSx} />
+                <Tab value="qualification" icon={<SchoolOutlinedIcon />} iconPosition="start" label={t("tab_qualification", "Qualification")} sx={dicTabSx} />
+                <Tab value="familyDetails" icon={<GroupsOutlinedIcon />} iconPosition="start" label={t("tab_family_details", "Family Details")} sx={dicTabSx} />
               </Tabs>
             </Box>
 
-            <Box sx={{ p: { xs: 1.5, sm: 2.2 } }}>
-              {strActiveTab === "personal" ? (
+            <Box
+              sx={{
+                p: "12px",
+                flex: { md: "1 1 0" },
+                height: { xs: "auto", md: 0 },
+                minHeight: 0,
+                overflowY: { xs: "visible", md: "auto" },
+                scrollbarGutter: "stable"
+              }}
+            >
+              {strActiveTab === "basicInfo" ? (
                 <Stack spacing={2.1}>
-                  <Box>
-                    <Typography sx={{ color: "#172033", fontSize: "0.85rem", fontWeight: 800, mb: 0.75 }}>{t("section_personal_information", "Personal Information")}</Typography>
+                  <Paper variant="outlined" sx={dicReadOnlyCardSx}>
+                    <Box sx={{ px: 1.5 }}>
+                    <DetailRow strLabel={t("field_employee_code", "Employee Code")} strValue={valueOrNotAvailable(objEmployee?.strEmployeeCode)} />
+                    <DetailRow strLabel={t("field_title", "Title")} strValue={valueOrNotAvailable(objEmployee?.strTitle)} />
+                    <DetailRow strLabel={t("field_first_name", "First Name")} strValue={valueOrNotAvailable(objEmployee?.strFirstName)} />
+                    <DetailRow strLabel={t("field_middle_name", "Middle Name")} strValue={valueOrNotAvailable(objEmployee?.strMiddleName)} />
+                    <DetailRow strLabel={t("field_last_name", "Last Name")} strValue={valueOrNotAvailable(objEmployee?.strLastName)} />
                     <DetailRow strLabel={t("field_full_name", "Full Name")} strValue={strFullName} />
                     <DetailRow strLabel={t("field_date_of_birth", "Date of Birth")} strValue={formatDate(objEmployee?.dtDateOfBirth ?? null, strNotAvailable)} />
                     <DetailRow strLabel={t("field_gender", "Gender")} strValue={translateKnownValue(objEmployee?.strGender)} />
-                    <DetailRow strLabel={t("field_mobile_number", "Mobile Number")} strValue={valueOrNotAvailable(objEmployee?.strMobileNumber)} />
-                    <DetailRow strLabel={t("field_personal_email", "Personal Email")} strValue={valueOrNotAvailable(objEmployee?.strPersonalEmail)} />
-                    <DetailRow strLabel={t("field_work_email", "Work Email")} strValue={valueOrNotAvailable(objEmployee?.strWorkEmail)} />
-                  </Box>
+                    <DetailRow strLabel={t("field_worker_category", "Worker Category")} strValue={objEmployee?.blnIsWorker ? t("worker", "Worker") : t("non_worker", "Non-Worker")} />
+                    <DetailRow strLabel={t("field_date_of_joining", "Date of Joining")} strValue={formatDate(objEmployee?.dtDateOfJoining ?? null, strNotAvailable)} />
+                    <DetailRow strLabel={t("field_employment_type", "Employment Type")} strValue={translateKnownValue(resolveLookupLabel(objFormOptions?.lstEmploymentTypes, objEmployee?.intEmploymentTypeID ?? null, strNotAvailable))} />
+                    <DetailRow strLabel={t("field_department", "Department")} strValue={strDepartment} />
+                    <DetailRow strLabel={t("field_designation", "Designation")} strValue={strDesignation} />
+                    <DetailRow strLabel={t("field_grade", "Grade")} strValue={resolveLookupLabel(objFormOptions?.lstGrades, objEmployee?.intGradeID ?? null, strNotAvailable)} />
+                    <DetailRow strLabel={t("field_cost_center", "Cost Center")} strValue={resolveLookupLabel(objFormOptions?.lstCostCenters, objEmployee?.intCostCenterID ?? null, strNotAvailable)} />
+                    <DetailRow strLabel={t("field_location", "Location")} strValue={strLocation} />
+                    <DetailRow strLabel={t("field_payroll_group", "Payroll Group")} strValue={strPayrollGroup} />
+                    <DetailRow strLabel={t("field_manager", "Manager")} strValue={strManager} />
+                    <DetailRow strLabel={t("field_line_manager", "Line Manager")} strValue={strLineManager} />
+                    <DetailRow strLabel={t("field_preferred_language", "Preferred Language")} strValue={strPreferredLanguage} />
+                    <DetailRow strLabel={t("field_employment_status", "Employment Status")} strValue={translateKnownValue(objEmployee?.strEmploymentStatus)} />
+                    <DetailRow strLabel={t("field_date_of_exit", "Date of Exit")} strValue={formatDate(objEmployee?.dtDateOfExit ?? null, strNotAvailable)} />
+                    <DetailRow strLabel={t("field_ess_enabled", "ESS Enabled")} strValue={objEmployee?.blnIsEssEnabled ? t("yes", "Yes") : t("no", "No")} />
+                    </Box>
+                  </Paper>
                 </Stack>
               ) : null}
 
-              {strActiveTab === "employment" ? <Box><Typography sx={{ color: "#172033", fontSize: "0.85rem", fontWeight: 800, mb: 0.75 }}>{t("section_employment_information", "Employment Information")}</Typography><DetailRow strLabel={t("field_employee_code", "Employee Code")} strValue={valueOrNotAvailable(objEmployee?.strEmployeeCode)} /><DetailRow strLabel={t("field_date_of_joining", "Date of Joining")} strValue={formatDate(objEmployee?.dtDateOfJoining ?? null, strNotAvailable)} /><DetailRow strLabel={t("field_employment_type", "Employment Type")} strValue={translateKnownValue(resolveLookupLabel(objFormOptions?.lstEmploymentTypes, objEmployee?.intEmploymentTypeID ?? null, strNotAvailable))} /><DetailRow strLabel={t("field_department", "Department")} strValue={strDepartment} /><DetailRow strLabel={t("field_designation", "Designation")} strValue={strDesignation} /><DetailRow strLabel={t("field_grade", "Grade")} strValue={resolveLookupLabel(objFormOptions?.lstGrades, objEmployee?.intGradeID ?? null, strNotAvailable)} /><DetailRow strLabel={t("field_location", "Location")} strValue={strLocation} /><DetailRow strLabel={t("field_cost_center", "Cost Center")} strValue={resolveLookupLabel(objFormOptions?.lstCostCenters, objEmployee?.intCostCenterID ?? null, strNotAvailable)} /><DetailRow strLabel={t("field_manager", "Manager")} strValue={strManager} /><DetailRow strLabel={t("field_date_of_exit", "Date of Exit")} strValue={formatDate(objEmployee?.dtDateOfExit ?? null, strNotAvailable)} /></Box> : null}
+              {strActiveTab === "contactDetails" ? (
+                <Paper variant="outlined" sx={dicReadOnlyCardSx}>
+                  <Box sx={{ px: 1.5 }}>
+                  <DetailRow strLabel={t("field_work_email", "Work Email")} strValue={valueOrNotAvailable(objEmployee?.strWorkEmail)} />
+                  <DetailRow strLabel={t("field_personal_email", "Personal Email")} strValue={valueOrNotAvailable(objEmployee?.strPersonalEmail)} />
+                  <DetailRow strLabel={t("field_mobile_number", "Mobile Number")} strValue={valueOrNotAvailable(objEmployee?.strMobileNumber)} />
+                  <DetailRow strLabel={t("field_address_type", "Address Type")} strValue={translateKnownValue(objAddress?.strAddressType)} />
+                  <DetailRow strLabel={t("field_address_line_1", "Address Line 1")} strValue={valueOrNotAvailable(objAddress?.strAddressLine1)} />
+                  <DetailRow strLabel={t("field_address_line_2", "Address Line 2")} strValue={valueOrNotAvailable(objAddress?.strAddressLine2)} />
+                  <DetailRow strLabel={t("field_city", "City")} strValue={valueOrNotAvailable(objAddress?.strCityName)} />
+                  <DetailRow strLabel={t("field_state", "State")} strValue={resolveLookupLabel(objFormOptions?.lstStates, objAddress?.intStateID ?? null, strNotAvailable)} />
+                  <DetailRow strLabel={t("field_postal_code", "Postal Code")} strValue={valueOrNotAvailable(objAddress?.strPostalCode)} />
+                  <DetailRow strLabel={t("field_country", "Country")} strValue={resolveLookupLabel(objFormOptions?.lstCountries, objAddress?.intCountryID ?? null, strNotAvailable)} />
+                  </Box>
+                </Paper>
+              ) : null}
 
-              {strActiveTab === "address" ? <Box><Typography sx={{ color: "#172033", fontSize: "0.85rem", fontWeight: 800, mb: 0.75 }}>{t("section_address", "Address")}</Typography><DetailRow strLabel={t("field_address_type", "Address Type")} strValue={translateKnownValue(objAddress?.strAddressType)} /><DetailRow strLabel={t("field_address_line_1", "Address Line 1")} strValue={valueOrNotAvailable(objAddress?.strAddressLine1)} /><DetailRow strLabel={t("field_address_line_2", "Address Line 2")} strValue={valueOrNotAvailable(objAddress?.strAddressLine2)} /><DetailRow strLabel={t("field_city", "City")} strValue={valueOrNotAvailable(objAddress?.strCityName)} /><DetailRow strLabel={t("field_state", "State")} strValue={resolveLookupLabel(objFormOptions?.lstStates, objAddress?.intStateID ?? null, strNotAvailable)} /><DetailRow strLabel={t("field_country", "Country")} strValue={resolveLookupLabel(objFormOptions?.lstCountries, objAddress?.intCountryID ?? null, strNotAvailable)} /><DetailRow strLabel={t("field_postal_code", "Postal Code")} strValue={valueOrNotAvailable(objAddress?.strPostalCode)} /></Box> : null}
+              {strActiveTab === "experience" ? (
+                <Stack spacing={1.5}>
+                  {lstExperiences.length ? lstExperiences.map((objExperience) => (
+                    <ReadOnlyCard
+                      key={objExperience.intID}
+                      lstRows={[
+                        { strLabel: t("field_company_name", "Company Name"), strValue: valueOrNotAvailable(objExperience.strCompanyName) },
+                        { strLabel: t("field_job_title", "Job Title"), strValue: valueOrNotAvailable(objExperience.strJobTitle) },
+                        { strLabel: t("field_from_date", "From Date"), strValue: formatDate(objExperience.dtFromDate, strNotAvailable) },
+                        { strLabel: t("field_to_date", "To Date"), strValue: formatDate(objExperience.dtToDate, strNotAvailable) },
+                        { strLabel: t("field_total_years", "Total Years"), strValue: objExperience.decTotalYears?.toString() ?? strNotAvailable },
+                        { strLabel: t("field_last_drawn_salary", "Last Drawn Salary"), strValue: objExperience.decLastDrawnSalary?.toString() ?? strNotAvailable },
+                        { strLabel: t("field_reason_for_leaving", "Reason for Leaving"), strValue: valueOrNotAvailable(objExperience.strReasonForLeaving) },
+                        { strLabel: t("field_responsibilities", "Responsibilities"), strValue: valueOrNotAvailable(objExperience.strResponsibilities) },
+                        { strLabel: t("field_active", "Active"), strValue: objExperience.blnIsActive ? t("yes", "Yes") : t("no", "No") }
+                      ]}
+                    />
+                  )) : <Typography sx={{ py: 3, textAlign: "center", color: "#667085", typography: "body2" }}>{t("no_experience", "No experience details available.")}</Typography>}
+                </Stack>
+              ) : null}
 
-              {strActiveTab === "statutory" ? <Box><Typography sx={{ color: "#172033", fontSize: "0.85rem", fontWeight: 800, mb: 0.75 }}>{t("section_statutory", "Statutory Information")}</Typography><DetailRow strLabel={t("field_pan", "PAN")} strValue={valueOrNotAvailable(objStatutory?.strPanNumber)} /><DetailRow strLabel={t("field_uan", "UAN")} strValue={valueOrNotAvailable(objStatutory?.strUanNumber)} /><DetailRow strLabel={t("field_esi_number", "ESI Number")} strValue={valueOrNotAvailable(objStatutory?.strEsiNumber)} /><DetailRow strLabel={t("field_pf_number", "PF Number")} strValue={valueOrNotAvailable(objStatutory?.strPfNumber)} /><DetailRow strLabel={t("field_tax_regime", "Tax Regime")} strValue={translateKnownValue(objStatutory?.strTaxRegimeCode)} /><DetailRow strLabel={t("field_pf_applicable", "PF Applicable")} strValue={objStatutory?.blnPfApplicable ? t("yes", "Yes") : t("no", "No")} /><DetailRow strLabel={t("field_esi_applicable", "ESI Applicable")} strValue={objStatutory?.blnEsiApplicable ? t("yes", "Yes") : t("no", "No")} /></Box> : null}
+              {strActiveTab === "qualification" ? (
+                <Stack spacing={1.5}>
+                  {lstQualifications.length ? lstQualifications.map((objQualification) => (
+                    <ReadOnlyCard
+                      key={objQualification.intID}
+                      lstRows={[
+                        { strLabel: t("field_degree_name", "Degree Name"), strValue: valueOrNotAvailable(objQualification.strDegreeName) },
+                        { strLabel: t("field_specialization", "Specialization"), strValue: valueOrNotAvailable(objQualification.strSpecialization) },
+                        { strLabel: t("field_institution_name", "Institution Name"), strValue: valueOrNotAvailable(objQualification.strInstitutionName) },
+                        { strLabel: t("field_university_name", "University Name"), strValue: valueOrNotAvailable(objQualification.strUniversityName) },
+                        { strLabel: t("field_year_of_passing", "Year of Passing"), strValue: objQualification.intYearOfPassing.toString() },
+                        { strLabel: t("field_grade_or_percentage", "Grade / Percentage"), strValue: valueOrNotAvailable(objQualification.strGradeOrPercentage) },
+                        { strLabel: t("field_certification_number", "Certification Number"), strValue: valueOrNotAvailable(objQualification.strCertificationNumber) },
+                        { strLabel: t("field_highest_qualification", "Highest Qualification"), strValue: objQualification.blnIsHighestQualification ? t("yes", "Yes") : t("no", "No") },
+                        { strLabel: t("field_active", "Active"), strValue: objQualification.blnIsActive ? t("yes", "Yes") : t("no", "No") }
+                      ]}
+                    />
+                  )) : <Typography sx={{ py: 3, textAlign: "center", color: "#667085", typography: "body2" }}>{t("no_qualification", "No qualification details available.")}</Typography>}
+                </Stack>
+              ) : null}
 
-              {/* {strActiveTab === "documents" ? (
-                <Box>
-                  <Typography sx={{ color: "#172033", fontSize: "0.85rem", fontWeight: 800, mb: 1 }}>{t("section_documents", "Documents")}</Typography>
-                  {lstDocuments.length ? <Stack>{lstDocuments.map((objDocument) => <Stack key={objDocument.intFileID} direction="row" justifyContent="space-between" alignItems="center" sx={{ py: 1, borderBottom: "1px solid #e9edf3" }}><Box sx={{ minWidth: 0 }}><Typography sx={{ fontSize: "0.74rem", fontWeight: 700, color: "#344054", overflowWrap: "anywhere" }}>{objDocument.strDocumentType || objDocument.strOriginalFileName}</Typography><Typography sx={{ mt: 0.2, fontSize: "0.64rem", color: "#667085" }}>{objDocument.strOriginalFileName}</Typography></Box><IconButton size="small" aria-label={t("view_document", "View document")} onClick={() => fileUploadService.previewFile(objDocument.intFileID).catch(() => setStrError(t("error_preview_document", "Unable to open the document.")))}><VisibilityOutlinedIcon sx={{ fontSize: 18, color: "#1769e0" }} /></IconButton></Stack>)}</Stack> : <Typography sx={{ py: 3, textAlign: "center", color: "#667085", fontSize: "0.74rem" }}>{t("no_documents", "No documents available.")}</Typography>}
-                </Box>
-              ) : null} */}
+              {strActiveTab === "familyDetails" ? (
+                <Stack spacing={1.5}>
+                  {lstFamily.length ? lstFamily.map((objMember) => (
+                    <ReadOnlyCard
+                      key={objMember.intID}
+                      lstRows={[
+                        { strLabel: t("field_name", "Name"), strValue: valueOrNotAvailable(objMember.strName) },
+                        { strLabel: t("field_relationship", "Relationship"), strValue: valueOrNotAvailable(objMember.strRelationship) },
+                        { strLabel: t("field_date_of_birth", "Date of Birth"), strValue: formatDate(objMember.dtDateOfBirth, strNotAvailable) },
+                        { strLabel: t("field_gender", "Gender"), strValue: translateKnownValue(objMember.strGender) },
+                        { strLabel: t("field_contact_number", "Contact Number"), strValue: valueOrNotAvailable(objMember.strContactNumber) },
+                        { strLabel: t("field_occupation", "Occupation"), strValue: valueOrNotAvailable(objMember.strOccupation) },
+                        { strLabel: t("field_dependent", "Dependent"), strValue: objMember.blnIsDependent ? t("yes", "Yes") : t("no", "No") },
+                        { strLabel: t("field_nominee", "Nominee"), strValue: objMember.blnIsNominee ? t("yes", "Yes") : t("no", "No") },
+                        { strLabel: t("field_nominee_percentage", "Nominee Percentage"), strValue: objMember.decNomineePercentage?.toString() ?? strNotAvailable },
+                        { strLabel: t("field_address", "Address"), strValue: valueOrNotAvailable(objMember.strAddress) }
+                      ]}
+                    />
+                  )) : <Typography sx={{ py: 3, textAlign: "center", color: "#667085", typography: "body2" }}>{t("no_family_details", "No family details available.")}</Typography>}
+                </Stack>
+              ) : null}
             </Box>
           </Paper>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
     </Box>
   );
 }

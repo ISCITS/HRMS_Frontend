@@ -3,7 +3,6 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
-import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import { Alert, Box, Button, IconButton, Paper, Stack, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -65,14 +64,6 @@ export default function MyReimbursementClaimsPage() {
 
     void loadClaims();
   }, [blnRightsLoading, blnCanView]);
-
-  const objSummary = useMemo(() => {
-    const decPending = lstClaims
-      .filter((objClaim) => ["submitted", "resubmitted", "under_review", "released"].includes(objClaim.strClaimStatus))
-      .reduce((decTotal, objClaim) => decTotal + (objClaim.decClaimedAmount || 0), 0);
-    const decApproved = lstClaims.reduce((decTotal, objClaim) => decTotal + (objClaim.decApprovedAmount || 0), 0);
-    return { intClaims: lstClaims.length, decPending, decApproved };
-  }, [lstClaims]);
 
   const lstTableRows = useMemo(
     () =>
@@ -142,25 +133,10 @@ export default function MyReimbursementClaimsPage() {
 
   return (
     <Stack spacing={1.4}>
-      <Box className="pageBanner">
-        <Box className="bannerDots" />
-        <Box className="bannerIcon">
-          <ReceiptLongOutlinedIcon sx={{ fontSize: 30 }} />
-        </Box>
-        <Box className="bannerDivider" />
-        <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
-          <Typography component="h1" className="bannerTitle">
-            {t("my_reimbursements", "My Reimbursements")}
-          </Typography>
-          <Typography component="p" className="bannerSubTitle">
-            {objSummary.intClaims} {t("claims", "claims")}, {formatCurrency(objSummary.decPending)} {t("awaiting_review", "awaiting review")}, {formatCurrency(objSummary.decApproved)} {t("approved", "approved")}.
-          </Typography>
-        </Box>
-        <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap justifyContent={{ xs: "flex-start", md: "flex-end" }} alignItems="center" sx={{ position: "relative", zIndex: 1 }}>
-          <Button variant="contained" size="small" startIcon={<RefreshRoundedIcon />} onClick={() => void loadClaims()} controlId="reimbursements.my-claims.refresh.button" sx={{ maxHeight: 30, borderRadius: "8px", backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0a355f", boxShadow: "none" } }}>{t("refresh", "Refresh")}</Button>
-          {blnCanAdd ? <Button variant="contained" size="small" startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/ess/reimbursements/new")} controlId="reimbursements.my-claims.new-claim.button" sx={{ maxHeight: 30, borderRadius: "8px", backgroundColor: "#ffffff", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#ffffff", boxShadow: "none" } }}>{t("new_claim", "New Claim")}</Button> : null}
-        </Stack>
-      </Box>
+      <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap justifyContent="flex-end" alignItems="center" sx={{ mb: "10px" }}>
+        <Button variant="contained" size="small" startIcon={<RefreshRoundedIcon />} onClick={() => void loadClaims()} controlId="reimbursements.my-claims.refresh.button" sx={{ maxHeight: 30, borderRadius: "8px", backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0a355f", boxShadow: "none" } }}>{t("refresh", "Refresh")}</Button>
+        {blnCanAdd ? <Button variant="contained" size="small" startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/ess/reimbursements/new")} controlId="reimbursements.my-claims.new-claim.button" sx={{ maxHeight: 30, borderRadius: "8px", border: "1px solid #d0d5dd", backgroundColor: "#ffffff", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#f8fafc", borderColor: "#98a2b3", boxShadow: "none" } }}>{t("new_claim", "New Claim")}</Button> : null}
+      </Stack>
 
       {strRightsError ? <Alert severity="warning" sx={{ borderRadius: "8px" }}>{strRightsError}</Alert> : null}
       {strError ? <Alert severity="error" sx={{ borderRadius: "8px" }}>{strError}</Alert> : null}
