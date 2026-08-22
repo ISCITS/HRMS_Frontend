@@ -14,6 +14,7 @@ import type {
   GoogleMfaChallengeData,
   CurrentUserContext,
   MenuResponse,
+  PortalContextData,
   SsoCallbackData,
   SsoRedirectData,
   TenantLookupData
@@ -63,6 +64,18 @@ export async function setAuthCookies(objResponse: NextResponse, objAuthData: Aut
     maxAge: intMaxAgeSeconds,
     sameSite: "lax",
     secure: blnSecureCookie
+  });
+}
+
+// Refreshes only the access-token cookie. Switching portal keeps the same session and tenant, so
+// the tenant cookie is deliberately left untouched.
+export async function setAccessTokenCookie(objResponse: NextResponse, strAccessToken: string) {
+  objResponse.cookies.set(appConfig.authCookieName, strAccessToken, {
+    httpOnly: true,
+    path: "/",
+    maxAge: appConfig.authCookieMaxAgeSeconds,
+    sameSite: "lax",
+    secure: shouldUseSecureAuthCookies()
   });
 }
 
@@ -199,6 +212,21 @@ export async function proxyActionRights(strAccessToken: string, objRequestHeader
     method: "GET",
     cache: "no-store",
     headers: buildProtectedProxyHeaders(strAccessToken, "AUTH_ACTION_RIGHTS", objRequestHeaders)
+  });
+}
+
+// Activates ESS or HRMS for the signed-in identity. The backend revalidates the choice and
+// re-issues the access token carrying the new active context.
+export async function proxyPortalContext(
+  strAccessToken: string,
+  strPortal: string,
+  objRequestHeaders?: Headers
+) {
+  return callBackendApi<ApiEnvelope<PortalContextData>>("/api/v1/auth/context", {
+    method: "POST",
+    cache: "no-store",
+    body: JSON.stringify({ strPortal }),
+    headers: buildProtectedProxyHeaders(strAccessToken, "AUTH_PORTAL_CONTEXT", objRequestHeaders)
   });
 }
 

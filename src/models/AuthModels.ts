@@ -168,6 +168,8 @@ export type CurrentUserContext = {
   strAuthSource: string;
   strLoginMethod: string;
   strAvatarUrl?: string | null;
+  // Active portal for this session, decided and revalidated server-side.
+  strActiveContext?: PortalCode | null;
 };
 
 export type DashboardType = "PAYROLL" | "ESS" | "MANAGEMENT";

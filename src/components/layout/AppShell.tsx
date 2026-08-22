@@ -895,9 +895,15 @@ export default function AppShell({ children }: { children: ReactNode }) {
     ["admin", "human resource", "hr", "payroll", "manager", "approver", "supervisor", "finance"]
       .some((strKeyword) => strRole === strKeyword || strRole.includes(strKeyword)),
   );
-  // A linked employee without an HR/manager role must receive only self-service
-  // navigation even when stale group-menu rights still exist in tenant data.
-  const blnEssOnlyNavigation = Boolean(intLinkedEmployeeID) && !blnHasPrivilegedRole;
+  // When the session carries an active portal the server has already scoped menus and rights to
+  // that portal's primary group, so the client must follow it rather than inferring a portal from
+  // the employee link — an HR employee is legitimately employee-linked while working in HRMS.
+  // The legacy heuristic (linked employee without an HR/manager role gets self-service navigation
+  // even when stale group-menu rights exist) still applies to sessions with no portal context.
+  const strActivePortalContext = String(objUserContext?.strActiveContext ?? "").trim().toUpperCase();
+  const blnEssOnlyNavigation = strActivePortalContext
+    ? strActivePortalContext === "ESS"
+    : Boolean(intLinkedEmployeeID) && !blnHasPrivilegedRole;
   const strLinkedEmployeeName = strResolvedEmployeeName || extractLinkedEmployeeName(objUserContext);
   const { strEmployeeCode, strDesignation } = extractEmployeeMeta(objUserContext);
   const strProfileDisplayName = strLinkedEmployeeName || strUserName;

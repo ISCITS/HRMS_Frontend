@@ -873,6 +873,66 @@ export default function UserMasterPanel() {
         }
         titleSx={{ px: 2.25, py: 1.25, fontSize: "1rem", maxHeight: 50 }}
         nodeContent={<Box sx={{ display: "grid", gap: 2.25, pt: 1 }}>
+          <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{dicModuleLabels.sectionAccountAssociation}</Typography>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+              gap: 2,
+              alignItems: "center",
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                px: 1.5,
+                py: 1.25,
+                borderRadius: 0,
+                border: "1px solid #dbe7f0",
+                background: "rgba(248,250,252,0.9)",
+              }}
+            >
+              <Box>
+                <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicModuleLabels.fieldLoginAsEmployee}</Typography>
+                <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
+                  {dicModuleLabels.helperLoginAsEmployee}
+                </Typography>
+              </Box>
+              <Switch inputProps={{ "data-controlid": "user-master.dialog.login-as-employee.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.loginAsEmployee} onChange={(_, blnChecked) => setFormField("loginAsEmployee", blnChecked)} disabled={blnLoginAsEmployeeDisabled} />
+            </Box>
+
+            {dicForm.loginAsEmployee ? (
+              <TextField
+                select
+                label={dicModuleLabels.fieldEmployee}
+                inputProps={{ "data-controlid": "user-master.dialog.employee.select" }}
+                value={String(dicForm.employeeID)}
+                onChange={(objEvent) => setFormField("employeeID", objEvent.target.value ? Number(objEvent.target.value) : "")}
+                error={Boolean(dicErrors.employeeID)}
+                helperText={dicErrors.employeeID}
+                disabled={strMode === "view"}
+                fullWidth
+                required
+                SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.employee.select" } as HTMLAttributes<HTMLDivElement> }}
+              >
+                <MenuItem value="" data-controlid="user-master.dialog.employee.select.option">Select</MenuItem>
+                {lstEmployeeOptions
+                  .filter((objEmployee) =>
+                    !objEmployee.intLinkedUserID
+                    || String(objEmployee.intLinkedUserID) === strEditingUserId)
+                  .map((objEmployee) => (
+                  <MenuItem key={objEmployee.intID} value={String(objEmployee.intID)} data-controlid={`user-master.dialog.employee.${normalizeSelectToken(objEmployee.strCode || objEmployee.strLabel)}.option`}>
+                    {objEmployee.strCode ? `${objEmployee.strCode} - ${objEmployee.strLabel}` : objEmployee.strLabel}
+                  </MenuItem>
+                ))}
+              </TextField>
+            ) : (
+              <Box />
+            )}
+          </Box>
+
           <Box
             sx={{
               display: "grid",
@@ -987,110 +1047,6 @@ export default function UserMasterPanel() {
             <TextField label={dicModuleLabels.fieldSsoLoginMapping} inputProps={{ "data-controlid": "user-master.dialog.sso-login-mapping.input" }} value={dicForm.ssoLoginMapping} onChange={(objEvent) => setFormField("ssoLoginMapping", objEvent.target.value)} disabled={strMode === "view"} fullWidth />
           ) : null}
 
-          <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{dicModuleLabels.sectionAccountAssociation}</Typography>
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-              gap: 2,
-            }}
-          >
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                px: 1.5,
-                py: 1.25,
-                borderRadius: 0,
-                border: "1px solid #dbe7f0",
-                background: "rgba(248,250,252,0.9)",
-              }}
-            >
-              <Box>
-                <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicModuleLabels.fieldLoginAsEmployee}</Typography>
-                <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
-                  {dicModuleLabels.helperLoginAsEmployee}
-                </Typography>
-              </Box>
-              <Switch inputProps={{ "data-controlid": "user-master.dialog.login-as-employee.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.loginAsEmployee} onChange={(_, blnChecked) => setFormField("loginAsEmployee", blnChecked)} disabled={blnLoginAsEmployeeDisabled} />
-            </Box>
-
-            {dicForm.loginAsEmployee ? (
-              <TextField
-                select
-                label={dicModuleLabels.fieldEmployee}
-                inputProps={{ "data-controlid": "user-master.dialog.employee.select" }}
-                value={String(dicForm.employeeID)}
-                onChange={(objEvent) => setFormField("employeeID", objEvent.target.value ? Number(objEvent.target.value) : "")}
-                error={Boolean(dicErrors.employeeID)}
-                helperText={dicErrors.employeeID}
-                disabled={strMode === "view"}
-                fullWidth
-                required
-                SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.employee.select" } as HTMLAttributes<HTMLDivElement> }}
-              >
-                <MenuItem value="" data-controlid="user-master.dialog.employee.select.option">Select</MenuItem>
-                {lstEmployeeOptions
-                  .filter((objEmployee) =>
-                    !objEmployee.intLinkedUserID
-                    || String(objEmployee.intLinkedUserID) === strEditingUserId)
-                  .map((objEmployee) => (
-                  <MenuItem key={objEmployee.intID} value={String(objEmployee.intID)} data-controlid={`user-master.dialog.employee.${normalizeSelectToken(objEmployee.strCode || objEmployee.strLabel)}.option`}>
-                    {objEmployee.strCode ? `${objEmployee.strCode} - ${objEmployee.strLabel}` : objEmployee.strLabel}
-                  </MenuItem>
-                ))}
-              </TextField>
-            ) : blnShowOtpOnlyOption ? (
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  px: 1.5,
-                  py: 1.25,
-                  borderRadius: 0,
-                  border: "1px solid #dbe7f0",
-                  background: "rgba(248,250,252,0.9)",
-                }}
-              >
-                <Box>
-                  <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicModuleLabels.fieldEnableOtpOnly}</Typography>
-                  <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
-                    {dicModuleLabels.helperEnableOtpOnly}
-                  </Typography>
-                </Box>
-                <Switch inputProps={{ "data-controlid": "user-master.dialog.otp-only.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.mfaEnabled} onChange={(_, blnChecked) => setFormField("mfaEnabled", blnChecked)} disabled={strMode === "view" || blnDisableOtpOnlyOption} />
-              </Box>
-            ) : (
-              <Box />
-            )}
-          </Box>
-
-          {dicForm.loginAsEmployee && blnShowOtpOnlyOption ? (
-            <Box sx={{ width: { xs: "100%", md: "calc(50% - 8px)" } }}>
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  px: 1.5,
-                  py: 1.25,
-                  borderRadius: 0,
-                  border: "1px solid #dbe7f0",
-                  background: "rgba(248,250,252,0.9)",
-                }}
-              >
-                <Box>
-                  <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicModuleLabels.fieldEnableOtpOnly}</Typography>
-                  <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
-                    {dicModuleLabels.helperEnableOtpOnly}
-                  </Typography>
-                </Box>
-                <Switch inputProps={{ "data-controlid": "user-master.dialog.otp-only.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.mfaEnabled} onChange={(_, blnChecked) => setFormField("mfaEnabled", blnChecked)} disabled={strMode === "view" || blnDisableOtpOnlyOption} />
-              </Box>
-            </Box>
-          ) : null}
 
           {/* Application Access: one identity, an explicit primary group per portal. Toggles keep the
               existing right-side placement and card treatment used across this dialog. */}
@@ -1101,7 +1057,7 @@ export default function UserMasterPanel() {
             </Typography>
           ) : null}
 
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2, alignItems: "center" }}>
             <Box
               sx={{
                 display: "flex",
@@ -1197,6 +1153,30 @@ export default function UserMasterPanel() {
                 </MenuItem>
               ))}
             </TextField>
+
+            {/* Sign-in security for this account lives with Application Access. */}
+            {blnShowOtpOnlyOption ? (
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  px: 1.5,
+                  py: 1.25,
+                  borderRadius: 0,
+                  border: "1px solid #dbe7f0",
+                  background: "rgba(248,250,252,0.9)",
+                }}
+              >
+                <Box>
+                  <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicModuleLabels.fieldEnableOtpOnly}</Typography>
+                  <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
+                    {dicModuleLabels.helperEnableOtpOnly}
+                  </Typography>
+                </Box>
+                <Switch inputProps={{ "data-controlid": "user-master.dialog.otp-only.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.mfaEnabled} onChange={(_, blnChecked) => setFormField("mfaEnabled", blnChecked)} disabled={strMode === "view" || blnDisableOtpOnlyOption} />
+              </Box>
+            ) : null}
           </Box>
         </Box>}
       />

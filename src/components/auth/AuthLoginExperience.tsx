@@ -70,7 +70,15 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
     setBlnPortalSwitching(true);
     try {
       const objResult = await authApiService.selectPortalContext(strPortal);
-      objRouter.replace(getPostLoginRoute(objResult.Data.strHomeRoute));
+      // Full navigation, not a client-side replace: the app shell caches the menu it loaded for the
+      // previous context, so only a fresh bootstrap re-reads menus AND action rights with the token
+      // that now carries the chosen portal.
+      const strHomeRoute = getPostLoginRoute(objResult.Data.strHomeRoute);
+      if (typeof window !== "undefined") {
+        window.location.assign(strHomeRoute);
+        return;
+      }
+      objRouter.replace(strHomeRoute);
     } catch (objError) {
       setStrError(resolveErrorMessage(objError));
       setBlnPortalSwitching(false);
