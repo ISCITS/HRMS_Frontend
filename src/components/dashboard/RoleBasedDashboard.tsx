@@ -2324,7 +2324,7 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
                 <Typography sx={{ color: ESS_COLORS.navy, fontWeight: 700 }}>{`${intProfileCompletionPercent}% ${t("complete", "Complete")}`}</Typography>
                 <Link href="/ess/my-profile" style={{ textDecoration: "none" }}>
                   <Button variant="outlined" endIcon={<ArrowForwardRoundedIcon />} sx={{ color: ESS_COLORS.blue, borderColor: "#C7D9F8", backgroundColor: "rgba(255,255,255,0.72)", borderRadius: "14px", px: 2.1, textTransform: "none", fontWeight: 700 }}>
-                    {t("improve_profile", "Improve Profile")}
+                    {t("view_profile", "View Profile")}
                   </Button>
                 </Link>
               </Stack>
@@ -3129,6 +3129,7 @@ const DASHBOARD_HINDI_TEXT_FALLBACK_OVERRIDES: Record<string, string> = {
   gross_earnings: "सकल आय",
   high: "उच्च",
   improve_profile: "प्रोफ़ाइल सुधारें",
+  view_profile: "प्रोफ़ाइल देखें",
   it_declaration: "आईटी घोषणा",
   joined_on: "ज्वाइनिंग तिथि",
   latest_payslip: "नवीनतम पेस्लिप",
