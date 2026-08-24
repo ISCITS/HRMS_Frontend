@@ -39,6 +39,9 @@ export type ReportGridPageProps = {
   strEmptyMessage?: string;
   // Opt-in: adds a checkbox column + selection-aware CSV export. Other reports are unaffected.
   blnSelectable?: boolean;
+  /** Keep column labels on one line and allow horizontal scrolling when needed. */
+  blnWrapColumnHeaders?: boolean;
+  blnAlignSearchActionsBottomRight?: boolean;
 };
 
 const lstRowsPerPageOptions = [10, 20, 50];
@@ -317,7 +320,7 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
               )}
             </Box>
           ))}
-          <Box className={styles.searchActions}>
+          <Box className={`${styles.searchActions} ${objProps.blnAlignSearchActionsBottomRight ? styles.reportBottomRightActions : ""}`}>
             <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => loadRows(dicFilters)} data-controlid={`reports.${objProps.strCsvFileName}.search.button`}>Search</Button>
             <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} data-controlid={`reports.${objProps.strCsvFileName}.clear.button`}>Clear</Button>
           </Box>
@@ -342,6 +345,7 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
           showPaginationSummary
           withPaper={false}
           testIdPrefix={`reports.${objProps.strCsvFileName}`}
+          wrapColumnHeaders={objProps.blnWrapColumnHeaders ?? true}
           getRowSx={objProps.blnSelectable ? (dicRow) => (setSelectedIds.has(String(dicRow[objProps.strRowIdField])) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : {}) : undefined}
           toolbarLeft={(
             <Box className={styles.listUtilityActions} sx={{ display: "flex", alignItems: "center", gap: 1 }}>

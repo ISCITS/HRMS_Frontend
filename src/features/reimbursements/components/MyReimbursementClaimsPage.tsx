@@ -137,7 +137,7 @@ export default function MyReimbursementClaimsPage() {
       {strError ? <Alert severity="error" sx={{ borderRadius: "8px" }}>{strError}</Alert> : null}
       <BlockingLoader blnOpen={blnLoading || blnRightsLoading} strLabel={t("loading_claims", "Loading reimbursement claims...")} />
 
-      {!blnCanView ? (
+      {!blnRightsLoading && !blnCanView ? (
         <Paper sx={{ borderRadius: "8px", border: "1px solid #dbe3ef", p: 3 }}>
           <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_not_available", "Reimbursement access is not available for your user group.")}</Typography>
           <Typography sx={{ mt: 1, color: "#64748b" }}>{t("contact_admin_visibility", "Contact your administrator if you need reimbursement visibility.")}</Typography>
@@ -155,11 +155,12 @@ export default function MyReimbursementClaimsPage() {
             toolbarLeft={blnCanAdd ? (
               <Button
                 variant="contained"
+                color="primary"
                 size="small"
                 startIcon={<AddRoundedIcon />}
                 onClick={() => objRouter.push("/ess/reimbursements/new")}
                 controlId="reimbursements.my-claims.new-claim.button"
-                sx={{ maxHeight: 30, borderRadius: "8px", border: "1px solid #d0d5dd", backgroundColor: "#ffffff", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#f8fafc", borderColor: "#98a2b3", boxShadow: "none" } }}
+                sx={{ maxHeight: 30, borderRadius: "8px", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { boxShadow: "none" } }}
               >
                 {t("new_claim", "New Claim")}
               </Button>

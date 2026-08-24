@@ -392,7 +392,7 @@ export default function ReimbursementReviewListPage() {
               <MenuItem value="">All locations</MenuItem>
               {lstLocationOptions.map((objOption) => <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>)}
             </TextField>
-            <Box className={styles.searchActions}>
+            <Box className={styles.searchActions} sx={{ justifyContent: "flex-end", width: "100%" }}>
               <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => void loadClaims()} controlId="reimbursements.review-list.search.button">Search</Button>
               <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} controlId="reimbursements.review-list.clear.button">Clear</Button>
             </Box>

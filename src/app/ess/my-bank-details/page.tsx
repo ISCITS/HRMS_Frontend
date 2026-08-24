@@ -1,10 +1,12 @@
 "use client";
 
+import AccountBalanceRoundedIcon from "@mui/icons-material/AccountBalanceRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import {
   Alert,
   Box,
   Button,
+  Chip,
   CircularProgress,
   FormControlLabel,
   Grid,
@@ -14,6 +16,7 @@ import {
   TextField,
   Typography
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -198,21 +201,37 @@ export default function EssMyBankDetailsPage() {
   }
 
   return (
-    <Paper
+    <Stack spacing={2}>
+      {strRightsError ? <Alert severity="warning">{strRightsError}</Alert> : null}
+      {strError ? <Alert severity="error">{strError}</Alert> : null}
+      {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
+
+      <Paper
         sx={{
           p: { xs: 1.5, md: 2.25 },
-          borderRadius: "12px",
+          borderRadius: "16px",
           border: "1px solid #e2e8f0",
           boxShadow: "0 10px 20px rgba(15,23,42,0.05)"
         }}
       >
-        {strRightsError ? <Alert severity="warning" sx={{ mb: 1.5 }}>{strRightsError}</Alert> : null}
-        {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
-        {strSuccess ? <Alert severity="success" sx={{ mb: 1.5 }}>{strSuccess}</Alert> : null}
-
-        <Typography component="h2" sx={{ mb: 1.5, fontWeight: 800, color: "text.primary", fontSize: "0.96rem" }}>
-          {t("primary_account", "Primary Bank Account")}
-        </Typography>
+        <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 1.5 }}>
+          <AccountBalanceRoundedIcon sx={{ color: "primary.main", fontSize: 21 }} />
+          <Typography component="h2" sx={{ fontWeight: 800, color: "text.primary", fontSize: "0.96rem" }}>
+            {t("primary_account", "Primary Account")}
+          </Typography>
+          <Chip
+            label={t("primary", "Primary")}
+            size="small"
+            sx={(objTheme) => ({
+              height: 20,
+              color: objTheme.palette.primary.main,
+              backgroundColor: alpha(objTheme.palette.primary.main, 0.12),
+              fontSize: "0.65rem",
+              fontWeight: 700,
+              "& .MuiChip-label": { px: 0.8 }
+            })}
+          />
+        </Stack>
 
         <Grid container spacing={1.5}>
           <Grid item xs={12} md={6}>
@@ -273,50 +292,61 @@ export default function EssMyBankDetailsPage() {
             />
           </Grid>
         </Grid>
+      </Paper>
 
-        <Box
-          sx={{
-            mt: 2,
-            p: { xs: 1.5, md: 2 },
-            border: "1px solid #e2e8f0",
-            borderRadius: "16px",
-            backgroundColor: (objTheme) => objTheme.palette.mode === "light" ? "#f8fafc" : "rgba(255,255,255,0.03)"
-          }}
+      <Paper
+        sx={{
+          p: { xs: 1.5, md: 2.25 },
+          border: "1px solid #e2e8f0",
+          borderRadius: "16px",
+          boxShadow: "0 10px 20px rgba(15,23,42,0.05)"
+        }}
+      >
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          alignItems={{ xs: "flex-start", sm: "center" }}
+          justifyContent="space-between"
+          spacing={1}
+          sx={{ mb: dicForm.blnSecondaryIsActive ? 1.5 : 0 }}
         >
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            alignItems={{ xs: "flex-start", sm: "center" }}
-            justifyContent="space-between"
-            spacing={1}
-            sx={{ mb: dicForm.blnSecondaryIsActive ? 1.5 : 0 }}
-          >
+          <Stack direction="row" alignItems="center" spacing={0.75}>
+            <AccountBalanceRoundedIcon sx={{ color: "primary.main", fontSize: 21 }} />
             <Typography sx={{ fontWeight: 800, color: "text.primary", fontSize: "0.96rem" }}>
               {t("field_secondary_bank_details", "Secondary Bank Account")}
             </Typography>
-            <FormControlLabel
-              control={
-                <ActiveStatusSwitch
-                  controlId="ess.my-bank-details.secondary-bank-active.switch"
-                  blnIsActive={dicForm.blnSecondaryIsActive}
-                  onChange={(blnChecked) => {
-                    setDicForm((dicPrevious) => ({
-                      ...dicPrevious,
-                      blnSecondaryIsActive: blnChecked,
-                      ...(!blnChecked ? {
-                        intSecondaryBankID: "",
-                        strSecondaryAccountHolderName: "",
-                        strSecondaryAccountNumber: "",
-                        strSecondaryIfscCode: ""
-                      } : {})
-                    }));
-                  }}
-                  disabled={!blnCanModify}
-                />
-              }
-              label={t("field_secondary_bank_active", "Active")}
-              sx={{ m: 0 }}
-            />
           </Stack>
+          <FormControlLabel
+            control={
+              <ActiveStatusSwitch
+                controlId="ess.my-bank-details.secondary-bank-active.switch"
+                blnIsActive={dicForm.blnSecondaryIsActive}
+                onChange={(blnChecked) => {
+                  setDicForm((dicPrevious) => ({
+                    ...dicPrevious,
+                    blnSecondaryIsActive: blnChecked,
+                    ...(!blnChecked ? {
+                      intSecondaryBankID: "",
+                      strSecondaryAccountHolderName: "",
+                      strSecondaryAccountNumber: "",
+                      strSecondaryIfscCode: ""
+                    } : {})
+                  }));
+                }}
+                disabled={!blnCanModify}
+              />
+            }
+            label={t("field_secondary_bank_active", "Active")}
+            labelPlacement="end"
+            sx={{
+              m: 0,
+              "& .MuiFormControlLabel-label": {
+                fontSize: "0.875rem",
+                fontWeight: 600,
+                color: "text.primary"
+              }
+            }}
+          />
+        </Stack>
 
           {dicForm.blnSecondaryIsActive ? (
             <Grid container spacing={1.5}>
@@ -379,55 +409,70 @@ export default function EssMyBankDetailsPage() {
               </Grid>
             </Grid>
           ) : null}
-        </Box>
+      </Paper>
 
-        <FileUploadPanel
-          embedded
-          layout="grid"
-          module="BANK"
-          relatedEntityId={intBankAccountID}
-          relatedEntityType="EMPLOYEE_BANK_ACCOUNT"
-          documentType="cancelled_cheque"
-          readOnly={!blnCanModify}
-          controlIdPrefix="ess.my-bank-details.documents"
-          title={t("documents_title", "Bank Proof Documents")}
-          description={t("documents_description", "Upload a cancelled cheque or bank statement as proof of your account details.")}
-          disabledMessage={t("documents_disabled_message", "Save your bank details below before uploading a supporting document.")}
-          emptyMessage={t("documents_empty", "No bank proof documents uploaded yet.")}
-          uploadLabel={t("documents_upload", "Upload Bank Proof")}
-          uploadPresentation="dropzone"
-        />
+      <FileUploadPanel
+        layout="grid"
+        module="BANK"
+        relatedEntityId={intBankAccountID}
+        relatedEntityType="EMPLOYEE_BANK_ACCOUNT"
+        documentType="cancelled_cheque"
+        readOnly={!blnCanModify}
+        controlIdPrefix="ess.my-bank-details.documents"
+        title={t("documents_title", "Bank Proof Documents")}
+        description={t("documents_description", "Upload a cancelled cheque or bank statement as proof of your account details.")}
+        disabledMessage={t("documents_disabled_message", "Save your bank details below before uploading a supporting document.")}
+        emptyMessage={t("documents_empty", "No bank proof documents uploaded yet.")}
+        uploadLabel={t("documents_upload", "Upload Bank Proof")}
+        uploadPresentation="dropzone"
+        uploadButtonSx={{
+          "& .MuiButton-startIcon": { color: "primary.main", mr: 1.25 },
+          "& .MuiButton-startIcon svg": { fontSize: 32 }
+        }}
+      />
 
-        {blnCanSaveAction ? (
-          <Stack
-            direction="row"
-            spacing={1}
-            justifyContent="flex-end"
-            sx={{ mt: 2, mx: { xs: -1.5, md: -2.25 }, mb: { xs: -1.5, md: -2.25 }, px: { xs: 1.5, md: 2.25 }, py: 1.25, borderTop: "1px solid", borderColor: "divider" }}
+      {blnCanSaveAction ? (
+        <Stack
+          component="footer"
+          direction="row"
+          spacing={1}
+          justifyContent="flex-end"
+          sx={{
+            position: "sticky",
+            bottom: 0,
+            zIndex: 10,
+            px: { xs: 1.5, md: 2.25 },
+            py: 1.25,
+            mb: 2,
+            borderTop: "1px solid",
+            borderColor: "divider",
+            backgroundColor: "background.paper",
+            boxShadow: "0 -8px 20px rgba(15,23,42,0.08)"
+          }}
+        >
+          <Button
+            controlId="ess.my-bank-details.cancel.button"
+            variant="outlined"
+            color="primary"
+            disabled={blnSaving}
+            onClick={onCancelChanges}
+            sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px", minWidth: 96 }}
           >
-            <Button
-              controlId="ess.my-bank-details.cancel.button"
-              variant="outlined"
-              color="primary"
-              disabled={blnSaving}
-              onClick={onCancelChanges}
-              sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px", minWidth: 96 }}
-            >
-              {t("cancel", "Cancel")}
-            </Button>
-            <Button
-              controlId="ess.my-bank-details.save.button"
-              variant="contained"
-              color="primary"
-              startIcon={<SaveRoundedIcon />}
-              disabled={blnSaving || !blnCanSave}
-              onClick={onSaveBankDetails}
-              sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px", minWidth: 128 }}
-            >
-              {blnSaving ? t("saving", "Saving...") : t("save", "Save")}
-            </Button>
-          </Stack>
-        ) : null}
-    </Paper>
+            {t("cancel", "Cancel")}
+          </Button>
+          <Button
+            controlId="ess.my-bank-details.save.button"
+            variant="contained"
+            color="primary"
+            startIcon={<SaveRoundedIcon />}
+            disabled={blnSaving || !blnCanSave}
+            onClick={onSaveBankDetails}
+            sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px", minWidth: 104 }}
+          >
+            {blnSaving ? t("saving", "Saving...") : t("save", "Save")}
+          </Button>
+        </Stack>
+      ) : null}
+    </Stack>
   );
 }

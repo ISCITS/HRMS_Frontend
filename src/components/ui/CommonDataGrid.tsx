@@ -69,6 +69,7 @@ export type CommonDataGridProps<T extends Record<string, ReactNode>> = {
   sx?: SxProps<Theme>;
   testIdPrefix?: string;
   hideRowClickHint?: boolean;
+  wrapColumnHeaders?: boolean;
 };
 
 // Renders a generic client-side data grid with filter, sort, pagination, and optional export.
@@ -91,7 +92,8 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   withPaper = true,
   sx,
   testIdPrefix = "common-data-grid",
-  hideRowClickHint = false
+  hideRowClickHint = false,
+  wrapColumnHeaders = true
 }: CommonDataGridProps<T>) {
   const { t } = useModuleLabels("common_data_grid");
   /*
@@ -452,15 +454,15 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                       fontWeight: 700,
                       borderBottom: "1px solid",
                       borderColor: "divider",
-                      whiteSpace: "normal",
-                      overflowWrap: "anywhere",
+                      whiteSpace: wrapColumnHeaders ? "normal" : "nowrap",
+                      overflowWrap: wrapColumnHeaders ? "anywhere" : "normal",
                       verticalAlign: "middle",
                       px: 1,
                       py: 0.5,
                       "& .MuiTableSortLabel-root": {
                         fontWeight: 700,
                         maxWidth: "100%",
-                        whiteSpace: "normal"
+                        whiteSpace: wrapColumnHeaders ? "normal" : "nowrap"
                       },
                       "& .MuiTableSortLabel-icon": {
                         flexShrink: 0

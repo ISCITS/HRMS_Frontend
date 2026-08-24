@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Box, Divider, Paper, Stack, Typography } from "@mui/material";
+import { Alert, Box, Divider, Paper, Stack, Typography, type ButtonProps } from "@mui/material";
 import { useEffect, useState } from "react";
 
 import FileList from "@/components/shared/files/FileList";
@@ -39,6 +39,7 @@ type FileUploadPanelProps = {
   emptyMessage?: string;
   uploadLabel?: string;
   uploadPresentation?: "button" | "dropzone";
+  uploadButtonSx?: ButtonProps["sx"];
   // Read-only mode: still lists existing documents, but hides upload/replace/delete controls
   // (e.g. the caller's edit-rights check failed, or the record itself is locked/read-only).
   readOnly?: boolean;
@@ -63,6 +64,7 @@ export default function FileUploadPanel({
   emptyMessage = "No documents uploaded yet.",
   uploadLabel = "Upload Document",
   uploadPresentation = "button",
+  uploadButtonSx,
   readOnly = false,
   embedded = false,
   layout = "stack",
@@ -203,6 +205,7 @@ export default function FileUploadPanel({
         controlId={`${controlIdPrefix}.upload.button`}
         label={uploadPresentation === "dropzone" ? "Click to upload or drag and drop" : uploadLabel}
         presentation={uploadPresentation}
+        sx={uploadButtonSx}
         helperText={uploadPresentation === "dropzone" ? `PDF, JPG or PNG, up to ${MAX_UPLOAD_SIZE_LABEL}.` : undefined}
         isUploading={objUpload.isUploading}
         progress={objUpload.progress}

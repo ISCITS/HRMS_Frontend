@@ -260,7 +260,7 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
   } as const;
 
   const objFilterActions = (
-    <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+    <Box sx={{ display: "flex", gap: 1, alignItems: "center", gridColumn: "1 / -1", justifyContent: "flex-end" }}>
       <Button className={styles.primaryButton} size="small" startIcon={<SearchRoundedIcon />} onClick={() => void loadRows()}>{t("search", "Search")}</Button>
       <Button className={styles.secondaryButton} size="small" startIcon={<ClearRoundedIcon />} onClick={clearFilters}>{t("clear", "Clear")}</Button>
     </Box>

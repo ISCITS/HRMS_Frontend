@@ -659,23 +659,12 @@ export default function PayrollResultListPage({
         {!blnPayslipScreen && (
           <Box
             sx={{
-              width: "100%",
-              border: "1px solid rgba(191,219,254,0.7)",
-              borderRadius: "28px",
-              px: { xs: 1.5, md: 2.5 },
-              py: { xs: 1.5, md: 1.8 },
-              background: "radial-gradient(circle at top center, rgba(226,241,255,0.72) 0%, #ffffff 45%, #f8fbff 100%)",
-              boxShadow: "0 18px 40px rgba(15, 23, 42, 0.05)",
+              display: "grid",
+              gap: 1.2,
+              gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(5, minmax(0, 1fr))" },
+              alignItems: "end",
             }}
           >
-            <Box
-              sx={{
-                display: "grid",
-                gap: 1.2,
-                gridTemplateColumns: { xs: "1fr", xl: "1.35fr 1.05fr 0.8fr 0.68fr 0.68fr auto auto" },
-                alignItems: "end",
-              }}
-            >
               <TextField
                 controlId="payroll-results.list.employee-search.input"
                 value={dicSearchDraft.strSearchEmployee}
@@ -762,25 +751,26 @@ export default function PayrollResultListPage({
                 <MenuItem value="Published">{t("status_published", "Published")}</MenuItem>
                 <MenuItem value="Paid">{t("status_paid", "Paid")}</MenuItem>
               </TextField>
-              <Button
-                controlId="payroll-results.list.search.button"
-                className={styles.primaryButton}
-                startIcon={<SearchRoundedIcon />}
-                onClick={() => applyFilters(dicSearchDraft)}
-                sx={{ minWidth: 104, minHeight: 34, height: 34, borderRadius: "10px" }}
-              >
-                {t("search", "Search")}
-              </Button>
-              <Button
-                controlId="payroll-results.list.clear.button"
-                className={styles.secondaryButton}
-                startIcon={<ClearRoundedIcon />}
-                onClick={clearFilters}
-                sx={{ minWidth: 96, minHeight: 34, height: 34, borderRadius: "10px" }}
-              >
-                {t("clear", "Clear")}
-              </Button>
-            </Box>
+              <Box sx={{ display: "flex", gap: 1, gridColumn: "1 / -1", justifyContent: "flex-end" }}>
+                <Button
+                  controlId="payroll-results.list.search.button"
+                  className={styles.primaryButton}
+                  startIcon={<SearchRoundedIcon />}
+                  onClick={() => applyFilters(dicSearchDraft)}
+                  sx={{ minWidth: 104, minHeight: 34, height: 34, borderRadius: "10px" }}
+                >
+                  {t("search", "Search")}
+                </Button>
+                <Button
+                  controlId="payroll-results.list.clear.button"
+                  className={styles.secondaryButton}
+                  startIcon={<ClearRoundedIcon />}
+                  onClick={clearFilters}
+                  sx={{ minWidth: 96, minHeight: 34, height: 34, borderRadius: "10px" }}
+                >
+                  {t("clear", "Clear")}
+                </Button>
+              </Box>
           </Box>
         )}
       </Box>

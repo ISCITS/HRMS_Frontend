@@ -99,6 +99,7 @@ export default function LeaveRegisterReportPage() {
       lstFilters={lstFilters}
       strRowIdField="intID"
       strCsvFileName="leave-register"
+      blnAlignSearchActionsBottomRight
       lstRightsHints={["REPORTS_LEAVE_REGISTER", "REPORTS"]}
       dicDefaultFilters={dicDefaultFilters}
       strEmptyMessage={t("leave_register_empty", "No leave applications found for the current filters.")}

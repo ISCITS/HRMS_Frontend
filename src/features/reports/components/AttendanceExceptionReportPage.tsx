@@ -81,6 +81,7 @@ export default function AttendanceExceptionReportPage() {
       dicDefaultFilters={{ status: "OPEN,UNDER_REVIEW" }}
       strRowIdField="intID"
       strCsvFileName="attendance-exceptions"
+      blnAlignSearchActionsBottomRight
       lstRightsHints={["REPORTS_ATTENDANCE_EXCEPTION", "REPORTS"]}
       strEmptyMessage={t("attendance_exceptions_empty", "No attendance exceptions found for the current filters.")}
       fnLoad={async (dicFilters) => {

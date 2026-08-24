@@ -63,10 +63,12 @@ function getStatusColor(strStatus?: string | null): "default" | "warning" | "suc
 }
 
 const objChipBaseSx = {
+  height: 30,
   border: "1px solid",
   fontWeight: 700,
   "& .MuiChip-label": {
-    px: 1.25,
+    px: 1.5,
+    py: 0.5,
   },
 };
 
@@ -202,10 +204,10 @@ export default function SalaryFlexiPayDeclarationsRoute() {
   }
 
   return (
-    <Stack spacing={0} className={styles.page}>
+    <Stack spacing={0} className={styles.page} sx={{ gap: 0.5 }}>
       {strError ? <Alert severity="error">{strError}</Alert> : null}
 
-      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ px: 2, py: 1.5 }}>
+      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ px: 2, py: 0.25 }}>
         <Chip
           size="small"
           label={`${t("financial_year", "Financial Year")} ${objListRow.strFinancialYearCode}`}
