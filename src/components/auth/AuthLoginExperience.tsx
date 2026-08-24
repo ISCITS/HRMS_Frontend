@@ -10,7 +10,7 @@ import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VpnKeyRoundedIcon from "@mui/icons-material/VpnKeyRounded";
 import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, IconButton, InputAdornment, Paper, Stack, TextField, Typography } from "@mui/material";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import styles from "@/components/auth/AuthLoginExperience.module.css";
@@ -57,6 +57,11 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
   // Dual-access identity: the server authenticates but activates no portal, so the user chooses.
   const [lstPortalChoices, setLstPortalChoices] = useState<PortalCode[]>([]);
   const [blnPortalSwitching, setBlnPortalSwitching] = useState(false);
+  // HRMS leads the Continue To row; any portal the server adds later falls in after the known two.
+  const lstPortalDisplayOrder = useMemo(
+    () => [...lstPortalChoices].sort((strLeft, strRight) => getPortalDisplayRank(strLeft) - getPortalDisplayRank(strRight)),
+    [lstPortalChoices],
+  );
 
   function completeAuthentication(objAuthData: AuthSuccessData) {
     if (objAuthData.blnRequiresPortalSelection && (objAuthData.lstAvailablePortals?.length ?? 0) > 1) {
@@ -705,9 +710,10 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
             {lstPortalChoices.length > 1 ? (
               <Stack spacing={2} sx={{ mt: 3 }}>
                 <Typography sx={{ color: "#64748b" }}>{getLoginLabel("continueToSubtitle")}</Typography>
-                {/* Portal choices use the Login button treatment and share one equal-width row. */}
+                {/* Portal choices use the Login button treatment and share one equal-width row.
+                    HRMS is shown first, independent of the order the server returns. */}
                 <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 2 }}>
-                  {lstPortalChoices.map((strPortal) => (
+                  {lstPortalDisplayOrder.map((strPortal) => (
                     <Button
                       key={strPortal}
                       variant="contained"
@@ -882,6 +888,14 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
   }
 }
  
+// Presentation order for the Continue To row. Lower ranks are shown first; anything unrecognised
+// sorts last so a future portal never displaces HRMS or ESS.
+const dicPortalDisplayRank: Record<string, number> = { HRMS: 0, ESS: 1 };
+
+function getPortalDisplayRank(strPortal: PortalCode) {
+  return dicPortalDisplayRank[String(strPortal).trim().toUpperCase()] ?? Number.MAX_SAFE_INTEGER;
+}
+
 function buildLanguageOptions(...lstLanguageIDs: Array<number | null | undefined>) {
   return lstLanguageIDs.reduce<number[]>((lstResolvedLanguageIDs, intLanguageID) => {
     if (!intLanguageID || lstResolvedLanguageIDs.includes(intLanguageID)) {
