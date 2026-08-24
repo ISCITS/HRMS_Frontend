@@ -1,8 +1,8 @@
 "use client";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
-import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
+import EditRoundedIcon from "@mui/icons-material/EditRounded";
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import { Alert, Box, Button, IconButton, Paper, Stack, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -75,11 +75,11 @@ export default function MyReimbursementClaimsPage() {
           <IconButton
             size="small"
             onClick={() => objRouter.push(blnRowGoesToEdit ? `/ess/reimbursements/${objClaim.intID}/edit` : `/ess/reimbursements/${objClaim.intID}`)}
-            aria-label={t("open_claim", "Open claim")}
+            aria-label={blnRowGoesToEdit ? t("edit_claim", "Edit claim") : t("view_claim", "View claim")}
             controlId={`reimbursements.my-claims.row.${blnRowGoesToEdit ? "edit" : "view"}.button`}
             data-row-key={objClaim.intID}
           >
-            <OpenInNewRoundedIcon fontSize="small" />
+            {blnRowGoesToEdit ? <EditRoundedIcon fontSize="small" /> : <VisibilityRoundedIcon fontSize="small" />}
           </IconButton>
         ),
         strClaimReference: <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{getClaimReferenceNumber(objClaim)}</Typography>,
@@ -133,11 +133,6 @@ export default function MyReimbursementClaimsPage() {
 
   return (
     <Stack spacing={1.4}>
-      <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap justifyContent="flex-end" alignItems="center" sx={{ mb: "10px" }}>
-        <Button variant="contained" size="small" startIcon={<RefreshRoundedIcon />} onClick={() => void loadClaims()} controlId="reimbursements.my-claims.refresh.button" sx={{ maxHeight: 30, borderRadius: "8px", backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0a355f", boxShadow: "none" } }}>{t("refresh", "Refresh")}</Button>
-        {blnCanAdd ? <Button variant="contained" size="small" startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/ess/reimbursements/new")} controlId="reimbursements.my-claims.new-claim.button" sx={{ maxHeight: 30, borderRadius: "8px", border: "1px solid #d0d5dd", backgroundColor: "#ffffff", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#f8fafc", borderColor: "#98a2b3", boxShadow: "none" } }}>{t("new_claim", "New Claim")}</Button> : null}
-      </Stack>
-
       {strRightsError ? <Alert severity="warning" sx={{ borderRadius: "8px" }}>{strRightsError}</Alert> : null}
       {strError ? <Alert severity="error" sx={{ borderRadius: "8px" }}>{strError}</Alert> : null}
       <BlockingLoader blnOpen={blnLoading || blnRightsLoading} strLabel={t("loading_claims", "Loading reimbursement claims...")} />
@@ -157,6 +152,18 @@ export default function MyReimbursementClaimsPage() {
             rowIdField="id"
             showPaginationSummary
             minTableWidth={780}
+            toolbarLeft={blnCanAdd ? (
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<AddRoundedIcon />}
+                onClick={() => objRouter.push("/ess/reimbursements/new")}
+                controlId="reimbursements.my-claims.new-claim.button"
+                sx={{ maxHeight: 30, borderRadius: "8px", border: "1px solid #d0d5dd", backgroundColor: "#ffffff", color: "#111827", fontWeight: 800, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#f8fafc", borderColor: "#98a2b3", boxShadow: "none" } }}
+              >
+                {t("new_claim", "New Claim")}
+              </Button>
+            ) : undefined}
             emptyMessage={t("no_claims_yet", "No reimbursement claims yet.")}
             testIdPrefix="reimbursements.my-claims"
             withPaper={false}

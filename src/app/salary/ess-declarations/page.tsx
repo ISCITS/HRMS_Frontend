@@ -45,6 +45,12 @@ function getCurrentFinancialYearCode() {
   return `${intFyStartYear}-${String(intFyStartYear + 1).slice(-2)}`;
 }
 
+function getNextFinancialYearCode() {
+  const strCurrentFy = getCurrentFinancialYearCode();
+  const intStartYear = Number(strCurrentFy.split("-")[0] || new Date().getFullYear());
+  return `${intStartYear + 1}-${String(intStartYear + 2).slice(-2)}`;
+}
+
 function canEditDeclarationByStatus(strStatus?: string | null) {
   const strNormalized = String(strStatus || "").trim().toLowerCase();
   return ["draft", "released", "rejected", "resubmitted"].includes(strNormalized);
@@ -219,17 +225,12 @@ export default function SalaryEssDeclarationsPage() {
     });
   }, [lstRows, dicAppliedFilters]);
   const lstFyOptions = useMemo(() => {
-    const setCodes = new Set<string>();
-    if (strCurrentFy) setCodes.add(normalizeFinancialYearCode(strCurrentFy));
-    const intNow = new Date().getFullYear();
-    const intMonth = new Date().getMonth();
-    const intStart = intMonth >= 3 ? intNow : intNow - 1;
-    setCodes.add(`${intStart}-${String(intStart + 1).slice(-2)}`);
-    setCodes.add(`${intStart - 1}-${String(intStart).slice(-2)}`);
-    setCodes.add(`${intStart - 2}-${String(intStart - 1).slice(-2)}`);
-    for (const objRow of lstRows) setCodes.add(normalizeFinancialYearCode(objRow.strFinancialYearCode));
-    return Array.from(setCodes).filter(Boolean).sort((a, b) => b.localeCompare(a));
-  }, [strCurrentFy, lstRows]);
+    const strResolvedCurrentFy = normalizeFinancialYearCode(strCurrentFy || getCurrentFinancialYearCode());
+    return [
+      strResolvedCurrentFy,
+      normalizeFinancialYearCode(getNextFinancialYearCode()),
+    ].filter(Boolean);
+  }, [strCurrentFy]);
 
   const setDeclaredFy = useMemo(() => {
     const setData = new Set<string>();
