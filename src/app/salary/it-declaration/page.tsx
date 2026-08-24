@@ -1799,19 +1799,8 @@ export default function SalaryEssDeclarationsPage() {
                 rows={lstDeclarationGridRows}
                 rowIdField={"id"}
                 defaultPageSize={500}
+                hideToolbar
                 minTableWidth={860}
-                toolbarLeft={!blnDeclarationReadOnly && blnCanEditDeclaration ? (
-                  <Button
-                    variant="contained"
-                    size="small"
-                    startIcon={<AddCircleOutlineRoundedIcon />}
-                    onClick={openAddDeclarationFromTable}
-                    sx={{ minHeight: 30, borderRadius: "8px", backgroundColor: "#0b3f73", fontWeight: 700, fontSize: "0.76rem", textTransform: "none", boxShadow: "none", "&:hover": { backgroundColor: "#0a355f" } }}
-                    controlId="salary.it-declaration.add.button"
-                  >
-                    {t("add_declaration", "Add Declaration")}
-                  </Button>
-                ) : undefined}
                 withPaper={false}
                 testIdPrefix="salary-it-declaration-list"
                 emptyMessage={t("no_declaration_sections", "No declaration sections available. Check Tax Declaration Component master data and ESS IT declaration API.")}
