@@ -533,6 +533,7 @@ export default function SalaryEssDeclarationsPage() {
   const [blnDraftSaved, setBlnDraftSaved] = useState(false);
   const [strSuccessToast, setStrSuccessToast] = useState("");
   const [strError, setStrError] = useState("");
+  const [strEditDialogError, setStrEditDialogError] = useState("");
   const [strWarning, setStrWarning] = useState("");
   const [blnRetryRefresh, setBlnRetryRefresh] = useState(false);
   const [blnCompared, setBlnCompared] = useState(false);
@@ -634,9 +635,10 @@ export default function SalaryEssDeclarationsPage() {
     setStrBackPath(strDefaultBackPath);
   }, [blnHrMode, strDefaultBackPath, strReturnToStorageKey, strRouteReturnTo]);
 
-  const blnLocked = strFlowStatus === "SUBMITTED" || strDeclarationStatus === "submitted";
   const strDeclarationStatusNormalized = String(strDeclarationStatus || "").trim().toLowerCase();
-  const blnDeclarationReadOnly = blnLocked || ["approved", "locked"].includes(strDeclarationStatusNormalized);
+  const setReadOnlyDeclarationStatuses = new Set(["submitted", "resubmitted", "approved", "locked"]);
+  const blnLocked = strFlowStatus === "SUBMITTED" || setReadOnlyDeclarationStatuses.has(strDeclarationStatusNormalized);
+  const blnDeclarationReadOnly = blnLocked;
   const blnHideActionButtons = blnDeclarationReadOnly;
   const blnDraftLikeActionsAllowed = ["draft", "released"].includes(strDeclarationStatusNormalized);
   const blnCanViewDeclaration = blnHrMode
@@ -714,13 +716,8 @@ export default function SalaryEssDeclarationsPage() {
       objIcon = <VisibilityRoundedIcon fontSize="small" />;
       strLabel = t("view", "View");
     } else if (blnCanEditDeclaration) {
-      if (blnHasAmount) {
-        objIcon = <EditRoundedIcon fontSize="small" />;
-        strLabel = t("view_edit", "View / Edit");
-      } else {
-        objIcon = <AddCircleOutlineRoundedIcon fontSize="small" />;
-        strLabel = blnStarted ? t("add", "Add") : t("start", "Start");
-      }
+      objIcon = <EditRoundedIcon fontSize="small" />;
+      strLabel = blnHasAmount ? t("edit", "Edit") : blnStarted ? t("add", "Add") : t("start", "Start");
     } else {
       if (!blnCanViewDeclaration || !blnHasAmount) return strDash;
       objIcon = <VisibilityRoundedIcon fontSize="small" />;
@@ -779,6 +776,20 @@ export default function SalaryEssDeclarationsPage() {
     { field: "status", headerName: t("status", "Status"), width: 100, sortable: false },
     { field: "action", headerName: t("action", "Action"), width: 90, sortable: false, align: "center", exportable: false },
   ];
+
+  function openAddDeclarationFromTable() {
+    if (blnDeclarationReadOnly || !blnCanEditDeclaration) return;
+    const objTargetRow =
+      lstFilteredSectionRows.find((objRow) => Math.max(0, objRow.decDeclaredAmount || 0) <= 0) ||
+      lstFilteredSectionRows[0] ||
+      lstSectionRows.find((objRow) => Math.max(0, objRow.decDeclaredAmount || 0) <= 0) ||
+      lstSectionRows[0];
+    if (!objTargetRow) {
+      setStrWarning(t("no_declaration_sections", "No declaration sections available. Check Tax Declaration Component master data and ESS IT declaration API."));
+      return;
+    }
+    openEditModal(objTargetRow);
+  }
   const decDeclaredTotal = useMemo(
     () => lstRows.reduce((decTotal, objRow) => decTotal + Math.max(0, objRow.decDeclaredAmount || 0), 0),
     [lstRows]
@@ -795,15 +806,24 @@ export default function SalaryEssDeclarationsPage() {
   const objDerivedCalc = useMemo(() => {
     const decGross = Math.max(0, objTaxSummary.decGrossSalary || 0);
     let blnRuleBasedFallback = false;
-    const decEligibleExemptionsFallback = lstRows.reduce((decTotal, objRow) => {
+    const dicFallbackBenefitTotals = lstRows.reduce((dicTotals, objRow) => {
       const decAmount = Math.max(0, objRow.decDeclaredAmount || 0);
       const decConfiguredLimit = objRow.decMaxEligibleAmount ?? parseMaxLimit(objRow.strMaxLimitDisplay);
-      if (decConfiguredLimit != null && Number.isFinite(decConfiguredLimit)) {
-        return decTotal + Math.min(decAmount, Math.max(0, decConfiguredLimit));
+      const decEligibleAmount = decConfiguredLimit != null && Number.isFinite(decConfiguredLimit)
+        ? Math.min(decAmount, Math.max(0, decConfiguredLimit))
+        : decAmount;
+      if (decConfiguredLimit == null || !Number.isFinite(decConfiguredLimit)) {
+        blnRuleBasedFallback = true;
       }
-      blnRuleBasedFallback = true;
-      return decTotal;
-    }, 0);
+
+      const strGroupName = getGroupName(objRow);
+      if (strGroupName === "Deductions" || strGroupName === "Loans & Property") {
+        dicTotals.decDeductions += decEligibleAmount;
+      } else {
+        dicTotals.decExemptions += decEligibleAmount;
+      }
+      return dicTotals;
+    }, { decExemptions: 0, decDeductions: 0 });
 
     if (blnUseSummaryAsTruth) {
       const decOld = Math.max(0, objTaxSummary.decOldTax || 0);
@@ -820,6 +840,7 @@ export default function SalaryEssDeclarationsPage() {
         blnRuleBasedFallback: false,
         decGrossSalary: decGross,
         decExemptions: decEffectiveExemptions,
+        decDeductions: Math.max(0, objTaxSummary.decDeductions || 0),
         decTaxableOld: decTaxableOldFromSummary,
         decTaxableNew: decTaxableNewFromSummary,
         decOldTax: decOld,
@@ -829,8 +850,9 @@ export default function SalaryEssDeclarationsPage() {
       };
     }
 
-    const decExemptionsCapped = decGross > 0 ? Math.min(decEligibleExemptionsFallback, decGross) : decEligibleExemptionsFallback;
-    const decTaxableOld = Math.max(0, decGross - decExemptionsCapped);
+    const decExemptionsCapped = decGross > 0 ? Math.min(dicFallbackBenefitTotals.decExemptions, decGross) : dicFallbackBenefitTotals.decExemptions;
+    const decDeductionsCapped = Math.max(0, dicFallbackBenefitTotals.decDeductions);
+    const decTaxableOld = Math.max(0, decGross - decExemptionsCapped - decDeductionsCapped);
     const decTaxableNew = Math.max(0, decGross);
     const decOld = Math.max(0, objTaxSummary.decOldTax || 0);
     const decNew = Math.max(0, objTaxSummary.decNewTax || 0);
@@ -841,6 +863,7 @@ export default function SalaryEssDeclarationsPage() {
       blnRuleBasedFallback,
       decGrossSalary: decGross,
       decExemptions: decExemptionsCapped,
+      decDeductions: decDeductionsCapped,
       decTaxableOld,
       decTaxableNew,
       decOldTax: decOld,
@@ -1281,10 +1304,14 @@ export default function SalaryEssDeclarationsPage() {
   }
 
   function openEditModal(objRow: DeclarationRow) {
+    if (blnDeclarationReadOnly) {
+      if (!blnCanViewDeclaration || objRow.decDeclaredAmount <= 0) return;
+    }
     if (!blnStarted && !blnDeclarationReadOnly) {
       openRegimeModal();
       return;
     }
+    setStrEditDialogError("");
     setObjEditRow(objRow);
     const lstSectionRows = lstRows.filter((objCurrentRow) => objCurrentRow.strSection === objRow.strSection && (objCurrentRow.intItemID != null || objCurrentRow.decDeclaredAmount > 0 || objCurrentRow.strInvestmentName.trim()));
     const lstNormalized = (lstSectionRows.length > 0 ? lstSectionRows : [objRow]).map((objCurrentRow, intIndex) => ({
@@ -1331,13 +1358,14 @@ export default function SalaryEssDeclarationsPage() {
   }
 
   function closeEditModal() {
+    setStrEditDialogError("");
     setObjEditRow(null);
     setLstSectionEditEntries([]);
     setLstInvestmentOptionsForRow([]);
   }
 
   function addInvestmentRow() {
-    if (!objEditRow) return;
+    if (!objEditRow || blnDeclarationReadOnly || !blnCanEditDeclaration) return;
     const blnHasIncompleteRow = lstSectionEditEntries.some((objEntry) => {
       const strName = objEntry.strInvestmentName.trim();
       const decAmount = Number((objEntry.strAmountInput || "").replace(/[^\d.]/g, "") || 0);
@@ -1412,9 +1440,14 @@ export default function SalaryEssDeclarationsPage() {
 
   async function saveDeclarationEdit() {
     if (!objEditRow) return;
+    if (blnDeclarationReadOnly || !blnCanEditDeclaration) {
+      setStrEditDialogError(t("submitted_declaration_cannot_be_modified", "This IT declaration is already submitted or approved and cannot be modified."));
+      return;
+    }
     if (strSectionEditError) return;
     setBlnModalSaving(true);
     try {
+      setStrEditDialogError("");
       setStrSavingLabel(t("saving_declaration_rows", "Saving declaration rows..."));
       setBlnSaving(true);
       let intLastResolvedDeclarationID = intDeclarationID;
@@ -1477,7 +1510,7 @@ export default function SalaryEssDeclarationsPage() {
     } catch (objError) {
       // Previously uncaught: a thrown error here (e.g. proof upload rejected) left the dialog open
       // with no visible feedback at all — indistinguishable from "Save silently did nothing".
-      setStrError(formatApiErrorForUi(objError, t("unable_save_declaration_rows", "Unable to save declaration rows.")));
+      setStrEditDialogError(formatApiErrorForUi(objError, t("unable_save_declaration_rows", "Unable to save declaration rows.")));
     } finally {
       setBlnSaving(false);
       setStrSavingLabel(t("saving", "Saving..."));
@@ -1486,6 +1519,7 @@ export default function SalaryEssDeclarationsPage() {
   }
 
   async function confirmRegime() {
+    if (blnDeclarationReadOnly || blnRegimeSwitchDisabled) return;
     setStrSelectedRegime(strRegimeDraft);
     setBlnRegimeDirty(true);
     setStrFlowStatus((strCurrentStatus) => (strCurrentStatus === "NOT_STARTED" ? "REGIME_SELECTED" : strCurrentStatus));
@@ -1495,6 +1529,7 @@ export default function SalaryEssDeclarationsPage() {
   }
 
   async function submitDeclaration() {
+    if (blnDeclarationReadOnly) return;
     if (!blnDeclarationConfirm) {
       setStrWarning(t("please_check_confirmation_checkbox", "Please check confirmation checkbox before final submit."));
       setBlnSubmitModalOpen(false);
@@ -1756,7 +1791,6 @@ export default function SalaryEssDeclarationsPage() {
                     </MenuItem>
                   ))}
                 </TextField>
-                <Button variant="outlined" size="small" sx={{ minHeight: 28, py: 0.1, fontSize: "0.75rem" }} onClick={() => void loadDeclaration()} disabled={blnLocked || !blnCanViewDeclaration}>{t("refresh_amounts", "Refresh Amounts")}</Button>
               </Stack>
             </Stack>
             <Box sx={{ flex: "1 1 auto", minHeight: 0, borderRadius: "8px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
@@ -1768,6 +1802,7 @@ export default function SalaryEssDeclarationsPage() {
                 hideToolbar
                 minTableWidth={860}
                 withPaper={false}
+                testIdPrefix="salary-it-declaration-list"
                 emptyMessage={t("no_declaration_sections", "No declaration sections available. Check Tax Declaration Component master data and ESS IT declaration API.")}
               />
             </Box>
@@ -1787,7 +1822,7 @@ export default function SalaryEssDeclarationsPage() {
             <Stack spacing={0.45} sx={{ flex: "1 1 auto", minHeight: 0, overflow: "auto" }}>
               <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>{t("gross_salary", "Gross Salary")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objDerivedCalc.decGrossSalary)}</Typography></Stack>
               <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>{t("total_exemptions", "Total Exemptions")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objDerivedCalc.decExemptions)}</Typography></Stack>
-              <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>{t("total_deductions", "Total Deductions")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objTaxSummary.decDeductions || 0)}</Typography></Stack>
+              <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>{t("total_deductions", "Total Deductions")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objDerivedCalc.decDeductions)}</Typography></Stack>
               <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>{t("taxable_income_old", "Taxable Income (Old)")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objDerivedCalc.decTaxableOld)}</Typography></Stack>
               <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: "0.8rem", color: "#64748b" }}>{t("taxable_income_new", "Taxable Income (New)")}</Typography><Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#475569" }}>{formatCurrency(objDerivedCalc.decTaxableNew)}</Typography></Stack>
               <Box sx={{ borderTop: "1px solid #e5e7eb", my: 0.4 }} />
@@ -1840,6 +1875,11 @@ export default function SalaryEssDeclarationsPage() {
         <DialogTitle sx={{ py: 1.1, px: 2 }}>{t("edit_declaration", "Edit Declaration")} ({objEditRow?.strSection})</DialogTitle>
         <DialogContent sx={{ pt: "8px !important", pb: "6px !important" }}>
           <Stack spacing={1}>
+            {strEditDialogError ? (
+              <Alert severity="error" onClose={() => setStrEditDialogError("")} sx={{ borderRadius: "8px" }}>
+                {strEditDialogError}
+              </Alert>
+            ) : null}
             <Stack direction="row" justifyContent="space-between" alignItems="center">
               {!blnDeclarationReadOnly && blnCanEditDeclaration ? (
                 <Button
@@ -1931,7 +1971,7 @@ export default function SalaryEssDeclarationsPage() {
                                 objCurrent.strClientKey === objEntry.strClientKey ? { ...objCurrent, objProofFileInput: objFile } : objCurrent
                               )));
                             }}
-                            onValidationError={(strMessage) => setStrError(strMessage)}
+                            onValidationError={(strMessage) => setStrEditDialogError(strMessage)}
                             sx={{
                               minHeight: 26,
                               px: 0.9,
@@ -1956,7 +1996,7 @@ export default function SalaryEssDeclarationsPage() {
                                     const objData = await deleteCurrentItem(intDeclarationID, objEntry.intItemID);
                                     hydrateFromApi(objData);
                                   } catch (objError) {
-                                    setStrError(formatApiErrorForUi(objError, t("unable_delete_investment_row", "Unable to delete investment row.")));
+                                    setStrEditDialogError(formatApiErrorForUi(objError, t("unable_delete_investment_row", "Unable to delete investment row.")));
                                     return;
                                   }
                                 }
