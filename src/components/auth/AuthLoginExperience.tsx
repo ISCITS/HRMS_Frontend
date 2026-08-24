@@ -705,18 +705,28 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
             {lstPortalChoices.length > 1 ? (
               <Stack spacing={2} sx={{ mt: 3 }}>
                 <Typography sx={{ color: "#64748b" }}>{getLoginLabel("continueToSubtitle")}</Typography>
-                {lstPortalChoices.map((strPortal) => (
-                  <Button
-                    key={strPortal}
-                    variant={strPortal === "HRMS" ? "contained" : "outlined"}
-                    size="large"
-                    disabled={blnPortalSwitching}
-                    onClick={() => void selectPortal(strPortal)}
-                    data-controlid={`auth.login.portal.${strPortal.toLowerCase()}.button`}
-                  >
-                    {strPortal === "HRMS" ? getLoginLabel("portalHrms") : getLoginLabel("portalEss")}
-                  </Button>
-                ))}
+                {/* Portal choices use the Login button treatment and share one equal-width row. */}
+                <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 2 }}>
+                  {lstPortalChoices.map((strPortal) => (
+                    <Button
+                      key={strPortal}
+                      variant="contained"
+                      size="large"
+                      disabled={blnPortalSwitching}
+                      onClick={() => void selectPortal(strPortal)}
+                      data-controlid={`auth.login.portal.${strPortal.toLowerCase()}.button`}
+                      sx={{
+                        minWidth: 0,
+                        minHeight: 52,
+                        borderRadius: "10px",
+                        background: "linear-gradient(135deg, #132a63 0%, #184a8b 100%)",
+                        boxShadow: "0 10px 20px rgba(24, 74, 139, 0.24)",
+                      }}
+                    >
+                      {strPortal === "HRMS" ? getLoginLabel("portalHrms") : getLoginLabel("portalEss")}
+                    </Button>
+                  ))}
+                </Box>
                 {strError ? <Alert severity="error">{strError}</Alert> : null}
               </Stack>
             ) : (

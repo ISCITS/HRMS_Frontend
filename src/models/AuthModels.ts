@@ -170,6 +170,8 @@ export type CurrentUserContext = {
   strAvatarUrl?: string | null;
   // Active portal for this session, decided and revalidated server-side.
   strActiveContext?: PortalCode | null;
+  // Server-derived portal entitlements; switching is offered only when both portals are present.
+  lstAvailablePortals?: PortalCode[];
 };
 
 export type DashboardType = "PAYROLL" | "ESS" | "MANAGEMENT";

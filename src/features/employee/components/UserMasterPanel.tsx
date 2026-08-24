@@ -8,6 +8,7 @@ import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Checkbox,
@@ -532,10 +533,9 @@ export default function UserMasterPanel() {
           dicNextForm.essAccessEnabled = false;
           dicNextForm.essUserGroupID = "";
         } else {
-          // Identity prefill from Employee Master (Login ID = Employee Code, name/contact/language).
+          // Prefill employee-maintained profile details; Login ID remains an independent credential.
           const objEmployee = lstEmployeeOptions.find((objOption) => objOption.intID === Number(objValue));
           if (objEmployee) {
-            dicNextForm.loginId = objEmployee.strCode ?? dicNextForm.loginId;
             dicNextForm.loginName = objEmployee.strLabel ?? dicNextForm.loginName;
             if (objEmployee.strEmail) dicNextForm.email = objEmployee.strEmail;
             if (objEmployee.strMobile) dicNextForm.mobile = objEmployee.strMobile;
@@ -904,30 +904,30 @@ export default function UserMasterPanel() {
             </Box>
 
             {dicForm.loginAsEmployee ? (
-              <TextField
-                select
-                label={dicModuleLabels.fieldEmployee}
-                inputProps={{ "data-controlid": "user-master.dialog.employee.select" }}
-                value={String(dicForm.employeeID)}
-                onChange={(objEvent) => setFormField("employeeID", objEvent.target.value ? Number(objEvent.target.value) : "")}
-                error={Boolean(dicErrors.employeeID)}
-                helperText={dicErrors.employeeID}
+              <Autocomplete
+                options={lstEmployeeOptions.filter((objEmployee) =>
+                  !objEmployee.intLinkedUserID
+                  || String(objEmployee.intLinkedUserID) === strEditingUserId)}
+                value={lstEmployeeOptions.find((objEmployee) => objEmployee.intID === Number(dicForm.employeeID)) ?? null}
+                getOptionLabel={(objEmployee) => objEmployee.strCode ? `${objEmployee.strCode} - ${objEmployee.strLabel}` : objEmployee.strLabel}
+                isOptionEqualToValue={(objOption, objValue) => objOption.intID === objValue.intID}
+                onChange={(_, objEmployee) => setFormField("employeeID", objEmployee?.intID ?? "")}
                 disabled={strMode === "view"}
                 fullWidth
-                required
-                SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.employee.select" } as HTMLAttributes<HTMLDivElement> }}
-              >
-                <MenuItem value="" data-controlid="user-master.dialog.employee.select.option">Select</MenuItem>
-                {lstEmployeeOptions
-                  .filter((objEmployee) =>
-                    !objEmployee.intLinkedUserID
-                    || String(objEmployee.intLinkedUserID) === strEditingUserId)
-                  .map((objEmployee) => (
-                  <MenuItem key={objEmployee.intID} value={String(objEmployee.intID)} data-controlid={`user-master.dialog.employee.${normalizeSelectToken(objEmployee.strCode || objEmployee.strLabel)}.option`}>
-                    {objEmployee.strCode ? `${objEmployee.strCode} - ${objEmployee.strLabel}` : objEmployee.strLabel}
-                  </MenuItem>
-                ))}
-              </TextField>
+                renderInput={(objParams) => (
+                  <TextField
+                    {...objParams}
+                    label={dicModuleLabels.fieldEmployee}
+                    inputProps={{
+                      ...objParams.inputProps,
+                      "data-controlid": "user-master.dialog.employee.select",
+                    }}
+                    error={Boolean(dicErrors.employeeID)}
+                    helperText={dicErrors.employeeID}
+                    required
+                  />
+                )}
+              />
             ) : (
               <Box />
             )}
@@ -946,8 +946,8 @@ export default function UserMasterPanel() {
               value={dicForm.loginId}
               onChange={(objEvent) => setFormField("loginId", objEvent.target.value)}
               error={Boolean(dicErrors.loginId)}
-              helperText={dicErrors.loginId || (blnEmployeeLinked ? dicModuleLabels.helperEmployeeDerived : "")}
-              disabled={blnEmployeeDerivedReadOnly}
+              helperText={dicErrors.loginId}
+              disabled={strMode === "view"}
               fullWidth
               required
             />
@@ -1041,6 +1041,28 @@ export default function UserMasterPanel() {
                 </MenuItem>
               ))}
             </TextField>
+            {blnShowOtpOnlyOption ? (
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  px: 1.5,
+                  py: 1.25,
+                  borderRadius: 0,
+                  border: "1px solid #dbe7f0",
+                  background: "rgba(248,250,252,0.9)",
+                }}
+              >
+                <Box>
+                  <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicModuleLabels.fieldEnableOtpOnly}</Typography>
+                  <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
+                    {dicModuleLabels.helperEnableOtpOnly}
+                  </Typography>
+                </Box>
+                <Switch inputProps={{ "data-controlid": "user-master.dialog.otp-only.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.mfaEnabled} onChange={(_, blnChecked) => setFormField("mfaEnabled", blnChecked)} disabled={strMode === "view" || blnDisableOtpOnlyOption} />
+              </Box>
+            ) : null}
           </Box>
 
           {dicForm.ssoEnabled ? (
@@ -1154,29 +1176,6 @@ export default function UserMasterPanel() {
               ))}
             </TextField>
 
-            {/* Sign-in security for this account lives with Application Access. */}
-            {blnShowOtpOnlyOption ? (
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  px: 1.5,
-                  py: 1.25,
-                  borderRadius: 0,
-                  border: "1px solid #dbe7f0",
-                  background: "rgba(248,250,252,0.9)",
-                }}
-              >
-                <Box>
-                  <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicModuleLabels.fieldEnableOtpOnly}</Typography>
-                  <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
-                    {dicModuleLabels.helperEnableOtpOnly}
-                  </Typography>
-                </Box>
-                <Switch inputProps={{ "data-controlid": "user-master.dialog.otp-only.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.mfaEnabled} onChange={(_, blnChecked) => setFormField("mfaEnabled", blnChecked)} disabled={strMode === "view" || blnDisableOtpOnlyOption} />
-              </Box>
-            ) : null}
           </Box>
         </Box>}
       />

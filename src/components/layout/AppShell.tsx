@@ -5,6 +5,7 @@ import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
 import SpaceDashboardRoundedIcon from "@mui/icons-material/SpaceDashboardRounded";
+import SwapHorizRoundedIcon from "@mui/icons-material/SwapHorizRounded";
 import {
   AppBar,
   Avatar,
@@ -40,12 +41,13 @@ import { employeeService } from "@/features/employee/services/employeeService";
 import { useAuthenticatedAvatar } from "@/hooks/useAuthenticatedAvatar";
 import { authHelpers } from "@/lib/auth";
 import { normalizeMenuResponse } from "@/lib/menu";
+import { getPostLoginRoute } from "@/lib/RouteGuard";
 import {
   isAuthenticatedAppRoute,
   readAuthenticatedRouteHistory,
   writeAuthenticatedRouteHistory
 } from "@/lib/routeAccess";
-import type { CurrentUserContext, MenuItem as AuthMenuItem, MenuResponse, TenantAuthDetails } from "@/models/AuthModels";
+import type { CurrentUserContext, MenuItem as AuthMenuItem, MenuResponse, PortalCode, TenantAuthDetails } from "@/models/AuthModels";
 import { ApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { authApiService } from "@/services";
 
@@ -523,6 +525,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [blnDesktopSidebarOpen, setBlnDesktopSidebarOpen] = useState(false);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnLoggingOut, setBlnLoggingOut] = useState(false);
+  const [blnPortalSwitching, setBlnPortalSwitching] = useState(false);
+  const [strPortalSwitchError, setStrPortalSwitchError] = useState("");
   const [blnLogoutDialogOpen, setBlnLogoutDialogOpen] = useState(false);
   const [objProfileAnchorEl, setObjProfileAnchorEl] = useState<HTMLElement | null>(null);
   const [objUserContext, setObjUserContext] = useState<CurrentUserContext | null>(null);
@@ -831,6 +835,29 @@ export default function AppShell({ children }: { children: ReactNode }) {
     window.location.replace(strLogoutUrl);
   }
 
+  async function switchPortal(strPortal: PortalCode) {
+    if (blnPortalSwitching) {
+      return;
+    }
+
+    closeProfileMenu();
+    setStrPortalSwitchError("");
+    setBlnPortalSwitching(true);
+    try {
+      const objResult = await authApiService.selectPortalContext(strPortal);
+      // A full navigation guarantees menus, permissions, dashboard data and shell branding all
+      // bootstrap from the newly issued portal-scoped token.
+      window.location.assign(getPostLoginRoute(objResult.Data.strHomeRoute));
+    } catch (objError) {
+      setBlnPortalSwitching(false);
+      if (isSessionExpiredError(objError)) {
+        redirectToSessionExpired();
+        return;
+      }
+      setStrPortalSwitchError(objError instanceof Error ? objError.message : "Unable to switch portal.");
+    }
+  }
+
   async function switchWorkspaceLanguage(intRequestedLanguageID: number) {
     if (
       blnLanguageSwitching ||
@@ -901,9 +928,20 @@ export default function AppShell({ children }: { children: ReactNode }) {
   // The legacy heuristic (linked employee without an HR/manager role gets self-service navigation
   // even when stale group-menu rights exist) still applies to sessions with no portal context.
   const strActivePortalContext = String(objUserContext?.strActiveContext ?? "").trim().toUpperCase();
+  const lstAvailablePortals = objUserContext?.lstAvailablePortals ?? [];
+  const strSwitchTargetPortal: PortalCode | null = strActivePortalContext === "ESS" && lstAvailablePortals.includes("HRMS")
+    ? "HRMS"
+    : strActivePortalContext === "HRMS" && lstAvailablePortals.includes("ESS")
+      ? "ESS"
+      : null;
   const blnEssOnlyNavigation = strActivePortalContext
     ? strActivePortalContext === "ESS"
     : Boolean(intLinkedEmployeeID) && !blnHasPrivilegedRole;
+  // Shell branding must follow the selected portal. Dashboard type is only a legacy fallback
+  // because an employee-linked HRMS user can still receive employee-oriented dashboard content.
+  const blnEssShellBrand = strActivePortalContext
+    ? strActivePortalContext === "ESS"
+    : blnEssOnlyNavigation || blnEssDashboardActive;
   const strLinkedEmployeeName = strResolvedEmployeeName || extractLinkedEmployeeName(objUserContext);
   const { strEmployeeCode, strDesignation } = extractEmployeeMeta(objUserContext);
   const strProfileDisplayName = strLinkedEmployeeName || strUserName;
@@ -1043,7 +1081,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             </Box>
             <Box sx={{ minWidth: 0 }}>
               <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
-                {blnEssDashboardActive
+                {blnEssShellBrand
                   ? tCommon("brand_short_name", "ESS")
                   : tCommon("brand_short_name_hrms", "HRMS")}
               </Typography>
@@ -1375,7 +1413,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                     whiteSpace: "nowrap"
                   }}
                 >
-                  {blnEssOnlyNavigation || blnEssDashboardActive
+                  {blnEssShellBrand
                     ? tCommon("ess_app_title", "Employee Self Service")
                     : tCommon("app_title", "Human Resource Management System")}
                 </Typography>
@@ -1606,6 +1644,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
               intZIndex={intContentLoaderZIndex}
               blnLocal
             />
+            <BlockingLoader
+              blnOpen={blnPortalSwitching}
+              strLabel={tCommon("switching_portal", "Switching portal...")}
+              intZIndex={intContentLoaderZIndex}
+              blnLocal
+            />
           </Box>
         </Box>
       </BlockingLoaderViewportProvider>
@@ -1633,6 +1677,24 @@ export default function AppShell({ children }: { children: ReactNode }) {
           ) : null}
         </Box>
         <Divider />
+        {strSwitchTargetPortal ? (
+          <>
+            <MenuItem
+              onClick={() => void switchPortal(strSwitchTargetPortal)}
+              disabled={blnLoggingOut || blnPortalSwitching}
+              sx={{ gap: 1.25, py: 1.25, justifyContent: "flex-start", textAlign: "left" }}
+              {...getAutomationProps(`app-shell.switch-to-${strSwitchTargetPortal.toLowerCase()}.menu-item`)}
+            >
+              <SwapHorizRoundedIcon fontSize="small" />
+              <Typography sx={{ fontWeight: 600 }}>
+                {strSwitchTargetPortal === "HRMS"
+                  ? tCommon("switch_to_hrms", "Switch to HRMS")
+                  : tCommon("switch_to_ess", "Switch to Employee Self Service")}
+              </Typography>
+            </MenuItem>
+            <Divider />
+          </>
+        ) : null}
         <MenuItem
           onClick={() => {
             closeProfileMenu();
@@ -1656,6 +1718,18 @@ export default function AppShell({ children }: { children: ReactNode }) {
           <Button onClick={() => setBlnLogoutDialogOpen(false)} disabled={blnLoggingOut} {...getAutomationProps("app-shell.logout.cancel.button")}>{tCommon("cancel", "Cancel")}</Button>
           <Button onClick={confirmLogout} variant="contained" color="error" disabled={blnLoggingOut} {...getAutomationProps("app-shell.logout.confirm.button")}>
             {tCommon("logout", "Logout")}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(strPortalSwitchError)} onClose={() => setStrPortalSwitchError("")} fullWidth maxWidth="xs" {...getAutomationProps("app-shell.portal-switch-error.dialog")}>
+        <DialogTitle>{tCommon("portal_switch_failed", "Unable to switch portal")}</DialogTitle>
+        <DialogContent>
+          <Typography>{strPortalSwitchError}</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setStrPortalSwitchError("")} {...getAutomationProps("app-shell.portal-switch-error.close.button")}>
+            {tCommon("close", "Close")}
           </Button>
         </DialogActions>
       </Dialog>
