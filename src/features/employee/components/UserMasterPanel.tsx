@@ -266,18 +266,13 @@ export default function UserMasterPanel() {
     fieldUserGroup: t("field_user_group", "User Group"),
     sectionAccountAssociation: t("section_account_association", "Account Association"),
     optionSelect: t("option_select", "Select"),
-    helperEmployeeDerived: t("helper_employee_derived", "Maintained in Employee Master."),
     sectionApplicationAccess: t("section_application_access", "Application Access"),
     fieldEssAccess: t("field_ess_access", "ESS Access"),
-    helperEssAccess: t("helper_ess_access", "Allow this user to sign in to Employee Self Service."),
     fieldEssUserGroup: t("field_ess_user_group", "ESS User Group"),
     fieldHrmsAccess: t("field_hrms_access", "HRMS Access"),
-    helperHrmsAccess: t("helper_hrms_access", "Allow this user to sign in to the administrative HRMS."),
     fieldHrmsUserGroup: t("field_hrms_user_group", "HRMS User Group"),
-    fieldEnableOtpOnly: t("field_enable_otp_only", "Enable OTP Only"),
-    helperEnableOtpOnly: t("helper_enable_otp_only", "Require OTP-based login for this user when tenant OTP mode is enabled."),
+    fieldEnableOtpOnly: t("field_enable_otp_only", "Enable 2FA with E-mail OTP"),
     fieldLoginAsEmployee: t("field_link_to_employee_profile", "Link to Employee Profile"),
-    helperLoginAsEmployee: t("helper_login_as_employee", "Link this user account to an employee profile."),
     fieldEmployee: t("field_employee", "Employee"),
     fieldStatus: t("field_status"),
     helperPasswordOptional: t("helper_password_optional"),
@@ -392,7 +387,6 @@ export default function UserMasterPanel() {
   const blnCanDelete = canDoAny("delete");
   const blnCanExport = canDoAny("export");
   const blnReadOnly = isReadOnly();
-  const objTenantLanguageOption = objFormOptions.lstLanguages.find((objLanguage) => objLanguage.intID === intTenantLanguageID) ?? null;
   const blnShowOtpOnlyOption =
     (objFormOptions.objMfaPolicy?.blnUserMfaToggleVisible ?? false)
     && !(objFormOptions.objMfaPolicy?.blnUserMfaToggleDisabled ?? false);
@@ -882,24 +876,8 @@ export default function UserMasterPanel() {
               alignItems: "center",
             }}
           >
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                px: 1.5,
-                py: 1.25,
-                borderRadius: 0,
-                border: "1px solid #dbe7f0",
-                background: "rgba(248,250,252,0.9)",
-              }}
-            >
-              <Box>
-                <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicModuleLabels.fieldLoginAsEmployee}</Typography>
-                <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
-                  {dicModuleLabels.helperLoginAsEmployee}
-                </Typography>
-              </Box>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography sx={{ fontWeight: 400, color: "#0f172a" }}>{dicModuleLabels.fieldLoginAsEmployee}</Typography>
               <Switch inputProps={{ "data-controlid": "user-master.dialog.login-as-employee.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.loginAsEmployee} onChange={(_, blnChecked) => setFormField("loginAsEmployee", blnChecked)} disabled={blnLoginAsEmployeeDisabled} />
             </Box>
 
@@ -951,7 +929,7 @@ export default function UserMasterPanel() {
               fullWidth
               required
             />
-            <TextField label={dicModuleLabels.fieldLoginName} inputProps={{ "data-controlid": "user-master.dialog.login-name.input" }} value={dicForm.loginName} onChange={(objEvent) => setFormField("loginName", objEvent.target.value)} error={Boolean(dicErrors.loginName)} helperText={dicErrors.loginName || (blnEmployeeLinked ? dicModuleLabels.helperEmployeeDerived : "")} disabled={blnEmployeeDerivedReadOnly} fullWidth required />
+            <TextField label={dicModuleLabels.fieldLoginName} inputProps={{ "data-controlid": "user-master.dialog.login-name.input" }} value={dicForm.loginName} onChange={(objEvent) => setFormField("loginName", objEvent.target.value)} error={Boolean(dicErrors.loginName)} helperText={dicErrors.loginName} disabled={blnEmployeeDerivedReadOnly} fullWidth required />
           </Box>
 
           <Box
@@ -961,8 +939,8 @@ export default function UserMasterPanel() {
               gap: 2,
             }}
           >
-            <TextField label={dicModuleLabels.fieldEmail} inputProps={{ "data-controlid": "user-master.dialog.email.input" }} value={dicForm.email} onChange={(objEvent) => setFormField("email", objEvent.target.value)} error={Boolean(dicErrors.email)} helperText={dicErrors.email || (blnEmployeeLinked ? dicModuleLabels.helperEmployeeDerived : "")} disabled={blnEmployeeDerivedReadOnly} fullWidth required />
-            <TextField label={dicModuleLabels.fieldMobile} inputProps={{ "data-controlid": "user-master.dialog.mobile.input" }} value={dicForm.mobile} onChange={(objEvent) => setFormField("mobile", objEvent.target.value)} error={Boolean(dicErrors.mobile)} helperText={dicErrors.mobile || (blnEmployeeLinked ? dicModuleLabels.helperEmployeeDerived : "")} disabled={blnEmployeeDerivedReadOnly} fullWidth required />
+            <TextField label={dicModuleLabels.fieldEmail} inputProps={{ "data-controlid": "user-master.dialog.email.input" }} value={dicForm.email} onChange={(objEvent) => setFormField("email", objEvent.target.value)} error={Boolean(dicErrors.email)} helperText={dicErrors.email} disabled={blnEmployeeDerivedReadOnly} fullWidth required />
+            <TextField label={dicModuleLabels.fieldMobile} inputProps={{ "data-controlid": "user-master.dialog.mobile.input" }} value={dicForm.mobile} onChange={(objEvent) => setFormField("mobile", objEvent.target.value)} error={Boolean(dicErrors.mobile)} helperText={dicErrors.mobile} disabled={blnEmployeeDerivedReadOnly} fullWidth required />
           </Box>
 
           {strMode === "add" ? (
@@ -1032,7 +1010,6 @@ export default function UserMasterPanel() {
               value={String(intTenantLanguageID ?? dicForm.preferredLanguageID)}
               disabled
               fullWidth
-              helperText={objTenantLanguageOption ? objTenantLanguageOption.strLabel : ""}
               SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.preferred-language.select" } as HTMLAttributes<HTMLDivElement> }}
             >
               {objFormOptions.lstLanguages.map((objLanguage) => (
@@ -1042,24 +1019,8 @@ export default function UserMasterPanel() {
               ))}
             </TextField>
             {blnShowOtpOnlyOption ? (
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  px: 1.5,
-                  py: 1.25,
-                  borderRadius: 0,
-                  border: "1px solid #dbe7f0",
-                  background: "rgba(248,250,252,0.9)",
-                }}
-              >
-                <Box>
-                  <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicModuleLabels.fieldEnableOtpOnly}</Typography>
-                  <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
-                    {dicModuleLabels.helperEnableOtpOnly}
-                  </Typography>
-                </Box>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Typography sx={{ fontWeight: 400, color: "#0f172a" }}>{dicModuleLabels.fieldEnableOtpOnly}</Typography>
                 <Switch inputProps={{ "data-controlid": "user-master.dialog.otp-only.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.mfaEnabled} onChange={(_, blnChecked) => setFormField("mfaEnabled", blnChecked)} disabled={strMode === "view" || blnDisableOtpOnlyOption} />
               </Box>
             ) : null}
@@ -1070,8 +1031,8 @@ export default function UserMasterPanel() {
           ) : null}
 
 
-          {/* Application Access: one identity, an explicit primary group per portal. Toggles keep the
-              existing right-side placement and card treatment used across this dialog. */}
+          {/* Application Access: one identity, an explicit primary group per portal. HRMS is listed
+              first; each toggle sits inline beside the group it governs. */}
           <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{dicModuleLabels.sectionApplicationAccess}</Typography>
           {dicErrors.portalAccess ? (
             <Typography sx={{ color: "#d32f2f", fontSize: "0.8rem" }} data-controlid="user-master.dialog.portal-access.error">
@@ -1080,24 +1041,39 @@ export default function UserMasterPanel() {
           ) : null}
 
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2, alignItems: "center" }}>
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                px: 1.5,
-                py: 1.25,
-                borderRadius: 0,
-                border: "1px solid #dbe7f0",
-                background: "rgba(248,250,252,0.9)",
-              }}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography sx={{ fontWeight: 400, color: "#0f172a" }}>{dicModuleLabels.fieldHrmsAccess}</Typography>
+              <Switch
+                inputProps={{ "data-controlid": "user-master.dialog.hrms-access.switch" } as InputHTMLAttributes<HTMLInputElement>}
+                checked={dicForm.hrmsAccessEnabled}
+                onChange={(_, blnChecked) => setFormField("hrmsAccessEnabled", blnChecked)}
+                disabled={strMode === "view"}
+              />
+            </Box>
+
+            <TextField
+              select
+              label={dicModuleLabels.fieldHrmsUserGroup}
+              inputProps={{ "data-controlid": "user-master.dialog.hrms-user-group.select" }}
+              value={String(dicForm.hrmsUserGroupID)}
+              onChange={(objEvent) => setFormField("hrmsUserGroupID", objEvent.target.value ? Number(objEvent.target.value) : "")}
+              error={Boolean(dicErrors.hrmsUserGroupID)}
+              helperText={dicErrors.hrmsUserGroupID}
+              disabled={strMode === "view" || !dicForm.hrmsAccessEnabled}
+              fullWidth
+              required={dicForm.hrmsAccessEnabled}
+              SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.hrms-user-group.select" } as HTMLAttributes<HTMLDivElement> }}
             >
-              <Box>
-                <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicModuleLabels.fieldEssAccess}</Typography>
-                <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
-                  {blnEmployeeLinked ? dicModuleLabels.helperEssAccess : dicModuleLabels.validationEssRequiresEmployee}
-                </Typography>
-              </Box>
+              <MenuItem value="" data-controlid="user-master.dialog.hrms-user-group.select.option">{dicModuleLabels.optionSelect}</MenuItem>
+              {lstHrmsGroupOptions.map((objGroup) => (
+                <MenuItem key={objGroup.intID} value={String(objGroup.intID)} data-controlid={`user-master.dialog.hrms-user-group.${normalizeSelectToken(objGroup.strCode || objGroup.strLabel)}.option`}>
+                  {objGroup.strCode ? `${objGroup.strCode} - ${objGroup.strLabel}` : objGroup.strLabel}
+                </MenuItem>
+              ))}
+            </TextField>
+
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography sx={{ fontWeight: 400, color: "#0f172a" }}>{dicModuleLabels.fieldEssAccess}</Typography>
               <Tooltip title={blnEssAccessDisabled && strMode !== "view" ? dicModuleLabels.validationEssRequiresEmployee : ""} arrow>
                 <span>
                   <Switch
@@ -1126,51 +1102,6 @@ export default function UserMasterPanel() {
               <MenuItem value="" data-controlid="user-master.dialog.ess-user-group.select.option">{dicModuleLabels.optionSelect}</MenuItem>
               {lstEssGroupOptions.map((objGroup) => (
                 <MenuItem key={objGroup.intID} value={String(objGroup.intID)} data-controlid={`user-master.dialog.ess-user-group.${normalizeSelectToken(objGroup.strCode || objGroup.strLabel)}.option`}>
-                  {objGroup.strCode ? `${objGroup.strCode} - ${objGroup.strLabel}` : objGroup.strLabel}
-                </MenuItem>
-              ))}
-            </TextField>
-
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                px: 1.5,
-                py: 1.25,
-                borderRadius: 0,
-                border: "1px solid #dbe7f0",
-                background: "rgba(248,250,252,0.9)",
-              }}
-            >
-              <Box>
-                <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicModuleLabels.fieldHrmsAccess}</Typography>
-                <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>{dicModuleLabels.helperHrmsAccess}</Typography>
-              </Box>
-              <Switch
-                inputProps={{ "data-controlid": "user-master.dialog.hrms-access.switch" } as InputHTMLAttributes<HTMLInputElement>}
-                checked={dicForm.hrmsAccessEnabled}
-                onChange={(_, blnChecked) => setFormField("hrmsAccessEnabled", blnChecked)}
-                disabled={strMode === "view"}
-              />
-            </Box>
-
-            <TextField
-              select
-              label={dicModuleLabels.fieldHrmsUserGroup}
-              inputProps={{ "data-controlid": "user-master.dialog.hrms-user-group.select" }}
-              value={String(dicForm.hrmsUserGroupID)}
-              onChange={(objEvent) => setFormField("hrmsUserGroupID", objEvent.target.value ? Number(objEvent.target.value) : "")}
-              error={Boolean(dicErrors.hrmsUserGroupID)}
-              helperText={dicErrors.hrmsUserGroupID}
-              disabled={strMode === "view" || !dicForm.hrmsAccessEnabled}
-              fullWidth
-              required={dicForm.hrmsAccessEnabled}
-              SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.hrms-user-group.select" } as HTMLAttributes<HTMLDivElement> }}
-            >
-              <MenuItem value="" data-controlid="user-master.dialog.hrms-user-group.select.option">{dicModuleLabels.optionSelect}</MenuItem>
-              {lstHrmsGroupOptions.map((objGroup) => (
-                <MenuItem key={objGroup.intID} value={String(objGroup.intID)} data-controlid={`user-master.dialog.hrms-user-group.${normalizeSelectToken(objGroup.strCode || objGroup.strLabel)}.option`}>
                   {objGroup.strCode ? `${objGroup.strCode} - ${objGroup.strLabel}` : objGroup.strLabel}
                 </MenuItem>
               ))}
