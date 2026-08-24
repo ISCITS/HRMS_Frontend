@@ -3,6 +3,8 @@
 // import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import PhotoCameraRoundedIcon from "@mui/icons-material/PhotoCameraRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import AccountBalanceOutlinedIcon from "@mui/icons-material/AccountBalanceOutlined";
+import AccountBalanceWalletOutlinedIcon from "@mui/icons-material/AccountBalanceWalletOutlined";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import WorkOutlineRoundedIcon from "@mui/icons-material/WorkOutlineRounded";
 import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
@@ -30,7 +32,8 @@ import {
 import { ChangeEvent, type ReactElement, useEffect, useState } from "react";
 
 import { employeeService } from "@/features/employee/services/employeeService";
-import type { EmployeeAddressRecord, EmployeeDetailRecord, EmployeeExperienceRecord, EmployeeFamilyDetailRecord, EmployeeFormOptions, EmployeeQualificationRecord } from "@/features/employee/types";
+import type { EmployeeAddressRecord, EmployeeBankRecord, EmployeeDetailRecord, EmployeeExperienceRecord, EmployeeFamilyDetailRecord, EmployeeFormOptions, EmployeeQualificationRecord, EmployeeStatutoryRecord } from "@/features/employee/types";
+import EmployeeSalarySummaryCard from "@/features/employee-salary/components/EmployeeSalarySummaryCard";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useAuthenticatedAvatar } from "@/hooks/useAuthenticatedAvatar";
@@ -108,6 +111,8 @@ export default function EssMyProfilePage() {
   const [objEmployee, setObjEmployee] = useState<EmployeeDetailRecord | null>(null);
   const [objFormOptions, setObjFormOptions] = useState<EmployeeFormOptions | null>(null);
   const [objAddress, setObjAddress] = useState<EmployeeAddressRecord | null>(null);
+  const [objBank, setObjBank] = useState<EmployeeBankRecord | null>(null);
+  const [objStatutory, setObjStatutory] = useState<EmployeeStatutoryRecord | null>(null);
   const [lstExperiences, setLstExperiences] = useState<EmployeeExperienceRecord[]>([]);
   const [lstQualifications, setLstQualifications] = useState<EmployeeQualificationRecord[]>([]);
   const [lstFamily, setLstFamily] = useState<EmployeeFamilyDetailRecord[]>([]);
@@ -167,7 +172,9 @@ export default function EssMyProfilePage() {
             employeeService.getEmployeeAddress(intCurrentEmployeeID),
             employeeService.getEmployeeExperiences(intCurrentEmployeeID),
             employeeService.getEmployeeQualifications(intCurrentEmployeeID),
-            employeeService.getEmployeeFamilyDetails(intCurrentEmployeeID)
+            employeeService.getEmployeeFamilyDetails(intCurrentEmployeeID),
+            employeeService.getEmployeeBankAccount(intCurrentEmployeeID),
+            employeeService.getEmployeeStatutory(intCurrentEmployeeID)
           ])
         ]);
 
@@ -190,6 +197,12 @@ export default function EssMyProfilePage() {
         }
         if (lstProfileDetails[3].status === "fulfilled") {
           setLstFamily(lstProfileDetails[3].value);
+        }
+        if (lstProfileDetails[4].status === "fulfilled") {
+          setObjBank(lstProfileDetails[4].value);
+        }
+        if (lstProfileDetails[5].status === "fulfilled") {
+          setObjStatutory(lstProfileDetails[5].value);
         }
       } catch (objError: unknown) {
         if (blnMounted) {
@@ -245,7 +258,6 @@ export default function EssMyProfilePage() {
 
   const strFullName = objEmployee?.strFullName?.trim() || t("employee_fallback", "Employee");
   const strInitial = strFullName[0]?.toUpperCase() || "E";
-  const strTitleName = [objEmployee?.strTitle ?? "", strFullName].filter(Boolean).join(" ");
   const blnCanEditProfile = canDoAny("edit");
 
   async function refreshUserContext() {
@@ -347,10 +359,10 @@ export default function EssMyProfilePage() {
         }}
       >
         <Box sx={{ display: "flex", minHeight: 0, overflow: "hidden" }}>
-          <Paper elevation={0} sx={{ width: "100%", height: "100%", p: 1.6, border: "1px solid #e1e7ef", borderRadius: "9px", boxShadow: "0 4px 15px rgba(15,23,42,0.05)" }}>
+          <Paper elevation={0} sx={{ width: "100%", height: "100%", p: 1.6, border: "1px solid #e1e7ef", borderRadius: "9px", boxShadow: "0 4px 15px rgba(15,23,42,0.05)", overflowY: "auto", scrollbarGutter: "stable" }}>
             <Stack alignItems="center" sx={{ pt: 0.6 }}>
               <Avatar src={strAuthenticatedAvatarUrl || undefined} sx={{ width: 92, height: 92, bgcolor: "#e8eef8", color: "#334155", fontWeight: 800, fontSize: "1.5rem" }}>{strInitial}</Avatar>
-              <Typography sx={{ mt: 1, color: "#172033", typography: "h6", fontWeight: 800, textAlign: "center" }}>{strTitleName}</Typography>
+              <Typography sx={{ mt: 1, color: "#172033", typography: "h6", fontWeight: 800, textAlign: "center" }}>{strFullName}</Typography>
               <Typography sx={{ color: "#667085", typography: "body2", fontWeight: 600 }}>{valueOrNotAvailable(objEmployee?.strEmployeeCode)}</Typography>
               <Chip size="small" label={translateKnownValue(objEmployee?.strEmploymentStatus)} sx={{ mt: 0.8, height: 24, bgcolor: "#ecfdf3", color: "#15803d", "& .MuiChip-label": { px: 0.9, typography: "caption", fontWeight: 700 } }} />
             </Stack>
@@ -380,15 +392,52 @@ export default function EssMyProfilePage() {
               ) : null}
             </Stack>
 
+            <Divider sx={{ my: 1.35 }} />
+            <EmployeeSalarySummaryCard intEmployeeID={intEmployeeID} blnHideOpenPageButton blnCompact />
+
           </Paper>
         </Box>
 
         <Box sx={{ display: "flex", minHeight: 0, overflow: "hidden" }}>
           <Paper elevation={0} sx={{ width: "100%", height: { md: "100%" }, minHeight: 0, display: "flex", flexDirection: "column", border: "1px solid #e1e7ef", borderRadius: "9px", boxShadow: "0 4px 15px rgba(15,23,42,0.05)", overflow: "hidden" }}>
             <Box sx={{ px: { xs: 0.5, sm: 1.5 }, overflowX: "auto", flexShrink: 0 }}>
-              <Tabs value={strActiveTab} onChange={(_objEvent, strValue: string) => setStrActiveTab(strValue)} variant="scrollable" scrollButtons={false} sx={{ minHeight: 49, borderBottom: "1px solid #e7ebf1", "& .MuiTabs-indicator": { height: 2, bgcolor: "var(--app-primary-color)" } }}>
-                <Tab value="basicInfo" icon={<PersonRoundedIcon />} iconPosition="start" label={t("tab_personal", "Personal Information")} sx={dicTabSx} />
+              <Tabs
+                value={strActiveTab}
+                onChange={(_objEvent, strValue: string) => setStrActiveTab(strValue)}
+                variant="scrollable"
+                scrollButtons="auto"
+                allowScrollButtonsMobile
+                sx={{
+                  minHeight: 49,
+                  borderBottom: "1px solid #e7ebf1",
+                  "& .MuiTabs-indicator": { height: 2, bgcolor: "var(--app-primary-color)" },
+                  "& .MuiTabs-scrollButtons": {
+                    alignSelf: "center",
+                    width: 36,
+                    minWidth: 36,
+                    height: 36,
+                    mx: 0.5,
+                    borderRadius: "10px",
+                    bgcolor: "var(--app-primary-color)",
+                    color: "#fff",
+                    boxShadow: "0 5px 12px color-mix(in srgb, var(--app-primary-color) 28%, transparent)",
+                    transition: "background-color 160ms ease, color 160ms ease, box-shadow 160ms ease",
+                    "&:hover": { bgcolor: "var(--app-primary-color)", filter: "brightness(0.92)" },
+                    "&.Mui-disabled": {
+                      opacity: 1,
+                      bgcolor: "#f8fafc",
+                      color: "#cbd5e1",
+                      border: "1px solid #e2e8f0",
+                      boxShadow: "none"
+                    },
+                    "& svg": { fontSize: 27 }
+                  }
+                }}
+              >
+                <Tab value="basicInfo" icon={<PersonRoundedIcon />} iconPosition="start" label={t("tab_personal_contact_info", "Personal & Contact Info")} sx={dicTabSx} />
                 <Tab value="contactDetails" icon={<PhoneOutlinedIcon />} iconPosition="start" label={t("tab_employment", "Employment Information")} sx={dicTabSx} />
+                <Tab value="bankDetails" icon={<AccountBalanceWalletOutlinedIcon />} iconPosition="start" label={t("tab_bank_details", "Bank Details")} sx={dicTabSx} />
+                <Tab value="statutory" icon={<AccountBalanceOutlinedIcon />} iconPosition="start" label={t("tab_statutory", "Statutory")} sx={dicTabSx} />
                 <Tab value="experience" icon={<WorkOutlineRoundedIcon />} iconPosition="start" label={t("tab_experience", "Experience")} sx={dicTabSx} />
                 <Tab value="qualification" icon={<SchoolOutlinedIcon />} iconPosition="start" label={t("tab_qualification", "Qualification")} sx={dicTabSx} />
                 <Tab value="familyDetails" icon={<GroupsOutlinedIcon />} iconPosition="start" label={t("tab_family_details", "Family Details")} sx={dicTabSx} />
@@ -410,28 +459,19 @@ export default function EssMyProfilePage() {
                   <Paper variant="outlined" sx={dicReadOnlyCardSx}>
                     <Box sx={{ px: 1.5 }}>
                     <DetailRow strLabel={t("field_employee_code", "Employee Code")} strValue={valueOrNotAvailable(objEmployee?.strEmployeeCode)} />
-                    <DetailRow strLabel={t("field_title", "Title")} strValue={valueOrNotAvailable(objEmployee?.strTitle)} />
-                    <DetailRow strLabel={t("field_first_name", "First Name")} strValue={valueOrNotAvailable(objEmployee?.strFirstName)} />
-                    <DetailRow strLabel={t("field_middle_name", "Middle Name")} strValue={valueOrNotAvailable(objEmployee?.strMiddleName)} />
-                    <DetailRow strLabel={t("field_last_name", "Last Name")} strValue={valueOrNotAvailable(objEmployee?.strLastName)} />
-                    <DetailRow strLabel={t("field_full_name", "Full Name")} strValue={strFullName} />
+                    <DetailRow strLabel={t("field_name", "Name")} strValue={strFullName} />
                     <DetailRow strLabel={t("field_date_of_birth", "Date of Birth")} strValue={formatDate(objEmployee?.dtDateOfBirth ?? null, strNotAvailable)} />
                     <DetailRow strLabel={t("field_gender", "Gender")} strValue={translateKnownValue(objEmployee?.strGender)} />
-                    <DetailRow strLabel={t("field_worker_category", "Worker Category")} strValue={objEmployee?.blnIsWorker ? t("worker", "Worker") : t("non_worker", "Non-Worker")} />
-                    <DetailRow strLabel={t("field_date_of_joining", "Date of Joining")} strValue={formatDate(objEmployee?.dtDateOfJoining ?? null, strNotAvailable)} />
-                    <DetailRow strLabel={t("field_employment_type", "Employment Type")} strValue={translateKnownValue(resolveLookupLabel(objFormOptions?.lstEmploymentTypes, objEmployee?.intEmploymentTypeID ?? null, strNotAvailable))} />
-                    <DetailRow strLabel={t("field_department", "Department")} strValue={strDepartment} />
-                    <DetailRow strLabel={t("field_designation", "Designation")} strValue={strDesignation} />
-                    <DetailRow strLabel={t("field_grade", "Grade")} strValue={resolveLookupLabel(objFormOptions?.lstGrades, objEmployee?.intGradeID ?? null, strNotAvailable)} />
-                    <DetailRow strLabel={t("field_cost_center", "Cost Center")} strValue={resolveLookupLabel(objFormOptions?.lstCostCenters, objEmployee?.intCostCenterID ?? null, strNotAvailable)} />
-                    <DetailRow strLabel={t("field_location", "Location")} strValue={strLocation} />
-                    <DetailRow strLabel={t("field_payroll_group", "Payroll Group")} strValue={strPayrollGroup} />
-                    <DetailRow strLabel={t("field_manager", "Manager")} strValue={strManager} />
-                    <DetailRow strLabel={t("field_line_manager", "Line Manager")} strValue={strLineManager} />
-                    <DetailRow strLabel={t("field_preferred_language", "Preferred Language")} strValue={strPreferredLanguage} />
-                    <DetailRow strLabel={t("field_employment_status", "Employment Status")} strValue={translateKnownValue(objEmployee?.strEmploymentStatus)} />
-                    <DetailRow strLabel={t("field_date_of_exit", "Date of Exit")} strValue={formatDate(objEmployee?.dtDateOfExit ?? null, strNotAvailable)} />
-                    <DetailRow strLabel={t("field_ess_enabled", "ESS Enabled")} strValue={objEmployee?.blnIsEssEnabled ? t("yes", "Yes") : t("no", "No")} />
+                    <DetailRow strLabel={t("field_work_email", "Work Email")} strValue={valueOrNotAvailable(objEmployee?.strWorkEmail)} />
+                    <DetailRow strLabel={t("field_personal_email", "Personal Email")} strValue={valueOrNotAvailable(objEmployee?.strPersonalEmail)} />
+                    <DetailRow strLabel={t("field_mobile_number", "Mobile Number")} strValue={valueOrNotAvailable(objEmployee?.strMobileNumber)} />
+                    <DetailRow strLabel={t("field_address_type", "Address Type")} strValue={translateKnownValue(objAddress?.strAddressType)} />
+                    <DetailRow strLabel={t("field_address_line_1", "Address Line 1")} strValue={valueOrNotAvailable(objAddress?.strAddressLine1)} />
+                    <DetailRow strLabel={t("field_address_line_2", "Address Line 2")} strValue={valueOrNotAvailable(objAddress?.strAddressLine2)} />
+                    <DetailRow strLabel={t("field_city", "City")} strValue={valueOrNotAvailable(objAddress?.strCityName)} />
+                    <DetailRow strLabel={t("field_state", "State")} strValue={resolveLookupLabel(objFormOptions?.lstStates, objAddress?.intStateID ?? null, strNotAvailable)} />
+                    <DetailRow strLabel={t("field_postal_code", "Postal Code")} strValue={valueOrNotAvailable(objAddress?.strPostalCode)} />
+                    <DetailRow strLabel={t("field_country", "Country")} strValue={resolveLookupLabel(objFormOptions?.lstCountries, objAddress?.intCountryID ?? null, strNotAvailable)} />
                     </Box>
                   </Paper>
                 </Stack>
@@ -440,16 +480,61 @@ export default function EssMyProfilePage() {
               {strActiveTab === "contactDetails" ? (
                 <Paper variant="outlined" sx={dicReadOnlyCardSx}>
                   <Box sx={{ px: 1.5 }}>
-                  <DetailRow strLabel={t("field_work_email", "Work Email")} strValue={valueOrNotAvailable(objEmployee?.strWorkEmail)} />
-                  <DetailRow strLabel={t("field_personal_email", "Personal Email")} strValue={valueOrNotAvailable(objEmployee?.strPersonalEmail)} />
-                  <DetailRow strLabel={t("field_mobile_number", "Mobile Number")} strValue={valueOrNotAvailable(objEmployee?.strMobileNumber)} />
-                  <DetailRow strLabel={t("field_address_type", "Address Type")} strValue={translateKnownValue(objAddress?.strAddressType)} />
-                  <DetailRow strLabel={t("field_address_line_1", "Address Line 1")} strValue={valueOrNotAvailable(objAddress?.strAddressLine1)} />
-                  <DetailRow strLabel={t("field_address_line_2", "Address Line 2")} strValue={valueOrNotAvailable(objAddress?.strAddressLine2)} />
-                  <DetailRow strLabel={t("field_city", "City")} strValue={valueOrNotAvailable(objAddress?.strCityName)} />
-                  <DetailRow strLabel={t("field_state", "State")} strValue={resolveLookupLabel(objFormOptions?.lstStates, objAddress?.intStateID ?? null, strNotAvailable)} />
-                  <DetailRow strLabel={t("field_postal_code", "Postal Code")} strValue={valueOrNotAvailable(objAddress?.strPostalCode)} />
-                  <DetailRow strLabel={t("field_country", "Country")} strValue={resolveLookupLabel(objFormOptions?.lstCountries, objAddress?.intCountryID ?? null, strNotAvailable)} />
+                  <DetailRow strLabel={t("field_employment_type", "Employment Type")} strValue={translateKnownValue(resolveLookupLabel(objFormOptions?.lstEmploymentTypes, objEmployee?.intEmploymentTypeID ?? null, strNotAvailable))} />
+                  <DetailRow strLabel={t("field_date_of_joining", "Date of Joining")} strValue={formatDate(objEmployee?.dtDateOfJoining ?? null, strNotAvailable)} />
+                  <DetailRow strLabel={t("field_department", "Department")} strValue={strDepartment} />
+                  <DetailRow strLabel={t("field_designation", "Designation")} strValue={strDesignation} />
+                  <DetailRow strLabel={t("field_grade", "Grade")} strValue={resolveLookupLabel(objFormOptions?.lstGrades, objEmployee?.intGradeID ?? null, strNotAvailable)} />
+                  <DetailRow strLabel={t("field_cost_center", "Cost Center")} strValue={resolveLookupLabel(objFormOptions?.lstCostCenters, objEmployee?.intCostCenterID ?? null, strNotAvailable)} />
+                  <DetailRow strLabel={t("field_location", "Location")} strValue={strLocation} />
+                  <DetailRow strLabel={t("field_payroll_group", "Payroll Group")} strValue={strPayrollGroup} />
+                  <DetailRow strLabel={t("field_manager", "Manager")} strValue={strManager} />
+                  <DetailRow strLabel={t("field_line_manager", "Line Manager")} strValue={strLineManager} />
+                  <DetailRow strLabel={t("field_preferred_language", "Preferred Language")} strValue={strPreferredLanguage} />
+                  <DetailRow strLabel={t("field_employment_status", "Employment Status")} strValue={translateKnownValue(objEmployee?.strEmploymentStatus)} />
+                  <DetailRow strLabel={t("field_date_of_exit", "Date of Exit")} strValue={formatDate(objEmployee?.dtDateOfExit ?? null, strNotAvailable)} />
+                  <DetailRow strLabel={t("field_worker_category", "Worker Category")} strValue={objEmployee?.blnIsWorker ? t("worker", "Worker") : t("non_worker", "Non-Worker")} />
+                  </Box>
+                </Paper>
+              ) : null}
+
+              {strActiveTab === "bankDetails" ? (
+                <Stack spacing={1.5}>
+                  <Typography sx={{ color: "#172033", fontWeight: 700 }}>{t("primary_bank_details", "Primary Bank Details")}</Typography>
+                  <ReadOnlyCard
+                    lstRows={[
+                      { strLabel: t("field_bank", "Bank"), strValue: resolveLookupLabel(objFormOptions?.lstBanks, objBank?.intBankID ?? null, strNotAvailable) },
+                      { strLabel: t("field_account_holder_name", "Account Holder Name"), strValue: valueOrNotAvailable(objBank?.strAccountHolderName) },
+                      { strLabel: t("field_account_number", "Account Number"), strValue: valueOrNotAvailable(objBank?.strAccountNumberMasked || objBank?.strAccountNumber) },
+                      { strLabel: t("field_ifsc_code", "IFSC Code"), strValue: valueOrNotAvailable(objBank?.strIfscCode) },
+                      { strLabel: t("field_is_primary", "Primary Account"), strValue: objBank ? (objBank.blnIsPrimary ? t("yes", "Yes") : t("no", "No")) : strNotAvailable },
+                      { strLabel: t("field_bank_active", "Active"), strValue: objBank ? (objBank.blnIsActive ? t("yes", "Yes") : t("no", "No")) : strNotAvailable }
+                    ]}
+                  />
+                  <Typography sx={{ pt: 0.5, color: "#172033", fontWeight: 700 }}>{t("field_secondary_bank_details", "Secondary Bank Details")}</Typography>
+                  <ReadOnlyCard
+                    lstRows={[
+                      { strLabel: t("field_secondary_bank_active", "Secondary Bank Active"), strValue: objBank ? (objBank.blnSecondaryIsActive ? t("yes", "Yes") : t("no", "No")) : strNotAvailable },
+                      { strLabel: t("field_secondary_bank", "Secondary Bank"), strValue: resolveLookupLabel(objFormOptions?.lstBanks, objBank?.intSecondaryBankID ?? null, strNotAvailable) },
+                      { strLabel: t("field_secondary_account_holder_name", "Secondary Account Holder Name"), strValue: valueOrNotAvailable(objBank?.strSecondaryAccountHolderName) },
+                      { strLabel: t("field_secondary_account_number", "Secondary Account Number"), strValue: valueOrNotAvailable(objBank?.strSecondaryAccountNumberMasked || objBank?.strSecondaryAccountNumber) },
+                      { strLabel: t("field_secondary_ifsc_code", "Secondary IFSC Code"), strValue: valueOrNotAvailable(objBank?.strSecondaryIfscCode) }
+                    ]}
+                  />
+                </Stack>
+              ) : null}
+
+              {strActiveTab === "statutory" ? (
+                <Paper variant="outlined" sx={dicReadOnlyCardSx}>
+                  <Box sx={{ px: 1.5 }}>
+                    <DetailRow strLabel={t("field_pan_number", "PAN Number")} strValue={valueOrNotAvailable(objStatutory?.strPanNumber)} />
+                    <DetailRow strLabel={t("field_uan_number", "UAN Number")} strValue={valueOrNotAvailable(objStatutory?.strUanNumber)} />
+                    <DetailRow strLabel={t("field_tax_regime", "Tax Regime")} strValue={translateKnownValue(objStatutory?.strTaxRegimeCode)} />
+                    <DetailRow strLabel={t("field_pf_applicable", "PF Applicable")} strValue={objStatutory ? (objStatutory.blnPfApplicable ? t("yes", "Yes") : t("no", "No")) : strNotAvailable} />
+                    <DetailRow strLabel={t("field_pf_number", "PF Number")} strValue={valueOrNotAvailable(objStatutory?.strPfNumber)} />
+                    <DetailRow strLabel={t("field_esi_applicable", "ESI Applicable")} strValue={objStatutory ? (objStatutory.blnEsiApplicable ? t("yes", "Yes") : t("no", "No")) : strNotAvailable} />
+                    <DetailRow strLabel={t("field_esi_number", "ESI Number")} strValue={valueOrNotAvailable(objStatutory?.strEsiNumber)} />
+                    <DetailRow strLabel={t("field_pt_applicable", "PT Applicable")} strValue={objStatutory ? (objStatutory.blnPtApplicable ? t("yes", "Yes") : t("no", "No")) : strNotAvailable} />
                   </Box>
                 </Paper>
               ) : null}

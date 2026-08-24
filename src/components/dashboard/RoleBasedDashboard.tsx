@@ -2129,7 +2129,13 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
   const strNextHoliday = String(objLeave.strNextHoliday || "");
 
   return (
-    <Stack spacing={2} sx={{ p: { xs: 1, md: 1.5 } }}>
+    <Stack
+      sx={{
+        px: 0,
+        py: 0.5,
+        gap: 1,
+      }}
+    >
       <Box className="pageBanner" sx={{ display: "block", p: { xs: 1.5, md: 2 }, borderRadius: "28px", boxShadow: "0 14px 32px rgba(120, 144, 186, 0.16)" }}>
         <Box className="bannerDots" />
         <Stack direction="row" justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }} spacing={1.5} sx={{ mb: 1.8, position: "relative", zIndex: 1 }}>
@@ -2226,7 +2232,12 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
       </Box>
 
       {/* Row 1: Profile Completeness, Profile & Compliance Health, Attendance Today */}
-      <Grid container spacing={1.5} alignItems="stretch" sx={{ mx: 0, width: "100%" }}>
+      <Grid
+        container
+        spacing={1.5}
+        alignItems="stretch"
+        sx={{ ml: -1.5, width: "calc(100% + 12px)" }}
+      >
         <Grid item xs={12} lg={6} sx={{ display: "flex" }}>
           <Paper
             sx={{
@@ -2453,7 +2464,12 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
       </Grid>
 
       {/* Row 2: IT Declaration, Reimbursement Summary, Current Month Pay, Leave Balance */}
-      <Grid container spacing={1.5} alignItems="stretch" sx={{ mx: 0, width: "100%" }}>
+      <Grid
+        container
+        spacing={1.5}
+        alignItems="stretch"
+        sx={{ ml: -1.5, width: "calc(100% + 12px)" }}
+      >
         <Grid item xs={12} sm={6} lg={3} sx={{ display: "flex" }}>
           <Paper sx={{ ...objWhiteCardSx, p: 1.6 }}>
             <SectionHeader strTitle={`${t("it_declaration", "IT Declaration")}${String((objItWidget?.objPayload as Record<string, unknown> | undefined)?.strFinancialYearCode || "").trim() ? ` (${String((objItWidget?.objPayload as Record<string, unknown> | undefined)?.strFinancialYearCode || "").trim()})` : ""}`} strTone="blue" objIcon={<DescriptionRoundedIcon sx={{ fontSize: 16 }} />} blnCompact />

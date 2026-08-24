@@ -54,7 +54,11 @@ export default function EssMyBankDetailsPage() {
   const blnCanView = canViewAny();
 
   useEffect(() => {
-    if (blnRightsLoading || !blnCanView) {
+    if (blnRightsLoading) {
+      return;
+    }
+
+    if (!blnCanView) {
       setBlnLoading(false);
       return;
     }
