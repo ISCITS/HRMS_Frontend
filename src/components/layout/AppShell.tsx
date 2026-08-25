@@ -384,6 +384,9 @@ function getLocalizedHeaderTitle(
   }
 
   if (strHeaderModuleName === "my-profile") {
+    if (strLowerPath === "/profile/change-password") {
+      return tHeader("change_password", "Change Password");
+    }
     if (strLowerPath.includes("/edit")) {
       return tHeader("edit_header_title", "Ess / My Profile / Edit");
     }

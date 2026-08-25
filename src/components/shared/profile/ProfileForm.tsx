@@ -15,6 +15,7 @@ import {
   Typography
 } from "@mui/material";
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
 
 import ProfileSection from "@/components/shared/profile/ProfileSection";
 import dicConstant from "@/constants/Constant.json";
@@ -259,7 +260,7 @@ export default function ProfileForm() {
           </Stack>
           <Typography sx={{ fontSize: 14, color: "#64748b" }}>{t("two_factor_status", dicConstant.profile.twoFactorStatus)}</Typography>
           <Typography sx={{ fontSize: 13, color: "#64748b" }}>{t("last_login", dicConstant.profile.lastLogin)}</Typography>
-          <Button variant="outlined" sx={{ alignSelf: "flex-start", borderRadius: "14px", height: 44 }} controlId="profile.form.change-password.button">
+          <Button component={Link} href="/profile/change-password?returnTo=%2Fprofile" variant="outlined" sx={{ alignSelf: "flex-start", borderRadius: "14px", height: 44 }} data-controlid="profile.form.change-password.button">
             {t("change_password", "Change Password")}
           </Button>
         </Stack>

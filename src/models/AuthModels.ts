@@ -49,6 +49,17 @@ export type GenericLoginRequest = {
   strPassword: string;
 };
 
+export type ChangePasswordRequest = {
+  strCurrentPassword: string;
+  strNewPassword: string;
+  strConfirmPassword: string;
+};
+
+export type ChangePasswordResponse = {
+  blnPasswordChanged: boolean;
+  intRevokedSessionCount: number;
+};
+
 export type TokenPayload = {
   strAccessToken: string;
   strTokenType: string;

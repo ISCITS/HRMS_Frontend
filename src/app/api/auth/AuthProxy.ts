@@ -11,6 +11,7 @@ import type {
   ApiEnvelope,
   ActionRightsResponse,
   AuthSuccessData,
+  ChangePasswordResponse,
   GoogleMfaChallengeData,
   CurrentUserContext,
   MenuResponse,
@@ -234,6 +235,18 @@ export async function proxyLogout(strAccessToken: string, objRequestHeaders?: He
   return callBackendApi<ApiEnvelope<{ blnLoggedOut: boolean }>>("/api/v1/auth/logout", {
     method: "POST",
     headers: buildProtectedProxyHeaders(strAccessToken, "AUTH_LOGOUT", objRequestHeaders)
+  });
+}
+
+export async function proxyChangePassword(
+  strAccessToken: string,
+  objBody: unknown,
+  objRequestHeaders?: Headers
+) {
+  return callBackendApi<ApiEnvelope<ChangePasswordResponse>>("/api/v1/auth/change-password", {
+    method: "POST",
+    objJsonBody: objBody,
+    headers: buildProtectedProxyHeaders(strAccessToken, "AUTH_CHANGE_PASSWORD", objRequestHeaders)
   });
 }
 
