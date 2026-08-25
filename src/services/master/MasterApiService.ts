@@ -636,6 +636,7 @@ export type DeclarationKindTypeApiRecord = {
 
 export type InvestmentOptionApiRecord = {
   intID: number;
+  intEssDeclarationCategoryID: number;
   strSectionCode: string;
   strOptionCode: string;
   strOptionName: string;
@@ -1833,17 +1834,17 @@ export const masterApiService = {
     });
   },
 
-  getInvestmentOptions(strSectionCode: string) {
+  getInvestmentOptions(intEssDeclarationCategoryID: number) {
     return requestApi<InvestmentOptionApiRecord[]>({
       strPath: MasterApiResource.InvestmentOptions,
       strMethod: ApiRequestMethod.Get,
-      objQueryParams: { strSectionCode },
+      objQueryParams: { intEssDeclarationCategoryID },
       strMenuAction: MasterMenuAction.InvestmentOptionList
     });
   },
 
   createInvestmentOption(objBody: {
-    strSectionCode: string;
+    intEssDeclarationCategoryID: number;
     strOptionCode: string;
     strOptionName: string;
     intDisplayOrder: number;
@@ -1858,7 +1859,7 @@ export const masterApiService = {
   },
 
   updateInvestmentOption(intID: number, objBody: {
-    strSectionCode: string;
+    intEssDeclarationCategoryID: number;
     strOptionCode: string;
     strOptionName: string;
     intDisplayOrder: number;

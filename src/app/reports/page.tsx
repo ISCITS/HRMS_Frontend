@@ -8,6 +8,11 @@ const lstReports = [
     strHref: "/reports/payroll-register",
   },
   {
+    strTitle: "Salary Register",
+    strDescription: "Employee yearly salary component register with Apr-Mar month totals.",
+    strHref: "/reports/salary-register",
+  },
+  {
     strTitle: "Bank File",
     strDescription: "Payment-ready net salary report for approved, published, or paid payroll.",
     strHref: "/reports/bank-file",

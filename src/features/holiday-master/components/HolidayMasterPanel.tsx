@@ -52,14 +52,14 @@ const objHolidaySchema = yup.object({
   }).required().defined()).required().defined(),
 });
 
-function createHolidayForm(intYear: number): HolidayFormValues {
+function createHolidayForm(intYear: number, strHolidayTypeCode = ""): HolidayFormValues {
   return {
     intHolidayYear: intYear,
     dtHolidayDate: "",
     strHolidayCode: "",
     strHolidayName: "",
     strHolidayDescription: "",
-    strHolidayTypeCode: "COMPANY",
+    strHolidayTypeCode,
     blnIsPaid: true,
     blnIsOptional: false,
     blnIsWorkOnHoliday: false,
@@ -127,7 +127,13 @@ export default function HolidayMasterPanel() {
     setStrMode("add");
     setIntEditingID(null);
     setStrSubmitError("");
-    reset({ ...createHolidayForm(objSearchDraft.intYear), lstTexts: buildTranslations() });
+    reset({
+      ...createHolidayForm(
+        objSearchDraft.intYear,
+        objOptions.lstHolidayTypes[0]?.strCode ?? "",
+      ),
+      lstTexts: buildTranslations(),
+    });
     setBlnDialogOpen(true);
   }
 

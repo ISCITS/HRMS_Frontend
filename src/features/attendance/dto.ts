@@ -74,67 +74,6 @@ export type PunchRequest = {
   decGeoLng?: number | null;
 };
 
-export type HolidayDto = {
-  intID: number;
-  objRecordUUID?: string | null;
-  intCompanyID?: number | null;
-  intHolidayYear: number;
-  dtHolidayDate: string;
-  strHolidayCode: string;
-  strHolidayName: string;
-  strDisplayName: string;
-  strHolidayTypeCode: string;
-  strHolidayTypeName?: string | null;
-  blnIsPaid: boolean;
-  blnIsOptional: boolean;
-  blnWorkOnHolidayAllowed: boolean;
-  blnCompOffEligible: boolean;
-  blnIsActive: boolean;
-  lstTexts?: HolidayTextDto[];
-  dtAddedOn?: string | null;
-  intAddedBy?: number | null;
-  dtLastModifiedOn?: string | null;
-  intLastModifiedBy?: number | null;
-};
-
-export type HolidayTextDto = {
-  intLanguageID: number;
-  strHolidayName: string;
-};
-
-export type HolidayRequest = {
-  intCompanyID?: number | null;
-  intHolidayYear: number;
-  dtHolidayDate: string;
-  strHolidayCode: string;
-  strHolidayName: string;
-  strHolidayTypeCode: string;
-  blnIsPaid: boolean;
-  blnIsOptional: boolean;
-  blnWorkOnHolidayAllowed: boolean;
-  blnCompOffEligible: boolean;
-  blnIsActive: boolean;
-  intLanguageID?: number | null;
-  lstTexts: HolidayTextDto[];
-};
-
-export type HolidayListFilters = {
-  intYear: number;
-  strSearch?: string;
-  strHolidayTypeCode?: string;
-  blnIsPaid?: boolean;
-  blnIsOptional?: boolean;
-  blnIsActive?: boolean;
-};
-
-export type HolidayFormOptions = {
-  lstLanguages: Array<{ intID: number; strLabel: string; strCode?: string }>;
-  lstHolidayTypes: Array<{ intID: number; strValueCode: string; strDisplayName: string }>;
-  intDefaultLanguageID: number | null;
-  intSecondaryLanguageID: number | null;
-  lstYears: number[];
-};
-
 export const ATTENDANCE_STATUS_COLORS: Record<string, { bg: string; fg: string; short: string }> = {
   present: { bg: "#dcfce7", fg: "#166534", short: "P" },
   half_day: { bg: "#fef9c3", fg: "#854d0e", short: "½" },

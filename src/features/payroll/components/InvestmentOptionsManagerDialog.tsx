@@ -10,6 +10,7 @@ import { InvestmentOptionApiRecord, masterApiService } from "@/services/master/M
 
 type InvestmentOptionsManagerDialogProps = {
   blnOpen: boolean;
+  intEssDeclarationCategoryID: number;
   strSectionCode: string;
   strSectionName: string;
   onClose: () => void;
@@ -25,6 +26,7 @@ const dicEmptyForm: NewOptionForm = { code: "", name: "", displayOrder: "0" };
 
 export default function InvestmentOptionsManagerDialog({
   blnOpen,
+  intEssDeclarationCategoryID,
   strSectionCode,
   strSectionName,
   onClose,
@@ -43,7 +45,7 @@ export default function InvestmentOptionsManagerDialog({
     setBlnLoading(true);
     setStrError("");
     try {
-      const objResult = await masterApiService.getInvestmentOptions(strSectionCode);
+      const objResult = await masterApiService.getInvestmentOptions(intEssDeclarationCategoryID);
       setLstOptions(objResult.Data);
     } catch (objError) {
       setLstOptions([]);
@@ -54,14 +56,14 @@ export default function InvestmentOptionsManagerDialog({
   }
 
   useEffect(() => {
-    if (!blnOpen || !strSectionCode) {
+    if (!blnOpen || intEssDeclarationCategoryID <= 0) {
       return;
     }
     setDicNewForm(dicEmptyForm);
     setIntEditingID(null);
     loadOptions().catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blnOpen, strSectionCode]);
+  }, [blnOpen, intEssDeclarationCategoryID]);
 
   function startEdit(objOption: InvestmentOptionApiRecord) {
     setIntEditingID(objOption.intID);
@@ -85,7 +87,7 @@ export default function InvestmentOptionsManagerDialog({
     setStrError("");
     try {
       await masterApiService.createInvestmentOption({
-        strSectionCode,
+        intEssDeclarationCategoryID,
         strOptionCode: dicNewForm.code.trim(),
         strOptionName: dicNewForm.name.trim(),
         intDisplayOrder: Number(dicNewForm.displayOrder) || 0,
@@ -105,7 +107,7 @@ export default function InvestmentOptionsManagerDialog({
     setStrError("");
     try {
       await masterApiService.updateInvestmentOption(objOption.intID, {
-        strSectionCode,
+        intEssDeclarationCategoryID,
         strOptionCode: dicEditForm.code.trim(),
         strOptionName: dicEditForm.name.trim(),
         intDisplayOrder: Number(dicEditForm.displayOrder) || 0,
