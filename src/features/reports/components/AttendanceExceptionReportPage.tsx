@@ -29,8 +29,8 @@ export default function AttendanceExceptionReportPage() {
   ], [t]);
 
   const lstFilters: ReportFilterField[] = [
-    { strKey: "from_date", strLabel: t("from_date", "From Date"), strType: "date" },
-    { strKey: "to_date", strLabel: t("to_date", "To Date"), strType: "date" },
+    { strKey: "from_date", strLabel: t("from_date", "From Date"), strType: "date", intWidth: 170 },
+    { strKey: "to_date", strLabel: t("to_date", "To Date"), strType: "date", intWidth: 170 },
     {
       strKey: "status", strLabel: t("status", "Status"), strType: "select",
       lstOptions: [
@@ -50,8 +50,8 @@ export default function AttendanceExceptionReportPage() {
       ],
     },
     { strKey: "exception_type", strLabel: t("exception_type", "Exception Type"), strType: "select", lstOptions: lstExceptionTypes },
-    { strKey: "employee_id", strLabel: t("employee", "Employee"), strType: "select", lstOptions: lstEmployees },
-    { strKey: "department_id", strLabel: t("department", "Department"), strType: "select", lstOptions: lstDepartments },
+    { strKey: "employee_id", strLabel: t("employee", "Employee"), strType: "select", lstOptions: lstEmployees, intWidth: 160 },
+    { strKey: "department_id", strLabel: t("department", "Department"), strType: "select", lstOptions: lstDepartments, intWidth: 160 },
   ];
 
   function mapRow(dicRow: AttendanceExceptionRow): ReportDisplayRow {
@@ -81,7 +81,6 @@ export default function AttendanceExceptionReportPage() {
       dicDefaultFilters={{ status: "OPEN,UNDER_REVIEW" }}
       strRowIdField="intID"
       strCsvFileName="attendance-exceptions"
-      blnAlignSearchActionsBottomRight
       lstRightsHints={["REPORTS_ATTENDANCE_EXCEPTION", "REPORTS"]}
       strEmptyMessage={t("attendance_exceptions_empty", "No attendance exceptions found for the current filters.")}
       fnLoad={async (dicFilters) => {

@@ -22,6 +22,7 @@ export type ReportFilterField = {
   strLabel: string;
   strType: "text" | "select" | "month" | "date" | "multiselect";
   lstOptions?: ReportSelectOption[];
+  intWidth?: number;
   // Async lookup source for a multiselect filter (loaded once on mount).
   fnLoadOptions?: () => Promise<ReportSelectOption[]>;
 };
@@ -281,7 +282,11 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
       <Box className={styles.controlsCard}>
         <Box className={styles.reportSearchPanelRow}>
           {objProps.lstFilters.map((objFilter) => (
-            <Box className={styles.reportSearchField} key={objFilter.strKey}>
+            <Box
+              className={styles.reportSearchField}
+              key={objFilter.strKey}
+              sx={objFilter.intWidth ? { flexBasis: objFilter.intWidth, minWidth: objFilter.intWidth } : undefined}
+            >
               {objFilter.strType === "multiselect" ? (
                 <ReportMultiSelect
                   strLabel={objFilter.strLabel}

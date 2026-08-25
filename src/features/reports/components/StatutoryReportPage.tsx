@@ -443,16 +443,16 @@ export default function StatutoryReportPage() {
           <Box className={styles.reportSearchField}>
             <ReportMultiSelectField value={dicSearchDraft.strPayrollMonth} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: strValue }))} options={dicFilterOptions.lstMonths} label="Payroll Month" placeholder="Payroll Month" controlId="reports.statutory.payroll-month.input" />
           </Box>
-          <Box className={styles.reportSearchField}>
+          <Box className={styles.reportSearchField} sx={{ flexBasis: 160, minWidth: 160 }}>
             <ReportMultiSelectField value={dicSearchDraft.strDepartment} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: strValue }))} options={dicFilterOptions.lstDepartments} placeholder="Department" controlId="reports.statutory.department.input" />
           </Box>
-          <Box className={styles.reportSearchField}>
+          <Box className={styles.reportSearchField} sx={{ flexBasis: 160, minWidth: 160 }}>
             <ReportMultiSelectField value={dicSearchDraft.strLocation} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: strValue }))} options={dicFilterOptions.lstLocations} placeholder="Location" controlId="reports.statutory.location.input" />
           </Box>
-          <Box className={styles.reportSearchField}>
+          <Box className={styles.reportSearchField} sx={{ flexBasis: 160, minWidth: 160 }}>
             <ReportMultiSelectField label="Status" value={dicSearchDraft.strStatus === "All" ? "" : dicSearchDraft.strStatus} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: strValue || "All" }))} options={dicFilterOptions.lstStatuses.length ? dicFilterOptions.lstStatuses : ["Calculated", "Approved", "Published", "Paid"]} placeholder="All Statuses" controlId="reports.statutory.status.select" />
           </Box>
-          <Box className={`${styles.searchActions} ${styles.reportBottomRightActions}`}>
+          <Box className={styles.searchActions}>
             <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} controlId="reports.statutory.search.button">Search</Button>
             <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} controlId="reports.statutory.clear.button">Clear</Button>
           </Box>

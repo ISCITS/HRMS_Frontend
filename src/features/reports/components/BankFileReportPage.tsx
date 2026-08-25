@@ -323,13 +323,13 @@ export default function BankFileReportPage() {
           <Box className={styles.reportSearchField}>
             <ReportMultiSelectField value={dicSearchDraft.strDepartment} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: strValue }))} options={dicFilterOptions.lstDepartments} placeholder="Department" controlId="reports.bank-file.department.input" />
           </Box>
-          <Box className={styles.reportSearchField}>
+          <Box className={styles.reportSearchField} sx={{ flexBasis: 160, minWidth: 160 }}>
             <ReportMultiSelectField value={dicSearchDraft.strLocation} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: strValue }))} options={dicFilterOptions.lstLocations} placeholder="Location" controlId="reports.bank-file.location.input" />
           </Box>
-          <Box className={styles.reportSearchField}>
+          <Box className={styles.reportSearchField} sx={{ flexBasis: 160, minWidth: 160 }}>
             <ReportMultiSelectField label="Status" value={dicSearchDraft.strStatus === "All" ? "" : dicSearchDraft.strStatus} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: strValue || "All" }))} options={dicFilterOptions.lstStatuses.length ? dicFilterOptions.lstStatuses : ["Calculated", "Approved", "Published", "Paid"]} placeholder="All" controlId="reports.bank-file.status.select" />
           </Box>
-          <Box className={`${styles.searchActions} ${styles.reportBottomRightActions}`}>
+          <Box className={styles.searchActions}>
             <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} controlId="reports.bank-file.search.button">Search</Button>
             <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} controlId="reports.bank-file.clear.button">Clear</Button>
           </Box>

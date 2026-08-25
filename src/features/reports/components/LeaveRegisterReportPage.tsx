@@ -69,8 +69,8 @@ export default function LeaveRegisterReportPage() {
       ],
     },
     { strKey: "leave_type_id", strLabel: t("leave_type", "Leave Type"), strType: "select", lstOptions: lstLeaveTypes },
-    { strKey: "employee_id", strLabel: t("employee", "Employee"), strType: "select", lstOptions: lstEmployees },
-    { strKey: "department_id", strLabel: t("department", "Department"), strType: "select", lstOptions: lstDepartments },
+    { strKey: "employee_id", strLabel: t("employee", "Employee"), strType: "select", lstOptions: lstEmployees, intWidth: 170 },
+    { strKey: "department_id", strLabel: t("department", "Department"), strType: "select", lstOptions: lstDepartments, intWidth: 170 },
   ];
 
   function mapRow(dicRow: LeaveRegisterRow): ReportDisplayRow {
@@ -99,7 +99,6 @@ export default function LeaveRegisterReportPage() {
       lstFilters={lstFilters}
       strRowIdField="intID"
       strCsvFileName="leave-register"
-      blnAlignSearchActionsBottomRight
       lstRightsHints={["REPORTS_LEAVE_REGISTER", "REPORTS"]}
       dicDefaultFilters={dicDefaultFilters}
       strEmptyMessage={t("leave_register_empty", "No leave applications found for the current filters.")}

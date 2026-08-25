@@ -171,7 +171,7 @@ function ImpactRow({
         py: blnSection ? 0.75 : 0.15,
       }}
     >
-      <Typography sx={{ color: "#1a2f55", fontSize: "0.88rem", fontWeight: 800 }}>
+      <Typography sx={{ color: "#1a2f55", fontSize: "0.88rem", fontWeight: 400 }}>
         {strLabel}
       </Typography>
       <Typography
@@ -183,7 +183,7 @@ function ImpactRow({
                 ? "#e11d48"
                 : "#13294b",
           fontSize: "0.88rem",
-          fontWeight: 900,
+          fontWeight: 400,
         }}
       >
         {strValue}
@@ -340,8 +340,8 @@ export default function MyCompensationPage() {
       <Box
         sx={{
           background: "#fff",
-          border: "1px solid #d7e6f5",
-          borderRadius: 0,
+          border: "1px solid var(--app-card-border-color)",
+          borderRadius: "var(--app-card-radius)",
           boxShadow: "0 10px 24px rgba(30, 64, 175, 0.06)",
           overflow: "hidden",
           p: 1.1,
@@ -398,27 +398,26 @@ export default function MyCompensationPage() {
         </Box>
       </Box>
 
-      <Box sx={{ display: "grid", gap: 1.2, gridTemplateColumns: { xs: "1fr", xl: "minmax(0, 1fr) 360px" } }}>
+      <Box sx={{ display: "grid", gap: 1.2, gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) minmax(320px, 360px)" } }}>
         <Box
           sx={{
             background: "#fff",
-            border: "1px solid #d7e6f5",
-            borderRadius: 0,
+            border: "1px solid var(--app-card-border-color)",
+            borderRadius: "var(--app-card-radius)",
             boxShadow: "0 10px 24px rgba(30, 64, 175, 0.06)",
             overflow: "hidden",
           }}
         >
-          <Box sx={{ alignItems: "center", display: "flex", justifyContent: "space-between", gap: 1, px: 1.5, py: 1.2 }}>
-            <Typography sx={{ color: "#172b4d", fontSize: "0.96rem", fontWeight: 900 }}>
-              {t("salary_structure", "Salary Structure")}
-            </Typography>
-          </Box>
-
           <CommonTable
             columns={lstComponentLineColumns}
             rows={lstComponentLineRows}
             rowIdField="id"
             hideToolbar
+            toolbarLeft={(
+              <Typography sx={{ color: "#172b4d", fontSize: "0.96rem", fontWeight: 900 }}>
+                {t("salary_structure", "Salary Structure")}
+              </Typography>
+            )}
             showPaginationSummary
             defaultPageSize={10}
             pageSizeOptions={[10, 20, 50]}
@@ -432,8 +431,8 @@ export default function MyCompensationPage() {
         <Box
           sx={{
             background: "#fff",
-            border: "1px solid #d7e6f5",
-            borderRadius: 0,
+            border: "1px solid var(--app-card-border-color)",
+            borderRadius: "var(--app-card-radius)",
             boxShadow: "0 10px 24px rgba(30, 64, 175, 0.06)",
             p: 1.4,
           }}

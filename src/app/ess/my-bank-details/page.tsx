@@ -215,7 +215,7 @@ export default function EssMyBankDetailsPage() {
         }}
       >
         <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 1.5 }}>
-          <AccountBalanceRoundedIcon sx={{ color: "primary.main", fontSize: 21 }} />
+          <AccountBalanceRoundedIcon sx={{ color: "var(--app-primary-color)", fontSize: 21 }} />
           <Typography component="h2" sx={{ fontWeight: 800, color: "text.primary", fontSize: "0.96rem" }}>
             {t("primary_account", "Primary Account")}
           </Typography>
@@ -310,7 +310,7 @@ export default function EssMyBankDetailsPage() {
           sx={{ mb: dicForm.blnSecondaryIsActive ? 1.5 : 0 }}
         >
           <Stack direction="row" alignItems="center" spacing={0.75}>
-            <AccountBalanceRoundedIcon sx={{ color: "primary.main", fontSize: 21 }} />
+            <AccountBalanceRoundedIcon sx={{ color: "var(--app-primary-color)", fontSize: 21 }} />
             <Typography sx={{ fontWeight: 800, color: "text.primary", fontSize: "0.96rem" }}>
               {t("field_secondary_bank_details", "Secondary Bank Account")}
             </Typography>
@@ -426,7 +426,7 @@ export default function EssMyBankDetailsPage() {
         uploadLabel={t("documents_upload", "Upload Bank Proof")}
         uploadPresentation="dropzone"
         uploadButtonSx={{
-          "& .MuiButton-startIcon": { color: "primary.main", mr: 1.25 },
+          "& .MuiButton-startIcon": { color: "var(--app-primary-color)", mr: 1.25 },
           "& .MuiButton-startIcon svg": { fontSize: 32 }
         }}
       />
