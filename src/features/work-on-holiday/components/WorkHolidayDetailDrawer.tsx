@@ -30,7 +30,8 @@ type WorkHolidayDetailDrawerProps = {
 type WorkHolidayActionOption = {
   strCode: "approve" | "reject" | "send-back" | "verify" | "post" | "reverse";
   strLabel: string;
-  strColor: "primary" | "error";
+  strColor: "primary" | "error" | "success";
+  strVariant: "text" | "contained";
 };
 
 function formatLabel(strValue: string) {
@@ -55,12 +56,12 @@ export default function WorkHolidayDetailDrawer({
     if (!objDetail) return [];
     const blnCanTakeApprovalDecision = objDetail.strRequestStatus === "PENDING_APPROVAL" && !objDetail.blnApprovalDecisionTaken;
     const lstOptions: (WorkHolidayActionOption | null)[] = [
-      blnCanApprove && blnCanTakeApprovalDecision ? { strCode: "approve" as const, strLabel: t("approve", "Approve"), strColor: "primary" as const } : null,
-      blnCanReject && blnCanTakeApprovalDecision ? { strCode: "reject" as const, strLabel: t("reject", "Reject"), strColor: "error" as const } : null,
-      blnCanSendBack && blnCanTakeApprovalDecision ? { strCode: "send-back" as const, strLabel: t("send_back", "Send Back"), strColor: "primary" as const } : null,
-      blnCanVerify && ["APPROVED", "PENDING_ATTENDANCE_VERIFICATION"].includes(objDetail.strRequestStatus) ? { strCode: "verify" as const, strLabel: t("verify_attendance", "Verify Attendance"), strColor: "primary" as const } : null,
-      blnCanPost && ["READY", "FAILED", "PARTIAL"].includes(objDetail.strPostingStatus) ? { strCode: "post" as const, strLabel: t("post_credit", "Post Credit"), strColor: "primary" as const } : null,
-      blnCanReverse && objDetail.strPostingStatus === "POSTED" ? { strCode: "reverse" as const, strLabel: t("reverse_posting", "Reverse Posting"), strColor: "error" as const } : null,
+      blnCanSendBack && blnCanTakeApprovalDecision ? { strCode: "send-back" as const, strLabel: t("send_back", "Send Back"), strColor: "primary" as const, strVariant: "text" as const } : null,
+      blnCanReject && blnCanTakeApprovalDecision ? { strCode: "reject" as const, strLabel: t("reject", "Reject"), strColor: "error" as const, strVariant: "text" as const } : null,
+      blnCanReverse && objDetail.strPostingStatus === "POSTED" ? { strCode: "reverse" as const, strLabel: t("reverse_posting", "Reverse Posting"), strColor: "error" as const, strVariant: "text" as const } : null,
+      blnCanVerify && ["APPROVED", "PENDING_ATTENDANCE_VERIFICATION"].includes(objDetail.strRequestStatus) ? { strCode: "verify" as const, strLabel: t("verify_attendance", "Verify Attendance"), strColor: "success" as const, strVariant: "contained" as const } : null,
+      blnCanPost && ["READY", "FAILED", "PARTIAL"].includes(objDetail.strPostingStatus) ? { strCode: "post" as const, strLabel: t("post_credit", "Post Credit"), strColor: "success" as const, strVariant: "contained" as const } : null,
+      blnCanApprove && blnCanTakeApprovalDecision ? { strCode: "approve" as const, strLabel: t("approve", "Approve"), strColor: "success" as const, strVariant: "contained" as const } : null,
     ];
     return lstOptions.filter((objAction): objAction is WorkHolidayActionOption => Boolean(objAction));
   }, [blnCanApprove, blnCanPost, blnCanReject, blnCanReverse, blnCanSendBack, blnCanVerify, objDetail, t]);
@@ -229,15 +230,28 @@ export default function WorkHolidayDetailDrawer({
             </Grid>
             {objDetail.strPostingStatus === "POSTED" || objDetail.strPostingStatus === "REVERSED" ? <Alert data-control-id="work-on-holiday.detail.ledger-reference.alert" severity="info">{t("ledger_reference_safe", "Posting is linked to the request number shown above. Internal ledger identifiers are hidden.")}</Alert> : null}
             {blnActionMode ? (
-              <Box data-control-id="work-on-holiday.detail.actions.panel" sx={{ ...objSectionSx, borderColor: "primary.light" }}>
+              <Box
+                data-control-id="work-on-holiday.detail.actions.panel"
+                sx={{
+                  ...objSectionSx,
+                  borderColor: "primary.light",
+                  position: "sticky",
+                  bottom: 0,
+                  mb: -2,
+                  zIndex: 2,
+                  backgroundColor: "#fff",
+                  boxShadow: "0 -4px 10px rgba(15, 23, 42, 0.08)",
+                }}
+              >
                 <Typography fontWeight={850} sx={{ mb: 1.25 }}>{t("request_actions", "Request Actions")}</Typography>
                 {!strAction ? (
-                  <Stack direction="row" gap={1} flexWrap="wrap">
+                  <Stack direction="row" gap={1} flexWrap="wrap" justifyContent="flex-end" alignItems="center">
+                    <Button data-control-id="work-on-holiday.detail.actions.close.button" onClick={fnOnClose}>{t("close", "Close")}</Button>
                     {lstAvailableActions.length ? lstAvailableActions.map((objAction) => (
-                      <Button key={objAction.strCode} data-control-id={`work-on-holiday.detail.action.${objAction.strCode}.select.button`} variant="contained" color={objAction.strColor} onClick={() => setStrAction(objAction.strCode)} sx={{ minWidth: 96 }}>
+                      <Button key={objAction.strCode} data-control-id={`work-on-holiday.detail.action.${objAction.strCode}.select.button`} variant={objAction.strVariant} color={objAction.strColor} onClick={() => setStrAction(objAction.strCode)} sx={{ minWidth: 96 }}>
                         {objAction.strLabel}
                       </Button>
-                    )) : <Alert severity="info">{t("no_actions_available", "No actions are available for this request.")}</Alert>}
+                    )) : null}
                   </Stack>
                 ) : (
                   <Stack spacing={1.5}>

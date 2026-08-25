@@ -575,23 +575,29 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
     {strError ? <Alert severity="error">{strError}</Alert> : null}
     <>
       <Box className={styles.controlsCard}><Box className={styles.searchRow} sx={{ gridTemplateColumns: "165px minmax(190px,.65fr) minmax(190px,.65fr) minmax(260px,1.3fr) auto auto !important" }}><TextField data-control-id="attendance.daily.date.input" type="date" InputLabelProps={{ shrink: true }} label={t("date","Date")} value={strDate} onChange={(objEvent) => setStrDate(objEvent.target.value)} fullWidth /><TextField data-control-id="attendance.daily.department.select" select label={t("department","Department")} value={strDepartment} onChange={(objEvent) => setStrDepartment(objEvent.target.value)} fullWidth SelectProps={{ displayEmpty: true }} InputLabelProps={{ shrink: true }}><MenuItem value="">{t("all","All")}</MenuItem>{lstDepartments.map(([intID,strName]) => <MenuItem key={intID} value={intID ?? ""}>{strName}</MenuItem>)}</TextField><TextField data-control-id="attendance.daily.location.select" select label={t("location","Location")} value={strLocation} onChange={(objEvent) => setStrLocation(objEvent.target.value)} fullWidth SelectProps={{ displayEmpty: true }} InputLabelProps={{ shrink: true }}><MenuItem value="">{t("all","All")}</MenuItem>{lstLocations.map(([intID,strName]) => <MenuItem key={intID} value={intID}>{strName}</MenuItem>)}</TextField><TextField data-control-id="attendance.daily.employee-search.input" placeholder={t("employee_search","Employee Code or Name")} value={strEmployeeSearch} onChange={(objEvent) => setStrEmployeeSearch(objEvent.target.value)} fullWidth /><Box className={styles.searchActions}><Button data-control-id="attendance.daily.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => void searchDaily()}>{t("search","Search")}</Button></Box><Box className={styles.searchActions}><Button data-control-id="attendance.daily.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => void clearDailySearch()}>{t("clear","Clear")}</Button></Box></Box><Alert severity="info" sx={{ mt: 1, borderRadius: "9px" }}>{t("cross_midnight_notice","Cross-midnight attendance is outside the current POC and will be rejected.")}</Alert>
-        <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap sx={{ mt: 1, px: 0.5 }}>
-          {([
-            ["total_employees", "Total Employees", lstEditableRows.length],
-            ["present", "Present", lstEditableRows.filter((objRow) => objRow.strStatus === "present").length],
-            ["half_day", "Half Day", lstEditableRows.filter((objRow) => objRow.strStatus === "half_day").length],
-            ["leave", "Leave", lstEditableRows.filter((objRow) => objRow.strStatus === "on_leave" || objRow.strStatus === "lwp").length],
-            ["absent", "Absent", lstEditableRows.filter((objRow) => objRow.strStatus === "absent").length],
-            ["weekly_off_holiday", "Weekly Off / Holiday", lstEditableRows.filter((objRow) => objRow.strStatus === "weekly_off" || objRow.strStatus === "holiday").length],
-          ] as const).map(([strKey, strLabel, intCount]) => (
-            <Box key={strKey} sx={{ textAlign: "center", minWidth: 84 }}>
-              <Typography variant="body1" fontWeight={900} lineHeight={1.2}>{intCount}</Typography>
-              <Typography variant="caption" color="text.secondary">{t(`daily_summary_${strKey}`, strLabel)}</Typography>
-            </Box>
-          ))}
+        <Stack direction={{ xs: "column", lg: "row" }} spacing={1.5} alignItems={{ xs: "stretch", lg: "flex-end" }} justifyContent="space-between" sx={{ mt: 1, px: 0.5 }}>
+          <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
+            {([
+              ["total_employees", "Total Employees", lstEditableRows.length],
+              ["present", "Present", lstEditableRows.filter((objRow) => objRow.strStatus === "present").length],
+              ["half_day", "Half Day", lstEditableRows.filter((objRow) => objRow.strStatus === "half_day").length],
+              ["leave", "Leave", lstEditableRows.filter((objRow) => objRow.strStatus === "on_leave" || objRow.strStatus === "lwp").length],
+              ["absent", "Absent", lstEditableRows.filter((objRow) => objRow.strStatus === "absent").length],
+              ["weekly_off_holiday", "Weekly Off / Holiday", lstEditableRows.filter((objRow) => objRow.strStatus === "weekly_off" || objRow.strStatus === "holiday").length],
+            ] as const).map(([strKey, strLabel, intCount]) => (
+              <Box key={strKey} sx={{ textAlign: "center", minWidth: 84 }}>
+                <Typography variant="body1" fontWeight={900} lineHeight={1.2}>{intCount}</Typography>
+                <Typography variant="caption" color="text.secondary">{t(`daily_summary_${strKey}`, strLabel)}</Typography>
+              </Box>
+            ))}
+          </Stack>
+          <Box className={styles.tableHeaderActions} sx={{ justifyContent: { xs: "flex-start", lg: "flex-end" }, pb: "0 !important" }}>
+            <Button data-control-id="attendance.daily.fill-month.button" className={styles.secondaryButton} startIcon={<AddRoundedIcon />} disabled={blnReadOnly || blnSaving} onClick={openFillDialog}>{t("generate_attendance","Generate Attendance")}</Button>
+            <Button data-control-id="attendance.daily.finalize.button" className={styles.primaryButton} startIcon={<SaveRoundedIcon />} disabled={blnReadOnly || blnSaving} onClick={() => setBlnFinalizeConfirmOpen(true)}>{t("finalize_attendance","Finalize Attendance")}</Button>
+          </Box>
         </Stack>
       </Box>
-      <Box className={styles.tableCard}><Box className={styles.tableHeaderActions}><Button data-control-id="attendance.daily.fill-month.button" className={styles.secondaryButton} startIcon={<AddRoundedIcon />} disabled={blnReadOnly || blnSaving} onClick={openFillDialog}>{t("generate_attendance","Generate Attendance")}</Button><Button data-control-id="attendance.daily.finalize.button" className={styles.primaryButton} startIcon={<SaveRoundedIcon />} disabled={blnReadOnly || blnSaving} onClick={() => setBlnFinalizeConfirmOpen(true)}>{t("finalize_attendance","Finalize Attendance")}</Button></Box><CommonTable columns={lstDailyColumns} rows={lstDailyGridRows} rowIdField="intEmployeeID" hideToolbar showPaginationSummary minTableWidth={1650} emptyMessage={t("load_daily_prompt","Select filters and load employees for the date.")} testIdPrefix="attendance.daily.list" hideRowClickHint onRowDoubleClick={blnCanOverride ? (objRow) => { const objSourceRow = lstEditableRows.find((objSource) => objSource.intEmployeeID === objRow.intEmployeeID); if (objSourceRow) { openOverrideDialog(objSourceRow); } } : undefined} />{blnLoading ? <Box sx={{ p: 3, textAlign: "center" }}><CircularProgress /></Box> : null}</Box>
+      <Box className={styles.tableCard}><CommonTable columns={lstDailyColumns} rows={lstDailyGridRows} rowIdField="intEmployeeID" hideToolbar showPaginationSummary minTableWidth={1650} emptyMessage={t("load_daily_prompt","Select filters and load employees for the date.")} testIdPrefix="attendance.daily.list" hideRowClickHint onRowDoubleClick={blnCanOverride ? (objRow) => { const objSourceRow = lstEditableRows.find((objSource) => objSource.intEmployeeID === objRow.intEmployeeID); if (objSourceRow) { openOverrideDialog(objSourceRow); } } : undefined} />{blnLoading ? <Box sx={{ p: 3, textAlign: "center" }}><CircularProgress /></Box> : null}</Box>
     </>
     <CommonMasterDialog blnOpen={blnFillDialogOpen} strTitle={t("generate_attendance_title","Generate Attendance for a Date Range")} nodeContent={nodeFillDialogContent} strSecondaryLabel={t("cancel","Cancel")} onClose={() => setBlnFillDialogOpen(false)} strPrimaryLabel={t("generate_attendance_submit","Generate")} onPrimaryAction={() => void submitFillRange()} blnPrimaryDisabled={blnFillSubmitting || !intFillEmployeeID || !strFillStatus} maxWidth="sm" rootControlId="attendance.daily.fill-month.dialog" cancelButtonControlId="attendance.daily.fill-month.dialog.cancel.button" primaryButtonControlId="attendance.daily.fill-month.dialog.submit.button" titleSx={{ px: 2.5, py: 1.5 }} contentSx={{ px: 2.5, py: 1.25 }} />
     <CommonMasterDialog blnOpen={objOverrideRow !== null} strTitle={t("override_dialog_title", `Edit / Override Attendance${objOverrideRow ? ` — ${objOverrideRow.strEmployeeName}` : ""}`)} nodeContent={

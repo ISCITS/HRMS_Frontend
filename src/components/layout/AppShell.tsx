@@ -117,6 +117,14 @@ function getPageTitle(strPathname: string) {
   if (strPathname === "/leave/approvals" || strPathname === "/hr/leave/requests-approvals") {
     return "Leave Requests & Approvals";
   }
+  // Work on Holiday keeps its own identity in the breadcrumb even though its routes are
+  // nested under legacy /leave and /ess paths (see DynamicMenu.tsx route resolution).
+  if (strPathname === "/leave/work-on-holiday/requests" || strPathname === "/ess/work-on-holiday/approvals") {
+    return "Work on Holiday Requests";
+  }
+  if (strPathname === "/ess/work-on-holiday" || strPathname === "/ess/work-on-holiday-request") {
+    return "Work on Holiday";
+  }
 
   const lstSegments = strPathname
     .split("/")

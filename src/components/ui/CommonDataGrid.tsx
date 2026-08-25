@@ -532,11 +532,21 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                             whiteSpace: "normal",
                             overflowWrap: "anywhere",
                             px: 1,
-                            py: 0.5
+                            py: 0.5,
+                            ...(blnIsActionColumn ? {
+                              overflowWrap: "normal",
+                              whiteSpace: "nowrap",
+                              "& .MuiIconButton-root": {
+                                flexShrink: 0
+                              },
+                              "& .MuiSvgIcon-root": {
+                                display: "block"
+                              }
+                            } : {})
                           }}
                         >
                           {blnIsActionColumn ? (
-                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%" }}>
+                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: strAlign === "right" ? "flex-end" : strAlign === "center" ? "center" : "flex-start", width: "100%" }}>
                               {row[column.field]}
                             </Box>
                           ) : row[column.field]}

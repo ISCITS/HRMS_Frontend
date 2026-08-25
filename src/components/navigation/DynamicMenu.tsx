@@ -111,6 +111,18 @@ function resolveMenuRoute(objItem: MenuItem): string | null {
     return "/ess/work-on-holiday";
   }
 
+  // The ESS manager-approval leaf (ESS_WORK_ON_HOLIDAY_APPROVALS) is deliberately seeded
+  // with the same display name as the HR workbench ("Work on Holiday Requests") so both
+  // read consistently, but it must keep routing to the line/reporting-manager-scoped ESS
+  // screen -- not get rewritten to the RBAC-gated HR route below, which a manager who isn't
+  // also HR staff has no rights to.
+  if (
+    strModuleCode === "ess_work_on_holiday_approvals" ||
+    strRoute.toLowerCase().startsWith("/ess/work-on-holiday/approvals")
+  ) {
+    return "/ess/work-on-holiday/approvals";
+  }
+
   if (
     strModuleCode === "work_on_holiday_requests" ||
     strModuleName === "work on holiday requests"

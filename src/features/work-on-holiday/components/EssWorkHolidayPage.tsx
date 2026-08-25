@@ -11,7 +11,7 @@ import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import { yupResolver } from "@hookform/resolvers/yup";
 import {
   Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Grid, MenuItem, Paper,
-  Stack, Tab, Tabs, TextField, Typography,
+  IconButton, Stack, Tab, Tabs, TextField, Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode, SyntheticEvent } from "react";
@@ -298,7 +298,7 @@ export default function EssWorkHolidayPage() {
   }
 
   const lstColumns: DataGridColumn<WorkHolidayGridRow>[] = [
-    { field: "action", headerName: t("actions", "Actions"), width: 170, sortable: false, filterable: false, exportable: false },
+    { field: "action", headerName: t("actions", "Actions"), width: 126, sortable: false, filterable: false, exportable: false },
     { field: "strRequestNumber", headerName: t("request_number", "Request Number"), width: 170 },
     { field: "dtWorkDate", headerName: t("work_date", "Work Date"), width: 130 },
     { field: "strDayTypeCode", headerName: t("day_type", "Day Type"), width: 130 },
@@ -308,32 +308,36 @@ export default function EssWorkHolidayPage() {
   ];
   const lstRows: WorkHolidayGridRow[] = objList.lstItems.map((objRequest) => {
     const blnEditable = ["DRAFT", "SENT_BACK"].includes(objRequest.strRequestStatus);
+    const objSecondaryAction = blnCanCreate && blnEditable ? (
+      <IconButton data-control-id={`work-on-holiday.my.${objRequest.intID}.edit.button`} aria-label={t("edit", "Edit")} color="primary" size="small" onClick={() => startEdit(objRequest)} sx={{ p: 0.25 }}>
+        <EditRoundedIcon fontSize="small" />
+      </IconButton>
+    ) : (blnCanSubmit || blnCanCreate) && objRequest.strRequestStatus === "DRAFT" ? (
+      <IconButton data-control-id={`work-on-holiday.my.${objRequest.intID}.submit.button`} color="primary" size="small" aria-label={t("submit", "Submit")} onClick={() => setObjSubmitRequest(objRequest)} sx={{ p: 0.25 }}>
+        <SendRoundedIcon fontSize="small" />
+      </IconButton>
+    ) : blnCanWithdraw && objRequest.strRequestStatus === "PENDING_APPROVAL" ? (
+      <IconButton data-control-id={`work-on-holiday.my.${objRequest.intID}.withdraw.button`} color="error" size="small" aria-label={t("withdraw", "Withdraw")} onClick={() => { setStrWithdrawReason(""); setObjWithdrawRequest(objRequest); }} sx={{ p: 0.25 }}>
+        <WarningAmberRoundedIcon fontSize="small" />
+      </IconButton>
+    ) : blnCanWithdraw && objRequest.strRequestStatus === "DRAFT" ? (
+      <IconButton data-control-id={`work-on-holiday.my.${objRequest.intID}.discard.button`} color="error" size="small" aria-label={t("discard", "Discard")} onClick={() => { setStrWithdrawReason(""); setObjWithdrawRequest(objRequest); }} sx={{ p: 0.25 }}>
+        <DeleteOutlineRoundedIcon fontSize="small" />
+      </IconButton>
+    ) : null;
     return {
     intID: objRequest.intID,
     action: (
-      <Stack direction="row" spacing={0.25}>
-        <Button data-control-id={`work-on-holiday.my.${objRequest.intID}.view.button`} aria-label={t("view", "View")} onClick={() => void loadDetail(objRequest.intID)}><VisibilityRoundedIcon /></Button>
-        {blnCanCreate && blnEditable ? (
-          <Button data-control-id={`work-on-holiday.my.${objRequest.intID}.edit.button`} aria-label={t("edit", "Edit")} onClick={() => startEdit(objRequest)}>
-            <EditRoundedIcon />
-          </Button>
-        ) : null}
-        {(blnCanSubmit || blnCanCreate) && objRequest.strRequestStatus === "DRAFT" ? (
-          <Button data-control-id={`work-on-holiday.my.${objRequest.intID}.submit.button`} color="primary" aria-label={t("submit", "Submit")} onClick={() => setObjSubmitRequest(objRequest)}>
-            <SendRoundedIcon />
-          </Button>
-        ) : null}
-        {blnCanWithdraw && objRequest.strRequestStatus === "PENDING_APPROVAL" ? (
-          <Button data-control-id={`work-on-holiday.my.${objRequest.intID}.withdraw.button`} color="error" aria-label={t("withdraw", "Withdraw")} onClick={() => { setStrWithdrawReason(""); setObjWithdrawRequest(objRequest); }}>
-            <WarningAmberRoundedIcon />
-          </Button>
-        ) : null}
-        {blnCanWithdraw && objRequest.strRequestStatus === "DRAFT" ? (
-          <Button data-control-id={`work-on-holiday.my.${objRequest.intID}.discard.button`} color="error" aria-label={t("discard", "Discard")} onClick={() => { setStrWithdrawReason(""); setObjWithdrawRequest(objRequest); }}>
-            <DeleteOutlineRoundedIcon />
-          </Button>
-        ) : null}
-      </Stack>
+      <span style={{ display: "inline-grid", gridTemplateColumns: "28px 28px", columnGap: 8, alignItems: "center", justifyContent: "center", width: 72, height: 28, lineHeight: 0, verticalAlign: "middle" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 28, height: 28 }}>
+          <IconButton data-control-id={`work-on-holiday.my.${objRequest.intID}.view.button`} aria-label={t("view", "View")} color="primary" size="small" onClick={() => void loadDetail(objRequest.intID)} sx={{ p: 0.25 }}>
+            <VisibilityRoundedIcon fontSize="small" />
+          </IconButton>
+        </span>
+        <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 28, height: 28 }}>
+          {objSecondaryAction}
+        </span>
+      </span>
     ),
     strRequestNumber: objRequest.strRequestNumber ?? "—",
     dtWorkDate: objRequest.dtWorkDate,
@@ -433,7 +437,7 @@ export default function EssWorkHolidayPage() {
           </Box>
         </Paper>
       ) : null}
-      {intTab === 1 ? <Box sx={{ position: "relative" }}>{blnLoading ? <CircularProgress aria-label={t("loading", "Loading")} /> : null}<CommonDataGrid columns={lstColumns} rows={lstRows} rowIdField="intID" showExportOptions exportFileName="work_on_holiday_my_requests" testIdPrefix="work-on-holiday-my" emptyMessage={t("empty_my_requests", "No requests found.")} /></Box> : null}
+      {intTab === 1 ? <Box sx={{ position: "relative" }}>{blnLoading ? <CircularProgress aria-label={t("loading", "Loading")} /> : null}<CommonDataGrid columns={lstColumns} rows={lstRows} rowIdField="intID" showExportOptions showPaginationSummary defaultPageSize={20} pageSizeOptions={[20, 50, 100]} exportFileName="work_on_holiday_my_requests" testIdPrefix="work-on-holiday-my" emptyMessage={t("empty_my_requests", "No requests found.")} getRowSx={() => ({ height: 62 })} /></Box> : null}
       {intTab === 2 ? <CommonDataGrid columns={[
         { field: "strRequestNumber", headerName: t("source_request", "Source Request") },
         { field: "dtWorkDate", headerName: t("work_date", "Work Date") },

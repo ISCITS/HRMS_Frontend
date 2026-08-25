@@ -164,7 +164,7 @@ export default function WorkHolidayRequestsPage({ blnEssManagerMode = false }: {
   }
 
   const lstColumns: DataGridColumn<WorkHolidayWorkbenchRow>[] = [
-    { field: "action", headerName: t("actions", "Actions"), width: 92, sortable: false, filterable: false, exportable: false },
+    { field: "action", headerName: t("actions", "Actions"), align: "left", width: 92, sortable: false, filterable: false, exportable: false },
     { field: "strRequestNumber", headerName: t("request_number", "Request Number"), width: 170 },
     { field: "strEmployeeName", headerName: t("requester", "Requester"), width: 190 },
     { field: "strOrganisationContext", headerName: t("organisation", "Organisation"), width: 180 },
@@ -183,7 +183,7 @@ export default function WorkHolidayRequestsPage({ blnEssManagerMode = false }: {
   }).map((objRequest) => ({
     intID: objRequest.intID,
     action: (
-      <Stack direction="row" spacing={0.5} alignItems="center">
+      <Stack direction="row" spacing={0.5} alignItems="center" sx={{ width: 64, justifyContent: "flex-start" }}>
         {blnCanView ? (
           <IconButton data-control-id={`work-on-holiday.workbench.${objRequest.intID}.view.button`} aria-label={t("view", "View")} color="primary" size="small" onClick={() => void openRequestDetail(objRequest.intID)}>
             <VisibilityRoundedIcon fontSize="small" />
