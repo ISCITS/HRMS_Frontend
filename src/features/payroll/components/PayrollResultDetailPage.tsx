@@ -2,10 +2,8 @@
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
-import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import FilterAltOutlinedIcon from "@mui/icons-material/FilterAltOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import NoteAltOutlinedIcon from "@mui/icons-material/NoteAltOutlined";
@@ -23,19 +21,17 @@ import {
   Box,
   Button,
   Chip,
-  Dialog,
-  DialogContent,
-  DialogTitle,
   IconButton,
   Menu,
   MenuItem,
   Paper,
   Stack,
+  Tab,
+  Tabs,
   Tooltip,
-  Switch,
   Typography
 } from "@mui/material";
-import { useEffect, useMemo, useState, type InputHTMLAttributes, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -630,10 +626,9 @@ export default function PayrollResultDetailPage({
   const [blnArrearsLoading, setBlnArrearsLoading] = useState(false);
   const [strArrearsError, setStrArrearsError] = useState("");
   const [blnArrearsLoaded, setBlnArrearsLoaded] = useState(false);
-  const [blnTraceDialogOpen, setBlnTraceDialogOpen] = useState(false);
-  const [objTraceJson, setObjTraceJson] = useState<Record<string, unknown> | null>(null);
-  const [blnTraceLoading, setBlnTraceLoading] = useState(false);
-  const [strTraceError, setStrTraceError] = useState("");
+  const [strActiveTab, setStrActiveTab] = useState<
+    "pay-summary" | "earnings-deductions" | "tax-summary" | "statutory-summary" | "attendance-lop" | "calculation-trace"
+  >("pay-summary");
 
   useEffect(() => {
     let blnMounted = true;
@@ -684,7 +679,6 @@ export default function PayrollResultDetailPage({
   const blnCanPrintPayslips = canDoAny("print");
   const blnCanUsePayslipDocumentActions = blnCanDownloadPayslips || blnCanPrintPayslips;
   const blnCanViewAttendanceIntegration = !blnPayslipScreen && (canDoAnyAttendance("view") || canDoAnyAttendance("list"));
-  const blnCanTraceAttendance = !blnPayslipScreen && canDoAnyAttendance("trace");
 
   useEffect(() => {
     if (!objResult || !blnCanViewAttendanceIntegration) {
@@ -753,25 +747,6 @@ export default function PayrollResultDetailPage({
       blnMounted = false;
     };
   }, [objResult, blnCanViewAttendanceIntegration, strIntegrationTab, blnAttendanceLoaded, blnArrearsLoaded]);
-
-  async function openAttendanceTraceDialog() {
-    setBlnTraceDialogOpen(true);
-    setStrTraceError("");
-    setObjTraceJson(null);
-    setBlnTraceLoading(false);
-    // Gap (documented in the delivery report): there is no existing backend surface that
-    // resolves an EmployeePayrollInput ID from a run + employee pair (the employee-payroll-
-    // inputs list route only accepts free-text search filters, not IDs), so
-    // getPayrollInputAttendanceTrace(intInputID) cannot be called from this screen without
-    // adding new backend surface, which is out of scope. The dialog explains this instead
-    // of fabricating an ID.
-    setStrTraceError(
-      tAttendance(
-        "ATTENDANCE_TRACE_UNAVAILABLE",
-        "Calculation trace is not available from this screen yet - no payroll input lookup by run and employee exists."
-      )
-    );
-  }
 
   const lstResultLines = useMemo(
     () => (objResult?.lstLines ?? []).filter((dicLine) => hasDisplayAmount(dicLine.decAmount)),
@@ -897,7 +872,6 @@ export default function PayrollResultDetailPage({
     { key: "working-days", label: t("working_days", "Working Days"), value: String(objResult.decCalendarDays ?? "-") },
     { key: "paid-days", label: t("paid_days", "Paid Days"), value: String(objResult.decPaidDays ?? "-") },
     { key: "lop-days", label: t("lop_days", "LOP Days"), value: String(objResult.decLopDays ?? "-") },
-    { key: "employer-contributions", label: t("employer_contribution", "Employer Contributions"), value: formatCurrency(objResult.decEmployerContributionTotal ?? 0) },
   ];
   const lstTaxSummaryItems: SummaryDisplayItem[] = [
     { key: "tax-regime", label: t("tax_regime", "Tax Regime"), value: objResult.strRegimeUsed || "-" },
@@ -950,13 +924,39 @@ export default function PayrollResultDetailPage({
       tone: "info",
     },
   ];
-  const lstSummaryGuide = [
-    { key: "employee", label: t("employee_summary", "Employee Summary"), icon: <PersonOutlineRoundedIcon sx={{ fontSize: 18 }} /> },
-    { key: "job", label: t("job_payroll", "Job & Payroll"), icon: <CalendarMonthRoundedIcon sx={{ fontSize: 18 }} /> },
-    { key: "tax", label: t("tax_summary", "Tax Summary"), icon: <PercentRoundedIcon sx={{ fontSize: 18 }} /> },
-    { key: "wage", label: t("wage_rule_preview", "Wage Rule Preview"), icon: <RequestQuoteRoundedIcon sx={{ fontSize: 18 }} /> },
-    { key: "notes", label: t("notes", "Notes"), icon: <NoteAltOutlinedIcon sx={{ fontSize: 18 }} /> },
+  // Read-only synthesis of already-returned deemed-wage fields into a short business-facing
+  // summary - no calculation logic here, purely presentation. Shown only when a deemed-wage
+  // shortfall is actually in effect (i.e. relevant), not for every employee.
+  const blnWageComplianceRelevant = Number(objResult.decDeemedWagesAmount ?? 0) > 0;
+  const lstWageComplianceItems: SummaryDisplayItem[] = [
+    {
+      key: "compliance-summary",
+      label: t("wage_compliance_summary_note", "Compliance Note"),
+      value: formatLabelTemplate(
+        t(
+          "wage_compliance_summary_template",
+          "Actual wages ({actual}) were below the statutory minimum, so {shortfall} was treated as deemed wages for compliance."
+        ),
+        {
+          actual: formatCurrency(objResult.decActualWagesAmount ?? 0),
+          shortfall: formatCurrency(objResult.decDeemedWagesAmount ?? 0),
+        }
+      ),
+      tone: "info",
+    },
+    { key: "compliance-actual-wages", label: t("actual_wages", "Actual Wages"), value: formatCurrency(objResult.decActualWagesAmount ?? 0) },
+    { key: "compliance-deemed-wages", label: t("deemed_wage_shortfall", "Deemed Wage Shortfall"), value: formatCurrency(objResult.decDeemedWagesAmount ?? 0) },
+    { key: "compliance-wage-base", label: t("deemed_wage_base", "Compliance Wage Base"), value: formatCurrency(objResult.decComplianceWageBaseAmount ?? 0) },
+    { key: "compliance-minimum-required", label: t("minimum_required_wage", "Minimum Required Wage"), value: formatOptionalCurrency(dicWageRulePreview.minimum_required_wage) },
   ];
+  const lstSummaryGuide = [
+    { key: "pay-summary", label: t("pay_summary", "Pay Summary"), icon: <PersonOutlineRoundedIcon sx={{ fontSize: 18 }} /> },
+    { key: "earnings-deductions", label: t("earnings_deductions", "Earnings & Deductions"), icon: <RequestQuoteRoundedIcon sx={{ fontSize: 18 }} /> },
+    { key: "tax-summary", label: t("tax_summary", "Tax Summary"), icon: <PercentRoundedIcon sx={{ fontSize: 18 }} /> },
+    { key: "statutory-summary", label: t("statutory_summary", "Statutory Summary"), icon: <SummarizeOutlinedIcon sx={{ fontSize: 18 }} /> },
+    { key: "attendance-lop", label: t("attendance_lop_impact", "Attendance-LOP Impact"), icon: <CalendarMonthRoundedIcon sx={{ fontSize: 18 }} /> },
+    { key: "calculation-trace", label: t("calculation_trace", "Calculation Trace"), icon: <NoteAltOutlinedIcon sx={{ fontSize: 18 }} /> },
+  ] as const;
 
   return (
     <Box
@@ -1099,31 +1099,15 @@ export default function PayrollResultDetailPage({
             sx={{
               display: "grid",
               gap: 1.5,
-              gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))", lg: "repeat(7, minmax(0, 1fr))" },
+              gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "repeat(3, minmax(0, 1fr))", lg: "repeat(6, minmax(0, 1fr))" },
             }}
           >
             <KpiCard
-              strLabel={t("gross_pay", "Gross Pay")}
+              strLabel={t("gross_earnings", "Gross Earnings")}
               strValue={formatCurrency(objResult.decGrossEarningsAmount ?? objResult.decGrossAmount)}
               objIcon={<WalletRoundedIcon sx={{ fontSize: 25 }} />}
               strIconBg="#dff8ef"
               strIconColor="#0f766e"
-            />
-            <KpiCard
-              strLabel={t("total_earnings", "Total Earnings")}
-              strValue={formatCurrency(objResult.decEarningsSectionTotal ?? 0)}
-              objIcon={<RequestQuoteRoundedIcon sx={{ fontSize: 30 }} />}
-              strBorder="rgba(134, 239, 172, 0.65)"
-              strIconBg="linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)"
-              strIconColor="#15803d"
-            />
-            <KpiCard
-              strLabel={t("reimbursements", "Reimbursements")}
-              strValue={formatCurrency(objResult.decReimbursementSectionTotal ?? 0)}
-              objIcon={<DescriptionOutlinedIcon sx={{ fontSize: 30 }} />}
-              strBorder="rgba(251, 191, 36, 0.55)"
-              strIconBg="linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)"
-              strIconColor="#b45309"
             />
             <KpiCard
               strLabel={t("employee_deductions", "Employee Deductions")}
@@ -1156,6 +1140,13 @@ export default function PayrollResultDetailPage({
               blnEmphasis
             />
             <KpiCard
+              strLabel={t("employer_contribution", "Employer Contributions")}
+              strValue={formatCurrency(objResult.decEmployerContributionTotal ?? 0)}
+              objIcon={<RequestQuoteRoundedIcon sx={{ fontSize: 25 }} />}
+              strIconBg="#e0e7ff"
+              strIconColor="#4338ca"
+            />
+            <KpiCard
               strLabel={t("total_employer_cost", "Total Employer Cost")}
               strValue={formatCurrency(objResult.decTotalEmployerCost ?? 0)}
               objIcon={<SummarizeOutlinedIcon sx={{ fontSize: 25 }} />}
@@ -1170,75 +1161,77 @@ export default function PayrollResultDetailPage({
               border: "1px solid #dbe7f3",
               boxShadow: "0 10px 24px rgba(15, 23, 42, 0.04)",
               background: "#fff",
-              p: { xs: 1.5, md: 1.8 },
+              overflow: "hidden",
             }}
           >
-            <Typography component="h2" sx={{ display: "flex", alignItems: "center", gap: 1, color: "#0f172a", fontSize: "1.05rem", fontWeight: 900, pb: 1.3, borderBottom: "1px solid #dbe7f3" }}>
-              <SummarizeOutlinedIcon sx={{ color: "#2563eb", fontSize: 22 }} />
-              {t("summary_section", "Summary")}
-            </Typography>
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: { xs: "1fr", md: "repeat(5, minmax(0, 1fr))" },
-                borderBottom: "1px solid #e6eef7",
-                mb: 1.5,
-              }}
+            <Tabs
+              value={strActiveTab}
+              onChange={(objEvent, strValue) => setStrActiveTab(strValue)}
+              variant="scrollable"
+              scrollButtons="auto"
+              sx={{ borderBottom: "1px solid #e6eef7", px: { xs: 1, md: 1.8 }, minHeight: 48 }}
+              data-controlid="payroll.result-detail.tabs"
             >
-              {lstSummaryGuide.map((dicItem, intIndex) => (
-                <Box
+              {lstSummaryGuide.map((dicItem) => (
+                <Tab
                   key={dicItem.key}
+                  value={dicItem.key}
+                  label={dicItem.label}
+                  icon={dicItem.icon}
+                  iconPosition="start"
+                  sx={{ minHeight: 48, textTransform: "none", fontWeight: 800, fontSize: "0.8rem" }}
+                  data-controlid={`payroll.result-detail.tab.${dicItem.key}.button`}
+                />
+              ))}
+            </Tabs>
+
+            <Box sx={{ p: { xs: 1.5, md: 1.8 } }}>
+              {strActiveTab === "pay-summary" ? (
+                <Box
                   sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 0.8,
-                    minHeight: 48,
-                    color: intIndex === 0 ? "#2563eb" : "#0f2444",
-                    fontSize: "0.78rem",
-                    fontWeight: 900,
-                    borderRight: { xs: "none", md: intIndex === lstSummaryGuide.length - 1 ? "none" : "1px solid #e6eef7" },
-                    borderBottom: intIndex === 0 ? "2px solid #2563eb" : "2px solid transparent",
+                    display: "grid",
+                    gap: 1.5,
+                    gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(3, minmax(0, 1fr))" },
+                    alignItems: "stretch",
                   }}
                 >
-                  {dicItem.icon}
-                  <span>{dicItem.label}</span>
+                  <PaginatedSummaryCard strTitle={t("employee_details", "Employee Details")} objIcon={<PersonOutlineRoundedIcon sx={{ color: "#2563eb", fontSize: 20 }} />} lstItems={lstEmployeeSummaryItems} strAriaLabel={t("employee_details", "Employee Details")} />
+                  <PaginatedSummaryCard strTitle={t("job_payroll", "Job & Payroll")} objIcon={<CalendarMonthRoundedIcon sx={{ color: "#4f46e5", fontSize: 20 }} />} lstItems={lstJobPayrollItems} strAriaLabel={t("job_payroll", "Job & Payroll")} />
+                  <PaginatedSummaryCard strTitle={t("notes", "Notes")} objIcon={<NoteAltOutlinedIcon sx={{ color: "#f97316", fontSize: 20 }} />} lstItems={lstNotesItems} strAriaLabel={t("notes", "Notes")} />
                 </Box>
-              ))}
-            </Box>
-            <Box
-              sx={{
-                display: "grid",
-                gap: 1.5,
-                gridTemplateColumns: {
-                  xs: "1fr",
-                  md: "repeat(2, minmax(0, 1fr))",
-                  xl: "1fr 1.04fr 1.08fr 1.04fr 0.95fr",
-                },
-                alignItems: "stretch",
-              }}
-            >
-              <PaginatedSummaryCard strTitle={t("employee_details", "Employee Details")} objIcon={<PersonOutlineRoundedIcon sx={{ color: "#2563eb", fontSize: 20 }} />} lstItems={lstEmployeeSummaryItems} strAriaLabel={t("employee_details", "Employee Details")} />
-              <PaginatedSummaryCard strTitle={t("job_payroll", "Job & Payroll")} objIcon={<CalendarMonthRoundedIcon sx={{ color: "#4f46e5", fontSize: 20 }} />} lstItems={lstJobPayrollItems} strAriaLabel={t("job_payroll", "Job & Payroll")} />
-              <PaginatedSummaryCard
-                strTitle={t("tax_summary", "Tax Summary")}
-                objIcon={<PercentRoundedIcon sx={{ color: "#6d28d9", fontSize: 20 }} />}
-                lstItems={lstTaxSummaryItems}
-                strAriaLabel={t("tax_summary", "Tax Summary")}
-                objHeaderAction={
-                  <TaxInfoIconButton
-                    onOpen={handleOpenTaxInformation}
-                    strControlID="payroll.result-detail.tax-summary.tax-information.button"
-                    intSize={32}
-                    intIconSize={19}
+              ) : null}
+
+              {strActiveTab === "tax-summary" ? (
+                <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1fr)" } }}>
+                  <PaginatedSummaryCard
+                    strTitle={t("tax_summary", "Tax Summary")}
+                    objIcon={<PercentRoundedIcon sx={{ color: "#6d28d9", fontSize: 20 }} />}
+                    lstItems={lstTaxSummaryItems}
+                    strAriaLabel={t("tax_summary", "Tax Summary")}
+                    objHeaderAction={
+                      <TaxInfoIconButton
+                        onOpen={handleOpenTaxInformation}
+                        strControlID="payroll.result-detail.tax-summary.tax-information.button"
+                        intSize={32}
+                        intIconSize={19}
+                      />
+                    }
                   />
-                }
-              />
-              <PaginatedSummaryCard strTitle={t("wage_rule_preview", "Wage Rule Preview")} objIcon={<RequestQuoteRoundedIcon sx={{ color: "#0f766e", fontSize: 20 }} />} lstItems={lstWageRuleItems} strAriaLabel={t("wage_rule_preview", "Wage Rule Preview")} />
-              <PaginatedSummaryCard strTitle={t("notes", "Notes")} objIcon={<NoteAltOutlinedIcon sx={{ color: "#f97316", fontSize: 20 }} />} lstItems={lstNotesItems} strAriaLabel={t("notes", "Notes")} />
+                </Box>
+              ) : null}
+
+              {strActiveTab === "statutory-summary" ? (
+                <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" } }}>
+                  <PaginatedSummaryCard strTitle={t("wage_rule_preview", "Wage Rule Preview")} objIcon={<RequestQuoteRoundedIcon sx={{ color: "#0f766e", fontSize: 20 }} />} lstItems={lstWageRuleItems} strAriaLabel={t("wage_rule_preview", "Wage Rule Preview")} />
+                  {blnWageComplianceRelevant ? (
+                    <PaginatedSummaryCard strTitle={t("wage_compliance_summary", "Wage Compliance Summary")} objIcon={<SummarizeOutlinedIcon sx={{ color: "#c2410c", fontSize: 20 }} />} lstItems={lstWageComplianceItems} strAriaLabel={t("wage_compliance_summary", "Wage Compliance Summary")} />
+                  ) : null}
+                </Box>
+              ) : null}
             </Box>
           </Paper>
 
+          {strActiveTab === "earnings-deductions" ? (
           <Paper
             sx={{
               borderRadius: "12px",
@@ -1266,26 +1259,6 @@ export default function PayrollResultDetailPage({
                 <RequestQuoteRoundedIcon sx={{ color: "#2563eb", fontSize: 22 }} />
                 {t("line_items", "Result Lines")}
               </Typography>
-              <Stack direction="row" spacing={1.5} alignItems="center" justifyContent={{ xs: "flex-start", lg: "flex-end" }} flexWrap="wrap">
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <Typography sx={{ color: "#334155", fontSize: "0.82rem", fontWeight: 700 }}>
-                    {t("group_by_category", "Group by Category")}
-                  </Typography>
-                  <Switch
-                    checked={false}
-                    disabled
-                    inputProps={{ "data-controlid": "payroll.result-detail.group-by-category.switch" } as InputHTMLAttributes<HTMLInputElement>}
-                  />
-                </Stack>
-                <Button
-                  className={styles.secondaryButton}
-                  startIcon={<FilterAltOutlinedIcon />}
-                  disabled
-                  data-controlid="payroll.result-detail.filter.button"
-                >
-                  {t("filter", "Filter")}
-                </Button>
-              </Stack>
             </Box>
 
             <Box
@@ -1383,52 +1356,11 @@ export default function PayrollResultDetailPage({
                   }
                 )}
               </Typography>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Button
-                  disabled
-                  sx={{
-                    minWidth: 36,
-                    width: 36,
-                    height: 36,
-                    borderRadius: "10px",
-                    border: "1px solid #e2e8f0",
-                    color: "#94a3b8",
-                  }}
-                >
-                  {"<"}
-                </Button>
-                <Button
-                  sx={{
-                    minWidth: 36,
-                    width: 36,
-                    height: 36,
-                    borderRadius: "10px",
-                    background: "#2563eb",
-                    color: "#fff",
-                    fontWeight: 800,
-                    "&:hover": { background: "#2563eb" },
-                  }}
-                >
-                  1
-                </Button>
-                <Button
-                  disabled
-                  sx={{
-                    minWidth: 36,
-                    width: 36,
-                    height: 36,
-                    borderRadius: "10px",
-                    border: "1px solid #e2e8f0",
-                    color: "#94a3b8",
-                  }}
-                >
-                  {">"}
-                </Button>
-              </Stack>
             </Box>
           </Paper>
+          ) : null}
 
-          {blnCanViewAttendanceIntegration ? (
+          {strActiveTab === "attendance-lop" && blnCanViewAttendanceIntegration ? (
             <Paper
               sx={{
                 borderRadius: "12px",
@@ -1538,31 +1470,6 @@ export default function PayrollResultDetailPage({
                           {objAttendancePreview.lstWarnings.map((dicReason) => dicReason.strMessage).filter(Boolean).join(" | ")}
                         </Alert>
                       ) : null}
-
-                      <Box sx={{ mt: 1.5 }}>
-                        <Tooltip
-                          title={
-                            blnCanTraceAttendance
-                              ? tAttendance(
-                                  "ATTENDANCE_TRACE_UNAVAILABLE",
-                                  "Calculation trace is not available from this screen yet - no payroll input lookup by run and employee exists."
-                                )
-                              : t("access_denied", "Not available for your user group.")
-                          }
-                          arrow
-                        >
-                          <span>
-                            <Button
-                              className={styles.secondaryButton}
-                              onClick={openAttendanceTraceDialog}
-                              disabled={!blnCanTraceAttendance}
-                              data-controlid="payroll.result-detail.attendance.trace.button"
-                            >
-                              {tAttendance("ATTENDANCE_TRACE_BUTTON", "View Calculation Trace")}
-                            </Button>
-                          </span>
-                        </Tooltip>
-                      </Box>
                     </>
                   ) : null}
                 </Box>
@@ -1618,6 +1525,35 @@ export default function PayrollResultDetailPage({
             </Paper>
           ) : null}
 
+          {strActiveTab === "attendance-lop" && !blnCanViewAttendanceIntegration ? (
+            <Alert severity="info">
+              {t("access_denied", "Not available for your user group.")}
+            </Alert>
+          ) : null}
+
+          {strActiveTab === "calculation-trace" ? (
+            <Paper
+              sx={{
+                borderRadius: "12px",
+                border: "1px solid #dbe7f3",
+                boxShadow: "0 10px 24px rgba(15, 23, 42, 0.04)",
+                background: "#fff",
+                p: { xs: 1.5, md: 1.8 },
+              }}
+            >
+              <Typography sx={{ display: "flex", alignItems: "center", gap: 1, color: "#0f172a", fontSize: "1.05rem", fontWeight: 900, mb: 1.2 }}>
+                <NoteAltOutlinedIcon sx={{ color: "#2563eb", fontSize: 22 }} />
+                {t("calculation_trace", "Calculation Trace")}
+              </Typography>
+              <Alert severity="info">
+                {tAttendance(
+                  "CALCULATION_TRACE_UNAVAILABLE",
+                  "Calculation trace is not available from this screen yet - no payroll input lookup by run and employee exists."
+                )}
+              </Alert>
+            </Paper>
+          ) : null}
+
           {strPayslipPreviewHtml ? (
             <Paper
               sx={{
@@ -1643,30 +1579,6 @@ export default function PayrollResultDetailPage({
           ) : null}
         </Stack>
       </Paper>
-
-      <Dialog
-        open={blnTraceDialogOpen}
-        onClose={() => setBlnTraceDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-        data-controlid="payroll.result-detail.attendance-trace.dialog"
-      >
-        <DialogTitle sx={{ alignItems: "center", display: "flex", justifyContent: "space-between" }}>
-          {tAttendance("ATTENDANCE_TRACE_DRAWER_TITLE", "Attendance Calculation Trace")}
-          <IconButton onClick={() => setBlnTraceDialogOpen(false)} data-controlid="payroll.result-detail.attendance-trace.close.button">
-            <CloseRoundedIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent dividers>
-          {blnTraceLoading ? (
-            <Typography sx={{ color: "#64748b", fontSize: "0.86rem" }}>{t("loading", "Loading...")}</Typography>
-          ) : strTraceError ? (
-            <Alert severity="info">{strTraceError}</Alert>
-          ) : objTraceJson ? (
-            <pre style={{ fontSize: "0.78rem", overflow: "auto", whiteSpace: "pre-wrap" }}>{JSON.stringify(objTraceJson, null, 2)}</pre>
-          ) : null}
-        </DialogContent>
-      </Dialog>
     </Box>
   );
 }

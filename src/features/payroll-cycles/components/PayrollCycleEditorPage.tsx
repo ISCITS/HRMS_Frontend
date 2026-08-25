@@ -124,7 +124,7 @@ export default function PayrollCycleEditorPage({
     if (!blnCanSave) {
       return;
     }
-    if (!dicForm.strCycleCode.trim() || !dicForm.strCycleName.trim() || !dicForm.strPeriodType.trim() || dicForm.intPayrollGroupID === "") {
+    if (!dicForm.strCycleName.trim() || !dicForm.strPeriodType.trim() || dicForm.intPayrollGroupID === "") {
       setStrError(t("schedule_validation_required_fields"));
       return;
     }
@@ -361,17 +361,7 @@ export default function PayrollCycleEditorPage({
             </TextField>
 
             <TextField
-              label={t("cycle_code")}
-              inputProps={{ "controlId": "payroll-cycles.editor.cycle-code.input" }}
-              required
-              value={dicForm.strCycleCode}
-              onChange={(objEvent) => updateField("strCycleCode", objEvent.target.value.toUpperCase())}
-              disabled={blnFieldDisabled}
-              fullWidth
-            />
-
-            <TextField
-              label={t("cycle_name")}
+              label={t("schedule_name", "Payroll Schedule Name")}
               inputProps={{ "controlId": "payroll-cycles.editor.cycle-name.input" }}
               required
               value={dicForm.strCycleName}

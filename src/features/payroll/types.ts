@@ -55,12 +55,11 @@ export type PayrollRunOption = PayrollSelectOption & {
 export type PayrollRunScopeType = "All" | "SelectedEmployee";
 
 export type PayrollRunStatus =
-  | "Open"
-  | "Submitted"
-  | "Approved"
-  | "Failed"
-  | "Processed"
-  | "Closed";
+  | "DRAFT"
+  | "VALIDATED"
+  | "PROCESSED"
+  | "FINALIZED"
+  | "CANCELLED";
 
 export type PayrollRunSummary = {
   intInputCount: number;
@@ -86,6 +85,16 @@ export type PayrollValidationResultRecord = {
   blnIsResolved?: boolean;
   strEntityName?: string | null;
   intEntityID?: number | null;
+  strCategory?: string;
+  strSeverity?: "BLOCKING" | "WARNING" | "INFO";
+  objNavigationTarget?: { strEntityName: string; intEntityID: number | null } | null;
+};
+
+export type PayrollValidationCategorySummary = {
+  strCategory: string;
+  intBlockingCount: number;
+  intWarningCount: number;
+  intInfoCount: number;
 };
 
 export type PayrollValidationSummary = {
@@ -102,6 +111,7 @@ export type PayrollValidationSummary = {
   strRuleSetCode: string | null;
   decNonWageCapPercent: number | null;
   lstIssues: PayrollValidationResultRecord[];
+  lstCategorySummary?: PayrollValidationCategorySummary[];
   dicAttendanceSync?: AttendanceValidateRunResult | null;
 };
 
@@ -128,6 +138,8 @@ export type PayrollProcessSummary = {
 export type PayrollRunRecord = {
   intID: number;
   intPayrollCycleID: number;
+  strPayrollScheduleName: string | null;
+  strPayrollGroupName: string | null;
   strRunCode: string;
   strRunName: string;
   strScopeType: PayrollRunScopeType;
@@ -147,6 +159,8 @@ export type PayrollRunRecord = {
   strFinancialYearCode: string | null;
   strValidationStatus: string | null;
   intReprocessCount: number;
+  strRemarks: string | null;
+  dtLastExecutedOn: string | null;
   dicSummary: PayrollRunSummary;
 };
 
@@ -155,7 +169,6 @@ export type PayrollRunListRecord = PayrollRunRecord;
 export type PayrollRunDetailRecord = PayrollRunRecord & {
   dtAddedOn: string | null;
   dtLastModifiedOn: string | null;
-  dtLastExecutedOn: string | null;
   dtClosedOn: string | null;
   lstValidationResults: PayrollValidationResultRecord[];
   lstProcessedResults?: Array<PayrollResultRecord & { lstLines?: PayrollResultLineRecord[] }>;
@@ -163,7 +176,6 @@ export type PayrollRunDetailRecord = PayrollRunRecord & {
 
 export type PayrollRunFormValues = {
   intPayrollCycleID: number | "";
-  strRunCode: string;
   strRunName: string;
   strScopeType: PayrollRunScopeType;
   strProcessFor: "AllEmployees" | "SelectedEmployees" | "PayrollGroup";
@@ -171,6 +183,7 @@ export type PayrollRunFormValues = {
   dtPayrollMonth: string;
   strRunStatus: PayrollRunStatus;
   blnIsLocked: boolean;
+  strRemarks: string;
 };
 
 export type PayrollRunFormOptions = {
@@ -179,6 +192,8 @@ export type PayrollRunFormOptions = {
     strLabel: string;
     strCode: string;
     strPeriodType: string;
+    intPayrollGroupID: number | null;
+    strPayrollGroupName: string | null;
   }>;
   lstEmployees: PayrollSelectOption[];
 };
@@ -486,6 +501,7 @@ export type EmployeePayrollInputRecord = {
   strRemarks: string | null;
   strStatus: EmployeePayrollInputStatus;
   blnIsLocked: boolean;
+  intAdjustmentLineCount?: number;
   lstValidationMessages?: Array<{
     strLevel: string;
     strCode: string;
@@ -504,15 +520,30 @@ export type EmployeePayrollInputDetailRecord = EmployeePayrollInputRecord & {
 // Attendance-to-payroll integration (Stage 2/3)
 // ---------------------------------------------------------------------------
 
+export type AttendanceIntegrationStatusRecord = {
+  strIntegrationStatus: "NOT_STARTED" | "IMPORTED" | "FINALIZED" | "REOPENED";
+  intVersionNumber: number | null;
+  intEmployeeCount: number;
+  intReadyCount: number;
+  intBlockedCount: number;
+  intWarningCount: number;
+  dtImportedOn: string | null;
+  dtFinalizedOn: string | null;
+  dtReopenedOn: string | null;
+  strReopenReason: string | null;
+};
+
 export type AttendanceValidateRunResult = {
   intTotalEmployees: number;
   intReadyCount: number;
   intBlockedCount: number;
   intWarningCount: number;
   intAppliedCount: number;
+  intFinalizedLockedCount: number;
   intPreservedManualCount: number;
   intSkippedCount: number;
   intInputLockedCount: number;
+  dicIntegrationStatus?: AttendanceIntegrationStatusRecord;
 };
 
 export type AttendanceReasonEntry = {

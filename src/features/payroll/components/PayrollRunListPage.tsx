@@ -26,12 +26,14 @@ import { useModuleActionAccess } from "@/features/security/hooks/useModuleAction
 type SearchForm = {
   strSearch: string;
   strSearchMonth: string;
-  strStatus: "All" | "Open" | "Approved" | "Failed" | "Processed" | "Closed";
+  strSearchGroup: string;
+  strStatus: "All" | "DRAFT" | "VALIDATED" | "PROCESSED" | "FINALIZED" | "CANCELLED";
 };
 
 const dicEmptySearch: SearchForm = {
   strSearch: "",
   strSearchMonth: "",
+  strSearchGroup: "",
   strStatus: "All",
 };
 const lstPayrollRunModuleCodes = ["PAYROLL_RUN", "PAYROLL_RUNS", "PAYROLL_PROCESS", "PAYROLL_PROCESSES"];
@@ -45,23 +47,22 @@ function formatMonth(strDate: string) {
 
 function getStatusPillSx(strStatus: string) {
   const dicToneByStatus: Record<string, { background: string; color: string }> = {
-    Open: { background: "#2563eb", color: "#fff" },
-    Submitted: { background: "#ea580c", color: "#fff" },
-    Approved: { background: "#16a34a", color: "#fff" },
-    Failed: { background: "#dc2626", color: "#fff" },
-    Processed: { background: "#0f766e", color: "#fff" },
-    Closed: { background: "#475569", color: "#fff" },
+    DRAFT: { background: "#2563eb", color: "#fff" },
+    VALIDATED: { background: "#16a34a", color: "#fff" },
+    PROCESSED: { background: "#0f766e", color: "#fff" },
+    FINALIZED: { background: "#475569", color: "#fff" },
+    CANCELLED: { background: "#dc2626", color: "#fff" },
   };
   return dicToneByStatus[strStatus] ?? { background: "#2563eb", color: "#fff" };
 }
 
 function getPayrollRunStatusLabel(strStatus: string) {
   const dicLabels: Record<string, string> = {
-    Open: "Draft",
-    Approved: "Approved",
-    Failed: "Failed",
-    Processed: "Processed",
-    Closed: "Closed",
+    DRAFT: "Draft",
+    VALIDATED: "Validated",
+    PROCESSED: "Processed",
+    FINALIZED: "Finalized",
+    CANCELLED: "Cancelled",
   };
   return dicLabels[strStatus] ?? strStatus;
 }
@@ -112,18 +113,22 @@ export default function PayrollRunListPage() {
   const lstFilteredRows = useMemo(() => {
     const strSearch = dicSearchApplied.strSearch.trim().toLowerCase();
     const strMonthSearch = dicSearchApplied.strSearchMonth.trim().toLowerCase();
+    const strGroupSearch = dicSearchApplied.strSearchGroup.trim().toLowerCase();
     return lstRuns.filter((dicRow) => {
       const blnSearchMatch =
         !strSearch ||
-        dicRow.strRunCode.toLowerCase().includes(strSearch) ||
         dicRow.strRunName.toLowerCase().includes(strSearch);
       const blnMonthMatch =
         !strMonthSearch ||
         formatMonth(dicRow.dtPayrollMonth).toLowerCase().includes(strMonthSearch);
+      const blnGroupMatch =
+        !strGroupSearch ||
+        (dicRow.strPayrollGroupName ?? "").toLowerCase().includes(strGroupSearch) ||
+        (dicRow.strPayrollScheduleName ?? "").toLowerCase().includes(strGroupSearch);
       const blnStatusMatch =
         dicSearchApplied.strStatus === "All" ||
         dicRow.strRunStatus === dicSearchApplied.strStatus;
-      return blnSearchMatch && blnMonthMatch && blnStatusMatch;
+      return blnSearchMatch && blnMonthMatch && blnGroupMatch && blnStatusMatch;
     });
   }, [dicSearchApplied, lstRuns]);
 
@@ -141,14 +146,16 @@ export default function PayrollRunListPage() {
         ),
         strRunName: dicRow.strRunName,
         dtPayrollMonth: formatMonth(dicRow.dtPayrollMonth),
+        strPayrollSchedule: dicRow.strPayrollGroupName ?? dicRow.strPayrollScheduleName ?? "-",
         intInputCount: dicRow.dicSummary.intInputCount,
         strRunStatus: (
           <span className={styles.statusPill} style={getStatusPillSx(dicRow.strRunStatus)}>
             {getPayrollRunStatusLabel(dicRow.strRunStatus)}
           </span>
         ),
-        blnIsLocked: dicRow.blnIsLocked ? t("yes", "Yes") : t("no", "No"),
-        intProcessedCount: dicRow.dicSummary.intProcessedCount,
+        dtLastProcessedOn: dicRow.dtLastExecutedOn
+          ? new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(dicRow.dtLastExecutedOn))
+          : "-",
       })),
     [blnCanView, lstFilteredRows, objRouter, t]
   );
@@ -157,11 +164,11 @@ export default function PayrollRunListPage() {
     () => [
       { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 110 },
       { field: "strRunName", headerName: t("run_name", "Payroll Run") },
-      { field: "dtPayrollMonth", headerName: t("payroll_month", "Payroll Month") },
+      { field: "dtPayrollMonth", headerName: t("payroll_month", "Payroll Period") },
+      { field: "strPayrollSchedule", headerName: t("payroll_group", "Payroll Schedule / Group") },
       { field: "intInputCount", headerName: t("inputs", "Employees"), align: "right" },
       { field: "strRunStatus", headerName: t("status", "Status"), sortable: false, filterable: false, width: 140 },
-      { field: "blnIsLocked", headerName: t("locked", "Locked") },
-      { field: "intProcessedCount", headerName: t("submitted", "Processed"), align: "right" },
+      { field: "dtLastProcessedOn", headerName: t("last_processed_on", "Last Processed On") },
     ],
     [t]
   );
@@ -187,7 +194,7 @@ export default function PayrollRunListPage() {
                 strSearch: objEvent.target.value,
               }))
             }
-            placeholder={t("search_placeholder", "Search by run code or name")}
+            placeholder={t("search_placeholder", "Search by run name")}
             fullWidth
           />
           <TextField
@@ -198,10 +205,23 @@ export default function PayrollRunListPage() {
                 strSearchMonth: objEvent.target.value,
               }))
             }
-            placeholder={t("month_placeholder", "Search payroll month")}
+            placeholder={t("month_placeholder", "Search payroll period")}
             fullWidth
           />
           <TextField
+            controlId="payroll-runs.list.search-group.input"
+            value={dicSearchDraft.strSearchGroup}
+            onChange={(objEvent) =>
+              setDicSearchDraft((dicPrevious) => ({
+                ...dicPrevious,
+                strSearchGroup: objEvent.target.value,
+              }))
+            }
+            placeholder={t("group_placeholder", "Search payroll group")}
+            fullWidth
+          />
+          <TextField
+            controlId="payroll-runs.list.search-status.select"
             select
             label={t("status", "Status")}
             value={dicSearchDraft.strStatus}
@@ -214,11 +234,11 @@ export default function PayrollRunListPage() {
             fullWidth
           >
             <MenuItem value="All">{t("status_all", "All")}</MenuItem>
-            <MenuItem value="Open">{t("status_open", "Draft")}</MenuItem>
-            <MenuItem value="Approved">{t("status_approved", "Approved")}</MenuItem>
-            <MenuItem value="Failed">{t("status_failed", "Failed")}</MenuItem>
-            <MenuItem value="Processed">{t("status_processed", "Processed")}</MenuItem>
-            <MenuItem value="Closed">{t("status_closed", "Closed")}</MenuItem>
+            <MenuItem value="DRAFT">{t("status_draft", "Draft")}</MenuItem>
+            <MenuItem value="VALIDATED">{t("status_validated", "Validated")}</MenuItem>
+            <MenuItem value="PROCESSED">{t("status_processed", "Processed")}</MenuItem>
+            <MenuItem value="FINALIZED">{t("status_finalized", "Finalized")}</MenuItem>
+            <MenuItem value="CANCELLED">{t("status_cancelled", "Cancelled")}</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
             <Button

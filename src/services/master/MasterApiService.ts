@@ -274,6 +274,31 @@ export type PayrollCycleFormOptionsApiRecord = {
   lstPeriodTypes: string[];
 };
 
+export type PayrollGroupApiRecord = {
+  intID: number;
+  intTenantID: number;
+  intCompanyID: number;
+  strPayrollGroupCode: string;
+  strPayrollGroupName: string;
+  strDescription?: string | null;
+  intDisplayOrder?: number;
+  blnIsActive: boolean;
+  lstTexts?: Array<{
+    intLanguageID: number;
+    strLanguageName: string;
+    strPayrollGroupName: string;
+  }>;
+  dicUsage?: {
+    intPayrollCycleCount: number;
+    intEmployeeCount: number;
+    blnInUse: boolean;
+  };
+};
+
+export type PayrollGroupFormOptionsApiRecord = {
+  lstLanguages: EmployeeLookupOptionApiRecord[];
+};
+
 export type TaxRegimeApiRecord = {
   intID: number;
   strRegimeCode: string;
@@ -2851,6 +2876,59 @@ export const masterApiService = {
       strMethod: ApiRequestMethod.Post,
       objBody: { blnIsActive },
       strMenuAction: MasterMenuAction.PayrollCycleStatus
+    });
+  },
+
+  getPayrollGroups(objFilters?: { strSearchName?: string; strSearchCode?: string; strStatus?: string }) {
+    return requestApi<PayrollGroupApiRecord[]>({
+      strPath: MasterApiResource.PayrollGroups,
+      strMethod: ApiRequestMethod.Get,
+      objQueryParams: objFilters,
+      strMenuAction: MasterMenuAction.PayrollGroupList
+    });
+  },
+
+  getPayrollGroup(intID: number) {
+    return requestApi<PayrollGroupApiRecord>({
+      strPath: buildApiPath(MasterApiResource.PayrollGroups, MasterApiRouteSegment.Detail),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { intID },
+      strMenuAction: MasterMenuAction.PayrollGroupGet
+    });
+  },
+
+  getPayrollGroupFormOptions() {
+    return requestApi<PayrollGroupFormOptionsApiRecord>({
+      strPath: buildApiPath(MasterApiResource.PayrollGroups, MasterApiRouteSegment.FormOptions),
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.PayrollGroupFormOptions
+    });
+  },
+
+  createPayrollGroup(objBody: Record<string, unknown>) {
+    return requestApi<PayrollGroupApiRecord>({
+      strPath: MasterApiResource.PayrollGroups,
+      strMethod: ApiRequestMethod.Post,
+      objBody,
+      strMenuAction: MasterMenuAction.PayrollGroupCreate
+    });
+  },
+
+  updatePayrollGroup(intID: number, objBody: Record<string, unknown>) {
+    return requestApi<PayrollGroupApiRecord>({
+      strPath: buildApiPath(MasterApiResource.PayrollGroups, intID),
+      strMethod: ApiRequestMethod.Put,
+      objBody,
+      strMenuAction: MasterMenuAction.PayrollGroupUpdate
+    });
+  },
+
+  setPayrollGroupStatus(intID: number, blnIsActive: boolean) {
+    return requestApi<PayrollGroupApiRecord>({
+      strPath: buildApiPath(MasterApiResource.PayrollGroups, intID, MasterApiRouteSegment.Status),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { blnIsActive },
+      strMenuAction: MasterMenuAction.PayrollGroupStatus
     });
   },
 

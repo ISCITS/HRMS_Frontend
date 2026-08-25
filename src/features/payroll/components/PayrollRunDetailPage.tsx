@@ -49,7 +49,7 @@ type PayrollRunDetailPageProps = {
 };
 
 const lstPayrollRunModuleCodes = ["PAYROLL_RUN", "PAYROLL_RUNS", "PAYROLL_PROCESS", "PAYROLL_PROCESSES"];
-const lstEditableRunStatuses: PayrollRunStatus[] = ["Open", "Submitted", "Approved"];
+const lstEditableRunStatuses: PayrollRunStatus[] = ["DRAFT", "VALIDATED"];
 
 function formatDateTime(strDate: string | null) {
   if (!strDate) {
@@ -82,36 +82,33 @@ function formatCurrency(decValue: number) {
 
 function getStatusPillSx(strStatus: string) {
   const dicToneByStatus: Record<string, { background: string; color: string }> = {
-    Open: { background: "#2563eb", color: "#fff" },
-    Submitted: { background: "#ea580c", color: "#fff" },
-    Approved: { background: "#16a34a", color: "#fff" },
-    Failed: { background: "#dc2626", color: "#fff" },
-    Processed: { background: "#0f766e", color: "#fff" },
-    Closed: { background: "#475569", color: "#fff" },
+    DRAFT: { background: "#2563eb", color: "#fff" },
+    VALIDATED: { background: "#16a34a", color: "#fff" },
+    PROCESSED: { background: "#0f766e", color: "#fff" },
+    FINALIZED: { background: "#475569", color: "#fff" },
+    CANCELLED: { background: "#dc2626", color: "#fff" },
   };
   return dicToneByStatus[strStatus] ?? { background: "#2563eb", color: "#fff" };
 }
 
 function getPayrollRunStatusLabel(strStatus: string) {
   const dicLabels: Record<string, string> = {
-    Open: "Draft",
-    Approved: "Approved",
-    Failed: "Failed",
-    Processed: "Processed",
-    Closed: "Closed",
+    DRAFT: "Draft",
+    VALIDATED: "Validated",
+    PROCESSED: "Processed",
+    FINALIZED: "Finalized",
+    CANCELLED: "Cancelled",
   };
   return dicLabels[strStatus] ?? strStatus;
 }
 
 function getWorkflowSteps(strRunStatus: string, blnHasPayslips: boolean) {
   const strCurrentStep =
-    strRunStatus === "Closed"
+    strRunStatus === "FINALIZED"
       ? "Close"
-      : strRunStatus === "Processed"
+      : strRunStatus === "PROCESSED"
         ? blnHasPayslips ? "Generate Payslips" : "Process"
-        : strRunStatus === "Failed"
-          ? "Process"
-        : strRunStatus === "Approved"
+        : strRunStatus === "VALIDATED"
           ? "Validate"
           : "Draft";
   return ["Draft", "Validate", "Process", "Generate Payslips", "Close"].map((strStep) => ({
@@ -124,11 +121,11 @@ function canProcessPayrollRun(objRun: PayrollRunDetailRecord, blnCanProcess: boo
   if (!blnCanProcess) {
     return false;
   }
-  if (["Approved", "Failed"].includes(objRun.strRunStatus)) {
+  if (objRun.strRunStatus === "VALIDATED") {
     return true;
   }
   return (
-    objRun.strRunStatus === "Processed" &&
+    objRun.strRunStatus === "PROCESSED" &&
     (objRun.intProcessedEmployeeCount || objRun.dicSummary.intProcessedCount || 0) <= 0 &&
     (objRun.intFailedEmployeeCount || 0) > 0
   );
@@ -151,19 +148,19 @@ function isWorkflowStepEnabled(
     case "Draft":
       return false;
     case "Validate":
-      return blnCanValidate && objRun.strRunStatus !== "Closed";
+      return blnCanValidate && objRun.strRunStatus === "DRAFT";
     case "Process":
       return canProcessPayrollRun(objRun, blnCanProcess);
     case "Generate Payslips":
       return (
         blnCanGeneratePayslip &&
         !blnPayslipLoading &&
-        ["Processed", "Closed"].includes(objRun.strRunStatus)
+        ["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus)
       );
     case "Close":
       return (
         blnCanClose &&
-        objRun.strRunStatus === "Processed" &&
+        objRun.strRunStatus === "PROCESSED" &&
         objRun.dicSummary.intValidationErrorCount <= 0
       );
     default:
@@ -222,7 +219,7 @@ function PayrollRunDetailPageLegacy({
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
   const [blnIsLocked, setBlnIsLocked] = useState(false);
-  const [strSavedRunStatus, setStrSavedRunStatus] = useState<PayrollRunStatus>("Open");
+  const [strSavedRunStatus, setStrSavedRunStatus] = useState<PayrollRunStatus>("DRAFT");
   const [objValidationSummary, setObjValidationSummary] =
     useState<PayrollValidationSummary | null>(null);
   const [objProcessSummary, setObjProcessSummary] =
@@ -255,7 +252,7 @@ function PayrollRunDetailPageLegacy({
       setObjRun(dicRun);
       setBlnIsLocked(dicRun.blnIsLocked);
       setStrSavedRunStatus(dicRun.strRunStatus);
-      if (["Processed", "Closed"].includes(dicRun.strRunStatus)) {
+      if (["PROCESSED", "FINALIZED"].includes(dicRun.strRunStatus)) {
         setLstPayslips(await payslipService.getRunPayslips(intRunID));
       } else {
         setLstPayslips([]);
@@ -290,8 +287,8 @@ function PayrollRunDetailPageLegacy({
       const strRunStatusForSave: PayrollRunStatus =
         objRun.strRunStatus === strSavedRunStatus &&
         !blnIsLocked &&
-        ["Failed", "Processed"].includes(objRun.strRunStatus)
-          ? "Open"
+        objRun.strRunStatus === "PROCESSED"
+          ? "DRAFT"
           : objRun.strRunStatus;
       const dicRun = await payrollRunService.updatePayrollRunStatus(
         intRunID,
@@ -440,7 +437,7 @@ function PayrollRunDetailPageLegacy({
   }
 
   async function reloadPayslips() {
-    if (!objRun || !["Processed", "Closed"].includes(objRun.strRunStatus)) {
+    if (!objRun || !["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus)) {
       setLstPayslips([]);
       return;
     }
@@ -688,7 +685,7 @@ function PayrollRunDetailPageLegacy({
             className={styles.secondaryButton}
             startIcon={<RestartAltRoundedIcon />}
             onClick={reprocessRun}
-            disabled={blnSaving || objRun.strRunStatus !== "Processed"}
+            disabled={blnSaving || objRun.strRunStatus !== "PROCESSED"}
             controlId="payroll.run-detail.reprocess.button"
           >
             {t("reprocess", "Reprocess")}
@@ -909,7 +906,7 @@ function PayrollRunDetailPageLegacy({
           </Box>
         ) : null}
 
-        {["Processed", "Closed"].includes(objRun.strRunStatus) ? (
+        {["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus) ? (
           <Box sx={objSectionCardSx}>
             <Box className={styles.controlsHeader} sx={{ mb: 1.5 }}>
               <Typography sx={{ color: "#0f172a", fontWeight: 800 }}>

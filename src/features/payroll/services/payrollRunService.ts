@@ -28,21 +28,20 @@ async function requestApi<TData>(objOptions: {
 export function createInitialPayrollRunForm(): PayrollRunFormValues {
   return {
     intPayrollCycleID: "",
-    strRunCode: "",
     strRunName: "",
     strScopeType: "All",
     strProcessFor: "PayrollGroup",
     intScopedEmployeeID: "",
     dtPayrollMonth: new Date().toISOString().slice(0, 10),
-    strRunStatus: "Open",
+    strRunStatus: "DRAFT",
     blnIsLocked: false,
+    strRemarks: "",
   };
 }
 
 function toPayload(dicValues: PayrollRunFormValues) {
   return {
     intPayrollCycleID: dicValues.intPayrollCycleID || undefined,
-    strRunCode: dicValues.strRunCode.trim(),
     strRunName: dicValues.strRunName.trim(),
     strScopeType: dicValues.strScopeType,
     intScopedEmployeeID:
@@ -52,6 +51,7 @@ function toPayload(dicValues: PayrollRunFormValues) {
     dtPayrollMonth: dicValues.dtPayrollMonth,
     strRunStatus: dicValues.strRunStatus,
     blnIsLocked: dicValues.blnIsLocked,
+    strRemarks: dicValues.strRemarks.trim() || undefined,
   };
 }
 
@@ -176,6 +176,25 @@ export const payrollRunService = {
       strPath: `/payroll/runs/${intRunID}/close`,
       strMethod: "POST",
       strMenuAction: "PAYROLL_RUN_CLOSE",
+    });
+    return objResult.Data;
+  },
+
+  async reopenPayrollRun(intRunID: number, strReason: string): Promise<PayrollRunDetailRecord> {
+    const objResult = await requestApi<PayrollRunDetailRecord>({
+      strPath: `/payroll/runs/${intRunID}/reopen`,
+      strMethod: "POST",
+      objBody: { strReason },
+      strMenuAction: "PAYROLL_RUN_REOPEN",
+    });
+    return objResult.Data;
+  },
+
+  async cancelPayrollRun(intRunID: number): Promise<PayrollRunDetailRecord> {
+    const objResult = await requestApi<PayrollRunDetailRecord>({
+      strPath: `/payroll/runs/${intRunID}/cancel`,
+      strMethod: "POST",
+      strMenuAction: "PAYROLL_RUN_CANCEL",
     });
     return objResult.Data;
   },

@@ -2,6 +2,7 @@ import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { requestEncryptedApi, type ApiEnvelope } from "@/Common/utils/apiErrorHandler";
 import type {
   ArrearAdjustmentLine,
+  AttendanceIntegrationStatusRecord,
   AttendanceTraceRecord,
   AttendanceValidateRunResult,
   EmployeeAttendancePreview,
@@ -25,12 +26,42 @@ async function requestApi<TData>(objOptions: {
 export const attendancePayrollService = {
   async validateRunAttendance(
     intRunID: number,
-    lstEmployeeIDs?: number[]
+    lstEmployeeIDs?: number[],
+    blnAllowFinalizedOverride?: boolean,
+    strOverrideReason?: string
   ): Promise<AttendanceValidateRunResult> {
+    const objBody: Record<string, unknown> = {};
+    if (lstEmployeeIDs?.length) {
+      objBody.lstEmployeeIDs = lstEmployeeIDs;
+    }
+    if (blnAllowFinalizedOverride) {
+      objBody.blnAllowFinalizedOverride = true;
+      objBody.strOverrideReason = strOverrideReason;
+    }
     const objResult = await requestApi<AttendanceValidateRunResult>({
       strPath: `/payroll/runs/${intRunID}/attendance/validate`,
       strMethod: "POST",
-      objBody: lstEmployeeIDs?.length ? { lstEmployeeIDs } : undefined,
+      objBody: Object.keys(objBody).length ? objBody : undefined,
+      strMenuAction: "PAYROLL_ATTENDANCE_VALIDATE",
+    });
+    return objResult.Data;
+  },
+
+  async finalizeAttendanceIntegration(
+    intRunID: number
+  ): Promise<{ intPayrollRunID: number; blnFinalized: boolean; intVersionNumber?: number; dicIntegrationStatus?: AttendanceIntegrationStatusRecord }> {
+    const objResult = await requestApi<{ intPayrollRunID: number; blnFinalized: boolean; intVersionNumber?: number; dicIntegrationStatus?: AttendanceIntegrationStatusRecord }>({
+      strPath: `/payroll/runs/${intRunID}/attendance/finalize`,
+      strMethod: "POST",
+      strMenuAction: "PAYROLL_ATTENDANCE_FINALIZE",
+    });
+    return objResult.Data;
+  },
+
+  async getIntegrationStatus(intRunID: number): Promise<AttendanceIntegrationStatusRecord> {
+    const objResult = await requestApi<AttendanceIntegrationStatusRecord>({
+      strPath: `/payroll/runs/${intRunID}/attendance/status`,
+      strMethod: "GET",
       strMenuAction: "PAYROLL_ATTENDANCE_VALIDATE",
     });
     return objResult.Data;

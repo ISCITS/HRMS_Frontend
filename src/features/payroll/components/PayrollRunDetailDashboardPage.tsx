@@ -53,7 +53,6 @@ import type {
   PayslipRunListRecord,
   PayrollProcessSummary,
   PayrollRunDetailRecord,
-  PayrollRunStatus,
   PayrollValidationSummary,
   AttendanceValidateRunResult,
 } from "@/features/payroll/types";
@@ -71,23 +70,7 @@ type PayrollRunDetailDashboardPageProps = {
 type Tone = "blue" | "green" | "amber" | "red" | "slate";
 
 const lstPayrollRunModuleCodes = ["PAYROLL_RUN", "PAYROLL_RUNS", "PAYROLL_PROCESS", "PAYROLL_PROCESSES"];
-const strRecoveryRunStatus: PayrollRunStatus = "Open";
-const lstAttendanceStageKeys = [
-  "ATTENDANCE_STAGE_VALIDATION",
-  "ATTENDANCE_STAGE_SUMMARY",
-  "ATTENDANCE_STAGE_PAYROLL_INPUT",
-  "ATTENDANCE_STAGE_SALARY_IMPACT",
-  "ATTENDANCE_STAGE_STATUTORY_TAX",
-  "ATTENDANCE_STAGE_RESULT_FINALISATION",
-] as const;
-const dicAttendanceStageTargetByKey: Record<(typeof lstAttendanceStageKeys)[number], string> = {
-  ATTENDANCE_STAGE_VALIDATION: "payroll-run-attendance-validation",
-  ATTENDANCE_STAGE_SUMMARY: "payroll-run-summary",
-  ATTENDANCE_STAGE_PAYROLL_INPUT: "payroll-run-controls",
-  ATTENDANCE_STAGE_SALARY_IMPACT: "payroll-run-validation-summary",
-  ATTENDANCE_STAGE_STATUTORY_TAX: "payroll-run-validation-summary",
-  ATTENDANCE_STAGE_RESULT_FINALISATION: "payroll-run-validation-summary",
-};
+const lstWorkflowStepNames = ["Draft", "Validate", "Process", "Review Results", "Finalize Payroll", "Generate Payslips"] as const;
 
 function formatDateTime(strDate: string | null) {
   if (!strDate) {
@@ -120,29 +103,25 @@ function formatCurrency(decValue: number) {
 
 function getPayrollRunStatusLabel(strStatus: string) {
   const dicLabels: Record<string, string> = {
-    Open: "Draft",
-    Approved: "Approved",
-    Failed: "Failed",
-    Processed: "Processed",
-    Closed: "Closed",
+    DRAFT: "Draft",
+    VALIDATED: "Validated",
+    PROCESSED: "Processed",
+    FINALIZED: "Finalized",
+    CANCELLED: "Cancelled",
   };
   return dicLabels[strStatus] ?? strStatus;
 }
 
 function getWorkflowSteps(strRunStatus: string) {
   const strCurrentStep =
-    strRunStatus === "Closed"
+    strRunStatus === "FINALIZED"
       ? "Generate Payslips"
-      : strRunStatus === "Processed"
-        ? "Generate Payslips"
-        : strRunStatus === "Failed"
+      : strRunStatus === "PROCESSED"
+        ? "Finalize Payroll"
+        : strRunStatus === "VALIDATED"
           ? "Process"
-        : strRunStatus === "Approved"
-          ? "Validate"
-          : strRunStatus === "Submitted"
-            ? "Validate"
-            : "Draft";
-  return ["Draft", "Submit", "Validate", "Process", "Generate Payslips", "Reprocess"].map((strStep) => ({
+          : "Validate";
+  return lstWorkflowStepNames.map((strStep) => ({
     strStep,
     blnActive: strStep === strCurrentStep,
   }));
@@ -152,11 +131,11 @@ function canProcessPayrollRun(objRun: PayrollRunDetailRecord, blnCanProcess: boo
   if (!blnCanProcess) {
     return false;
   }
-  if (["Approved", "Failed"].includes(objRun.strRunStatus)) {
+  if (objRun.strRunStatus === "VALIDATED") {
     return true;
   }
   return (
-    objRun.strRunStatus === "Processed" &&
+    objRun.strRunStatus === "PROCESSED" &&
     (objRun.intProcessedEmployeeCount || objRun.dicSummary.intProcessedCount || 0) <= 0 &&
     (objRun.intFailedEmployeeCount || 0) > 0
   );
@@ -169,23 +148,25 @@ function isWorkflowStepEnabled(
   blnPayslipLoading: boolean,
   blnCanValidate: boolean,
   blnCanProcess: boolean,
+  blnCanFinalize: boolean,
   blnCanGeneratePayslip: boolean,
 ) {
-  if (blnSaving) {
+  if (blnSaving || objRun.strRunStatus === "CANCELLED") {
     return false;
   }
   switch (strStep) {
     case "Draft":
-    case "Submit":
       return false;
     case "Validate":
-      return blnCanValidate && objRun.strRunStatus !== "Closed";
+      return blnCanValidate && objRun.strRunStatus === "DRAFT";
     case "Process":
       return canProcessPayrollRun(objRun, blnCanProcess);
+    case "Review Results":
+      return ["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus);
+    case "Finalize Payroll":
+      return blnCanFinalize && objRun.strRunStatus === "PROCESSED" && objRun.dicSummary.intValidationErrorCount <= 0;
     case "Generate Payslips":
-      return blnCanGeneratePayslip && !blnPayslipLoading && ["Processed", "Closed"].includes(objRun.strRunStatus);
-    case "Reprocess":
-      return false;
+      return blnCanGeneratePayslip && !blnPayslipLoading && ["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus);
     default:
       return false;
   }
@@ -203,13 +184,11 @@ function getToneStyles(strTone: Tone) {
 }
 
 function StatusPill({ strStatus }: { strStatus: string }) {
-  const objTone = ["Approved", "Processed"].includes(strStatus)
+  const objTone = ["VALIDATED", "PROCESSED"].includes(strStatus)
     ? getToneStyles("green")
-    : strStatus === "Failed"
+    : strStatus === "CANCELLED"
       ? getToneStyles("red")
-    : strStatus === "Submitted"
-      ? getToneStyles("amber")
-      : strStatus === "Closed"
+      : strStatus === "FINALIZED"
         ? getToneStyles("slate")
         : getToneStyles("blue");
 
@@ -318,16 +297,22 @@ function getWorkflowStepIcon(strStep: string) {
   if (strStep === "Draft") {
     return <TaskAltRoundedIcon sx={{ fontSize: 18 }} />;
   }
-  if (strStep === "Submit" || strStep === "Validate") {
+  if (strStep === "Validate") {
     return <ShieldOutlinedIcon sx={{ fontSize: 18 }} />;
   }
   if (strStep === "Process") {
     return <PlayArrowRoundedIcon sx={{ fontSize: 18 }} />;
   }
+  if (strStep === "Review Results") {
+    return <SummarizeRoundedIcon sx={{ fontSize: 18 }} />;
+  }
+  if (strStep === "Finalize Payroll") {
+    return <LockRoundedIcon sx={{ fontSize: 18 }} />;
+  }
   if (strStep === "Generate Payslips") {
     return <ReceiptLongRoundedIcon sx={{ fontSize: 18 }} />;
   }
-  return <RestartAltRoundedIcon sx={{ fontSize: 18 }} />;
+  return <TaskAltRoundedIcon sx={{ fontSize: 18 }} />;
 }
 
 function getWorkflowButtonSx(strVariant: "complete" | "current" | "available" | "disabled") {
@@ -381,20 +366,29 @@ function getWorkflowButtonSx(strVariant: "complete" | "current" | "available" | 
 }
 
 function getWorkflowButtonVariant(strStep: string, objRun: PayrollRunDetailRecord, blnActive: boolean, blnEnabled: boolean) {
-  if (strStep === "Draft") {
-    return ["Open", "Submitted", "Approved", "Processed", "Closed"].includes(objRun.strRunStatus) ? "complete" : "current";
+  if (objRun.strRunStatus === "CANCELLED") {
+    return "disabled";
   }
-  if (strStep === "Submit") {
-    return ["Submitted", "Approved", "Processed", "Closed"].includes(objRun.strRunStatus) ? "complete" : "disabled";
+  if (strStep === "Draft") {
+    return "complete";
   }
   if (strStep === "Validate") {
-    if (["Approved", "Processed", "Closed"].includes(objRun.strRunStatus)) {
+    if (["VALIDATED", "PROCESSED", "FINALIZED"].includes(objRun.strRunStatus)) {
       return "complete";
     }
     return blnEnabled || blnActive ? "current" : "disabled";
   }
   if (strStep === "Process") {
-    if (["Processed", "Closed"].includes(objRun.strRunStatus)) {
+    if (["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus)) {
+      return "complete";
+    }
+    return blnEnabled || blnActive ? "current" : "disabled";
+  }
+  if (strStep === "Review Results") {
+    return ["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus) ? "available" : "disabled";
+  }
+  if (strStep === "Finalize Payroll") {
+    if (objRun.strRunStatus === "FINALIZED") {
       return "complete";
     }
     return blnEnabled || blnActive ? "current" : "disabled";
@@ -418,7 +412,6 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
   const [blnIsLocked, setBlnIsLocked] = useState(false);
-  const [strSavedRunStatus, setStrSavedRunStatus] = useState<PayrollRunStatus>("Open");
   const [objValidationSummary, setObjValidationSummary] = useState<PayrollValidationSummary | null>(null);
   const [objProcessSummary, setObjProcessSummary] = useState<PayrollProcessSummary | null>(null);
   const [lstPayslips, setLstPayslips] = useState<PayslipRunListRecord[]>([]);
@@ -429,6 +422,9 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
   const [blnPayslipDialogOpen, setBlnPayslipDialogOpen] = useState(false);
   const [blnReprocessDialogOpen, setBlnReprocessDialogOpen] = useState(false);
   const [strReprocessReason, setStrReprocessReason] = useState("");
+  const [blnReopenDialogOpen, setBlnReopenDialogOpen] = useState(false);
+  const [strReopenReason, setStrReopenReason] = useState("");
+  const [blnCancelDialogOpen, setBlnCancelDialogOpen] = useState(false);
   const [objActionsAnchor, setObjActionsAnchor] = useState<null | HTMLElement>(null);
   const [intValidationPage, setIntValidationPage] = useState(1);
   const [intValidationRowsPerPage, setIntValidationRowsPerPage] = useState(5);
@@ -440,6 +436,9 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
   const blnCanValidate = canDoAny("validate") || canDoAny("submit");
   const blnCanProcess = canDoAny("process") || canDoAny("approve");
   const blnCanReprocess = canDoAny("reprocess") || canDoAny("edit");
+  const blnCanFinalize = canDoAny("edit") || canDoAny("close");
+  const blnCanReopen = canDoAny("reopen");
+  const blnCanCancel = canDoAny("edit") || canDoAny("cancel");
   const blnCanGeneratePayslip = canDoAny("add") || canDoAny("edit") || canDoAny("process");
   const blnCanExport = canDoAny("export");
 
@@ -457,8 +456,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
       const dicRun = await payrollRunService.getPayrollRunById(intRunID);
       setObjRun(dicRun);
       setBlnIsLocked(dicRun.blnIsLocked);
-      setStrSavedRunStatus(dicRun.strRunStatus);
-      if (["Processed", "Closed"].includes(dicRun.strRunStatus)) {
+      if (["PROCESSED", "FINALIZED"].includes(dicRun.strRunStatus)) {
         setLstPayslips(await payslipService.getRunPayslips(intRunID));
       } else {
         setLstPayslips([]);
@@ -492,25 +490,100 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
     setStrError("");
     setStrSuccess("");
     try {
-      const strRunStatusForSave: PayrollRunStatus =
-        objRun.strRunStatus === strSavedRunStatus &&
-        !blnIsLocked &&
-        ["Failed", "Processed"].includes(objRun.strRunStatus)
-          ? strRecoveryRunStatus
-          : objRun.strRunStatus;
       const dicRun = await payrollRunService.updatePayrollRunStatus(
         intRunID,
-        strRunStatusForSave,
+        objRun.strRunStatus,
         blnIsLocked,
         objRun.strScopeType,
         objRun.intScopedEmployeeID ?? "",
       );
       setObjRun(dicRun);
       setBlnIsLocked(dicRun.blnIsLocked);
-      setStrSavedRunStatus(dicRun.strRunStatus);
       setStrSuccess(t("status_update_success", "Payroll run updated successfully."));
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to update payroll run status.");
+    } finally {
+      setBlnSaving(false);
+      setStrActionLoaderLabel("");
+    }
+  }
+
+  async function finalizeRun() {
+    if (!blnCanFinalize) {
+      return;
+    }
+    setBlnSaving(true);
+    setStrActionLoaderLabel(t("finalizing_run", "Finalizing payroll run..."));
+    setStrError("");
+    setStrSuccess("");
+    try {
+      const dicRun = await payrollRunService.closePayrollRun(intRunID);
+      setObjRun(dicRun);
+      setBlnIsLocked(dicRun.blnIsLocked);
+      setStrSuccess(t("finalize_complete", "Payroll run finalized successfully."));
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to finalize payroll run.");
+    } finally {
+      setBlnSaving(false);
+      setStrActionLoaderLabel("");
+    }
+  }
+
+  function openReopenDialog() {
+    if (!blnCanReopen) {
+      return;
+    }
+    setStrReopenReason("");
+    setStrError("");
+    setBlnReopenDialogOpen(true);
+  }
+
+  async function reopenRun() {
+    const strReason = strReopenReason.trim();
+    if (!blnCanReopen || !strReason) {
+      return;
+    }
+    setBlnReopenDialogOpen(false);
+    setBlnSaving(true);
+    setStrActionLoaderLabel(t("reopening_run", "Reopening payroll run..."));
+    setStrError("");
+    setStrSuccess("");
+    try {
+      const dicRun = await payrollRunService.reopenPayrollRun(intRunID, strReason);
+      setObjRun(dicRun);
+      setBlnIsLocked(dicRun.blnIsLocked);
+      setStrSuccess(t("reopen_complete", "Payroll run reopened successfully."));
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to reopen payroll run.");
+    } finally {
+      setBlnSaving(false);
+      setStrActionLoaderLabel("");
+    }
+  }
+
+  function openCancelDialog() {
+    if (!blnCanCancel) {
+      return;
+    }
+    setStrError("");
+    setBlnCancelDialogOpen(true);
+  }
+
+  async function cancelRun() {
+    if (!blnCanCancel) {
+      return;
+    }
+    setBlnCancelDialogOpen(false);
+    setBlnSaving(true);
+    setStrActionLoaderLabel(t("cancelling_run", "Cancelling payroll run..."));
+    setStrError("");
+    setStrSuccess("");
+    try {
+      const dicRun = await payrollRunService.cancelPayrollRun(intRunID);
+      setObjRun(dicRun);
+      setStrSuccess(t("cancel_complete", "Payroll run cancelled."));
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to cancel payroll run.");
     } finally {
       setBlnSaving(false);
       setStrActionLoaderLabel("");
@@ -533,7 +606,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
       await loadRun(false);
       setStrSuccess(
         dicSummary.strStatus === "Passed"
-          ? t("validation_complete_approved", "Payroll validation completed. Run status updated to Approved.")
+          ? t("validation_complete_approved", "Payroll validation completed. Run status updated to Validated.")
           : t("validation_complete", "Payroll validation completed."),
       );
     } catch (objError) {
@@ -651,7 +724,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
   }
 
   async function reloadPayslips() {
-    if (!objRun || !["Processed", "Closed"].includes(objRun.strRunStatus)) {
+    if (!objRun || !["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus)) {
       setLstPayslips([]);
       return;
     }
@@ -763,10 +836,24 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
     setObjActionsAnchor(null);
   }
 
-  function openAttendanceStage(strStageKey: (typeof lstAttendanceStageKeys)[number]) {
+  function goToAttendanceLeaveInputs() {
     handleCloseActions();
-    const strTargetID = dicAttendanceStageTargetByKey[strStageKey];
-    document.getElementById(strTargetID)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    objRouter.push(`/payroll/attendance-leave-inputs?runId=${intRunID}`);
+  }
+
+  function goToPayrollInputs() {
+    handleCloseActions();
+    objRouter.push(`/payroll/inputs?runId=${intRunID}`);
+  }
+
+  function goToProcessingHistory() {
+    handleCloseActions();
+    objRouter.push(`/payroll/process-log/run/${intRunID}`);
+  }
+
+  function goToResults() {
+    handleCloseActions();
+    objRouter.push(`/payroll/results?runId=${intRunID}`);
   }
 
   if (blnLoading || blnRightsLoading) {
@@ -803,29 +890,21 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
   const intValidationStartIndex = lstValidationRows.length ? (intSafeValidationPage - 1) * intValidationRowsPerPage : 0;
   const intValidationEndIndex = Math.min(intValidationStartIndex + intValidationRowsPerPage, lstValidationRows.length);
   const lstPagedValidationRows = lstValidationRows.slice(intValidationStartIndex, intValidationEndIndex);
-  const intProcessedEmployeeCount = objRun.intProcessedEmployeeCount || objRun.dicSummary.intProcessedCount || 0;
-  const blnReprocessEnabled = blnCanReprocess && !blnSaving && objRun.strRunStatus !== "Closed" && intProcessedEmployeeCount > 0;
-  const blnStatusEditable = blnCanEdit && !objRun.blnIsLocked;
   const blnLockEditable = blnCanEdit;
-  const blnCanSaveRunControls = blnCanEdit && (objRun.strRunStatus !== strSavedRunStatus || blnIsLocked !== objRun.blnIsLocked);
-  const lstStatusOptions = objRun.strRunStatus === strRecoveryRunStatus
-    ? [strRecoveryRunStatus]
-    : [objRun.strRunStatus, strRecoveryRunStatus];
+  const blnCanSaveRunControls = blnCanEdit && blnIsLocked !== objRun.blnIsLocked;
   const strScopeLabel = objRun.strScopeType === "SelectedEmployee"
     ? `${t("scope_selected_employee", "Selected Employees")} #${objRun.intScopedEmployeeID ?? "-"}`
-    : t("scope_payroll_group", "Payroll Group");
+    : (objRun.strPayrollGroupName ?? t("scope_payroll_group", "Payroll Group"));
   const lstWorkflowSteps = getWorkflowSteps(objRun.strRunStatus);
 
   const lstKpis = [
-    { strLabel: t("run_code", "Run Code"), strValue: objRun.strRunCode, objIcon: <ReceiptLongRoundedIcon sx={{ fontSize: 21 }} />, strTone: "blue" as Tone },
-    { strLabel: t("payroll_month", "Payroll Month"), strValue: formatMonth(objRun.dtPayrollMonth), objIcon: <CalendarMonthRoundedIcon sx={{ fontSize: 21 }} />, strTone: "blue" as Tone },
-    { strLabel: t("run_scope", "Process For"), strValue: strScopeLabel, objIcon: <GroupRoundedIcon sx={{ fontSize: 21 }} />, strTone: "blue" as Tone },
-    { strLabel: t("employees_processed", "Employees Processed"), strValue: String(objRun.intProcessedEmployeeCount || objRun.dicSummary.intProcessedCount), objIcon: <TaskAltRoundedIcon sx={{ fontSize: 21 }} />, strTone: "blue" as Tone },
-    { strLabel: t("validation_errors", "Validation Errors"), strValue: String(objRun.dicSummary.intValidationErrorCount), objIcon: <ShieldOutlinedIcon sx={{ fontSize: 21 }} />, strTone: "red" as Tone },
-    { strLabel: t("warnings", "Warnings"), strValue: String(objRun.dicSummary.intValidationWarningCount), objIcon: <ReportProblemRoundedIcon sx={{ fontSize: 21 }} />, strTone: "amber" as Tone },
+    { strLabel: t("payroll_month", "Payroll Period"), strValue: formatMonth(objRun.dtPayrollMonth), objIcon: <CalendarMonthRoundedIcon sx={{ fontSize: 21 }} />, strTone: "blue" as Tone },
+    { strLabel: t("run_scope", "Payroll Group / Scope"), strValue: strScopeLabel, objIcon: <GroupRoundedIcon sx={{ fontSize: 21 }} />, strTone: "blue" as Tone },
+    { strLabel: t("employees_in_run", "Employees in Run"), strValue: String(objRun.intEmployeeCount || objRun.dicSummary.intInputCount), objIcon: <TaskAltRoundedIcon sx={{ fontSize: 21 }} />, strTone: "blue" as Tone },
     { strLabel: t("gross_pay", "Gross Pay"), strValue: formatCurrency(objRun.decGrossPayTotal), objIcon: <PaidRoundedIcon sx={{ fontSize: 21 }} />, strTone: "blue" as Tone },
-    { strLabel: t("deduction_total", "Deductions"), strValue: formatCurrency(objRun.decDeductionTotal), objIcon: <WalletRoundedIcon sx={{ fontSize: 21 }} />, strTone: "red" as Tone },
+    { strLabel: t("deduction_total", "Employee Deductions"), strValue: formatCurrency(objRun.decDeductionTotal), objIcon: <WalletRoundedIcon sx={{ fontSize: 21 }} />, strTone: "red" as Tone },
     { strLabel: t("tax_total", "Tax"), strValue: formatCurrency(objRun.decTaxTotal), objIcon: <SummarizeRoundedIcon sx={{ fontSize: 21 }} />, strTone: "green" as Tone },
+    { strLabel: t("employer_contribution_total", "Employer Contributions"), strValue: formatCurrency(objRun.decEmployerContributionTotal), objIcon: <WalletRoundedIcon sx={{ fontSize: 21 }} />, strTone: "blue" as Tone },
     { strLabel: t("net_total", "Net Pay"), strValue: formatCurrency(objRun.decNetPayTotal), objIcon: <PaidRoundedIcon sx={{ fontSize: 21 }} />, strTone: "green" as Tone },
   ];
 
@@ -867,19 +946,19 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
           </Box>
           <Box sx={{ alignItems: "center", display: "flex", gap: 0.75, justifyContent: { xs: "flex-start", lg: "flex-end" }, maxWidth: "100%", overflowX: "auto", pb: 0.25 }}>
             {lstWorkflowSteps.map((dicStep, intIndex) => {
-              const blnEnabled = dicStep.strStep === "Reprocess"
-                ? blnReprocessEnabled
-                : isWorkflowStepEnabled(dicStep.strStep, objRun, blnSaving, blnPayslipLoading, blnCanValidate, blnCanProcess, blnCanGeneratePayslip);
+              const blnEnabled = isWorkflowStepEnabled(dicStep.strStep, objRun, blnSaving, blnPayslipLoading, blnCanValidate, blnCanProcess, blnCanFinalize, blnCanGeneratePayslip);
               const fnOnClick =
                 dicStep.strStep === "Validate"
                   ? validateRun
                   : dicStep.strStep === "Process"
                     ? processRun
-                    : dicStep.strStep === "Generate Payslips"
-                      ? generateAllPayslips
-                      : dicStep.strStep === "Reprocess"
-                        ? openReprocessDialog
-                        : undefined;
+                    : dicStep.strStep === "Review Results"
+                      ? goToResults
+                      : dicStep.strStep === "Finalize Payroll"
+                        ? finalizeRun
+                        : dicStep.strStep === "Generate Payslips"
+                          ? generateAllPayslips
+                          : undefined;
               const strVariant = getWorkflowButtonVariant(dicStep.strStep, objRun, dicStep.blnActive, blnEnabled);
               return (
                 <Box key={dicStep.strStep} sx={{ alignItems: "center", display: "flex", gap: 0.75 }}>
@@ -891,11 +970,22 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
                     sx={getWorkflowButtonSx(strVariant)}
                     controlId={`payroll.run-detail.workflow.${dicStep.strStep.toLowerCase().replaceAll(" ", "-")}.button`}
                   >
-                    {dicStep.strStep === "Draft" ? t("draft_open", "Draft / Open") : t(`workflow_${dicStep.strStep.toLowerCase().replaceAll(" ", "_")}`, dicStep.strStep)}
+                    {t(`workflow_${dicStep.strStep.toLowerCase().replaceAll(" ", "_")}`, dicStep.strStep)}
                   </Button>
                 </Box>
               );
             })}
+            {objRun.strRunStatus === "DRAFT" && blnCanCancel ? (
+              <Button
+                startIcon={<CloseRoundedIcon sx={{ fontSize: 18 }} />}
+                onClick={openCancelDialog}
+                disabled={blnSaving}
+                sx={{ flex: "0 0 auto", height: 38, minHeight: 38, color: "#dc2626", border: "1px solid #fecaca" }}
+                controlId="payroll.run-detail.cancel-run.button"
+              >
+                {t("cancel_run", "Cancel Run")}
+              </Button>
+            ) : null}
             <IconButton
               onClick={handleOpenActions}
               sx={{ border: "1px solid #8FB8F9", borderRadius: "8px", color: "#0B5ED7", flex: "0 0 auto", height: 38, width: 38 }}
@@ -908,16 +998,25 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
         </Box>
 
         <Menu anchorEl={objActionsAnchor} open={Boolean(objActionsAnchor)} onClose={handleCloseActions}>
-          {lstAttendanceStageKeys.map((strStageKey) => (
-            <MenuItem
-              key={strStageKey}
-              onClick={() => openAttendanceStage(strStageKey)}
-              data-controlid={`payroll.run-detail.actions.${strStageKey.toLowerCase().replaceAll("_", "-")}.menu-item`}
-            >
-              {tAttendance(strStageKey, strStageKey)}
+          <MenuItem onClick={goToAttendanceLeaveInputs} data-controlid="payroll.run-detail.actions.attendance-leave-inputs.menu-item">
+            {t("view_attendance_leave_inputs", "View Attendance & Leave Inputs")}
+          </MenuItem>
+          <MenuItem onClick={goToPayrollInputs} data-controlid="payroll.run-detail.actions.payroll-inputs.menu-item">
+            {t("view_payroll_inputs", "View Payroll Inputs")}
+          </MenuItem>
+          <MenuItem onClick={goToProcessingHistory} data-controlid="payroll.run-detail.actions.processing-history.menu-item">
+            {t("view_processing_history", "View Processing History")}
+          </MenuItem>
+          {objRun.strRunStatus === "PROCESSED" && blnCanReprocess ? (
+            <MenuItem onClick={() => { handleCloseActions(); openReprocessDialog(); }} data-controlid="payroll.run-detail.actions.reprocess.menu-item">
+              {t("reprocess", "Reprocess Payroll")}
             </MenuItem>
-          ))}
-          <MenuItem onClick={() => { handleCloseActions(); objRouter.push("/payroll/results"); }}>{t("view_results", "Results")}</MenuItem>
+          ) : null}
+          {objRun.strRunStatus === "FINALIZED" && blnCanReopen ? (
+            <MenuItem onClick={() => { handleCloseActions(); openReopenDialog(); }} data-controlid="payroll.run-detail.actions.reopen.menu-item">
+              {t("reopen_run", "Reopen Payroll")}
+            </MenuItem>
+          ) : null}
         </Menu>
 
         <Box
@@ -964,10 +1063,6 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
             {t("summary_title", "Run Summary")}
           </Typography>
           <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
-            <MetricTile objIcon={<TaskAltRoundedIcon sx={{ fontSize: 18 }} />} strLabel={t("employees_processed", "Employees Processed")} strValue={objRun.intProcessedEmployeeCount || objRun.dicSummary.intProcessedCount} strTone="blue" />
-            <MetricTile objIcon={<ShieldOutlinedIcon sx={{ fontSize: 18 }} />} strLabel={t("validation_errors", "Validation Errors")} strValue={objRun.dicSummary.intValidationErrorCount} strTone="red" />
-            <MetricTile objIcon={<ReportProblemRoundedIcon sx={{ fontSize: 18 }} />} strLabel={t("warnings", "Warnings")} strValue={objRun.dicSummary.intValidationWarningCount} strTone="amber" />
-            <MetricTile objIcon={<GroupRoundedIcon sx={{ fontSize: 18 }} />} strLabel={t("employees", "Employees")} strValue={objRun.intEmployeeCount || objRun.dicSummary.intInputCount} strTone="blue" />
             <MetricTile objIcon={<CalendarMonthRoundedIcon sx={{ fontSize: 18 }} />} strLabel={t("total_lwp", "Total LWP Days")} strValue={objRun.dicSummary.decTotalLwpDays} strTone="green" />
             <MetricTile objIcon={<CalendarMonthRoundedIcon sx={{ fontSize: 18 }} />} strLabel={t("total_lop", "Total LOP Days")} strValue={objRun.dicSummary.decTotalLopDays} strTone="green" />
           </Box>
@@ -1038,61 +1133,89 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
           <Box className={styles.tableWrap} sx={{ border: "1px solid #DCE4EF", borderRadius: "10px", maxHeight: 248, minHeight: 248 }}>
             <table className={styles.table} style={{ minWidth: 720 }}>
               <colgroup>
-                <col style={{ width: 112 }} />
+                <col style={{ width: 100 }} />
                 <col style={{ width: 190 }} />
                 <col style={{ width: 176 }} />
                 <col />
+                <col style={{ width: 84 }} />
               </colgroup>
               <thead>
                 <tr>
                   <th>{t("level", "Level")}</th>
-                  <th>{t("code", "Code")}</th>
+                  <th>{t("category", "Category")}</th>
                   <th>{t("employee", "Employee")}</th>
                   <th>{t("message", "Message")}</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
-                {lstPagedValidationRows.length ? lstPagedValidationRows.map((dicIssue, intIndex) => (
-                  <tr key={`${dicIssue.strValidationCode}-${dicIssue.intEmployeeID ?? "run"}-${intIndex}`}>
-                    <td>
-                      <Chip
-                        label={dicIssue.blnIsBlocking ? t("blocking", "Blocking") : t("warning", "Warning")}
-                        size="small"
-                        sx={{
-                          background: dicIssue.blnIsBlocking ? "#fef2f2" : "#fff7ed",
-                          border: `1px solid ${dicIssue.blnIsBlocking ? "#fecaca" : "#fed7aa"}`,
-                          color: dicIssue.blnIsBlocking ? "#dc2626" : "#ea580c",
-                          fontWeight: 800,
-                          height: 22,
-                        }}
-                      />
-                    </td>
-                    <td>{dicIssue.strValidationCode}</td>
-                    <td>
-                      {dicIssue.strEmployeeName || dicIssue.strEmployeeCode ? (
-                        <>
-                          {dicIssue.strEmployeeName || dicIssue.strEmployeeCode}
-                          {dicIssue.strEmployeeCode ? (
-                            <Typography component="span" sx={{ color: "#64748b", fontSize: "0.74rem", fontWeight: 700, ml: 0.5 }}>
-                              ({dicIssue.strEmployeeCode})
-                            </Typography>
-                          ) : null}
-                        </>
-                      ) : (
-                        dicIssue.intEmployeeID ?? "-"
-                      )}
-                    </td>
-                    <td style={{ maxWidth: 320 }}>
-                      <Tooltip title={dicIssue.strValidationMessage} arrow>
-                        <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {dicIssue.strValidationMessage}
-                        </span>
-                      </Tooltip>
-                    </td>
-                  </tr>
-                )) : (
+                {lstPagedValidationRows.length ? lstPagedValidationRows.map((dicIssue, intIndex) => {
+                  const strSeverity = dicIssue.strSeverity ?? (dicIssue.blnIsBlocking ? "BLOCKING" : "WARNING");
+                  const dicSeverityTone =
+                    strSeverity === "BLOCKING"
+                      ? { background: "#fef2f2", border: "#fecaca", color: "#dc2626", label: t("blocking", "Blocking") }
+                      : strSeverity === "INFO"
+                        ? { background: "#eff6ff", border: "#bfdbfe", color: "#1d4ed8", label: t("info", "Info") }
+                        : { background: "#fff7ed", border: "#fed7aa", color: "#ea580c", label: t("warning", "Warning") };
+                  return (
+                    <tr key={`${dicIssue.strValidationCode}-${dicIssue.intEmployeeID ?? "run"}-${intIndex}`}>
+                      <td>
+                        <Chip
+                          label={dicSeverityTone.label}
+                          size="small"
+                          sx={{
+                            background: dicSeverityTone.background,
+                            border: `1px solid ${dicSeverityTone.border}`,
+                            color: dicSeverityTone.color,
+                            fontWeight: 800,
+                            height: 22,
+                          }}
+                        />
+                      </td>
+                      <td>
+                        <Tooltip title={dicIssue.strValidationCode} arrow>
+                          <span>{dicIssue.strCategory ?? t("category_general", "General")}</span>
+                        </Tooltip>
+                      </td>
+                      <td>
+                        {dicIssue.strEmployeeName || dicIssue.strEmployeeCode ? (
+                          <>
+                            {dicIssue.strEmployeeName || dicIssue.strEmployeeCode}
+                            {dicIssue.strEmployeeCode ? (
+                              <Typography component="span" sx={{ color: "#64748b", fontSize: "0.74rem", fontWeight: 700, ml: 0.5 }}>
+                                ({dicIssue.strEmployeeCode})
+                              </Typography>
+                            ) : null}
+                          </>
+                        ) : (
+                          dicIssue.intEmployeeID ?? "-"
+                        )}
+                      </td>
+                      <td style={{ maxWidth: 320 }}>
+                        <Tooltip title={dicIssue.strValidationMessage} arrow>
+                          <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {dicIssue.strValidationMessage}
+                          </span>
+                        </Tooltip>
+                      </td>
+                      <td>
+                        {dicIssue.objNavigationTarget?.strEntityName === "tblemployee_payroll_input" ? (
+                          <Button
+                            size="small"
+                            onClick={() => objRouter.push(`/payroll/inputs?runId=${intRunID}${dicIssue.intEmployeeID ? `&employeeId=${dicIssue.intEmployeeID}` : ""}`)}
+                            controlId={`payroll.run-detail.validation.fix-link.button`}
+                            data-row-key={`${dicIssue.strValidationCode}-${dicIssue.intEmployeeID ?? "run"}-${intIndex}`}
+                            sx={{ minWidth: 0, fontSize: "0.76rem", fontWeight: 800 }}
+                          >
+                            {t("fix", "Fix")}
+                          </Button>
+                        ) : null}
+                      </td>
+                    </tr>
+                  );
+                }) : (
                   <tr>
-                    <td colSpan={4} className={styles.emptyState}>{t("validation_empty", "No recent validations to show.")}</td>
+                    <td colSpan={5} className={styles.emptyState}>{t("validation_empty", "No recent validations to show.")}</td>
                   </tr>
                 )}
               </tbody>
@@ -1109,9 +1232,11 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
               >
                 {t("previous", "Previous")}
               </Button>
-              <Button className={styles.secondaryButton} disabled sx={{ minHeight: 34 }}>
+              <Box
+                sx={{ minHeight: 34, minWidth: 34, display: "grid", placeItems: "center", px: 1, borderRadius: "10px", border: "1px solid rgba(198,210,236,0.82)", color: "#31456a", fontWeight: 800, fontSize: "0.86rem" }}
+              >
                 {intSafeValidationPage}
-              </Button>
+              </Box>
               <Button
                 className={styles.secondaryButton}
                 disabled={intSafeValidationPage >= intValidationPageCount}
@@ -1164,33 +1289,12 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
           </Typography>
           <Stack spacing={1.2} sx={{ flex: 1, minWidth: 0 }}>
             <Box>
-              <Typography sx={{ color: "#64748b", fontSize: "0.76rem", fontWeight: 700, mb: 0.5 }}>{t("current_status", "Current Status")}</Typography>
-              <TextField
-                select
-                size="small"
-                value={objRun.strRunStatus}
-                onChange={(objEvent) =>
-                  setObjRun((dicPrevious) =>
-                    dicPrevious
-                      ? { ...dicPrevious, strRunStatus: objEvent.target.value as PayrollRunStatus }
-                      : dicPrevious,
-                  )
-                }
-                disabled={!blnStatusEditable || blnSaving}
-                fullWidth
-                sx={{ maxWidth: 260 }}
-                controlId="payroll.run-detail.status.select"
-              >
-                {lstStatusOptions.map((strStatus) => (
-                  <MenuItem key={strStatus} value={strStatus}>
-                    {getPayrollRunStatusLabel(strStatus)}
-                  </MenuItem>
-                ))}
-              </TextField>
+              <Typography sx={{ color: "#64748b", fontSize: "0.76rem", fontWeight: 700 }}>{t("current_status", "Current Status")}</Typography>
+              <Box sx={{ mt: 0.5 }}>
+                <StatusPill strStatus={objRun.strRunStatus} />
+              </Box>
               <Typography sx={{ color: "#5B6B82", fontSize: "0.78rem", fontWeight: 600, lineHeight: 1.35, mt: 0.75 }}>
-                {objRun.blnIsLocked
-                  ? t("status_locked_helper", "Status is locked. Unlock it and save before changing the status.")
-                  : t("status_manual_helper", "Use this only to reset the run back to Draft/Open. Submit, Validate, Process and Payslips must be handled from the workflow actions above.")}
+                {t("status_manual_helper", "Status changes only through the workflow actions above (Validate, Process, Finalize) or Reopen/Cancel from the More menu.")}
               </Typography>
             </Box>
             <Box>
@@ -1384,6 +1488,81 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
             controlId="payroll.run-detail.reprocess.submit.button"
           >
             {t("reprocess", "Reprocess")}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={blnReopenDialogOpen}
+        onClose={() => !blnSaving && setBlnReopenDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        controlId="payroll.run-detail.reopen.dialog"
+      >
+        <DialogTitle>{t("reopen_reason", "Reason for reopening this payroll run")}</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            fullWidth
+            multiline
+            minRows={3}
+            value={strReopenReason}
+            onChange={(objEvent) => setStrReopenReason(objEvent.target.value)}
+            placeholder={t("reopen_reason_placeholder", "Enter the business reason for reopening this finalized payroll run")}
+            sx={{ mt: 1 }}
+            controlId="payroll.run-detail.reopen.reason.textarea"
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            className={styles.secondaryButton}
+            onClick={() => setBlnReopenDialogOpen(false)}
+            disabled={blnSaving}
+            controlId="payroll.run-detail.reopen.cancel.button"
+          >
+            {tCommon("cancel", "Cancel")}
+          </Button>
+          <Button
+            className={styles.primaryButton}
+            startIcon={<RestartAltRoundedIcon />}
+            onClick={reopenRun}
+            disabled={blnSaving || !strReopenReason.trim()}
+            controlId="payroll.run-detail.reopen.submit.button"
+          >
+            {t("reopen_run", "Reopen Payroll")}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={blnCancelDialogOpen}
+        onClose={() => !blnSaving && setBlnCancelDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        controlId="payroll.run-detail.cancel.dialog"
+      >
+        <DialogTitle>{t("cancel_run_confirm_title", "Cancel this payroll run?")}</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ color: "#5B6B82" }}>
+            {t("cancel_run_confirm_message", "This payroll run has not been validated or processed yet. Cancelling it cannot be undone.")}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            className={styles.secondaryButton}
+            onClick={() => setBlnCancelDialogOpen(false)}
+            disabled={blnSaving}
+            controlId="payroll.run-detail.cancel-confirm.dismiss.button"
+          >
+            {tCommon("no", "No")}
+          </Button>
+          <Button
+            className={styles.primaryButton}
+            startIcon={<CloseRoundedIcon />}
+            onClick={cancelRun}
+            disabled={blnSaving}
+            sx={{ background: "#dc2626", "&:hover": { background: "#b91c1c" } }}
+            controlId="payroll.run-detail.cancel-confirm.submit.button"
+          >
+            {t("cancel_run_confirm_submit", "Yes, Cancel Run")}
           </Button>
         </DialogActions>
       </Dialog>

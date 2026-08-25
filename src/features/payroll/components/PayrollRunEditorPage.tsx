@@ -25,12 +25,10 @@ import {
 import type {
   PayrollRunFormOptions,
   PayrollRunFormValues,
-  PayrollRunStatus,
 } from "@/features/payroll/types";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 const lstPayrollRunModuleCodes = ["PAYROLL_RUN", "PAYROLL_RUNS", "PAYROLL_PROCESS", "PAYROLL_PROCESSES"];
-const lstEditableRunStatuses: PayrollRunStatus[] = ["Open", "Submitted", "Approved"];
 
 function formatPayrollMonthLabel(strDate: string) {
   if (!strDate) {
@@ -161,6 +159,10 @@ export default function PayrollRunEditorPage() {
       return dicPrevious;
     });
   }, [dicForm.dtPayrollMonth, dicForm.intPayrollCycleID, dicForm.strProcessFor, objOptions]);
+
+  const strResolvedPayrollGroupLabel =
+    objOptions?.lstPayrollCycles.find((dicItem) => dicItem.intID === dicForm.intPayrollCycleID)
+      ?.strPayrollGroupName ?? t("not_selected", "Select a payroll schedule first");
 
   async function saveRun() {
     if (!blnCanAdd) {
@@ -313,25 +315,9 @@ export default function PayrollRunEditorPage() {
               onChange={(objEvent) => updateField("strRunName", objEvent.target.value)}
               disabled={blnFieldDisabled}
               controlId="payroll.run-editor.run-name.input"
+              helperText={t("run_name_help", "Leave blank to auto-generate from the payroll month and schedule.")}
               fullWidth
             />
-            <TextField
-              select
-              label={t("status", "Status")}
-              value={dicForm.strRunStatus}
-              onChange={(objEvent) =>
-                updateField("strRunStatus", objEvent.target.value as PayrollRunStatus)
-              }
-              disabled={blnFieldDisabled}
-              controlId="payroll.run-editor.status.select"
-              fullWidth
-            >
-              {lstEditableRunStatuses.map((strStatus) => (
-                <MenuItem key={strStatus} value={strStatus}>
-                  {strStatus}
-                </MenuItem>
-              ))}
-            </TextField>
             <TextField
               select
               label={t("run_scope", "Process For")}
@@ -349,10 +335,19 @@ export default function PayrollRunEditorPage() {
               disabled={blnFieldDisabled}
               fullWidth
             >
+              <MenuItem value="PayrollGroup">{t("scope_payroll_group", "Payroll Group")}</MenuItem>
               <MenuItem value="AllEmployees">{t("scope_all", "All Employees")}</MenuItem>
               <MenuItem value="SelectedEmployees">{t("scope_selected_employee", "Selected Employees")}</MenuItem>
-              <MenuItem value="PayrollGroup">{t("scope_payroll_group", "Payroll Group")}</MenuItem>
             </TextField>
+            {dicForm.strProcessFor === "PayrollGroup" ? (
+              <TextField
+                label={t("resolved_payroll_group", "Payroll Group")}
+                value={strResolvedPayrollGroupLabel}
+                disabled
+                fullWidth
+                helperText={t("resolved_payroll_group_help", "Derived from the selected payroll schedule.")}
+              />
+            ) : null}
             {dicForm.strProcessFor === "SelectedEmployees" ? <TextField
               select
               label={t("scope_employee", "Employee")}
@@ -383,6 +378,17 @@ export default function PayrollRunEditorPage() {
               disabled={blnFieldDisabled}
               controlId="payroll.run-editor.payroll-month.input"
               fullWidth
+            />
+            <TextField
+              label={t("remarks", "Remarks")}
+              value={dicForm.strRemarks}
+              onChange={(objEvent) => updateField("strRemarks", objEvent.target.value)}
+              disabled={blnFieldDisabled}
+              controlId="payroll.run-editor.remarks.input"
+              multiline
+              minRows={2}
+              fullWidth
+              sx={{ gridColumn: { xs: "auto", md: "1 / -1" } }}
             />
           </Box>
         </Stack>

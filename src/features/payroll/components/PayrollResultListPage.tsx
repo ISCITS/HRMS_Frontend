@@ -899,7 +899,7 @@ export default function PayrollResultListPage({
               >
                 <Box>
                   <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>
-                    {t("gross", "Gross")}
+                    {t("gross_earnings", "Gross Earnings")}
                   </Typography>
                   <Typography sx={{ fontWeight: 700 }}>
                     {formatCurrency(objPreviewRecord.decGrossEarningsAmount)}
