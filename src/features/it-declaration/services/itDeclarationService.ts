@@ -28,6 +28,8 @@ export type ItDeclarationDashboardDto = {
 };
 
 export type ItDeclarationItemDto = {
+  intTaxDeclarationCategoryID?: number | null;
+  intEssDeclarationCategoryID?: number | null;
   intItemID?: number | null;
   strSection: string;
   strDeclarationKind?: string | null;
@@ -59,6 +61,8 @@ export type ItDeclarationProofPreviewDto = {
 };
 
 export type ItDeclarationInvestmentOptionDto = {
+  intID: number;
+  intEssDeclarationCategoryID: number;
   strOptionCode: string;
   strOptionName: string;
   strSectionCode: string;
@@ -246,12 +250,18 @@ export const itDeclarationService = {
   },
 
   async listInvestmentOptions(
-    strSectionCode: string
+    intEssDeclarationCategoryID: number | null | undefined,
+    strSectionCode: string,
   ): Promise<ItDeclarationInvestmentOptionDto[]> {
     const objResult = await requestApi<ItDeclarationInvestmentOptionDto[]>({
       strPath: "/ess/it-declaration/investment-options",
       strMethod: ApiRequestMethod.Get,
-      objQueryParams: { section_code: strSectionCode },
+      objQueryParams: {
+        category_id: intEssDeclarationCategoryID && intEssDeclarationCategoryID > 0
+          ? intEssDeclarationCategoryID
+          : undefined,
+        section_code: strSectionCode,
+      },
       strMenuAction: "ESS_IT_DECLARATION_VIEW",
     });
     return objResult.Data ?? [];
@@ -460,11 +470,19 @@ export const hrItDeclarationService = {
     return objResult.Data;
   },
 
-  async listInvestmentOptions(strSectionCode: string): Promise<ItDeclarationInvestmentOptionDto[]> {
+  async listInvestmentOptions(
+    intEssDeclarationCategoryID: number | null | undefined,
+    strSectionCode: string,
+  ): Promise<ItDeclarationInvestmentOptionDto[]> {
     const objResult = await requestApi<ItDeclarationInvestmentOptionDto[]>({
       strPath: "/hr/it-declaration/investment-options",
       strMethod: ApiRequestMethod.Get,
-      objQueryParams: { section_code: strSectionCode },
+      objQueryParams: {
+        category_id: intEssDeclarationCategoryID && intEssDeclarationCategoryID > 0
+          ? intEssDeclarationCategoryID
+          : undefined,
+        section_code: strSectionCode,
+      },
       strMenuAction: "HR_IT_DECLARATION_VIEW",
     });
     return objResult.Data ?? [];

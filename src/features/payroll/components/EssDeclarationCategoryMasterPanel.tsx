@@ -244,7 +244,7 @@ export default function EssDeclarationCategoryMasterPanel({
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
   const [strLoadDiagnostics, setStrLoadDiagnostics] = useState("");
-  const [objInvestmentOptionsTarget, setObjInvestmentOptionsTarget] = useState<{ code: string; name: string } | null>(null);
+  const [objInvestmentOptionsTarget, setObjInvestmentOptionsTarget] = useState<{ id: number; code: string; name: string } | null>(null);
 
   const dicCommonLabels = {
     activate: t("activate", "Activate"),
@@ -303,6 +303,8 @@ export default function EssDeclarationCategoryMasterPanel({
     fieldMaxLimitAppliedAt: t("field_max_limit_applied_at", "Maximum Limit Applied At"),
     fieldProofRequired: t("field_proof_required", "Proof Required"),
     loadingRecords: t("loading_records", "Loading ESS declaration categories..."),
+    manageTaxComponent: t("manage_tax_component", "Manage Tax Component"),
+    saveAndManageInvestmentOptions: t("save_and_manage_investment_options", "Save & Manage Investment Options"),
     pageTitle: stripMasterTitle(t("page_title", strEntityLabelPlural)),
     requestFailed: t("request_failed", "Unable to complete the request."),
     saveSuccess: t("save_success", "ESS declaration category saved successfully."),
@@ -468,7 +470,7 @@ export default function EssDeclarationCategoryMasterPanel({
                   <IconButton
                     size="small"
                     disabled={!dicCategory.section}
-                    onClick={() => setObjInvestmentOptionsTarget({ code: dicCategory.section, name: dicCategory.name })}
+                    onClick={() => setObjInvestmentOptionsTarget({ id: Number(dicCategory.id), code: dicCategory.section, name: dicCategory.name })}
                   >
                     <ListAltRoundedIcon fontSize="small" sx={{ color: dicCategory.section ? "var(--app-primary-color)" : "#cbd5e1" }} />
                   </IconButton>
@@ -623,7 +625,7 @@ export default function EssDeclarationCategoryMasterPanel({
     return Object.keys(dicNextErrors).length === 0;
   }
 
-  function saveCategory() {
+  async function saveCategory(blnManageInvestmentOptionsAfterSave = false) {
     if (!validateForm()) {
       return;
     }
@@ -661,10 +663,24 @@ export default function EssDeclarationCategoryMasterPanel({
       : masterApiService.updateEssDeclarationCategory(Number(strEditingId), objBody);
 
     setBlnSubmitting(true);
-    objRequest.then(() => loadCategories()).then(() => {
+    try {
+      const objResult = await objRequest;
+      const dicSavedCategory = mapEssDeclarationCategoryRecord(objResult.Data);
+      await loadCategories();
       closeDialog();
       showToast(strMode === "add" ? dicLabels.saveSuccess : dicLabels.updateSuccess);
-    }).catch((objError) => showToast(objError instanceof Error ? objError.message : dicLabels.requestFailed, "error")).finally(() => setBlnSubmitting(false));
+      if (blnManageInvestmentOptionsAfterSave && dicSavedCategory.id) {
+        setObjInvestmentOptionsTarget({
+          id: Number(dicSavedCategory.id),
+          code: dicSavedCategory.section,
+          name: dicSavedCategory.name,
+        });
+      }
+    } catch (objError) {
+      showToast(objError instanceof Error ? objError.message : dicLabels.requestFailed, "error");
+    } finally {
+      setBlnSubmitting(false);
+    }
   }
 
   function toggleSelection(strID: string) {
@@ -695,6 +711,9 @@ export default function EssDeclarationCategoryMasterPanel({
 
   const strDialogTitle = strMode === "add" ? dicLabels.dialogAddTitle : strMode === "edit" ? dicLabels.dialogEditTitle : dicLabels.dialogViewTitle;
   const blnDialogReadOnly = strMode === "view";
+  const objDialogCategory = strMode === "add"
+    ? undefined
+    : lstCategories.find((dicCategory) => dicCategory.id === strEditingId);
   function renderDialogSection(strTitle: string, strSubtitle: string, nodeContent: ReactNode) {
     return (
       <Paper
@@ -750,9 +769,9 @@ export default function EssDeclarationCategoryMasterPanel({
                   setDicForm((dicPrevious) => ({ ...dicPrevious, section: objEvent.target.value.toUpperCase() }));
                 }}
                 error={Boolean(dicErrors.section)}
-                helperText={dicErrors.section || t("field_section_help", "e.g. 80D. Shown as-is on the IT Declaration screen and Investment Options. Cannot be changed after saving.")}
+                helperText={dicErrors.section || t("field_section_help", "e.g. 80D. Shown as-is on the IT Declaration screen and Investment Options.")}
                 fullWidth
-                disabled={blnDialogReadOnly || strMode === "edit"}
+                disabled={blnDialogReadOnly}
                 size="small"
               />
               <TextField
@@ -1058,11 +1077,33 @@ export default function EssDeclarationCategoryMasterPanel({
           },
         }}
         contentSx={{ px: { xs: 1.5, md: 2.25 }, py: 1.5 }}
+        nodeTitleAction={strMode === "add" && blnCanAdd ? (
+          <Button
+            data-testid="ess-declaration-category.dialog.save-and-manage-investment-options.button"
+            className={styles.secondaryButton}
+            startIcon={<ListAltRoundedIcon />}
+            onClick={() => saveCategory(true)}
+            disabled={blnSubmitting}
+          >
+            {dicLabels.saveAndManageInvestmentOptions}
+          </Button>
+        ) : blnCanEdit && objDialogCategory?.section ? (
+          <Button
+            data-testid="ess-declaration-category.dialog.manage-tax-component.button"
+            className={styles.secondaryButton}
+            startIcon={<ListAltRoundedIcon />}
+            onClick={() => setObjInvestmentOptionsTarget({ id: Number(objDialogCategory.id), code: objDialogCategory.section, name: objDialogCategory.name })}
+            disabled={blnSubmitting}
+          >
+            {dicLabels.manageTaxComponent}
+          </Button>
+        ) : null}
         nodeContent={nodeDialogContent}
       />
       <CommonConfirmDialog blnOpen={Boolean(objConfirmDialog)} strTitle={objConfirmDialog?.strTitle} strMessage={objConfirmDialog?.strMessage} strCancelLabel={dicCommonLabels.cancel} strConfirmLabel={blnSubmitting ? dicCommonLabels.processing : objConfirmDialog?.strConfirmLabel ?? dicCommonLabels.confirm} blnConfirmDisabled={blnSubmitting} blnCancelDisabled={blnSubmitting} onClose={closeConfirmDialog} onConfirm={executeConfirmedAction} />
       <InvestmentOptionsManagerDialog
         blnOpen={Boolean(objInvestmentOptionsTarget)}
+        intEssDeclarationCategoryID={objInvestmentOptionsTarget?.id ?? 0}
         strSectionCode={objInvestmentOptionsTarget?.code ?? ""}
         strSectionName={objInvestmentOptionsTarget?.name ?? ""}
         onClose={() => setObjInvestmentOptionsTarget(null)}

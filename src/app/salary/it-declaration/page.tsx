@@ -65,6 +65,8 @@ type Regime = "Old Regime" | "New Regime";
 type MaxLimitAppliedAt = "ENTRY_LEVEL" | "APPROVAL_LEVEL";
 
 type DeclarationRow = {
+  intTaxDeclarationCategoryID?: number | null;
+  intEssDeclarationCategoryID?: number | null;
   intItemID?: number | null;
   strSection: string;
   strCategory?: string;
@@ -948,6 +950,8 @@ export default function SalaryEssDeclarationsPage() {
       objData.lstItems?.length
         ? objData.lstItems.map((objItem) => {
             const objRow: DeclarationRow = {
+              intTaxDeclarationCategoryID: objItem.intTaxDeclarationCategoryID,
+              intEssDeclarationCategoryID: objItem.intEssDeclarationCategoryID,
               intItemID: objItem.intItemID,
               strSection: objItem.strSection,
               strCategory: formatDeclarationKind((objItem as unknown as Record<string, unknown>).strDeclarationKind ?? (objItem as unknown as Record<string, unknown>).declaration_kind),
@@ -1015,6 +1019,7 @@ export default function SalaryEssDeclarationsPage() {
     const strMaxLimitDisplay = decMaxLimitAmount == null ? "-" : formatCurrency(decMaxLimitAmount);
     const strCategory = formatDeclarationKind(objCategory.strDeclarationKind ?? objCategoryRecord.strKind ?? objCategoryRecord.declaration_kind);
     return {
+      intEssDeclarationCategoryID: objCategory.intID,
       intItemID: null,
       strSection: objCategory.strSection || "",
       strCategory,
@@ -1139,10 +1144,10 @@ export default function SalaryEssDeclarationsPage() {
     }
   }
 
-  async function listCurrentInvestmentOptions(strSection: string) {
+  async function listCurrentInvestmentOptions(objRow: DeclarationRow) {
     return blnHrMode
-      ? hrItDeclarationService.listInvestmentOptions(strSection)
-      : itDeclarationService.listInvestmentOptions(strSection);
+      ? hrItDeclarationService.listInvestmentOptions(objRow.intEssDeclarationCategoryID, objRow.strSection)
+      : itDeclarationService.listInvestmentOptions(objRow.intEssDeclarationCategoryID, objRow.strSection);
   }
 
   async function compareCurrentTax(intResolvedDeclarationID: number) {
@@ -1343,7 +1348,7 @@ export default function SalaryEssDeclarationsPage() {
     setLstInvestmentOptionsForRow(lstSeedOptions);
     void (async () => {
       try {
-        const lstOptions = await listCurrentInvestmentOptions(objRow.strSection);
+        const lstOptions = await listCurrentInvestmentOptions(objRow);
         const lstApiOptions = lstOptions
           .map((objOption) => objOption.strOptionName?.trim() || objOption.strOptionCode?.trim())
           .filter((strValue): strValue is string => Boolean(strValue));
