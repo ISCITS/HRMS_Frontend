@@ -10,6 +10,8 @@ import { encryptPassBase64 } from "@/lib/passwordEncryption";
 import type { ModuleLabelsResponse } from "@/features/labels/types";
 import {
   GenericLoginRequest,
+  type ChangePasswordRequest,
+  type ChangePasswordResponse,
   LoginRequest,
   type ActionRightsResponse,
   type AuthLoginData,
@@ -210,6 +212,21 @@ export const authApiService = {
       persistAuthenticatedSession(objResult.Data);
     }
     return objResult;
+  },
+
+  async changePassword(objPayload: ChangePasswordRequest) {
+    const objRequestBody = {
+      strCurrentPassword: encryptPassBase64(objPayload.strCurrentPassword),
+      strNewPassword: encryptPassBase64(objPayload.strNewPassword),
+      strConfirmPassword: encryptPassBase64(objPayload.strConfirmPassword)
+    };
+    return requestApi<ChangePasswordResponse>({
+      strPath: "auth/change-password",
+      strMethod: ApiRequestMethod.Post,
+      objBody: objRequestBody,
+      strMenuAction: "AUTH_CHANGE_PASSWORD",
+      blnUseAuthHeader: true
+    });
   },
 
   async verifyOtp(objPayload: VerifyOtpRequest) {
