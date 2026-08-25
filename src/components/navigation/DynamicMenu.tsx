@@ -1071,6 +1071,16 @@ const objGeneratedStatutoryReportMenu: MenuItem = {
   lstChildren: [],
 };
 
+const objGeneratedSalaryRegisterMenu: MenuItem = {
+  strModuleCode: "SALARY_REGISTER",
+  strModuleName: "Salary Register",
+  strRoute: "/reports/salary-register",
+  strIconName: "ReceiptLong",
+  lstPermissionCodes: ["REPORT_PAYROLL_REGISTER", "PAYROLL_RESULT_VIEW", "export"],
+  blnIsHome: false,
+  lstChildren: [],
+};
+
 function isReportsMenuBranch(objItem: MenuItem): boolean {
   const strRoute = resolveMenuRoute(objItem)?.toLowerCase() ?? "";
   const strModuleCode = objItem.strModuleCode.toLowerCase();
@@ -1085,7 +1095,7 @@ function isReportsMenuBranch(objItem: MenuItem): boolean {
 }
 
 function appendGeneratedReportsMenu(lstItems: MenuItem[]): MenuItem[] {
-  if (hasRoute(lstItems, "/reports/statutory")) {
+  if (hasRoute(lstItems, "/reports/statutory") && hasRoute(lstItems, "/reports/salary-register")) {
     return lstItems;
   }
 
@@ -1101,20 +1111,27 @@ function appendGeneratedReportsMenu(lstItems: MenuItem[]): MenuItem[] {
       objItem.lstChildren.length > 0 &&
       isReportsMenuBranch(objItem) &&
       (hasRoute(lstChildren, "/reports/payroll-register") || hasRoute(lstChildren, "/reports/bank-file")) &&
-      !hasRoute(lstChildren, "/reports/statutory");
+      (!hasRoute(lstChildren, "/reports/statutory") || !hasRoute(lstChildren, "/reports/salary-register"));
 
     if (!blnShouldAppendHere) {
       return lstChildren === objItem.lstChildren ? objItem : { ...objItem, lstChildren };
     }
 
     blnInserted = true;
+    const lstGeneratedChildren = [...lstChildren];
+    if (!hasRoute(lstGeneratedChildren, "/reports/salary-register")) {
+      lstGeneratedChildren.push(objGeneratedSalaryRegisterMenu);
+    }
+    if (!hasRoute(lstGeneratedChildren, "/reports/statutory")) {
+      lstGeneratedChildren.push(objGeneratedStatutoryReportMenu);
+    }
     return {
       ...objItem,
-      lstChildren: [...lstChildren, objGeneratedStatutoryReportMenu],
+      lstChildren: lstGeneratedChildren,
     };
   });
 
-  if (blnInserted || hasRoute(lstUpdatedItems, "/reports/statutory")) {
+  if (blnInserted || (hasRoute(lstUpdatedItems, "/reports/statutory") && hasRoute(lstUpdatedItems, "/reports/salary-register"))) {
     return lstUpdatedItems;
   }
 
@@ -1402,6 +1419,10 @@ export default function DynamicMenu({
 
     if (strRoute.includes("/reports/payroll-register") || strModuleCode.includes("payroll_register")) {
       return resolveKnownMenuLabel(strModuleName, "Payroll Register", "पेरोल रजिस्टर");
+    }
+
+    if (strRoute.includes("/reports/salary-register") || strModuleCode.includes("salary_register")) {
+      return resolveKnownMenuLabel(strModuleName, "Salary Register", "Salary Register");
     }
 
     if (strRoute.includes("/reports/bank-file") || strModuleCode.includes("bank_file")) {
