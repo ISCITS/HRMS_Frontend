@@ -35,6 +35,7 @@ import {
   type LeaveApplicationAttachmentDto, type LeaveApplicationDto,
   type LeaveApplyRequest, type LeavePreviewDto,
   type LeaveTypeAggregate, type LeaveTypeDto, type LeaveValidationMessage,
+  type RestrictedHolidayDto,
 } from "@/features/leave/types";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
 
@@ -43,6 +44,7 @@ type LeaveHalfSession = "first" | "second" | "";
 
 type LeaveFormValues = {
   intLeaveTypeID: number;
+  intRestrictedHolidayID: number;
   dtFromDate: string;
   dtToDate: string;
   // For a single-day leave only strFromDuration/strFromSession are used (the "Leave Duration").
@@ -73,6 +75,7 @@ type LabelFunction = (strKey: string, strFallback?: string) => string;
 
 const objFormSchema: yup.ObjectSchema<LeaveFormValues> = yup.object({
   intLeaveTypeID: yup.number().integer().positive("Select a Leave Type.").required("Select a Leave Type."),
+  intRestrictedHolidayID: yup.number().integer().min(0).required(),
   dtFromDate: yup.string().required("From Date is required."),
   dtToDate: yup.string().required("To Date is required.").test(
     "date-order", "To Date cannot be earlier than From Date.",
@@ -113,7 +116,7 @@ function fnIsBeforeLeaveStart(strFromDate: string | null | undefined): boolean {
 
 function fnDefaultForm(intLeaveTypeID = 0): LeaveFormValues {
   return {
-    intLeaveTypeID, dtFromDate: fnTodayISO(), dtToDate: fnTodayISO(),
+    intLeaveTypeID, intRestrictedHolidayID: 0, dtFromDate: fnTodayISO(), dtToDate: fnTodayISO(),
     strFromDuration: "full", strFromSession: "", strToDuration: "full", strToSession: "",
     strReason: "", strContactDuringLeave: "", strBackupEmployee: "",
   };
@@ -154,7 +157,7 @@ export default function EssLeaveApplicationPanel() {
   const { t, intLanguageID } = useModuleLabels("ess-leave", "Unable to load Leave Application labels.");
   const { blnLoading: blnRightsLoading, canDo } = useActionRights();
   const {
-    lstTypes, lstApplications, blnLoading, strLoadError,
+    lstTypes, lstRestrictedHolidays, lstApplications, blnLoading, strLoadError,
     fnLoadAll, fnPreview, fnGetPolicy, fnGetApplication,
     fnPersistDraft: fnPersistDraftRequest, fnSubmitDraft,
     fnWithdraw, fnRequestWithdrawApproved, fnDeleteAttachment: fnDeleteAttachmentRequest,
@@ -198,6 +201,7 @@ export default function EssLeaveApplicationPanel() {
     (strModuleCode) => ["LEAVE_MANAGE", "MANAGE", "EDIT", "ADD", "SUBMIT"].some((strAction) => canDo(strModuleCode, strAction)),
   );
   const objSelectedType = useMemo(() => lstTypes.find((objType) => objType.intID === Number(objWatchedForm.intLeaveTypeID)) ?? null, [lstTypes, objWatchedForm.intLeaveTypeID]);
+  const blnRestrictedHolidayType = String(objSelectedType?.strLeaveCategoryCode ?? "").toUpperCase() === "RESTRICTED_HOLIDAY";
   const blnSingleDay = fnIsSingleDay(objWatchedForm.dtFromDate ?? "", objWatchedForm.dtToDate ?? "");
   const intOverallAttachmentUploadProgress = useMemo(() => {
     const lstValues = Object.values(dicFileUploadProgress);
@@ -217,7 +221,8 @@ export default function EssLeaveApplicationPanel() {
   // validation (reason, overlap, balance, policy, notice, etc.) runs when the user clicks Submit and
   // is surfaced below the relevant field, so the user can click and see what needs fixing.
   const blnDatesPresent = Boolean(objWatchedForm.dtFromDate) && Boolean(objWatchedForm.dtToDate) && (objWatchedForm.dtToDate ?? "") >= (objWatchedForm.dtFromDate ?? "");
-  const blnCanSubmit = blnCanManage && !blnSaving && !blnPreviewLoading && Number(objWatchedForm.intLeaveTypeID) > 0 && blnDatesPresent;
+  const blnRestrictedHolidaySelected = !blnRestrictedHolidayType || Number(objWatchedForm.intRestrictedHolidayID) > 0;
+  const blnCanSubmit = blnCanManage && !blnSaving && !blnPreviewLoading && Number(objWatchedForm.intLeaveTypeID) > 0 && blnDatesPresent && blnRestrictedHolidaySelected;
 
   function fnShowToast(strMessage: string, strSeverity: "success" | "error") { setObjToast({ blnOpen: true, strMessage, strSeverity }); }
 
@@ -262,7 +267,7 @@ export default function EssLeaveApplicationPanel() {
 
   useEffect(() => {
     let blnActive = true;
-    if (!blnFormOpen || !objWatchedForm.intLeaveTypeID || !objWatchedForm.dtFromDate || !objWatchedForm.dtToDate || objWatchedForm.dtToDate < objWatchedForm.dtFromDate) {
+    if (!blnFormOpen || !objWatchedForm.intLeaveTypeID || (blnRestrictedHolidayType && !objWatchedForm.intRestrictedHolidayID) || !objWatchedForm.dtFromDate || !objWatchedForm.dtToDate || objWatchedForm.dtToDate < objWatchedForm.dtFromDate) {
       setObjPreview(null); return () => { blnActive = false; };
     }
     const intTimer = window.setTimeout(async () => {
@@ -276,7 +281,7 @@ export default function EssLeaveApplicationPanel() {
       } finally { if (blnActive) setBlnPreviewLoading(false); }
     }, 450);
     return () => { blnActive = false; window.clearTimeout(intTimer); };
-  }, [blnFormOpen, fnPreview, objEditing?.intID, objWatchedForm]);
+  }, [blnFormOpen, blnRestrictedHolidayType, fnPreview, objEditing?.intID, objWatchedForm]);
 
   function fnOpenNewForm(intLeaveTypeID?: number, lstAvailableTypes = lstTypes) {
     setObjEditing(null); setObjPreview(null); setLstQueuedFiles([]); setLstExistingAttachments([]);
@@ -290,7 +295,11 @@ export default function EssLeaveApplicationPanel() {
       setObjEditing(objFullApplication); setObjPreview(objFullApplication.objCalculation ?? null);
       setLstExistingAttachments(objFullApplication.lstAttachments ?? []); setLstQueuedFiles([]); setBlnShowValidation(false);
       // Restore the persisted half-day session; legacy rows without one default to First Half.
-      reset({ intLeaveTypeID: objFullApplication.intLeaveTypeID, dtFromDate: objFullApplication.dtFromDate ?? fnTodayISO(), dtToDate: objFullApplication.dtToDate ?? fnTodayISO(), strFromDuration: objFullApplication.blnFromHalf ? "half" : "full", strFromSession: objFullApplication.blnFromHalf ? (objFullApplication.strFromHalfSession ?? "first") : "", strToDuration: objFullApplication.blnToHalf ? "half" : "full", strToSession: objFullApplication.blnToHalf ? (objFullApplication.strToHalfSession ?? "first") : "", strReason: objFullApplication.strReason ?? "", strContactDuringLeave: "", strBackupEmployee: "" });
+      const objEditType = lstTypes.find((objType) => objType.intID === objFullApplication.intLeaveTypeID);
+      const intRestrictedHolidayID = String(objEditType?.strLeaveCategoryCode ?? "").toUpperCase() === "RESTRICTED_HOLIDAY"
+        ? (lstRestrictedHolidays.find((objHoliday) => objHoliday.dtHolidayDate === objFullApplication.dtFromDate)?.intID ?? 0)
+        : 0;
+      reset({ intLeaveTypeID: objFullApplication.intLeaveTypeID, intRestrictedHolidayID, dtFromDate: objFullApplication.dtFromDate ?? fnTodayISO(), dtToDate: objFullApplication.dtToDate ?? fnTodayISO(), strFromDuration: objFullApplication.blnFromHalf ? "half" : "full", strFromSession: objFullApplication.blnFromHalf ? (objFullApplication.strFromHalfSession ?? "first") : "", strToDuration: objFullApplication.blnToHalf ? "half" : "full", strToSession: objFullApplication.blnToHalf ? (objFullApplication.strToHalfSession ?? "first") : "", strReason: objFullApplication.strReason ?? "", strContactDuringLeave: "", strBackupEmployee: "" });
       setBlnFormOpen(true);
     } catch (objError) { fnShowToast((await createApiRequestError(objError)).message, "error"); }
     finally { setBlnDetailLoading(false); }
@@ -465,7 +474,7 @@ export default function EssLeaveApplicationPanel() {
       <DialogTitle id="leave-form-title" sx={{ fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "space-between" }}>{objEditing ? t("edit_application", "Edit Leave Application") : t("apply_leave", "Apply Leave")}<IconButton aria-label={t("close", "Close")} onClick={() => setBlnFormOpen(false)} disabled={blnSaving}><CloseRoundedIcon /></IconButton></DialogTitle>
       {blnSaving ? <LinearProgress /> : null}
       <DialogContent dividers sx={{ bgcolor: "#f8fafc", p: { xs: 1.5, md: 2.5 } }}><Grid container spacing={2}><Grid item xs={12} md={7}><Stack spacing={2}>
-        <RequestFields control={control} setValue={setValue} objErrors={objFormErrors} lstTypes={lstTypes} objSelectedType={objSelectedType} blnSingleDay={blnSingleDay} strPolicyHelp={strPolicyHelp} fnLabel={t} />
+        <RequestFields control={control} setValue={setValue} objErrors={objFormErrors} lstTypes={lstTypes} lstRestrictedHolidays={lstRestrictedHolidays} objSelectedType={objSelectedType} blnRestrictedHolidayType={blnRestrictedHolidayType} blnSingleDay={blnSingleDay} strPolicyHelp={strPolicyHelp} fnLabel={t} />
         {blnShowValidation && lstServerFormErrors.length ? <Alert severity="error" icon={<WarningAmberRoundedIcon />}><Typography sx={{ fontWeight: 800, mb: .5 }}>{t("fix_errors", "Please correct the following")}</Typography>{Array.from(new Set(lstServerFormErrors)).map((strMessage) => <Typography key={strMessage} component="div" sx={{ fontSize: ".82rem" }}>• {strMessage}</Typography>)}</Alert> : null}
         {blnShowValidation && objPreview?.lstWarnings.length ? <Alert severity="warning"><Typography sx={{ fontWeight: 800 }}>{t("warnings", "Warnings")}</Typography>{objPreview.lstWarnings.map((objWarning) => <Typography component="div" key={objWarning.strCode} sx={{ fontSize: ".82rem" }}>• {objWarning.strMessage}</Typography>)}</Alert> : null}
         <Paper sx={{ p: 2, borderRadius: "16px", border: "1px solid #e2e8f0" }}><Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1} alignItems={{ xs: "stretch", sm: "center" }}><Box><Typography component="h3" sx={{ fontWeight: 800 }}>{t("attachments", "Attachments")}</Typography><Typography sx={{ fontSize: ".76rem", color: "#64748b" }}>{objPreview?.blnProofRequired ? t("proof_required", "Proof is required for this request.") : t("proof_optional", "Documents are optional for this request.")}</Typography></Box><FileUploadButton controlId="ess.leave.attachments.upload.button" label={t("add_files", "Add files")} startIcon={<AttachFileRoundedIcon />} multiple disabled={blnSaving} isUploading={blnSaving && lstQueuedFiles.length > 0} progress={blnSaving && lstQueuedFiles.length > 0 ? intOverallAttachmentUploadProgress : undefined} onFilesSelected={(lstSelected) => setLstQueuedFiles((lstPrevious) => [...lstPrevious, ...lstSelected])} onValidationError={(strMessage) => fnShowToast(strMessage, "error")} /></Stack><Box sx={{ display: "grid", gap: 0.75, gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, mt: 1.25 }}>{lstExistingAttachments.map((objAttachment) => <AttachmentRow key={objAttachment.intID} strName={objAttachment.strFileName} intBytes={objAttachment.intFileSizeBytes} blnBusy={intPreviewingAttachmentID === objAttachment.intID} blnReplacing={intReplacingAttachmentID === objAttachment.intID} intReplaceProgress={intReplaceProgress} fnOnPreview={() => void fnPreviewExistingAttachment(objAttachment.intID)} fnOnReplace={objEditing?.strStatus === "draft" ? (objNewFile) => void fnReplaceExistingAttachment(objAttachment.intID, objNewFile) : undefined} fnOnDelete={objEditing?.strStatus === "draft" ? () => void fnDeleteAttachment(objAttachment.intID) : undefined} />)}{lstQueuedFiles.map((objFile, intIndex) => <AttachmentRow key={`${objFile.name}-${intIndex}`} strName={objFile.name} intBytes={objFile.size} fnOnPreview={() => fnPreviewQueuedFile(objFile)} fnOnReplace={(objNewFile) => fnReplaceQueuedFile(intIndex, objNewFile)} fnOnDelete={() => setLstQueuedFiles((lstPrevious) => lstPrevious.filter((_objFile, intFileIndex) => intFileIndex !== intIndex))} />)}{!lstExistingAttachments.length && !lstQueuedFiles.length ? <FormHelperText>{t("attachments_empty", "No attachments added.")}</FormHelperText> : null}</Box></Paper>
@@ -488,17 +497,18 @@ function SessionField({ control, strName, strLabel, objError }: { control: Contr
   return <Controller name={strName} control={control} render={({ field }) => <TextField {...field} select fullWidth size="small" label={strLabel} error={Boolean(objError)} helperText={objError}><MenuItem value="first">First Half</MenuItem><MenuItem value="second">Second Half</MenuItem></TextField>} />;
 }
 
-function RequestFields({ control, setValue, objErrors, lstTypes, objSelectedType, blnSingleDay, strPolicyHelp, fnLabel }: { control: Control<LeaveFormValues>; setValue: UseFormSetValue<LeaveFormValues>; objErrors: FieldErrors<LeaveFormValues>; lstTypes: LeaveTypeDto[]; objSelectedType: LeaveTypeDto | null; blnSingleDay: boolean; strPolicyHelp: string; fnLabel: LabelFunction }) {
+function RequestFields({ control, setValue, objErrors, lstTypes, lstRestrictedHolidays, objSelectedType, blnRestrictedHolidayType, blnSingleDay, strPolicyHelp, fnLabel }: { control: Control<LeaveFormValues>; setValue: UseFormSetValue<LeaveFormValues>; objErrors: FieldErrors<LeaveFormValues>; lstTypes: LeaveTypeDto[]; lstRestrictedHolidays: RestrictedHolidayDto[]; objSelectedType: LeaveTypeDto | null; blnRestrictedHolidayType: boolean; blnSingleDay: boolean; strPolicyHelp: string; fnLabel: LabelFunction }) {
   const strFromDuration = useWatch({ control, name: "strFromDuration" });
   const strToDuration = useWatch({ control, name: "strToDuration" });
   const strFromDate = useWatch({ control, name: "dtFromDate" });
   const strToDate = useWatch({ control, name: "dtToDate" });
   const blnAllowHalfDay = Boolean(objSelectedType?.blnAllowHalfDay);
   return <Paper sx={{ p: 2, borderRadius: "16px", border: "1px solid #e2e8f0" }}><Typography component="h3" sx={{ fontWeight: 800, mb: 1.5 }}>{fnLabel("request_details", "Request Details")}</Typography><Grid container spacing={1.5}>
-    <Grid item xs={12}><Controller name="intLeaveTypeID" control={control} render={({ field }) => <TextField {...field} data-controlid="ess.leave.type" select fullWidth size="small" label={fnLabel("leave_type", "Leave Type")} error={Boolean(objErrors.intLeaveTypeID)} helperText={objErrors.intLeaveTypeID?.message}>{lstTypes.map((objType) => <MenuItem key={objType.intID} value={objType.intID}>{objType.strTypeName} ({objType.strTypeCode})</MenuItem>)}</TextField>} /></Grid>
+    <Grid item xs={12} sm={6}><Controller name="intLeaveTypeID" control={control} render={({ field }) => <TextField {...field} data-controlid="ess.leave.type" select fullWidth size="small" label={fnLabel("leave_type", "Leave Type")} onChange={(objEvent) => { field.onChange(Number(objEvent.target.value)); setValue("intRestrictedHolidayID", 0); }} error={Boolean(objErrors.intLeaveTypeID)} helperText={objErrors.intLeaveTypeID?.message}>{lstTypes.map((objType) => <MenuItem key={objType.intID} value={objType.intID}>{objType.strTypeName} ({objType.strTypeCode})</MenuItem>)}</TextField>} /></Grid>
+    {blnRestrictedHolidayType ? <Grid item xs={12} sm={6}><Controller name="intRestrictedHolidayID" control={control} render={({ field }) => <TextField {...field} data-controlid="ess.leave.restricted-holiday" select fullWidth required size="small" label={fnLabel("restricted_holiday", "Restricted Holiday")} onChange={(objEvent) => { const intHolidayID = Number(objEvent.target.value); field.onChange(intHolidayID); const objHoliday = lstRestrictedHolidays.find((objItem) => objItem.intID === intHolidayID); if (objHoliday) { setValue("dtFromDate", objHoliday.dtHolidayDate, { shouldValidate: true }); setValue("dtToDate", objHoliday.dtHolidayDate, { shouldValidate: true }); } }}><MenuItem value={0} disabled>{fnLabel("select_restricted_holiday", "Select Restricted Holiday")}</MenuItem>{lstRestrictedHolidays.map((objHoliday) => <MenuItem key={objHoliday.intID} value={objHoliday.intID}>{objHoliday.strHolidayName} ({formatLeaveDate(objHoliday.dtHolidayDate)})</MenuItem>)}</TextField>} /></Grid> : null}
     {strPolicyHelp ? <Grid item xs={12}><Alert severity="info">{strPolicyHelp}</Alert></Grid> : null}
-    <Grid item xs={12} sm={6}><Controller name="dtFromDate" control={control} render={({ field }) => <TextField {...field} type="date" fullWidth size="small" label={fnLabel("from_date", "From Date")} InputLabelProps={{ shrink: true }} onChange={(objEvent) => { const strNew = objEvent.target.value; field.onChange(strNew); if (strNew && (!strToDate || strNew > strToDate)) setValue("dtToDate", strNew, { shouldValidate: true }); }} error={Boolean(objErrors.dtFromDate)} helperText={objErrors.dtFromDate?.message} />} /></Grid>
-    <Grid item xs={12} sm={6}><Controller name="dtToDate" control={control} render={({ field }) => <TextField {...field} type="date" fullWidth size="small" label={fnLabel("to_date", "To Date")} InputLabelProps={{ shrink: true }} inputProps={{ min: strFromDate || undefined }} error={Boolean(objErrors.dtToDate)} helperText={objErrors.dtToDate?.message} />} /></Grid>
+    <Grid item xs={12} sm={6}><Controller name="dtFromDate" control={control} render={({ field }) => <TextField {...field} type="date" fullWidth disabled={blnRestrictedHolidayType} size="small" label={fnLabel("from_date", "From Date")} InputLabelProps={{ shrink: true }} onChange={(objEvent) => { const strNew = objEvent.target.value; field.onChange(strNew); if (strNew && (!strToDate || strNew > strToDate)) setValue("dtToDate", strNew, { shouldValidate: true }); }} error={Boolean(objErrors.dtFromDate)} helperText={objErrors.dtFromDate?.message} />} /></Grid>
+    <Grid item xs={12} sm={6}><Controller name="dtToDate" control={control} render={({ field }) => <TextField {...field} type="date" fullWidth disabled={blnRestrictedHolidayType} size="small" label={fnLabel("to_date", "To Date")} InputLabelProps={{ shrink: true }} inputProps={{ min: strFromDate || undefined }} error={Boolean(objErrors.dtToDate)} helperText={objErrors.dtToDate?.message} />} /></Grid>
     {blnAllowHalfDay && blnSingleDay ? <>
       <Grid item xs={12} sm={6}><DurationField control={control} strName="strFromDuration" strLabel={fnLabel("leave_duration", "Leave Duration")} /></Grid>
       {strFromDuration === "half" ? <Grid item xs={12} sm={6}><SessionField control={control} strName="strFromSession" strLabel={fnLabel("half_day_session", "Half-Day Session")} objError={objErrors.strFromSession?.message} /></Grid> : null}

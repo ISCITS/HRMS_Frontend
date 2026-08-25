@@ -69,7 +69,13 @@ export type HolidayApiRecord = {
 
 export type HolidayFormOptionsApiRecord = {
   lstLanguages: EmployeeLookupOptionApiRecord[];
-  lstHolidayTypes: Array<{ strCode: string; strLabel: string }>;
+  lstHolidayTypes: Array<{
+    intID: number;
+    strCode: string;
+    strLabel: string;
+    strDescription?: string | null;
+    intDisplayOrder: number;
+  }>;
 };
 
 export type UserApiRecord = {

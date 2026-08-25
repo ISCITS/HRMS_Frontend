@@ -25,6 +25,7 @@ import type {
   LeaveTimelineDto,
   LeaveTypeAggregate,
   LeaveTypeDto,
+  RestrictedHolidayDto,
   LeaveTypeEnrichedDto,
   LeaveTypeRequest,
   LeaveTypeUsageDto,
@@ -220,6 +221,15 @@ export const leaveService = {
   async getEssLeaveTypes(): Promise<LeaveTypeDto[]> {
     const objResult = await requestApi<LeaveTypeDto[]>({
       strPath: "/ess/leave/types",
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: LEAVE_VIEW,
+    });
+    return objResult.Data ?? [];
+  },
+
+  async getRestrictedHolidays(): Promise<RestrictedHolidayDto[]> {
+    const objResult = await requestApi<RestrictedHolidayDto[]>({
+      strPath: "/ess/leave/restricted-holidays",
       strMethod: ApiRequestMethod.Get,
       strMenuAction: LEAVE_VIEW,
     });

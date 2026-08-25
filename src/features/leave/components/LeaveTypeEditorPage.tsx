@@ -169,7 +169,7 @@ function SectionSelect(props: { label: string; value: string; onChange: (v: stri
   );
 }
 function SectionSwitch(props: { label: string; value: boolean; onChange: (v: boolean) => void }) {
-  return <FormControlLabel control={<Switch size="small" checked={props.value} onChange={(e) => props.onChange(e.target.checked)} />} label={props.label} />;
+  return <FormControlLabel sx={{ m: 0 }} control={<Switch size="small" checked={props.value} onChange={(e) => props.onChange(e.target.checked)} />} label={props.label} />;
 }
 
 function emptyPolicy(): LeavePolicyAggregate {
@@ -629,7 +629,7 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
           <Box sx={objGridSx}>
             <SectionText label="Code" required value={objForm.strTypeCode} strError={dicFieldErrors.strTypeCode} onChange={(v) => { setMaster("strTypeCode", v.toUpperCase()); if (dicFieldErrors.strTypeCode) setDicFieldErrors((objPrev) => ({ ...objPrev, strTypeCode: undefined })); }} />
             <SectionText label="Default Name" required value={objForm.strTypeName} strError={dicFieldErrors.strTypeName} onChange={(v) => { setMaster("strTypeName", v); if (dicFieldErrors.strTypeName) setDicFieldErrors((objPrev) => ({ ...objPrev, strTypeName: undefined })); }} />
-            <SectionSelect label="Category" value={objForm.strLeaveCategoryCode} onChange={(v) => setMaster("strLeaveCategoryCode", v)} options={optionsFor("LEAVE_CATEGORY", ["REGULAR", "STATUTORY", "UNPAID", "ON_DUTY", "COMPENSATORY"])} />
+            <SectionSelect label="Category" value={objForm.strLeaveCategoryCode} onChange={(v) => setMaster("strLeaveCategoryCode", v)} options={optionsFor("LEAVE_CATEGORY", ["REGULAR", "STATUTORY", "UNPAID", "ON_DUTY", "COMPENSATORY", "RESTRICTED_HOLIDAY"])} />
             <SectionSelect label="Unit" value={objForm.strUnit} onChange={(v) => setMaster("strUnit", v)} options={optionsFor("LEAVE_UNIT", ["DAY", "HALF_DAY", "HOUR"]).map((o) => ({ code: o.code.toLowerCase(), label: o.label }))} />
             <SectionSelect label="Payroll Treatment" value={objForm.strPayrollTreatmentCode} onChange={(v) => setMaster("strPayrollTreatmentCode", v)} options={optionsFor("LEAVE_PAYROLL_TREATMENT", ["PAID", "UNPAID", "NO_PAY_IMPACT"])} />
             <SectionSelect label="Attendance Status" value={objForm.strAttendanceStatusCode} onChange={(v) => setMaster("strAttendanceStatusCode", v)} options={lstAttendanceStatuses.map((c) => ({ code: c, label: c.replace(/_/g, " ") }))} />

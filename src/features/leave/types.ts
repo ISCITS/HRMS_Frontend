@@ -7,6 +7,7 @@ export type LeaveTypeDto = {
   intCompanyID: number | null;
   strTypeCode: string;
   strTypeName: string;
+  strLeaveCategoryCode?: string | null;
   blnIsPaid: boolean;
   strUnit: string;
   blnRequiresProof: boolean;
@@ -17,6 +18,13 @@ export type LeaveTypeDto = {
   strDescription?: string | null;
   strEmployeeHelpText?: string | null;
   blnRequiresReason?: boolean;
+};
+
+export type RestrictedHolidayDto = {
+  intID: number;
+  dtHolidayDate: string;
+  strHolidayCode: string;
+  strHolidayName: string;
 };
 
 // Enterprise leave-type row (GET /leave/leave-types) — master + current-policy summary + localized name.

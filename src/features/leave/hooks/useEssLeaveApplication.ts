@@ -12,10 +12,12 @@ import type {
   LeavePreviewDto,
   LeaveTypeAggregate,
   LeaveTypeDto,
+  RestrictedHolidayDto,
 } from "@/features/leave/types";
 
 export function useEssLeaveApplication() {
   const [lstTypes, setLstTypes] = useState<LeaveTypeDto[]>([]);
+  const [lstRestrictedHolidays, setLstRestrictedHolidays] = useState<RestrictedHolidayDto[]>([]);
   const [lstBalances, setLstBalances] = useState<LeaveBalanceDto[]>([]);
   const [lstApplications, setLstApplications] = useState<LeaveApplicationDto[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
@@ -25,12 +27,14 @@ export function useEssLeaveApplication() {
     setBlnLoading(true);
     setStrLoadError(null);
     try {
-      const [lstTypeResult, lstBalanceResult, lstApplicationResult] = await Promise.all([
+      const [lstTypeResult, lstRestrictedHolidayResult, lstBalanceResult, lstApplicationResult] = await Promise.all([
         leaveService.getEssLeaveTypes(),
+        leaveService.getRestrictedHolidays(),
         leaveService.getMyBalances(),
         leaveService.listMyApplications(),
       ]);
       setLstTypes(lstTypeResult);
+      setLstRestrictedHolidays(lstRestrictedHolidayResult);
       setLstBalances(lstBalanceResult);
       setLstApplications(lstApplicationResult);
       return lstTypeResult;
@@ -111,6 +115,7 @@ export function useEssLeaveApplication() {
 
   return {
     lstTypes,
+    lstRestrictedHolidays,
     lstBalances,
     lstApplications,
     blnLoading,
