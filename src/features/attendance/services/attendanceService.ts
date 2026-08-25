@@ -4,10 +4,6 @@ import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
 import type {
   AttendanceDayDto,
-  HolidayDto,
-  HolidayFormOptions,
-  HolidayListFilters,
-  HolidayRequest,
   MyShiftDto,
   PunchRequest,
   RosterRequest,
@@ -39,9 +35,6 @@ import type {
 const ATTENDANCE_VIEW = "ATTENDANCE_VIEW";
 const ATTENDANCE_MANAGE = "ATTENDANCE_MANAGE";
 const ATTENDANCE_CORRECTION = "ATTENDANCE_CORRECTION";
-const HOLIDAY_MASTER_VIEW = "HOLIDAY_MASTER_VIEW";
-const HOLIDAY_MASTER_CREATE = "HOLIDAY_MASTER_CREATE";
-const HOLIDAY_MASTER_EDIT = "HOLIDAY_MASTER_EDIT";
 
 async function requestApi<TData>(objOptions: {
   strPath: string;
@@ -320,70 +313,6 @@ export const attendanceService = {
       strMenuAction: ATTENDANCE_VIEW,
     });
     return objResult.Data ?? [];
-  },
-
-  async listHolidays(objFilters: HolidayListFilters | number): Promise<HolidayDto[]> {
-    const objResolvedFilters: HolidayListFilters = typeof objFilters === "number" ? { intYear: objFilters } : objFilters;
-    const objQuery = new URLSearchParams({ year: String(objResolvedFilters.intYear) });
-    if (objResolvedFilters.strSearch) objQuery.set("search", objResolvedFilters.strSearch);
-    if (objResolvedFilters.strHolidayTypeCode) objQuery.set("holiday_type_code", objResolvedFilters.strHolidayTypeCode);
-    if (objResolvedFilters.blnIsPaid !== undefined) objQuery.set("is_paid", String(objResolvedFilters.blnIsPaid));
-    if (objResolvedFilters.blnIsOptional !== undefined) objQuery.set("is_optional", String(objResolvedFilters.blnIsOptional));
-    if (objResolvedFilters.blnIsActive !== undefined) objQuery.set("is_active", String(objResolvedFilters.blnIsActive));
-    const objResult = await requestApi<HolidayDto[]>({
-      strPath: `/attendance/holidays?${objQuery.toString()}`,
-      strMethod: ApiRequestMethod.Get,
-      strMenuAction: HOLIDAY_MASTER_VIEW,
-    });
-    return objResult.Data ?? [];
-  },
-
-  async getHolidayFormOptions(): Promise<HolidayFormOptions> {
-    const objResult = await requestApi<HolidayFormOptions>({
-      strPath: "/attendance/holidays/form-options",
-      strMethod: ApiRequestMethod.Get,
-      strMenuAction: HOLIDAY_MASTER_VIEW,
-    });
-    return objResult.Data;
-  },
-
-  async getHoliday(intHolidayID: number): Promise<HolidayDto> {
-    const objResult = await requestApi<HolidayDto>({
-      strPath: `/attendance/holidays/${intHolidayID}`,
-      strMethod: ApiRequestMethod.Get,
-      strMenuAction: HOLIDAY_MASTER_VIEW,
-    });
-    return objResult.Data;
-  },
-
-  async createHoliday(objPayload: HolidayRequest): Promise<HolidayDto> {
-    const objResult = await requestApi<HolidayDto>({
-      strPath: "/attendance/holidays",
-      strMethod: ApiRequestMethod.Post,
-      objBody: objPayload,
-      strMenuAction: HOLIDAY_MASTER_CREATE,
-    });
-    return objResult.Data;
-  },
-
-  async updateHoliday(intHolidayID: number, objPayload: HolidayRequest): Promise<HolidayDto> {
-    const objResult = await requestApi<HolidayDto>({
-      strPath: `/attendance/holidays/${intHolidayID}`,
-      strMethod: ApiRequestMethod.Put,
-      objBody: objPayload,
-      strMenuAction: HOLIDAY_MASTER_EDIT,
-    });
-    return objResult.Data;
-  },
-
-  async translateHolidayText(strText: string, intSourceLanguageID: number, intTargetLanguageID: number): Promise<string> {
-    const objResult = await requestApi<{ strTranslatedText: string }>({
-      strPath: "/attendance/holidays/translate",
-      strMethod: ApiRequestMethod.Post,
-      objBody: { strText, intSourceLanguageID, intTargetLanguageID },
-      strMenuAction: HOLIDAY_MASTER_EDIT,
-    });
-    return objResult.Data.strTranslatedText;
   },
 
   async reconcile(intEmployeeID: number, strPeriod: string): Promise<{ intDaysReconciled: number; strPeriod: string }> {
