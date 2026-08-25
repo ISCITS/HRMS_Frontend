@@ -54,6 +54,12 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
   const decNetAnnual = intEmployeeID
     ? (objSalaryDetail?.objSalarySummary?.decNetFixedMonthly ?? dicBaseSummaryMetrics.decGrossMonthly) * 12
     : null;
+  const dicCompactValueSx = {
+    fontSize: "0.875rem",
+    lineHeight: 1.43,
+    fontWeight: 700,
+    whiteSpace: "nowrap"
+  } as const;
 
   function openSalaryPage() {
     if (!intEmployeeID) {
@@ -104,7 +110,7 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
           <Box sx={{ width: 32, height: 32, borderRadius: "11px", display: "grid", placeItems: "center", bgcolor: "rgba(14,165,233,0.12)", color: "#0369a1", flexShrink: 0 }}>
             <MonetizationOnRoundedIcon sx={{ fontSize: 20 }} />
           </Box>
-          <Typography sx={{ fontWeight: 800, color: "#0f172a", typography: "body2" }}>{t("salary_summary_card_title", "Salary Summary")}</Typography>
+          <Typography component="strong" sx={{ typography: "body2", fontWeight: 900, color: "#0f172a" }}>{t("salary_summary_card_title", "Salary Summary")}</Typography>
         </Stack>
 
         {blnLoading ? (
@@ -121,28 +127,28 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
                 <Box sx={{ width: 28, height: 28, borderRadius: "50%", display: "grid", placeItems: "center", bgcolor: "#e8f8ee", color: "#16a34a", flexShrink: 0 }}><CalendarMonthRoundedIcon sx={{ fontSize: 16 }} /></Box>
                 <Typography sx={{ color: "#526581", typography: "caption", fontWeight: 700 }}>{t("salary_summary_card_ctc_annual", "CTC Annual")}</Typography>
               </Stack>
-              <Typography sx={{ color: "#075fe4", typography: "body2", fontWeight: 800, whiteSpace: "nowrap" }}>{formatCurrency(dicBaseSummaryMetrics.decAnnualCtc)}</Typography>
+              <Typography sx={{ ...dicCompactValueSx, color: "#075fe4" }}>{formatCurrency(dicBaseSummaryMetrics.decAnnualCtc)}</Typography>
             </Stack>
             <Stack direction="row" spacing={0.9} alignItems="center" justifyContent="space-between">
               <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
                 <Box sx={{ width: 28, height: 28, borderRadius: "50%", display: "grid", placeItems: "center", bgcolor: "#eaf1ff", color: "#2563eb", flexShrink: 0 }}><AccountBalanceWalletRoundedIcon sx={{ fontSize: 16 }} /></Box>
                 <Typography sx={{ color: "#526581", typography: "caption", fontWeight: 700 }}>{t("salary_summary_card_gross_annual", "Gross Annual")}</Typography>
               </Stack>
-              <Typography sx={{ color: "#075fe4", typography: "body2", fontWeight: 800, whiteSpace: "nowrap" }}>{formatCurrency(decGrossAnnual)}</Typography>
+              <Typography sx={{ ...dicCompactValueSx, color: "#075fe4" }}>{formatCurrency(decGrossAnnual)}</Typography>
             </Stack>
             <Stack direction="row" spacing={0.9} alignItems="center" justifyContent="space-between">
               <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
                 <Box sx={{ width: 28, height: 28, borderRadius: "50%", display: "grid", placeItems: "center", bgcolor: "#f3eaff", color: "#7c3aed", flexShrink: 0 }}><SavingsRoundedIcon sx={{ fontSize: 16 }} /></Box>
                 <Typography sx={{ color: "#526581", typography: "caption", fontWeight: 700 }}>{t("salary_summary_card_net_annual", "Net Annual")}</Typography>
               </Stack>
-              <Typography sx={{ color: "#075fe4", typography: "body2", fontWeight: 800, whiteSpace: "nowrap" }}>{formatCurrency(decNetAnnual)}</Typography>
+              <Typography sx={{ ...dicCompactValueSx, color: "#075fe4" }}>{formatCurrency(decNetAnnual)}</Typography>
             </Stack>
             <Stack direction="row" spacing={0.9} alignItems="center" justifyContent="space-between">
               <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
                 <Box sx={{ width: 28, height: 28, borderRadius: "50%", display: "grid", placeItems: "center", bgcolor: "#fff7e6", color: "#d97706", flexShrink: 0 }}><CalendarMonthRoundedIcon sx={{ fontSize: 16 }} /></Box>
                 <Typography sx={{ color: "#526581", typography: "caption", fontWeight: 700 }}>{t("salary_summary_card_revised_on", "Salary Revised On")}</Typography>
               </Stack>
-              <Typography sx={{ color: "#0f172a", typography: "body2", fontWeight: 800, whiteSpace: "nowrap" }}>{formatSummaryDate(objSummary?.objCurrentSalarySnapshot?.dtEffectiveFrom)}</Typography>
+              <Typography sx={{ ...dicCompactValueSx, color: "#0f172a" }}>{formatSummaryDate(objSummary?.objCurrentSalarySnapshot?.dtEffectiveFrom)}</Typography>
             </Stack>
           </Stack>
         )}

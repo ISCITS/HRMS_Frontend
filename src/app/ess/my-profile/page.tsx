@@ -31,6 +31,7 @@ import {
 // import { useRouter } from "next/navigation";
 import { ChangeEvent, type ReactElement, useEffect, useState } from "react";
 
+import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import { employeeService } from "@/features/employee/services/employeeService";
 import type { EmployeeAddressRecord, EmployeeBankRecord, EmployeeDetailRecord, EmployeeExperienceRecord, EmployeeFamilyDetailRecord, EmployeeFormOptions, EmployeeQualificationRecord, EmployeeStatutoryRecord } from "@/features/employee/types";
 import EmployeeSalarySummaryCard from "@/features/employee-salary/components/EmployeeSalarySummaryCard";
@@ -71,6 +72,15 @@ function SidebarLine({ objIcon, strValue, strIconColor }: { objIcon: ReactElemen
     <Stack direction="row" spacing={1} alignItems="center">
       <Box sx={{ color: strIconColor, display: "flex", "& svg": { fontSize: 15 } }}>{objIcon}</Box>
       <Typography sx={{ color: "#344054", typography: "body2", overflowWrap: "anywhere", minWidth: 0 }}>{strValue}</Typography>
+    </Stack>
+  );
+}
+
+function CardHeading({ objIcon, strText }: { objIcon: ReactElement; strText: string }) {
+  return (
+    <Stack direction="row" spacing={0.8} alignItems="center">
+      <Box sx={{ color: "var(--app-primary-color)", display: "flex", "& svg": { fontSize: 20 } }}>{objIcon}</Box>
+      <Typography sx={{ color: "#172033", fontWeight: 700 }}>{strText}</Typography>
     </Stack>
   );
 }
@@ -119,6 +129,7 @@ export default function EssMyProfilePage() {
   const [strActiveTab, setStrActiveTab] = useState("basicInfo");
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnAvatarUpdating, setBlnAvatarUpdating] = useState(false);
+  const [blnAvatarDeleteConfirmOpen, setBlnAvatarDeleteConfirmOpen] = useState(false);
   const [strError, setStrError] = useState("");
   const strNotAvailable = t("not_available", "Not available");
 
@@ -305,6 +316,7 @@ export default function EssMyProfilePage() {
 
   async function handleAvatarDelete() {
     if (!blnCanEditProfile) {
+      setBlnAvatarDeleteConfirmOpen(false);
       return;
     }
     setBlnAvatarUpdating(true);
@@ -316,6 +328,7 @@ export default function EssMyProfilePage() {
       setStrError(objError instanceof Error ? objError.message : t("error_remove_photo", "Unable to remove profile photo."));
     } finally {
       setBlnAvatarUpdating(false);
+      setBlnAvatarDeleteConfirmOpen(false);
     }
   }
 
@@ -388,7 +401,7 @@ export default function EssMyProfilePage() {
                 </Button>
               ) : null} */}
               {strAvatarUrl && blnCanEditProfile ? (
-                <Button size="small" color="inherit" startIcon={<DeleteOutlineRoundedIcon />} onClick={handleAvatarDelete} disabled={blnAvatarUpdating} sx={{ textTransform: "none", color: "#667085" }}>{t("remove_photo", "Remove photo")}</Button>
+                <Button size="small" color="inherit" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => setBlnAvatarDeleteConfirmOpen(true)} disabled={blnAvatarUpdating} sx={{ textTransform: "none", color: "#667085" }}>{t("remove_photo", "Remove photo")}</Button>
               ) : null}
             </Stack>
 
@@ -488,7 +501,6 @@ export default function EssMyProfilePage() {
                   <DetailRow strLabel={t("field_cost_center", "Cost Center")} strValue={resolveLookupLabel(objFormOptions?.lstCostCenters, objEmployee?.intCostCenterID ?? null, strNotAvailable)} />
                   <DetailRow strLabel={t("field_location", "Location")} strValue={strLocation} />
                   <DetailRow strLabel={t("field_payroll_group", "Payroll Group")} strValue={strPayrollGroup} />
-                  <DetailRow strLabel={t("field_manager", "Manager")} strValue={strManager} />
                   <DetailRow strLabel={t("field_line_manager", "Line Manager")} strValue={strLineManager} />
                   <DetailRow strLabel={t("field_preferred_language", "Preferred Language")} strValue={strPreferredLanguage} />
                   <DetailRow strLabel={t("field_employment_status", "Employment Status")} strValue={translateKnownValue(objEmployee?.strEmploymentStatus)} />
@@ -500,7 +512,7 @@ export default function EssMyProfilePage() {
 
               {strActiveTab === "bankDetails" ? (
                 <Stack spacing={1.5}>
-                  <Typography sx={{ color: "#172033", fontWeight: 700 }}>{t("primary_bank_details", "Primary Bank Details")}</Typography>
+                  <CardHeading objIcon={<AccountBalanceOutlinedIcon />} strText={t("primary_bank_details", "Primary Bank Details")} />
                   <ReadOnlyCard
                     lstRows={[
                       { strLabel: t("field_bank", "Bank"), strValue: resolveLookupLabel(objFormOptions?.lstBanks, objBank?.intBankID ?? null, strNotAvailable) },
@@ -511,7 +523,9 @@ export default function EssMyProfilePage() {
                       { strLabel: t("field_bank_active", "Active"), strValue: objBank ? (objBank.blnIsActive ? t("yes", "Yes") : t("no", "No")) : strNotAvailable }
                     ]}
                   />
-                  <Typography sx={{ pt: 0.5, color: "#172033", fontWeight: 700 }}>{t("field_secondary_bank_details", "Secondary Bank Details")}</Typography>
+                  <Box sx={{ pt: 0.5 }}>
+                    <CardHeading objIcon={<AccountBalanceOutlinedIcon />} strText={t("field_secondary_bank_details", "Secondary Bank Details")} />
+                  </Box>
                   <ReadOnlyCard
                     lstRows={[
                       { strLabel: t("field_secondary_bank_active", "Secondary Bank Active"), strValue: objBank ? (objBank.blnSecondaryIsActive ? t("yes", "Yes") : t("no", "No")) : strNotAvailable },
@@ -542,20 +556,21 @@ export default function EssMyProfilePage() {
               {strActiveTab === "experience" ? (
                 <Stack spacing={1.5}>
                   {lstExperiences.length ? lstExperiences.map((objExperience) => (
-                    <ReadOnlyCard
-                      key={objExperience.intID}
-                      lstRows={[
-                        { strLabel: t("field_company_name", "Company Name"), strValue: valueOrNotAvailable(objExperience.strCompanyName) },
-                        { strLabel: t("field_job_title", "Job Title"), strValue: valueOrNotAvailable(objExperience.strJobTitle) },
-                        { strLabel: t("field_from_date", "From Date"), strValue: formatDate(objExperience.dtFromDate, strNotAvailable) },
-                        { strLabel: t("field_to_date", "To Date"), strValue: formatDate(objExperience.dtToDate, strNotAvailable) },
-                        { strLabel: t("field_total_years", "Total Years"), strValue: objExperience.decTotalYears?.toString() ?? strNotAvailable },
-                        { strLabel: t("field_last_drawn_salary", "Last Drawn Salary"), strValue: objExperience.decLastDrawnSalary?.toString() ?? strNotAvailable },
-                        { strLabel: t("field_reason_for_leaving", "Reason for Leaving"), strValue: valueOrNotAvailable(objExperience.strReasonForLeaving) },
-                        { strLabel: t("field_responsibilities", "Responsibilities"), strValue: valueOrNotAvailable(objExperience.strResponsibilities) },
-                        { strLabel: t("field_active", "Active"), strValue: objExperience.blnIsActive ? t("yes", "Yes") : t("no", "No") }
-                      ]}
-                    />
+                    <Stack key={objExperience.intID} spacing={1.5}>
+                      <CardHeading objIcon={<WorkOutlineRoundedIcon />} strText={`${t("field_company", "Company")} - ${valueOrNotAvailable(objExperience.strCompanyName)}`} />
+                      <ReadOnlyCard
+                        lstRows={[
+                          { strLabel: t("field_job_title", "Job Title"), strValue: valueOrNotAvailable(objExperience.strJobTitle) },
+                          { strLabel: t("field_from_date", "From Date"), strValue: formatDate(objExperience.dtFromDate, strNotAvailable) },
+                          { strLabel: t("field_to_date", "To Date"), strValue: formatDate(objExperience.dtToDate, strNotAvailable) },
+                          { strLabel: t("field_total_years", "Total Years"), strValue: objExperience.decTotalYears?.toString() ?? strNotAvailable },
+                          { strLabel: t("field_last_drawn_salary", "Last Drawn Salary"), strValue: objExperience.decLastDrawnSalary?.toString() ?? strNotAvailable },
+                          { strLabel: t("field_reason_for_leaving", "Reason for Leaving"), strValue: valueOrNotAvailable(objExperience.strReasonForLeaving) },
+                          { strLabel: t("field_responsibilities", "Responsibilities"), strValue: valueOrNotAvailable(objExperience.strResponsibilities) },
+                          { strLabel: t("field_active", "Active"), strValue: objExperience.blnIsActive ? t("yes", "Yes") : t("no", "No") }
+                        ]}
+                      />
+                    </Stack>
                   )) : <Typography sx={{ py: 3, textAlign: "center", color: "#667085", typography: "body2" }}>{t("no_experience", "No experience details available.")}</Typography>}
                 </Stack>
               ) : null}
@@ -563,20 +578,21 @@ export default function EssMyProfilePage() {
               {strActiveTab === "qualification" ? (
                 <Stack spacing={1.5}>
                   {lstQualifications.length ? lstQualifications.map((objQualification) => (
-                    <ReadOnlyCard
-                      key={objQualification.intID}
-                      lstRows={[
-                        { strLabel: t("field_degree_name", "Degree Name"), strValue: valueOrNotAvailable(objQualification.strDegreeName) },
-                        { strLabel: t("field_specialization", "Specialization"), strValue: valueOrNotAvailable(objQualification.strSpecialization) },
-                        { strLabel: t("field_institution_name", "Institution Name"), strValue: valueOrNotAvailable(objQualification.strInstitutionName) },
-                        { strLabel: t("field_university_name", "University Name"), strValue: valueOrNotAvailable(objQualification.strUniversityName) },
-                        { strLabel: t("field_year_of_passing", "Year of Passing"), strValue: objQualification.intYearOfPassing.toString() },
-                        { strLabel: t("field_grade_or_percentage", "Grade / Percentage"), strValue: valueOrNotAvailable(objQualification.strGradeOrPercentage) },
-                        { strLabel: t("field_certification_number", "Certification Number"), strValue: valueOrNotAvailable(objQualification.strCertificationNumber) },
-                        { strLabel: t("field_highest_qualification", "Highest Qualification"), strValue: objQualification.blnIsHighestQualification ? t("yes", "Yes") : t("no", "No") },
-                        { strLabel: t("field_active", "Active"), strValue: objQualification.blnIsActive ? t("yes", "Yes") : t("no", "No") }
-                      ]}
-                    />
+                    <Stack key={objQualification.intID} spacing={1.5}>
+                      <CardHeading objIcon={<SchoolOutlinedIcon />} strText={`${t("field_degree", "Degree")} - ${valueOrNotAvailable(objQualification.strDegreeName)}`} />
+                      <ReadOnlyCard
+                        lstRows={[
+                          { strLabel: t("field_specialization", "Specialization"), strValue: valueOrNotAvailable(objQualification.strSpecialization) },
+                          { strLabel: t("field_institution_name", "Institution Name"), strValue: valueOrNotAvailable(objQualification.strInstitutionName) },
+                          { strLabel: t("field_university_name", "University Name"), strValue: valueOrNotAvailable(objQualification.strUniversityName) },
+                          { strLabel: t("field_year_of_passing", "Year of Passing"), strValue: objQualification.intYearOfPassing.toString() },
+                          { strLabel: t("field_grade_or_percentage", "Grade / Percentage"), strValue: valueOrNotAvailable(objQualification.strGradeOrPercentage) },
+                          { strLabel: t("field_certification_number", "Certification Number"), strValue: valueOrNotAvailable(objQualification.strCertificationNumber) },
+                          { strLabel: t("field_highest_qualification", "Highest Qualification"), strValue: objQualification.blnIsHighestQualification ? t("yes", "Yes") : t("no", "No") },
+                          { strLabel: t("field_active", "Active"), strValue: objQualification.blnIsActive ? t("yes", "Yes") : t("no", "No") }
+                        ]}
+                      />
+                    </Stack>
                   )) : <Typography sx={{ py: 3, textAlign: "center", color: "#667085", typography: "body2" }}>{t("no_qualification", "No qualification details available.")}</Typography>}
                 </Stack>
               ) : null}
@@ -584,21 +600,22 @@ export default function EssMyProfilePage() {
               {strActiveTab === "familyDetails" ? (
                 <Stack spacing={1.5}>
                   {lstFamily.length ? lstFamily.map((objMember) => (
-                    <ReadOnlyCard
-                      key={objMember.intID}
-                      lstRows={[
-                        { strLabel: t("field_name", "Name"), strValue: valueOrNotAvailable(objMember.strName) },
-                        { strLabel: t("field_relationship", "Relationship"), strValue: valueOrNotAvailable(objMember.strRelationship) },
-                        { strLabel: t("field_date_of_birth", "Date of Birth"), strValue: formatDate(objMember.dtDateOfBirth, strNotAvailable) },
-                        { strLabel: t("field_gender", "Gender"), strValue: translateKnownValue(objMember.strGender) },
-                        { strLabel: t("field_contact_number", "Contact Number"), strValue: valueOrNotAvailable(objMember.strContactNumber) },
-                        { strLabel: t("field_occupation", "Occupation"), strValue: valueOrNotAvailable(objMember.strOccupation) },
-                        { strLabel: t("field_dependent", "Dependent"), strValue: objMember.blnIsDependent ? t("yes", "Yes") : t("no", "No") },
-                        { strLabel: t("field_nominee", "Nominee"), strValue: objMember.blnIsNominee ? t("yes", "Yes") : t("no", "No") },
-                        { strLabel: t("field_nominee_percentage", "Nominee Percentage"), strValue: objMember.decNomineePercentage?.toString() ?? strNotAvailable },
-                        { strLabel: t("field_address", "Address"), strValue: valueOrNotAvailable(objMember.strAddress) }
-                      ]}
-                    />
+                    <Stack key={objMember.intID} spacing={1.5}>
+                      <CardHeading objIcon={<GroupsOutlinedIcon />} strText={`${valueOrNotAvailable(objMember.strRelationship)} - ${valueOrNotAvailable(objMember.strName)}`} />
+                      <ReadOnlyCard
+                        lstRows={[
+                          { strLabel: t("field_name", "Name"), strValue: valueOrNotAvailable(objMember.strName) },
+                          { strLabel: t("field_date_of_birth", "Date of Birth"), strValue: formatDate(objMember.dtDateOfBirth, strNotAvailable) },
+                          { strLabel: t("field_gender", "Gender"), strValue: translateKnownValue(objMember.strGender) },
+                          { strLabel: t("field_contact_number", "Contact Number"), strValue: valueOrNotAvailable(objMember.strContactNumber) },
+                          { strLabel: t("field_occupation", "Occupation"), strValue: valueOrNotAvailable(objMember.strOccupation) },
+                          { strLabel: t("field_dependent", "Dependent"), strValue: objMember.blnIsDependent ? t("yes", "Yes") : t("no", "No") },
+                          { strLabel: t("field_nominee", "Nominee"), strValue: objMember.blnIsNominee ? t("yes", "Yes") : t("no", "No") },
+                          { strLabel: t("field_nominee_percentage", "Nominee Percentage"), strValue: objMember.decNomineePercentage?.toString() ?? strNotAvailable },
+                          { strLabel: t("field_address", "Address"), strValue: valueOrNotAvailable(objMember.strAddress) }
+                        ]}
+                      />
+                    </Stack>
                   )) : <Typography sx={{ py: 3, textAlign: "center", color: "#667085", typography: "body2" }}>{t("no_family_details", "No family details available.")}</Typography>}
                 </Stack>
               ) : null}
@@ -606,6 +623,25 @@ export default function EssMyProfilePage() {
           </Paper>
         </Box>
       </Box>
+
+      <CommonConfirmDialog
+        blnOpen={blnAvatarDeleteConfirmOpen}
+        strTitle={t("confirm_remove_photo_title", "Remove profile photo?")}
+        strMessage={t("confirm_remove_photo_message", "Are you sure you want to remove your profile photo?")}
+        strCancelLabel={t("cancel", "Cancel")}
+        strConfirmLabel={t("remove", "Remove")}
+        blnCancelDisabled={blnAvatarUpdating}
+        blnConfirmDisabled={blnAvatarUpdating}
+        onClose={() => {
+          if (!blnAvatarUpdating) {
+            setBlnAvatarDeleteConfirmOpen(false);
+          }
+        }}
+        onConfirm={() => void handleAvatarDelete()}
+        rootControlId="ess.my-profile.remove-photo.confirm-dialog"
+        cancelButtonControlId="ess.my-profile.remove-photo.cancel.button"
+        confirmButtonControlId="ess.my-profile.remove-photo.confirm.button"
+      />
     </Box>
   );
 }
