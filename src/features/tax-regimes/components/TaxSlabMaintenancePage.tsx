@@ -9,31 +9,36 @@ import {
   Box,
   Button,
   CircularProgress,
+  IconButton,
   MenuItem,
-  Paper,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/components/master/MasterScreen.module.css";
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useTaxRegimeLabels } from "@/features/tax-regimes/hooks/useTaxRegimeLabels";
 import { createEmptyTaxSlabLine, taxRegimeService, toTaxSlabFormValues } from "@/features/tax-regimes/services/taxRegimeService";
 import type { TaxRegimeDetailRecord, TaxSlabLineFormValue } from "@/features/tax-regimes/types";
+import { objTaxRegimeCommonTableSx, TaxRegimeActionGroup, TaxRegimeWorkspaceHeader, type TaxRegimeSaveBridge } from "@/features/tax-regimes/components/TaxRegimeWorkspace";
 
 type TaxSlabMaintenancePageProps = {
   intTaxRegimeID: number;
+  blnEmbedded?: boolean;
+  onSaveBridgeChange?: (objBridge: TaxRegimeSaveBridge) => void;
 };
 
 const lstTaxRegimeModuleCodes = ["TAX_REGIME", "TAX_REGIMES", "MASTER_TAX_REGIME", "TAX_SLAB", "TAX_SLABS", "MASTER_TAX_SLAB"];
 const lstProfileCodes = ["GENERAL", "SENIOR", "SUPER_SENIOR"];
 const lstResidentialStatuses = ["RESIDENT", "NON_RESIDENT", "RNOR"];
 
-export default function TaxSlabMaintenancePage({ intTaxRegimeID }: TaxSlabMaintenancePageProps) {
+export default function TaxSlabMaintenancePage({ intTaxRegimeID, blnEmbedded, onSaveBridgeChange }: TaxSlabMaintenancePageProps) {
   const objRouter = useRouter();
   const { t } = useTaxRegimeLabels();
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstTaxRegimeModuleCodes);
@@ -130,6 +135,65 @@ export default function TaxSlabMaintenancePage({ intTaxRegimeID }: TaxSlabMainte
     }
   }
 
+  const objHandleSaveRef = useRef(handleSave);
+  objHandleSaveRef.current = handleSave;
+
+  useEffect(() => {
+    if (!onSaveBridgeChange) {
+      return;
+    }
+    onSaveBridgeChange({
+      strLabel: blnSaving ? t("saving", "Saving...") : t("save_slabs", "Save Slabs"),
+      blnVisible: blnCanSave && !blnLoading && blnCanLoadWorkspace,
+      blnDisabled: blnSaving,
+      fnSave: () => objHandleSaveRef.current(),
+    });
+    return () => onSaveBridgeChange(null);
+  }, [onSaveBridgeChange, blnCanSave, blnSaving, blnLoading, blnCanLoadWorkspace]);
+
+  const lstTableColumns: CommonTableColumn<Record<string, ReactNode>>[] = [
+    { field: "taxYear", headerName: t("tax_year", "Tax Year"), width: 125, sortable: false },
+    { field: "profile", headerName: t("slab_profile", "Slab Profile"), width: 130, sortable: false },
+    { field: "residentialStatus", headerName: t("residential_status", "Residential Status"), width: 145, sortable: false },
+    { field: "ageFrom", headerName: t("age_from", "Age From"), width: 80, sortable: false },
+    { field: "ageTo", headerName: t("age_to", "Age To"), width: 80, sortable: false },
+    { field: "amountFrom", headerName: t("slab_from_amount", "Slab From Amount"), width: 135, align: "right", sortable: false },
+    { field: "amountTo", headerName: t("slab_to_amount", "Slab To Amount"), width: 135, align: "right", sortable: false },
+    { field: "taxRate", headerName: t("tax_rate_percent", "Tax Rate %"), width: 95, align: "right", sortable: false },
+    { field: "fixedTax", headerName: t("fixed_tax_amount", "Fixed Tax Amount"), width: 120, align: "right", sortable: false },
+    { field: "displayOrder", headerName: t("display_order", "Display Order"), width: 95, align: "right", sortable: false },
+    { field: "active", headerName: t("active", "Active"), width: 75, align: "center", sortable: false },
+    { field: "action", headerName: t("action", "Action"), width: 60, align: "center", sortable: false, exportable: false },
+  ];
+
+  const lstTableRows: Record<string, ReactNode>[] = lstSlabs.map((dicLine) => ({
+    id: dicLine.strRowID,
+    taxYear: (
+      <TextField select size="small" fullWidth value={dicLine.strTaxYearCode} onChange={(objEvent) => updateLine(dicLine.strRowID, "strTaxYearCode", objEvent.target.value)} disabled={blnFieldDisabled}>
+        {lstFinancialYears.map((strFinancialYearCode) => <MenuItem key={strFinancialYearCode} value={strFinancialYearCode}>{strFinancialYearCode}</MenuItem>)}
+      </TextField>
+    ),
+    profile: (
+      <TextField select size="small" fullWidth value={dicLine.strSlabProfileCode} onChange={(objEvent) => updateLine(dicLine.strRowID, "strSlabProfileCode", objEvent.target.value)} disabled={blnFieldDisabled}>
+        {lstProfileCodes.map((strProfileCode) => <MenuItem key={strProfileCode} value={strProfileCode}>{strProfileCode}</MenuItem>)}
+      </TextField>
+    ),
+    residentialStatus: (
+      <TextField select size="small" fullWidth value={dicLine.strResidentialStatusCode} onChange={(objEvent) => updateLine(dicLine.strRowID, "strResidentialStatusCode", objEvent.target.value)} disabled={blnFieldDisabled}>
+        {lstResidentialStatuses.map((strStatusCode) => <MenuItem key={strStatusCode} value={strStatusCode}>{strStatusCode}</MenuItem>)}
+      </TextField>
+    ),
+    ageFrom: <TextField size="small" fullWidth value={dicLine.intAgeFromYears} onChange={(objEvent) => updateLine(dicLine.strRowID, "intAgeFromYears", objEvent.target.value)} disabled={blnFieldDisabled} />,
+    ageTo: <TextField size="small" fullWidth value={dicLine.intAgeToYears} onChange={(objEvent) => updateLine(dicLine.strRowID, "intAgeToYears", objEvent.target.value)} disabled={blnFieldDisabled} />,
+    amountFrom: <TextField size="small" fullWidth value={dicLine.fltSlabFromAmount} onChange={(objEvent) => updateLine(dicLine.strRowID, "fltSlabFromAmount", objEvent.target.value)} disabled={blnFieldDisabled} inputProps={{ style: { textAlign: "right" } }} />,
+    amountTo: <TextField size="small" fullWidth value={dicLine.fltSlabToAmount} onChange={(objEvent) => updateLine(dicLine.strRowID, "fltSlabToAmount", objEvent.target.value)} disabled={blnFieldDisabled} placeholder={t("open_ended", "Open ended")} inputProps={{ style: { textAlign: "right" } }} />,
+    taxRate: <TextField size="small" fullWidth value={dicLine.fltTaxRatePercent} onChange={(objEvent) => updateLine(dicLine.strRowID, "fltTaxRatePercent", objEvent.target.value)} disabled={blnFieldDisabled} inputProps={{ style: { textAlign: "right" } }} />,
+    fixedTax: <TextField size="small" fullWidth value={dicLine.decFixedTaxAmount} onChange={(objEvent) => updateLine(dicLine.strRowID, "decFixedTaxAmount", objEvent.target.value)} disabled={blnFieldDisabled} inputProps={{ style: { textAlign: "right" } }} />,
+    displayOrder: <TextField size="small" fullWidth value={dicLine.intDisplayOrder} onChange={(objEvent) => updateLine(dicLine.strRowID, "intDisplayOrder", objEvent.target.value)} disabled={blnFieldDisabled} inputProps={{ style: { textAlign: "right" } }} />,
+    active: <ActiveStatusSwitch blnIsActive={dicLine.blnIsActive} onChange={(blnChecked) => updateLine(dicLine.strRowID, "blnIsActive", blnChecked)} disabled={blnFieldDisabled} />,
+    action: <Tooltip title={t("remove_button", "Remove")}><span><IconButton color="error" size="small" aria-label={t("remove_button", "Remove")} onClick={() => handleRemoveLine(dicLine.strRowID)} disabled={blnFieldDisabled}><DeleteOutlineRoundedIcon fontSize="small" /></IconButton></span></Tooltip>,
+  }));
+
   if (blnLoading || blnRightsLoading) {
     return (
       <Box sx={{ minHeight: 360, display: "grid", placeItems: "center" }}>
@@ -157,110 +221,43 @@ export default function TaxSlabMaintenancePage({ intTaxRegimeID }: TaxSlabMainte
 
   return (
     <Stack spacing={1.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
-      <Paper sx={{ borderRadius: "var(--app-card-radius)", p: "10px", border: "1px solid rgba(148,163,184,0.18)", background: "linear-gradient(135deg, #f8fcff 0%, #f7f8ff 45%, #fff9f0 100%)" }}>
-        <Stack spacing={1.25}>
-          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
-            <Box>
-              <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
-                {t("slab_title", "Tax Slab Maintenance")}
-              </Typography>
-              <Typography sx={{ color: "#64748b", mt: 0.75 }}>
-                {t("slab_subtitle", "Maintain tax-year and profile-specific slab bands using continuous boundaries. Rebate eligibility is handled separately at regime level.")}
-              </Typography>
-            </Box>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
-              <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${intTaxRegimeID}`)}>
-                {t("back_to_regime", "Back to regime")}
-              </Button>
-              {blnCanSave ? (
-                <Button className={styles.primaryButton} startIcon={<SaveRoundedIcon />} onClick={handleSave} disabled={blnSaving}>
-                  {blnSaving ? t("saving", "Saving...") : t("save_slabs", "Save Slabs")}
+      {!blnEmbedded ? (
+        <TaxRegimeWorkspaceHeader
+          strTitle={t("slab_title", "Tax Slab Maintenance")}
+          nodeActions={(
+            <TaxRegimeActionGroup>
+                <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/tax-regimes")}>
+                  {t("back_to_list", "Back")}
                 </Button>
-              ) : null}
-            </Stack>
-          </Stack>
-        </Stack>
-      </Paper>
+                {blnCanSave ? (
+                  <Button className={styles.primaryButton} startIcon={<SaveRoundedIcon />} onClick={handleSave} disabled={blnSaving}>
+                    {blnSaving ? t("saving", "Saving...") : t("save_slabs", "Save Slabs")}
+                  </Button>
+                ) : null}
+            </TaxRegimeActionGroup>
+          )}
+        />
+      ) : null}
 
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
       {blnReadOnly ? <Alert severity="info">{t("read_only_mode", "You have view-only access for Tax Regimes and Tax Slabs.")}</Alert> : null}
 
       <Box>
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5} sx={{ mb: 1.25 }}>
-          <Box>
-            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("slab_lines", "Slab Lines")}</Typography>
-            <Typography sx={{ color: "#64748b", fontSize: "0.9rem", mt: 0.4 }}>
-              {t("slab_lines_help", "Use lower-inclusive and upper-exclusive boundaries. Only the final slab in one profile should remain open-ended.")}
-            </Typography>
-          </Box>
-          <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={handleAddLine} disabled={blnFieldDisabled}>
-            {t("add_slab_line", "Add Slab Line")}
-          </Button>
-        </Stack>
-
-        <Box className={styles.tableCard}>
-          <Box className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>{t("tax_year", "Tax Year")}</th>
-                  <th>{t("slab_profile", "Slab Profile")}</th>
-                  <th>{t("residential_status", "Residential Status")}</th>
-                  <th>{t("age_from", "Age From")}</th>
-                  <th>{t("age_to", "Age To")}</th>
-                  <th>{t("slab_from_amount", "Slab From Amount")}</th>
-                  <th>{t("slab_to_amount", "Slab To Amount")}</th>
-                  <th>{t("tax_rate_percent", "Tax Rate %")}</th>
-                  <th>{t("fixed_tax_amount", "Fixed Tax Amount")}</th>
-                  <th>{t("display_order", "Display Order")}</th>
-                  <th>{t("active", "Active")}</th>
-                  <th>{t("action", "Action")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lstSlabs.map((dicLine) => (
-                  <tr key={dicLine.strRowID}>
-                    <td>
-                      <TextField select size="small" value={dicLine.strTaxYearCode} onChange={(objEvent) => updateLine(dicLine.strRowID, "strTaxYearCode", objEvent.target.value)} disabled={blnFieldDisabled} sx={{ minWidth: 140 }}>
-                        {lstFinancialYears.map((strFinancialYearCode) => (
-                          <MenuItem key={strFinancialYearCode} value={strFinancialYearCode}>{strFinancialYearCode}</MenuItem>
-                        ))}
-                      </TextField>
-                    </td>
-                    <td>
-                      <TextField select size="small" value={dicLine.strSlabProfileCode} onChange={(objEvent) => updateLine(dicLine.strRowID, "strSlabProfileCode", objEvent.target.value)} disabled={blnFieldDisabled} sx={{ minWidth: 140 }}>
-                        {lstProfileCodes.map((strProfileCode) => (
-                          <MenuItem key={strProfileCode} value={strProfileCode}>{strProfileCode}</MenuItem>
-                        ))}
-                      </TextField>
-                    </td>
-                    <td>
-                      <TextField select size="small" value={dicLine.strResidentialStatusCode} onChange={(objEvent) => updateLine(dicLine.strRowID, "strResidentialStatusCode", objEvent.target.value)} disabled={blnFieldDisabled} sx={{ minWidth: 150 }}>
-                        {lstResidentialStatuses.map((strStatusCode) => (
-                          <MenuItem key={strStatusCode} value={strStatusCode}>{strStatusCode}</MenuItem>
-                        ))}
-                      </TextField>
-                    </td>
-                    <td><TextField size="small" value={dicLine.intAgeFromYears} onChange={(objEvent) => updateLine(dicLine.strRowID, "intAgeFromYears", objEvent.target.value)} disabled={blnFieldDisabled} sx={{ minWidth: 90 }} /></td>
-                    <td><TextField size="small" value={dicLine.intAgeToYears} onChange={(objEvent) => updateLine(dicLine.strRowID, "intAgeToYears", objEvent.target.value)} disabled={blnFieldDisabled} sx={{ minWidth: 90 }} /></td>
-                    <td><TextField size="small" value={dicLine.fltSlabFromAmount} onChange={(objEvent) => updateLine(dicLine.strRowID, "fltSlabFromAmount", objEvent.target.value)} disabled={blnFieldDisabled} sx={{ minWidth: 140 }} /></td>
-                    <td><TextField size="small" value={dicLine.fltSlabToAmount} onChange={(objEvent) => updateLine(dicLine.strRowID, "fltSlabToAmount", objEvent.target.value)} disabled={blnFieldDisabled} placeholder={t("open_ended", "Open ended")} sx={{ minWidth: 140 }} /></td>
-                    <td><TextField size="small" value={dicLine.fltTaxRatePercent} onChange={(objEvent) => updateLine(dicLine.strRowID, "fltTaxRatePercent", objEvent.target.value)} disabled={blnFieldDisabled} sx={{ minWidth: 110 }} /></td>
-                    <td><TextField size="small" value={dicLine.decFixedTaxAmount} onChange={(objEvent) => updateLine(dicLine.strRowID, "decFixedTaxAmount", objEvent.target.value)} disabled={blnFieldDisabled} sx={{ minWidth: 120 }} /></td>
-                    <td><TextField size="small" value={dicLine.intDisplayOrder} onChange={(objEvent) => updateLine(dicLine.strRowID, "intDisplayOrder", objEvent.target.value)} disabled={blnFieldDisabled} sx={{ minWidth: 110 }} /></td>
-                    <td><ActiveStatusSwitch blnIsActive={dicLine.blnIsActive} onChange={(blnChecked) => updateLine(dicLine.strRowID, "blnIsActive", blnChecked)} disabled={blnFieldDisabled} /></td>
-                    <td>
-                      <Button color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => handleRemoveLine(dicLine.strRowID)} disabled={blnFieldDisabled}>
-                        {t("remove_button", "Remove")}
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Box>
-        </Box>
+        <CommonTable<Record<string, ReactNode>>
+          columns={lstTableColumns}
+          rows={lstTableRows}
+          rowIdField="id"
+          minTableWidth={1275}
+          defaultPageSize={20}
+          pageSizeOptions={[10, 20, 50]}
+          emptyMessage={t("no_slab_lines", "No slab lines found.")}
+          testIdPrefix="tax-regimes.slabs"
+          hideRowClickHint
+          wrapColumnHeaders={false}
+          toolbarLeft={blnCanSave ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={handleAddLine} disabled={blnFieldDisabled}>{t("add_slab_line", "Add Slab Line")}</Button> : undefined}
+          sx={objTaxRegimeCommonTableSx}
+        />
       </Box>
     </Stack>
   );

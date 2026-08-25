@@ -1,4 +1,4 @@
-import TaxRuleMaintenancePage from "@/features/tax-regimes/components/TaxRuleMaintenancePage";
+import { redirect } from "next/navigation";
 
 type TaxRulePageProps = {
   params: Promise<{ id: string }>;
@@ -6,5 +6,5 @@ type TaxRulePageProps = {
 
 export default async function PayrollTaxRegimeStandardDeductionPage({ params }: TaxRulePageProps) {
   const { id } = await params;
-  return <TaxRuleMaintenancePage intTaxRegimeID={Number(id)} strRuleType="standard-deduction" />;
+  redirect(`/payroll/tax-regimes/edit/${id}?tab=rules`);
 }

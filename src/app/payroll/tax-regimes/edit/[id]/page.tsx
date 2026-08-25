@@ -1,4 +1,4 @@
-import TaxRegimeEditorPage from "@/features/tax-regimes/components/TaxRegimeEditorPage";
+import TaxRegimeWorkspaceTabs from "@/features/tax-regimes/components/TaxRegimeWorkspaceTabs";
 
 type EditTaxRegimePageProps = {
   params: Promise<{ id: string }>;
@@ -9,7 +9,7 @@ export default async function EditTaxRegimePage({ params, searchParams }: EditTa
   const { id } = await params;
   const objSearchParams = searchParams ? await searchParams : undefined;
   return (
-    <TaxRegimeEditorPage
+    <TaxRegimeWorkspaceTabs
       strMode={objSearchParams?.mode === "view" ? "view" : "edit"}
       intTaxRegimeID={Number(id)}
     />

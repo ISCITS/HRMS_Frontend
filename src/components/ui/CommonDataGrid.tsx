@@ -345,7 +345,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                 </Button>
               </Stack>
             ) : null}
-            {!hideToolbar ? (
+            {!hideToolbar && !hideRowClickHint ? (
               <Stack
                 direction="row"
                 spacing={0.75}

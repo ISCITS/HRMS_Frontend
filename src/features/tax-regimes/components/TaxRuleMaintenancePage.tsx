@@ -9,17 +9,19 @@ import {
   Box,
   Button,
   CircularProgress,
+  IconButton,
   MenuItem,
-  Paper,
   Stack,
   Switch,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import styles from "@/components/master/MasterScreen.module.css";
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useTaxRegimeLabels } from "@/features/tax-regimes/hooks/useTaxRegimeLabels";
 import { taxRegimeService } from "@/features/tax-regimes/services/taxRegimeService";
@@ -30,104 +32,185 @@ import type {
   TaxStandardDeductionRuleFormValue,
   TaxSurchargeSlabFormValue,
 } from "@/features/tax-regimes/types";
+import { objTaxRegimeCommonTableSx, TaxRegimeActionGroup, TaxRegimeWorkspaceHeader, type TaxRegimeSaveBridge } from "@/features/tax-regimes/components/TaxRegimeWorkspace";
 
-type RuleType = "standard-deduction" | "rebate" | "surcharge" | "cess";
+export type RuleType = "standard-deduction" | "rebate" | "surcharge" | "cess";
 
 type TaxRuleMaintenancePageProps = {
   intTaxRegimeID: number;
-  strRuleType: RuleType;
+  blnEmbedded?: boolean;
+  onSaveBridgeChange?: (objBridge: TaxRegimeSaveBridge) => void;
 };
 
+const lstRuleTypes: RuleType[] = ["standard-deduction", "rebate", "surcharge", "cess"];
+
 const lstTaxRegimeModuleCodes = ["TAX_REGIME", "TAX_REGIMES", "MASTER_TAX_REGIME", "TAX_SLAB", "TAX_SLABS", "MASTER_TAX_SLAB"];
+
+// A single row shape that covers all four rule types. Only the fields relevant
+// to a row's own strRuleType are editable; the rest stay disabled/blank and are
+// dropped when the row is mapped back to its type-specific shape on save.
+type UnifiedRuleRow = {
+  strRowID: string;
+  strRuleType: RuleType;
+  strTaxYearCode: string;
+  strCode: string;
+  strName: string;
+  strTaxpayerTypeCode: string;
+  strResidentialStatusCode: string;
+  strModeCode: string;
+  strFromAmount: string;
+  strToAmount: string;
+  strAmount: string;
+  strRatePercent: string;
+  strCapAmount: string;
+  strMaxCapPercent: string;
+  blnMarginalReliefEnabled: boolean;
+  blnExcludesSpecialRateIncome: boolean;
+  strDisplayOrder: string;
+  dtEffectiveFrom: string;
+  dtEffectiveTo: string;
+  blnIsActive: boolean;
+};
 
 function getTodayDateInputValue() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function createStandardDeductionRow(strTaxYearCode: string, strDefaultEffectiveFrom?: string): TaxStandardDeductionRuleFormValue {
+function createUnifiedRow(strRuleType: RuleType, strTaxYearCode: string, strDefaultEffectiveFrom?: string): UnifiedRuleRow {
   return {
     strRowID: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    strRuleType,
     strTaxYearCode,
-    strIncomeSourceCode: "SALARY",
-    strTaxpayerTypeCode: "INDIVIDUAL",
-    strResidentialStatusCode: "ANY",
-    strDeductionModeCode: "FIXED",
-    decDeductionAmount: "0",
-    decDeductionPercent: "",
-    decMaximumDeductionAmount: "",
+    strCode: "",
+    strName: "",
+    strTaxpayerTypeCode: strRuleType === "standard-deduction" || strRuleType === "rebate" ? "INDIVIDUAL" : "",
+    strResidentialStatusCode: strRuleType === "standard-deduction" ? "ANY" : strRuleType === "rebate" ? "RESIDENT" : "",
+    strModeCode: strRuleType === "standard-deduction" ? "FIXED" : strRuleType === "rebate" ? "LOWER_OF_TAX_OR_CAP" : strRuleType === "cess" ? "TAX_PLUS_SURCHARGE" : "",
+    strFromAmount: strRuleType === "rebate" || strRuleType === "surcharge" ? "0" : "",
+    strToAmount: "",
+    strAmount: strRuleType === "standard-deduction" ? "0" : "",
+    strRatePercent: strRuleType === "rebate" ? "100" : strRuleType === "surcharge" || strRuleType === "cess" ? "0" : "",
+    strCapAmount: "",
+    strMaxCapPercent: "",
+    blnMarginalReliefEnabled: strRuleType === "surcharge",
+    blnExcludesSpecialRateIncome: strRuleType === "rebate",
+    strDisplayOrder: strRuleType === "surcharge" || strRuleType === "cess" ? "10" : "",
     dtEffectiveFrom: strDefaultEffectiveFrom || getTodayDateInputValue(),
     dtEffectiveTo: "",
     blnIsActive: true,
-    strLegalReference: "",
-    strRemarks: "",
   };
 }
 
-function createRebateRow(strTaxYearCode: string, strDefaultEffectiveFrom?: string): TaxRebateRuleFormValue {
+function fromStandardDeductionRow(dic: TaxStandardDeductionRuleFormValue): UnifiedRuleRow {
   return {
-    strRowID: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    strTaxYearCode,
-    strRebateCode: "",
-    strTaxpayerTypeCode: "INDIVIDUAL",
-    strResidentialStatusCode: "RESIDENT",
-    decMinimumTotalIncome: "0",
-    decMaximumTotalIncome: "",
-    strRebateModeCode: "LOWER_OF_TAX_OR_CAP",
-    decMaximumRebateAmount: "",
-    decRebatePercent: "100",
-    blnMarginalReliefEnabled: false,
-    blnExcludesSpecialRateIncome: true,
-    dtEffectiveFrom: strDefaultEffectiveFrom || getTodayDateInputValue(),
-    dtEffectiveTo: "",
-    blnIsActive: true,
-    strLegalReference: "",
+    strRowID: dic.strRowID, strRuleType: "standard-deduction", strTaxYearCode: dic.strTaxYearCode,
+    strCode: dic.strIncomeSourceCode, strName: "", strTaxpayerTypeCode: dic.strTaxpayerTypeCode,
+    strResidentialStatusCode: dic.strResidentialStatusCode, strModeCode: dic.strDeductionModeCode,
+    strFromAmount: "", strToAmount: "", strAmount: dic.decDeductionAmount, strRatePercent: dic.decDeductionPercent,
+    strCapAmount: dic.decMaximumDeductionAmount, strMaxCapPercent: "", blnMarginalReliefEnabled: false,
+    blnExcludesSpecialRateIncome: false, strDisplayOrder: "", dtEffectiveFrom: dic.dtEffectiveFrom,
+    dtEffectiveTo: dic.dtEffectiveTo, blnIsActive: dic.blnIsActive,
   };
 }
 
-function createSurchargeRow(strTaxYearCode: string, strDefaultEffectiveFrom?: string): TaxSurchargeSlabFormValue {
+function fromRebateRow(dic: TaxRebateRuleFormValue): UnifiedRuleRow {
   return {
-    strRowID: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    strTaxYearCode,
-    strSurchargeProfileCode: "GENERAL",
-    decIncomeFromAmount: "0",
-    decIncomeToAmount: "",
-    decSurchargeRatePercent: "0",
-    blnMarginalReliefEnabled: true,
-    decMaximumRateCapPercent: "",
-    intDisplayOrder: "10",
-    dtEffectiveFrom: strDefaultEffectiveFrom || getTodayDateInputValue(),
-    dtEffectiveTo: "",
-    blnIsActive: true,
-    strLegalReference: "",
+    strRowID: dic.strRowID, strRuleType: "rebate", strTaxYearCode: dic.strTaxYearCode,
+    strCode: dic.strRebateCode, strName: "", strTaxpayerTypeCode: dic.strTaxpayerTypeCode,
+    strResidentialStatusCode: dic.strResidentialStatusCode, strModeCode: dic.strRebateModeCode,
+    strFromAmount: dic.decMinimumTotalIncome, strToAmount: dic.decMaximumTotalIncome, strAmount: "",
+    strRatePercent: dic.decRebatePercent, strCapAmount: dic.decMaximumRebateAmount, strMaxCapPercent: "",
+    blnMarginalReliefEnabled: dic.blnMarginalReliefEnabled, blnExcludesSpecialRateIncome: dic.blnExcludesSpecialRateIncome,
+    strDisplayOrder: "", dtEffectiveFrom: dic.dtEffectiveFrom, dtEffectiveTo: dic.dtEffectiveTo, blnIsActive: dic.blnIsActive,
   };
 }
 
-function createCessRow(strTaxYearCode: string, strDefaultEffectiveFrom?: string): TaxCessRuleFormValue {
+function fromSurchargeRow(dic: TaxSurchargeSlabFormValue): UnifiedRuleRow {
   return {
-    strRowID: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    strTaxYearCode,
-    strCessCode: "",
-    strCessName: "",
-    decCessRatePercent: "0",
-    strCalculationBaseCode: "TAX_PLUS_SURCHARGE",
-    intDisplayOrder: "10",
-    dtEffectiveFrom: strDefaultEffectiveFrom || getTodayDateInputValue(),
-    dtEffectiveTo: "",
-    blnIsActive: true,
-    strLegalReference: "",
+    strRowID: dic.strRowID, strRuleType: "surcharge", strTaxYearCode: dic.strTaxYearCode,
+    strCode: dic.strSurchargeProfileCode, strName: "", strTaxpayerTypeCode: "", strResidentialStatusCode: "",
+    strModeCode: "", strFromAmount: dic.decIncomeFromAmount, strToAmount: dic.decIncomeToAmount, strAmount: "",
+    strRatePercent: dic.decSurchargeRatePercent, strCapAmount: "", strMaxCapPercent: dic.decMaximumRateCapPercent,
+    blnMarginalReliefEnabled: dic.blnMarginalReliefEnabled, blnExcludesSpecialRateIncome: false,
+    strDisplayOrder: dic.intDisplayOrder, dtEffectiveFrom: dic.dtEffectiveFrom, dtEffectiveTo: dic.dtEffectiveTo, blnIsActive: dic.blnIsActive,
   };
 }
 
-export default function TaxRuleMaintenancePage({ intTaxRegimeID, strRuleType }: TaxRuleMaintenancePageProps) {
+function fromCessRow(dic: TaxCessRuleFormValue): UnifiedRuleRow {
+  return {
+    strRowID: dic.strRowID, strRuleType: "cess", strTaxYearCode: dic.strTaxYearCode,
+    strCode: dic.strCessCode, strName: dic.strCessName, strTaxpayerTypeCode: "", strResidentialStatusCode: "",
+    strModeCode: dic.strCalculationBaseCode, strFromAmount: "", strToAmount: "", strAmount: "",
+    strRatePercent: dic.decCessRatePercent, strCapAmount: "", strMaxCapPercent: "", blnMarginalReliefEnabled: false,
+    blnExcludesSpecialRateIncome: false, strDisplayOrder: dic.intDisplayOrder, dtEffectiveFrom: dic.dtEffectiveFrom,
+    dtEffectiveTo: dic.dtEffectiveTo, blnIsActive: dic.blnIsActive,
+  };
+}
+
+function toStandardDeductionRow(dic: UnifiedRuleRow): TaxStandardDeductionRuleFormValue {
+  return {
+    strRowID: dic.strRowID, strTaxYearCode: dic.strTaxYearCode, strIncomeSourceCode: dic.strCode,
+    strTaxpayerTypeCode: dic.strTaxpayerTypeCode, strResidentialStatusCode: dic.strResidentialStatusCode,
+    strDeductionModeCode: dic.strModeCode, decDeductionAmount: dic.strAmount, decDeductionPercent: dic.strRatePercent,
+    decMaximumDeductionAmount: dic.strCapAmount, dtEffectiveFrom: dic.dtEffectiveFrom, dtEffectiveTo: dic.dtEffectiveTo,
+    blnIsActive: dic.blnIsActive, strLegalReference: "", strRemarks: "",
+  };
+}
+
+function toRebateRow(dic: UnifiedRuleRow): TaxRebateRuleFormValue {
+  return {
+    strRowID: dic.strRowID, strTaxYearCode: dic.strTaxYearCode, strRebateCode: dic.strCode,
+    strTaxpayerTypeCode: dic.strTaxpayerTypeCode, strResidentialStatusCode: dic.strResidentialStatusCode,
+    decMinimumTotalIncome: dic.strFromAmount, decMaximumTotalIncome: dic.strToAmount, strRebateModeCode: dic.strModeCode,
+    decMaximumRebateAmount: dic.strCapAmount, decRebatePercent: dic.strRatePercent,
+    blnMarginalReliefEnabled: dic.blnMarginalReliefEnabled, blnExcludesSpecialRateIncome: dic.blnExcludesSpecialRateIncome,
+    dtEffectiveFrom: dic.dtEffectiveFrom, dtEffectiveTo: dic.dtEffectiveTo, blnIsActive: dic.blnIsActive, strLegalReference: "",
+  };
+}
+
+function toSurchargeRow(dic: UnifiedRuleRow): TaxSurchargeSlabFormValue {
+  return {
+    strRowID: dic.strRowID, strTaxYearCode: dic.strTaxYearCode, strSurchargeProfileCode: dic.strCode,
+    decIncomeFromAmount: dic.strFromAmount, decIncomeToAmount: dic.strToAmount, decSurchargeRatePercent: dic.strRatePercent,
+    blnMarginalReliefEnabled: dic.blnMarginalReliefEnabled, decMaximumRateCapPercent: dic.strMaxCapPercent,
+    intDisplayOrder: dic.strDisplayOrder, dtEffectiveFrom: dic.dtEffectiveFrom, dtEffectiveTo: dic.dtEffectiveTo,
+    blnIsActive: dic.blnIsActive, strLegalReference: "",
+  };
+}
+
+function toCessRow(dic: UnifiedRuleRow): TaxCessRuleFormValue {
+  return {
+    strRowID: dic.strRowID, strTaxYearCode: dic.strTaxYearCode, strCessCode: dic.strCode, strCessName: dic.strName,
+    decCessRatePercent: dic.strRatePercent, strCalculationBaseCode: dic.strModeCode, intDisplayOrder: dic.strDisplayOrder,
+    dtEffectiveFrom: dic.dtEffectiveFrom, dtEffectiveTo: dic.dtEffectiveTo, blnIsActive: dic.blnIsActive, strLegalReference: "",
+  };
+}
+
+const dicFieldEnabledByType: Record<RuleType, Partial<Record<keyof UnifiedRuleRow, boolean>>> = {
+  "standard-deduction": { strCode: true, strTaxpayerTypeCode: true, strResidentialStatusCode: true, strModeCode: true, strAmount: true, strRatePercent: true, strCapAmount: true },
+  rebate: { strCode: true, strTaxpayerTypeCode: true, strResidentialStatusCode: true, strModeCode: true, strFromAmount: true, strToAmount: true, strRatePercent: true, strCapAmount: true, blnMarginalReliefEnabled: true, blnExcludesSpecialRateIncome: true },
+  surcharge: { strCode: true, strFromAmount: true, strToAmount: true, strRatePercent: true, strMaxCapPercent: true, blnMarginalReliefEnabled: true, strDisplayOrder: true },
+  cess: { strCode: true, strName: true, strModeCode: true, strRatePercent: true, strDisplayOrder: true },
+};
+
+function isFieldEnabled(strRuleType: RuleType, strField: keyof UnifiedRuleRow) {
+  return dicFieldEnabledByType[strRuleType][strField] === true;
+}
+
+const dicCodePlaceholderByType: Record<RuleType, string> = {
+  "standard-deduction": "Income Source",
+  rebate: "Rebate Code",
+  surcharge: "Surcharge Profile",
+  cess: "Cess Code",
+};
+
+export default function TaxRuleMaintenancePage({ intTaxRegimeID, blnEmbedded, onSaveBridgeChange }: TaxRuleMaintenancePageProps) {
   const objRouter = useRouter();
   const { t } = useTaxRegimeLabels();
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstTaxRegimeModuleCodes);
   const [objRegime, setObjRegime] = useState<TaxRegimeDetailRecord | null>(null);
   const [lstFinancialYears, setLstFinancialYears] = useState<string[]>([]);
-  const [lstStandardDeductionRules, setLstStandardDeductionRules] = useState<TaxStandardDeductionRuleFormValue[]>([]);
-  const [lstRebateRules, setLstRebateRules] = useState<TaxRebateRuleFormValue[]>([]);
-  const [lstSurchargeSlabs, setLstSurchargeSlabs] = useState<TaxSurchargeSlabFormValue[]>([]);
-  const [lstCessRules, setLstCessRules] = useState<TaxCessRuleFormValue[]>([]);
+  const [lstRows, setLstRows] = useState<UnifiedRuleRow[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
@@ -163,26 +246,24 @@ export default function TaxRuleMaintenancePage({ intTaxRegimeID, strRuleType }: 
         setObjRegime(dicRegime);
         setLstFinancialYears(getUniqueFinancialYears(dicRegime.strTaxYearCode, dicRegime.strEffectiveFromYear));
         const strDefaultEffectiveFrom = dicRegime.dtEffectiveFrom || undefined;
-        if (strRuleType === "standard-deduction") {
-          const dicWorkspace = await taxRegimeService.getTaxStandardDeductionRules(intTaxRegimeID);
-          if (!blnMounted) return;
-          setLstStandardDeductionRules(dicWorkspace.lstRecords.length > 0 ? dicWorkspace.lstRecords : [createStandardDeductionRow(dicRegime.strTaxYearCode, strDefaultEffectiveFrom)]);
+
+        const [dicStandardDeduction, dicRebate, dicSurcharge, dicCess] = await Promise.all([
+          taxRegimeService.getTaxStandardDeductionRules(intTaxRegimeID),
+          taxRegimeService.getTaxRebateRules(intTaxRegimeID),
+          taxRegimeService.getTaxSurchargeSlabs(intTaxRegimeID),
+          taxRegimeService.getTaxCessRules(intTaxRegimeID),
+        ]);
+        if (!blnMounted) {
+          return;
         }
-        if (strRuleType === "rebate") {
-          const dicWorkspace = await taxRegimeService.getTaxRebateRules(intTaxRegimeID);
-          if (!blnMounted) return;
-          setLstRebateRules(dicWorkspace.lstRecords.length > 0 ? dicWorkspace.lstRecords : [createRebateRow(dicRegime.strTaxYearCode, strDefaultEffectiveFrom)]);
-        }
-        if (strRuleType === "surcharge") {
-          const dicWorkspace = await taxRegimeService.getTaxSurchargeSlabs(intTaxRegimeID);
-          if (!blnMounted) return;
-          setLstSurchargeSlabs(dicWorkspace.lstRecords.length > 0 ? dicWorkspace.lstRecords : [createSurchargeRow(dicRegime.strTaxYearCode, strDefaultEffectiveFrom)]);
-        }
-        if (strRuleType === "cess") {
-          const dicWorkspace = await taxRegimeService.getTaxCessRules(intTaxRegimeID);
-          if (!blnMounted) return;
-          setLstCessRules(dicWorkspace.lstRecords.length > 0 ? dicWorkspace.lstRecords : [createCessRow(dicRegime.strTaxYearCode, strDefaultEffectiveFrom)]);
-        }
+
+        const lstMergedRows: UnifiedRuleRow[] = [
+          ...(dicStandardDeduction.lstRecords.length > 0 ? dicStandardDeduction.lstRecords.map(fromStandardDeductionRow) : [createUnifiedRow("standard-deduction", dicRegime.strTaxYearCode, strDefaultEffectiveFrom)]),
+          ...(dicRebate.lstRecords.length > 0 ? dicRebate.lstRecords.map(fromRebateRow) : [createUnifiedRow("rebate", dicRegime.strTaxYearCode, strDefaultEffectiveFrom)]),
+          ...(dicSurcharge.lstRecords.length > 0 ? dicSurcharge.lstRecords.map(fromSurchargeRow) : [createUnifiedRow("surcharge", dicRegime.strTaxYearCode, strDefaultEffectiveFrom)]),
+          ...(dicCess.lstRecords.length > 0 ? dicCess.lstRecords.map(fromCessRow) : [createUnifiedRow("cess", dicRegime.strTaxYearCode, strDefaultEffectiveFrom)]),
+        ];
+        setLstRows(lstMergedRows);
       } catch (objError) {
         if (blnMounted) {
           setStrError(objError instanceof Error ? objError.message : t("load_tax_rule_workspace_failed", "Unable to load tax rule workspace."));
@@ -197,33 +278,20 @@ export default function TaxRuleMaintenancePage({ intTaxRegimeID, strRuleType }: 
     return () => {
       blnMounted = false;
     };
-  }, [blnCanView, blnRightsLoading, intTaxRegimeID, strRuleType]);
-
-  function getTitle() {
-    if (strRuleType === "standard-deduction") return t("manage_standard_deduction", "Manage Standard Deduction");
-    if (strRuleType === "rebate") return t("manage_rebate", "Manage Rebate");
-    if (strRuleType === "surcharge") return t("manage_surcharge", "Manage Surcharge");
-    return t("manage_cess", "Manage Cess");
-  }
+  }, [blnCanView, blnRightsLoading, intTaxRegimeID]);
 
   function handleAddRow() {
     const strTaxYearCode = objRegime?.strTaxYearCode || lstFinancialYears[0] || "";
     const strDefaultEffectiveFrom = objRegime?.dtEffectiveFrom || undefined;
-    if (strRuleType === "standard-deduction") setLstStandardDeductionRules((lstPrevious) => [...lstPrevious, createStandardDeductionRow(strTaxYearCode, strDefaultEffectiveFrom)]);
-    if (strRuleType === "rebate") setLstRebateRules((lstPrevious) => [...lstPrevious, createRebateRow(strTaxYearCode, strDefaultEffectiveFrom)]);
-    if (strRuleType === "surcharge") setLstSurchargeSlabs((lstPrevious) => [...lstPrevious, createSurchargeRow(strTaxYearCode, strDefaultEffectiveFrom)]);
-    if (strRuleType === "cess") setLstCessRules((lstPrevious) => [...lstPrevious, createCessRow(strTaxYearCode, strDefaultEffectiveFrom)]);
+    setLstRows((lstPrevious) => [...lstPrevious, createUnifiedRow("standard-deduction", strTaxYearCode, strDefaultEffectiveFrom)]);
   }
 
   function handleDeleteRow(strRowID: string) {
-    if (strRuleType === "standard-deduction") setLstStandardDeductionRules((lstPrevious) => lstPrevious.length === 1 ? lstPrevious : lstPrevious.filter((dicRow) => dicRow.strRowID !== strRowID));
-    if (strRuleType === "rebate") setLstRebateRules((lstPrevious) => lstPrevious.length === 1 ? lstPrevious : lstPrevious.filter((dicRow) => dicRow.strRowID !== strRowID));
-    if (strRuleType === "surcharge") setLstSurchargeSlabs((lstPrevious) => lstPrevious.length === 1 ? lstPrevious : lstPrevious.filter((dicRow) => dicRow.strRowID !== strRowID));
-    if (strRuleType === "cess") setLstCessRules((lstPrevious) => lstPrevious.length === 1 ? lstPrevious : lstPrevious.filter((dicRow) => dicRow.strRowID !== strRowID));
+    setLstRows((lstPrevious) => lstPrevious.filter((dicRow) => dicRow.strRowID !== strRowID));
   }
 
-  function updateRow<T extends { strRowID: string }>(lstRows: T[], strRowID: string, strField: keyof T, objValue: string | boolean) {
-    return lstRows.map((dicRow) => dicRow.strRowID === strRowID ? { ...dicRow, [strField]: objValue } : dicRow);
+  function updateRow(strRowID: string, strField: keyof UnifiedRuleRow, objValue: string | boolean) {
+    setLstRows((lstPrevious) => lstPrevious.map((dicRow) => dicRow.strRowID === strRowID ? { ...dicRow, [strField]: objValue } : dicRow));
   }
 
   async function handleSave() {
@@ -231,18 +299,24 @@ export default function TaxRuleMaintenancePage({ intTaxRegimeID, strRuleType }: 
     setStrError("");
     setStrSuccess("");
     try {
-      if (strRuleType === "standard-deduction") {
-        await taxRegimeService.saveTaxStandardDeductionRules(intTaxRegimeID, lstStandardDeductionRules);
-      }
-      if (strRuleType === "rebate") {
-        await taxRegimeService.saveTaxRebateRules(intTaxRegimeID, lstRebateRules);
-      }
-      if (strRuleType === "surcharge") {
-        await taxRegimeService.saveTaxSurchargeSlabs(intTaxRegimeID, lstSurchargeSlabs);
-      }
-      if (strRuleType === "cess") {
-        await taxRegimeService.saveTaxCessRules(intTaxRegimeID, lstCessRules);
-      }
+      const lstStandardDeductionRows = lstRows.filter((dicRow) => dicRow.strRuleType === "standard-deduction").map(toStandardDeductionRow);
+      const lstRebateRows = lstRows.filter((dicRow) => dicRow.strRuleType === "rebate").map(toRebateRow);
+      const lstSurchargeRows = lstRows.filter((dicRow) => dicRow.strRuleType === "surcharge").map(toSurchargeRow);
+      const lstCessRows = lstRows.filter((dicRow) => dicRow.strRuleType === "cess").map(toCessRow);
+
+      const [dicStandardDeduction, dicRebate, dicSurcharge, dicCess] = await Promise.all([
+        taxRegimeService.saveTaxStandardDeductionRules(intTaxRegimeID, lstStandardDeductionRows),
+        taxRegimeService.saveTaxRebateRules(intTaxRegimeID, lstRebateRows),
+        taxRegimeService.saveTaxSurchargeSlabs(intTaxRegimeID, lstSurchargeRows),
+        taxRegimeService.saveTaxCessRules(intTaxRegimeID, lstCessRows),
+      ]);
+
+      setLstRows([
+        ...dicStandardDeduction.lstRecords.map(fromStandardDeductionRow),
+        ...dicRebate.lstRecords.map(fromRebateRow),
+        ...dicSurcharge.lstRecords.map(fromSurchargeRow),
+        ...dicCess.lstRecords.map(fromCessRow),
+      ]);
       setStrSuccess(t("save_tax_rules_success", "Tax rules saved successfully."));
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : t("save_tax_rules_failed", "Unable to save tax rules."));
@@ -250,6 +324,108 @@ export default function TaxRuleMaintenancePage({ intTaxRegimeID, strRuleType }: 
       setBlnSaving(false);
     }
   }
+
+  const objHandleSaveRef = useRef(handleSave);
+  objHandleSaveRef.current = handleSave;
+
+  useEffect(() => {
+    if (!onSaveBridgeChange) {
+      return;
+    }
+    onSaveBridgeChange({
+      strLabel: blnSaving ? t("saving", "Saving...") : t("save", "Save"),
+      blnVisible: blnCanEdit && !blnLoading && blnCanView,
+      blnDisabled: blnSaving,
+      fnSave: () => objHandleSaveRef.current(),
+    });
+    return () => onSaveBridgeChange(null);
+  }, [onSaveBridgeChange, blnCanEdit, blnSaving, blnLoading, blnCanView]);
+
+  const objColumn = (field: string, headerName: string, width: number, align?: "left" | "right" | "center"): CommonTableColumn<Record<string, ReactNode>> => ({
+    field,
+    headerName,
+    width,
+    align,
+    sortable: false,
+    exportable: field !== "action",
+  });
+
+  const nodeYearSelect = (strRowID: string, strValue: string, fnUpdate: (strValue: string) => void) => (
+    <TextField select size="small" fullWidth value={strValue} onChange={(objEvent) => fnUpdate(objEvent.target.value)} disabled={blnReadOnly}>
+      {lstFinancialYears.map((strYear) => <MenuItem key={`${strRowID}-${strYear}`} value={strYear}>{strYear}</MenuItem>)}
+    </TextField>
+  );
+  const nodeRuleTypeSelect = (strRowID: string, strValue: RuleType, fnUpdate: (strValue: RuleType) => void) => (
+    <TextField select size="small" fullWidth value={strValue} onChange={(objEvent) => fnUpdate(objEvent.target.value as RuleType)} disabled={blnReadOnly}>
+      {lstRuleTypes.map((strType) => (
+        <MenuItem key={`${strRowID}-${strType}`} value={strType}>
+          {t(`rule_type_${strType.replaceAll("-", "_")}`, strType === "standard-deduction" ? "Standard Deduction" : strType.charAt(0).toUpperCase() + strType.slice(1))}
+        </MenuItem>
+      ))}
+    </TextField>
+  );
+  const nodeTextField = (strValue: string, fnUpdate: (strValue: string) => void, blnFieldEnabled: boolean, strType?: string, blnAlignRight?: boolean, strPlaceholder?: string) => (
+    <TextField size="small" fullWidth type={strType} value={strValue} placeholder={strPlaceholder} onChange={(objEvent) => fnUpdate(objEvent.target.value)} disabled={blnReadOnly || !blnFieldEnabled} inputProps={blnAlignRight ? { style: { textAlign: "right" } } : undefined} />
+  );
+  const nodeSwitch = (blnValue: boolean, fnUpdate: (blnValue: boolean) => void, blnFieldEnabled: boolean) => (
+    <Switch checked={blnValue} onChange={(objEvent) => fnUpdate(objEvent.target.checked)} disabled={blnReadOnly || !blnFieldEnabled} />
+  );
+  const nodeRemoveButton = (strRowID: string) => (
+    <Tooltip title={t("remove_button", "Remove")}>
+      <span><IconButton color="error" size="small" aria-label={t("remove_button", "Remove")} onClick={() => handleDeleteRow(strRowID)} disabled={blnReadOnly}><DeleteOutlineRoundedIcon fontSize="small" /></IconButton></span>
+    </Tooltip>
+  );
+
+  const lstTableColumns: CommonTableColumn<Record<string, ReactNode>>[] = [
+    objColumn("action", t("action", "Action"), 60, "center"),
+    objColumn("ruleType", t("rule_type", "Rule Type"), 160),
+    objColumn("taxYear", t("tax_year", "Tax Year"), 110),
+    objColumn("code", t("code", "Code / Profile"), 150),
+    objColumn("name", t("name", "Name"), 140),
+    objColumn("taxpayerType", t("taxpayer_type", "Taxpayer Type"), 120),
+    objColumn("residentialStatus", t("residential_status", "Residential Status"), 140),
+    objColumn("mode", t("mode_basis", "Mode / Basis"), 150),
+    objColumn("fromAmount", t("from_amount", "From Amount"), 120, "right"),
+    objColumn("toAmount", t("to_amount", "To Amount"), 120, "right"),
+    objColumn("amount", t("amount", "Amount"), 110, "right"),
+    objColumn("ratePercent", t("rate_percent", "Rate %"), 90, "right"),
+    objColumn("capAmount", t("cap_amount", "Cap Amount"), 120, "right"),
+    objColumn("maxCapPercent", t("max_cap_percent", "Max Cap %"), 110, "right"),
+    objColumn("marginalRelief", t("marginal_relief", "Marginal Relief"), 130, "center"),
+    objColumn("excludeSpecialRate", t("exclude_special_rate", "Exclude Special Rate"), 150, "center"),
+    objColumn("displayOrder", t("display_order", "Display Order"), 110, "right"),
+    objColumn("effectiveFrom", t("effective_from", "Effective From"), 140),
+    objColumn("effectiveTo", t("effective_to", "Effective To"), 140),
+    objColumn("active", t("active", "Active"), 75, "center"),
+  ];
+  const intMinimumTableWidth = 2450;
+
+  const lstTableRows: Record<string, ReactNode>[] = lstRows.map((dicRow) => {
+    const strRuleType = dicRow.strRuleType;
+    return {
+      id: dicRow.strRowID,
+      action: nodeRemoveButton(dicRow.strRowID),
+      ruleType: nodeRuleTypeSelect(dicRow.strRowID, strRuleType, (strValue) => updateRow(dicRow.strRowID, "strRuleType", strValue)),
+      taxYear: nodeYearSelect(dicRow.strRowID, dicRow.strTaxYearCode, (strValue) => updateRow(dicRow.strRowID, "strTaxYearCode", strValue)),
+      code: nodeTextField(dicRow.strCode, (strValue) => updateRow(dicRow.strRowID, "strCode", strValue.toUpperCase()), isFieldEnabled(strRuleType, "strCode"), undefined, false, dicCodePlaceholderByType[strRuleType]),
+      name: nodeTextField(dicRow.strName, (strValue) => updateRow(dicRow.strRowID, "strName", strValue), isFieldEnabled(strRuleType, "strName"), undefined, false, t("cess_name", "Cess Name")),
+      taxpayerType: nodeTextField(dicRow.strTaxpayerTypeCode, (strValue) => updateRow(dicRow.strRowID, "strTaxpayerTypeCode", strValue.toUpperCase()), isFieldEnabled(strRuleType, "strTaxpayerTypeCode")),
+      residentialStatus: nodeTextField(dicRow.strResidentialStatusCode, (strValue) => updateRow(dicRow.strRowID, "strResidentialStatusCode", strValue.toUpperCase()), isFieldEnabled(strRuleType, "strResidentialStatusCode")),
+      mode: nodeTextField(dicRow.strModeCode, (strValue) => updateRow(dicRow.strRowID, "strModeCode", strValue.toUpperCase()), isFieldEnabled(strRuleType, "strModeCode")),
+      fromAmount: nodeTextField(dicRow.strFromAmount, (strValue) => updateRow(dicRow.strRowID, "strFromAmount", strValue), isFieldEnabled(strRuleType, "strFromAmount"), undefined, true),
+      toAmount: nodeTextField(dicRow.strToAmount, (strValue) => updateRow(dicRow.strRowID, "strToAmount", strValue), isFieldEnabled(strRuleType, "strToAmount"), undefined, true),
+      amount: nodeTextField(dicRow.strAmount, (strValue) => updateRow(dicRow.strRowID, "strAmount", strValue), isFieldEnabled(strRuleType, "strAmount"), undefined, true),
+      ratePercent: nodeTextField(dicRow.strRatePercent, (strValue) => updateRow(dicRow.strRowID, "strRatePercent", strValue), isFieldEnabled(strRuleType, "strRatePercent"), undefined, true),
+      capAmount: nodeTextField(dicRow.strCapAmount, (strValue) => updateRow(dicRow.strRowID, "strCapAmount", strValue), isFieldEnabled(strRuleType, "strCapAmount"), undefined, true),
+      maxCapPercent: nodeTextField(dicRow.strMaxCapPercent, (strValue) => updateRow(dicRow.strRowID, "strMaxCapPercent", strValue), isFieldEnabled(strRuleType, "strMaxCapPercent"), undefined, true),
+      marginalRelief: nodeSwitch(dicRow.blnMarginalReliefEnabled, (blnValue) => updateRow(dicRow.strRowID, "blnMarginalReliefEnabled", blnValue), isFieldEnabled(strRuleType, "blnMarginalReliefEnabled")),
+      excludeSpecialRate: nodeSwitch(dicRow.blnExcludesSpecialRateIncome, (blnValue) => updateRow(dicRow.strRowID, "blnExcludesSpecialRateIncome", blnValue), isFieldEnabled(strRuleType, "blnExcludesSpecialRateIncome")),
+      displayOrder: nodeTextField(dicRow.strDisplayOrder, (strValue) => updateRow(dicRow.strRowID, "strDisplayOrder", strValue), isFieldEnabled(strRuleType, "strDisplayOrder"), undefined, true),
+      effectiveFrom: nodeTextField(dicRow.dtEffectiveFrom, (strValue) => updateRow(dicRow.strRowID, "dtEffectiveFrom", strValue), true, "date"),
+      effectiveTo: nodeTextField(dicRow.dtEffectiveTo, (strValue) => updateRow(dicRow.strRowID, "dtEffectiveTo", strValue), true, "date"),
+      active: nodeSwitch(dicRow.blnIsActive, (blnValue) => updateRow(dicRow.strRowID, "blnIsActive", blnValue), true),
+    };
+  });
 
   if (blnLoading || blnRightsLoading) {
     return (
@@ -278,115 +454,41 @@ export default function TaxRuleMaintenancePage({ intTaxRegimeID, strRuleType }: 
 
   return (
     <Stack spacing={1.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
-      <Paper sx={{ borderRadius: "var(--app-card-radius)", p: "10px", border: "1px solid rgba(148,163,184,0.18)", background: "linear-gradient(135deg, #fffdf5 0%, #f7fbff 60%, #f8fafc 100%)" }}>
-        <Stack spacing={1.25}>
-          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
-            <Box>
-              <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>{getTitle()}</Typography>
-              <Typography sx={{ color: "#64748b", mt: 0.75 }}>{objRegime.strRegimeCode} | {objRegime.strRegimeName} | {objRegime.strTaxYearCode}</Typography>
-            </Box>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
-              <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${intTaxRegimeID}`)}>
-                {t("back_to_regime", "Back to regime")}
-              </Button>
-              {blnCanEdit ? (
-                <>
-                  <Button className={styles.secondaryButton} startIcon={<AddRoundedIcon />} onClick={handleAddRow}>{t("add_row", "Add Row")}</Button>
+      {!blnEmbedded ? (
+        <TaxRegimeWorkspaceHeader
+          strTitle={t("manage_tax_rules", "Manage Tax Rules")}
+          strSubtitle={`${objRegime.strRegimeCode} | ${objRegime.strRegimeName} | ${objRegime.strTaxYearCode}`}
+          nodeActions={(
+            <TaxRegimeActionGroup>
+                <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/tax-regimes")}>
+                  {t("back_to_list", "Back")}
+                </Button>
+                {blnCanEdit ? (
                   <Button className={styles.primaryButton} startIcon={<SaveRoundedIcon />} onClick={handleSave} disabled={blnSaving}>{blnSaving ? t("saving", "Saving...") : t("save", "Save")}</Button>
-                </>
-              ) : null}
-            </Stack>
-          </Stack>
-        </Stack>
-      </Paper>
+                ) : null}
+            </TaxRegimeActionGroup>
+          )}
+        />
+      ) : null}
 
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
       {blnReadOnly ? <Alert severity="info">{t("read_only_mode", "You have view-only access for Tax Rules.")}</Alert> : null}
 
-      <Box className={styles.tableCard}>
-        <Box className={styles.tableWrap}>
-          {strRuleType === "standard-deduction" ? (
-            <table className={styles.table}>
-              <thead><tr><th>Tax Year</th><th>Income Source</th><th>Taxpayer Type</th><th>Residential Status</th><th>Mode</th><th>Amount</th><th>%</th><th>Max Amount</th><th>Effective From</th><th>Effective To</th><th>Active</th><th>Action</th></tr></thead>
-              <tbody>{lstStandardDeductionRules.map((dicRow) => (
-                <tr key={dicRow.strRowID}>
-                  <td><TextField select size="small" value={dicRow.strTaxYearCode} onChange={(objEvent) => setLstStandardDeductionRules((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "strTaxYearCode", objEvent.target.value))} disabled={blnReadOnly}>{lstFinancialYears.map((strYear) => <MenuItem key={strYear} value={strYear}>{strYear}</MenuItem>)}</TextField></td>
-                  <td><TextField size="small" value={dicRow.strIncomeSourceCode} onChange={(objEvent) => setLstStandardDeductionRules((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "strIncomeSourceCode", objEvent.target.value.toUpperCase()))} disabled={blnReadOnly} /></td>
-                  <td><TextField size="small" value={dicRow.strTaxpayerTypeCode} onChange={(objEvent) => setLstStandardDeductionRules((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "strTaxpayerTypeCode", objEvent.target.value.toUpperCase()))} disabled={blnReadOnly} /></td>
-                  <td><TextField size="small" value={dicRow.strResidentialStatusCode} onChange={(objEvent) => setLstStandardDeductionRules((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "strResidentialStatusCode", objEvent.target.value.toUpperCase()))} disabled={blnReadOnly} /></td>
-                  <td><TextField size="small" value={dicRow.strDeductionModeCode} onChange={(objEvent) => setLstStandardDeductionRules((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "strDeductionModeCode", objEvent.target.value.toUpperCase()))} disabled={blnReadOnly} /></td>
-                  <td><TextField size="small" value={dicRow.decDeductionAmount} onChange={(objEvent) => setLstStandardDeductionRules((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "decDeductionAmount", objEvent.target.value))} disabled={blnReadOnly} /></td>
-                  <td><TextField size="small" value={dicRow.decDeductionPercent} onChange={(objEvent) => setLstStandardDeductionRules((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "decDeductionPercent", objEvent.target.value))} disabled={blnReadOnly} /></td>
-                  <td><TextField size="small" value={dicRow.decMaximumDeductionAmount} onChange={(objEvent) => setLstStandardDeductionRules((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "decMaximumDeductionAmount", objEvent.target.value))} disabled={blnReadOnly} /></td>
-                  <td><TextField size="small" type="date" value={dicRow.dtEffectiveFrom} onChange={(objEvent) => setLstStandardDeductionRules((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "dtEffectiveFrom", objEvent.target.value))} disabled={blnReadOnly} /></td>
-                  <td><TextField size="small" type="date" value={dicRow.dtEffectiveTo} onChange={(objEvent) => setLstStandardDeductionRules((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "dtEffectiveTo", objEvent.target.value))} disabled={blnReadOnly} /></td>
-                  <td><Switch checked={dicRow.blnIsActive} onChange={(objEvent) => setLstStandardDeductionRules((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "blnIsActive", objEvent.target.checked))} disabled={blnReadOnly} /></td>
-                  <td><Button color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => handleDeleteRow(dicRow.strRowID)} disabled={blnReadOnly}>Remove</Button></td>
-                </tr>
-              ))}</tbody>
-            </table>
-          ) : null}
-
-          {strRuleType === "rebate" ? (
-            <table className={styles.table}>
-              <thead><tr><th>Tax Year</th><th>Rebate Code</th><th>Taxpayer Type</th><th>Residential Status</th><th>Min Income</th><th>Max Income</th><th>Mode</th><th>Cap</th><th>%</th><th>Marginal Relief</th><th>Exclude Special Rate</th><th>Action</th></tr></thead>
-              <tbody>{lstRebateRules.map((dicRow) => (
-                <tr key={dicRow.strRowID}>
-                  <td><TextField select size="small" value={dicRow.strTaxYearCode} onChange={(objEvent) => setLstRebateRules((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "strTaxYearCode", objEvent.target.value))} disabled={blnReadOnly}>{lstFinancialYears.map((strYear) => <MenuItem key={strYear} value={strYear}>{strYear}</MenuItem>)}</TextField></td>
-                  <td><TextField size="small" value={dicRow.strRebateCode} onChange={(objEvent) => setLstRebateRules((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "strRebateCode", objEvent.target.value.toUpperCase()))} disabled={blnReadOnly} /></td>
-                  <td><TextField size="small" value={dicRow.strTaxpayerTypeCode} onChange={(objEvent) => setLstRebateRules((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "strTaxpayerTypeCode", objEvent.target.value.toUpperCase()))} disabled={blnReadOnly} /></td>
-                  <td><TextField size="small" value={dicRow.strResidentialStatusCode} onChange={(objEvent) => setLstRebateRules((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "strResidentialStatusCode", objEvent.target.value.toUpperCase()))} disabled={blnReadOnly} /></td>
-                  <td><TextField size="small" value={dicRow.decMinimumTotalIncome} onChange={(objEvent) => setLstRebateRules((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "decMinimumTotalIncome", objEvent.target.value))} disabled={blnReadOnly} /></td>
-                  <td><TextField size="small" value={dicRow.decMaximumTotalIncome} onChange={(objEvent) => setLstRebateRules((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "decMaximumTotalIncome", objEvent.target.value))} disabled={blnReadOnly} /></td>
-                  <td><TextField size="small" value={dicRow.strRebateModeCode} onChange={(objEvent) => setLstRebateRules((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "strRebateModeCode", objEvent.target.value.toUpperCase()))} disabled={blnReadOnly} /></td>
-                  <td><TextField size="small" value={dicRow.decMaximumRebateAmount} onChange={(objEvent) => setLstRebateRules((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "decMaximumRebateAmount", objEvent.target.value))} disabled={blnReadOnly} /></td>
-                  <td><TextField size="small" value={dicRow.decRebatePercent} onChange={(objEvent) => setLstRebateRules((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "decRebatePercent", objEvent.target.value))} disabled={blnReadOnly} /></td>
-                  <td><Switch checked={dicRow.blnMarginalReliefEnabled} onChange={(objEvent) => setLstRebateRules((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "blnMarginalReliefEnabled", objEvent.target.checked))} disabled={blnReadOnly} /></td>
-                  <td><Switch checked={dicRow.blnExcludesSpecialRateIncome} onChange={(objEvent) => setLstRebateRules((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "blnExcludesSpecialRateIncome", objEvent.target.checked))} disabled={blnReadOnly} /></td>
-                  <td><Button color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => handleDeleteRow(dicRow.strRowID)} disabled={blnReadOnly}>Remove</Button></td>
-                </tr>
-              ))}</tbody>
-            </table>
-          ) : null}
-
-          {strRuleType === "surcharge" ? (
-            <table className={styles.table}>
-              <thead><tr><th>Tax Year</th><th>Profile</th><th>Income From</th><th>Income To</th><th>Rate %</th><th>Marginal Relief</th><th>Max Cap %</th><th>Display Order</th><th>Action</th></tr></thead>
-              <tbody>{lstSurchargeSlabs.map((dicRow) => (
-                <tr key={dicRow.strRowID}>
-                  <td><TextField select size="small" value={dicRow.strTaxYearCode} onChange={(objEvent) => setLstSurchargeSlabs((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "strTaxYearCode", objEvent.target.value))} disabled={blnReadOnly}>{lstFinancialYears.map((strYear) => <MenuItem key={strYear} value={strYear}>{strYear}</MenuItem>)}</TextField></td>
-                  <td><TextField size="small" value={dicRow.strSurchargeProfileCode} onChange={(objEvent) => setLstSurchargeSlabs((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "strSurchargeProfileCode", objEvent.target.value.toUpperCase()))} disabled={blnReadOnly} /></td>
-                  <td><TextField size="small" value={dicRow.decIncomeFromAmount} onChange={(objEvent) => setLstSurchargeSlabs((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "decIncomeFromAmount", objEvent.target.value))} disabled={blnReadOnly} /></td>
-                  <td><TextField size="small" value={dicRow.decIncomeToAmount} onChange={(objEvent) => setLstSurchargeSlabs((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "decIncomeToAmount", objEvent.target.value))} disabled={blnReadOnly} /></td>
-                  <td><TextField size="small" value={dicRow.decSurchargeRatePercent} onChange={(objEvent) => setLstSurchargeSlabs((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "decSurchargeRatePercent", objEvent.target.value))} disabled={blnReadOnly} /></td>
-                  <td><Switch checked={dicRow.blnMarginalReliefEnabled} onChange={(objEvent) => setLstSurchargeSlabs((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "blnMarginalReliefEnabled", objEvent.target.checked))} disabled={blnReadOnly} /></td>
-                  <td><TextField size="small" value={dicRow.decMaximumRateCapPercent} onChange={(objEvent) => setLstSurchargeSlabs((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "decMaximumRateCapPercent", objEvent.target.value))} disabled={blnReadOnly} /></td>
-                  <td><TextField size="small" value={dicRow.intDisplayOrder} onChange={(objEvent) => setLstSurchargeSlabs((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "intDisplayOrder", objEvent.target.value))} disabled={blnReadOnly} /></td>
-                  <td><Button color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => handleDeleteRow(dicRow.strRowID)} disabled={blnReadOnly}>Remove</Button></td>
-                </tr>
-              ))}</tbody>
-            </table>
-          ) : null}
-
-          {strRuleType === "cess" ? (
-            <table className={styles.table}>
-              <thead><tr><th>Tax Year</th><th>Cess Code</th><th>Cess Name</th><th>Rate %</th><th>Calculation Base</th><th>Display Order</th><th>Action</th></tr></thead>
-              <tbody>{lstCessRules.map((dicRow) => (
-                <tr key={dicRow.strRowID}>
-                  <td><TextField select size="small" value={dicRow.strTaxYearCode} onChange={(objEvent) => setLstCessRules((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "strTaxYearCode", objEvent.target.value))} disabled={blnReadOnly}>{lstFinancialYears.map((strYear) => <MenuItem key={strYear} value={strYear}>{strYear}</MenuItem>)}</TextField></td>
-                  <td><TextField size="small" value={dicRow.strCessCode} onChange={(objEvent) => setLstCessRules((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "strCessCode", objEvent.target.value.toUpperCase()))} disabled={blnReadOnly} /></td>
-                  <td><TextField size="small" value={dicRow.strCessName} onChange={(objEvent) => setLstCessRules((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "strCessName", objEvent.target.value))} disabled={blnReadOnly} /></td>
-                  <td><TextField size="small" value={dicRow.decCessRatePercent} onChange={(objEvent) => setLstCessRules((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "decCessRatePercent", objEvent.target.value))} disabled={blnReadOnly} /></td>
-                  <td><TextField size="small" value={dicRow.strCalculationBaseCode} onChange={(objEvent) => setLstCessRules((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "strCalculationBaseCode", objEvent.target.value.toUpperCase()))} disabled={blnReadOnly} /></td>
-                  <td><TextField size="small" value={dicRow.intDisplayOrder} onChange={(objEvent) => setLstCessRules((lstPrevious) => updateRow(lstPrevious, dicRow.strRowID, "intDisplayOrder", objEvent.target.value))} disabled={blnReadOnly} /></td>
-                  <td><Button color="error" startIcon={<DeleteOutlineRoundedIcon />} onClick={() => handleDeleteRow(dicRow.strRowID)} disabled={blnReadOnly}>Remove</Button></td>
-                </tr>
-              ))}</tbody>
-            </table>
-          ) : null}
-        </Box>
-      </Box>
+      <CommonTable<Record<string, ReactNode>>
+        columns={lstTableColumns}
+        rows={lstTableRows}
+        rowIdField="id"
+        minTableWidth={intMinimumTableWidth}
+        defaultPageSize={20}
+        pageSizeOptions={[10, 20, 50]}
+        emptyMessage={t("no_tax_rule_rows", "No tax rule rows found.")}
+        testIdPrefix="tax-regimes.rules"
+        hideRowClickHint
+        wrapColumnHeaders={false}
+        toolbarLeft={blnCanEdit ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={handleAddRow}>{t("add_row", "Add Row")}</Button> : undefined}
+        sx={objTaxRegimeCommonTableSx}
+      />
     </Stack>
   );
 }

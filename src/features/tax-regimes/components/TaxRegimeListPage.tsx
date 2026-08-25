@@ -10,9 +10,11 @@ import {
   Alert,
   Box,
   Button,
+  IconButton,
   MenuItem,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
@@ -123,12 +125,28 @@ export default function TaxRegimeListPage() {
               onView={() => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}?mode=view`)}
               onEdit={blnCanEdit ? () => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}`) : undefined}
             />
-            <Button variant="outlined" size="small" startIcon={<ReceiptLongRoundedIcon />} onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}/slabs`)} sx={{ borderRadius: "10px", textTransform: "none", minWidth: "auto" }}>
-              {t("manage_slabs", "Slabs")}
-            </Button>
-            <Button variant="outlined" size="small" startIcon={<RuleFolderRoundedIcon />} onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}`)} sx={{ borderRadius: "10px", textTransform: "none", minWidth: "auto" }}>
-              {t("manage_tax_rules", "Tax Rules")}
-            </Button>
+            <Tooltip title={t("manage_slabs", "Manage Slabs")} arrow>
+              <IconButton
+                size="small"
+                aria-label={t("manage_slabs", "Manage Slabs")}
+                data-control-id={`tax-regimes.list.row.${dicRow.intID}.manage-slabs.button`}
+                onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}?tab=slabs`)}
+                sx={{ color: "var(--app-primary-color)" }}
+              >
+                <ReceiptLongRoundedIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title={t("manage_tax_rules", "Tax Rules")} arrow>
+              <IconButton
+                size="small"
+                aria-label={t("manage_tax_rules", "Tax Rules")}
+                data-control-id={`tax-regimes.list.row.${dicRow.intID}.tax-rules.button`}
+                onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}?tab=rules`)}
+                sx={{ color: "var(--app-primary-color)" }}
+              >
+                <RuleFolderRoundedIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
           </Box>
         ),
         strRegimeCode: dicRow.strRegimeCode,
@@ -160,7 +178,7 @@ export default function TaxRegimeListPage() {
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 340 },
+      { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 170 },
       { field: "strRegimeCode", headerName: t("regime_code", "Regime Code"), width: 130 },
       { field: "strRegimeName", headerName: t("regime_name", "Regime Name"), sortable: false, filterable: false, width: 130 },
       { field: "strCountryCode", headerName: t("country", "Country"), width: 130 },
@@ -195,15 +213,7 @@ export default function TaxRegimeListPage() {
   return (
     <Stack spacing={1.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
       <Box className={styles.controlsCard}>
-        <Box
-          className={styles.searchRow}
-          sx={{
-            gridTemplateColumns: {
-              xs: "1fr",
-              md: "minmax(180px, 0.75fr) repeat(4, minmax(170px, 1fr))",
-            },
-          }}
-        >
+        <Box className={`${styles.searchRow} ${styles.taxRegimeSearchRow}`}>
           <TextField label={t("regime_code", "Regime Code")} value={dicSearchDraft.strCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strCode: objEvent.target.value }))} size="small" fullWidth />
           <TextField label={t("regime_name", "Regime Name")} value={dicSearchDraft.strName} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strName: objEvent.target.value }))} size="small" fullWidth />
           <TextField label={t("country", "Country")} value={dicSearchDraft.strCountryCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strCountryCode: objEvent.target.value }))} size="small" fullWidth />
@@ -219,6 +229,7 @@ export default function TaxRegimeListPage() {
               gridColumn: { xs: "auto", md: "auto" },
               flexWrap: "nowrap",
               alignItems: "center",
+              justifyContent: { lg: "flex-end" },
             }}
           >
             <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }}>
