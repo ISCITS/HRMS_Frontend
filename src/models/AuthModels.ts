@@ -174,7 +174,7 @@ export type CurrentUserContext = {
   lstAvailablePortals?: PortalCode[];
 };
 
-export type DashboardType = "PAYROLL" | "ESS" | "MANAGEMENT";
+export type DashboardType = "PAYROLL" | "ESS" | "MANAGEMENT" | "WELCOME";
 
 export type DashboardWidget = {
   strWidgetCode: string;

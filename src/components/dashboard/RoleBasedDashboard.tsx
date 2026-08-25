@@ -17,6 +17,7 @@ import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import ErrorOutlineRoundedIcon from "@mui/icons-material/ErrorOutlineRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
+import DashboardCustomizeRoundedIcon from "@mui/icons-material/DashboardCustomizeRounded";
 import DescriptionRoundedIcon from "@mui/icons-material/DescriptionRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import EventAvailableRoundedIcon from "@mui/icons-material/EventAvailableRounded";
@@ -319,6 +320,9 @@ const lstPayrollCardPalette = [
 ];
 
 export default function RoleBasedDashboard({ objDashboard, objUserContext, strSelectedPayrollMonth, t, onPayrollMonthChange, onRefresh, blnRefreshing, strError }: RoleBasedDashboardProps) {
+  if (objDashboard.strDashboardType === "WELCOME") {
+    return <WelcomeDashboard objUserContext={objUserContext} t={t} />;
+  }
   if (objDashboard.strDashboardType === "PAYROLL") {
     return <PayrollDashboard objDashboard={objDashboard} objUserContext={objUserContext} strSelectedPayrollMonth={strSelectedPayrollMonth} t={t} onPayrollMonthChange={onPayrollMonthChange} onRefresh={onRefresh} blnRefreshing={blnRefreshing} strError={strError} />;
   }
@@ -326,6 +330,64 @@ export default function RoleBasedDashboard({ objDashboard, objUserContext, strSe
     return <EssDashboard objDashboard={objDashboard} objUserContext={objUserContext} t={t} />;
   }
   return <FallbackDashboard objDashboard={objDashboard} objUserContext={objUserContext} t={t} />;
+}
+
+function WelcomeDashboard({ objUserContext, t }: Pick<RoleBasedDashboardProps, "objUserContext" | "t">) {
+  const strDisplayName = objUserContext.objEmployee?.strFullName || objUserContext.objUser.strLoginName || objUserContext.objUser.strEmailAddress || t("workspace_user", "Workspace User");
+
+  return (
+    <Box
+      sx={{
+        minHeight: "calc(100vh - 170px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        px: { xs: 1.5, md: 3 },
+        py: { xs: 4, md: 6 },
+      }}
+    >
+      <Paper
+        sx={{
+          width: "min(680px, 100%)",
+          p: { xs: 3, sm: 4.5 },
+          borderRadius: "26px",
+          textAlign: "center",
+          border: "1px solid rgba(37,99,235,0.18)",
+          background: "linear-gradient(180deg, #FFFFFF 0%, #F8FBFF 100%)",
+          boxShadow: "0 24px 70px rgba(15,23,42,0.16)",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        <Box sx={{ position: "absolute", inset: 0, borderTop: `5px solid ${DASHBOARD_COLORS.blue}`, pointerEvents: "none" }} />
+        <Box
+          sx={{
+            width: 76,
+            height: 76,
+            mx: "auto",
+            mb: 2.2,
+            borderRadius: "22px",
+            display: "grid",
+            placeItems: "center",
+            color: DASHBOARD_COLORS.blue,
+            backgroundColor: "#EFF6FF",
+            boxShadow: "0 14px 32px rgba(37,99,235,0.22)",
+          }}
+        >
+          <DashboardCustomizeRoundedIcon sx={{ fontSize: 38 }} />
+        </Box>
+        <Typography sx={{ color: DASHBOARD_COLORS.blue, fontSize: "0.78rem", fontWeight: 900, textTransform: "uppercase", letterSpacing: 0 }}>
+          {t("welcome_to_hrms", "Welcome to HRMS")}
+        </Typography>
+        <Typography sx={{ mt: 1, color: DASHBOARD_COLORS.text, fontSize: { xs: "1.7rem", sm: "2.2rem" }, fontWeight: 900, lineHeight: 1.15 }}>
+          {t("welcome_back_user", "Welcome back")}, {strDisplayName}
+        </Typography>
+        <Typography sx={{ mt: 1.5, mx: "auto", maxWidth: 520, color: DASHBOARD_COLORS.muted, fontSize: { xs: "0.98rem", sm: "1.05rem" }, lineHeight: 1.7 }}>
+          {t("dashboard_access_removed", "You do not have rights to see the dashboard. Please use the menu options assigned to your user group.")}
+        </Typography>
+      </Paper>
+    </Box>
+  );
 }
 
 function normalizeWidgetCode(strWidgetCode?: string | null) {

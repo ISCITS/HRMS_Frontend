@@ -233,17 +233,11 @@ function promoteDashboardMenu(lstItems: MenuItem[]): MenuItem[] {
   }
 
   const lstWithoutNestedDashboard = stripNestedDashboard(lstItems);
-  const objResolvedDashboard = objDashboardItem ?? {
-    strModuleCode: "DASHBOARD",
-    strModuleName: "Dashboard",
-    strRoute: "/dashboard",
-    strIconName: "Dashboard",
-    lstPermissionCodes: [],
-    blnIsHome: true,
-    lstChildren: [],
-  };
+  if (!objDashboardItem) {
+    return lstWithoutNestedDashboard;
+  }
 
-  return [objResolvedDashboard, ...lstWithoutNestedDashboard];
+  return [objDashboardItem, ...lstWithoutNestedDashboard];
 }
 
 function hasRouteInReportsBranch(lstItems: MenuItem[], strRoute: string, blnInsideReports = false): boolean {
@@ -791,7 +785,10 @@ function buildEssOnlyMenu(lstItems: MenuItem[]): MenuItem[] {
       .map((strRoute) => dicRouteToItem.get(strRoute.trim().toLowerCase()) ?? null)
       .find(Boolean) ?? null;
 
-  const objDashboard = buildSyntheticMenuLeaf("Dashboard", "DASHBOARD", "/dashboard", findItem("/dashboard"));
+  const objDashboardSource = findItem("/dashboard");
+  const objDashboard = objDashboardSource
+    ? buildSyntheticMenuLeaf("Dashboard", "DASHBOARD", "/dashboard", objDashboardSource)
+    : null;
   const objProfileGroup = buildSyntheticMenuGroup("ESS_PROFILE", "My Profile", [
     buildSyntheticMenuLeaf("My Profile", "ESS_MY_PROFILE", "/ess/my-profile", findItem("/ess/my-profile")),
     buildSyntheticMenuLeaf("Bank Details", "ESS_MY_BANK_DETAILS", "/ess/my-bank-details", findItem("/ess/my-bank-details")),
