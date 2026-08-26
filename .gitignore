@@ -32,3 +32,5 @@ ACCESS_CONTROL_DYNAMIC_MENU_FLOW.rtf
 
 # Local dev hot-reload override (must NOT be deployed)
 docker-compose.override.yml
+next-dev.out.log
+next-dev.err.log

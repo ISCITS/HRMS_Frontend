@@ -7,6 +7,7 @@ import FingerprintRoundedIcon from "@mui/icons-material/FingerprintRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   ButtonBase,
@@ -32,12 +33,21 @@ import { useRouter } from "next/navigation";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
+import styles from "@/components/master/MasterScreen.module.css";
 import { ATTENDANCE_STATUS_COLORS, type AttendanceDayDto } from "@/features/attendance/dto";
 import { useMyAttendance } from "@/features/attendance/hooks/useMyAttendance";
 import { attendanceService } from "@/features/attendance/services/attendanceService";
 import type { MyAttendanceOverview, MyAttendancePunch } from "@/features/attendance/types/MyAttendanceTypes";
+import { employeeService } from "@/features/employee/services/employeeService";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
+
+// Selectable employee for HR mode's Attendance Review dropdown.
+type ReviewEmployeeDto = { intEmployeeID: number; strFullName: string; strEmployeeCode: string | null };
+
+function reviewEmployeeLabel(objEmployee: ReviewEmployeeDto): string {
+  return objEmployee.strEmployeeCode ? `${objEmployee.strFullName} (${objEmployee.strEmployeeCode})` : objEmployee.strFullName;
+}
 
 type ToastState = {
   blnOpen: boolean;
@@ -154,15 +164,23 @@ function toTitleCase(strValue: string) {
     .replace(/\b\w/g, (strMatch) => strMatch.toUpperCase());
 }
 
-export default function EssAttendancePanel() {
+// Shared panel. ESS mode (default): the caller's own attendance, with Punch In/Out. HR mode
+// ("Attendance Review"): an employee is chosen from a dropdown (same pattern as the HR Leave
+// Ledger), the table stays empty until one is picked, and punching is not offered since HR is
+// viewing someone else's attendance, not recording their own.
+export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: boolean } = {}) {
   const objRouter = useRouter();
   const { t } = useModuleLabels("my_attendance", "Unable to load My Attendance labels.");
-  const { blnLoading: blnRightsLoading, canViewAny } = useModuleActionAccess([
-    // Tenants may use either the canonical ESS code or the legacy My Attendance aliases.
-    "ESS_ATTENDANCE",
-    "ESS_MY_ATTENDANCE",
-    "MY_ATTENDANCE",
-  ]);
+  const { blnLoading: blnRightsLoading, canViewAny } = useModuleActionAccess(
+    blnHrMode
+      ? ["ATTENDANCE_REVIEW"]
+      : [
+        // Tenants may use either the canonical ESS code or the legacy My Attendance aliases.
+        "ESS_ATTENDANCE",
+        "ESS_MY_ATTENDANCE",
+        "MY_ATTENDANCE",
+      ],
+  );
   const { canViewAny: canViewRegularization } = useModuleActionAccess([
     "ESS_ATTENDANCE_REGULARIZATION",
     "ATTENDANCE_REGULARIZATION",
@@ -177,6 +195,39 @@ export default function EssAttendancePanel() {
     loadAttendance,
     punch,
   } = useMyAttendance();
+  const [lstEmployees, setLstEmployees] = useState<ReviewEmployeeDto[]>([]);
+  const [objSelectedEmployee, setObjSelectedEmployee] = useState<ReviewEmployeeDto | null>(null);
+  const [blnEmployeesResolved, setBlnEmployeesResolved] = useState(!blnHrMode);
+  const intReviewEmployeeID = blnHrMode ? (objSelectedEmployee?.intEmployeeID ?? undefined) : undefined;
+
+  // HR mode only: load every employee in the tenant/company for the dropdown, mirroring the
+  // Leave Ledger HR-mode employee source.
+  useEffect(() => {
+    if (!blnHrMode) return;
+    let blnActive = true;
+    employeeService.getEmployees()
+      .then((lstResult) => {
+        if (!blnActive) return;
+        setLstEmployees(
+          lstResult
+            .filter((objEmployee) => !objEmployee.blnIsPartialSave)
+            .map((objEmployee) => ({
+              intEmployeeID: objEmployee.intID,
+              strFullName: objEmployee.strFullName,
+              strEmployeeCode: objEmployee.strEmployeeCode,
+            })),
+        );
+      })
+      .catch(() => {
+        /* leave the dropdown empty on failure */
+      })
+      .finally(() => {
+        if (blnActive) setBlnEmployeesResolved(true);
+      });
+    return () => {
+      blnActive = false;
+    };
+  }, [blnHrMode]);
   const objTheme = useTheme();
   const blnMobile = useMediaQuery(objTheme.breakpoints.down("sm"));
   const objToday = useMemo(() => new Date(), []);
@@ -295,21 +346,27 @@ export default function EssAttendancePanel() {
     strToday,
     objMonthBounds.strFromDate,
     objMonthBounds.strToDate,
-  ), [loadAttendance, objMonthBounds.strFromDate, objMonthBounds.strToDate, strToday]);
+    intReviewEmployeeID,
+  ), [loadAttendance, objMonthBounds.strFromDate, objMonthBounds.strToDate, strToday, intReviewEmployeeID]);
 
   useEffect(() => {
     if (blnRightsLoading || !blnCanViewMyAttendance) return;
+    if (blnHrMode && (!blnEmployeesResolved || !intReviewEmployeeID)) return; // HR mode: wait until an employee is chosen
     void loadSelectedMonth();
-  }, [blnCanViewMyAttendance, blnRightsLoading, loadSelectedMonth]);
+  }, [blnCanViewMyAttendance, blnRightsLoading, loadSelectedMonth, blnHrMode, blnEmployeesResolved, intReviewEmployeeID]);
 
   useEffect(() => {
     if (blnRightsLoading || !blnCanViewMyAttendance) return;
+    if (blnHrMode && !intReviewEmployeeID) {
+      setObjSelectedOverview(null);
+      return;
+    }
 
     let blnCancelled = false;
     setBlnTimelineLoading(true);
     setStrTimelineError("");
 
-    attendanceService.getMyAttendanceOverview(strSelectedDate)
+    attendanceService.getMyAttendanceOverview(strSelectedDate, intReviewEmployeeID)
       .then((objResult) => {
         if (!blnCancelled) {
           setObjSelectedOverview(objResult);
@@ -331,7 +388,7 @@ export default function EssAttendancePanel() {
     return () => {
       blnCancelled = true;
     };
-  }, [blnCanViewMyAttendance, blnRightsLoading, strSelectedDate]);
+  }, [blnCanViewMyAttendance, blnRightsLoading, strSelectedDate, blnHrMode, intReviewEmployeeID]);
 
   const lstCalendarCells = useMemo(() => {
     const intYear = objMonth.getFullYear();
@@ -412,11 +469,58 @@ export default function EssAttendancePanel() {
     return <BlockingLoader blnOpen strLabel={t("loading", "Loading...")} />;
   }
   if (!blnCanViewMyAttendance) {
-    return <Alert severity="warning">{t("permission_denied", "My Attendance access is not available for your user group.")}</Alert>;
+    return (
+      <Alert severity="warning">
+        {blnHrMode
+          ? t("attendance_review_permission_denied", "Attendance Review access is not available for your user group.")
+          : t("permission_denied", "My Attendance access is not available for your user group.")}
+      </Alert>
+    );
   }
 
   return (
     <Stack spacing={1.5}>
+      {blnHrMode ? (
+        <Box className={styles.controlsCard} data-control-id="attendance-review.filters.card">
+          <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", sm: "minmax(260px, 420px)" }, alignItems: "center", mt: 1 }}>
+            <Autocomplete
+              size="small"
+              options={lstEmployees}
+              value={objSelectedEmployee}
+              getOptionLabel={(objOption) => reviewEmployeeLabel(objOption)}
+              isOptionEqualToValue={(objA, objB) => objA.intEmployeeID === objB.intEmployeeID}
+              onChange={(_objEvent, objNext) => setObjSelectedEmployee(objNext)}
+              sx={{ minWidth: { xs: "100%", sm: 360 }, "& .MuiAutocomplete-clearIndicator": { display: "none" } }}
+              renderInput={(objParams) => (
+                <TextField
+                  {...objParams}
+                  label="Employee"
+                  placeholder="Search employee..."
+                  controlId="attendance-review.employee.select"
+                  InputLabelProps={{ ...objParams.InputLabelProps, shrink: true }}
+                />
+              )}
+            />
+          </Box>
+        </Box>
+      ) : null}
+
+      {blnHrMode && objSelectedEmployee ? (
+        <Alert severity="info" variant="outlined" sx={{ borderRadius: "12px", py: 0.25 }}>
+          Viewing attendance for <strong>{objSelectedEmployee.strFullName}</strong>
+          {objSelectedEmployee.strEmployeeCode ? ` (${objSelectedEmployee.strEmployeeCode})` : ""}
+        </Alert>
+      ) : null}
+
+      {blnHrMode && !objSelectedEmployee ? (
+        <Paper variant="outlined" sx={{ borderRadius: "16px", p: 6, textAlign: "center" }}>
+          <AccessTimeRoundedIcon sx={{ fontSize: 40, color: "#94a3b8", mb: 1 }} />
+          <Typography sx={{ color: "text.secondary", fontWeight: 600 }}>
+            Select an employee to view their attendance.
+          </Typography>
+        </Paper>
+      ) : (
+      <>
       <Paper
         data-control-id="ess.my-attendance.controls.toolbar"
         sx={{
@@ -554,27 +658,29 @@ export default function EssAttendancePanel() {
                   ) : null}
                 </Stack>
               </Box>
-              <Box sx={{ flex: "0 0 118px", display: "flex", justifyContent: "flex-end" }}>
-                {strSelectedDate === strToday ? (
-                  <Button
-                    data-control-id={`ess.my-attendance.punch-${objOverview?.strNextPunchDirection ?? "in"}.button`}
-                    size="medium"
-                    variant="contained"
-                    startIcon={<FingerprintRoundedIcon />}
-                    disabled={blnLoading || blnPunching || !objOverview?.blnCanPunch}
-                    onClick={() => setBlnPunchDialogOpen(true)}
-                    sx={{ minHeight: 44, px: 1.25, borderRadius: "8px", fontWeight: 900, whiteSpace: "nowrap" }}
-                  >
-                    {blnPunching
-                      ? t("recording", "Recording...")
-                      : objOverview?.strNextPunchDirection === "out"
-                        ? t("punch_out", "Punch Out")
-                        : t("punch_in", "Punch In")}
-                  </Button>
-                ) : null}
-              </Box>
+              {!blnHrMode ? (
+                <Box sx={{ flex: "0 0 118px", display: "flex", justifyContent: "flex-end" }}>
+                  {strSelectedDate === strToday ? (
+                    <Button
+                      data-control-id={`ess.my-attendance.punch-${objOverview?.strNextPunchDirection ?? "in"}.button`}
+                      size="medium"
+                      variant="contained"
+                      startIcon={<FingerprintRoundedIcon />}
+                      disabled={blnLoading || blnPunching || !objOverview?.blnCanPunch}
+                      onClick={() => setBlnPunchDialogOpen(true)}
+                      sx={{ minHeight: 44, px: 1.25, borderRadius: "8px", fontWeight: 900, whiteSpace: "nowrap" }}
+                    >
+                      {blnPunching
+                        ? t("recording", "Recording...")
+                        : objOverview?.strNextPunchDirection === "out"
+                          ? t("punch_out", "Punch Out")
+                          : t("punch_in", "Punch In")}
+                    </Button>
+                  ) : null}
+                </Box>
+              ) : null}
             </Stack>
-            {strSelectedDate === strToday && !objOverview?.blnCanPunch ? (
+            {!blnHrMode && strSelectedDate === strToday && !objOverview?.blnCanPunch ? (
               <Alert severity="info" sx={{ mt: 1, py: 0, "& .MuiAlert-message": { py: 0.75 } }}>
                 {t(
                   `unavailable_${objOverview?.strUnavailableReasonCode ?? "unknown"}`,
@@ -636,7 +742,7 @@ export default function EssAttendancePanel() {
                 {t("punch_timeline", "Punch Timeline")}
               </Button>
               <Box sx={{ flex: "0 0 94px", minHeight: 52 }}>
-                {blnSelectedDayEligibleForRegularization && canViewRegularization() ? (
+                {!blnHrMode && blnSelectedDayEligibleForRegularization && canViewRegularization() ? (
                   <Button
                     data-control-id="ess.my-attendance.regularize.button"
                     variant="outlined"
@@ -963,6 +1069,8 @@ export default function EssAttendancePanel() {
           <Button data-control-id="ess.my-attendance.punch-timeline.close.button" onClick={() => setBlnTimelineDialogOpen(false)}>{t("close", "Close")}</Button>
         </DialogActions>
       </Dialog>
+      </>
+      )}
 
       <Snackbar
         data-control-id="ess.my-attendance.notification"

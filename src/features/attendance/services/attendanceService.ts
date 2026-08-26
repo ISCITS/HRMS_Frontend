@@ -237,9 +237,12 @@ export const attendanceService = {
     return objResult.Data;
   },
 
-  async getMyAttendanceOverview(strDate: string): Promise<MyAttendanceOverview> {
+  async getMyAttendanceOverview(strDate: string, intEmployeeID?: number): Promise<MyAttendanceOverview> {
+    const strPath = intEmployeeID
+      ? `/attendance/review/overview?date=${encodeURIComponent(strDate)}&employee_id=${intEmployeeID}`
+      : `/ess/attendance/overview?date=${encodeURIComponent(strDate)}`;
     const objResult = await requestApi<MyAttendanceOverview>({
-      strPath: `/ess/attendance/overview?date=${encodeURIComponent(strDate)}`,
+      strPath,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: ATTENDANCE_VIEW,
     });
@@ -249,9 +252,13 @@ export const attendanceService = {
   async getMyAttendanceHistory(
     strFromDate: string,
     strToDate: string,
+    intEmployeeID?: number,
   ): Promise<MyAttendanceHistory> {
+    const strPath = intEmployeeID
+      ? `/attendance/review/history?fromDate=${encodeURIComponent(strFromDate)}&toDate=${encodeURIComponent(strToDate)}&employee_id=${intEmployeeID}`
+      : `/ess/attendance/history?fromDate=${encodeURIComponent(strFromDate)}&toDate=${encodeURIComponent(strToDate)}`;
     const objResult = await requestApi<MyAttendanceHistory>({
-      strPath: `/ess/attendance/history?fromDate=${encodeURIComponent(strFromDate)}&toDate=${encodeURIComponent(strToDate)}`,
+      strPath,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: ATTENDANCE_VIEW,
     });
@@ -267,9 +274,10 @@ export const attendanceService = {
     return objResult.Data ?? [];
   },
 
-  async getMyShift(): Promise<MyShiftDto | null> {
+  async getMyShift(intEmployeeID?: number): Promise<MyShiftDto | null> {
+    const strPath = intEmployeeID ? `/attendance/review/shift?employee_id=${intEmployeeID}` : "/ess/attendance/shift";
     const objResult = await requestApi<MyShiftDto | null>({
-      strPath: "/ess/attendance/shift",
+      strPath,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: ATTENDANCE_VIEW,
     });

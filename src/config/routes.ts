@@ -11,6 +11,7 @@ export const appRoutes = {
   attendance: "/attendance",
   attendancePolicies: "/attendance/policies",
   dailyAttendance: "/attendance/daily",
+  attendanceReview: "/attendance/review",
   leave: "/leave",
   payroll: "/payroll",
   payrollFNFSettlements: "/payroll/fnf-settlements",
