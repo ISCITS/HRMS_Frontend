@@ -2,7 +2,6 @@
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import {
   Alert,
@@ -10,18 +9,19 @@ import {
   Button,
   CircularProgress,
   FormControlLabel,
-  IconButton,
+  InputAdornment,
   MenuItem,
   Paper,
   Stack,
   TextField,
   Typography
 } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/components/master/MasterScreen.module.css";
+import { authHelpers } from "@/lib/auth";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import {
   createInitialPayrollGroupForm,
@@ -31,7 +31,8 @@ import {
 import type {
   PayrollGroupDetailRecord,
   PayrollGroupFormOptions,
-  PayrollGroupFormValues
+  PayrollGroupFormValues,
+  PayrollGroupTextFormValue
 } from "@/features/payroll-groups/types";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
@@ -56,6 +57,8 @@ export default function PayrollGroupEditorPage({
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
+  const [dicTextTranslationLoading, setDicTextTranslationLoading] = useState<Record<number, boolean>>({});
+  const [dicLastTranslatedSourceByLanguage, setDicLastTranslatedSourceByLanguage] = useState<Record<number, string>>({});
 
   const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
@@ -113,42 +116,120 @@ export default function PayrollGroupEditorPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blnCanLoadWorkspace, blnRightsLoading, intPayrollGroupID, strMode]);
 
-  const lstUsedLanguageIDs = useMemo(
-    () => new Set(dicForm.lstTexts.map((dicText) => dicText.intLanguageID)),
-    [dicForm.lstTexts]
-  );
-  const lstAvailableLanguages = useMemo(
-    () => (objFormOptions?.lstLanguages ?? []).filter((dicLanguage) => dicLanguage.intID !== 1),
-    [objFormOptions]
-  );
+  // Fixed two-row multilingual structure (tenant primary + tenant secondary language),
+  // matching every other master screen's pattern (see DepartmentMasterPanel.tsx) rather
+  // than a free-form add/remove list.
+  const intDefaultLanguageID =
+    authHelpers.getLanguageID() ??
+    objFormOptions?.lstLanguages[0]?.intID ??
+    1;
+  const intSecondaryLanguageID =
+    authHelpers.getSecondaryLanguageID() ??
+    objFormOptions?.lstLanguages.find((dicLanguage) => dicLanguage.strCode?.toLowerCase() === "hi")?.intID ??
+    objFormOptions?.lstLanguages.find((dicLanguage) => dicLanguage.intID !== intDefaultLanguageID)?.intID ??
+    intDefaultLanguageID;
+
+  function buildFixedLanguageRow(
+    intLanguageID: number,
+    strPayrollGroupName: string,
+    lstExistingTexts: PayrollGroupTextFormValue[]
+  ): PayrollGroupTextFormValue {
+    const dicLanguage = (objFormOptions?.lstLanguages ?? []).find((dicItem) => dicItem.intID === intLanguageID);
+    return {
+      intLanguageID,
+      strLanguageName: dicLanguage?.strLabel ?? "",
+      strPayrollGroupName
+    };
+  }
+
+  function ensureTenantLanguageRows(dicValues: PayrollGroupFormValues): PayrollGroupFormValues {
+    const dicDefaultRow = buildFixedLanguageRow(intDefaultLanguageID, dicValues.strPayrollGroupName, dicValues.lstTexts);
+    const dicSecondaryExistingText = dicValues.lstTexts.find(
+      (dicText) => Number(dicText.intLanguageID) === intSecondaryLanguageID
+    );
+    const dicSecondaryRow = buildFixedLanguageRow(
+      intSecondaryLanguageID,
+      dicSecondaryExistingText?.strPayrollGroupName ?? "",
+      dicValues.lstTexts
+    );
+    return {
+      ...dicValues,
+      intLanguageID: intDefaultLanguageID,
+      lstTexts: [dicDefaultRow, dicSecondaryRow]
+    };
+  }
 
   function updateField<TKey extends keyof PayrollGroupFormValues>(strField: TKey, objValue: PayrollGroupFormValues[TKey]) {
     setDicForm((dicPrevious) => ({ ...dicPrevious, [strField]: objValue }));
   }
 
-  function addTextRow() {
-    const dicNextLanguage = lstAvailableLanguages.find((dicLanguage) => !lstUsedLanguageIDs.has(dicLanguage.intID));
-    setDicForm((dicPrevious) => ({
-      ...dicPrevious,
-      lstTexts: [...dicPrevious.lstTexts, { intLanguageID: dicNextLanguage?.intID ?? "", strPayrollGroupName: "" }]
-    }));
+  function syncPrimaryPayrollGroupName(strPayrollGroupName: string) {
+    setDicForm((dicPrevious) => {
+      const dicNext = ensureTenantLanguageRows(dicPrevious);
+      return {
+        ...dicNext,
+        lstTexts: dicNext.lstTexts.map((dicText, intIndex) =>
+          intIndex === 0 ? { ...dicText, strPayrollGroupName } : dicText
+        )
+      };
+    });
   }
 
-  function removeTextRow(intIndex: number) {
-    setDicForm((dicPrevious) => ({
-      ...dicPrevious,
-      lstTexts: dicPrevious.lstTexts.filter((_, intRowIndex) => intRowIndex !== intIndex)
-    }));
-  }
-
-  function updateTextRow(intIndex: number, strField: "intLanguageID" | "strPayrollGroupName", objValue: number | string) {
+  function updateTextRow(intIndex: number, objValue: string) {
     setDicForm((dicPrevious) => ({
       ...dicPrevious,
       lstTexts: dicPrevious.lstTexts.map((dicText, intRowIndex) =>
-        intRowIndex === intIndex ? { ...dicText, [strField]: objValue } : dicText
+        intRowIndex === intIndex ? { ...dicText, strPayrollGroupName: objValue } : dicText
       )
     }));
   }
+
+  async function translateSecondaryLanguageRow() {
+    if (!objFormOptions || intSecondaryLanguageID === intDefaultLanguageID) {
+      return;
+    }
+    const strSourceName = dicForm.strPayrollGroupName.trim();
+    if (!strSourceName) {
+      return;
+    }
+    const strLastTranslatedSource = (dicLastTranslatedSourceByLanguage[intSecondaryLanguageID] ?? "").trim();
+    const dicSecondaryRow = dicForm.lstTexts[1];
+    const blnShouldTranslate = !dicSecondaryRow?.strPayrollGroupName.trim() || strLastTranslatedSource !== strSourceName;
+    if (!blnShouldTranslate) {
+      return;
+    }
+
+    setDicTextTranslationLoading((dicPrevious) => ({ ...dicPrevious, [intSecondaryLanguageID]: true }));
+    try {
+      const strTranslatedName = await payrollGroupService.translatePayrollGroupText(
+        strSourceName,
+        intDefaultLanguageID,
+        intSecondaryLanguageID
+      );
+      setDicForm((dicPrevious) => {
+        const dicNext = ensureTenantLanguageRows(dicPrevious);
+        return {
+          ...dicNext,
+          lstTexts: dicNext.lstTexts.map((dicText, intIndex) =>
+            intIndex === 1 ? { ...dicText, strPayrollGroupName: strTranslatedName } : dicText
+          )
+        };
+      });
+      setDicLastTranslatedSourceByLanguage((dicPrevious) => ({ ...dicPrevious, [intSecondaryLanguageID]: strSourceName }));
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : t("group_translate_failed", "Unable to translate payroll group name."));
+    } finally {
+      setDicTextTranslationLoading((dicPrevious) => ({ ...dicPrevious, [intSecondaryLanguageID]: false }));
+    }
+  }
+
+  useEffect(() => {
+    if (!objFormOptions || objFormOptions.lstLanguages.length === 0) {
+      return;
+    }
+    setDicForm((dicPrevious) => ensureTenantLanguageRows(dicPrevious));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [intDefaultLanguageID, intSecondaryLanguageID, objFormOptions?.lstLanguages.length]);
 
   async function handleSave() {
     if (!blnCanSave) {
@@ -301,7 +382,10 @@ export default function PayrollGroupEditorPage({
               label={t("payroll_group_name", "Payroll Group Name")}
               required
               value={dicForm.strPayrollGroupName}
-              onChange={(objEvent) => updateField("strPayrollGroupName", objEvent.target.value)}
+              onChange={(objEvent) => {
+                setStrError("");
+                syncPrimaryPayrollGroupName(objEvent.target.value);
+              }}
               disabled={blnFieldDisabled}
               fullWidth
             />
@@ -351,77 +435,86 @@ export default function PayrollGroupEditorPage({
                 {t("group_multilingual_text_help", "Add translated payroll group names for other languages.")}
               </Typography>
             </Box>
-            {!blnFieldDisabled && lstAvailableLanguages.some((dicLanguage) => !lstUsedLanguageIDs.has(dicLanguage.intID)) ? (
+            <Box sx={{ display: "flex", gap: 1.1, alignItems: "center", ml: "auto" }}>
               <Button
                 controlId="payroll-groups.editor.add-language.button"
                 className={styles.secondaryButton}
                 startIcon={<AddRoundedIcon />}
-                onClick={addTextRow}
+                disabled
                 sx={{ minHeight: 34 }}
               >
                 {t("add_language", "Add Language")}
               </Button>
-            ) : null}
+              <Button
+                controlId="payroll-groups.editor.translate.button"
+                className={styles.primaryButton}
+                onClick={() => void translateSecondaryLanguageRow()}
+                disabled={blnFieldDisabled || dicTextTranslationLoading[intSecondaryLanguageID]}
+                sx={{ minWidth: 108, minHeight: 34, boxShadow: "none", "&:hover": { boxShadow: "none" } }}
+              >
+                {dicTextTranslationLoading[intSecondaryLanguageID] ? (
+                  <CircularProgress size={18} sx={{ color: "#ffffff" }} />
+                ) : (
+                  t("translate", "AI Translate")
+                )}
+              </Button>
+            </Box>
           </Box>
 
-          {dicForm.lstTexts.length === 0 ? (
-            <Typography sx={{ color: "#94a3b8", fontSize: "0.85rem" }}>
-              {t("group_no_translations", "No additional language translations added yet.")}
-            </Typography>
-          ) : (
-            <Box sx={{ display: "grid", gap: 1.2 }}>
-              {dicForm.lstTexts.map((dicText, intIndex) => (
-                <Box
-                  key={`${dicText.intLanguageID}-${intIndex}`}
-                  sx={{
-                    display: "grid",
-                    gap: 1.2,
-                    gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 0.9fr) minmax(0, 1.5fr) auto" },
-                    alignItems: "center",
-                    border: "1px solid rgba(203,213,225,0.8)",
-                    borderRadius: "16px",
-                    p: 1.2,
-                    background: "#f8fafc",
-                  }}
+          <Box sx={{ display: "grid", gap: 1.2 }}>
+            {dicForm.lstTexts.map((dicText, intIndex) => (
+              <Box
+                key={dicText.intLanguageID || intIndex}
+                sx={{
+                  display: "grid",
+                  gap: 1.2,
+                  gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 0.95fr) minmax(0, 1.35fr)" },
+                  alignItems: "start",
+                  border: "1px solid rgba(203,213,225,0.8)",
+                  borderRadius: "16px",
+                  p: 1.2,
+                  background: "#f8fafc",
+                }}
+              >
+                <TextField
+                  select
+                  label={t("language", "Language")}
+                  value={dicText.intLanguageID}
+                  inputProps={{ "controlId": "payroll-groups.editor.language.select", "data-row-key": intIndex }}
+                  disabled
+                  fullWidth
                 >
-                  <TextField
-                    select
-                    label={t("language", "Language")}
-                    value={dicText.intLanguageID}
-                    inputProps={{ "controlId": "payroll-groups.editor.language.select", "data-row-key": intIndex }}
-                    onChange={(objEvent) => updateTextRow(intIndex, "intLanguageID", Number(objEvent.target.value))}
-                    disabled={blnFieldDisabled}
-                    fullWidth
-                  >
-                    {lstAvailableLanguages
-                      .filter((dicLanguage) => dicLanguage.intID === dicText.intLanguageID || !lstUsedLanguageIDs.has(dicLanguage.intID))
-                      .map((dicLanguage) => (
-                        <MenuItem key={dicLanguage.intID} value={dicLanguage.intID}>{dicLanguage.strLabel}</MenuItem>
-                      ))}
-                  </TextField>
-                  <TextField
-                    label={t("payroll_group_name", "Payroll Group Name")}
-                    value={dicText.strPayrollGroupName}
-                    inputProps={{ "controlId": "payroll-groups.editor.translated-name.input", "data-row-key": intIndex }}
-                    onChange={(objEvent) => updateTextRow(intIndex, "strPayrollGroupName", objEvent.target.value)}
-                    disabled={blnFieldDisabled}
-                    fullWidth
-                  />
-                  {!blnFieldDisabled ? (
-                    <IconButton
-                      controlId="payroll-groups.editor.remove-language.button"
-                      data-row-key={intIndex}
-                      onClick={() => removeTextRow(intIndex)}
-                      aria-label={t("remove", "Remove")}
-                      sx={{ color: "#dc2626" }}
-                    >
-                      <DeleteOutlineRoundedIcon />
-                    </IconButton>
-                  ) : null}
-                </Box>
-              ))}
-            </Box>
-          )}
+                  {(objFormOptions?.lstLanguages ?? []).map((dicLanguage) => (
+                    <MenuItem key={dicLanguage.intID} value={dicLanguage.intID}>{dicLanguage.strLabel}</MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  label={t("payroll_group_name", "Payroll Group Name")}
+                  value={dicText.strPayrollGroupName}
+                  inputProps={{ "controlId": "payroll-groups.editor.translated-name.input", "data-row-key": intIndex }}
+                  onChange={(objEvent) => {
+                    if (intIndex === 0) {
+                      setStrError("");
+                      syncPrimaryPayrollGroupName(objEvent.target.value);
+                    } else {
+                      updateTextRow(intIndex, objEvent.target.value);
+                    }
+                  }}
+                  disabled={blnFieldDisabled || intIndex === 0}
+                  InputProps={{
+                    endAdornment: dicTextTranslationLoading[Number(dicText.intLanguageID)]
+                      ? (
+                          <InputAdornment position="end">
+                            <CircularProgress size={18} sx={{ color: "#2563eb" }} />
+                          </InputAdornment>
+                        )
+                      : undefined,
+                  }}
+                  fullWidth
+                />
+              </Box>
+            ))}
+          </Box>
         </Stack>
       </Paper>
     </Stack>

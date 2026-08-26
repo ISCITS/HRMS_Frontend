@@ -60,6 +60,8 @@ const lstAttendanceIntegrationModuleCodes = [
   "PAYROLL_ATTENDANCE_INTEGRATION",
   "PAYROLL_ATTENDANCE",
   "ATTENDANCE_PAYROLL_INTEGRATION",
+  "ATTENDANCE_LEAVE_INPUTS",
+  "ATTENDANCE_LEAVE_INPUT",
   "PAYROLL_RUN",
   "PAYROLL_RUNS",
   "PAYROLL_PAYROLL_RUN",
@@ -516,14 +518,13 @@ function PaginatedSummaryCard({
         borderRadius: "10px",
         border: "1px solid #dbe7f3",
         boxShadow: "none",
-        height: 270,
-        overflow: "hidden",
-        display: "grid",
-        gridTemplateRows: "45px 1fr",
+        minHeight: 220,
+        display: "flex",
+        flexDirection: "column",
         background: "#fff",
       }}
     >
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, px: 1.8, borderBottom: "1px solid #e6eef7" }}>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, px: 1.8, py: 1.1, borderBottom: "1px solid #e6eef7", flex: "0 0 auto" }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
           {objIcon}
           <Typography component="h3" sx={{ color: "#0f172a", fontSize: "0.84rem", fontWeight: 900, lineHeight: 1.2 }}>
@@ -535,7 +536,10 @@ function PaginatedSummaryCard({
       <Box
         sx={{
           px: 1.8,
+          py: 0.4,
+          flex: "1 1 auto",
           overflowY: "auto",
+          maxHeight: { xs: "none", sm: 420 },
           "&::-webkit-scrollbar": { width: 6 },
           "&::-webkit-scrollbar-thumb": { background: "#cbd8e8", borderRadius: "8px" },
         }}

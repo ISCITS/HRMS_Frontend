@@ -27,6 +27,7 @@ export type PayrollGroupDetailRecord = PayrollGroupListRecord & {
 
 export type PayrollGroupTextFormValue = {
   intLanguageID: number | "";
+  strLanguageName?: string;
   strPayrollGroupName: string;
 };
 

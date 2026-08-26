@@ -2888,6 +2888,23 @@ export const masterApiService = {
     });
   },
 
+  translatePayrollGroupText(objBody: {
+    strText: string;
+    intSourceLanguageID?: number | null;
+    intTargetLanguageID: number;
+  }) {
+    return requestApi<{
+      strTranslatedText: string;
+      intSourceLanguageID: number;
+      intTargetLanguageID: number;
+    }>({
+      strPath: buildApiPath(MasterApiResource.PayrollGroups, MasterApiRouteSegment.Translate),
+      strMethod: ApiRequestMethod.Post,
+      objBody,
+      strMenuAction: MasterMenuAction.PayrollGroupList
+    });
+  },
+
   getPayrollGroup(intID: number) {
     return requestApi<PayrollGroupApiRecord>({
       strPath: buildApiPath(MasterApiResource.PayrollGroups, MasterApiRouteSegment.Detail),

@@ -177,6 +177,7 @@ export const employeePayrollInputService = {
   async getEmployeePayrollInputs(objFilters?: {
     strSearchEmployee?: string;
     strSearchRun?: string;
+    intPayrollRunID?: number | null;
     strStatus?: string;
   }): Promise<EmployeePayrollInputListRecord[]> {
     const objParams = new URLSearchParams();
@@ -185,6 +186,9 @@ export const employeePayrollInputService = {
     }
     if (objFilters?.strSearchRun?.trim()) {
       objParams.set("strSearchRun", objFilters.strSearchRun.trim());
+    }
+    if (objFilters?.intPayrollRunID) {
+      objParams.set("intPayrollRunID", String(objFilters.intPayrollRunID));
     }
     if (objFilters?.strStatus?.trim() && objFilters.strStatus !== "All") {
       objParams.set("strStatus", objFilters.strStatus.trim());

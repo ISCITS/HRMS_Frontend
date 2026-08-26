@@ -53,6 +53,15 @@ export function resolveRouteModuleName(strPathname: string) {
   ) {
     return "payroll-cycles";
   }
+  if (strLowerPath.startsWith("/masters/payroll-groups")) {
+    return "payroll-groups";
+  }
+  if (strLowerPath.startsWith("/payroll/attendance-leave-inputs")) {
+    return "attendance-leave-inputs";
+  }
+  if (strLowerPath.startsWith("/reports/salary-register")) {
+    return "salary-register";
+  }
   if (
     strLowerPath.startsWith("/payroll/employee-payroll-inputs") ||
     strLowerPath.startsWith("/payroll/employee-payroll-input") ||

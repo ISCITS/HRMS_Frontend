@@ -35,6 +35,9 @@ const lstAttendanceLeaveInputModuleCodes = [
   "PAYROLL_ATTENDANCE_INTEGRATION",
   "PAYROLL_ATTENDANCE",
   "ATTENDANCE_PAYROLL_INTEGRATION",
+  // The actual dedicated menu, seeded 2026-08-26 - written speculatively before it existed.
+  "ATTENDANCE_LEAVE_INPUTS",
+  "ATTENDANCE_LEAVE_INPUT",
   "PAYROLL_RUN",
   "PAYROLL_RUNS",
 ];

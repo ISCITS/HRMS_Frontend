@@ -19,7 +19,7 @@ export async function loadAttendanceLeaveInputsForRun(
     attendancePayrollService.getIntegrationStatus(intRunID).catch(() => null),
   ]);
   const lstInputs = await employeePayrollInputService.getEmployeePayrollInputs({
-    strSearchRun: objRun.strRunCode,
+    intPayrollRunID: objRun.intID,
   });
   const lstAttendanceIssues = (objRun.lstValidationResults ?? []).filter((dicIssue) =>
     dicIssue.strValidationCode.startsWith(setAttendanceValidationCodePrefix)

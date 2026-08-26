@@ -114,5 +114,18 @@ export const payrollGroupService = {
       blnIsActive
     );
     return mapApiRecord(objResult.Data);
+  },
+
+  async translatePayrollGroupText(
+    strText: string,
+    intSourceLanguageID: number,
+    intTargetLanguageID: number
+  ): Promise<string> {
+    const objResult = await masterApiService.translatePayrollGroupText({
+      strText,
+      intSourceLanguageID,
+      intTargetLanguageID
+    });
+    return objResult.Data.strTranslatedText;
   }
 };

@@ -20,9 +20,6 @@ import type { PayrollResultDetailRecord, PayrollResultLineRecord, PayrollResultL
 type SearchForm = {
   intEmployeeID: number | "";
   intFinancialYearStart: number;
-  strDesignation: string;
-  strDepartment: string;
-  strLocation: string;
   strStatus: string;
 };
 
@@ -76,11 +73,6 @@ function getNumber(decValue: number | null | undefined) {
 function formatAmount(decValue: number) {
   if (!decValue) return "";
   return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(decValue);
-}
-
-function includesText(strValue: string | null | undefined, strNeedle: string) {
-  if (!strNeedle.trim()) return true;
-  return String(strValue ?? "").toLowerCase().includes(strNeedle.trim().toLowerCase());
 }
 
 function getLineSection(dicLine: PayrollResultLineRecord): SalaryRegisterLine["strSection"] {
@@ -189,9 +181,6 @@ export default function SalaryRegisterReportPage() {
   const [dicSearch, setDicSearch] = useState<SearchForm>({
     intEmployeeID: "",
     intFinancialYearStart: getCurrentFinancialYearStart(),
-    strDesignation: "",
-    strDepartment: "",
-    strLocation: "",
     strStatus: "All",
   });
 
@@ -230,17 +219,6 @@ export default function SalaryRegisterReportPage() {
     ]).map(Number).filter(Boolean);
     return lstYears.sort((intLeft, intRight) => intRight - intLeft);
   }, [lstPayrollRows]);
-  const dicOptions = useMemo(() => ({
-    lstDesignations: getUniqueOptions(lstEmployees.map((dicEmployee) => dicEmployee.strDesignationName)),
-    lstDepartments: getUniqueOptions([
-      ...lstEmployees.map((dicEmployee) => dicEmployee.strDepartmentName),
-      ...lstPayrollRows.map((dicRow) => dicRow.strDepartmentName),
-    ]),
-    lstLocations: getUniqueOptions([
-      ...lstEmployees.map((dicEmployee) => dicEmployee.strLocationName),
-      ...lstPayrollRows.map((dicRow) => dicRow.strLocationName),
-    ]),
-  }), [lstEmployees, lstPayrollRows]);
   const dicSelectedEmployee = dicSearch.intEmployeeID ? mapEmployeeByID.get(dicSearch.intEmployeeID) : null;
   const lstRegisterLines = useMemo(() => buildSalaryRegisterLines(lstDetails, lstMonths), [lstDetails, lstMonths]);
 
@@ -250,10 +228,8 @@ export default function SalaryRegisterReportPage() {
       const blnMatchesEmployee = dicSearch.intEmployeeID ? dicRow.intEmployeeID === dicSearch.intEmployeeID : false;
       return blnMatchesEmployee
         && getFinancialYearStart(dicRow.dtPayrollMonth) === dicSearch.intFinancialYearStart
-        && (dicSearch.strStatus === "All" || dicRow.strStatus === dicSearch.strStatus)
-        && includesText(dicEmployee?.strDesignationName, dicSearch.strDesignation)
-        && (includesText(dicRow.strDepartmentName, dicSearch.strDepartment) || includesText(dicEmployee?.strDepartmentName, dicSearch.strDepartment))
-        && (includesText(dicRow.strLocationName, dicSearch.strLocation) || includesText(dicEmployee?.strLocationName, dicSearch.strLocation));
+        && Boolean(dicEmployee)
+        && (dicSearch.strStatus === "All" || dicRow.strStatus === dicSearch.strStatus);
     });
   }
 
@@ -284,9 +260,6 @@ export default function SalaryRegisterReportPage() {
     setDicSearch({
       intEmployeeID: "",
       intFinancialYearStart: getCurrentFinancialYearStart(),
-      strDesignation: "",
-      strDepartment: "",
-      strLocation: "",
       strStatus: "All",
     });
     setLstDetails([]);
@@ -309,7 +282,7 @@ export default function SalaryRegisterReportPage() {
           <style>
             body { font-family: Arial, sans-serif; padding: 22px; color: #111827; }
             .report { border: 1px solid #4b5563; }
-            h1 { font-size: 22px; text-align: center; margin: 8px 0 56px; }
+            h1 { font-size: 22px; text-align: center; margin: 8px 0 18px; }
             h2 { font-size: 16px; text-align: center; margin: 0; }
             .meta { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid #6b7280; }
             .meta div { padding: 5px 8px; }
@@ -353,7 +326,7 @@ export default function SalaryRegisterReportPage() {
 
       <Box className={styles.controlsCard}>
         <Box className={styles.reportSearchPanelRow}>
-          <Box className={styles.reportSearchField}>
+          <Box className={styles.reportSearchField} sx={{ flex: "1 1 320px", minWidth: 260 }}>
             <Autocomplete
               options={lstEmployees}
               value={dicSelectedEmployee ?? null}
@@ -362,28 +335,19 @@ export default function SalaryRegisterReportPage() {
               renderInput={(objParams) => <TextField {...objParams} label="Employee Name" placeholder="Select employee" />}
             />
           </Box>
-          <Box className={styles.reportSearchField}>
+          <Box className={styles.reportSearchField} sx={{ flex: "0 1 230px", minWidth: 190 }}>
             <TextField select label="Financial Year" value={dicSearch.intFinancialYearStart} onChange={(objEvent) => setDicSearch((dicPrevious) => ({ ...dicPrevious, intFinancialYearStart: Number(objEvent.target.value) }))} fullWidth>
               {lstFinancialYears.map((intYear) => <MenuItem key={intYear} value={intYear}>{intYear}-{String(intYear + 1).slice(-2)}</MenuItem>)}
             </TextField>
           </Box>
-          <Box className={styles.reportSearchField}>
-            <Autocomplete freeSolo options={dicOptions.lstDesignations} value={dicSearch.strDesignation} onInputChange={(_, strValue) => setDicSearch((dicPrevious) => ({ ...dicPrevious, strDesignation: strValue }))} renderInput={(objParams) => <TextField {...objParams} label="Designation" />} />
-          </Box>
-          <Box className={styles.reportSearchField}>
-            <Autocomplete freeSolo options={dicOptions.lstDepartments} value={dicSearch.strDepartment} onInputChange={(_, strValue) => setDicSearch((dicPrevious) => ({ ...dicPrevious, strDepartment: strValue }))} renderInput={(objParams) => <TextField {...objParams} label="Department" />} />
-          </Box>
-          <Box className={styles.reportSearchField}>
-            <Autocomplete freeSolo options={dicOptions.lstLocations} value={dicSearch.strLocation} onInputChange={(_, strValue) => setDicSearch((dicPrevious) => ({ ...dicPrevious, strLocation: strValue }))} renderInput={(objParams) => <TextField {...objParams} label="Location" />} />
-          </Box>
-          <Box className={styles.reportSearchField}>
+          <Box className={styles.reportSearchField} sx={{ flex: "0 1 230px", minWidth: 190 }}>
             <TextField select label="Status" value={dicSearch.strStatus} onChange={(objEvent) => setDicSearch((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value }))} fullWidth>
               {lstStatusOptions.map((strStatus) => <MenuItem key={strStatus} value={strStatus}>{strStatus === "All" ? "All statuses" : strStatus}</MenuItem>)}
             </TextField>
           </Box>
-          <Box className={`${styles.searchActions} ${styles.reportBottomRightActions}`}>
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={loadReport} disabled={blnLoadingReport}>Search</Button>
-            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} disabled={blnLoadingReport}>Clear</Button>
+          <Box className={styles.searchActions} sx={{ flex: "0 0 auto", ml: "auto" }}>
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={loadReport} disabled={blnLoadingReport} sx={{ whiteSpace: "nowrap" }}>Search</Button>
+            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} disabled={blnLoadingReport} sx={{ whiteSpace: "nowrap" }}>Clear</Button>
           </Box>
         </Box>
       </Box>
@@ -392,11 +356,11 @@ export default function SalaryRegisterReportPage() {
       {strError ? <Alert severity="error">{strError}</Alert> : null}
 
       <Box className={styles.tableCard}>
-        <Box sx={{ display: "flex", flex: "0 0 auto", justifyContent: "space-between", gap: 2, mb: 1.5 }}>
+        <Box sx={{ alignItems: "center", display: "flex", flex: "0 0 auto", justifyContent: "space-between", gap: 2, mb: 1 }}>
           <Typography sx={{ fontWeight: 700 }}>Salary register</Typography>
-          <Box sx={{ display: "flex", gap: 1 }}>
-            {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadExcel(`salary-register-${strFinancialYearLabel}.xls`, strReportMarkup)} disabled={!lstRegisterLines.length}>Export Excel</Button> : null}
-            {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<PrintRoundedIcon />} onClick={() => printReport(strReportMarkup)} disabled={!lstRegisterLines.length}>Download PDF</Button> : null}
+          <Box sx={{ display: "flex", flexWrap: "nowrap", gap: 1 }}>
+            {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadExcel(`salary-register-${strFinancialYearLabel}.xls`, strReportMarkup)} disabled={!lstRegisterLines.length} sx={{ whiteSpace: "nowrap" }}>Export Excel</Button> : null}
+            {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<PrintRoundedIcon />} onClick={() => printReport(strReportMarkup)} disabled={!lstRegisterLines.length} sx={{ whiteSpace: "nowrap" }}>Download PDF</Button> : null}
           </Box>
         </Box>
 
@@ -409,7 +373,7 @@ export default function SalaryRegisterReportPage() {
           ) : (
             <Box sx={{ border: "1px solid #4b5563", minWidth: 1280 }}>
               <Typography sx={{ fontSize: 24, fontWeight: 800, textAlign: "center", py: 1 }}>Salary register</Typography>
-              <Typography sx={{ fontSize: 18, fontWeight: 700, textAlign: "center", mt: 7, pb: 1 }}>YTD Salary Statement as on March {dicSearch.intFinancialYearStart + 1}</Typography>
+              <Typography sx={{ fontSize: 18, fontWeight: 700, textAlign: "center", mt: 2, pb: 1 }}>YTD Salary Statement as on March {dicSearch.intFinancialYearStart + 1}</Typography>
               <Box sx={{ borderTop: "1px solid #6b7280", display: "grid", gridTemplateColumns: "1fr 1fr" }}>
                 <Box sx={{ p: 0.75 }}><b>Employee ID</b><Box component="span" sx={{ ml: 8 }}>{dicSelectedEmployee?.strEmployeeCode ?? "-"}</Box></Box>
                 <Box sx={{ p: 0.75 }}><b>Department</b><Box component="span" sx={{ ml: 8 }}>{dicSelectedEmployee?.strDepartmentName ?? "-"}</Box></Box>

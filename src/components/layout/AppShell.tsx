@@ -229,6 +229,28 @@ function getLocalizedHeaderTitle(
     return stripMasterTitle(tHeader("schedule_page_title", "Payroll Schedules"));
   }
 
+  if (strHeaderModuleName === "payroll-groups") {
+    if (strLowerPath.endsWith("/add")) {
+      return tHeader("group_add_title", "Add Payroll Group");
+    }
+    if (strLowerPath.includes("/edit")) {
+      return tHeader("group_edit_title", "Edit Payroll Group");
+    }
+    if (strLowerPath.includes("/view")) {
+      return tHeader("group_view_title", "View Payroll Group");
+    }
+    return stripMasterTitle(tHeader("group_page_title", "Payroll Groups"));
+  }
+
+  if (strHeaderModuleName === "attendance-leave-inputs") {
+    return stripMasterTitle(tHeader("header_title", "Attendance & Leave Inputs"));
+  }
+
+  if (strHeaderModuleName === "salary-register") {
+    const strTitle = tHeader("header_title", "Salary Register");
+    return stripMasterTitle(strTitle.split("/").pop()?.trim() || "Salary Register");
+  }
+
   if (strHeaderModuleName === "payslips") {
     const blnEssPayslipContext =
       strLowerPath.startsWith("/ess/my-payslips") ||
