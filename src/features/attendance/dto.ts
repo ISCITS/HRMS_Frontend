@@ -86,7 +86,7 @@ export const ATTENDANCE_STATUS_COLORS: Record<string, { bg: string; fg: string; 
   holiday: { bg: "#ccfbf1", fg: "#115e59", short: "H" },
   // Frontend-only display key (see attendanceDisplayStatus in EssAttendancePanel) - the
   // backend always reports strStatus "holiday" for this day; never sent by the API itself.
-  restricted_holiday: { bg: "#ede9fe", fg: "#5b21b6", short: "RH" },
+  restricted_holiday: { bg: "#ffedd5", fg: "#9a3412", short: "RH" },
   weekly_off: { bg: "#e0e7ff", fg: "#3730a3", short: "WO" },
   absent: { bg: "#fee2e2", fg: "#991b1b", short: "A" },
   on_duty: { bg: "#f1f5f9", fg: "#475569", short: "OD" },

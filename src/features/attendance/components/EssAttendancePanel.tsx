@@ -438,12 +438,12 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
     () => lstCalendarCells.filter((strDate): strDate is string => Boolean(strDate)),
     [lstCalendarCells],
   );
+  // Includes a year ahead of the current one so navigating past December with the "next
+  // month" control always lands on a year that's still present in this dropdown.
   const lstYears = useMemo(
-    () => Array.from({ length: 4 }, (_, intIndex) => objToday.getFullYear() - 3 + intIndex),
+    () => Array.from({ length: 5 }, (_, intIndex) => objToday.getFullYear() - 3 + intIndex),
     [objToday],
   );
-  const blnAtCurrentMonth = objMonth.getFullYear() === objToday.getFullYear()
-    && objMonth.getMonth() === objToday.getMonth();
 
   function moveMonth(intDelta: number) {
     const objNextMonth = new Date(objMonth.getFullYear(), objMonth.getMonth() + intDelta, 1);
@@ -637,12 +637,12 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
             sx={{ width: 126 }}
           >
             {Array.from({ length: 12 }, (_, intMonth) => (
-              <MenuItem key={intMonth} value={intMonth} disabled={objMonth.getFullYear() === objToday.getFullYear() && intMonth > objToday.getMonth()}>
+              <MenuItem key={intMonth} value={intMonth}>
                 {new Date(2020, intMonth, 1).toLocaleString([], { month: "long" })}
               </MenuItem>
               ))}
             </TextField>
-          <Button data-control-id="ess.my-attendance.next-month.button" variant="outlined" disabled={blnAtCurrentMonth} onClick={() => moveMonth(1)} aria-label={t("next_month", "Next month")} sx={{ minWidth: 44, width: 44, px: 0 }}><ChevronRightRoundedIcon /></Button>
+          <Button data-control-id="ess.my-attendance.next-month.button" variant="outlined" onClick={() => moveMonth(1)} aria-label={t("next_month", "Next month")} sx={{ minWidth: 44, width: 44, px: 0 }}><ChevronRightRoundedIcon /></Button>
           <TextField
             data-control-id="ess.my-attendance.year.select"
             select
