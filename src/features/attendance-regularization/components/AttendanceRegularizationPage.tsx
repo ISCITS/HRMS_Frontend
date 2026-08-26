@@ -13,10 +13,11 @@ import {
 import { alpha } from "@mui/material/styles";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Controller, useForm, type Resolver } from "react-hook-form";
 import * as yup from "yup";
 
+import CommonDataGrid, { type DataGridColumn } from "@/components/ui/CommonDataGrid";
 import LookupChip, { lookupLabel } from "@/features/attendance-regularization/components/LookupChip";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -37,6 +38,14 @@ const strAttendanceStatusDomain = "ATTENDANCE_STATUS";
 const setHiddenEssRequestTypeCodes = new Set(["MISSING_IN", "OTHER"]);
 const setAutoCalculatedRequestTypeCodes = new Set(["MISSING_OUT", "MISSING_BOTH"]);
 type PunchRecord = DateContext["lstPunches"][number];
+type RequestGridRow = Record<string, ReactNode> & {
+  intID: number;
+  actions: ReactNode;
+  requestNumber: ReactNode;
+  workDate: ReactNode;
+  requestType: ReactNode;
+  status: ReactNode;
+};
 
 // No backend lookup domain exists for regularization reasons yet (verified — no seeded domain in
 // db_scripts, no ATTENDANCE_REGULARIZATION_REASON key in getEssLookups' response). This is a
@@ -316,6 +325,28 @@ export default function AttendanceRegularizationPage() {
       return blnMatchesStatus && blnMatchesSearch;
     });
   }, [lstAllTypes, lstRequests, lstRequestStatuses, strAppliedRequestSearch, strAppliedRequestStatus]);
+  const lstRequestGridRows: RequestGridRow[] = lstFilteredRequests.map((objRequest) => ({
+    intID: objRequest.intID,
+    actions: (
+      <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap" useFlexGap>
+        <Button data-control-id={`attendance-regularization.request.${objRequest.intID}.view.button`} size="small" startIcon={<HistoryRoundedIcon />} onClick={() => void attendanceRegularizationService.getMyDetail(objRequest.intID).then(setObjDetail)}>{t("view", "View")}</Button>
+        {["DRAFT", "SENT_BACK"].includes(objRequest.strRequestStatus) ? <Button data-control-id={`attendance-regularization.request.${objRequest.intID}.edit.button`} size="small" onClick={() => editRequest(objRequest)}>{t("edit", "Edit")}</Button> : null}
+        {objRequest.strRequestStatus === "DRAFT" ? <Button data-control-id={`attendance-regularization.request.${objRequest.intID}.submit.button`} size="small" onClick={() => setObjConfirm({ strAction: "submit", objRequest })}>{t("submit", "Submit")}</Button> : null}
+        {objRequest.strRequestStatus === "PENDING_APPROVAL" ? <Button data-control-id={`attendance-regularization.request.${objRequest.intID}.withdraw.button`} size="small" color="error" onClick={() => setObjConfirm({ strAction: "withdraw", objRequest })}>{t("withdraw", "Withdraw")}</Button> : null}
+      </Stack>
+    ),
+    requestNumber: <Typography fontWeight={850}>{objRequest.strRequestNumber ?? objRequest.dtWorkDate}</Typography>,
+    workDate: formatDdMmmYyyy(objRequest.dtWorkDate),
+    requestType: lookupLabel(lstAllTypes, objRequest.strRequestTypeCode, t("request", "Request")),
+    status: <LookupChip lstOptions={lstRequestStatuses} strCode={objRequest.strRequestStatus} strFallback={t("status_unavailable", "Status unavailable")} />,
+  }));
+  const lstRequestGridColumns: DataGridColumn<RequestGridRow>[] = useMemo(() => [
+    { field: "actions", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 220 },
+    { field: "requestNumber", headerName: t("request_number", "Request Number"), sortAccessor: (objRow) => String(objRow.requestNumber ?? ""), width: 190 },
+    { field: "workDate", headerName: t("work_date", "Work Date"), width: 130 },
+    { field: "requestType", headerName: t("request_type", "Request Type"), width: 220 },
+    { field: "status", headerName: t("status", "Status"), sortable: false, filterable: false, width: 170 },
+  ], [t]);
 
   const loadLookups = useCallback(async () => {
     setObjLookups(await attendanceRegularizationService.getEssLookups(intLanguageID || authHelpers.getLanguageID() || undefined));
@@ -657,20 +688,18 @@ export default function AttendanceRegularizationPage() {
               </Grid>
             </Grid>
           </Paper>
-          {lstFilteredRequests.length === 0 ? <Alert severity="info">{t("no_requests", "No regularization requests found.")}</Alert> : lstFilteredRequests.map((objRequest) => (
-            <Paper key={objRequest.intID} variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
-              <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
-                <Box><Typography fontWeight={850}>{objRequest.strRequestNumber ?? objRequest.dtWorkDate}</Typography><Typography color="text.secondary">{objRequest.dtWorkDate} · {lookupLabel(lstAllTypes, objRequest.strRequestTypeCode, t("request", "Request"))}</Typography></Box>
-                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                  <LookupChip lstOptions={lstRequestStatuses} strCode={objRequest.strRequestStatus} strFallback={t("status_unavailable", "Status unavailable")} />
-                  <Button data-control-id={`attendance-regularization.request.${objRequest.intID}.view.button`} startIcon={<HistoryRoundedIcon />} onClick={() => void attendanceRegularizationService.getMyDetail(objRequest.intID).then(setObjDetail)}>{t("view", "View")}</Button>
-                  {["DRAFT", "SENT_BACK"].includes(objRequest.strRequestStatus) ? <Button data-control-id={`attendance-regularization.request.${objRequest.intID}.edit.button`} onClick={() => editRequest(objRequest)}>{t("edit", "Edit")}</Button> : null}
-                  {objRequest.strRequestStatus === "DRAFT" ? <Button data-control-id={`attendance-regularization.request.${objRequest.intID}.submit.button`} onClick={() => setObjConfirm({ strAction: "submit", objRequest })}>{t("submit", "Submit")}</Button> : null}
-                  {objRequest.strRequestStatus === "PENDING_APPROVAL" ? <Button data-control-id={`attendance-regularization.request.${objRequest.intID}.withdraw.button`} color="error" onClick={() => setObjConfirm({ strAction: "withdraw", objRequest })}>{t("withdraw", "Withdraw")}</Button> : null}
-                </Stack>
-              </Stack>
-            </Paper>
-          ))}
+          <CommonDataGrid
+            columns={lstRequestGridColumns}
+            rows={lstRequestGridRows}
+            rowIdField="intID"
+            hideToolbar
+            showPaginationSummary
+            minTableWidth={940}
+            emptyMessage={t("no_requests", "No regularization requests found.")}
+            testIdPrefix="attendance-regularization.my-requests.list"
+            hideRowClickHint
+            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+          />
         </Stack>
       )}
 
