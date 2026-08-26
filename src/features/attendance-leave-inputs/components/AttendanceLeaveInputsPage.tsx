@@ -149,8 +149,26 @@ export default function AttendanceLeaveInputsPage() {
     setStrError("");
     setStrSuccess("");
     try {
-      await attendanceLeaveInputsService.importOrRefresh(intSelectedRunID);
+      const dicImportResult = await attendanceLeaveInputsService.importOrRefresh(intSelectedRunID);
       await loadDetail(intSelectedRunID);
+      if (dicImportResult.intTotalEmployees === 0) {
+        setStrError(
+          t(
+            "import_no_employees",
+            "No employees are in scope for this payroll run. Check the selected employee, payroll group, employment status, joining/exit dates, and payroll period."
+          )
+        );
+        return;
+      }
+      if (dicImportResult.intAppliedCount === 0 && dicImportResult.intBlockedCount > 0) {
+        setStrError(
+          t(
+            "import_blocked",
+            "Attendance & leave data could not be imported because the selected employees have blocking attendance issues."
+          )
+        );
+        return;
+      }
       setStrSuccess(t("import_success", "Attendance & leave data imported successfully."));
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to import attendance & leave data.");
@@ -199,8 +217,26 @@ export default function AttendanceLeaveInputsPage() {
     setStrError("");
     setStrSuccess("");
     try {
-      await attendanceLeaveInputsService.reopenAndRefresh(intSelectedRunID, strReason);
+      const dicImportResult = await attendanceLeaveInputsService.reopenAndRefresh(intSelectedRunID, strReason);
       await loadDetail(intSelectedRunID);
+      if (dicImportResult.intTotalEmployees === 0) {
+        setStrError(
+          t(
+            "import_no_employees",
+            "No employees are in scope for this payroll run. Check the selected employee, payroll group, employment status, joining/exit dates, and payroll period."
+          )
+        );
+        return;
+      }
+      if (dicImportResult.intAppliedCount === 0 && dicImportResult.intBlockedCount > 0) {
+        setStrError(
+          t(
+            "import_blocked",
+            "Attendance & leave data could not be imported because the selected employees have blocking attendance issues."
+          )
+        );
+        return;
+      }
       setStrSuccess(t("reopen_success", "Attendance & leave inputs reopened and refreshed successfully."));
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to reopen attendance & leave inputs.");
@@ -225,8 +261,8 @@ export default function AttendanceLeaveInputsPage() {
   const lstTableRows = useMemo(
     () =>
       lstRows.map((dicRow) => ({
-        id: dicRow.intInputID,
-        action: (
+        id: dicRow.intInputID ?? `validation-${dicRow.intEmployeeID}`,
+        action: dicRow.intInputID ? (
           <Button
             size="small"
             startIcon={<VisibilityRoundedIcon sx={{ fontSize: 16 }} />}
@@ -236,9 +272,14 @@ export default function AttendanceLeaveInputsPage() {
           >
             {t("view", "View")}
           </Button>
+        ) : (
+          <Typography sx={{ color: "#64748b", fontSize: "0.82rem", fontWeight: 700 }}>
+            {t("no_input", "No input")}
+          </Typography>
         ),
         strEmployeeCode: dicRow.strEmployeeCode,
         strEmployeeName: dicRow.strEmployeeName,
+        strIssueMessage: dicRow.strIssueMessage ?? "-",
         decWorkingDays: dicRow.decWorkingDays ?? 0,
         decLwpDays: dicRow.decLwpDays ?? 0,
         decPayableDays: dicRow.decPayableDays ?? 0,
@@ -260,6 +301,7 @@ export default function AttendanceLeaveInputsPage() {
       { field: "action", headerName: t("actions", "Action"), sortable: false, filterable: false, exportable: false, width: 100 },
       { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code") },
       { field: "strEmployeeName", headerName: t("employee_name", "Employee Name") },
+      { field: "strIssueMessage", headerName: t("issue", "Issue"), minWidth: 260 },
       { field: "decWorkingDays", headerName: t("working_days", "Working Days"), align: "right" },
       { field: "decPayableDays", headerName: t("payable_days", "Payable Days"), align: "right" },
       { field: "decLwpDays", headerName: t("lwp_days", "LWP"), align: "right" },

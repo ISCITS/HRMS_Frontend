@@ -33,7 +33,7 @@ export function useWorkHolidayList(
         : strMode === "queue"
           ? await workHolidayService.listQueue(intPage, intPageSize)
           : strMode === "approvals"
-            ? await workHolidayService.listMyApprovals(intPage, intPageSize)
+            ? await workHolidayService.listMyApprovals(strStatus, intPage, intPageSize)
             : await workHolidayService.listAll(strStatus, intPage, intPageSize);
       setObjList(objResult);
     } catch (objError) {
