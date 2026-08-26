@@ -569,6 +569,12 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
     { field: "paidDay", headerName: t("table_paid_day", "Paid Day"), width: 100 },
     { field: "remarks", headerName: t("table_remarks", "Remarks"), width: 180 },
   ];
+  const nodeDailyAttendanceActions = (
+    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+      <Button data-control-id="attendance.daily.fill-month.button" className={styles.secondaryButton} startIcon={<AddRoundedIcon />} disabled={blnReadOnly || blnSaving} onClick={openFillDialog}>{t("generate_attendance","Generate Attendance")}</Button>
+      <Button data-control-id="attendance.daily.finalize.button" className={styles.primaryButton} startIcon={<SaveRoundedIcon />} disabled={blnReadOnly || blnSaving} onClick={() => setBlnFinalizeConfirmOpen(true)}>{t("finalize_attendance","Finalize Attendance")}</Button>
+    </Stack>
+  );
 
   return <Box className={styles.page}>
     {nodeActionLoader}
@@ -591,13 +597,9 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
               </Box>
             ))}
           </Stack>
-          <Box className={styles.tableHeaderActions} sx={{ justifyContent: { xs: "flex-start", lg: "flex-end" }, pb: "0 !important" }}>
-            <Button data-control-id="attendance.daily.fill-month.button" className={styles.secondaryButton} startIcon={<AddRoundedIcon />} disabled={blnReadOnly || blnSaving} onClick={openFillDialog}>{t("generate_attendance","Generate Attendance")}</Button>
-            <Button data-control-id="attendance.daily.finalize.button" className={styles.primaryButton} startIcon={<SaveRoundedIcon />} disabled={blnReadOnly || blnSaving} onClick={() => setBlnFinalizeConfirmOpen(true)}>{t("finalize_attendance","Finalize Attendance")}</Button>
-          </Box>
         </Stack>
       </Box>
-      <Box className={styles.tableCard}><CommonTable columns={lstDailyColumns} rows={lstDailyGridRows} rowIdField="intEmployeeID" hideToolbar showPaginationSummary minTableWidth={1650} emptyMessage={t("load_daily_prompt","Select filters and load employees for the date.")} testIdPrefix="attendance.daily.list" hideRowClickHint onRowDoubleClick={blnCanOverride ? (objRow) => { const objSourceRow = lstEditableRows.find((objSource) => objSource.intEmployeeID === objRow.intEmployeeID); if (objSourceRow) { openOverrideDialog(objSourceRow); } } : undefined} />{blnLoading ? <Box sx={{ p: 3, textAlign: "center" }}><CircularProgress /></Box> : null}</Box>
+      <Box className={styles.tableCard}><CommonTable columns={lstDailyColumns} rows={lstDailyGridRows} rowIdField="intEmployeeID" hideToolbar showPaginationSummary toolbarLeft={nodeDailyAttendanceActions} minTableWidth={1650} emptyMessage={t("load_daily_prompt","Select filters and load employees for the date.")} testIdPrefix="attendance.daily.list" hideRowClickHint onRowDoubleClick={blnCanOverride ? (objRow) => { const objSourceRow = lstEditableRows.find((objSource) => objSource.intEmployeeID === objRow.intEmployeeID); if (objSourceRow) { openOverrideDialog(objSourceRow); } } : undefined} />{blnLoading ? <Box sx={{ p: 3, textAlign: "center" }}><CircularProgress /></Box> : null}</Box>
     </>
     <CommonMasterDialog blnOpen={blnFillDialogOpen} strTitle={t("generate_attendance_title","Generate Attendance for a Date Range")} nodeContent={nodeFillDialogContent} strSecondaryLabel={t("cancel","Cancel")} onClose={() => setBlnFillDialogOpen(false)} strPrimaryLabel={t("generate_attendance_submit","Generate")} onPrimaryAction={() => void submitFillRange()} blnPrimaryDisabled={blnFillSubmitting || !intFillEmployeeID || !strFillStatus} maxWidth="sm" rootControlId="attendance.daily.fill-month.dialog" cancelButtonControlId="attendance.daily.fill-month.dialog.cancel.button" primaryButtonControlId="attendance.daily.fill-month.dialog.submit.button" titleSx={{ px: 2.5, py: 1.5 }} contentSx={{ px: 2.5, py: 1.25 }} />
     <CommonMasterDialog blnOpen={objOverrideRow !== null} strTitle={t("override_dialog_title", `Edit / Override Attendance${objOverrideRow ? ` — ${objOverrideRow.strEmployeeName}` : ""}`)} nodeContent={
