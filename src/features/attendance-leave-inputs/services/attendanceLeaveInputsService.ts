@@ -58,6 +58,7 @@ export async function loadAttendanceLeaveInputsForRun(
         intEmployeeID: dicInput.intEmployeeID,
         strEmployeeCode: dicInput.strEmployeeCode,
         strEmployeeName: dicInput.strEmployeeName,
+        strIssueMessage: lstEmployeeIssues[0]?.strValidationMessage ?? undefined,
         decWorkingDays: dicInput.decWorkingDays,
         decLwpDays: dicInput.decLwpDays,
         decLopDays: dicInput.decLopDays,
@@ -68,6 +69,29 @@ export async function loadAttendanceLeaveInputsForRun(
         blnIsLocked: dicInput.blnIsLocked,
       };
     });
+  const setInputEmployeeIDs = new Set(lstRows.map((dicRow) => dicRow.intEmployeeID));
+  for (const [intEmployeeID, lstEmployeeIssues] of dicIssuesByEmployeeID.entries()) {
+    if (setInputEmployeeIDs.has(intEmployeeID)) {
+      continue;
+    }
+    const blnHasBlocking = lstEmployeeIssues.some((dicIssue) => dicIssue.blnIsBlocking);
+    const objFirstIssue = lstEmployeeIssues[0];
+    lstRows.push({
+      intInputID: null,
+      intEmployeeID,
+      strEmployeeCode: objFirstIssue.strEmployeeCode ?? "-",
+      strEmployeeName: objFirstIssue.strEmployeeName ?? "-",
+      strIssueMessage: objFirstIssue.strValidationMessage ?? undefined,
+      decWorkingDays: null,
+      decLwpDays: null,
+      decLopDays: null,
+      decPayableDays: null,
+      strAttendanceSource: "Not Set",
+      intExceptionCount: lstEmployeeIssues.length,
+      strReviewStatus: blnHasBlocking ? "Blocked" : "Warning",
+      blnIsLocked: false,
+    });
+  }
 
   const objSummary: AttendanceLeaveInputsSummary = {
     intEmployees: lstRows.length,

@@ -168,6 +168,7 @@ export default function PayrollGroupEditorPage({
       const dicNext = ensureTenantLanguageRows(dicPrevious);
       return {
         ...dicNext,
+        strPayrollGroupName,
         lstTexts: dicNext.lstTexts.map((dicText, intIndex) =>
           intIndex === 0 ? { ...dicText, strPayrollGroupName } : dicText
         )

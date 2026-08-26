@@ -1,8 +1,9 @@
 export type AttendanceLeaveInputRow = {
-  intInputID: number;
+  intInputID: number | null;
   intEmployeeID: number;
   strEmployeeCode: string;
   strEmployeeName: string;
+  strIssueMessage?: string;
   decWorkingDays: number | null;
   decLwpDays: number | null;
   decLopDays: number | null;
