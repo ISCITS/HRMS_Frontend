@@ -235,13 +235,13 @@ export default function EssLeaveApplicationPanel() {
     }
   }, [blnLoading, lstTypes, reset]);
   useEffect(() => { setIntPage(0); }, [strSearch, strStatus]);
-  // Half-day not allowed for the type → force everything to full day and drop any session.
+  // Half-day not allowed for the type (or Restricted Holiday) → force full day and drop sessions.
   useEffect(() => {
-    if (!objSelectedType?.blnAllowHalfDay) {
+    if (!objSelectedType?.blnAllowHalfDay || blnRestrictedHolidayType) {
       setValue("strFromDuration", "full"); setValue("strFromSession", "");
       setValue("strToDuration", "full"); setValue("strToSession", "");
     }
-  }, [objSelectedType, setValue]);
+  }, [blnRestrictedHolidayType, objSelectedType, setValue]);
   // A single-day leave uses only the "From" (Leave Duration) controls — reset the To side so
   // stale multi-day values are never retained or submitted.
   useEffect(() => {
@@ -489,8 +489,8 @@ export default function EssLeaveApplicationPanel() {
   </Stack>;
 }
 
-function DurationField({ control, strName, strLabel }: { control: Control<LeaveFormValues>; strName: "strFromDuration" | "strToDuration"; strLabel: string }) {
-  return <Controller name={strName} control={control} render={({ field }) => <TextField {...field} select fullWidth size="small" label={strLabel}><MenuItem value="full">Full Day</MenuItem><MenuItem value="half">Half Day</MenuItem></TextField>} />;
+function DurationField({ control, strName, strLabel, blnDisabled = false }: { control: Control<LeaveFormValues>; strName: "strFromDuration" | "strToDuration"; strLabel: string; blnDisabled?: boolean }) {
+  return <Controller name={strName} control={control} render={({ field }) => <TextField {...field} select fullWidth disabled={blnDisabled} size="small" label={strLabel}><MenuItem value="full">Full Day</MenuItem><MenuItem value="half">Half Day</MenuItem></TextField>} />;
 }
 
 function SessionField({ control, strName, strLabel, objError }: { control: Control<LeaveFormValues>; strName: "strFromSession" | "strToSession"; strLabel: string; objError?: string }) {
@@ -510,13 +510,13 @@ function RequestFields({ control, setValue, objErrors, lstTypes, lstRestrictedHo
     <Grid item xs={12} sm={6}><Controller name="dtFromDate" control={control} render={({ field }) => <TextField {...field} type="date" fullWidth disabled={blnRestrictedHolidayType} size="small" label={fnLabel("from_date", "From Date")} InputLabelProps={{ shrink: true }} onChange={(objEvent) => { const strNew = objEvent.target.value; field.onChange(strNew); if (strNew && (!strToDate || strNew > strToDate)) setValue("dtToDate", strNew, { shouldValidate: true }); }} error={Boolean(objErrors.dtFromDate)} helperText={objErrors.dtFromDate?.message} />} /></Grid>
     <Grid item xs={12} sm={6}><Controller name="dtToDate" control={control} render={({ field }) => <TextField {...field} type="date" fullWidth disabled={blnRestrictedHolidayType} size="small" label={fnLabel("to_date", "To Date")} InputLabelProps={{ shrink: true }} inputProps={{ min: strFromDate || undefined }} error={Boolean(objErrors.dtToDate)} helperText={objErrors.dtToDate?.message} />} /></Grid>
     {blnAllowHalfDay && blnSingleDay ? <>
-      <Grid item xs={12} sm={6}><DurationField control={control} strName="strFromDuration" strLabel={fnLabel("leave_duration", "Leave Duration")} /></Grid>
+      <Grid item xs={12} sm={6}><DurationField control={control} strName="strFromDuration" strLabel={fnLabel("leave_duration", "Leave Duration")} blnDisabled={blnRestrictedHolidayType} /></Grid>
       {strFromDuration === "half" ? <Grid item xs={12} sm={6}><SessionField control={control} strName="strFromSession" strLabel={fnLabel("half_day_session", "Half-Day Session")} objError={objErrors.strFromSession?.message} /></Grid> : null}
     </> : null}
     {blnAllowHalfDay && !blnSingleDay ? <>
-      <Grid item xs={12} sm={6}><DurationField control={control} strName="strFromDuration" strLabel={fnLabel("from_date_duration", "From Date Duration")} /></Grid>
+      <Grid item xs={12} sm={6}><DurationField control={control} strName="strFromDuration" strLabel={fnLabel("from_date_duration", "From Date Duration")} blnDisabled={blnRestrictedHolidayType} /></Grid>
       {strFromDuration === "half" ? <Grid item xs={12} sm={6}><SessionField control={control} strName="strFromSession" strLabel={fnLabel("from_date_session", "From Date Session")} objError={objErrors.strFromSession?.message} /></Grid> : null}
-      <Grid item xs={12} sm={6}><DurationField control={control} strName="strToDuration" strLabel={fnLabel("to_date_duration", "To Date Duration")} /></Grid>
+      <Grid item xs={12} sm={6}><DurationField control={control} strName="strToDuration" strLabel={fnLabel("to_date_duration", "To Date Duration")} blnDisabled={blnRestrictedHolidayType} /></Grid>
       {strToDuration === "half" ? <Grid item xs={12} sm={6}><SessionField control={control} strName="strToSession" strLabel={fnLabel("to_date_session", "To Date Session")} objError={objErrors.strToSession?.message} /></Grid> : null}
     </> : null}
     <Grid item xs={12}><Controller name="strReason" control={control} render={({ field }) => <TextField {...field} fullWidth size="small" multiline minRows={3} label={`${fnLabel("reason", "Reason")}${objSelectedType?.blnRequiresReason ? " *" : ""}`} error={Boolean(objErrors.strReason)} helperText={objErrors.strReason?.message} />} /></Grid>
