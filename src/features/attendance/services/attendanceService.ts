@@ -237,12 +237,15 @@ export const attendanceService = {
     return objResult.Data;
   },
 
+  // employee_id is optional and defaults server-side to the caller; when supplied it must be
+  // the caller themselves or one of their direct reports (line/reporting manager), enforced by
+  // GET /ess/attendance/employees below - lets a manager view a report's attendance without HR
+  // access, distinct from the HR "Employee Attendance" review endpoints further down.
   async getMyAttendanceOverview(strDate: string, intEmployeeID?: number): Promise<MyAttendanceOverview> {
-    const strPath = intEmployeeID
-      ? `/attendance/review/overview?date=${encodeURIComponent(strDate)}&employee_id=${intEmployeeID}`
-      : `/ess/attendance/overview?date=${encodeURIComponent(strDate)}`;
+    const objQuery = new URLSearchParams({ date: strDate });
+    if (intEmployeeID) objQuery.set("employee_id", String(intEmployeeID));
     const objResult = await requestApi<MyAttendanceOverview>({
-      strPath,
+      strPath: `/ess/attendance/overview?${objQuery}`,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: ATTENDANCE_VIEW,
     });
@@ -254,11 +257,10 @@ export const attendanceService = {
     strToDate: string,
     intEmployeeID?: number,
   ): Promise<MyAttendanceHistory> {
-    const strPath = intEmployeeID
-      ? `/attendance/review/history?fromDate=${encodeURIComponent(strFromDate)}&toDate=${encodeURIComponent(strToDate)}&employee_id=${intEmployeeID}`
-      : `/ess/attendance/history?fromDate=${encodeURIComponent(strFromDate)}&toDate=${encodeURIComponent(strToDate)}`;
+    const objQuery = new URLSearchParams({ fromDate: strFromDate, toDate: strToDate });
+    if (intEmployeeID) objQuery.set("employee_id", String(intEmployeeID));
     const objResult = await requestApi<MyAttendanceHistory>({
-      strPath,
+      strPath: `/ess/attendance/history?${objQuery}`,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: ATTENDANCE_VIEW,
     });
@@ -275,9 +277,49 @@ export const attendanceService = {
   },
 
   async getMyShift(intEmployeeID?: number): Promise<MyShiftDto | null> {
-    const strPath = intEmployeeID ? `/attendance/review/shift?employee_id=${intEmployeeID}` : "/ess/attendance/shift";
+    const strPath = intEmployeeID ? `/ess/attendance/shift?employee_id=${intEmployeeID}` : "/ess/attendance/shift";
     const objResult = await requestApi<MyShiftDto | null>({
       strPath,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: ATTENDANCE_VIEW,
+    });
+    return objResult.Data ?? null;
+  },
+
+  // Employees selectable in the "My Attendance" Employee dropdown: the caller, plus anyone who
+  // reports to them as line/reporting manager. Empty-list-of-one (self only) means the caller
+  // manages nobody, so the panel hides the dropdown entirely.
+  async getMyAttendanceEmployees(): Promise<{ intEmployeeID: number; strFullName: string; strEmployeeCode: string | null; blnIsSelf: boolean }[]> {
+    const objResult = await requestApi<{ intEmployeeID: number; strFullName: string; strEmployeeCode: string | null; blnIsSelf: boolean }[]>({
+      strPath: "/ess/attendance/employees",
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: ATTENDANCE_VIEW,
+    });
+    return objResult.Data ?? [];
+  },
+
+  // ---- HR: Employee Attendance review (any employee in the tenant/company) ----
+  async getAttendanceReviewOverview(strDate: string, intEmployeeID: number): Promise<MyAttendanceOverview> {
+    const objResult = await requestApi<MyAttendanceOverview>({
+      strPath: `/attendance/review/overview?date=${encodeURIComponent(strDate)}&employee_id=${intEmployeeID}`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: ATTENDANCE_VIEW,
+    });
+    return objResult.Data;
+  },
+
+  async getAttendanceReviewHistory(strFromDate: string, strToDate: string, intEmployeeID: number): Promise<MyAttendanceHistory> {
+    const objResult = await requestApi<MyAttendanceHistory>({
+      strPath: `/attendance/review/history?fromDate=${encodeURIComponent(strFromDate)}&toDate=${encodeURIComponent(strToDate)}&employee_id=${intEmployeeID}`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: ATTENDANCE_VIEW,
+    });
+    return objResult.Data;
+  },
+
+  async getAttendanceReviewShift(intEmployeeID: number): Promise<MyShiftDto | null> {
+    const objResult = await requestApi<MyShiftDto | null>({
+      strPath: `/attendance/review/shift?employee_id=${intEmployeeID}`,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: ATTENDANCE_VIEW,
     });

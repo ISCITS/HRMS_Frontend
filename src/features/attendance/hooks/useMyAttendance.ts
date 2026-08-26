@@ -23,15 +23,22 @@ export function useMyAttendance() {
     strFromDate: string,
     strToDate: string,
     intEmployeeID?: number,
+    blnHrMode?: boolean,
   ) => {
     setBlnLoading(true);
     setStrError("");
     try {
-      const [objOverviewResult, objHistoryResult, objShiftResult] = await Promise.all([
-        attendanceService.getMyAttendanceOverview(strDate, intEmployeeID),
-        attendanceService.getMyAttendanceHistory(strFromDate, strToDate, intEmployeeID),
-        attendanceService.getMyShift(intEmployeeID),
-      ]);
+      const [objOverviewResult, objHistoryResult, objShiftResult] = blnHrMode
+        ? await Promise.all([
+          attendanceService.getAttendanceReviewOverview(strDate, intEmployeeID as number),
+          attendanceService.getAttendanceReviewHistory(strFromDate, strToDate, intEmployeeID as number),
+          attendanceService.getAttendanceReviewShift(intEmployeeID as number),
+        ])
+        : await Promise.all([
+          attendanceService.getMyAttendanceOverview(strDate, intEmployeeID),
+          attendanceService.getMyAttendanceHistory(strFromDate, strToDate, intEmployeeID),
+          attendanceService.getMyShift(intEmployeeID),
+        ]);
       setObjOverview(objOverviewResult);
       setObjHistory(objHistoryResult);
       setObjShift(objShiftResult);

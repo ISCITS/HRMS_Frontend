@@ -49,6 +49,7 @@ export default function WorkHolidayRequestsPage({ blnEssManagerMode = false }: {
   const blnCanSendBack = blnEssManagerMode || fnCan("WORK_ON_HOLIDAY_SEND_BACK");
   const blnCanVerify = !blnEssManagerMode && fnCan("WORK_ON_HOLIDAY_VERIFY");
   const blnCanViewAll = !blnEssManagerMode && (fnCan("WORK_ON_HOLIDAY_VIEW_ALL") || fnCan("WORK_ON_HOLIDAY_MANAGE"));
+  const blnCanViewManagerScope = blnEssManagerMode || blnCanViewAll;
   const blnCanView = blnEssManagerMode || fnCan("WORK_ON_HOLIDAY_VIEW") || blnCanViewAll;
   const blnCanApprovalQueue = blnEssManagerMode || blnCanApprove || blnCanViewAll;
   const blnCanOnBehalf = !blnEssManagerMode && fnCan("WORK_ON_HOLIDAY_CREATE_ON_BEHALF");
@@ -57,9 +58,9 @@ export default function WorkHolidayRequestsPage({ blnEssManagerMode = false }: {
   const blnCanAct = blnCanApprove || blnCanReject || blnCanSendBack || blnCanVerify || blnCanPost || blnCanReverse;
   const lstTabs = useMemo(() => [
     { strCode: "approval", strLabel: t("tab_pending_my_approval", "Pending My Approval"), blnVisible: blnCanApprovalQueue },
-    { strCode: "all", strLabel: t("tab_all_requests", "All Requests"), blnVisible: blnCanViewAll },
-    { strCode: "history", strLabel: t("tab_completed_history", "Completed / History"), blnVisible: blnCanViewAll },
-  ].filter((objTab) => objTab.blnVisible), [blnCanApprovalQueue, blnCanViewAll, t]);
+    { strCode: "all", strLabel: t("tab_all_requests", "All Requests"), blnVisible: blnCanViewManagerScope },
+    { strCode: "history", strLabel: t("tab_completed_history", "Completed / History"), blnVisible: blnCanViewManagerScope },
+  ].filter((objTab) => objTab.blnVisible), [blnCanApprovalQueue, blnCanViewManagerScope, t]);
   const [intTab, setIntTab] = useState(() => typeof window === "undefined" ? 0 : Number(sessionStorage.getItem(strTabStorageKey) ?? 0));
   const [strStatusFilter, setStrStatusFilter] = useState(() => typeof window === "undefined" ? "" : sessionStorage.getItem(strFilterStorageKey) ?? "");
   const [strSearch, setStrSearch] = useState("");
@@ -77,9 +78,10 @@ export default function WorkHolidayRequestsPage({ blnEssManagerMode = false }: {
   });
   const strSelectedTab = lstTabs[Math.min(intTab, Math.max(lstTabs.length - 1, 0))]?.strCode ?? "approval";
   const strApiStatus = strSelectedTab === "history" ? (strAppliedStatusFilter || "POSTED")
-    : strSelectedTab === "all" ? (strAppliedStatusFilter || undefined) : undefined;
-  const strMode = strSelectedTab === "approval" ? (blnEssManagerMode ? "approvals" : "queue") : "all";
-  const blnListEnabled = strMode === "all" ? blnCanViewAll : blnCanApprovalQueue;
+    : strSelectedTab === "all" ? (strAppliedStatusFilter || undefined)
+      : blnEssManagerMode ? "PENDING_APPROVAL" : undefined;
+  const strMode = blnEssManagerMode ? "approvals" : strSelectedTab === "approval" ? "queue" : "all";
+  const blnListEnabled = strMode === "all" ? blnCanViewAll : strSelectedTab === "approval" ? blnCanApprovalQueue : blnCanViewManagerScope;
   const { objList, blnLoading, strError: strListError, reload } = useWorkHolidayList(strMode, strApiStatus, 1, 100, blnListEnabled);
   const { objDetail, blnLoading: blnDetailLoading, loadDetail, setObjDetail } = useWorkHolidayDetail();
 

@@ -42,8 +42,9 @@ import { employeeService } from "@/features/employee/services/employeeService";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
-// Selectable employee for HR mode's Attendance Review dropdown.
-type ReviewEmployeeDto = { intEmployeeID: number; strFullName: string; strEmployeeCode: string | null };
+// Selectable employee for the Employee dropdown: HR mode's "Employee Attendance" (any employee)
+// or ESS manager mode (self + direct reports).
+type ReviewEmployeeDto = { intEmployeeID: number; strFullName: string; strEmployeeCode: string | null; blnIsSelf: boolean };
 
 function reviewEmployeeLabel(objEmployee: ReviewEmployeeDto): string {
   return objEmployee.strEmployeeCode ? `${objEmployee.strFullName} (${objEmployee.strEmployeeCode})` : objEmployee.strFullName;
@@ -164,8 +165,17 @@ function toTitleCase(strValue: string) {
     .replace(/\b\w/g, (strMatch) => strMatch.toUpperCase());
 }
 
+// A Restricted Holiday the employee applied for and got approved is still status "holiday"
+// on the backend (payroll/finalize/regularization all switch on strStatus, so that never
+// changes) - this key is purely a frontend display distinction, driven by the additive
+// blnIsMyRestrictedHoliday flag, so the employee can tell it apart from a plain holiday.
+function attendanceDisplayStatus(objDay?: Pick<AttendanceDayDto, "strStatus" | "blnIsMyRestrictedHoliday"> | null): string {
+  if (!objDay) return "";
+  return objDay.strStatus === "holiday" && objDay.blnIsMyRestrictedHoliday ? "restricted_holiday" : objDay.strStatus;
+}
+
 // Shared panel. ESS mode (default): the caller's own attendance, with Punch In/Out. HR mode
-// ("Attendance Review"): an employee is chosen from a dropdown (same pattern as the HR Leave
+// ("Employee Attendance"): an employee is chosen from a dropdown (same pattern as the HR Leave
 // Ledger), the table stays empty until one is picked, and punching is not offered since HR is
 // viewing someone else's attendance, not recording their own.
 export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: boolean } = {}) {
@@ -197,29 +207,44 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
   } = useMyAttendance();
   const [lstEmployees, setLstEmployees] = useState<ReviewEmployeeDto[]>([]);
   const [objSelectedEmployee, setObjSelectedEmployee] = useState<ReviewEmployeeDto | null>(null);
-  const [blnEmployeesResolved, setBlnEmployeesResolved] = useState(!blnHrMode);
-  const intReviewEmployeeID = blnHrMode ? (objSelectedEmployee?.intEmployeeID ?? undefined) : undefined;
+  const [blnEmployeesResolved, setBlnEmployeesResolved] = useState(false);
+  const intReviewEmployeeID = objSelectedEmployee?.intEmployeeID ?? undefined;
+  // ESS mode only shows the Employee dropdown when the caller manages someone (more than just
+  // themselves in the viewable list) - an individual contributor's screen is unchanged. HR mode
+  // always shows it.
+  const blnShowEmployeeSelector = blnHrMode || lstEmployees.length > 1;
+  // Punching/regularizing are self-only actions: available when the caller is viewing their own
+  // attendance (always true in ESS mode until proven otherwise by picking a report; never true
+  // in HR mode, which never resolves to "self").
+  const blnViewingSelf = blnHrMode ? false : (objSelectedEmployee?.blnIsSelf ?? true);
 
-  // HR mode only: load every employee in the tenant/company for the dropdown, mirroring the
-  // Leave Ledger HR-mode employee source.
+  // Load the selectable employees once. ESS: self + direct reports (line/reporting manager),
+  // defaulting to self. HR: every employee in the tenant/company, with no default selection (the
+  // table stays empty until one is picked) - mirrors the HR Leave Ledger employee source.
   useEffect(() => {
-    if (!blnHrMode) return;
     let blnActive = true;
-    employeeService.getEmployees()
+    const objPromise: Promise<ReviewEmployeeDto[]> = blnHrMode
+      ? employeeService.getEmployees().then((lstResult) =>
+        lstResult
+          .filter((objEmployee) => !objEmployee.blnIsPartialSave)
+          .map((objEmployee) => ({
+            intEmployeeID: objEmployee.intID,
+            strFullName: objEmployee.strFullName,
+            strEmployeeCode: objEmployee.strEmployeeCode,
+            blnIsSelf: false,
+          })),
+      )
+      : attendanceService.getMyAttendanceEmployees();
+    objPromise
       .then((lstResult) => {
         if (!blnActive) return;
-        setLstEmployees(
-          lstResult
-            .filter((objEmployee) => !objEmployee.blnIsPartialSave)
-            .map((objEmployee) => ({
-              intEmployeeID: objEmployee.intID,
-              strFullName: objEmployee.strFullName,
-              strEmployeeCode: objEmployee.strEmployeeCode,
-            })),
-        );
+        setLstEmployees(lstResult);
+        if (!blnHrMode) {
+          setObjSelectedEmployee(lstResult.find((objEmployee) => objEmployee.blnIsSelf) ?? lstResult[0] ?? null);
+        }
       })
       .catch(() => {
-        /* leave the dropdown empty on failure */
+        /* ESS: fall back to self-only (endpoint defaults to caller). HR: leave the list empty. */
       })
       .finally(() => {
         if (blnActive) setBlnEmployeesResolved(true);
@@ -347,16 +372,19 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
     objMonthBounds.strFromDate,
     objMonthBounds.strToDate,
     intReviewEmployeeID,
-  ), [loadAttendance, objMonthBounds.strFromDate, objMonthBounds.strToDate, strToday, intReviewEmployeeID]);
+    blnHrMode,
+  ), [loadAttendance, objMonthBounds.strFromDate, objMonthBounds.strToDate, strToday, intReviewEmployeeID, blnHrMode]);
 
   useEffect(() => {
     if (blnRightsLoading || !blnCanViewMyAttendance) return;
-    if (blnHrMode && (!blnEmployeesResolved || !intReviewEmployeeID)) return; // HR mode: wait until an employee is chosen
+    if (!blnEmployeesResolved) return; // wait until the initial/self selection (ESS) or list (HR) is known
+    if (blnHrMode && !intReviewEmployeeID) return; // HR mode: wait until an employee is chosen
     void loadSelectedMonth();
   }, [blnCanViewMyAttendance, blnRightsLoading, loadSelectedMonth, blnHrMode, blnEmployeesResolved, intReviewEmployeeID]);
 
   useEffect(() => {
     if (blnRightsLoading || !blnCanViewMyAttendance) return;
+    if (!blnEmployeesResolved) return;
     if (blnHrMode && !intReviewEmployeeID) {
       setObjSelectedOverview(null);
       return;
@@ -366,7 +394,11 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
     setBlnTimelineLoading(true);
     setStrTimelineError("");
 
-    attendanceService.getMyAttendanceOverview(strSelectedDate, intReviewEmployeeID)
+    const objOverviewPromise = blnHrMode
+      ? attendanceService.getAttendanceReviewOverview(strSelectedDate, intReviewEmployeeID as number)
+      : attendanceService.getMyAttendanceOverview(strSelectedDate, intReviewEmployeeID);
+
+    objOverviewPromise
       .then((objResult) => {
         if (!blnCancelled) {
           setObjSelectedOverview(objResult);
@@ -388,7 +420,7 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
     return () => {
       blnCancelled = true;
     };
-  }, [blnCanViewMyAttendance, blnRightsLoading, strSelectedDate, blnHrMode, intReviewEmployeeID]);
+  }, [blnCanViewMyAttendance, blnRightsLoading, strSelectedDate, blnHrMode, intReviewEmployeeID, blnEmployeesResolved]);
 
   const lstCalendarCells = useMemo(() => {
     const intYear = objMonth.getFullYear();
@@ -446,20 +478,23 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
 
   function renderStatusChip(objDay?: AttendanceDayDto | null) {
     if (!objDay) return <Chip size="small" label={t("not_recorded", "No attendance record")} />;
-    const objColor = ATTENDANCE_STATUS_COLORS[objDay.strStatus] ?? {
+    const strDisplayStatus = attendanceDisplayStatus(objDay);
+    const objColor = ATTENDANCE_STATUS_COLORS[strDisplayStatus] ?? {
       bg: "#f1f5f9",
       fg: "#475569",
       short: "",
     };
-    const strFallbackLabel = objDay.strStatus === "weekly_off"
+    const strFallbackLabel = strDisplayStatus === "weekly_off"
       ? "Weekly Off"
-      : toTitleCase(objDay.strStatus);
+      : strDisplayStatus === "restricted_holiday"
+        ? "Restricted Holiday"
+        : toTitleCase(strDisplayStatus);
     return (
       <Chip
         size="small"
-        label={objDay.strStatus === "weekly_off"
+        label={strDisplayStatus === "weekly_off"
           ? t("status_weekly_off", strFallbackLabel)
-          : t(`status_${objDay.strStatus}`, strFallbackLabel)}
+          : t(`status_${strDisplayStatus}`, strFallbackLabel)}
         sx={{ bgcolor: objColor.bg, color: objColor.fg, fontWeight: 800, textTransform: "capitalize" }}
       />
     );
@@ -472,40 +507,46 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
     return (
       <Alert severity="warning">
         {blnHrMode
-          ? t("attendance_review_permission_denied", "Attendance Review access is not available for your user group.")
+          ? t("attendance_review_permission_denied", "Employee Attendance access is not available for your user group.")
           : t("permission_denied", "My Attendance access is not available for your user group.")}
       </Alert>
     );
   }
 
+  const objEmployeeSelector = blnShowEmployeeSelector ? (
+    <Autocomplete
+      size="small"
+      options={lstEmployees}
+      value={objSelectedEmployee}
+      getOptionLabel={(objOption) => reviewEmployeeLabel(objOption)}
+      isOptionEqualToValue={(objA, objB) => objA.intEmployeeID === objB.intEmployeeID}
+      onChange={(_objEvent, objNext) => {
+        if (objNext) setObjSelectedEmployee(objNext);
+      }}
+      sx={{ width: { xs: "100%", sm: 300 }, "& .MuiAutocomplete-clearIndicator": { display: "none" } }}
+      renderInput={(objParams) => (
+        <TextField
+          {...objParams}
+          label="Employee"
+          placeholder="Search employee..."
+          controlId="attendance-review.employee.select"
+          InputLabelProps={{ ...objParams.InputLabelProps, shrink: true }}
+        />
+      )}
+    />
+  ) : null;
+
   return (
     <Stack spacing={1.5}>
-      {blnHrMode ? (
+      {blnHrMode && objEmployeeSelector ? (
         <Box className={styles.controlsCard} data-control-id="attendance-review.filters.card">
           <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", sm: "minmax(260px, 420px)" }, alignItems: "center", mt: 1 }}>
-            <Autocomplete
-              size="small"
-              options={lstEmployees}
-              value={objSelectedEmployee}
-              getOptionLabel={(objOption) => reviewEmployeeLabel(objOption)}
-              isOptionEqualToValue={(objA, objB) => objA.intEmployeeID === objB.intEmployeeID}
-              onChange={(_objEvent, objNext) => setObjSelectedEmployee(objNext)}
-              sx={{ minWidth: { xs: "100%", sm: 360 }, "& .MuiAutocomplete-clearIndicator": { display: "none" } }}
-              renderInput={(objParams) => (
-                <TextField
-                  {...objParams}
-                  label="Employee"
-                  placeholder="Search employee..."
-                  controlId="attendance-review.employee.select"
-                  InputLabelProps={{ ...objParams.InputLabelProps, shrink: true }}
-                />
-              )}
-            />
+            {objEmployeeSelector}
           </Box>
         </Box>
       ) : null}
 
-      {blnHrMode && objSelectedEmployee ? (
+      {objSelectedEmployee && !objSelectedEmployee.blnIsSelf ? (
         <Alert severity="info" variant="outlined" sx={{ borderRadius: "12px", py: 0.25 }}>
           Viewing attendance for <strong>{objSelectedEmployee.strFullName}</strong>
           {objSelectedEmployee.strEmployeeCode ? ` (${objSelectedEmployee.strEmployeeCode})` : ""}
@@ -528,11 +569,15 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
           py: 1,
           borderRadius: "10px",
           display: "flex",
-          justifyContent: "flex-end",
+          flexWrap: "wrap",
+          rowGap: 1,
+          alignItems: "center",
+          justifyContent: !blnHrMode && objEmployeeSelector ? "space-between" : "flex-end",
           boxShadow: "none",
           border: "1px solid rgba(31, 91, 142, 0.18)",
         }}
       >
+        {!blnHrMode ? objEmployeeSelector : null}
         <Stack
           direction="row"
           spacing={0.75}
@@ -658,7 +703,7 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
                   ) : null}
                 </Stack>
               </Box>
-              {!blnHrMode ? (
+              {blnViewingSelf ? (
                 <Box sx={{ flex: "0 0 118px", display: "flex", justifyContent: "flex-end" }}>
                   {strSelectedDate === strToday ? (
                     <Button
@@ -680,7 +725,7 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
                 </Box>
               ) : null}
             </Stack>
-            {!blnHrMode && strSelectedDate === strToday && !objOverview?.blnCanPunch ? (
+            {blnViewingSelf && strSelectedDate === strToday && !objOverview?.blnCanPunch ? (
               <Alert severity="info" sx={{ mt: 1, py: 0, "& .MuiAlert-message": { py: 0.75 } }}>
                 {t(
                   `unavailable_${objOverview?.strUnavailableReasonCode ?? "unknown"}`,
@@ -742,7 +787,7 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
                 {t("punch_timeline", "Punch Timeline")}
               </Button>
               <Box sx={{ flex: "0 0 94px", minHeight: 52 }}>
-                {!blnHrMode && blnSelectedDayEligibleForRegularization && canViewRegularization() ? (
+                {blnViewingSelf && blnSelectedDayEligibleForRegularization && canViewRegularization() ? (
                   <Button
                     data-control-id="ess.my-attendance.regularize.button"
                     variant="outlined"
@@ -840,7 +885,8 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
               {lstCalendarCells.map((strDate, intIndex) => {
                 if (!strDate) return <Box key={`blank-${intIndex}`} />;
                 const objDay = dicDaysByDate[strDate];
-                const objColor = objDay ? ATTENDANCE_STATUS_COLORS[objDay.strStatus] : null;
+                const strDayDisplayStatus = attendanceDisplayStatus(objDay);
+                const objColor = objDay ? ATTENDANCE_STATUS_COLORS[strDayDisplayStatus] : null;
                 const blnFutureDate = strDate > strToday;
                 const blnUnresolvedFutureDate = blnFutureDate && !objDay;
                 return (
@@ -868,9 +914,12 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
                             {blnUnresolvedFutureDate
                               ? t("not_processed", "Not Processed")
                               : objDay ? (
-                                objDay.strStatus === "weekly_off"
+                                strDayDisplayStatus === "weekly_off"
                                   ? t("status_weekly_off", "Weekly Off")
-                                  : t(`status_${objDay.strStatus}`, toTitleCase(objDay.strStatus))
+                                  : t(
+                                    `status_${strDayDisplayStatus}`,
+                                    strDayDisplayStatus === "restricted_holiday" ? "Restricted Holiday" : toTitleCase(strDayDisplayStatus),
+                                  )
                               ) : ""}
                           </Typography>
                         </Box>
