@@ -150,6 +150,7 @@ export type PayrollRunRecord = {
   intEmployeeCount: number;
   intProcessedEmployeeCount: number;
   intFailedEmployeeCount: number;
+  blnHasPayrollResults: boolean;
   decGrossPayTotal: number;
   decDeductionTotal: number;
   decTaxTotal: number;

@@ -49,6 +49,7 @@ import PayslipHtmlPreview from "@/features/payroll/components/PayslipHtmlPreview
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payslipService } from "@/features/payroll/services/payslipService";
 import { payrollRunService } from "@/features/payroll/services/payrollRunService";
+import { attendancePayrollService } from "@/features/payroll/services/attendancePayrollService";
 import type {
   PayslipRunListRecord,
   PayrollProcessSummary,
@@ -684,6 +685,36 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
     }
   }
 
+  async function fetchAttendanceInPayroll() {
+    if (!blnCanEdit) {
+      return;
+    }
+    setBlnSaving(true);
+    setStrActionLoaderLabel(t("fetching_attendance", "Fetching attendance & leave data..."));
+    setStrError("");
+    setStrSuccess("");
+    try {
+      const dicAttendanceResult = await attendancePayrollService.validateRunAttendance(intRunID);
+      setObjAttendanceValidationResult(dicAttendanceResult);
+      await loadRun(false);
+      if (dicAttendanceResult.intAppliedCount === 0 && dicAttendanceResult.intBlockedCount > 0) {
+        setStrError(
+          t(
+            "fetch_attendance_blocked",
+            `${dicAttendanceResult.intBlockedCount} employee(s) have blocking attendance issues - open View Attendance & Leave Inputs to resolve them.`,
+          ),
+        );
+      } else {
+        setStrSuccess(t("fetch_attendance_success", "Attendance & leave data fetched into this payroll run."));
+      }
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to fetch attendance & leave data.");
+    } finally {
+      setBlnSaving(false);
+      setStrActionLoaderLabel("");
+    }
+  }
+
   function viewBlockedAttendanceEmployees() {
     if (!objAttendanceValidationResult || objAttendanceValidationResult.intBlockedCount <= 0) {
       return;
@@ -1021,7 +1052,12 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
           {blnCanReprocess ? (
             <MenuItem
               onClick={() => { handleCloseActions(); openReprocessDialog(); }}
-              disabled={blnSaving || objRun.strRunStatus !== "PROCESSED"}
+              disabled={
+                blnSaving ||
+                objRun.strRunStatus === "FINALIZED" ||
+                objRun.strRunStatus === "CANCELLED" ||
+                !objRun.blnHasPayrollResults
+              }
               data-controlid="payroll.run-detail.actions.reprocess.menu-item"
             >
               {t("reprocess", "Reprocess Payroll")}
@@ -1109,15 +1145,33 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
             <MetricTile objIcon={<CalendarMonthRoundedIcon sx={{ fontSize: 18 }} />} strLabel={t("total_lop", "Total LOP Days")} strValue={objRun.dicSummary.decTotalLopDays} strTone="green" />
           </Box>
 
+          <Box sx={{ display: "flex", gap: 1, mt: 1.5 }}>
           <Button
             className={styles.secondaryButton}
             onClick={goToAttendanceLeaveInputs}
             startIcon={<ShieldOutlinedIcon sx={{ fontSize: 16 }} />}
-            sx={{ height: 34, minHeight: 34, mb: 1, mt: 1.5, width: "100%" }}
+            sx={{ height: 34, minHeight: 34, flex: 1 }}
             controlId="payroll.run-detail.open-attendance-leave-inputs.button"
           >
             {tAttendance("ATTENDANCE_OPEN_SCREEN_BUTTON", "View Attendance & Leave Inputs")}
           </Button>
+          {blnCanEdit ? (
+            <Tooltip title={t("fetch_attendance_tooltip", "Pull approved attendance & leave data into this payroll run's inputs. Skip this if you want to process payroll from manual inputs only.")}>
+              <span style={{ flex: 1 }}>
+                <Button
+                  className={styles.secondaryButton}
+                  onClick={fetchAttendanceInPayroll}
+                  disabled={blnSaving}
+                  startIcon={<DownloadRoundedIcon sx={{ fontSize: 16 }} />}
+                  sx={{ height: 34, minHeight: 34, width: "100%" }}
+                  controlId="payroll.run-detail.fetch-attendance-in-payroll.button"
+                >
+                  {t("fetch_in_payroll", "Fetch in Payroll")}
+                </Button>
+              </span>
+            </Tooltip>
+          ) : null}
+          </Box>
           {objAttendanceValidationResult && objAttendanceValidationResult.intBlockedCount > 0 ? (
             <Chip
               label={tAttendance(
@@ -1127,7 +1181,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
               size="small"
               onClick={viewBlockedAttendanceEmployees}
               icon={<ErrorOutlineRoundedIcon sx={{ fontSize: 16 }} />}
-              sx={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", cursor: "pointer", fontWeight: 800, height: 26 }}
+              sx={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", cursor: "pointer", fontWeight: 800, height: 26, mt: 1 }}
               controlId="payroll.run-detail.attendance-blocked-summary.chip"
             />
           ) : null}
@@ -1162,17 +1216,6 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
               <ReceiptLongRoundedIcon sx={{ color: "#2563eb", fontSize: 20 }} />
               {t("payslip_panel", "Payslips")}
             </Typography>
-            {blnCanGeneratePayslip ? (
-              <Button
-                className={styles.secondaryButton}
-                startIcon={<ReceiptLongRoundedIcon />}
-                onClick={generateAllPayslips}
-                disabled={blnPayslipLoading}
-                controlId="payroll.run-detail.payslips.generate-all.button"
-              >
-                {t("generate_all", "Generate All Payslips")}
-              </Button>
-            ) : null}
           </Box>
           <DataTable<PayslipRunListRecord>
             lstColumns={[
