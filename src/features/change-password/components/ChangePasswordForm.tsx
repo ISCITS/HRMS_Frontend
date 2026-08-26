@@ -14,17 +14,19 @@ import {
   Divider,
   IconButton,
   InputAdornment,
+  MenuItem,
   Stack,
   TextField,
   Typography
 } from "@mui/material";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import * as yup from "yup";
 
 import { useChangePassword } from "@/features/change-password/hooks/useChangePassword";
-import type { ChangePasswordFormValues } from "@/features/change-password/types/ChangePasswordTypes";
+import { changePasswordService } from "@/features/change-password/services/changePasswordService";
+import type { ChangePasswordFormValues, PasswordResetEmployeeOption } from "@/features/change-password/types/ChangePasswordTypes";
 
 const objPasswordRules = {
   blnMinimumLength: (strValue: string) => strValue.length >= 8,
@@ -34,22 +36,26 @@ const objPasswordRules = {
   blnSpecial: (strValue: string) => /[^A-Za-z0-9]/.test(strValue)
 };
 
-const objValidationSchema: yup.ObjectSchema<ChangePasswordFormValues> = yup.object({
-  strCurrentPassword: yup.string().required("Current password is required."),
-  strNewPassword: yup.string()
-    .required("New password is required.")
-    .min(8, "The new password must contain at least 8 characters.")
-    .matches(/[A-Z]/, "The new password must contain at least one uppercase letter.")
-    .matches(/[a-z]/, "The new password must contain at least one lowercase letter.")
-    .matches(/\d/, "The new password must contain at least one number.")
-    .matches(/[^A-Za-z0-9]/, "The new password must contain at least one special character.")
-    .test("different-password", "The new password must be different from your current password.", function (strValue) {
-      return !strValue || strValue !== this.parent.strCurrentPassword;
-    }),
-  strConfirmPassword: yup.string()
-    .required("Confirm new password is required.")
-    .oneOf([yup.ref("strNewPassword")], "The passwords do not match.")
-});
+function createValidationSchema(blnRequireCurrentPassword: boolean): yup.ObjectSchema<ChangePasswordFormValues> {
+  return yup.object({
+    strCurrentPassword: blnRequireCurrentPassword
+      ? yup.string().required("Current password is required.")
+      : yup.string().defined(),
+    strNewPassword: yup.string()
+      .required("New password is required.")
+      .min(8, "The new password must contain at least 8 characters.")
+      .matches(/[A-Z]/, "The new password must contain at least one uppercase letter.")
+      .matches(/[a-z]/, "The new password must contain at least one lowercase letter.")
+      .matches(/\d/, "The new password must contain at least one number.")
+      .matches(/[^A-Za-z0-9]/, "The new password must contain at least one special character.")
+      .test("different-password", "The new password must be different from your current password.", function (strValue) {
+        return !strValue || strValue !== this.parent.strCurrentPassword;
+      }),
+    strConfirmPassword: yup.string()
+      .required("Confirm new password is required.")
+      .oneOf([yup.ref("strNewPassword")], "The passwords do not match.")
+  });
+}
 
 type PasswordFieldProps = {
   strName: keyof ChangePasswordFormValues;
@@ -117,7 +123,15 @@ function PasswordField(objProps: PasswordFieldProps) {
   );
 }
 
-export default function ChangePasswordForm() {
+type ChangePasswordFormProps = {
+  blnAdminResetMode: boolean;
+  fnOnEmployeeOptionsLoaded?: () => void;
+};
+
+export default function ChangePasswordForm({
+  blnAdminResetMode,
+  fnOnEmployeeOptionsLoaded
+}: ChangePasswordFormProps) {
   const objRouter = useRouter();
   const objSearchParams = useSearchParams();
   const { changePassword, blnSubmitting } = useChangePassword();
@@ -126,6 +140,36 @@ export default function ChangePasswordForm() {
   const [blnConfirmVisible, setBlnConfirmVisible] = useState(false);
   const [strServerError, setStrServerError] = useState("");
   const [strSuccessMessage, setStrSuccessMessage] = useState("");
+  const [lstEmployees, setLstEmployees] = useState<PasswordResetEmployeeOption[]>([]);
+  const [strEmployeeID, setStrEmployeeID] = useState("");
+  const [objCurrentEmployeeIdentity, setObjCurrentEmployeeIdentity] = useState({
+    lstEmployeeIDs: [] as number[],
+    strEmployeeCode: ""
+  });
+  const [blnLoadingEmployees, setBlnLoadingEmployees] = useState(false);
+  function isCurrentEmployee(objEmployee?: PasswordResetEmployeeOption) {
+    if (!objEmployee) {
+      return false;
+    }
+
+    const strEmployeeCode = objEmployee.strEmployeeCode.trim().toUpperCase();
+    return objEmployee.blnIsCurrentUser === true
+      || objCurrentEmployeeIdentity.lstEmployeeIDs.includes(objEmployee.intEmployeeID)
+      || (
+        Boolean(strEmployeeCode)
+        && strEmployeeCode === objCurrentEmployeeIdentity.strEmployeeCode.trim().toUpperCase()
+      );
+  }
+  const objSelectedEmployee = lstEmployees.find(
+    (objEmployee) => objEmployee.intEmployeeID === Number(strEmployeeID)
+  );
+  const blnSelectedEmployeeIsCurrentUser = blnAdminResetMode
+    && isCurrentEmployee(objSelectedEmployee);
+  const blnRequireCurrentPassword = !blnAdminResetMode || blnSelectedEmployeeIsCurrentUser;
+  const objValidationSchema = useMemo(
+    () => createValidationSchema(blnRequireCurrentPassword),
+    [blnRequireCurrentPassword]
+  );
   const objForm = useForm<ChangePasswordFormValues>({
     resolver: yupResolver(objValidationSchema),
     mode: "onChange",
@@ -140,19 +184,83 @@ export default function ChangePasswordForm() {
     ? strRequestedReturnTo
     : "/dashboard";
 
+  useEffect(() => {
+    if (!blnAdminResetMode) {
+      setLstEmployees([]);
+      setStrEmployeeID("");
+      setObjCurrentEmployeeIdentity({ lstEmployeeIDs: [], strEmployeeCode: "" });
+      return;
+    }
+
+    let blnMounted = true;
+    setBlnLoadingEmployees(true);
+    setStrServerError("");
+    Promise.all([
+      changePasswordService.getPasswordResetEmployees(),
+      changePasswordService.getCurrentEmployeeIdentity()
+    ])
+      .then(([lstOptions, objIdentity]) => {
+        if (blnMounted) {
+          setLstEmployees(lstOptions);
+          setObjCurrentEmployeeIdentity(objIdentity);
+        }
+      })
+      .catch((objError) => {
+        if (blnMounted) {
+          setStrServerError(objError instanceof Error && objError.message
+            ? objError.message
+            : "Unable to load employees.");
+        }
+      })
+      .finally(() => {
+        if (blnMounted) {
+          setBlnLoadingEmployees(false);
+          fnOnEmployeeOptionsLoaded?.();
+        }
+      });
+
+    return () => {
+      blnMounted = false;
+    };
+  }, [blnAdminResetMode, fnOnEmployeeOptionsLoaded]);
+
+  useEffect(() => {
+    if (!blnRequireCurrentPassword) {
+      objForm.setValue("strCurrentPassword", "", { shouldDirty: false });
+      objForm.clearErrors("strCurrentPassword");
+    }
+    void objForm.trigger("strCurrentPassword");
+  }, [blnRequireCurrentPassword, objForm]);
+
   async function handleSubmit(objValues: ChangePasswordFormValues) {
     setStrServerError("");
     setStrSuccessMessage("");
     try {
-      const objResult = await changePassword(objValues);
+      if (blnAdminResetMode && !strEmployeeID) {
+        setStrServerError("Please select an employee.");
+        return;
+      }
+      const objResult = await changePassword(
+        objValues,
+        blnAdminResetMode && !blnSelectedEmployeeIsCurrentUser
+          ? Number(strEmployeeID)
+          : undefined
+      );
       if (objResult) {
-        setStrSuccessMessage("Your password has been changed successfully.");
+        setStrSuccessMessage(blnAdminResetMode && !blnSelectedEmployeeIsCurrentUser
+          ? "Employee password has been reset successfully."
+          : "Your password has been changed successfully.");
         objForm.reset();
+        if (blnAdminResetMode) {
+          setStrEmployeeID("");
+        }
       }
     } catch (objError) {
       setStrServerError(objError instanceof Error && objError.message
         ? objError.message
-        : "Unable to change your password. Please try again.");
+        : (blnAdminResetMode && !blnSelectedEmployeeIsCurrentUser
+          ? "Unable to reset the employee password. Please try again."
+          : "Unable to change your password. Please try again."));
     }
   }
 
@@ -169,16 +277,44 @@ export default function ChangePasswordForm() {
       {strSuccessMessage ? <Alert severity="success" data-controlid="change-password.success.alert">{strSuccessMessage}</Alert> : null}
       {strServerError ? <Alert severity="error" data-controlid="change-password.error.alert">{strServerError}</Alert> : null}
 
-      <PasswordField
-        strName="strCurrentPassword"
-        strLabel="Current Password"
-        strAutoComplete="current-password"
-        strControlPrefix="change-password.current-password"
-        blnVisible={blnCurrentVisible}
-        fnToggleVisibility={() => setBlnCurrentVisible((blnValue) => !blnValue)}
-        objRegister={objForm.register}
-        strError={objForm.formState.errors.strCurrentPassword?.message}
-      />
+      {blnAdminResetMode ? (
+        <Box>
+          <Typography sx={{ display: "block", mb: 1, color: "#0f172a", fontSize: "0.95rem", fontWeight: 600 }}>
+            Employee
+          </Typography>
+          <TextField
+            select
+            fullWidth
+            value={strEmployeeID}
+            disabled={blnLoadingEmployees || blnSubmitting}
+            onChange={(objEvent) => setStrEmployeeID(objEvent.target.value)}
+            inputProps={{ "data-controlid": "change-password.employee.select" }}
+            helperText={blnLoadingEmployees
+              ? "Loading employees..."
+              : (!lstEmployees.length ? "No employees are available for this company." : undefined)}
+          >
+            <MenuItem value="" disabled>Select an employee</MenuItem>
+            {lstEmployees.map((objEmployee) => (
+              <MenuItem key={objEmployee.intEmployeeID} value={String(objEmployee.intEmployeeID)}>
+                {objEmployee.strEmployeeCode} - {objEmployee.strEmployeeName}
+                {isCurrentEmployee(objEmployee) ? " (You)" : ""}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Box>
+      ) : null}
+      {blnRequireCurrentPassword ? (
+        <PasswordField
+          strName="strCurrentPassword"
+          strLabel="Current Password"
+          strAutoComplete="current-password"
+          strControlPrefix="change-password.current-password"
+          blnVisible={blnCurrentVisible}
+          fnToggleVisibility={() => setBlnCurrentVisible((blnValue) => !blnValue)}
+          objRegister={objForm.register}
+          strError={objForm.formState.errors.strCurrentPassword?.message}
+        />
+      ) : null}
       <Box>
         <PasswordField
           strName="strNewPassword"
@@ -265,7 +401,7 @@ export default function ChangePasswordForm() {
         <Button
           type="submit"
           variant="contained"
-          disabled={blnSubmitting || !objForm.formState.isValid}
+          disabled={blnSubmitting || blnLoadingEmployees || !objForm.formState.isValid || (blnAdminResetMode && !strEmployeeID)}
           data-controlid="change-password.submit.button"
           startIcon={blnSubmitting ? <CircularProgress size={18} color="inherit" /> : undefined}
           sx={{
@@ -278,10 +414,17 @@ export default function ChangePasswordForm() {
             "&:hover": {
               background: "linear-gradient(135deg, #132a63 0%, #184a8b 100%)",
               boxShadow: "0 12px 24px rgba(24, 74, 139, 0.30)"
+            },
+            "&.Mui-disabled": {
+              background: "#dddddd",
+              color: "#a6a6a6",
+              boxShadow: "none"
             }
           }}
         >
-          {blnSubmitting ? "Changing Password..." : "Change Password"}
+          {blnSubmitting
+            ? (blnAdminResetMode ? "Resetting Password..." : "Changing Password...")
+            : (blnAdminResetMode ? "Reset Password" : "Change Password")}
         </Button>
       </Stack>
     </Stack>

@@ -2,7 +2,8 @@
 
 import {
   ApiRequestMethod,
-  ApiResultCode
+  ApiResultCode,
+  ApiRoutePrefix
 } from "@/Common/enums/AppEnums";
 import { ApiRequestError, requestEncryptedApi, resolveErrorMessage } from "@/Common/utils/apiErrorHandler";
 import { authHelpers } from "@/lib/auth";
@@ -18,6 +19,7 @@ import {
   type AuthOtpChallengeData,
   type AuthSuccessData,
   type PortalCode,
+  type PasswordResetEmployeeOption,
   type PortalContextData,
   type CurrentUserContext,
   type DashboardResponse,
@@ -216,15 +218,30 @@ export const authApiService = {
 
   async changePassword(objPayload: ChangePasswordRequest) {
     const objRequestBody = {
-      strCurrentPassword: encryptPassBase64(objPayload.strCurrentPassword),
+      ...(objPayload.strCurrentPassword
+        ? { strCurrentPassword: encryptPassBase64(objPayload.strCurrentPassword) }
+        : {}),
       strNewPassword: encryptPassBase64(objPayload.strNewPassword),
-      strConfirmPassword: encryptPassBase64(objPayload.strConfirmPassword)
+      strConfirmPassword: encryptPassBase64(objPayload.strConfirmPassword),
+      ...(objPayload.intEmployeeID ? { intEmployeeID: objPayload.intEmployeeID } : {})
     };
-    return requestApi<ChangePasswordResponse>({
-      strPath: "auth/change-password",
+
+    // Match master/department calls: use the shared encrypted API client directly
+    // against the versioned backend route with the authenticated user context.
+    return requestEncryptedApi<ChangePasswordResponse>({
+      strPath: `${ApiRoutePrefix.ApiV1}/auth/change-password`,
       strMethod: ApiRequestMethod.Post,
       objBody: objRequestBody,
       strMenuAction: "AUTH_CHANGE_PASSWORD",
+      blnUseAuthHeader: true
+    });
+  },
+
+  async getPasswordResetEmployees() {
+    return requestEncryptedApi<PasswordResetEmployeeOption[]>({
+      strPath: `${ApiRoutePrefix.ApiV1}/auth/change-password/employees`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: "RESET_EMPLOYEE_PASSWORD",
       blnUseAuthHeader: true
     });
   },
