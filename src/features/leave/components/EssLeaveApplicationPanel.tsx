@@ -222,7 +222,14 @@ export default function EssLeaveApplicationPanel() {
   // is surfaced below the relevant field, so the user can click and see what needs fixing.
   const blnDatesPresent = Boolean(objWatchedForm.dtFromDate) && Boolean(objWatchedForm.dtToDate) && (objWatchedForm.dtToDate ?? "") >= (objWatchedForm.dtFromDate ?? "");
   const blnRestrictedHolidaySelected = !blnRestrictedHolidayType || Number(objWatchedForm.intRestrictedHolidayID) > 0;
-  const blnCanSubmit = blnCanManage && !blnSaving && !blnPreviewLoading && Number(objWatchedForm.intLeaveTypeID) > 0 && blnDatesPresent && blnRestrictedHolidaySelected;
+  const blnRestrictedPreviewMatchesSelection = !blnRestrictedHolidayType || Boolean(
+    objPreview?.lstDateBreakdown.length
+    && objPreview.lstDateBreakdown[0]?.dtDate === objWatchedForm.dtFromDate
+    && objPreview.lstDateBreakdown.at(-1)?.dtDate === objWatchedForm.dtToDate
+  );
+  const setBlockingBalanceErrors = new Set(["BALANCE_NOT_FOUND", "BALANCE_LOCKED", "INSUFFICIENT_BALANCE", "MINIMUM_BALANCE_NOT_MET"]);
+  const blnRestrictedBalanceAvailable = !blnRestrictedHolidayType || !objPreview?.lstErrors.some((objError) => setBlockingBalanceErrors.has(objError.strCode));
+  const blnCanSubmit = blnCanManage && !blnSaving && !blnPreviewLoading && Number(objWatchedForm.intLeaveTypeID) > 0 && blnDatesPresent && blnRestrictedHolidaySelected && blnRestrictedPreviewMatchesSelection && blnRestrictedBalanceAvailable;
 
   function fnShowToast(strMessage: string, strSeverity: "success" | "error") { setObjToast({ blnOpen: true, strMessage, strSeverity }); }
 
