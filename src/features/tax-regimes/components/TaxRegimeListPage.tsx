@@ -3,18 +3,14 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
-import RuleFolderRoundedIcon from "@mui/icons-material/RuleFolderRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
   Box,
   Button,
-  IconButton,
   MenuItem,
   Stack,
   TextField,
-  Tooltip,
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
@@ -125,28 +121,6 @@ export default function TaxRegimeListPage() {
               onView={() => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}?mode=view`)}
               onEdit={blnCanEdit ? () => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}`) : undefined}
             />
-            <Tooltip title={t("manage_slabs", "Manage Slabs")} arrow>
-              <IconButton
-                size="small"
-                aria-label={t("manage_slabs", "Manage Slabs")}
-                data-control-id={`tax-regimes.list.row.${dicRow.intID}.manage-slabs.button`}
-                onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}?tab=slabs`)}
-                sx={{ color: "var(--app-primary-color)" }}
-              >
-                <ReceiptLongRoundedIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title={t("manage_tax_rules", "Tax Rules")} arrow>
-              <IconButton
-                size="small"
-                aria-label={t("manage_tax_rules", "Tax Rules")}
-                data-control-id={`tax-regimes.list.row.${dicRow.intID}.tax-rules.button`}
-                onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}?tab=rules`)}
-                sx={{ color: "var(--app-primary-color)" }}
-              >
-                <RuleFolderRoundedIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
           </Box>
         ),
         strRegimeCode: dicRow.strRegimeCode,

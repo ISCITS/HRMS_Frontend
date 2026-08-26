@@ -7,6 +7,7 @@ import {
   Box,
   Button,
   CircularProgress,
+  Divider,
   FormControlLabel,
   MenuItem,
   Paper,
@@ -21,6 +22,7 @@ import { useRouter } from "next/navigation";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/components/master/MasterScreen.module.css";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
+import { usePayrollLookups } from "@/features/payroll-lookups/hooks/usePayrollLookups";
 import { useTaxRegimeLabels } from "@/features/tax-regimes/hooks/useTaxRegimeLabels";
 import { createInitialTaxRegimeForm, taxRegimeService, toTaxRegimeFormValues } from "@/features/tax-regimes/services/taxRegimeService";
 import type { TaxRegimeFormOptions, TaxRegimeFormValues, TaxRegimeTextFormValue } from "@/features/tax-regimes/types";
@@ -53,6 +55,7 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID, blnEmbedd
   const objRouter = useRouter();
   const { t } = useTaxRegimeLabels();
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstTaxRegimeModuleCodes);
+  const { lstOptions: lstRoundingRuleLookups } = usePayrollLookups("TAX_ROUNDING_RULE");
   const [objFormOptions, setObjFormOptions] = useState<TaxRegimeFormOptions | null>(null);
   const [dicForm, setDicForm] = useState<TaxRegimeFormValues>(createInitialTaxRegimeForm());
   const [blnLoading, setBlnLoading] = useState(true);
@@ -137,6 +140,14 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID, blnEmbedd
     }
     return lstOptions;
   }, [dicForm.strTaxYearCode, objFormOptions]);
+
+  const lstRoundingRuleOptions = useMemo(() => {
+    const lstOptions = lstRoundingRuleLookups.map((dicOption) => ({ strCode: dicOption.strValueCode, strLabel: dicOption.strDisplayName }));
+    if (dicForm.strRoundingRuleCode && !lstOptions.some((dicChoice) => dicChoice.strCode === dicForm.strRoundingRuleCode)) {
+      lstOptions.unshift({ strCode: dicForm.strRoundingRuleCode, strLabel: dicForm.strRoundingRuleCode });
+    }
+    return lstOptions;
+  }, [dicForm.strRoundingRuleCode, lstRoundingRuleLookups]);
 
   function updateField<TKey extends keyof TaxRegimeFormValues>(strField: TKey, objValue: TaxRegimeFormValues[TKey]) {
     setDicForm((dicPrevious) => ({ ...dicPrevious, [strField]: objValue }));
@@ -286,20 +297,27 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID, blnEmbedd
             </TextField>
             <TextField size="small" label={t("effective_from", "Effective From")} type="date" value={dicForm.dtEffectiveFrom} onChange={(objEvent) => updateField("dtEffectiveFrom", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth InputLabelProps={{ shrink: true }} />
             <TextField size="small" label={t("effective_to", "Effective To")} type="date" value={dicForm.dtEffectiveTo} onChange={(objEvent) => updateField("dtEffectiveTo", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth InputLabelProps={{ shrink: true }} />
-            <TextField size="small" label={t("rounding_rule", "Tax Rounding Rule")} value={dicForm.strRoundingRuleCode} onChange={(objEvent) => updateField("strRoundingRuleCode", objEvent.target.value.toUpperCase())} disabled={blnFieldDisabled} fullWidth />
+            <TextField size="small" label={t("rounding_rule", "Tax Rounding Rule")} select value={dicForm.strRoundingRuleCode} onChange={(objEvent) => updateField("strRoundingRuleCode", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth>
+              {lstRoundingRuleOptions.map((dicChoice) => (
+                <MenuItem key={dicChoice.strCode} value={dicChoice.strCode}>{dicChoice.strLabel}</MenuItem>
+              ))}
+            </TextField>
             <TextField size="small" label={t("legal_reference", "Legal Reference")} value={dicForm.strLegalReference} onChange={(objEvent) => updateField("strLegalReference", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth sx={{ gridColumn: { sm: "1 / -1" } }} />
             <TextField size="small" label={t("configuration_notes", "Configuration Notes")} value={dicForm.strConfigurationNotes} onChange={(objEvent) => updateField("strConfigurationNotes", objEvent.target.value)} disabled={blnFieldDisabled} fullWidth multiline minRows={2} sx={{ gridColumn: { sm: "1 / -1" } }} />
           </Box>
 
+          <Divider />
+
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))" }, gap: 1.25 }}>
             <FormControlLabel sx={{ m: 0 }} control={<Switch checked={dicForm.blnIsDefaultRegime} onChange={(objEvent) => updateField("blnIsDefaultRegime", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("set_as_default_regime", "Set as Default Regime")} />
-            <FormControlLabel sx={{ m: 0 }} control={<Switch checked={dicForm.blnAllowEmployeeOptOut} onChange={(objEvent) => updateField("blnAllowEmployeeOptOut", objEvent.target.checked)} disabled={blnFieldDisabled || !dicForm.blnIsDefaultRegime} />} label={t("allow_employee_opt_out", "Allow Employee Opt-Out")} />
             <FormControlLabel sx={{ m: 0 }} control={<Switch checked={dicForm.blnStandardDeductionEnabled} onChange={(objEvent) => updateField("blnStandardDeductionEnabled", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("standard_deduction_enabled", "Standard Deduction Enabled")} />
             <FormControlLabel sx={{ m: 0 }} control={<Switch checked={dicForm.blnRebateEnabled} onChange={(objEvent) => updateField("blnRebateEnabled", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("rebate_enabled", "Rebate Enabled")} />
             <FormControlLabel sx={{ m: 0 }} control={<Switch checked={dicForm.blnSurchargeEnabled} onChange={(objEvent) => updateField("blnSurchargeEnabled", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("surcharge_enabled", "Surcharge Enabled")} />
             <FormControlLabel sx={{ m: 0 }} control={<Switch checked={dicForm.blnCessEnabled} onChange={(objEvent) => updateField("blnCessEnabled", objEvent.target.checked)} disabled={blnFieldDisabled} />} label={t("cess_enabled", "Cess Enabled")} />
             <FormControlLabel sx={{ m: 0 }} control={<ActiveStatusSwitch blnIsActive={dicForm.blnIsActive} onChange={(blnChecked) => updateField("blnIsActive", blnChecked)} disabled={blnFieldDisabled} />} label={dicForm.blnIsActive ? t("active", "Active") : t("inactive", "Inactive")} />
           </Box>
+
+          <Divider />
 
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))" }, gap: 1.25 }}>
             <TextField label={t("standard_deduction_amount", "Default Standard Deduction Amount")} value={dicForm.decStandardDeductionAmount} onChange={(objEvent) => updateField("decStandardDeductionAmount", objEvent.target.value)} disabled={blnFieldDisabled} />

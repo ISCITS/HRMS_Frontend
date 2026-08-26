@@ -9,7 +9,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import styles from "@/components/master/MasterScreen.module.css";
 import TaxRegimeEditorPage from "@/features/tax-regimes/components/TaxRegimeEditorPage";
 import TaxSlabMaintenancePage from "@/features/tax-regimes/components/TaxSlabMaintenancePage";
-import TaxRuleMaintenancePage from "@/features/tax-regimes/components/TaxRuleMaintenancePage";
 import type { TaxRegimeSaveBridge } from "@/features/tax-regimes/components/TaxRegimeWorkspace";
 import { useTaxRegimeLabels } from "@/features/tax-regimes/hooks/useTaxRegimeLabels";
 
@@ -29,7 +28,6 @@ export default function TaxRegimeWorkspaceTabs({ strMode, intTaxRegimeID }: TaxR
       return 0;
     }
     if (strTabParam === "slabs") return 1;
-    if (strTabParam === "rules") return 2;
     return 0;
   });
   const [objSaveBridge, setObjSaveBridge] = useState<TaxRegimeSaveBridge>(null);
@@ -52,7 +50,6 @@ export default function TaxRegimeWorkspaceTabs({ strMode, intTaxRegimeID }: TaxR
           <Tabs value={intActiveTab} onChange={(_, intNextTab) => handleTabChange(intNextTab)} sx={{ minHeight: 44, px: 1 }}>
             <Tab label={strRegimeTabLabel} />
             <Tab label={t("manage_slabs", "Manage Slabs")} disabled={!intTaxRegimeID} />
-            <Tab label={t("manage_tax_rules", "Manage Tax Rules")} disabled={!intTaxRegimeID} />
           </Tabs>
           <Stack direction="row" spacing={1} alignItems="center" sx={{ py: 1 }}>
             <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/tax-regimes")}>
@@ -73,9 +70,6 @@ export default function TaxRegimeWorkspaceTabs({ strMode, intTaxRegimeID }: TaxR
         ) : null}
         {intActiveTab === 1 && intTaxRegimeID ? (
           <TaxSlabMaintenancePage intTaxRegimeID={intTaxRegimeID} blnEmbedded onSaveBridgeChange={setObjSaveBridge} />
-        ) : null}
-        {intActiveTab === 2 && intTaxRegimeID ? (
-          <TaxRuleMaintenancePage intTaxRegimeID={intTaxRegimeID} blnEmbedded onSaveBridgeChange={setObjSaveBridge} />
         ) : null}
       </Box>
     </Box>

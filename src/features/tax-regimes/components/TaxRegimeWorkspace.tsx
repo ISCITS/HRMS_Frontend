@@ -14,7 +14,7 @@ export type TaxRegimeSaveBridge = {
 } | null;
 
 export const objTaxRegimeCommonTableSx: SxProps<Theme> = {
-  p: 0,
+  p: "10px",
   minHeight: 0,
   overflow: "hidden",
   background: "var(--app-surface-color)",
