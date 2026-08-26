@@ -997,17 +997,6 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
           </Box>
 
           <Box sx={{ alignItems: "center", display: "flex", flex: "0 0 auto", gap: 0.75 }}>
-            {objRun.strRunStatus === "PROCESSED" && blnCanReprocess ? (
-              <Button
-                startIcon={<RestartAltRoundedIcon sx={{ fontSize: 18 }} />}
-                onClick={openReprocessDialog}
-                disabled={blnSaving}
-                sx={{ flex: "0 0 auto", height: 38, minHeight: 38, color: "#0B5ED7", border: "1px solid #8FB8F9" }}
-                controlId="payroll.run-detail.reprocess-run.button"
-              >
-                {t("reprocess", "Reprocess Payroll")}
-              </Button>
-            ) : null}
             <Button
               className={styles.secondaryButton}
               startIcon={<ArrowBackRoundedIcon />}
@@ -1029,9 +1018,15 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
         </Box>
 
         <Menu anchorEl={objActionsAnchor} open={Boolean(objActionsAnchor)} onClose={handleCloseActions}>
-          <MenuItem onClick={goToAttendanceLeaveInputs} data-controlid="payroll.run-detail.actions.attendance-leave-inputs.menu-item">
-            {t("view_attendance_leave_inputs", "View Attendance & Leave Inputs")}
-          </MenuItem>
+          {blnCanReprocess ? (
+            <MenuItem
+              onClick={() => { handleCloseActions(); openReprocessDialog(); }}
+              disabled={blnSaving || objRun.strRunStatus !== "PROCESSED"}
+              data-controlid="payroll.run-detail.actions.reprocess.menu-item"
+            >
+              {t("reprocess", "Reprocess Payroll")}
+            </MenuItem>
+          ) : null}
           <MenuItem onClick={goToPayrollInputs} data-controlid="payroll.run-detail.actions.payroll-inputs.menu-item">
             {t("view_payroll_inputs", "View Payroll Inputs")}
           </MenuItem>
