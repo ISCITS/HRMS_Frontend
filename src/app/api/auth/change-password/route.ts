@@ -12,6 +12,7 @@ type ChangePasswordRouteBody = {
   strCurrentPassword?: string;
   strNewPassword?: string;
   strConfirmPassword?: string;
+  intEmployeeID?: number;
 };
 
 export async function POST(objRequest: Request) {
@@ -25,6 +26,8 @@ export async function POST(objRequest: Request) {
       strCurrentPassword: objBody.strCurrentPassword,
       strNewPassword: objBody.strNewPassword,
       strConfirmPassword: objBody.strConfirmPassword,
+      // An employee ID distinguishes an authorized admin reset from a self-service change.
+      intEmployeeID: objBody.intEmployeeID,
     }, objRequest.headers);
     return NextResponse.json(objResult, { status: 200 });
   } catch (objError) {

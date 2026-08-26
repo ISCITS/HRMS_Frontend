@@ -3,3 +3,10 @@ export type ChangePasswordFormValues = {
   strNewPassword: string;
   strConfirmPassword: string;
 };
+
+export type PasswordResetEmployeeOption = {
+  intEmployeeID: number;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  blnIsCurrentUser?: boolean;
+};

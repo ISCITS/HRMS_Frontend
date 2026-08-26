@@ -50,14 +50,24 @@ export type GenericLoginRequest = {
 };
 
 export type ChangePasswordRequest = {
-  strCurrentPassword: string;
+  strCurrentPassword?: string;
   strNewPassword: string;
   strConfirmPassword: string;
+  intEmployeeID?: number;
 };
 
 export type ChangePasswordResponse = {
   blnPasswordChanged: boolean;
+  blnEmployeePasswordReset?: boolean;
+  intEmployeeID?: number | null;
   intRevokedSessionCount: number;
+};
+
+export type PasswordResetEmployeeOption = {
+  intEmployeeID: number;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  blnIsCurrentUser?: boolean;
 };
 
 export type TokenPayload = {
