@@ -20,7 +20,7 @@ import {
   Typography
 } from "@mui/material";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import * as yup from "yup";
 
@@ -166,6 +166,7 @@ export default function ChangePasswordForm({
   const blnSelectedEmployeeIsCurrentUser = blnAdminResetMode
     && isCurrentEmployee(objSelectedEmployee);
   const blnRequireCurrentPassword = !blnAdminResetMode || blnSelectedEmployeeIsCurrentUser;
+  const objPreviousRequireCurrentPassword = useRef(blnRequireCurrentPassword);
   const objValidationSchema = useMemo(
     () => createValidationSchema(blnRequireCurrentPassword),
     [blnRequireCurrentPassword]
@@ -177,6 +178,10 @@ export default function ChangePasswordForm({
     defaultValues: { strCurrentPassword: "", strNewPassword: "", strConfirmPassword: "" }
   });
   const strNewPassword = useWatch({ control: objForm.control, name: "strNewPassword" }) || "";
+  const strCurrentPasswordError = objForm.formState.touchedFields.strCurrentPassword
+    || objForm.formState.submitCount > 0
+    ? objForm.formState.errors.strCurrentPassword?.message
+    : undefined;
   const strRequestedReturnTo = (objSearchParams.get("returnTo") || "").trim();
   const strReturnTo = strRequestedReturnTo.startsWith("/")
     && !strRequestedReturnTo.startsWith("//")
@@ -225,11 +230,15 @@ export default function ChangePasswordForm({
   }, [blnAdminResetMode, fnOnEmployeeOptionsLoaded]);
 
   useEffect(() => {
+    const blnRequirementChanged = objPreviousRequireCurrentPassword.current !== blnRequireCurrentPassword;
+    objPreviousRequireCurrentPassword.current = blnRequireCurrentPassword;
+
     if (!blnRequireCurrentPassword) {
       objForm.setValue("strCurrentPassword", "", { shouldDirty: false });
       objForm.clearErrors("strCurrentPassword");
+    } else if (blnRequirementChanged) {
+      void objForm.trigger("strCurrentPassword");
     }
-    void objForm.trigger("strCurrentPassword");
   }, [blnRequireCurrentPassword, objForm]);
 
   async function handleSubmit(objValues: ChangePasswordFormValues) {
@@ -312,7 +321,7 @@ export default function ChangePasswordForm({
           blnVisible={blnCurrentVisible}
           fnToggleVisibility={() => setBlnCurrentVisible((blnValue) => !blnValue)}
           objRegister={objForm.register}
-          strError={objForm.formState.errors.strCurrentPassword?.message}
+          strError={strCurrentPasswordError}
         />
       ) : null}
       <Box>

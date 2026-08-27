@@ -64,6 +64,8 @@ const strAvatarRefreshEventName = "hrms:avatar-refresh";
 const intLanguageSwitchSettledDelayMs = 900;
 const strSharedHeaderGradient = "var(--app-banner-background)";
 const strSidebarGradient = "var(--app-menu-background)";
+// Product and current-page headings share one responsive scale across the app bar.
+const objAppBarHeadingFontSize = { xs: "1.02rem", md: "1.28rem", lg: "1.42rem" } as const;
 
 function getAutomationProps(strControlId?: string) {
   return strControlId ? ({ "data-controlid": strControlId } as const) : {};
@@ -1249,8 +1251,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
       ref={objShellContentRef}
       sx={{
         display: "flex",
-        height: "100vh",
-        minHeight: "100vh",
+        height: "100dvh",
+        minHeight: "100dvh",
         overflow: "hidden",
         background:
           "radial-gradient(circle at top left, rgba(14,116,144,0.12), transparent 28%), linear-gradient(180deg, #f8fbff 0%, #eef4f8 100%)"
@@ -1262,7 +1264,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           zIndex: intMenuZIndex,
           width: intCollapsedMenuRailWidth,
           flex: `0 0 ${intCollapsedMenuRailWidth}px`,
-          height: "100vh",
+          height: "100dvh",
           minHeight: 0,
           display: { xs: "none", lg: "flex" },
           flexDirection: "column",
@@ -1305,7 +1307,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               }}
               {...getAutomationProps("app-shell.desktop-menu-toggle.button")}
             >
-              <MenuRoundedIcon />
+              <MenuRoundedIcon sx={{ fontSize: { xs: 21, xl: 24 } }} />
           </IconButton>
         </Box>
         <Box
@@ -1341,7 +1343,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             color: "var(--app-menu-active-color)",
           }}
         >
-          <LogoutRoundedIcon />
+          <LogoutRoundedIcon sx={{ fontSize: { xs: 20, xl: 24 } }} />
         </Box>
       </Box>
       <Box
@@ -1351,7 +1353,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           top: 0,
           zIndex: intMenuZIndex + 1,
           width: intDrawerWidth + 28,
-          height: "100vh",
+          height: "100dvh",
           minHeight: 0,
           display: { xs: "none", lg: "block" },
           p: { xs: 1, md: 1.5 },
@@ -1374,8 +1376,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
           display: { xs: "block", lg: "none" },
           zIndex: intMenuZIndex,
           "& .MuiDrawer-paper": {
-            width: intDrawerWidth,
-            height: "100vh",
+            // Leave a visible edge on narrow phones so the temporary drawer never exceeds the viewport.
+            width: `min(${intDrawerWidth}px, calc(100vw - 24px))`,
+            height: "100dvh",
             border: "none",
             borderRadius: "0 32px 32px 0",
             backgroundColor: "transparent",
@@ -1398,7 +1401,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             minWidth: 0,
             minHeight: 0,
             overflow: "hidden",
-            p: blnDashboardRoute ? { xs: 0.75, md: 1 } : { xs: 1, md: 1.5 }
+              p: blnDashboardRoute ? { xs: 0.75, xl: 1 } : { xs: 1, xl: 1.5 }
           }}
         >
           <AppBar
@@ -1412,14 +1415,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
               position: "relative",
               flexShrink: 0,
               borderRadius: "24px",
-              mb: 1.5,
+              mb: { xs: 1, xl: 1.5 },
               px: { xs: 0.25, sm: 0.75 },
               background: strSharedHeaderGradient,
               border: "1px solid var(--app-banner-border-color)",
               boxShadow: "var(--app-banner-shadow)"
             }}
           >
-            <Toolbar sx={{ gap: 1.5, height: `${intTopBarHeight}px`, minHeight: `${intTopBarHeight}px !important`, boxSizing: "border-box", alignItems: "center" }}>
+            <Toolbar sx={{ gap: { xs: 0.5, sm: 1, xl: 1.5 }, height: { xs: "56px", xl: `${intTopBarHeight}px` }, minHeight: { xs: "56px !important", xl: `${intTopBarHeight}px !important` }, boxSizing: "border-box", alignItems: "center", px: { xs: 1, sm: 2 } }}>
               <IconButton
                 onClick={handleMenuToggle}
                 sx={{
@@ -1434,10 +1437,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 <MenuRoundedIcon />
               </IconButton>
 
-              <Box sx={{ minWidth: 0, flexShrink: 0 }}>
+              <Box sx={{ minWidth: 0, flexShrink: 0, display: { xs: "none", md: "block" } }}>
                 <Typography
                   sx={{
-                    fontSize: { xs: "1.02rem", md: "1.28rem", lg: "1.42rem" },
+                    fontSize: objAppBarHeadingFontSize,
                     color: "var(--app-banner-text-color)",
                     textTransform: "none",
                     letterSpacing: "normal",
@@ -1544,14 +1547,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 >
                   <Typography
                     sx={{
-                      fontSize: { xs: "1.02rem", md: "1.28rem", lg: "1.42rem" },
+                      fontSize: objAppBarHeadingFontSize,
                       fontWeight: 700,
                       color: "#0f172a",
                       letterSpacing: "-0.03em",
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
-                      maxWidth: { xs: "120px", sm: "220px", md: "320px" },
+                      maxWidth: { xs: "42vw", sm: "240px", md: "320px" },
                       textAlign: "right"
                     }}
                   >
@@ -1589,17 +1592,17 @@ export default function AppShell({ children }: { children: ReactNode }) {
                     }}
                     {...getAutomationProps("app-shell.profile-menu.button")}
                   >
-                    <Avatar src={strAuthenticatedAvatarUrl || undefined} sx={{ bgcolor: "rgba(14,116,144,0.12)", color: "#0e7490", fontWeight: 700, width: 42, height: 42 }}>
+                    <Avatar src={strAuthenticatedAvatarUrl || undefined} sx={{ bgcolor: "rgba(14,116,144,0.12)", color: "#0e7490", fontWeight: 700, width: { xs: 36, sm: 42 }, height: { xs: 36, sm: 42 } }}>
                       {strAvatarText}
                     </Avatar>
                   </IconButton>
                   <Box
                     sx={{
-                      display: "flex",
+                      display: { xs: "none", sm: "flex" },
                       flexDirection: "column",
                       alignItems: "flex-start",
                       minWidth: 0,
-                      maxWidth: { xs: "112px", sm: "152px", md: "180px" }
+                      maxWidth: { sm: "152px", md: "180px" }
                     }}
                   >
                     <Typography
@@ -1638,7 +1641,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
                     sx={{
                       p: 0.2,
                       color: "#1f3b73",
-                      flexShrink: 0
+                      flexShrink: 0,
+                      display: { xs: "none", sm: "inline-flex" }
                     }}
                     {...getAutomationProps("app-shell.profile-menu.button")}
                   >

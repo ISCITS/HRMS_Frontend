@@ -10,6 +10,21 @@
   gap: 12px;
 }
 
+@media (max-width: 599px) {
+  .formGrid {
+    gap: 16px;
+  }
+
+  .actionsRow {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .actionsRow > * {
+    width: 100%;
+  }
+}
+
 @media (min-width: 900px) {
   .formGrid {
     grid-template-columns: repeat(3, 1fr);

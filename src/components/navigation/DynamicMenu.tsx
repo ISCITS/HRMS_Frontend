@@ -22,7 +22,8 @@ type DynamicMenuProps = {
   onForcedExpandedHandled?: () => void;
 };
 
-const objMenuIconSx = { color: "inherit" };
+// Keep navigation icons compact on laptop-sized viewports while preserving the full desktop scale.
+const objMenuIconSx = { color: "inherit", fontSize: { xs: 20, xl: 24 } };
 const objSidebarPalette = {
   menuIcon: "var(--app-menu-icon-color)",
   menuText: "var(--app-menu-text-color)",
@@ -1522,9 +1523,9 @@ export default function DynamicMenu({
 
   function getCollapsedButtonStyles(blnIsActive: boolean) {
     return {
-      width: 44,
-      height: 44,
-      minWidth: 44,
+      width: { xs: 40, xl: 44 },
+      height: { xs: 40, xl: 44 },
+      minWidth: { xs: 40, xl: 44 },
       borderRadius: "12px",
       mb: 0.75,
       display: "grid",
@@ -1541,7 +1542,7 @@ export default function DynamicMenu({
         minWidth: 0,
       },
       "& .material-icons": {
-        fontSize: 24,
+        fontSize: { xs: 20, xl: 24 },
       },
     };
   }
@@ -1619,7 +1620,7 @@ export default function DynamicMenu({
                 fontSize: intDepth === 0 ? "0.96rem" : "0.9rem",
               }}
             />
-            {blnExpanded ? <ExpandLessRoundedIcon sx={{ color: objSidebarPalette.activeAccent }} /> : <ExpandMoreRoundedIcon sx={{ color: objSidebarPalette.activeAccent }} />}
+            {blnExpanded ? <ExpandLessRoundedIcon sx={{ color: objSidebarPalette.activeAccent, fontSize: { xs: 20, xl: 24 } }} /> : <ExpandMoreRoundedIcon sx={{ color: objSidebarPalette.activeAccent, fontSize: { xs: 20, xl: 24 } }} />}
           </ListItemButton>
 
           <Collapse in={blnExpanded} timeout="auto" unmountOnExit>

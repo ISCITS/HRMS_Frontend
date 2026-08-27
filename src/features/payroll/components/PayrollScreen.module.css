@@ -6,6 +6,7 @@
   margin: 0;
   min-height: 0;
   overflow: hidden;
+  width: 100%;
 }
 
 .breadcrumbs {
@@ -888,8 +889,22 @@
 }
 
 @media (max-width: 1200px) {
+  .payslipSearchLinePrimary,
+  .bankFileSearchLinePrimary,
+  .payrollRegisterSearchLinePrimary,
+  .statutorySearchLinePrimary {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .bankFileSearchLineSecondary,
+  .payrollRegisterSearchLineSecondary,
+  .statutorySearchLineSecondary,
+  .employeePayrollInputSearchRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
   .payrollRunSearchRow {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   }
 
   .payrollRunSearchRow .searchActions {
@@ -897,10 +912,39 @@
   }
 }
 
+@media (min-width: 901px) and (max-width: 1440px),
+  (min-width: 901px) and (max-height: 900px) {
+  .page {
+    gap: 8px;
+  }
+
+  .controlsCard,
+  .tableCard,
+  .listUtilityBar {
+    padding: 8px;
+  }
+
+  .controlsHeader,
+  .headerActions,
+  .searchRow,
+  .tableHeaderActions,
+  .listUtilityBar,
+  .listUtilityActions {
+    gap: 8px;
+  }
+
+  .fnfCreateGrid,
+  .fnfWizardGrid {
+    gap: 12px;
+  }
+}
+
 @media (max-width: 900px) {
   .quickFilterRow,
-  .searchRow {
-    grid-template-columns: 1fr;
+  .searchRow,
+  .employeePayrollInputSearchRow,
+  .payrollRunSearchRow {
+    grid-template-columns: 1fr !important;
   }
 
   .payslipSearchLinePrimary,
@@ -911,7 +955,7 @@
   .payrollRegisterSearchLineSecondary,
   .statutorySearchLinePrimary,
   .statutorySearchLineSecondary {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
   }
 
   .fnfCreateGrid {
@@ -929,5 +973,95 @@
 
   .dialogGrid {
     grid-template-columns: 1fr;
+  }
+
+  .page,
+  .detailPage {
+    height: auto;
+    min-height: 100%;
+    overflow: visible;
+  }
+
+  .controlsHeader,
+  .detailHeader,
+  .listUtilityBar,
+  .tableHeaderActions,
+  .paginationBar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .headerActions,
+  .detailHeaderActions,
+  .listUtilityActions,
+  .searchActions {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .headerActions > *,
+  .detailHeaderActions > *,
+  .listUtilityActions > *,
+  .searchActions > * {
+    flex: 1 1 auto;
+  }
+
+  .paginationBar,
+  .paginationInfo {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 600px) {
+  .page {
+    gap: 8px;
+  }
+
+  .controlsCard,
+  .tableCard,
+  .listUtilityBar {
+    padding: 8px;
+  }
+
+  .headerActions > *,
+  .detailHeaderActions > *,
+  .listUtilityActions > *,
+  .searchActions > *,
+  .fnfWizardActions > * {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .fnfWizardActions,
+  .dialogFooter {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .fnfCreateActions .primaryButton {
+    min-width: 0 !important;
+    width: 100%;
+  }
+
+  .table {
+    min-width: 720px;
+  }
+
+  .dialogPaper,
+  .confirmDialogPaper,
+  .compactDialogPaper {
+    border-radius: 18px !important;
+    width: calc(100vw - 24px);
+  }
+
+  .dialogTitle {
+    font-size: 1.35rem;
+  }
+
+  .dialogTitle,
+  .dialogContent,
+  .dialogFooter {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
   }
 }
