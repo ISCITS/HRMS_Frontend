@@ -199,6 +199,8 @@ function emptyPolicy(): LeavePolicyAggregate {
     decMaxPerApplication: null,
     decMaxConsecutiveDays: null,
     intMaxApplicationsPerMonth: null,
+    decMaxDaysPerMonth: null,
+    blnAccrualLapseUnused: false,
     intMaxApplicationsPerYear: null,
     intMinNoticeDays: 0,
     blnBackdatedApplicationAllowed: false,
@@ -685,6 +687,10 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
               {/* POC: Waiting Gap (waiting days) and Minimum Service Days hidden — values preserved. */}
               <SectionSelect label="Joining Proration Method" value={objPolicy.strJoinProrationBasisCode} onChange={(v) => setPolicy("strJoinProrationBasisCode", v)} options={optsWithCurrent([{ code: "CALENDAR_DAYS", label: "Calendar Days" }, { code: "COMPLETED_MONTHS", label: "Completed Months" }], objPolicy.strJoinProrationBasisCode)} />
               <SectionSelect label="Leave Eligibility" value={objPolicy.blnCreditOnConfirmation ? "CONFIRMATION" : "JOINING"} onChange={setLeaveEligibility} options={[{ code: "JOINING", label: "From Joining Date" }, { code: "CONFIRMATION", label: "From Confirmation Date" }]} />
+              {/* Only meaningful when the entitlement is earned in cycles; a yearly credit has nothing to lapse. */}
+              {objPolicy.strAccrualFrequency !== "yearly" && objPolicy.strAccrualFrequency !== "none" ? (
+                <Box sx={objFullCellSx}><SectionSwitch label="Unused accrual lapses each cycle (no carry-over to the next period)" value={Boolean(objPolicy.blnAccrualLapseUnused)} onChange={(v) => setPolicy("blnAccrualLapseUnused", v)} /></Box>
+              ) : null}
               {!objPolicy.blnCreditOnJoining && !objPolicy.blnCreditOnConfirmation ? (
                 <Box sx={objFullCellSx}><Alert severity="warning" sx={{ borderRadius: "12px" }}>No eligibility start is configured on this legacy policy. Pick “From Joining Date” or “From Confirmation Date”; the stored value is preserved until you change and save.</Alert></Box>
               ) : null}
@@ -704,7 +710,8 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
             <SectionNum label="Minimum Days per Request" value={objPolicy.decMinPerApplication} onChange={(v) => setPolicy("decMinPerApplication", v)} placeholder="No minimum" />
             <SectionNum label="Maximum Days per Request" value={objPolicy.decMaxPerApplication} onChange={(v) => setPolicy("decMaxPerApplication", v)} placeholder="No limit" />
             <SectionNum label="Maximum Consecutive Leave Days" value={objPolicy.decMaxConsecutiveDays} onChange={(v) => setPolicy("decMaxConsecutiveDays", v)} placeholder="No limit" />
-            {/* POC: Maximum per Month hidden — value preserved. */}
+            <SectionNum label="Maximum Days per Month" value={objPolicy.decMaxDaysPerMonth} onChange={(v) => setPolicy("decMaxDaysPerMonth", v)} placeholder="No limit" />
+            <SectionNum label="Maximum Requests per Month" value={objPolicy.intMaxApplicationsPerMonth} onChange={(v) => setPolicy("intMaxApplicationsPerMonth", v)} placeholder="No limit" />
             <SectionNum label="Maximum Requests per Year" value={objPolicy.intMaxApplicationsPerYear} onChange={(v) => setPolicy("intMaxApplicationsPerYear", v)} placeholder="No limit" />
             <SectionNum label="Minimum Advance Notice (Days)" value={objPolicy.intMinNoticeDays} onChange={(v) => setPolicy("intMinNoticeDays", v ?? 0)} />
             {/* Conditional limits — shown (and normalized to 0/null when hidden) with their toggle. */}

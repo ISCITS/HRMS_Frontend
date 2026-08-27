@@ -96,6 +96,8 @@ export type LeavePolicyAggregate = {
   decMaxPerApplication?: number | null;
   decMaxConsecutiveDays?: number | null;
   intMaxApplicationsPerMonth?: number | null;
+  decMaxDaysPerMonth?: number | null;
+  blnAccrualLapseUnused?: boolean;
   intMaxApplicationsPerYear?: number | null;
   intMinNoticeDays: number;
   blnBackdatedApplicationAllowed: boolean;
