@@ -27,7 +27,9 @@ export type AttendancePolicy = {
   intWorkHoursRoundingMinutes: number;
   blnOtEnabled: boolean;
   decOtMinHours: number;
-  strLateDeductionRule: string | null;
+  blnLateDeductionEnabled: boolean;
+  intLateArrivalsPerHalfDay: number | null;
+  intLateArrivalsPerFullDay: number | null;
   strWeeklyOffPattern: string;
   blnIsDefault: boolean;
   dtEffectiveFrom: string;

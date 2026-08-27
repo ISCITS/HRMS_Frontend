@@ -48,19 +48,26 @@ const objPolicySchema: yup.ObjectSchema<AttendancePolicyFormValues> = yup.object
   decAbsentThresholdHours: yup.number().min(0).max(24).required(), blnInPunchRequired: yup.boolean().required(), blnOutPunchRequired: yup.boolean().required(),
   strMissingPunchTreatmentCode: yup.mixed<AttendancePolicyFormValues["strMissingPunchTreatmentCode"]>().oneOf(["EXCEPTION", "ABSENT", "HALF_DAY", "IGNORE"]).required(),
   intWorkHoursRoundingMinutes: yup.number().min(0).max(60).required(), blnOtEnabled: yup.boolean().required(), decOtMinHours: yup.number().min(0).max(24).required(),
-  strLateDeductionRule: yup.string().nullable().defined().max(30), strWeeklyOffPattern: yup.string().matches(/^[01]{7}$/).required(),
+  blnLateDeductionEnabled: yup.boolean().required(), intLateArrivalsPerHalfDay: yup.number().nullable().defined().min(1),
+  intLateArrivalsPerFullDay: yup.number().nullable().defined().min(1),
+  strWeeklyOffPattern: yup.string().matches(/^[01]{7}$/).required(),
   blnIsDefault: yup.boolean().required(), dtEffectiveFrom: yup.string().required(), dtEffectiveTo: yup.string().nullable().defined(),
   blnIsActive: yup.boolean().required(), strRemarks: yup.string().nullable().defined().max(500),
   lstTexts: yup.array().of(yup.object({ intLanguageID: yup.number().required(), strPolicyName: yup.string().required(), strDescription: yup.string().nullable().defined() })).defined(),
 }).test("thresholds", "Threshold order must be Full Day ≥ Half Day ≥ Absent.", (objValue) => !objValue || (objValue.decFullDayThresholdHours >= objValue.decHalfDayThresholdHours && objValue.decHalfDayThresholdHours >= objValue.decAbsentThresholdHours))
   .test("dates", "Effective To cannot be before Effective From.", (objValue) => !objValue?.dtEffectiveTo || objValue.dtEffectiveTo >= objValue.dtEffectiveFrom)
-  .test("in-out-time", "Out Time must be later than In Time.", (objValue) => !objValue?.strInTime || !objValue?.strOutTime || objValue.strOutTime > objValue.strInTime);
+  .test("in-out-time", "Out Time must be later than In Time.", (objValue) => !objValue?.strInTime || !objValue?.strOutTime || objValue.strOutTime > objValue.strInTime)
+  .test("late-deduction", "Late arrivals per full day must be a multiple of, and greater than, late arrivals per half day.", (objValue) => {
+    if (!objValue?.blnLateDeductionEnabled) return true;
+    const intHalf = objValue.intLateArrivalsPerHalfDay, intFull = objValue.intLateArrivalsPerFullDay;
+    return !!intHalf && !!intFull && intFull > intHalf && intFull % intHalf === 0;
+  });
 
 function getEmptyPolicy(): AttendancePolicyFormValues {
   return { intCompanyID: authHelpers.getCompanyID(), strPolicyCode: "", strPolicyName: "", strDescription: null, intLocationID: null, intGradeID: null, intEmploymentTypeID: null,
     intLateGraceMinutes: 0, intEarlyDepartureGraceMinutes: 0, strInTime: null, strOutTime: null, decFullDayThresholdHours: 8, decHalfDayThresholdHours: 4, decAbsentThresholdHours: 0,
     blnInPunchRequired: true, blnOutPunchRequired: true, strMissingPunchTreatmentCode: "EXCEPTION", intWorkHoursRoundingMinutes: 0,
-    blnOtEnabled: false, decOtMinHours: 0, strLateDeductionRule: null, strWeeklyOffPattern: "0000011", blnIsDefault: false,
+    blnOtEnabled: false, decOtMinHours: 0, blnLateDeductionEnabled: false, intLateArrivalsPerHalfDay: 3, intLateArrivalsPerFullDay: 6, strWeeklyOffPattern: "0000011", blnIsDefault: false,
     dtEffectiveFrom: strToday, dtEffectiveTo: null, blnIsActive: true, strRemarks: null, lstTexts: [] };
 }
 
@@ -126,7 +133,7 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
   const [blnDetailLoading, setBlnDetailLoading] = useState(false);
   const blnActionWorking = blnSaving || blnDetailLoading || blnOverrideSubmitting || blnFinalizeSubmitting || blnFillSubmitting;
   const { control, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<AttendancePolicyFormValues>({ resolver: yupResolver(objPolicySchema) as Resolver<AttendancePolicyFormValues>, defaultValues: getEmptyPolicy() });
-  const strPattern = watch("strWeeklyOffPattern"); const blnOtEnabled = watch("blnOtEnabled");
+  const strPattern = watch("strWeeklyOffPattern"); const blnOtEnabled = watch("blnOtEnabled"); const blnLateDeductionEnabled = watch("blnLateDeductionEnabled");
 
   const lstDepartmentsFromDailyRows = useMemo(() => Array.from(new Map(lstDailyRows.filter((objRow) => objRow.intDepartmentID).map((objRow) => [objRow.intDepartmentID, objRow.strDepartmentName])).entries()), [lstDailyRows]);
   const lstDepartments = lstDepartmentOptions.length > 0 ? lstDepartmentOptions : lstDepartmentsFromDailyRows;
@@ -453,14 +460,17 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
       <Grid item xs={12}><Controller name="strDescription" control={control} render={({ field }) => <TextField {...field} value={field.value ?? ""} data-control-id="attendance.policy.description.input" label={t("description", "Description")} fullWidth />} /></Grid>
     </Grid></Paper></Grid>
     <Grid item xs={12} lg={6}><Paper variant="outlined" sx={{ p: 1.5, height: "100%" }}><Typography fontWeight={800} sx={{ mb: 1 }}>{t("working_hour_rules", "Working Hour Rules")}</Typography><Grid container spacing={1}>
-      <Grid item xs={6} sm={3}><Controller name="strInTime" control={control} render={({ field }) => <TextField {...field} value={field.value ?? ""} data-control-id="attendance.policy.in-time.input" label={t("in_time", "Standard IN Time")} type="time" InputLabelProps={{ shrink: true }} fullWidth />} /></Grid>
-      <Grid item xs={6} sm={3}><Controller name="strOutTime" control={control} render={({ field }) => <TextField {...field} value={field.value ?? ""} data-control-id="attendance.policy.out-time.input" label={t("out_time", "Standard OUT Time")} type="time" InputLabelProps={{ shrink: true }} fullWidth />} /></Grid>
-      {([["decFullDayThresholdHours","full_day_threshold","Full-Day Threshold"],["decHalfDayThresholdHours","half_day_threshold","Half-Day Threshold"]] as const).map(([strName,strKey,strLabel]) => <Grid item xs={6} sm={3} key={strName}><Controller name={strName} control={control} render={({ field }) => <TextField {...field} data-control-id={`attendance.policy.${strName}.input`} label={t(strKey,strLabel)} type="number" fullWidth error={!!errors[strName]} inputProps={{ min: 0, step: .25 }} />} /></Grid>)}
+      <Grid item xs={6} sm={4}><Controller name="strInTime" control={control} render={({ field }) => <TextField {...field} value={field.value ?? ""} data-control-id="attendance.policy.in-time.input" label={t("in_time", "Standard IN Time")} type="time" InputLabelProps={{ shrink: true }} fullWidth />} /></Grid>
+      <Grid item xs={6} sm={4}><Controller name="strOutTime" control={control} render={({ field }) => <TextField {...field} value={field.value ?? ""} data-control-id="attendance.policy.out-time.input" label={t("out_time", "Standard OUT Time")} type="time" InputLabelProps={{ shrink: true }} fullWidth />} /></Grid>
+      {([["decFullDayThresholdHours","full_day_threshold","Full-Day Threshold"],["decHalfDayThresholdHours","half_day_threshold","Half-Day Threshold"]] as const).map(([strName,strKey,strLabel]) => <Grid item xs={6} sm={4} key={strName}><Controller name={strName} control={control} render={({ field }) => <TextField {...field} data-control-id={`attendance.policy.${strName}.input`} label={t(strKey,strLabel)} type="number" fullWidth error={!!errors[strName]} inputProps={{ min: 0, step: .25 }} />} /></Grid>)}
       <Grid item xs={6} sm={4}><Controller name="intLateGraceMinutes" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance.policy.late-grace.input" label={t("late_grace", "Late Arrival Grace (min)")} type="number" fullWidth />} /></Grid>
       <Grid item xs={6} sm={4}><Controller name="intEarlyDepartureGraceMinutes" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance.policy.early-grace.input" label={t("early_grace", "Early Departure Grace (min)")} type="number" fullWidth />} /></Grid>
-      <Grid item xs={12} sm={4}><Controller name="intWorkHoursRoundingMinutes" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance.policy.rounding.input" label={t("rounding", "Work-Hour Rounding (min)")} type="number" fullWidth />} /></Grid>
-      {/* decAbsentThresholdHours stays part of the form (POC default 0) but is hidden from the
-          UI per the latest layout request - keeping only Full-Day/Half-Day thresholds visible. */}
+      <Grid item xs={6} sm={4}><Controller name="blnLateDeductionEnabled" control={control} render={({ field }) => <Box sx={{ border: "1px solid #d9e6ef", borderRadius: "9px", px: 1.25, height: 48, display: "flex", alignItems: "center" }}><FormControlLabel control={<Switch data-control-id="attendance.policy.late-deduction.switch" checked={field.value} onChange={field.onChange} />} label={t("late_deduction_enabled", "Late Arrival Deduction")} sx={{ m: 0 }} /></Box>} /></Grid>
+      <Grid item xs={6} sm={4}><Controller name="intLateArrivalsPerHalfDay" control={control} render={({ field }) => <TextField {...field} value={field.value ?? ""} data-control-id="attendance.policy.late-per-half.input" disabled={!blnLateDeductionEnabled} label={t("late_arrivals_per_half_day", "Late Arrivals per Half Day")} type="number" fullWidth error={!!errors.intLateArrivalsPerHalfDay} />} /></Grid>
+      <Grid item xs={6} sm={4}><Controller name="intLateArrivalsPerFullDay" control={control} render={({ field }) => <TextField {...field} value={field.value ?? ""} data-control-id="attendance.policy.late-per-full.input" disabled={!blnLateDeductionEnabled} label={t("late_arrivals_per_full_day", "Late Arrivals per Full Day")} type="number" fullWidth error={!!errors.intLateArrivalsPerFullDay} />} /></Grid>
+      {/* intWorkHoursRoundingMinutes and decAbsentThresholdHours stay part of the form (POC
+          defaults 0) but are hidden from the UI per the latest layout request. */}
+      <Box sx={{ display: "none" }}><Controller name="intWorkHoursRoundingMinutes" control={control} render={({ field }) => <input {...field} value={field.value ?? 0} />} /></Box>
       <Box sx={{ display: "none" }}><Controller name="decAbsentThresholdHours" control={control} render={({ field }) => <input {...field} value={field.value ?? 0} />} /></Box>
     </Grid>{errors.root?.message ? <Alert severity="error" sx={{ mt: 1 }}>{errors.root.message}</Alert> : null}</Paper></Grid>
     <Grid item xs={12} lg={6}><Paper variant="outlined" sx={{ p: 1.5, height: "100%" }}><Typography fontWeight={800} sx={{ mb: 1 }}>{t("punch_exception_rules", "Punch and Exception Rules")}</Typography>
