@@ -42,10 +42,6 @@ type ToastState = {
 const lstPayrollCycleModuleCodes = ["PAYROLL_CYCLE", "PAYROLL_CYCLES", "MASTER_PAYROLL_CYCLE"];
 const dicEmptySearch: SearchForm = { strName: "", strStatus: "All" };
 
-function formatCutoffDay(intCutoffDay: number | null) {
-  return intCutoffDay ? `Day ${intCutoffDay}` : "-";
-}
-
 export default function PayrollCycleListPage() {
   const objRouter = useRouter();
   const { t } = useModuleLabels("payroll-cycles");
@@ -59,7 +55,7 @@ export default function PayrollCycleListPage() {
 
   function openScheduleEditor(intPayrollCycleID: number, strMode: "edit" | "view" = "edit") {
     setPayrollScheduleSelectedID(intPayrollCycleID);
-    objRouter.push(strMode === "view" ? "/payroll/schedules/edit?mode=view" : "/payroll/schedules/edit");
+    objRouter.push("/payroll/schedules/edit");
   }
 
   async function loadPayrollCycles() {
@@ -123,8 +119,6 @@ export default function PayrollCycleListPage() {
           </Box>
         ),
         strPeriodType: dicRow.strPeriodType,
-        strCutoffDay: formatCutoffDay(dicRow.intCutoffDay),
-        strCutoffDaySortValue: Number(dicRow.intCutoffDay ?? 0),
         blnIsActive: (
           <span className={`${styles.statusPill} ${dicRow.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
             {dicRow.blnIsActive ? t("active") : t("inactive")}
@@ -140,7 +134,6 @@ export default function PayrollCycleListPage() {
       { field: "strCycleName", headerName: t("schedule_name", "Payroll Schedule") },
       { field: "strPayrollGroup", headerName: t("payroll_group"), sortable: false, filterable: false, width: 220 },
       { field: "strPeriodType", headerName: t("period_type") },
-      { field: "strCutoffDay", headerName: t("cutoff_day"), sortAccessor: (dicRow) => dicRow.strCutoffDaySortValue },
       { field: "blnIsActive", headerName: t("status"), sortable: false, filterable: false, width: 130 },
     ],
     [t]

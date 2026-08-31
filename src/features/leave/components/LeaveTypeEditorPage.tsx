@@ -42,6 +42,7 @@ import type {
   LeaveTypeAggregate,
   LeaveTypeEnrichedDto,
   LeaveTypeTextRow,
+  ResourceCapabilities,
 } from "@/features/leave/types";
 
 type ToastState = { blnOpen: boolean; strMessage: string; strSeverity: "success" | "error" };
@@ -282,15 +283,17 @@ function emptyAggregate(): LeaveTypeAggregate {
   };
 }
 
-export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMode: "new" | "edit" | "view"; intLeaveTypeID?: number }) {
+export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMode: "new" | "edit"; intLeaveTypeID?: number }) {
   const objRouter = useRouter();
   const { canDo } = useActionRights();
-  // Read-only in explicit view mode OR when the user lacks the granular right for this mode, so a
-  // direct URL to /edit or /new cannot bypass the Leave Types menu rights (the backend also enforces).
+  // Capabilities decided by the server and returned with the record. The screen opens read-only
+  // and enables editing only when the server says so, which is why no mode travels in the URL —
+  // there is nothing for a user to flip. Null until the record loads.
+  const [objCapabilities, setObjCapabilities] = useState<ResourceCapabilities | null>(null);
   const blnReadOnly =
-    strMode === "view" ||
-    (strMode === "edit" && !canDo("leave_types", "EDIT")) ||
-    (strMode === "new" && !canDo("leave_types", "ADD"));
+    strMode === "new"
+      ? !canDo("leave_types", "ADD")
+      : objCapabilities === null || !objCapabilities.blnCanEdit;
   const [objForm, setObjForm] = useState<LeaveTypeAggregate>(emptyAggregate());
   const [objLookups, setObjLookups] = useState<LeaveLookups>({});
   const [lstOtherTypes, setLstOtherTypes] = useState<LeaveTypeEnrichedDto[]>([]);
@@ -340,7 +343,9 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
         setObjLookups(objLookupResult);
         setLstOtherTypes(lstTypeResult);
         if (strMode !== "new" && intLeaveTypeID) {
-          const objAggregate = await leaveService.getLeaveTypeAggregate(intLeaveTypeID);
+          const objEnvelope = await leaveService.getLeaveTypeAggregate(intLeaveTypeID);
+          setObjCapabilities(objEnvelope.objCapabilities);
+          const objAggregate = objEnvelope.objData;
           if (!objAggregate.objPolicy) objAggregate.objPolicy = emptyPolicy();
           if (!objAggregate.lstRules) objAggregate.lstRules = [];
           if (!objAggregate.lstApplicability) objAggregate.lstApplicability = [];
@@ -595,7 +600,7 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={1.5}>
           {/* The page title lives here rather than in the app-shell header (see blnLeaveTypeEditorRoute). */}
           <Typography component="h1" sx={{ fontWeight: 800, fontSize: { xs: "1.1rem", md: "1.28rem" }, color: "#0f172a" }}>
-            {strMode === "new" ? "New Leave Type" : strMode === "view" ? "View Leave Type" : "Edit Leave Type"}
+            {strMode === "new" ? "New Leave Type" : blnReadOnly ? "View Leave Type" : "Edit Leave Type"}
           </Typography>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ width: { xs: "100%", sm: "auto" } }}>
             <Button

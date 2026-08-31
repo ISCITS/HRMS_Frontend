@@ -2,12 +2,11 @@ import LeaveTypeEditorPage from "@/features/leave/components/LeaveTypeEditorPage
 
 type LeaveTypePageProps = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ mode?: string | string[] }>;
 };
 
-export default async function LeaveTypeEditPage({ params, searchParams }: LeaveTypePageProps) {
+// No mode in the URL. The editor opens read-only and enables editing from the capabilities the
+// server returns with the record, so there is nothing here for a user to flip.
+export default async function LeaveTypeEditPage({ params }: LeaveTypePageProps) {
   const { id } = await params;
-  const { mode } = await searchParams;
-  const strMode = (Array.isArray(mode) ? mode[0] : mode) === "view" ? "view" : "edit";
-  return <LeaveTypeEditorPage strMode={strMode} intLeaveTypeID={Number(id)} />;
+  return <LeaveTypeEditorPage strMode="edit" intLeaveTypeID={Number(id)} />;
 }

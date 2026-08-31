@@ -121,7 +121,7 @@ export default function VersionLogListPage() {
             rowKey={dicRow.intID}
             blnCanView={blnCanView}
             blnCanEdit={blnCanEdit}
-            onView={() => objRouter.push(`/version-logs/edit/${dicRow.intID}?mode=view`)}
+            onView={() => objRouter.push(`/version-logs/edit/${dicRow.intID}`)}
             onEdit={blnCanEdit ? () => objRouter.push(`/version-logs/edit/${dicRow.intID}`) : undefined}
           />
         ),

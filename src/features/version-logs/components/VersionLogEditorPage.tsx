@@ -19,6 +19,7 @@ import { useRouter } from "next/navigation";
 
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/components/master/MasterScreen.module.css";
+import CommonEditModeBanner from "@/Common/components/CommonEditModeBanner";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useVersionLogLabels } from "@/features/version-logs/hooks/useVersionLogLabels";
 import {
@@ -70,10 +71,12 @@ export default function VersionLogEditorPage({
   const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
-  const blnForcedView = strMode === "view";
-  const blnReadOnly = blnForcedView || (strMode === "edit" && blnCanView && !blnCanEdit);
+  // The screen opens read-only and offers Edit only when the server grants the right, so
+  // nothing about the mode travels in the URL for a user to change.
+  const [blnEditRequested, setBlnEditRequested] = useState(strMode === "add");
+  const blnReadOnly = !blnEditRequested || (strMode === "edit" && blnCanView && !blnCanEdit);
   const blnCanLoadWorkspace = strMode === "add" ? blnCanAdd : blnCanView;
-  const blnCanSave = !blnForcedView && (strMode === "add" ? blnCanAdd : blnCanEdit);
+  const blnCanSave = blnEditRequested && (strMode === "add" ? blnCanAdd : blnCanEdit);
   const blnFieldDisabled = blnSaving || blnReadOnly || !blnCanSave;
 
   useEffect(() => {
@@ -152,7 +155,7 @@ export default function VersionLogEditorPage({
       );
       if (strMode === "add") {
         const strNextMode = blnCanEdit ? "edit" : "view";
-        objRouter.push(`/version-logs/edit/${dicSavedRecord.intID}${strNextMode === "view" ? "?mode=view" : ""}`);
+        objRouter.push(`/version-logs/edit/${dicSavedRecord.intID}`);
       }
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : t("save_failed", "Unable to save version log."));
@@ -276,7 +279,12 @@ export default function VersionLogEditorPage({
 
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
-      {blnReadOnly ? <Alert severity="info">{t("read_only_mode", "You have view-only access for Version Logs.")}</Alert> : null}
+      <CommonEditModeBanner
+        blnReadOnly={blnReadOnly}
+        blnCanEdit={strMode === "edit" && blnCanEdit}
+        fnOnEdit={() => setBlnEditRequested(true)}
+        strReadOnlyMessage={t("read_only_mode", "You have view-only access for Version Logs.")}
+      />
 
       <Paper
         sx={{

@@ -2,17 +2,12 @@ import VersionLogEditorPage from "@/features/version-logs/components/VersionLogE
 
 type EditVersionLogPageProps = {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ mode?: string }>;
 };
 
-export default async function EditVersionLogPage({
-  params,
-  searchParams
-}: EditVersionLogPageProps) {
+export default async function EditVersionLogPage({ params }: EditVersionLogPageProps) {
   const { id } = await params;
-  const objSearchParams = searchParams ? await searchParams : undefined;
   const intVersionLogID = Number(id);
-  const strMode = objSearchParams?.mode === "view" ? "view" : "edit";
+  const strMode = "edit";
 
   if (!Number.isFinite(intVersionLogID) || intVersionLogID <= 0) {
     return <VersionLogEditorPage strMode="view" />;

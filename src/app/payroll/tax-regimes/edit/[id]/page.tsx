@@ -2,15 +2,13 @@ import TaxRegimeWorkspaceTabs from "@/features/tax-regimes/components/TaxRegimeW
 
 type EditTaxRegimePageProps = {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ mode?: string }>;
 };
 
-export default async function EditTaxRegimePage({ params, searchParams }: EditTaxRegimePageProps) {
+export default async function EditTaxRegimePage({ params }: EditTaxRegimePageProps) {
   const { id } = await params;
-  const objSearchParams = searchParams ? await searchParams : undefined;
   return (
     <TaxRegimeWorkspaceTabs
-      strMode={objSearchParams?.mode === "view" ? "view" : "edit"}
+      strMode={"edit"}
       intTaxRegimeID={Number(id)}
     />
   );

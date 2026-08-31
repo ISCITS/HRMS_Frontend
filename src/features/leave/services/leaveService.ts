@@ -24,6 +24,7 @@ import type {
   LeaveRouteStepDto,
   LeaveTimelineDto,
   LeaveTypeAggregate,
+  LeaveTypeAggregateEnvelope,
   LeaveTypeDto,
   RestrictedHolidayDto,
   LeaveTypeEnrichedDto,
@@ -81,8 +82,8 @@ export const leaveService = {
     return objResult.Data ?? {};
   },
 
-  async getLeaveTypeAggregate(intLeaveTypeID: number): Promise<LeaveTypeAggregate> {
-    const objResult = await requestApi<LeaveTypeAggregate>({
+  async getLeaveTypeAggregate(intLeaveTypeID: number): Promise<LeaveTypeAggregateEnvelope> {
+    const objResult = await requestApi<LeaveTypeAggregateEnvelope>({
       strPath: `/leave/leave-types/${intLeaveTypeID}`,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: LEAVE_VIEW,
