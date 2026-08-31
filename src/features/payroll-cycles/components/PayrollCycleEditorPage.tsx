@@ -269,12 +269,6 @@ export default function PayrollCycleEditorPage({
                 {dicForm.strPeriodType || t("not_selected")}
               </Typography>
             </Paper>
-            <Paper sx={{ p: "10px", borderRadius: "var(--app-card-radius)", flex: 1, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(148,163,184,0.14)" }}>
-              <Typography sx={{ color: "#64748b", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("summary_cutoff")}</Typography>
-              <Typography sx={{ mt: 0.75, fontWeight: 800, color: "#0f172a" }}>
-                {dicForm.intCutoffDay.trim() ? `Day ${dicForm.intCutoffDay.trim()}` : t("cutoff_open")}
-              </Typography>
-            </Paper>
           </Stack>
         </Stack>
       </Paper>
@@ -327,22 +321,15 @@ export default function PayrollCycleEditorPage({
             }}
           >
             <TextField
-              label={t("payroll_group")}
-              inputProps={{ "controlId": "payroll-cycles.editor.payroll-group.select" }}
+              label={t("schedule_name", "Payroll Schedule Name")}
+              inputProps={{ "controlId": "payroll-cycles.editor.cycle-name.input" }}
               required
-              select
-              value={dicForm.intPayrollGroupID}
-              onChange={(objEvent) => updateField("intPayrollGroupID", objEvent.target.value ? Number(objEvent.target.value) : "")}
+              value={dicForm.strCycleName}
+              onChange={(objEvent) => updateField("strCycleName", objEvent.target.value)}
               disabled={blnFieldDisabled}
-              helperText={t("payroll_group_help")}
+              helperText={t("cycle_name_help")}
               fullWidth
-            >
-              {(objFormOptions?.lstPayrollGroups ?? []).map((dicOption) => (
-                <MenuItem key={dicOption.intID} value={dicOption.intID}>
-                  {dicOption.strLabel}{dicOption.strCode ? ` (${dicOption.strCode})` : ""}
-                </MenuItem>
-              ))}
-            </TextField>
+            />
 
             <TextField
               label={t("period_type")}
@@ -361,25 +348,22 @@ export default function PayrollCycleEditorPage({
             </TextField>
 
             <TextField
-              label={t("schedule_name", "Payroll Schedule Name")}
-              inputProps={{ "controlId": "payroll-cycles.editor.cycle-name.input" }}
+              label={t("payroll_group")}
+              inputProps={{ "controlId": "payroll-cycles.editor.payroll-group.select" }}
               required
-              value={dicForm.strCycleName}
-              onChange={(objEvent) => updateField("strCycleName", objEvent.target.value)}
+              select
+              value={dicForm.intPayrollGroupID}
+              onChange={(objEvent) => updateField("intPayrollGroupID", objEvent.target.value ? Number(objEvent.target.value) : "")}
               disabled={blnFieldDisabled}
-              helperText={t("cycle_name_help")}
+              helperText={t("payroll_group_help")}
               fullWidth
-            />
-
-            <TextField
-              label={t("cutoff_day")}
-              inputProps={{ "controlId": "payroll-cycles.editor.cutoff-day.input" }}
-              value={dicForm.intCutoffDay}
-              onChange={(objEvent) => updateField("intCutoffDay", objEvent.target.value.replace(/[^\d]/g, ""))}
-              disabled={blnFieldDisabled}
-              helperText={t("cutoff_day_help")}
-              fullWidth
-            />
+            >
+              {(objFormOptions?.lstPayrollGroups ?? []).map((dicOption) => (
+                <MenuItem key={dicOption.intID} value={dicOption.intID}>
+                  {dicOption.strLabel}{dicOption.strCode ? ` (${dicOption.strCode})` : ""}
+                </MenuItem>
+              ))}
+            </TextField>
           </Box>
         </Stack>
       </Paper>
