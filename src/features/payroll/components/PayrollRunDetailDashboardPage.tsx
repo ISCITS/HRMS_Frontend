@@ -76,7 +76,7 @@ type PayrollRunDetailDashboardPageProps = {
 type Tone = "blue" | "green" | "amber" | "red" | "slate";
 
 const lstPayrollRunModuleCodes = ["PAYROLL_RUN", "PAYROLL_RUNS", "PAYROLL_PROCESS", "PAYROLL_PROCESSES"];
-const lstWorkflowStepNames = ["Draft", "Validate", "Process", "Review Results", "Finalize Payroll", "Generate Payslips"] as const;
+const lstWorkflowStepNames = ["Draft", "Validate", "Process", "Generate Payslips"] as const;
 
 function formatDateTime(strDate: string | null) {
   if (!strDate) {
@@ -120,13 +120,11 @@ function getPayrollRunStatusLabel(strStatus: string) {
 
 function getWorkflowSteps(strRunStatus: string) {
   const strCurrentStep =
-    strRunStatus === "FINALIZED"
+    strRunStatus === "FINALIZED" || strRunStatus === "PROCESSED"
       ? "Generate Payslips"
-      : strRunStatus === "PROCESSED"
-        ? "Finalize Payroll"
-        : strRunStatus === "VALIDATED"
-          ? "Process"
-          : "Validate";
+      : strRunStatus === "VALIDATED"
+        ? "Process"
+        : "Validate";
   return lstWorkflowStepNames.map((strStep) => ({
     strStep,
     blnActive: strStep === strCurrentStep,
@@ -167,10 +165,6 @@ function isWorkflowStepEnabled(
       return blnCanValidate && objRun.strRunStatus === "DRAFT";
     case "Process":
       return canProcessPayrollRun(objRun, blnCanProcess);
-    case "Review Results":
-      return ["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus);
-    case "Finalize Payroll":
-      return blnCanFinalize && objRun.strRunStatus === "PROCESSED" && objRun.dicSummary.intValidationErrorCount <= 0;
     case "Generate Payslips":
       return blnCanGeneratePayslip && !blnPayslipLoading && ["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus);
     default:
@@ -375,12 +369,6 @@ function getWorkflowStepIcon(strStep: string) {
   if (strStep === "Process") {
     return <PlayArrowRoundedIcon sx={{ fontSize: 18 }} />;
   }
-  if (strStep === "Review Results") {
-    return <SummarizeRoundedIcon sx={{ fontSize: 18 }} />;
-  }
-  if (strStep === "Finalize Payroll") {
-    return <LockRoundedIcon sx={{ fontSize: 18 }} />;
-  }
   if (strStep === "Generate Payslips") {
     return <ReceiptLongRoundedIcon sx={{ fontSize: 18 }} />;
   }
@@ -452,15 +440,6 @@ function getWorkflowButtonVariant(strStep: string, objRun: PayrollRunDetailRecor
   }
   if (strStep === "Process") {
     if (["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus)) {
-      return "complete";
-    }
-    return blnEnabled || blnActive ? "current" : "disabled";
-  }
-  if (strStep === "Review Results") {
-    return ["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus) ? "available" : "disabled";
-  }
-  if (strStep === "Finalize Payroll") {
-    if (objRun.strRunStatus === "FINALIZED") {
       return "complete";
     }
     return blnEnabled || blnActive ? "current" : "disabled";
@@ -585,27 +564,6 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
       setStrSuccess(t("status_update_success", "Payroll run updated successfully."));
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to update payroll run status.");
-    } finally {
-      setBlnSaving(false);
-      setStrActionLoaderLabel("");
-    }
-  }
-
-  async function finalizeRun() {
-    if (!blnCanFinalize) {
-      return;
-    }
-    setBlnSaving(true);
-    setStrActionLoaderLabel(t("finalizing_run", "Finalizing payroll run..."));
-    setStrError("");
-    setStrSuccess("");
-    try {
-      const dicRun = await payrollRunService.closePayrollRun(intRunID);
-      setObjRun(dicRun);
-      setBlnIsLocked(dicRun.blnIsLocked);
-      setStrSuccess(t("finalize_complete", "Payroll run finalized successfully."));
-    } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to finalize payroll run.");
     } finally {
       setBlnSaving(false);
       setStrActionLoaderLabel("");
@@ -932,11 +890,6 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
     objRouter.push(`/payroll/process-log/run/${intRunID}`);
   }
 
-  function goToReviewResults() {
-    handleCloseActions();
-    setStrActiveTab("review");
-  }
-
   async function openResultLinesDialog(intResultID: number) {
     setBlnResultLinesLoading(true);
     setStrActionLoaderLabel(t("opening_result_lines", "Opening earnings & deductions..."));
@@ -1122,13 +1075,9 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
                   ? validateRun
                   : dicStep.strStep === "Process"
                     ? processRun
-                    : dicStep.strStep === "Review Results"
-                      ? goToReviewResults
-                      : dicStep.strStep === "Finalize Payroll"
-                        ? finalizeRun
-                        : dicStep.strStep === "Generate Payslips"
-                          ? generateAllPayslips
-                          : undefined;
+                    : dicStep.strStep === "Generate Payslips"
+                      ? generateAllPayslips
+                      : undefined;
               const strVariant = getWorkflowButtonVariant(dicStep.strStep, objRun, dicStep.blnActive, blnEnabled);
               return (
                 <Box key={dicStep.strStep} sx={{ alignItems: "center", display: "flex", gap: 0.75 }}>
