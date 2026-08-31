@@ -1746,7 +1746,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </MenuItem>
       </Menu>
 
-      <Dialog open={blnLogoutDialogOpen} onClose={() => setBlnLogoutDialogOpen(false)} fullWidth maxWidth="xs" {...getAutomationProps("app-shell.logout.dialog")}>
+      <Dialog
+        open={blnLogoutDialogOpen}
+        onClose={() => setBlnLogoutDialogOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{ sx: { maxWidth: "400px" } }}
+        {...getAutomationProps("app-shell.logout.dialog")}
+      >
         <DialogTitle>{tCommon("logout", "Logout")}</DialogTitle>
         <DialogContent>
           <Typography>{tCommon("confirm_logout", "Are you sure you want to logout?")}</Typography>

@@ -49,6 +49,19 @@ const objEmptyEmployeeOptions: EmployeeFormOptions = {
   lstEmploymentStatuses: [],
   lstAddressTypes: [],
   lstTaxRegimeCodes: [],
+  lstMotherTongues: [],
+  lstNationalities: [],
+  lstBloodGroups: [],
+  lstReligions: [],
+  lstMaritalStatuses: [],
+  lstEntryModes: [],
+  lstJobTypes: [],
+  lstConfirmationTypes: [],
+  lstRestDays: [],
+  lstEmployeeFunctions: [],
+  lstEmployeeCategories: [],
+  lstPaymentTypes: [],
+  lstBankAccountTypes: [],
 };
 
 function getErrorMessage(objError: unknown) {

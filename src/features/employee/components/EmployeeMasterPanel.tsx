@@ -33,6 +33,7 @@ import BlockingLoader from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";
 import { useEmployeeLabels } from "@/features/employee/hooks/useEmployeeLabels";
 import { employeeService } from "@/features/employee/services/employeeService";
+import { dicEmptyEmployeeForm, toEmployeeFormValues } from "@/features/employee/EmployeeFormUtils";
 import type { EmployeeDetailRecord, EmployeeFormOptions, EmployeeFormValues, EmployeeListRecord, EmployeeStatus } from "@/features/employee/types";
 
 type EmployeeMode = "add" | "edit" | "view";
@@ -45,64 +46,10 @@ type SearchForm = {
 const dicEmptySearch: SearchForm = { name: "", code: "", status: "All" };
 const lstRowsPerPageOptions = [10, 20, 50];
 
-const dicEmptyForm: EmployeeFormValues = {
-  strEmployeeCode: "",
-  strTitle: "",
-  strFirstName: "",
-  strMiddleName: "",
-  blnIsWorker: false,
-  strLastName: "",
-  dtDateOfBirth: "",
-  dtDateOfJoining: "",
-  intEmploymentTypeID: "",
-  intDepartmentID: "",
-  intDesignationID: "",
-  intGradeID: "",
-  intCostCenterID: "",
-  intLocationID: "",
-  intPayrollGroupID: "",
-  intManagerEmployeeID: "",
-  intLineManagerEmployeeID: "",
-  strWorkEmail: "",
-  strPersonalEmail: "",
-  strMobileNumber: "",
-  strGender: "",
-  intPreferredLanguageID: "",
-  strEmploymentStatus: "Active",
-  dtDateOfExit: "",
-  blnIsEssEnabled: true,
-  blnIsPartialSave: false
-};
+const dicEmptyForm: EmployeeFormValues = { ...dicEmptyEmployeeForm };
 
 function toFormValues(dicRecord: EmployeeDetailRecord): EmployeeFormValues {
-  return {
-    strEmployeeCode: dicRecord.strEmployeeCode ?? "",
-    strTitle: dicRecord.strTitle ?? "",
-    strFirstName: dicRecord.strFirstName ?? "",
-    strMiddleName: dicRecord.strMiddleName ?? "",
-    blnIsWorker: dicRecord.blnIsWorker ?? false,
-    strLastName: dicRecord.strLastName ?? "",
-    dtDateOfBirth: dicRecord.dtDateOfBirth ?? "",
-    dtDateOfJoining: dicRecord.dtDateOfJoining ?? "",
-    intEmploymentTypeID: dicRecord.intEmploymentTypeID ?? "",
-    intDepartmentID: dicRecord.intDepartmentID ?? "",
-    intDesignationID: dicRecord.intDesignationID ?? "",
-    intGradeID: dicRecord.intGradeID ?? "",
-    intCostCenterID: dicRecord.intCostCenterID ?? "",
-    intLocationID: dicRecord.intLocationID ?? "",
-    intPayrollGroupID: dicRecord.intPayrollGroupID ?? "",
-    intManagerEmployeeID: dicRecord.intManagerEmployeeID ?? "",
-    intLineManagerEmployeeID: dicRecord.intLineManagerEmployeeID ?? "",
-    strWorkEmail: dicRecord.strWorkEmail ?? "",
-    strPersonalEmail: dicRecord.strPersonalEmail ?? "",
-    strMobileNumber: dicRecord.strMobileNumber ?? "",
-    strGender: dicRecord.strGender ?? "",
-    intPreferredLanguageID: dicRecord.intPreferredLanguageID ?? "",
-    strEmploymentStatus: dicRecord.strEmploymentStatus,
-    dtDateOfExit: dicRecord.dtDateOfExit ?? "",
-    blnIsEssEnabled: dicRecord.blnIsEssEnabled,
-    blnIsPartialSave: dicRecord.blnIsPartialSave ?? false
-  };
+  return toEmployeeFormValues(dicRecord);
 }
 
 function formatDisplayDate(strDate: string | null): string {
