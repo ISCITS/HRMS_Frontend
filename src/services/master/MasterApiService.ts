@@ -276,6 +276,7 @@ export type PayrollCycleFormOptionsApiRecord = {
 
 export type PayrollGroupApiRecord = {
   intID: number;
+  strRecordUUID: string;
   intTenantID: number;
   intCompanyID: number;
   strPayrollGroupCode: string;
@@ -496,6 +497,8 @@ export type VersionLogApiRecord = {
 
 export type EmployeeApiRecord = {
   intID: number;
+  /** Public identifier used in URLs; the internal id stays server-side. */
+  strRecordUUID: string;
   strEmployeeCode: string;
   strFullName: string;
   blnIsWorker: boolean;
@@ -514,6 +517,8 @@ export type EmployeeApiRecord = {
 
 export type EmployeeDetailApiRecord = {
   intID: number;
+  /** Public identifier used in URLs; the internal id stays server-side. */
+  strRecordUUID: string;
   strEmployeeCode: string;
   strTitle: string | null;
   strFirstName: string;
@@ -1248,6 +1253,7 @@ export type SalaryStructureFormOptionsApiRecord = {
 
 export type EmployeeSalaryListApiRecord = {
   intEmployeeID: number;
+  strEmployeeRecordUUID: string;
   strEmployeeCode: string;
   strEmployeeName: string;
   strWorkEmail: string | null;
@@ -1360,6 +1366,7 @@ export type EmployeeSalaryHistoryApiRecord = {
 export type EmployeeSalaryDetailApiRecord = {
   objEmployeeSummary: {
     intEmployeeID: number;
+    strEmployeeRecordUUID: string;
     strEmployeeCode: string;
     strEmployeeName: string;
     strWorkEmail: string | null;
@@ -2574,7 +2581,7 @@ export const masterApiService = {
 
   // Creates and links an ESS user for an employee that has none (Employee Master -> Create User
   // Account). Identity is derived server-side from the employee record.
-  createEmployeeUserAccount(intEmployeeID: number, objBody: { intEssUserGroupID?: number | null }) {
+  createEmployeeUserAccount(intEmployeeID: string | number, objBody: { intEssUserGroupID?: number | null }) {
     return requestApi<UserApiRecord>({
       strPath: buildApiPath(MasterApiResource.Employee, intEmployeeID, "user-account"),
       strMethod: ApiRequestMethod.Post,
@@ -2601,11 +2608,14 @@ export const masterApiService = {
     });
   },
 
-  getEmployeeById(intID: number, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeView) {
+  // Accepts the public record_uuid or the legacy internal id; the endpoint resolves either while
+  // callers migrate, and use of the internal id is counted server-side.
+  getEmployeeById(objID: string | number, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeView) {
+    const objBody = typeof objID === "string" && !/^\d+$/.test(objID) ? { strRecordUUID: objID } : { intID: Number(objID) };
     return requestApi<EmployeeDetailApiRecord>({
       strPath: buildApiPath(MasterApiResource.Employee, MasterApiRouteSegment.Detail),
       strMethod: ApiRequestMethod.Post,
-      objBody: { intID },
+      objBody,
       strMenuAction
     });
   },
@@ -2729,7 +2739,7 @@ export const masterApiService = {
     });
   },
 
-  updateEmployeeExperience(intEmployeeID: number, intExperienceID: number, objBody: Record<string, unknown>, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeExperienceSave) {
+  updateEmployeeExperience(intEmployeeID: string | number, intExperienceID: number, objBody: Record<string, unknown>, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeExperienceSave) {
     return requestApi<EmployeeExperienceApiRecord>({
       strPath: buildApiPath(
         MasterApiResource.Employee,
@@ -2743,7 +2753,7 @@ export const masterApiService = {
     });
   },
 
-  deleteEmployeeExperience(intEmployeeID: number, intExperienceID: number) {
+  deleteEmployeeExperience(intEmployeeID: string | number, intExperienceID: number) {
     return requestApi<EmployeeExperienceApiRecord>({
       strPath: buildApiPath(
         MasterApiResource.Employee,
@@ -2773,7 +2783,7 @@ export const masterApiService = {
     });
   },
 
-  updateEmployeeQualification(intEmployeeID: number, intQualificationID: number, objBody: Record<string, unknown>, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeQualificationSave) {
+  updateEmployeeQualification(intEmployeeID: string | number, intQualificationID: number, objBody: Record<string, unknown>, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeQualificationSave) {
     return requestApi<EmployeeQualificationApiRecord>({
       strPath: buildApiPath(
         MasterApiResource.Employee,
@@ -2787,7 +2797,7 @@ export const masterApiService = {
     });
   },
 
-  deleteEmployeeQualification(intEmployeeID: number, intQualificationID: number) {
+  deleteEmployeeQualification(intEmployeeID: string | number, intQualificationID: number) {
     return requestApi<EmployeeQualificationApiRecord>({
       strPath: buildApiPath(
         MasterApiResource.Employee,
@@ -2991,11 +3001,13 @@ export const masterApiService = {
     });
   },
 
-  getPayrollGroup(intID: number) {
+  // Accepts the public record_uuid or the legacy internal id; the endpoint resolves either.
+  getPayrollGroup(objID: string | number) {
+    const objBody = typeof objID === "string" && !/^\d+$/.test(objID) ? { strRecordUUID: objID } : { intID: Number(objID) };
     return requestApi<PayrollGroupApiRecord>({
       strPath: buildApiPath(MasterApiResource.PayrollGroups, MasterApiRouteSegment.Detail),
       strMethod: ApiRequestMethod.Post,
-      objBody: { intID },
+      objBody,
       strMenuAction: MasterMenuAction.PayrollGroupGet
     });
   },
@@ -3017,7 +3029,8 @@ export const masterApiService = {
     });
   },
 
-  updatePayrollGroup(intID: number, objBody: Record<string, unknown>) {
+  updatePayrollGroup(
+    intID: string | number, objBody: Record<string, unknown>) {
     return requestApi<PayrollGroupApiRecord>({
       strPath: buildApiPath(MasterApiResource.PayrollGroups, intID),
       strMethod: ApiRequestMethod.Put,
@@ -3394,7 +3407,7 @@ export const masterApiService = {
     });
   },
 
-  getEmployeeSalaryDetail(intEmployeeID: number) {
+  getEmployeeSalaryDetail(intEmployeeID: string | number) {
     return requestApi<EmployeeSalaryDetailApiRecord>({
       strPath: buildApiPath(MasterApiResource.EmployeeSalary, MasterApiRouteSegment.Detail),
       strMethod: ApiRequestMethod.Post,
@@ -3403,7 +3416,7 @@ export const masterApiService = {
     });
   },
 
-  getEmployeeSalarySummary(intEmployeeID: number) {
+  getEmployeeSalarySummary(intEmployeeID: string | number) {
     return requestApi<EmployeeSalarySummaryApiRecord>({
       strPath: buildApiPath(
         MasterApiResource.EmployeeSalary,
@@ -3416,7 +3429,7 @@ export const masterApiService = {
     });
   },
 
-  previewEmployeeSalaryRevision(intEmployeeID: number, objBody: Record<string, unknown>) {
+  previewEmployeeSalaryRevision(intEmployeeID: string | number, objBody: Record<string, unknown>) {
     return requestApi<EmployeeSalaryRevisionPreviewApiRecord>({
       strPath: buildApiPath(MasterApiResource.EmployeeSalary, intEmployeeID, MasterApiRouteSegment.Revisions, "preview"),
       strMethod: ApiRequestMethod.Post,
@@ -3425,7 +3438,7 @@ export const masterApiService = {
     });
   },
 
-    createEmployeeSalaryRevision(intEmployeeID: number, objBody: Record<string, unknown>) {
+    createEmployeeSalaryRevision(intEmployeeID: string | number, objBody: Record<string, unknown>) {
       return requestApi<EmployeeSalaryDetailApiRecord>({
         strPath: buildApiPath(MasterApiResource.EmployeeSalary, intEmployeeID, MasterApiRouteSegment.Revisions),
         strMethod: ApiRequestMethod.Post,
@@ -3434,7 +3447,7 @@ export const masterApiService = {
       });
     },
 
-    unassignEmployeeSalary(intEmployeeID: number) {
+    unassignEmployeeSalary(intEmployeeID: string | number) {
       return requestApi<EmployeeSalaryDetailApiRecord>({
         strPath: buildApiPath(MasterApiResource.EmployeeSalary, intEmployeeID, MasterApiRouteSegment.Unassign),
         strMethod: ApiRequestMethod.Post,

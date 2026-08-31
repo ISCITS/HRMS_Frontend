@@ -27,7 +27,8 @@ export function useEmployeeOptions() {
   return { lstEmployees, blnLoading, strError };
 }
 
-export function useEmployeeLeavePlan(intEmployeeID: number, intLeaveYear: number) {
+// Accepts the employee's public identifier from the URL; every endpoint below dual-accepts.
+export function useEmployeeLeavePlan(intEmployeeID: string | number, intLeaveYear: number) {
   const [objEmployee, setObjEmployee] = useState<EmployeeDetailRecord | null>(null);
   const [objOverview, setObjOverview] = useState<EmployeeLeavePlanOverview | null>(null);
   const [objCurrentPlan, setObjCurrentPlan] = useState<LeavePlan | null>(null);

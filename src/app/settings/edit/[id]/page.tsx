@@ -4,18 +4,10 @@ type EditApprovalFlowPageProps = {
   params: Promise<{
     id: string;
   }>;
-  searchParams?: Promise<{
-    mode?: string;
-  }>;
 };
 
-export default async function EditApprovalFlowPage({ params, searchParams }: EditApprovalFlowPageProps) {
+// No mode in the URL: the editor opens read-only and offers Edit from the caller's rights.
+export default async function EditApprovalFlowPage({ params }: EditApprovalFlowPageProps) {
   const { id } = await params;
-  const objSearchParams = searchParams ? await searchParams : undefined;
-  return (
-    <ApprovalFlowEditorPage
-      intApprovalFlowID={Number(id)}
-      blnReadOnlyView={objSearchParams?.mode === "view"}
-    />
-  );
+  return <ApprovalFlowEditorPage intApprovalFlowID={Number(id)} />;
 }

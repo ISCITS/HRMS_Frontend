@@ -30,6 +30,8 @@ export type RestrictedHolidayDto = {
 // Enterprise leave-type row (GET /leave/leave-types) — master + current-policy summary + localized name.
 export type LeaveTypeEnrichedDto = {
   intID: number;
+  /** Public identifier used in URLs and API paths; the internal id stays server-side. */
+  strRecordUUID: string;
   intCompanyID: number | null;
   strTypeCode: string;
   strTypeName: string;

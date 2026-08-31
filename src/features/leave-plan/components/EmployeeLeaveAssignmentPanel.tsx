@@ -213,8 +213,8 @@ export default function EmployeeLeaveAssignmentPanel() {
             rowKey={objEmployee.intID}
             blnCanView
             blnCanEdit={blnCanManage}
-            onView={() => objRouter.push(`/leave/plan-assignments/${objEmployee.intID}?mode=view`)}
-            onEdit={() => objRouter.push(`/leave/plan-assignments/${objEmployee.intID}`)}
+            onView={() => objRouter.push(`/leave/plan-assignments/${objEmployee.strRecordUUID}`)}
+            onEdit={() => objRouter.push(`/leave/plan-assignments/${objEmployee.strRecordUUID}`)}
           />
         ),
         strEmployeeCode: objEmployee.strEmployeeCode,

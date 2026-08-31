@@ -196,11 +196,11 @@ export default function PayrollCycleEditorPage({
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
             <Box>
               <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
-                {strMode === "view"
-                  ? t("schedule_view_title")
-                  : strMode === "edit"
-                    ? t("schedule_edit_title")
-                    : t("schedule_add_title")}
+                {strMode === "add"
+                  ? t("schedule_add_title")
+                  : blnReadOnly
+                    ? t("schedule_view_title")
+                    : t("schedule_edit_title")}
               </Typography>
               <Typography sx={{ color: "#64748b", mt: 0.75 }}>
                 {t("schedule_subtitle")}

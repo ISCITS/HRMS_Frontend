@@ -98,6 +98,7 @@ function mapEmployeeDetailRecord(dicRecord: EmployeeDetailApiRecord): EmployeeDe
   return {
     ...dicRecord,
     intID: dicRecord.intID,
+    strRecordUUID: String(dicRecord.strRecordUUID ?? ""),
     strEmployeeCode: dicRecord.strEmployeeCode,
     strTitle: dicRecord.strTitle,
     strFirstName: dicRecord.strFirstName,
@@ -179,8 +180,8 @@ export const employeeService = {
     return objResult.Data;
   },
 
-  async getEmployeeById(intEmployeeID: number, objOptions?: EmployeeServiceRequestOptions): Promise<EmployeeDetailRecord> {
-    const objResult = await masterApiService.getEmployeeById(intEmployeeID, objOptions?.strMenuAction);
+  async getEmployeeById(objEmployeeID: string | number, objOptions?: EmployeeServiceRequestOptions): Promise<EmployeeDetailRecord> {
+    const objResult = await masterApiService.getEmployeeById(objEmployeeID, objOptions?.strMenuAction);
     return mapEmployeeDetailRecord(objResult.Data);
   },
 

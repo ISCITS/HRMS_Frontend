@@ -120,7 +120,7 @@ export default function ApprovalFlowListPage() {
         blnCanEdit={blnCanEdit}
         rowKey={objRow.intID}
         testIdPrefix="approval-flows.row"
-        onView={() => objRouter.push(`/settings/edit/${objRow.intID}?mode=view`)}
+        onView={() => objRouter.push(`/settings/edit/${objRow.intID}`)}
         onEdit={() => objRouter.push(`/settings/edit/${objRow.intID}`)}
       />
     ),

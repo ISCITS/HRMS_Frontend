@@ -135,18 +135,18 @@ export const employeeSalaryService = {
     };
   },
 
-  async getEmployeeSalaryDetail(intEmployeeID: number): Promise<EmployeeSalaryDetailRecord> {
+  async getEmployeeSalaryDetail(intEmployeeID: string | number): Promise<EmployeeSalaryDetailRecord> {
     const objResult = await masterApiService.getEmployeeSalaryDetail(intEmployeeID);
     return objResult.Data;
   },
 
-  async getEmployeeSalarySummary(intEmployeeID: number): Promise<EmployeeSalarySummaryRecord> {
+  async getEmployeeSalarySummary(intEmployeeID: string | number): Promise<EmployeeSalarySummaryRecord> {
     const objResult = await masterApiService.getEmployeeSalarySummary(intEmployeeID);
     return objResult.Data;
   },
 
   async previewRevision(
-    intEmployeeID: number,
+    intEmployeeID: string | number,
     dicValues: EmployeeSalaryRevisionFormValues
   ): Promise<EmployeeSalaryRevisionPreviewRecord> {
     const objResult = await masterApiService.previewEmployeeSalaryRevision(intEmployeeID, {
@@ -172,7 +172,7 @@ export const employeeSalaryService = {
   },
 
   async createRevision(
-    intEmployeeID: number,
+    intEmployeeID: string | number,
     dicValues: EmployeeSalaryRevisionFormValues
   ): Promise<EmployeeSalaryDetailRecord> {
     const objResult = await masterApiService.createEmployeeSalaryRevision(intEmployeeID, {
@@ -197,7 +197,7 @@ export const employeeSalaryService = {
     return objResult.Data;
   },
 
-  async unassignSalary(intEmployeeID: number): Promise<EmployeeSalaryDetailRecord> {
+  async unassignSalary(intEmployeeID: string | number): Promise<EmployeeSalaryDetailRecord> {
     const objResult = await masterApiService.unassignEmployeeSalary(intEmployeeID);
     return objResult.Data;
   }

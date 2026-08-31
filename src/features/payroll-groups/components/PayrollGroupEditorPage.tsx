@@ -39,14 +39,15 @@ import { useModuleActionAccess } from "@/features/security/hooks/useModuleAction
 
 type PayrollGroupEditorPageProps = {
   strMode: "add" | "edit" | "view";
-  intPayrollGroupID?: number;
+  /** Public identifier from the URL. */
+  strPayrollGroupID?: string;
 };
 
 const lstPayrollGroupModuleCodes = ["PAYROLL_GROUP", "PAYROLL_GROUPS", "MASTER_PAYROLL_GROUP"];
 
 export default function PayrollGroupEditorPage({
   strMode,
-  intPayrollGroupID
+  strPayrollGroupID
 }: PayrollGroupEditorPageProps) {
   const objRouter = useRouter();
   const { t } = useModuleLabels("payroll-groups");
@@ -93,8 +94,8 @@ export default function PayrollGroupEditorPage({
           return;
         }
         setObjFormOptions(objOptions);
-        if ((strMode === "edit" || strMode === "view") && intPayrollGroupID) {
-          const dicDetail = await payrollGroupService.getPayrollGroupById(intPayrollGroupID);
+        if (strMode === "edit" && strPayrollGroupID) {
+          const dicDetail = await payrollGroupService.getPayrollGroupById(strPayrollGroupID);
           if (!blnMounted) {
             return;
           }
@@ -117,7 +118,7 @@ export default function PayrollGroupEditorPage({
       blnMounted = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blnCanLoadWorkspace, blnRightsLoading, intPayrollGroupID, strMode]);
+  }, [blnCanLoadWorkspace, blnRightsLoading, strPayrollGroupID, strMode]);
 
   // Fixed two-row multilingual structure (tenant primary + tenant secondary language),
   // matching every other master screen's pattern (see DepartmentMasterPanel.tsx) rather
@@ -247,8 +248,8 @@ export default function PayrollGroupEditorPage({
     setStrError("");
     setStrSuccess("");
     try {
-      const dicSavedRecord = strMode === "edit" && intPayrollGroupID
-        ? await payrollGroupService.updatePayrollGroup(intPayrollGroupID, dicForm)
+      const dicSavedRecord = strMode === "edit" && strPayrollGroupID
+        ? await payrollGroupService.updatePayrollGroup(strPayrollGroupID, dicForm)
         : await payrollGroupService.createPayrollGroup(dicForm);
       setDicForm(toPayrollGroupFormValues(dicSavedRecord));
       setObjUsage(dicSavedRecord.dicUsage);
@@ -258,7 +259,7 @@ export default function PayrollGroupEditorPage({
           : t("group_create_success", "Payroll group created successfully.")
       );
       if (strMode === "add") {
-        objRouter.push(`/masters/payroll-groups/edit/${dicSavedRecord.intID}`);
+        objRouter.push(`/masters/payroll-groups/edit/${dicSavedRecord.strRecordUUID}`);
       }
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : t("group_save_failed", "Unable to save payroll group."));
@@ -308,11 +309,11 @@ export default function PayrollGroupEditorPage({
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
             <Box>
               <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
-                {strMode === "view"
-                  ? t("group_view_title", "View Payroll Group")
-                  : strMode === "edit"
-                    ? t("group_edit_title", "Edit Payroll Group")
-                    : t("group_add_title", "Add Payroll Group")}
+                {strMode === "add"
+                  ? t("group_add_title", "Add Payroll Group")
+                  : blnReadOnly
+                    ? t("group_view_title", "View Payroll Group")
+                    : t("group_edit_title", "Edit Payroll Group")}
               </Typography>
               <Typography sx={{ color: "#64748b", mt: 0.75 }}>
                 {t("group_subtitle", "Group employees for payroll processing and scheduling.")}

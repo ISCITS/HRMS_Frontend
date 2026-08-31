@@ -12,6 +12,7 @@ import type {
 function mapApiRecord(dicRecord: PayrollGroupApiRecord): PayrollGroupDetailRecord {
   return {
     intID: dicRecord.intID,
+    strRecordUUID: String(dicRecord.strRecordUUID ?? ""),
     intTenantID: dicRecord.intTenantID,
     intCompanyID: dicRecord.intCompanyID,
     strPayrollGroupName: dicRecord.strPayrollGroupName,
@@ -79,8 +80,8 @@ export const payrollGroupService = {
     return objResult.Data.map(mapApiRecord);
   },
 
-  async getPayrollGroupById(intPayrollGroupID: number): Promise<PayrollGroupDetailRecord> {
-    const objResult = await masterApiService.getPayrollGroup(intPayrollGroupID);
+  async getPayrollGroupById(objPayrollGroupID: string | number): Promise<PayrollGroupDetailRecord> {
+    const objResult = await masterApiService.getPayrollGroup(objPayrollGroupID);
     return mapApiRecord(objResult.Data);
   },
 
@@ -95,7 +96,7 @@ export const payrollGroupService = {
   },
 
   async updatePayrollGroup(
-    intPayrollGroupID: number,
+    intPayrollGroupID: string | number,
     dicValues: PayrollGroupFormValues
   ): Promise<PayrollGroupDetailRecord> {
     const objResult = await masterApiService.updatePayrollGroup(

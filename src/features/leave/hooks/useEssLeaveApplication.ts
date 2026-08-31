@@ -56,7 +56,9 @@ export function useEssLeaveApplication() {
 
   const fnGetPolicy = useCallback(async (intLeaveTypeID: number): Promise<LeaveTypeAggregate> => {
     // The detail endpoint now returns { objData, objCapabilities }; this caller only needs the record.
-    return (await leaveService.getLeaveTypeAggregate(intLeaveTypeID)).objData;
+    // The endpoint dual-accepts while callers migrate, so the internal id this ESS flow already
+    // holds still resolves. It is counted as legacy use until this caller carries the UUID too.
+    return (await leaveService.getLeaveTypeAggregate(String(intLeaveTypeID))).objData;
   }, []);
 
   const fnGetApplication = useCallback(async (intApplicationID: number) => {

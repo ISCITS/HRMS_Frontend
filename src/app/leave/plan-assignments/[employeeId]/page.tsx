@@ -2,12 +2,11 @@ import EmployeeLeavePlanDetailPage from "@/features/leave-plan/components/Employ
 
 type EmployeeLeavePlanPageProps = {
   params: Promise<{ employeeId: string }>;
-  searchParams: Promise<{ mode?: string | string[] }>;
 };
 
-export default async function EmployeeLeavePlanPage({ params, searchParams }: EmployeeLeavePlanPageProps) {
+// The segment is the employee's public identifier (record_uuid), not the internal row id, and no
+// mode travels in the URL - the screen opens read-only and offers Edit from the caller's rights.
+export default async function EmployeeLeavePlanPage({ params }: EmployeeLeavePlanPageProps) {
   const { employeeId } = await params;
-  const { mode } = await searchParams;
-  const strMode = (Array.isArray(mode) ? mode[0] : mode) === "view" ? "view" : "manage";
-  return <EmployeeLeavePlanDetailPage intEmployeeID={Number(employeeId)} strMode={strMode} />;
+  return <EmployeeLeavePlanDetailPage strEmployeeID={employeeId} />;
 }

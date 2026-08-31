@@ -34,6 +34,7 @@ import {
   type FlexiDeclarationContextRecord,
   type FlexiDeclarationLineRecord,
 } from "@/features/flexi-pay-declaration/services/flexiPayDeclarationService";
+import CommonEditModeBanner from "@/Common/components/CommonEditModeBanner";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useEmployeeSalaryLabels } from "@/features/employee-salary/hooks/useEmployeeSalaryLabels";
 import { employeeSalaryService, type EmployeeSalaryRevisionPreviewRecord } from "@/features/employee-salary/services/employeeSalaryService";
@@ -53,8 +54,8 @@ import type {
 } from "@/features/employee-salary/types";
 
 type EmployeeSalaryDetailPageProps = {
-  intEmployeeID: number;
-  blnViewMode?: boolean;
+  /** Employee's public identifier from the URL; the numeric id comes from the loaded record. */
+  strEmployeeID: string;
   blnRevisionMode?: boolean;
   strReturnTo?: string;
 };
@@ -1333,7 +1334,7 @@ function buildRevisionForm(
   };
 }
 
-export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = false, blnRevisionMode = false, strReturnTo = "/employee-salary" }: EmployeeSalaryDetailPageProps) {
+export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMode = false, strReturnTo = "/employee-salary" }: EmployeeSalaryDetailPageProps) {
   const objRouter = useRouter();
   const { t } = useEmployeeSalaryLabels();
   const refTranslate = useRef(t);
@@ -1363,7 +1364,10 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
   const blnCanEdit = canDoAny("edit");
   const blnCanSubmit = canDoAny("submit") || canDoAny("save");
   const blnCanMutate = blnCanAdd || blnCanEdit || blnCanSubmit;
-  const blnEffectiveViewMode = blnViewMode || isReadOnly() || (blnCanView && !blnCanMutate);
+  // Opens read-only; Edit appears only when the server grants a mutating right, so no mode is in
+  // the URL for a user to change.
+  const [blnEditRequested, setBlnEditRequested] = useState(false);
+  const blnEffectiveViewMode = !blnEditRequested || isReadOnly() || (blnCanView && !blnCanMutate);
   const blnCanLoadWorkspace = blnCanView;
   const blnHasAssignedSalary = Boolean(objDetail?.objAssignedStructure);
   const blnCanViewWageBreakdownPreview = hasPermissionCode("WAGES_VIEW") && !blnIsRevisionMode;
@@ -1387,7 +1391,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
       setBlnLoading(true);
       setStrError("");
       try {
-        const dicDetail = await employeeSalaryService.getEmployeeSalaryDetail(intEmployeeID);
+        const dicDetail = await employeeSalaryService.getEmployeeSalaryDetail(strEmployeeID);
         const [dicFormOptions, dicSalaryComponents] = await Promise.all([
           employeeSalaryService.getFormOptions().catch(() => ({
             lstEmployees: [],
@@ -1407,10 +1411,10 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
           const dicMatchedDeclaration =
             lstDeclarationHistory.find(
               (dicRow) =>
-                dicRow.intEmployeeID === intEmployeeID &&
+                dicRow.intEmployeeID === dicDetail.objEmployeeSummary.intEmployeeID &&
                 (!strFinancialYearCode || dicRow.strFinancialYearCode === strFinancialYearCode)
             ) ??
-            lstDeclarationHistory.find((dicRow) => dicRow.intEmployeeID === intEmployeeID);
+            lstDeclarationHistory.find((dicRow) => dicRow.intEmployeeID === dicDetail.objEmployeeSummary.intEmployeeID);
           intDeclarationID = dicMatchedDeclaration?.intDeclarationID ?? null;
         }
         const dicFlexiDeclarationContext = intDeclarationID
@@ -1443,7 +1447,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     return () => {
       blnMounted = false;
     };
-  }, [blnCanLoadWorkspace, blnRightsLoading, intEmployeeID]);
+  }, [blnCanLoadWorkspace, blnRightsLoading, strEmployeeID]);
 
   const strCurrencyCode = objDetail?.objAssignedStructure?.strCurrencyCode ?? "INR";
   const intFlexiDeclarationID =
@@ -1675,7 +1679,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     const intRequestID = refRevisionPreviewRequest.current + 1;
     refRevisionPreviewRequest.current = intRequestID;
     try {
-      const dicPreview = await employeeSalaryService.previewRevision(intEmployeeID, dicNextForm);
+      const dicPreview = await employeeSalaryService.previewRevision(strEmployeeID, dicNextForm);
       if (refRevisionPreviewRequest.current !== intRequestID) {
         return;
       }
@@ -2022,7 +2026,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     setDicRevisionForm(dicNextForm);
 
     try {
-      const dicPreview = await employeeSalaryService.previewRevision(intEmployeeID, dicNextForm);
+      const dicPreview = await employeeSalaryService.previewRevision(strEmployeeID, dicNextForm);
       if (refRevisionPreviewRequest.current !== intRequestID) {
         return;
       }
@@ -2086,7 +2090,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     setBlnSaving(true);
     setStrError("");
     try {
-      await employeeSalaryService.createRevision(intEmployeeID, {
+      await employeeSalaryService.createRevision(strEmployeeID, {
         ...dicRevisionForm,
         lstOverrides: dicRevisionForm.lstOverrides.map((dicOverride) => ({
           ...dicOverride,
@@ -2102,7 +2106,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
             }))
           : []
       });
-      const dicRefreshedDetail = await employeeSalaryService.getEmployeeSalaryDetail(intEmployeeID);
+      const dicRefreshedDetail = await employeeSalaryService.getEmployeeSalaryDetail(strEmployeeID);
       setObjDetail(dicRefreshedDetail);
       setDicRevisionForm(buildRevisionForm(dicRefreshedDetail, objFormOptions, lstSalaryComponents, t));
       setStrSuccess(
@@ -2126,7 +2130,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
     setBlnSaving(true);
     setStrError("");
     try {
-      const dicSavedDetail = await employeeSalaryService.unassignSalary(intEmployeeID);
+      const dicSavedDetail = await employeeSalaryService.unassignSalary(strEmployeeID);
       setObjDetail(dicSavedDetail);
       setDicRevisionForm(buildRevisionForm(dicSavedDetail, objFormOptions, lstSalaryComponents, t));
       setStrSuccess(
@@ -2650,7 +2654,12 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
 
           {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
           {strSuccess ? <Alert severity="success" onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
-          {blnEffectiveViewMode ? <Alert severity="info">{t("employee_salary_read_only_mode", "You have view-only access for Employee Salary.")}</Alert> : null}
+          <CommonEditModeBanner
+            blnReadOnly={blnEffectiveViewMode}
+            blnCanEdit={!isReadOnly() && blnCanMutate}
+            fnOnEdit={() => setBlnEditRequested(true)}
+            strReadOnlyMessage={t("employee_salary_read_only_mode", "You have view-only access for Employee Salary.")}
+          />
           {strPayrollLockMessage ? <Alert severity="warning">{strPayrollLockMessage}</Alert> : null}
           {(objDetail?.lstWarnings ?? []).map((strWarning, intIndex) => (
             <Alert key={`${strWarning}-${intIndex}`} severity="warning">{strWarning}</Alert>
@@ -3114,7 +3123,7 @@ export default function EmployeeSalaryDetailPage({ intEmployeeID, blnViewMode = 
                       const objParams = new URLSearchParams();
                       objParams.set("intDeclarationID", String(intFlexiDeclarationID));
                       objParams.set("source", "employee_salary");
-                      objParams.set("returnTo", `/employee-salary/${intEmployeeID}`);
+                      objParams.set("returnTo", `/employee-salary/${strEmployeeID}`);
                       objRouter.push(`/salary/flexi-pay-declaration?${objParams.toString()}`);
                     }}
                   >

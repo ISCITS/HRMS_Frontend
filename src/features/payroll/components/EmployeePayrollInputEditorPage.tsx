@@ -42,6 +42,7 @@ import type {
   EmployeePayrollInputFormOptions,
   EmployeePayrollInputFormValues,
 } from "@/features/payroll/types";
+import CommonEditModeBanner from "@/Common/components/CommonEditModeBanner";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 const lstEmployeePayrollInputModuleCodes = ["EMPLOYEE_PAYROLL_INPUT", "EMPLOYEE_PAYROLL_INPUTS", "PAYROLL_INPUT", "PAYROLL_INPUTS"];
@@ -57,7 +58,7 @@ const lstEmployeePayrollInputLineTypes: Array<{ strCode: EmployeePayrollInputFor
 ];
 
 type EmployeePayrollInputEditorPageProps = {
-  strMode: "add" | "edit" | "view";
+  strMode: "add" | "edit";
   intInputID?: number;
   strBackRoute?: string;
 };
@@ -175,8 +176,10 @@ export default function EmployeePayrollInputEditorPage({
   const blnCanView = canViewAny() || canDoAny("list");
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
-  const blnCanSave = strMode === "add" ? blnCanAdd : blnCanEdit;
-  const blnReadOnly = strMode === "view" || (strMode === "edit" && blnCanView && !blnCanEdit);
+  // Opens read-only; Edit appears only when the server grants it, so no mode is in the URL.
+  const [blnEditRequested, setBlnEditRequested] = useState(strMode === "add");
+  const blnCanSave = blnEditRequested && (strMode === "add" ? blnCanAdd : blnCanEdit);
+  const blnReadOnly = !blnEditRequested || (strMode === "edit" && blnCanView && !blnCanEdit);
 
   useEffect(() => {
     if (blnRightsLoading) {
@@ -200,7 +203,7 @@ export default function EmployeePayrollInputEditorPage({
       try {
         const [objOptionsResult, objInputResult] = await Promise.all([
           employeePayrollInputService.getFormOptions(),
-          (strMode === "edit" || strMode === "view") && intInputID
+          strMode === "edit" && intInputID
             ? employeePayrollInputService.getEmployeePayrollInputById(intInputID)
             : Promise.resolve(null),
         ]);
@@ -492,7 +495,7 @@ export default function EmployeePayrollInputEditorPage({
     setStrError("");
     setStrSuccess("");
     try {
-      if ((strMode === "edit" || strMode === "view") && intInputID) {
+      if (strMode === "edit" && intInputID) {
         await employeePayrollInputService.updateEmployeePayrollInput(
           intInputID,
           dicForm
@@ -628,7 +631,12 @@ export default function EmployeePayrollInputEditorPage({
       {!blnCanView && !blnCanSave ? <Alert severity="warning">{t("access_denied", "Payroll input access is not available for your user group.")}</Alert> : null}
       {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success" onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
-      {blnReadOnly && !objDismissedNotices.has("readOnly") ? <Alert severity="info" onClose={() => dismissNotice("readOnly")}>{t("read_only_mode", "This payroll input is open in view mode.")}</Alert> : null}
+      <CommonEditModeBanner
+        blnReadOnly={blnReadOnly}
+        blnCanEdit={strMode === "edit" && blnCanEdit}
+        fnOnEdit={() => setBlnEditRequested(true)}
+        strReadOnlyMessage={t("read_only_mode", "This payroll input is open in view mode.")}
+      />
       {blnSelectedRunBlocksInputChanges && !objDismissedNotices.has("runBlocks") ? <Alert severity="warning" onClose={() => dismissNotice("runBlocks")}>{t("run_locked_input_warning", "Selected payroll run is locked, so payroll input cannot be edited.")}</Alert> : null}
 
       <Box

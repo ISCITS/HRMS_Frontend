@@ -138,14 +138,14 @@ export default function LeaveTypesPanel() {
   }
 
   function openTypeDialog(objType: LeaveTypeEnrichedDto, blnView: boolean) {
-    objRouter.push(`/leave/leave-types/${objType.intID}`);
+    objRouter.push(`/leave/leave-types/${objType.strRecordUUID}`);
   }
 
   // Double-clicking a row opens the record: edit mode when the user can edit, otherwise read-only
   // view mode. Users with neither right never reach the editor.
-  function openTypeByRowId(intID: number) {
+  function openTypeByRowId(strRecordUUID: string) {
     if (!blnCanOpenDetail) return;
-    objRouter.push(`/leave/leave-types/${intID}`);
+    objRouter.push(`/leave/leave-types/${strRecordUUID}`);
   }
 
   function confirmDeleteType(objType: LeaveTypeEnrichedDto) {
@@ -179,6 +179,7 @@ export default function LeaveTypesPanel() {
     () =>
       lstFilteredTypes.map((objType) => ({
         id: objType.intID,
+        strRecordUUID: objType.strRecordUUID,
         action: (
           <CommonRowActions
             testIdPrefix="leave-types.list.row"
@@ -348,7 +349,7 @@ export default function LeaveTypesPanel() {
             showPaginationSummary
             minTableWidth={1226}
             emptyMessage="No leave types found."
-            onRowDoubleClick={(dicRow) => openTypeByRowId(dicRow.id)}
+            onRowDoubleClick={(dicRow) => openTypeByRowId(dicRow.strRecordUUID)}
             toolbarLeft={
               blnCanAdd ? (
                 <Button controlId="leave.type.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={openNewType}>

@@ -160,7 +160,7 @@ export default function EmployeePayrollInputListPage() {
             blnCanView={blnCanView}
             blnCanEdit={blnCanEdit && !dicRow.blnIsLocked}
             onView={() =>
-              navigateToFullScreen(`/payroll/employee-payroll-inputs/${dicRow.intID}/edit?mode=view`)
+              navigateToFullScreen(`/payroll/employee-payroll-inputs/${dicRow.intID}/edit`)
             }
             onEdit={blnCanEdit ? () => navigateToFullScreen(`/payroll/employee-payroll-inputs/${dicRow.intID}/edit`) : undefined}
           />

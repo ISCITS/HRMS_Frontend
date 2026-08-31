@@ -52,8 +52,8 @@ export default function PayrollGroupListPage() {
   const [blnSubmitting] = useState(false);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
 
-  function openGroupEditor(intPayrollGroupID: number, strMode: "edit" | "view" = "edit") {
-    objRouter.push(`/masters/payroll-groups/edit/${intPayrollGroupID}`);
+  function openGroupEditor(strRecordUUID: string) {
+    objRouter.push(`/masters/payroll-groups/edit/${strRecordUUID}`);
   }
 
   async function loadPayrollGroups() {
@@ -106,8 +106,8 @@ export default function PayrollGroupListPage() {
             rowKey={dicRow.intID}
             blnCanView={blnCanView}
             blnCanEdit={blnCanEdit}
-            onView={() => openGroupEditor(dicRow.intID, "view")}
-            onEdit={blnCanEdit ? () => openGroupEditor(dicRow.intID, "edit") : undefined}
+            onView={() => openGroupEditor(dicRow.strRecordUUID)}
+            onEdit={blnCanEdit ? () => openGroupEditor(dicRow.strRecordUUID) : undefined}
           />
         ),
         strPayrollGroupName: dicRow.strPayrollGroupName,

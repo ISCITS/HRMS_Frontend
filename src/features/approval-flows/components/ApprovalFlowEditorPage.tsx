@@ -20,6 +20,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
+import CommonEditModeBanner from "@/Common/components/CommonEditModeBanner";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
@@ -60,14 +61,16 @@ function optionLabel(objOption: ApproverEmployeeDto): string {
 
 type ApprovalFlowEditorPageProps = {
   intApprovalFlowID?: number;
-  blnReadOnlyView?: boolean;
 };
 
-export default function ApprovalFlowEditorPage({ intApprovalFlowID, blnReadOnlyView = false }: ApprovalFlowEditorPageProps) {
+export default function ApprovalFlowEditorPage({ intApprovalFlowID }: ApprovalFlowEditorPageProps) {
   const objRouter = useRouter();
   const { canDo, blnLoading: blnRightsLoading } = useActionRights();
-  const blnCanEdit = canDo("settings", "EDIT") && !blnReadOnlyView;
-  const blnReadOnly = !blnCanEdit;
+  // Opens read-only; Edit appears only when the server grants it, so no mode is in the URL.
+  const [blnEditRequested, setBlnEditRequested] = useState(false);
+  const blnCanEditRight = canDo("settings", "EDIT");
+  const blnReadOnly = !blnEditRequested || !blnCanEditRight;
+  const blnCanEdit = !blnReadOnly;
   const blnIsEdit = Boolean(intApprovalFlowID);
 
   const [blnLoading, setBlnLoading] = useState(blnIsEdit);
@@ -318,6 +321,14 @@ export default function ApprovalFlowEditorPage({ intApprovalFlowID, blnReadOnlyV
             </Button>
           ) : null}
         </Stack>
+      </Box>
+      <Box sx={{ pb: 2 }}>
+        <CommonEditModeBanner
+          blnReadOnly={blnReadOnly}
+          blnCanEdit={blnCanEditRight}
+          fnOnEdit={() => setBlnEditRequested(true)}
+          strReadOnlyMessage="You have view-only access to Approval Workflows."
+        />
       </Box>
 
       {blnBusy ? (

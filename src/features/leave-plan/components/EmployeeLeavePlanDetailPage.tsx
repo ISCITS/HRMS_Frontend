@@ -16,6 +16,7 @@ import { Controller, useForm, useWatch, type Resolver } from "react-hook-form";
 import * as yup from "yup";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
+import CommonEditModeBanner from "@/Common/components/CommonEditModeBanner";
 import styles from "@/components/master/MasterScreen.module.css";
 import { useEmployeeLeavePlan } from "@/features/leave-plan/hooks/useEmployeeLeavePlan";
 import type { EmployeeLeaveBalance, EmployeePlanAssignRequest, LeavePlan, ReplacementImpact } from "@/features/leave-plan/types/LeavePlanTypes";
@@ -125,7 +126,8 @@ function toIsoDate(strValue: string | null | undefined): string {
   return strValue ? strValue.slice(0, 10) : "";
 }
 
-export default function EmployeeLeavePlanDetailPage({ intEmployeeID, strMode = "manage" }: { intEmployeeID: number; strMode?: "view" | "manage" }) {
+// The URL carries the employee's public identifier; the numeric id comes from the loaded record.
+export default function EmployeeLeavePlanDetailPage({ strEmployeeID }: { strEmployeeID: string }) {
   const objRouter = useRouter();
   const { t } = useModuleLabels("employee_leave_plan");
   const { canDo, blnLoading: blnRightsLoading } = useActionRights();
@@ -139,10 +141,13 @@ export default function EmployeeLeavePlanDetailPage({ intEmployeeID, strMode = "
   const {
     objEmployee, objOverview, objCurrentPlan, lstPlans, lstLeaveTypes, blnLoading, blnRefreshing, blnSaving, strError,
     fetchPlan, previewReplacement, assignPlan, initializeBalances, setOpeningBalance, adjustBalance,
-  } = useEmployeeLeavePlan(intEmployeeID, intLeaveYear);
+  } = useEmployeeLeavePlan(strEmployeeID, intLeaveYear);
   // The Employee Leave Assignment menu grants the generic action set (view/edit/add/...);
   // older ESS-style setups use the compound LEAVE_VIEW/LEAVE_MANAGE codes, so accept either.
-  const blnCanManage = (canDo("EMPLOYEE_LEAVE_ASSIGNMENT", "EDIT") || canDo("EMPLOYEE_LEAVE_ASSIGNMENT", "ADD") || canDo("EMPLOYEE_LEAVE_ASSIGNMENT", "LEAVE_MANAGE")) && strMode !== "view";
+  // Opens read-only; Edit appears only when the server grants it, so no mode is in the URL.
+  const [blnEditRequested, setBlnEditRequested] = useState(false);
+  const blnCanManageRight = canDo("EMPLOYEE_LEAVE_ASSIGNMENT", "EDIT") || canDo("EMPLOYEE_LEAVE_ASSIGNMENT", "ADD") || canDo("EMPLOYEE_LEAVE_ASSIGNMENT", "LEAVE_MANAGE");
+  const blnCanManage = blnCanManageRight && blnEditRequested;
   const blnCanView = canDo("EMPLOYEE_LEAVE_ASSIGNMENT", "VIEW") || canDo("EMPLOYEE_LEAVE_ASSIGNMENT", "LEAVE_VIEW");
   const objAssignmentSchema = useMemo(() => buildAssignmentSchema(t), [t]);
   const objMovementSchema = useMemo(() => buildMovementSchema(t), [t]);
@@ -213,7 +218,7 @@ export default function EmployeeLeavePlanDetailPage({ intEmployeeID, strMode = "
     const strFrom = toIsoDate(objValues.dtEffectiveFrom);
     const strTo = toIsoDate(objValues.dtEffectiveTo);
 
-    const objPayload: EmployeePlanAssignRequest = { intEmployeeID, intLeavePlanID: objValues.intLeavePlanID, intLeaveYear, dtEffectiveFrom: strFrom, dtEffectiveTo: strTo || null, blnInitializeBalances: true, strAssignmentReason: objValues.strAssignmentReason.trim(), lstOpeningBalances: buildOpeningBalances() };
+    const objPayload: EmployeePlanAssignRequest = { intEmployeeID: objEmployee?.intID ?? 0, intLeavePlanID: objValues.intLeavePlanID, intLeaveYear, dtEffectiveFrom: strFrom, dtEffectiveTo: strTo || null, blnInitializeBalances: true, strAssignmentReason: objValues.strAssignmentReason.trim(), lstOpeningBalances: buildOpeningBalances() };
     if (objCurrent) {
       setObjPendingAssignment(objPayload);
       // Fetch the pre-save impact summary (advisory; the backend re-validates authoritatively on confirm).
@@ -268,15 +273,23 @@ export default function EmployeeLeavePlanDetailPage({ intEmployeeID, strMode = "
       <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={1.5}>
         {/* The page title lives here rather than in the app-shell header (see blnLeaveAssignmentEditorRoute). */}
         <Typography component="h1" sx={{ fontWeight: 800, fontSize: { xs: "1.1rem", md: "1.28rem" }, color: "#0f172a" }}>
-          {strMode === "view"
-            ? t("detail_title_view", "View Employee Leave Assignment")
-            : t("detail_title_edit", "Edit Employee Leave Assignment")}
+          {blnCanManage
+            ? t("detail_title_edit", "Edit Employee Leave Assignment")
+            : t("detail_title_view", "View Employee Leave Assignment")}
         </Typography>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ width: { xs: "100%", sm: "auto" } }}>
           <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/leave/plan-assignments")} sx={{ borderRadius: "14px", height: 38, minHeight: 38, py: 0, px: 2.25, minWidth: 100, fontSize: "0.9rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }} data-control-id="employee-leave-plan.detail.back.button">{t("back_button", "Back")}</Button>
           {blnCanManage ? <Button onClick={() => { setBlnReplaceOpen(true); void objAssignmentForm.handleSubmit(submitAssignment)(); }} className={styles.primaryButton} startIcon={<SaveRoundedIcon />} disabled={blnSaving} sx={{ borderRadius: "14px", height: 38, minHeight: 38, py: 0, px: 2.25, minWidth: 168, fontSize: "0.9rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }} data-control-id="employee-leave-plan.detail.save.button">{blnSaving ? t("saving", "Saving...") : t("save_leave_plan", "Save Leave Plan")}</Button> : null}
         </Stack>
       </Stack>
+      <Box sx={{ mt: 1.5 }}>
+        <CommonEditModeBanner
+          blnReadOnly={!blnCanManage}
+          blnCanEdit={blnCanManageRight}
+          fnOnEdit={() => setBlnEditRequested(true)}
+          strReadOnlyMessage={t("assignment_read_only", "You are viewing this leave assignment.")}
+        />
+      </Box>
     </Paper>
     {(strError || strActionError) ? <Alert severity="error">{strError || strActionError}</Alert> : null}
     {/* 1. Compact Employee Summary + Current Leave Plan (merged). */}

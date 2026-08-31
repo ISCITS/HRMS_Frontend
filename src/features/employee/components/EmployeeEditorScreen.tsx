@@ -82,7 +82,8 @@ import type {
 
 type EmployeeEditorScreenProps = {
   strMode: "add" | "edit" | "view";
-  intEmployeeID?: number;
+  /** Public identifier (record_uuid) from the URL; the internal id stays server-side. */
+  strEmployeeID?: string;
   blnHideSalarySummaryCard?: boolean;
   blnHideSalaryOpenPageButton?: boolean;
   blnHidePageHeading?: boolean;
@@ -221,7 +222,7 @@ function buildEmployeeAvatarUrl(intEmployeeID: number, strProfilePhotoUrl?: stri
 
 export default function EmployeeEditorScreen({
   strMode,
-  intEmployeeID,
+  strEmployeeID,
   blnHideSalarySummaryCard = false,
   blnHideSalaryOpenPageButton = false,
   blnHidePageHeading = false,
@@ -269,7 +270,8 @@ export default function EmployeeEditorScreen({
     intQualificationID: null,
     strDegreeName: ""
   });
-  const [intResolvedEmployeeID, setIntResolvedEmployeeID] = useState<number | null>(intEmployeeID ?? null);
+  // Resolved from the loaded record; the URL carries only the public identifier.
+  const [intResolvedEmployeeID, setIntResolvedEmployeeID] = useState<number | null>(null);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnBasicSaving, setBlnBasicSaving] = useState(false);
   const [blnAddressSaving, setBlnAddressSaving] = useState(false);
@@ -397,12 +399,15 @@ export default function EmployeeEditorScreen({
         setLstEmployees(lstEmployeeData);
         setObjFormOptions(dicOptionData);
 
-        if ((strMode === "edit" || strMode === "view") && intEmployeeID) {
-          const dicEmployee = await employeeService.getEmployeeById(intEmployeeID, objEmployeeRequestOptions);
+        if ((strMode === "edit" || strMode === "view") && strEmployeeID) {
+          const dicEmployee = await employeeService.getEmployeeById(strEmployeeID, objEmployeeRequestOptions);
           if (!blnMounted) {
             return;
           }
 
+          // The record carries the internal id; every child request below uses that rather than
+          // the public identifier from the URL.
+          const intEmployeeID = dicEmployee.intID;
           setDicBasicForm(toEmployeeFormValues(dicEmployee));
           setStrEmployeeAvatarUrl(buildEmployeeAvatarUrl(intEmployeeID, dicEmployee.strProfilePhotoUrl));
           setIntResolvedEmployeeID(intEmployeeID);
@@ -463,7 +468,7 @@ export default function EmployeeEditorScreen({
     return () => {
       blnMounted = false;
     };
-  }, [intEmployeeID, strMode, blnRightsLoading, blnCanView, blnCanEdit, blnCanViewBankDetails, blnCanViewStatutoryDetails, objEmployeeRequestOptions]);
+  }, [strEmployeeID, strMode, blnRightsLoading, blnCanView, blnCanEdit, blnCanViewBankDetails, blnCanViewStatutoryDetails, objEmployeeRequestOptions]);
 
   const lstManagerOptions = useMemo(
     () => (objFormOptions?.lstManagers ?? []).filter((dicOption) => dicOption.intID !== intResolvedEmployeeID),
@@ -843,7 +848,7 @@ export default function EmployeeEditorScreen({
     setIntResolvedEmployeeID(dicSavedEmployee.intID);
     setDicBasicForm(toEmployeeFormValues(dicSavedEmployee));
     if (!intResolvedEmployeeID && strMode === "add") {
-      objRouter.replace(`/employees/edit/${dicSavedEmployee.intID}`);
+      objRouter.replace(`/employees/edit/${dicSavedEmployee.strRecordUUID}`);
     }
     return dicSavedEmployee.intID;
   }
@@ -875,9 +880,9 @@ export default function EmployeeEditorScreen({
         : await employeeService.updateEmployee(intResolvedEmployeeID as number, dicFormToSave, objEmployeeRequestOptions);
       setIntResolvedEmployeeID(dicSavedEmployee.intID);
       setDicBasicForm(toEmployeeFormValues(dicSavedEmployee));
-      openAlertDialog("success", strMode === "add" && intEmployeeID === undefined ? t("save_success", dicConstant.employeeMaster.saveSuccess) : t("update_success", dicConstant.employeeMaster.updateSuccess));
+      openAlertDialog("success", strMode === "add" && strEmployeeID === undefined ? t("save_success", dicConstant.employeeMaster.saveSuccess) : t("update_success", dicConstant.employeeMaster.updateSuccess));
       if (strMode === "add") {
-        objRouter.replace(`/employees/edit/${dicSavedEmployee.intID}`);
+        objRouter.replace(`/employees/edit/${dicSavedEmployee.strRecordUUID}`);
       }
     } catch (objError) {
       openAlertDialog("error", objError instanceof Error ? objError.message : t("error_save_employee", "Unable to save employee."));
@@ -1029,7 +1034,7 @@ export default function EmployeeEditorScreen({
 
       openAlertDialog("success", strMode === "add" ? t("save_success", dicConstant.employeeMaster.saveSuccess) : t("update_success", dicConstant.employeeMaster.updateSuccess));
       if (strMode === "add") {
-        objRouter.replace(`/employees/edit/${dicSavedEmployee.intID}`);
+        objRouter.replace(`/employees/edit/${dicSavedEmployee.strRecordUUID}`);
       }
     } catch (objError) {
       openAlertDialog("error", objError instanceof Error ? objError.message : t("error_save_employee", "Unable to save employee."));
@@ -1065,7 +1070,7 @@ export default function EmployeeEditorScreen({
       setDicBasicForm(toEmployeeFormValues(dicSavedEmployee));
       openAlertDialog("success", t("partial_save_success", "Employee saved as partial."));
       if (strMode === "add") {
-        objRouter.replace(`/employees/edit/${dicSavedEmployee.intID}`);
+        objRouter.replace(`/employees/edit/${dicSavedEmployee.strRecordUUID}`);
       }
     } catch (objError) {
       openAlertDialog("error", objError instanceof Error ? objError.message : t("error_save_employee", "Unable to save employee."));

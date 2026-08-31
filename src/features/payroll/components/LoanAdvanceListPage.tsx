@@ -200,8 +200,8 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
             rowKey={objRow.intID}
             blnCanView
             blnCanEdit={blnCanEdit}
-            onView={() => objRouter.push(blnIsEssMode ? `/ess/loans-advances/${objRow.intID}?mode=view` : `/payroll/loans-advances/${objRow.intID}?mode=view`)}
-            onEdit={() => objRouter.push(blnIsEssMode ? `/ess/loans-advances/${objRow.intID}?mode=edit` : `/payroll/loans-advances/${objRow.intID}?mode=edit`)}
+            onView={() => objRouter.push(blnIsEssMode ? `/ess/loans-advances/${objRow.intID}` : `/payroll/loans-advances/${objRow.intID}`)}
+            onEdit={() => objRouter.push(blnIsEssMode ? `/ess/loans-advances/${objRow.intID}` : `/payroll/loans-advances/${objRow.intID}`)}
           />
         ),
         employee: (
@@ -336,7 +336,7 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
               <Button
                 className={styles.primaryButton}
                 startIcon={<AddRoundedIcon />}
-                onClick={() => objRouter.push(blnIsEssMode ? "/ess/loans-advances/new?mode=add" : "/payroll/loans-advances/new?mode=add")}
+                onClick={() => objRouter.push(blnIsEssMode ? "/ess/loans-advances/new" : "/payroll/loans-advances/new")}
               >
                 {t("add_button", "New Request")}
               </Button>

@@ -96,7 +96,7 @@ export default function VersionLogEditorPage({
       setStrError("");
       setStrSuccess("");
       try {
-        if ((strMode === "edit" || strMode === "view") && intVersionLogID) {
+        if (strMode === "edit" && intVersionLogID) {
           const dicDetail = await versionLogService.getVersionLogById(intVersionLogID);
           if (!blnMounted) {
             return;
@@ -205,11 +205,11 @@ export default function VersionLogEditorPage({
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
             <Box>
               <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
-                {strMode === "view"
-                  ? t("view_title", "View Version Log")
-                  : strMode === "edit"
-                    ? t("edit_title", "Edit Version Log")
-                    : t("add_title", "Add Version Log")}
+                {strMode === "add"
+                  ? t("add_title", "Add Version Log")
+                  : blnReadOnly
+                    ? t("view_title", "View Version Log")
+                    : t("edit_title", "Edit Version Log")}
               </Typography>
               <Typography sx={{ color: "#64748b", mt: 0.75 }}>
                 {t("subtitle", "Track release identity, launch date, and rollout notes in one audited master record.")}

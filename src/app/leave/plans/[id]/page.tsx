@@ -2,12 +2,18 @@ import LeavePlanEditorPage from "@/features/leave-plan/components/LeavePlanEdito
 
 type LeavePlanDetailPageProps = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ mode?: string | string[]; returnTo?: string | string[] }>;
+  searchParams: Promise<{ returnTo?: string | string[] }>;
 };
 
+// No mode in the URL: the editor opens read-only and offers Edit from the caller's rights.
 export default async function LeavePlanDetailPage({ params, searchParams }: LeavePlanDetailPageProps) {
   const { id } = await params;
-  const { mode, returnTo } = await searchParams;
-  const strModeValue = Array.isArray(mode) ? mode[0] : mode;
-  return <LeavePlanEditorPage strMode={strModeValue === "view" ? "view" : "edit"} intPlanID={Number(id)} strReturnTo={Array.isArray(returnTo) ? returnTo[0] : returnTo} />;
+  const { returnTo } = await searchParams;
+  return (
+    <LeavePlanEditorPage
+      strMode="edit"
+      intPlanID={Number(id)}
+      strReturnTo={Array.isArray(returnTo) ? returnTo[0] : returnTo}
+    />
+  );
 }

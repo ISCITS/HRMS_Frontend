@@ -6,6 +6,8 @@ export type PayrollGroupTextRecord = {
 
 export type PayrollGroupListRecord = {
   intID: number;
+  /** Public identifier used in URLs; the internal id stays server-side. */
+  strRecordUUID: string;
   intTenantID: number;
   intCompanyID: number;
   strPayrollGroupName: string;

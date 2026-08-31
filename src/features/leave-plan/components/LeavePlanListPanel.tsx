@@ -89,7 +89,7 @@ export default function LeavePlanListPanel() {
 
   function openEditor(objPlan?: LeavePlan, blnView = false) {
     const strPath = objPlan ? `/leave/plans/${objPlan.intID}` : "/leave/plans/new";
-    objRouter.push(`${strPath}${blnView ? "?mode=view" : ""}`);
+    objRouter.push(strPath);
   }
 
   // ---- Multi/single row selection + bulk actions (mirrors Salary Components) ----

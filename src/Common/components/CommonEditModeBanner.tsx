@@ -12,6 +12,8 @@ type CommonEditModeBannerProps = {
   fnOnEdit: () => void;
   /** Shown when the caller may not edit at all. */
   strReadOnlyMessage: string;
+  /** Shown when the caller may edit but has not switched into it yet. */
+  strViewingMessage?: string;
   strEditLabel?: string;
 };
 
@@ -28,6 +30,7 @@ export default function CommonEditModeBanner({
   blnCanEdit,
   fnOnEdit,
   strReadOnlyMessage,
+  strViewingMessage = "You are viewing this record. Select Edit to make changes.",
   strEditLabel = "Edit",
 }: CommonEditModeBannerProps) {
   if (!blnReadOnly) {
@@ -40,8 +43,10 @@ export default function CommonEditModeBanner({
 
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
+      {/* Someone who may edit is not lacking access - they simply have not switched into it yet,
+          so they get the neutral wording rather than the access-denied one. */}
       <Alert severity="info" sx={{ flex: 1, minWidth: 220 }}>
-        {strReadOnlyMessage}
+        {strViewingMessage}
       </Alert>
       <Button
         data-control-id="common.edit-mode.enable.button"

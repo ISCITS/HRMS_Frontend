@@ -82,9 +82,9 @@ export const leaveService = {
     return objResult.Data ?? {};
   },
 
-  async getLeaveTypeAggregate(intLeaveTypeID: number): Promise<LeaveTypeAggregateEnvelope> {
+  async getLeaveTypeAggregate(strLeaveTypeID: string): Promise<LeaveTypeAggregateEnvelope> {
     const objResult = await requestApi<LeaveTypeAggregateEnvelope>({
-      strPath: `/leave/leave-types/${intLeaveTypeID}`,
+      strPath: `/leave/leave-types/${strLeaveTypeID}`,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: LEAVE_VIEW,
     });
@@ -101,9 +101,9 @@ export const leaveService = {
     return objResult.Data;
   },
 
-  async updateLeaveTypeAggregate(intLeaveTypeID: number, objPayload: LeaveTypeAggregate): Promise<LeaveTypeAggregate> {
+  async updateLeaveTypeAggregate(strLeaveTypeID: string, objPayload: LeaveTypeAggregate): Promise<LeaveTypeAggregate> {
     const objResult = await requestApi<LeaveTypeAggregate>({
-      strPath: `/leave/leave-types/${intLeaveTypeID}`,
+      strPath: `/leave/leave-types/${strLeaveTypeID}`,
       strMethod: ApiRequestMethod.Put,
       objBody: objPayload,
       strMenuAction: LEAVE_MANAGE,

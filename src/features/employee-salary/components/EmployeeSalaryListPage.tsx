@@ -161,8 +161,8 @@ export default function EmployeeSalaryListPage() {
             rowKey={dicRow.intEmployeeID}
             blnCanView={blnCanView}
             blnCanEdit={blnCanMutate}
-            onView={() => objRouter.push(`/employee-salary/${dicRow.intEmployeeID}?mode=view`)}
-            onEdit={() => objRouter.push(`/employee-salary/${dicRow.intEmployeeID}`)}
+            onView={() => objRouter.push(`/employee-salary/${dicRow.strEmployeeRecordUUID}`)}
+            onEdit={() => objRouter.push(`/employee-salary/${dicRow.strEmployeeRecordUUID}`)}
           />
         ),
         strEmployeeCode: dicRow.strEmployeeCode,
@@ -297,7 +297,7 @@ export default function EmployeeSalaryListPage() {
                     onClick={() => {
                       const dicFirstUnassigned = lstFilteredRows.find((dicRow) => dicRow.strSalaryStatus === "Unassigned") ?? lstFilteredRows[0];
                       if (dicFirstUnassigned) {
-                        objRouter.push(`/employee-salary/${dicFirstUnassigned.intEmployeeID}`);
+                        objRouter.push(`/employee-salary/${dicFirstUnassigned.strEmployeeRecordUUID}`);
                       }
                     }}
                   >

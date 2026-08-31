@@ -262,8 +262,8 @@ export default function EmployeeMasterListPanel() {
           blnCanView={blnCanView}
           blnCanEdit={blnCanEdit}
           blnCanDelete={blnCanDelete}
-          onView={() => objRouter.push(`/employees/view/${dicEmployee.intID}`)}
-          onEdit={() => objRouter.push(`/employees/edit/${dicEmployee.intID}`)}
+          onView={() => objRouter.push(`/employees/view/${dicEmployee.strRecordUUID}`)}
+          onEdit={() => objRouter.push(`/employees/edit/${dicEmployee.strRecordUUID}`)}
           onDelete={() => deleteEmployees([dicEmployee.intID], true)}
         />
       ),

@@ -13,7 +13,9 @@ export default function MyProfileEditClient({ intEmployeeID }: MyProfileEditClie
   return (
     <EmployeeEditorScreen
       strMode="edit"
-      intEmployeeID={intEmployeeID}
+      // ESS still resolves its own employee by internal id; the endpoint dual-accepts, and
+      // that use is counted until this flow carries the public identifier too.
+      strEmployeeID={String(intEmployeeID)}
       blnHideSalarySummaryCard
       strBackRoute="/ess/my-profile"
       lstAccessModuleCodes={["MY_PROFILE"]}

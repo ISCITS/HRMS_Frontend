@@ -106,7 +106,7 @@ function collectFirstErrorMessage(objErrors: unknown): string | undefined {
   return undefined;
 }
 
-export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }: { strMode: "new" | "edit" | "view"; intPlanID?: number; strReturnTo?: string }) {
+export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }: { strMode: "new" | "edit"; intPlanID?: number; strReturnTo?: string }) {
   const objRouter = useRouter();
   const { t } = useModuleLabels("leave_plan");
   const { canDo, blnLoading: blnRightsLoading } = useActionRights();
@@ -123,7 +123,9 @@ export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }:
   const lstWatchedItems = useWatch({ control, name: "lstItems" });
   const lstWatchedTexts = useWatch({ control, name: "lstText" });
   const blnCanManage = canDo("LEAVE_PLANS", "EDIT") || canDo("LEAVE_PLANS", "ADD") || canDo("LEAVE_PLANS", "LEAVE_MANAGE");
-  const blnReadOnly = strMode === "view" || !blnCanManage;
+  // Opens read-only; Edit appears only when the server grants it, so no mode is in the URL.
+  const [blnEditRequested, setBlnEditRequested] = useState(strMode === "new");
+  const blnReadOnly = !blnEditRequested || !blnCanManage;
   const strBackPath = strReturnTo?.startsWith("/leave/plans") ? strReturnTo : "/leave/plans";
 
   useEffect(() => {
@@ -225,7 +227,7 @@ export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }:
           <Typography component="h1" sx={{ fontWeight: 800, fontSize: { xs: "1.1rem", md: "1.28rem" }, color: "#0f172a" }}>
             {strMode === "new"
               ? t("editor_title_new", "New Leave Plan")
-              : strMode === "view"
+              : blnReadOnly
                 ? t("editor_title_view", "View Leave Plan")
                 : t("editor_title_edit", "Edit Leave Plan")}
           </Typography>

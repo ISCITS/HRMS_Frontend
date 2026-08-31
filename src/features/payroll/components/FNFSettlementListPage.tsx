@@ -105,7 +105,7 @@ export default function FNFSettlementListPage() {
         rowKey={row.intID}
         blnCanView={blnHasViewRight}
         blnCanEdit={blnCanEdit && lstEditableStatuses.includes(row.strSettlementStatus)}
-        onView={() => objRouter.push(`/payroll/fnf-settlements/${row.intID}?mode=view`)}
+        onView={() => objRouter.push(`/payroll/fnf-settlements/${row.intID}`)}
         onEdit={() => objRouter.push(`/payroll/fnf-settlements/${row.intID}`)}
       />
     ),

@@ -2,6 +2,8 @@ export type EmployeeSalaryStatus = "Assigned" | "Unassigned";
 
 export type EmployeeSalaryListRecord = {
   intEmployeeID: number;
+  /** Employee's public identifier used in URLs. */
+  strEmployeeRecordUUID: string;
   strEmployeeCode: string;
   strEmployeeName: string;
   strWorkEmail: string | null;
@@ -227,6 +229,7 @@ export type EmployeeFlexiDeclarationRecord = {
 export type EmployeeSalaryDetailRecord = {
   objEmployeeSummary: {
     intEmployeeID: number;
+    strEmployeeRecordUUID: string;
     strEmployeeCode: string;
     strEmployeeName: string;
     strWorkEmail: string | null;

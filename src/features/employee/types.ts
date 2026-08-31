@@ -8,6 +8,8 @@ export type EmployeeLookupOption = {
 
 export type EmployeeListRecord = {
   intID: number;
+  /** Public identifier used in URLs; the internal id stays server-side. */
+  strRecordUUID: string;
   strEmployeeCode: string;
   strFullName: string;
   blnIsWorker: boolean;
@@ -26,6 +28,8 @@ export type EmployeeListRecord = {
 
 export type EmployeeDetailRecord = {
   intID: number;
+  /** Public identifier used in URLs; the internal id stays server-side. */
+  strRecordUUID: string;
   strEmployeeCode: string;
   strTitle: string | null;
   strFirstName: string;

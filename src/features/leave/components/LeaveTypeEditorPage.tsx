@@ -283,7 +283,7 @@ function emptyAggregate(): LeaveTypeAggregate {
   };
 }
 
-export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMode: "new" | "edit"; intLeaveTypeID?: number }) {
+export default function LeaveTypeEditorPage({ strMode, strLeaveTypeID }: { strMode: "new" | "edit"; strLeaveTypeID?: string }) {
   const objRouter = useRouter();
   const { canDo } = useActionRights();
   // Capabilities decided by the server and returned with the record. The screen opens read-only
@@ -342,8 +342,8 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
         const [objLookupResult, lstTypeResult] = await Promise.all([leaveService.getLeaveLookups(), leaveService.listEnterpriseLeaveTypes()]);
         setObjLookups(objLookupResult);
         setLstOtherTypes(lstTypeResult);
-        if (strMode !== "new" && intLeaveTypeID) {
-          const objEnvelope = await leaveService.getLeaveTypeAggregate(intLeaveTypeID);
+        if (strMode !== "new" && strLeaveTypeID) {
+          const objEnvelope = await leaveService.getLeaveTypeAggregate(strLeaveTypeID);
           setObjCapabilities(objEnvelope.objCapabilities);
           const objAggregate = objEnvelope.objData;
           if (!objAggregate.objPolicy) objAggregate.objPolicy = emptyPolicy();
@@ -364,7 +364,7 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
       }
     }
     void load();
-  }, [strMode, intLeaveTypeID]);
+  }, [strMode, strLeaveTypeID]);
 
   function setMaster<K extends keyof LeaveTypeAggregate>(strKey: K, objValue: LeaveTypeAggregate[K]) {
     setObjForm((objPrev) => ({ ...objPrev, [strKey]: objValue }));
@@ -487,8 +487,8 @@ export default function LeaveTypeEditorPage({ strMode, intLeaveTypeID }: { strMo
     };
     setBlnSaving(true);
     try {
-      if (strMode === "edit" && intLeaveTypeID) {
-        await leaveService.updateLeaveTypeAggregate(intLeaveTypeID, objPayload);
+      if (strMode === "edit" && strLeaveTypeID) {
+        await leaveService.updateLeaveTypeAggregate(strLeaveTypeID, objPayload);
         showToast("Leave type updated successfully.", "success");
       } else {
         await leaveService.createLeaveTypeAggregate(objPayload);

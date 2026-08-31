@@ -20,5 +20,6 @@ function resolveBackRoute(strRoute?: string | string[]) {
 export default async function EditEmployeePage({ params, searchParams }: EditEmployeePageProps) {
   const { id } = await params;
   const { backRoute } = await searchParams;
-  return <EmployeeEditorScreen strMode="edit" intEmployeeID={Number(id)} strBackRoute={resolveBackRoute(backRoute)} />;
+  // The segment is the record's public identifier (record_uuid), not the internal row id.
+  return <EmployeeEditorScreen strMode="edit" strEmployeeID={id} strBackRoute={resolveBackRoute(backRoute)} />;
 }
