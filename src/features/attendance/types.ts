@@ -169,6 +169,51 @@ export type DailyAttendanceFinalizeSkippedEmployee = {
 
 export type DailyAttendanceFinalizeConfigError = { intEmployeeID: number; strEmployeeCode?: string | null; strReason: string };
 
+export type AttendanceImportRow = {
+  intExcelRowNumber: number;
+  strEmployeeCode: string;
+  strEmployeeName: string | null;
+  intEmployeeID: number | null;
+  strRawDate: string;
+  dtWorkDate: string | null;
+  strStatus: string;
+  strFirstIn: string | null;
+  strLastOut: string | null;
+  blnValid: boolean;
+  strErrorMessage: string | null;
+  blnWillOverwrite: boolean;
+};
+
+export type AttendanceImportPreviewResult = {
+  lstRows: AttendanceImportRow[];
+  intTotal: number;
+  intValid: number;
+  intErrors: number;
+  intWillOverwrite: number;
+};
+
+export type AttendanceImportCommitRow = {
+  intExcelRowNumber: number;
+  intEmployeeID: number;
+  dtWorkDate: string;
+  strStatus: string;
+  tmFirstIn: string | null;
+  tmLastOut: string | null;
+};
+
+export type AttendanceImportCommitFailure = {
+  intExcelRowNumber: number;
+  intEmployeeID: number | null;
+  strMessage: string;
+};
+
+export type AttendanceImportCommitResult = {
+  intCreated: number;
+  intUpdated: number;
+  intSkipped: number;
+  lstFailures: AttendanceImportCommitFailure[];
+};
+
 export type DailyAttendanceFinalizeResult = {
   dtWorkDate: string;
   intProcessed: number;

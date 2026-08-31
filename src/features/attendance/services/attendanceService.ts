@@ -1,7 +1,7 @@
 "use client";
 
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
-import { requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
+import { createApiRequestError, requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
 import type {
   AttendanceDayDto,
   MyShiftDto,
@@ -11,6 +11,9 @@ import type {
   ShiftRequest,
 } from "@/features/attendance/dto";
 import type {
+  AttendanceImportCommitResult,
+  AttendanceImportCommitRow,
+  AttendanceImportPreviewResult,
   AttendancePolicy,
   AttendancePolicyAssignmentEmployee,
   AttendancePolicyAssignmentHistory,
@@ -27,6 +30,7 @@ import type {
   DailyAttendanceRow,
   DailyAttendanceSaveRow,
 } from "@/features/attendance/types";
+import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
 import type {
   MyAttendanceHistory,
   MyAttendanceOverview,
@@ -372,6 +376,57 @@ export const attendanceService = {
       strPath: `/attendance/reconcile?employee_id=${intEmployeeID}&period=${encodeURIComponent(strPeriod)}`,
       strMethod: ApiRequestMethod.Post,
       objBody: {},
+      strMenuAction: ATTENDANCE_MANAGE,
+    });
+    return objResult.Data;
+  },
+
+  // ---- Import (bulk Excel upload for employees who don't punch through the app) ----
+  async downloadImportTemplate(): Promise<void> {
+    try {
+      const objResponse = await axiosInstance.request<Blob>({
+        method: ApiRequestMethod.Get,
+        url: `${ApiRoutePrefix.ApiV1}/attendance/import/template`,
+        responseType: "blob",
+        csrfMenuAction: ATTENDANCE_VIEW,
+      } as ApiRequestConfig);
+      const strObjectUrl = URL.createObjectURL(objResponse.data);
+      const objAnchor = document.createElement("a");
+      objAnchor.href = strObjectUrl;
+      objAnchor.download = "attendance_import_template.xlsx";
+      document.body.appendChild(objAnchor);
+      objAnchor.click();
+      document.body.removeChild(objAnchor);
+      URL.revokeObjectURL(strObjectUrl);
+    } catch (objError) {
+      throw await createApiRequestError<void>(objError);
+    }
+  },
+
+  // FormData bodies skip JSON payload-encryption automatically (see axiosInstance.ts),
+  // so this bypasses requestEncryptedApi and calls axiosInstance directly - same pattern
+  // as fileUploadService.uploadFile/reimbursementService.
+  async previewImport(objFile: File): Promise<AttendanceImportPreviewResult> {
+    const objFormData = new FormData();
+    objFormData.append("objFile", objFile);
+    try {
+      const objResponse = await axiosInstance.request<{ Data: AttendanceImportPreviewResult }>({
+        method: ApiRequestMethod.Post,
+        url: `${ApiRoutePrefix.ApiV1}/attendance/import/preview`,
+        data: objFormData,
+        csrfMenuAction: ATTENDANCE_MANAGE,
+      } as ApiRequestConfig);
+      return objResponse.data.Data;
+    } catch (objError) {
+      throw await createApiRequestError<AttendanceImportPreviewResult>(objError);
+    }
+  },
+
+  async commitImport(lstRows: AttendanceImportCommitRow[]): Promise<AttendanceImportCommitResult> {
+    const objResult = await requestApi<AttendanceImportCommitResult>({
+      strPath: "/attendance/import/commit",
+      strMethod: ApiRequestMethod.Post,
+      objBody: { lstRows },
       strMenuAction: ATTENDANCE_MANAGE,
     });
     return objResult.Data;
