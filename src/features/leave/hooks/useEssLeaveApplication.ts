@@ -55,7 +55,8 @@ export function useEssLeaveApplication() {
   }, []);
 
   const fnGetPolicy = useCallback(async (intLeaveTypeID: number): Promise<LeaveTypeAggregate> => {
-    return leaveService.getLeaveTypeAggregate(intLeaveTypeID);
+    // The detail endpoint now returns { objData, objCapabilities }; this caller only needs the record.
+    return (await leaveService.getLeaveTypeAggregate(intLeaveTypeID)).objData;
   }, []);
 
   const fnGetApplication = useCallback(async (intApplicationID: number) => {

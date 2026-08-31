@@ -2,15 +2,13 @@ import PayrollGroupEditorPage from "@/features/payroll-groups/components/Payroll
 
 type EditPayrollGroupPageProps = {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ mode?: string }>;
 };
 
-export default async function EditPayrollGroupPage({ params, searchParams }: EditPayrollGroupPageProps) {
+export default async function EditPayrollGroupPage({ params }: EditPayrollGroupPageProps) {
   const { id } = await params;
-  const objSearchParams = searchParams ? await searchParams : undefined;
   return (
     <PayrollGroupEditorPage
-      strMode={objSearchParams?.mode === "view" ? "view" : "edit"}
+      strMode={"edit"}
       intPayrollGroupID={Number(id)}
     />
   );

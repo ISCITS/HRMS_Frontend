@@ -138,14 +138,14 @@ export default function LeaveTypesPanel() {
   }
 
   function openTypeDialog(objType: LeaveTypeEnrichedDto, blnView: boolean) {
-    objRouter.push(`/leave/leave-types/${objType.intID}${blnView ? "?mode=view" : ""}`);
+    objRouter.push(`/leave/leave-types/${objType.intID}`);
   }
 
   // Double-clicking a row opens the record: edit mode when the user can edit, otherwise read-only
   // view mode. Users with neither right never reach the editor.
   function openTypeByRowId(intID: number) {
     if (!blnCanOpenDetail) return;
-    objRouter.push(`/leave/leave-types/${intID}${blnCanEdit ? "" : "?mode=view"}`);
+    objRouter.push(`/leave/leave-types/${intID}`);
   }
 
   function confirmDeleteType(objType: LeaveTypeEnrichedDto) {

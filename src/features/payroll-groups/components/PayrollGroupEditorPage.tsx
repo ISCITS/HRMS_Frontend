@@ -34,6 +34,7 @@ import type {
   PayrollGroupFormValues,
   PayrollGroupTextFormValue
 } from "@/features/payroll-groups/types";
+import CommonEditModeBanner from "@/Common/components/CommonEditModeBanner";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 type PayrollGroupEditorPageProps = {
@@ -63,10 +64,12 @@ export default function PayrollGroupEditorPage({
   const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
-  const blnForcedView = strMode === "view";
-  const blnReadOnly = blnForcedView || (strMode === "edit" && blnCanView && !blnCanEdit);
+  // The screen opens read-only and offers Edit only when the server grants the right, so
+  // nothing about the mode travels in the URL for a user to change.
+  const [blnEditRequested, setBlnEditRequested] = useState(strMode === "add");
+  const blnReadOnly = !blnEditRequested || (strMode === "edit" && blnCanView && !blnCanEdit);
   const blnCanLoadWorkspace = strMode === "add" ? blnCanAdd : blnCanView;
-  const blnCanSave = !blnForcedView && (strMode === "add" ? blnCanAdd : blnCanEdit);
+  const blnCanSave = blnEditRequested && (strMode === "add" ? blnCanAdd : blnCanEdit);
   const blnFieldDisabled = blnSaving || blnReadOnly || !blnCanSave;
 
   useEffect(() => {
@@ -346,7 +349,12 @@ export default function PayrollGroupEditorPage({
 
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
-      {blnReadOnly ? <Alert severity="info">{t("group_read_only_mode", "You have view-only access to Payroll Groups.")}</Alert> : null}
+      <CommonEditModeBanner
+        blnReadOnly={blnReadOnly}
+        blnCanEdit={strMode === "edit" && blnCanEdit}
+        fnOnEdit={() => setBlnEditRequested(true)}
+        strReadOnlyMessage={t("group_read_only_mode", "You have view-only access to Payroll Groups.")}
+      />
 
       <Paper
         sx={{

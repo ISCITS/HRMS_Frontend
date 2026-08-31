@@ -630,3 +630,18 @@ export function formatLeaveDate(strValue?: string | null): string {
   const strDay = String(objDate.getDate()).padStart(2, "0");
   return `${strDay}-${lstMonths[objDate.getMonth()]}-${objDate.getFullYear()}`;
 }
+
+// Server-decided capabilities that travel with a resource. The screen opens read-only and enables
+// controls from these flags, so the mode is never taken from the URL.
+export type ResourceCapabilities = {
+  blnCanView: boolean;
+  blnCanEdit: boolean;
+  blnCanDelete: boolean;
+  blnCanApprove: boolean;
+  blnCanExport: boolean;
+};
+
+export type LeaveTypeAggregateEnvelope = {
+  objData: LeaveTypeAggregate;
+  objCapabilities: ResourceCapabilities;
+};

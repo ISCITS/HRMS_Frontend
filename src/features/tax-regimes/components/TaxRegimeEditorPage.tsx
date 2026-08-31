@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation";
 
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/components/master/MasterScreen.module.css";
+import CommonEditModeBanner from "@/Common/components/CommonEditModeBanner";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { usePayrollLookups } from "@/features/payroll-lookups/hooks/usePayrollLookups";
 import { useTaxRegimeLabels } from "@/features/tax-regimes/hooks/useTaxRegimeLabels";
@@ -66,8 +67,10 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID, blnEmbedd
   const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
-  const blnForcedViewMode = strMode === "view";
-  const blnReadOnly = blnForcedViewMode || (strMode === "edit" && blnCanView && !blnCanEdit);
+  // The screen opens read-only and offers Edit only when the server grants the right, so
+  // nothing about the mode travels in the URL for a user to change.
+  const [blnEditRequested, setBlnEditRequested] = useState(strMode === "add");
+  const blnReadOnly = !blnEditRequested || (strMode === "edit" && blnCanView && !blnCanEdit);
   const blnCanLoadWorkspace = strMode === "add" ? blnCanAdd : blnCanView;
   const blnCanSave = strMode === "add" ? blnCanAdd : strMode === "edit" ? blnCanEdit : false;
   const blnFieldDisabled = blnSaving || blnReadOnly || !blnCanSave;
@@ -254,7 +257,7 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID, blnEmbedd
     <Stack spacing={1.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
       {!blnEmbedded ? (
         <TaxRegimeWorkspaceHeader
-          strTitle={strMode === "add" ? t("add_tax_regime", "Add Tax Regime") : blnForcedViewMode ? t("view_tax_regime", "View Tax Regime") : t("edit_tax_regime", "Edit Tax Regime")}
+          strTitle={strMode === "add" ? t("add_tax_regime", "Add Tax Regime") : blnReadOnly ? t("view_tax_regime", "View Tax Regime") : t("edit_tax_regime", "Edit Tax Regime")}
           nodeActions={(
             <TaxRegimeActionGroup>
                 <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/tax-regimes")}>
@@ -272,7 +275,12 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID, blnEmbedd
 
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
-      {blnReadOnly ? <Alert severity="info">{t("read_only_mode", "You have view-only access for Tax Regimes.")}</Alert> : null}
+      <CommonEditModeBanner
+        blnReadOnly={blnReadOnly}
+        blnCanEdit={strMode === "edit" && blnCanEdit}
+        fnOnEdit={() => setBlnEditRequested(true)}
+        strReadOnlyMessage={t("read_only_mode", "You have view-only access for Tax Regimes.")}
+      />
 
       <Paper sx={{ borderRadius: "var(--app-card-radius)", p: "10px", border: "1px solid rgba(187, 213, 232, 0.7)", boxShadow: "var(--app-shadow-soft)" }}>
         <Stack spacing={1.5}>

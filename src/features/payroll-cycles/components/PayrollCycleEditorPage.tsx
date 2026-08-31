@@ -30,6 +30,7 @@ import type {
   PayrollCycleFormValues
 } from "@/features/payroll-cycles/types";
 import { setPayrollScheduleSelectedID } from "@/features/payroll-cycles/utils/payrollScheduleRouteState";
+import CommonEditModeBanner from "@/Common/components/CommonEditModeBanner";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 type PayrollCycleEditorPageProps = {
@@ -56,10 +57,12 @@ export default function PayrollCycleEditorPage({
   const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
-  const blnForcedView = strMode === "view";
-  const blnReadOnly = blnForcedView || (strMode === "edit" && blnCanView && !blnCanEdit);
+  // The screen opens read-only and offers Edit only when the server grants the right, so
+  // nothing about the mode travels in the URL for a user to change.
+  const [blnEditRequested, setBlnEditRequested] = useState(strMode === "add");
+  const blnReadOnly = !blnEditRequested || (strMode === "edit" && blnCanView && !blnCanEdit);
   const blnCanLoadWorkspace = strMode === "add" ? blnCanAdd : blnCanView;
-  const blnCanSave = !blnForcedView && (strMode === "add" ? blnCanAdd : blnCanEdit);
+  const blnCanSave = blnEditRequested && (strMode === "add" ? blnCanAdd : blnCanEdit);
   const blnFieldDisabled = blnSaving || blnReadOnly || !blnCanSave;
 
   useEffect(() => {
@@ -275,7 +278,12 @@ export default function PayrollCycleEditorPage({
 
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
-      {blnReadOnly ? <Alert severity="info">{t("schedule_read_only_mode")}</Alert> : null}
+      <CommonEditModeBanner
+        blnReadOnly={blnReadOnly}
+        blnCanEdit={strMode === "edit" && blnCanEdit}
+        fnOnEdit={() => setBlnEditRequested(true)}
+        strReadOnlyMessage={t("schedule_read_only_mode")}
+      />
 
       <Paper
         sx={{

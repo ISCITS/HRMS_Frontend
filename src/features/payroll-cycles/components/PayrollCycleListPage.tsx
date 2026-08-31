@@ -55,7 +55,7 @@ export default function PayrollCycleListPage() {
 
   function openScheduleEditor(intPayrollCycleID: number, strMode: "edit" | "view" = "edit") {
     setPayrollScheduleSelectedID(intPayrollCycleID);
-    objRouter.push(strMode === "view" ? "/payroll/schedules/edit?mode=view" : "/payroll/schedules/edit");
+    objRouter.push("/payroll/schedules/edit");
   }
 
   async function loadPayrollCycles() {

@@ -53,7 +53,7 @@ export default function PayrollGroupListPage() {
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
 
   function openGroupEditor(intPayrollGroupID: number, strMode: "edit" | "view" = "edit") {
-    objRouter.push(`/masters/payroll-groups/edit/${intPayrollGroupID}${strMode === "view" ? "?mode=view" : ""}`);
+    objRouter.push(`/masters/payroll-groups/edit/${intPayrollGroupID}`);
   }
 
   async function loadPayrollGroups() {
