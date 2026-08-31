@@ -2205,7 +2205,6 @@ export default function SalaryStructureEditorPage({
                 [t("monthly_ctc", "Monthly CTC"), formatFlexiAmount(dicStructureSummary.fltTotalCtc / 12), "#0757b8"],
                 [t("gross_annual", "Gross Annual"), formatFlexiAmount(dicStructureSummary.fltGrossAnnual), "#0f172a"],
                 [t("gross_monthly", "Gross Monthly"), formatFlexiAmount(dicStructureSummary.fltGrossMonthly), "#0f172a"],
-                [t("fixed_pay", "Fixed Pay"), formatFlexiAmount(dicStructureSummary.fltFixedPay), "#0f172a"],
                 [t("variable_pay", "Variable Pay"), formatFlexiAmount(dicStructureSummary.fltVariablePay), "#0f172a"],
                 [t("employer_contributions", "Employer Contributions"), formatFlexiAmount(dicStructureSummary.fltEmployerContribution), "#0f172a"],
                 [t("flexi_basket_amount", "Flexi Basket Amount"), formatFlexiAmount(dicStructureSummary.fltFlexiBasket), "#067647"],

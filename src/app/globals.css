@@ -53,10 +53,6 @@ textarea {
   min-width: 0;
 }
 
-.MuiDialog-paper:not(.MuiDialog-paperFullScreen) {
-  max-width: calc(100vw - 32px);
-}
-
 body,
 button,
 input,

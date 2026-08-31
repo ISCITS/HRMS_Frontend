@@ -32,8 +32,39 @@ function normalizeOptionalNumber(intValue: number | ""): number | null {
   return intValue === "" ? null : intValue;
 }
 
+const lstExtendedEmployeeFields: Array<keyof EmployeeFormValues> = [
+  "strFatherOrHusbandName", "strMotherName", "strSpouseName", "strSpouseOccupation",
+  "strBloodGroup", "intNationalityCountryID",
+  "intMotherTongueLanguageID", "strReligion", "strMaritalStatus", "dtLocationJoiningDate",
+  "strPassportNumber", "strPassportPlaceOfIssue", "dtPassportIssueDate", "dtPassportExpiryDate",
+  "dtRetirementDate", "strAppointmentOrderNumber", "dtAppointmentDate", "strEntryMode", "strJobType",
+  "strConfirmationType", "strConfirmationComments", "dtTentativeConfirmationDate", "dtConfirmationDate",
+  "strRestDay", "strEmployeeFunction", "strFunctionalArea", "strEmployeeCategory", "blnHasDisability",
+  "strPlaceOfBirth", "blnSuperannuationFlag", "strIdentificationMarks", "strDrivingLicenceNumber",
+  "dtDrivingLicenceValidUpto", "blnIsRelatedEmployee", "intRelatedEmployeeID", "strPaymentType", "blnFlatGiven",
+  "dtStatusEffectiveDate", "dtContractStartDate", "dtContractEndDate", "dtLastIncrementDate",
+  "blnUgcAppraisalFlag", "strAgency", "strReferenceNumber", "strMobileCountryCode",
+  "strWhatsappCountryCode", "strWhatsappNumber", "strReferredBy", "strAccommodationType",
+  "decHousingAllowance", "intNoticePeriodDays", "strEmergencyContactPerson", "strEmergencyCountryCode",
+  "strEmergencyMobileNumber", "strEmergencyEmail", "strEmployeeRemark", "strInitialPostingLocation",
+  "dtProbationStartDate", "dtProbationEndDate", "strEmployeeWorkgroup", "strEmployeeReservation",
+  "strSwon", "dtFromDate", "dtToDate", "strPrefixLogic"
+];
+
+function mapExtendedEmployeePayload(dicValues: EmployeeFormValues): Record<string, unknown> {
+  return Object.fromEntries(lstExtendedEmployeeFields.map((strField) => {
+    const objValue = dicValues[strField];
+    if (typeof objValue === "boolean") return [strField, objValue];
+    if (strField.startsWith("int") || strField.startsWith("dec")) {
+      return [strField, objValue === "" ? null : Number(objValue)];
+    }
+    return [strField, typeof objValue === "string" ? objValue.trim() || null : objValue ?? null];
+  }));
+}
+
 function mapEmployeePayload(dicValues: EmployeeFormValues): Record<string, unknown> {
   return {
+    ...mapExtendedEmployeePayload(dicValues),
     strEmployeeCode: dicValues.strEmployeeCode.trim().toUpperCase(),
     strTitle: dicValues.strTitle || null,
     strFirstName: dicValues.strFirstName.trim(),
@@ -65,6 +96,7 @@ function mapEmployeePayload(dicValues: EmployeeFormValues): Record<string, unkno
 
 function mapEmployeeDetailRecord(dicRecord: EmployeeDetailApiRecord): EmployeeDetailRecord {
   return {
+    ...dicRecord,
     intID: dicRecord.intID,
     strEmployeeCode: dicRecord.strEmployeeCode,
     strTitle: dicRecord.strTitle,
@@ -94,7 +126,7 @@ function mapEmployeeDetailRecord(dicRecord: EmployeeDetailApiRecord): EmployeeDe
     blnIsEssEnabled: dicRecord.blnIsEssEnabled,
     blnIsPartialSave: dicRecord.blnIsPartialSave,
     strProfilePhotoUrl: dicRecord.strProfilePhotoUrl ?? null
-  };
+  } as EmployeeDetailRecord;
 }
 
 export const employeeService = {
@@ -204,6 +236,10 @@ export const employeeService = {
       strAccountHolderName: dicValues.strAccountHolderName.trim(),
       strAccountNumber: dicValues.strAccountNumber.trim(),
       strIfscCode: dicValues.strIfscCode.trim() || null,
+      strSwiftCode: dicValues.strSwiftCode.trim().toUpperCase() || null,
+      strBranchName: dicValues.strBranchName.trim() || null,
+      strAccountType: dicValues.strAccountType.trim() || null,
+      strAccountHolderEmail: dicValues.strAccountHolderEmail.trim() || null,
       intSecondaryBankID: dicValues.blnSecondaryIsActive ? dicValues.intSecondaryBankID || null : null,
       strSecondaryAccountHolderName: dicValues.blnSecondaryIsActive ? dicValues.strSecondaryAccountHolderName.trim() || null : null,
       strSecondaryAccountNumber: dicValues.blnSecondaryIsActive ? dicValues.strSecondaryAccountNumber.trim() || null : null,
@@ -227,6 +263,10 @@ export const employeeService = {
       strEsiNumber: dicValues.blnEsiApplicable ? dicValues.strEsiNumber.trim() || null : null,
       strPfNumber: dicValues.blnPfApplicable ? dicValues.strPfNumber.trim() || null : null,
       strTaxRegimeCode: dicValues.strTaxRegimeCode.trim() || null,
+      strGratuityNumber: dicValues.strGratuityNumber.trim() || null,
+      strEsiCode: dicValues.strEsiCode.trim() || null,
+      strSsnNumber: dicValues.strSsnNumber.trim() || null,
+      strPranNumber: dicValues.strPranNumber.trim() || null,
       blnPfApplicable: dicValues.blnPfApplicable,
       blnEsiApplicable: dicValues.blnEsiApplicable,
       blnPtApplicable: dicValues.blnPtApplicable

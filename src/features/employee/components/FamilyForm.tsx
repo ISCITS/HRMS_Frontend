@@ -54,7 +54,20 @@ export default function FamilyForm({
   const t = fnTranslate;
 
   return (
-    <Dialog open={blnOpen} onClose={fnOnClose} fullWidth maxWidth="md" controlId="employee.family.dialog">
+    <Dialog
+      open={blnOpen}
+      onClose={fnOnClose}
+      maxWidth={false}
+      PaperProps={{
+        sx: {
+          width: { xs: "calc(100vw - 24px)", sm: "650px" },
+          minWidth: { xs: "calc(100vw - 24px)", sm: "650px" },
+          maxWidth: "none !important",
+          m: { xs: "12px", sm: 2 }
+        }
+      }}
+      controlId="employee.family.dialog"
+    >
       <DialogTitle>{strMode === "edit" ? t("family_form_edit_title", "Edit Family Member") : t("family_form_add_title", "Add Family Member")}</DialogTitle>
       <DialogContent dividers>
         <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" }, pt: 0.5 }}>

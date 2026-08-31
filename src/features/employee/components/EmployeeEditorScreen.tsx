@@ -98,10 +98,87 @@ function sanitizeMobileNumberInput(strValue: string): string {
 
 const lstEmployeeModuleCodes = ["EMPLOYEE", "EMPLOYEES", "MASTER_EMPLOYEE"];
 
-type TabKey = "basicInfo" | "address" | "bankDetails" | "statutory" | "experience" | "qualification" | "family";
+type TabKey = "basicInfo" | "personalIdentification" | "serviceContract" | "additionalEmployment" | "address" | "bankDetails" | "statutory" | "experience" | "qualification" | "family";
 
-const lstTabOrder: TabKey[] = ["basicInfo", "address", "bankDetails", "statutory", "experience", "qualification", "family"];
+const lstTabOrder: TabKey[] = ["basicInfo", "personalIdentification", "serviceContract", "additionalEmployment", "address", "bankDetails", "statutory", "experience", "qualification", "family"];
 const strRequiredAsteriskColor = "#dc2626";
+
+const lstPersonalOptionalFields: Array<{ strField: keyof EmployeeFormValues; strLabel: string; strType?: string }> = [
+  { strField: "strMaritalStatus", strLabel: "Marital Status" },
+  { strField: "strBloodGroup", strLabel: "Blood Group" },
+  { strField: "strReligion", strLabel: "Religion" },
+  { strField: "strPlaceOfBirth", strLabel: "Place of Birth" },
+  { strField: "strIdentificationMarks", strLabel: "Identification Marks" },
+  { strField: "strFatherOrHusbandName", strLabel: "Father / Husband Name" },
+  { strField: "strMotherName", strLabel: "Mother Name" },
+  { strField: "strSpouseName", strLabel: "Spouse Name" },
+  { strField: "strSpouseOccupation", strLabel: "Spouse Occupation" },
+  { strField: "strPassportNumber", strLabel: "Passport Number" },
+  { strField: "strPassportPlaceOfIssue", strLabel: "Passport Place of Issue" },
+  { strField: "dtPassportIssueDate", strLabel: "Passport Issue Date", strType: "date" },
+  { strField: "dtPassportExpiryDate", strLabel: "Passport Expiry Date", strType: "date" },
+  { strField: "strDrivingLicenceNumber", strLabel: "Driving Licence Number" },
+  { strField: "dtDrivingLicenceValidUpto", strLabel: "Driving Licence Valid Upto", strType: "date" },
+];
+
+const lstEmploymentAssignmentFields: Array<{ strField: keyof EmployeeFormValues; strLabel: string; strType?: string }> = [
+  { strField: "strEmployeeFunction", strLabel: "Employee Function" },
+  { strField: "strFunctionalArea", strLabel: "Functional Area" },
+  { strField: "strEmployeeCategory", strLabel: "Employee Category" },
+  { strField: "strJobType", strLabel: "Job Type" },
+  { strField: "strRestDay", strLabel: "Rest Day" },
+  { strField: "strPaymentType", strLabel: "Payment Type" },
+];
+
+const lstAppointmentJoiningFields: Array<{ strField: keyof EmployeeFormValues; strLabel: string; strType?: string }> = [
+  { strField: "dtAppointmentDate", strLabel: "Appointment Date", strType: "date" },
+  { strField: "strAppointmentOrderNumber", strLabel: "Appointment Order Number" },
+  { strField: "dtLocationJoiningDate", strLabel: "Location Joining Date", strType: "date" },
+  { strField: "strInitialPostingLocation", strLabel: "Initial Posting Location" },
+  { strField: "strEntryMode", strLabel: "Entry Mode" },
+  { strField: "strReferenceNumber", strLabel: "Reference Number" },
+  { strField: "strReferredBy", strLabel: "Referred By" },
+  { strField: "strAgency", strLabel: "Agency" },
+];
+
+const lstProbationConfirmationFields: Array<{ strField: keyof EmployeeFormValues; strLabel: string; strType?: string }> = [
+  { strField: "dtProbationStartDate", strLabel: "Probation Start Date", strType: "date" },
+  { strField: "dtProbationEndDate", strLabel: "Probation End Date", strType: "date" },
+  { strField: "dtTentativeConfirmationDate", strLabel: "Tentative Confirmation Date", strType: "date" },
+  { strField: "dtConfirmationDate", strLabel: "Confirmation Date", strType: "date" },
+  { strField: "strConfirmationType", strLabel: "Confirmation Type" },
+  { strField: "strConfirmationComments", strLabel: "Confirmation Comments" },
+  { strField: "dtLastIncrementDate", strLabel: "Last Increment Date", strType: "date" },
+  { strField: "dtStatusEffectiveDate", strLabel: "Status Effective Date", strType: "date" },
+];
+
+const lstContractServiceFields: Array<{ strField: keyof EmployeeFormValues; strLabel: string; strType?: string }> = [
+  { strField: "dtContractStartDate", strLabel: "Contract Start Date", strType: "date" },
+  { strField: "dtContractEndDate", strLabel: "Contract End Date", strType: "date" },
+  { strField: "dtFromDate", strLabel: "From Date", strType: "date" },
+  { strField: "dtToDate", strLabel: "To Date", strType: "date" },
+  { strField: "intNoticePeriodDays", strLabel: "Notice Period (Days)", strType: "number" },
+  { strField: "dtRetirementDate", strLabel: "Retirement Date", strType: "date" },
+];
+
+const lstAdditionalEmploymentFields: Array<{ strField: keyof EmployeeFormValues; strLabel: string; strType?: string }> = [
+  { strField: "strEmployeeWorkgroup", strLabel: "Employee Workgroup" },
+  { strField: "strEmployeeReservation", strLabel: "Employee Reservation" },
+  { strField: "strSwon", strLabel: "SWON" },
+  { strField: "strAccommodationType", strLabel: "Accommodation Type" },
+  { strField: "decHousingAllowance", strLabel: "Housing Allowance", strType: "number" },
+  { strField: "strPrefixLogic", strLabel: "Prefix Logic" },
+];
+
+const lstContactOptionalFields: Array<{ strField: keyof EmployeeFormValues; strLabel: string }> = [
+  { strField: "strMobileCountryCode", strLabel: "Mobile Country Code" },
+  { strField: "strWhatsappCountryCode", strLabel: "WhatsApp Country Code" },
+  { strField: "strWhatsappNumber", strLabel: "WhatsApp Number" },
+  { strField: "strEmergencyContactPerson", strLabel: "Emergency Contact Person" },
+  { strField: "strEmergencyCountryCode", strLabel: "Emergency Country Code" },
+  { strField: "strEmergencyMobileNumber", strLabel: "Emergency Mobile Number" },
+  { strField: "strEmergencyEmail", strLabel: "Emergency Email" },
+];
 
 function renderRequiredLabel(strLabel: string) {
   return (
@@ -398,6 +475,57 @@ export default function EmployeeEditorScreen({
     setDicBasicForm((dicPrevious) => ({ ...dicPrevious, [strField]: objValue }));
   }
 
+  function renderOptionalEmployeeField(strField: keyof EmployeeFormValues, strLabel: string, strType = "text") {
+    const dicLookupOptions: Partial<Record<keyof EmployeeFormValues, Array<{ intID: number; strLabel: string; strCode?: string }>>> = {
+      strBloodGroup: objFormOptions?.lstBloodGroups ?? [],
+      strReligion: objFormOptions?.lstReligions ?? [],
+      strMaritalStatus: objFormOptions?.lstMaritalStatuses ?? [],
+      strEntryMode: objFormOptions?.lstEntryModes ?? [],
+      strJobType: objFormOptions?.lstJobTypes ?? [],
+      strConfirmationType: objFormOptions?.lstConfirmationTypes ?? [],
+      strRestDay: objFormOptions?.lstRestDays ?? [],
+      strEmployeeFunction: objFormOptions?.lstEmployeeFunctions ?? [],
+      strEmployeeCategory: objFormOptions?.lstEmployeeCategories ?? [],
+      strPaymentType: objFormOptions?.lstPaymentTypes ?? [],
+    };
+    const lstLookupOptions = dicLookupOptions[strField];
+    if (lstLookupOptions) {
+      return (
+        <Box key={strField}>
+          {renderSelectField(
+            strLabel,
+            String(dicBasicForm[strField] ?? ""),
+            (objValue) => updateBasicField(strField, String(objValue) as never),
+            lstLookupOptions,
+            blnViewOnly,
+          )}
+        </Box>
+      );
+    }
+
+    return (
+      <TextField
+        key={strField}
+        data-controlid={`employee.editor.${String(strField)}.input`}
+        data-control-id={`employee.editor.${String(strField)}.input`}
+        type={strType}
+        label={strLabel}
+        value={String(dicBasicForm[strField] ?? "")}
+        onChange={(objEvent) => updateBasicField(strField, objEvent.target.value as never)}
+        InputLabelProps={strType === "date" ? { shrink: true } : undefined}
+        inputProps={strType === "number"
+          ? { min: 0 }
+          : (strField === "strSwon" || strField === "strPrefixLogic")
+            ? { maxLength: 100 }
+            : undefined}
+        error={Boolean(dicBasicErrors[strField])}
+        helperText={dicBasicErrors[strField]}
+        disabled={blnViewOnly}
+        fullWidth
+      />
+    );
+  }
+
   function updateReportingManagerField(intManagerEmployeeID: number | "") {
     setDicBasicErrors((dicPrevious) => ({
       ...dicPrevious,
@@ -594,6 +722,7 @@ export default function EmployeeEditorScreen({
       dicBankForm.strAccountHolderName.trim() ||
       dicBankForm.strAccountNumber.trim() ||
       dicBankForm.strIfscCode.trim() ||
+      dicBankForm.strSwiftCode.trim() ||
       dicBankForm.blnSecondaryIsActive ||
       dicBankForm.intSecondaryBankID !== "" ||
       dicBankForm.strSecondaryAccountHolderName.trim() ||
@@ -1527,61 +1656,122 @@ export default function EmployeeEditorScreen({
                 key={strTabKey}
                 value={strTabKey}
                 data-controlid={`employee.editor.${strTabKey}.tab`}
+                sx={{ textTransform: "none" }}
                 label={strTabKey === "basicInfo"
-                  ? t("tab_basic_info", dicConstant.employeeMaster.tabs.basicInfo)
-                  : strTabKey === "address"
-                    ? t("tab_address", dicConstant.employeeMaster.tabs.address)
-                    : strTabKey === "bankDetails"
-                      ? t("tab_bank_details", dicConstant.employeeMaster.tabs.bankDetails)
-                      : strTabKey === "statutory"
-                        ? t("tab_statutory", dicConstant.employeeMaster.tabs.statutory)
-                        : strTabKey === "experience"
-                          ? t("tab_experience", dicConstant.employeeMaster.tabs.experience ?? "Experience")
-                          : strTabKey === "qualification"
-                            ? t("tab_qualification", dicConstant.employeeMaster.tabs.qualification ?? "Qualification")
-                            : t("tab_family_details", dicConstant.employeeMaster.tabs.familyDetails ?? "Family Details")}
+                  ? t("tab_employment_info", "Employment Info")
+                  : strTabKey === "personalIdentification"
+                    ? t("tab_personal_identification", "Personal & Identification")
+                    : strTabKey === "serviceContract"
+                      ? t("tab_service_contract", "Service & Contract")
+                      : strTabKey === "additionalEmployment"
+                        ? t("tab_additional_employment", "Additional Employment Details")
+                        : strTabKey === "address"
+                          ? t("tab_contact_details", "Contact Details")
+                        : strTabKey === "bankDetails"
+                          ? t("tab_bank_details", dicConstant.employeeMaster.tabs.bankDetails)
+                          : strTabKey === "statutory"
+                            ? t("tab_statutory", dicConstant.employeeMaster.tabs.statutory)
+                            : strTabKey === "experience"
+                              ? t("tab_experience", dicConstant.employeeMaster.tabs.experience ?? "Experience")
+                              : strTabKey === "qualification"
+                                ? t("tab_qualification", dicConstant.employeeMaster.tabs.qualification ?? "Qualification")
+                                : t("tab_family_details", dicConstant.employeeMaster.tabs.familyDetails ?? "Family Details")}
               />
             ))}
           </Tabs>
         </Box>
 
         <Box sx={{ p: { xs: 2, md: 3 } }}>
-          {strVisibleActiveTab === "basicInfo" ? (
+          {(["basicInfo", "personalIdentification", "serviceContract", "additionalEmployment"] as TabKey[]).includes(strVisibleActiveTab) ? (
             <Stack spacing={3}>
-              <Box>
-                <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2} sx={{ mb: 1.5 }}>
-                  <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{t("section_identity_employment", "Identity & Employment")}</Typography>
-                  <Stack direction="row" alignItems="center" spacing={1.5} sx={{ flexShrink: 0 }}>
-                    <FormControlLabel
-                      control={<Switch checked={dicBasicForm.blnIsEssEnabled} onChange={(_, blnChecked) => updateBasicField("blnIsEssEnabled", blnChecked)} disabled={blnViewOnly} inputProps={{ "data-controlid": "employee.editor.ess-enabled.switch" } as InputHTMLAttributes<HTMLInputElement>} />}
-                      label={t("field_ess_enabled", dicConstant.employeeMaster.fields.essEnabled)}
-                      sx={{ m: 0, flexShrink: 0 }}
-                    />
-                  </Stack>
-                </Stack>
+              {strVisibleActiveTab === "basicInfo" ? <Box>
                 <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(3, minmax(0, 1fr))" } }}>
                   <TextField data-controlid="employee.editor.date-of-joining.input" inputProps={{ "data-controlid": "employee.editor.date-of-joining.input" }} type="date" label={renderRequiredLabel(t("field_date_of_joining", dicConstant.employeeMaster.fields.dateOfJoining))} inputRef={dicFieldRefs.dtDateOfJoining} value={dicBasicForm.dtDateOfJoining} onChange={(objEvent) => updateBasicField("dtDateOfJoining", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfJoining)} helperText={dicBasicErrors.dtDateOfJoining} InputLabelProps={{ shrink: true }} disabled={blnViewOnly} fullWidth />
                   {renderSelectField(renderRequiredLabel(t("field_employment_type", dicConstant.employeeMaster.fields.employmentType)), dicBasicForm.intEmploymentTypeID, (objValue) => updateBasicField("intEmploymentTypeID", objValue as number | ""), objFormOptions?.lstEmploymentTypes ?? [], blnViewOnly, dicBasicErrors.intEmploymentTypeID, Boolean(dicBasicErrors.intEmploymentTypeID), dicFieldRefs.intEmploymentTypeID)}
+                  <Box sx={{ display: "flex", alignItems: "center", minHeight: 56 }}>
+                    <FormControlLabel
+                      control={<Switch checked={dicBasicForm.blnIsEssEnabled} onChange={(_, blnChecked) => updateBasicField("blnIsEssEnabled", blnChecked)} disabled={blnViewOnly} inputProps={{ "data-controlid": "employee.editor.ess-enabled.switch" } as InputHTMLAttributes<HTMLInputElement>} />}
+                      label={t("field_ess_enabled", dicConstant.employeeMaster.fields.essEnabled)}
+                      sx={{ m: 0 }}
+                    />
+                  </Box>
                   {renderSelectField(t("field_department", dicConstant.employeeMaster.fields.department), dicBasicForm.intDepartmentID, (objValue) => updateBasicField("intDepartmentID", objValue as number | ""), objFormOptions?.lstDepartments ?? [], blnViewOnly)}
                   {renderSelectField(t("field_designation", dicConstant.employeeMaster.fields.designation), dicBasicForm.intDesignationID, (objValue) => updateBasicField("intDesignationID", objValue as number | ""), objFormOptions?.lstDesignations ?? [], blnViewOnly)}
                   {renderSelectField(t("field_grade", dicConstant.employeeMaster.fields.grade), dicBasicForm.intGradeID, (objValue) => updateBasicField("intGradeID", objValue as number | ""), objFormOptions?.lstGrades ?? [], blnViewOnly)}
-                  {renderSelectField(t("field_cost_center", dicConstant.employeeMaster.fields.costCenter), dicBasicForm.intCostCenterID, (objValue) => updateBasicField("intCostCenterID", objValue as number | ""), objFormOptions?.lstCostCenters ?? [], blnViewOnly)}
                   {renderSelectField(renderRequiredLabel(t("field_location", dicConstant.employeeMaster.fields.location)), dicBasicForm.intLocationID, (objValue) => updateBasicField("intLocationID", objValue as number | ""), objFormOptions?.lstLocations ?? [], blnViewOnly, dicBasicErrors.intLocationID, Boolean(dicBasicErrors.intLocationID), dicFieldRefs.intLocationID)}
+                  {renderSelectField(t("field_cost_center", dicConstant.employeeMaster.fields.costCenter), dicBasicForm.intCostCenterID, (objValue) => updateBasicField("intCostCenterID", objValue as number | ""), objFormOptions?.lstCostCenters ?? [], blnViewOnly)}
                   {renderSelectField(t("field_payroll_group", dicConstant.employeeMaster.fields.payrollGroup), dicBasicForm.intPayrollGroupID, (objValue) => updateBasicField("intPayrollGroupID", objValue as number | ""), objFormOptions?.lstPayrollGroups ?? [], blnViewOnly)}
                   {renderSelectField(renderRequiredLabel(t("field_manager", dicConstant.employeeMaster.fields.manager)), dicBasicForm.intManagerEmployeeID, (objValue) => updateReportingManagerField(objValue as number | ""), lstManagerOptions, blnViewOnly, dicBasicErrors.intManagerEmployeeID, Boolean(dicBasicErrors.intManagerEmployeeID), dicFieldRefs.intManagerEmployeeID)}
                   {renderSelectField(renderRequiredLabel(t("field_line_manager", "Line Manager")), dicBasicForm.intLineManagerEmployeeID, (objValue) => updateBasicField("intLineManagerEmployeeID", (objValue || dicBasicForm.intManagerEmployeeID) as number | ""), lstManagerOptions, blnViewOnly, dicBasicErrors.intLineManagerEmployeeID, Boolean(dicBasicErrors.intLineManagerEmployeeID), dicFieldRefs.intLineManagerEmployeeID)}
                   {renderSelectField(t("field_preferred_language", dicConstant.employeeMaster.fields.preferredLanguage), dicBasicForm.intPreferredLanguageID, (objValue) => updateBasicField("intPreferredLanguageID", objValue as number | ""), objFormOptions?.lstLanguages ?? [], blnViewOnly)}
-                  <TextField data-controlid="employee.editor.date-of-exit.input" inputProps={{ "data-controlid": "employee.editor.date-of-exit.input" }} type="date" label={t("field_date_of_exit", dicConstant.employeeMaster.fields.dateOfExit)} value={dicBasicForm.dtDateOfExit} onChange={(objEvent) => updateBasicField("dtDateOfExit", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfExit)} helperText={dicBasicErrors.dtDateOfExit} InputLabelProps={{ shrink: true }} disabled={blnViewOnly || dicBasicForm.strEmploymentStatus === "Active"} fullWidth />
+                  {lstEmploymentAssignmentFields.map((dicField) => renderOptionalEmployeeField(dicField.strField, dicField.strLabel, dicField.strType))}
                 </Box>
-              </Box>
+              </Box> : null}
+
+              {strVisibleActiveTab === "personalIdentification" ? <Box>
+                <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))" } }}>
+                  {renderSelectField("Nationality", dicBasicForm.intNationalityCountryID, (objValue) => updateBasicField("intNationalityCountryID", objValue as number | ""), objFormOptions?.lstNationalities ?? [], blnViewOnly)}
+                  {renderSelectField("Mother Tongue", dicBasicForm.intMotherTongueLanguageID, (objValue) => updateBasicField("intMotherTongueLanguageID", objValue as number | ""), objFormOptions?.lstMotherTongues ?? [], blnViewOnly)}
+                  {lstPersonalOptionalFields.slice(0, 5).map((dicField) => renderOptionalEmployeeField(dicField.strField, dicField.strLabel, dicField.strType))}
+                  <Box aria-hidden sx={{ display: { xs: "none", md: "block" } }} />
+                  {lstPersonalOptionalFields.slice(5).map((dicField) => renderOptionalEmployeeField(dicField.strField, dicField.strLabel, dicField.strType))}
+                </Box>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mt: 1 }}>
+                  <FormControlLabel control={<Switch checked={dicBasicForm.blnHasDisability} onChange={(_, value) => updateBasicField("blnHasDisability", value)} disabled={blnViewOnly} />} label="Has Disability" />
+                  <FormControlLabel control={<Switch checked={dicBasicForm.blnSuperannuationFlag} onChange={(_, value) => updateBasicField("blnSuperannuationFlag", value)} disabled={blnViewOnly} />} label="Superannuation" />
+                  <FormControlLabel control={<Switch checked={dicBasicForm.blnIsRelatedEmployee} onChange={(_, value) => { updateBasicField("blnIsRelatedEmployee", value); if (!value) updateBasicField("intRelatedEmployeeID", ""); }} disabled={blnViewOnly} />} label="Related Employee" />
+                </Stack>
+                {dicBasicForm.blnIsRelatedEmployee ? (
+                  <Box sx={{ mt: 1.5, maxWidth: 420 }}>
+                    {renderSelectField("Related Employee", dicBasicForm.intRelatedEmployeeID, (objValue) => updateBasicField("intRelatedEmployeeID", objValue as number | ""), lstManagerOptions, blnViewOnly)}
+                  </Box>
+                ) : null}
+              </Box> : null}
+
+              {strVisibleActiveTab === "serviceContract" ? (
+                <Stack spacing={3}>
+                  <Box>
+                    <Typography sx={{ mb: 1.5, fontWeight: 700, color: "#334155" }}>Appointment & Joining</Typography>
+                    <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" } }}>
+                      {lstAppointmentJoiningFields.map((dicField) => renderOptionalEmployeeField(dicField.strField, dicField.strLabel, dicField.strType))}
+                    </Box>
+                  </Box>
+                  <Box>
+                    <Typography sx={{ mb: 1.5, fontWeight: 700, color: "#334155" }}>Probation & Confirmation</Typography>
+                    <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" } }}>
+                      {lstProbationConfirmationFields.map((dicField) => renderOptionalEmployeeField(dicField.strField, dicField.strLabel, dicField.strType))}
+                    </Box>
+                  </Box>
+                  <Box>
+                    <Typography sx={{ mb: 1.5, fontWeight: 700, color: "#334155" }}>Contract / Service Period</Typography>
+                    <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" } }}>
+                      {lstContractServiceFields.map((dicField) => renderOptionalEmployeeField(dicField.strField, dicField.strLabel, dicField.strType))}
+                      <TextField data-controlid="employee.editor.date-of-exit.input" inputProps={{ "data-controlid": "employee.editor.date-of-exit.input" }} type="date" label={t("field_date_of_exit", dicConstant.employeeMaster.fields.dateOfExit)} value={dicBasicForm.dtDateOfExit} onChange={(objEvent) => updateBasicField("dtDateOfExit", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfExit)} helperText={dicBasicErrors.dtDateOfExit} InputLabelProps={{ shrink: true }} disabled={blnViewOnly || dicBasicForm.strEmploymentStatus === "Active"} fullWidth />
+                    </Box>
+                  </Box>
+                </Stack>
+              ) : null}
+
+              {strVisibleActiveTab === "additionalEmployment" ? <Box>
+                <Box sx={{ display: "grid", gap: 2, alignItems: "center", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", xl: "repeat(3, minmax(0, 1fr))" } }}>
+                  {lstAdditionalEmploymentFields.slice(0, 5).map((dicField) => renderOptionalEmployeeField(dicField.strField, dicField.strLabel, dicField.strType))}
+                  <FormControlLabel control={<Switch checked={dicBasicForm.blnFlatGiven} onChange={(_, value) => updateBasicField("blnFlatGiven", value)} disabled={blnViewOnly} />} label="Flat Given" sx={{ m: 0 }} />
+                  {renderOptionalEmployeeField("strPrefixLogic", "Prefix Logic")}
+                  <FormControlLabel control={<Switch checked={dicBasicForm.blnUgcAppraisalFlag} onChange={(_, value) => updateBasicField("blnUgcAppraisalFlag", value)} disabled={blnViewOnly} />} label="UGC Appraisal" sx={{ m: 0 }} />
+                </Box>
+                <TextField key="strEmployeeRemark" data-controlid="employee.editor.strEmployeeRemark.input" data-control-id="employee.editor.strEmployeeRemark.input" label="Employee Remark" value={dicBasicForm.strEmployeeRemark} onChange={(objEvent) => updateBasicField("strEmployeeRemark", objEvent.target.value)} disabled={blnViewOnly} multiline minRows={3} fullWidth sx={{ mt: 2 }} />
+              </Box> : null}
             </Stack>
           ) : null}
 
           {strVisibleActiveTab === "address" ? (
-            <Stack spacing={2.5}>
-              <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" } }}>
+            <Stack spacing={3}>
+              <Box>
+                <Typography sx={{ mb: 1.5, fontWeight: 700, color: "#334155" }}>Employee Contact</Typography>
+              <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))" } }}>
                 <TextField data-controlid="employee.editor.work-email.input" inputProps={{ "data-controlid": "employee.editor.work-email.input" }} label={t("field_work_email", dicConstant.employeeMaster.fields.workEmail)} inputRef={dicFieldRefs.strWorkEmail} value={dicBasicForm.strWorkEmail} onChange={(objEvent) => updateBasicField("strWorkEmail", objEvent.target.value)} error={Boolean(dicBasicErrors.strWorkEmail)} helperText={dicBasicErrors.strWorkEmail} disabled={blnViewOnly} fullWidth />
                 <TextField data-controlid="employee.editor.personal-email.input" inputProps={{ "data-controlid": "employee.editor.personal-email.input" }} label={t("field_personal_email", dicConstant.employeeMaster.fields.personalEmail)} inputRef={dicFieldRefs.strPersonalEmail} value={dicBasicForm.strPersonalEmail} onChange={(objEvent) => updateBasicField("strPersonalEmail", objEvent.target.value)} error={Boolean(dicBasicErrors.strPersonalEmail)} helperText={dicBasicErrors.strPersonalEmail} disabled={blnViewOnly} fullWidth />
+                {renderOptionalEmployeeField("strMobileCountryCode", "Mobile Country Code")}
                 <TextField
                   data-controlid="employee.editor.mobile-number.input"
                   inputProps={{
@@ -1598,13 +1788,27 @@ export default function EmployeeEditorScreen({
                   disabled={blnViewOnly}
                   fullWidth
                 />
+                {renderOptionalEmployeeField("strWhatsappCountryCode", "WhatsApp Country Code")}
+                {renderOptionalEmployeeField("strWhatsappNumber", "WhatsApp Number")}
+              </Box>
+              </Box>
+              <Box>
+                <Typography sx={{ mb: 1.5, fontWeight: 700, color: "#334155" }}>Emergency Contact</Typography>
+                <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))" } }}>
+                  {lstContactOptionalFields.slice(3).map((dicField) => renderOptionalEmployeeField(dicField.strField, dicField.strLabel))}
+                </Box>
+              </Box>
+              <Box>
+                <Typography sx={{ mb: 1.5, fontWeight: 700, color: "#334155" }}>Address</Typography>
+                <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))" } }}>
                 {renderSelectField(t("field_address_type", dicConstant.employeeMaster.fields.addressType), dicAddressForm.strAddressType, (objValue) => updateAddressField("strAddressType", String(objValue)), objFormOptions?.lstAddressTypes ?? [], blnViewOnly)}
                 <TextField data-controlid="employee.editor.address-line1.input" inputProps={{ "data-controlid": "employee.editor.address-line1.input" }} label={renderRequiredLabel(t("field_address_line1", dicConstant.employeeMaster.fields.addressLine1))} inputRef={dicFieldRefs.strAddressLine1} value={dicAddressForm.strAddressLine1} onChange={(objEvent) => updateAddressField("strAddressLine1", objEvent.target.value)} error={Boolean(dicAddressErrors.strAddressLine1)} helperText={dicAddressErrors.strAddressLine1} disabled={blnViewOnly} fullWidth />
                 <TextField data-controlid="employee.editor.address-line2.input" inputProps={{ "data-controlid": "employee.editor.address-line2.input" }} label={t("field_address_line2", dicConstant.employeeMaster.fields.addressLine2)} value={dicAddressForm.strAddressLine2} onChange={(objEvent) => updateAddressField("strAddressLine2", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
                 <TextField data-controlid="employee.editor.city.input" inputProps={{ "data-controlid": "employee.editor.city.input" }} label={t("field_city", dicConstant.employeeMaster.fields.cityName)} value={dicAddressForm.strCityName} onChange={(objEvent) => updateAddressField("strCityName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
                 {renderSelectField(t("field_state", dicConstant.employeeMaster.fields.state), dicAddressForm.intStateID, (objValue) => updateAddressField("intStateID", objValue as number | ""), objFormOptions?.lstStates ?? [], blnViewOnly)}
-                <TextField data-controlid="employee.editor.postal-code.input" inputProps={{ "data-controlid": "employee.editor.postal-code.input" }} label={t("field_postal_code", dicConstant.employeeMaster.fields.postalCode)} value={dicAddressForm.strPostalCode} onChange={(objEvent) => updateAddressField("strPostalCode", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
                 {renderSelectField(renderRequiredLabel(t("field_country", dicConstant.employeeMaster.fields.country)), dicAddressForm.intCountryID, (objValue) => updateAddressField("intCountryID", objValue as number | ""), objFormOptions?.lstCountries ?? [], blnViewOnly, dicAddressErrors.intCountryID, Boolean(dicAddressErrors.intCountryID), dicFieldRefs.intCountryID)}
+                <TextField data-controlid="employee.editor.postal-code.input" inputProps={{ "data-controlid": "employee.editor.postal-code.input" }} label={t("field_postal_code", dicConstant.employeeMaster.fields.postalCode)} value={dicAddressForm.strPostalCode} onChange={(objEvent) => updateAddressField("strPostalCode", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+                </Box>
               </Box>
             </Stack>
           ) : null}
@@ -1629,9 +1833,13 @@ export default function EmployeeEditorScreen({
                 </Stack>
                 <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", xl: "repeat(2, minmax(0, 1fr))" } }}>
                   {renderSelectField(renderRequiredLabel(t("field_bank", dicConstant.employeeMaster.fields.bank)), dicBankForm.intBankID, (objValue) => updateBankField("intBankID", objValue as number | ""), objFormOptions?.lstBanks ?? [], blnViewOnly, dicBankErrors.intBankID, Boolean(dicBankErrors.intBankID), dicFieldRefs.intBankID)}
+                  <TextField label="Branch Name" value={dicBankForm.strBranchName} onChange={(objEvent) => updateBankField("strBranchName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
                   <TextField data-controlid="employee.editor.account-holder-name.input" inputProps={{ "data-controlid": "employee.editor.account-holder-name.input" }} label={renderRequiredLabel(t("field_account_holder_name", dicConstant.employeeMaster.fields.accountHolderName))} inputRef={dicFieldRefs.strAccountHolderName} value={dicBankForm.strAccountHolderName} onChange={(objEvent) => updateBankField("strAccountHolderName", objEvent.target.value)} error={Boolean(dicBankErrors.strAccountHolderName)} helperText={dicBankErrors.strAccountHolderName} disabled={blnViewOnly} fullWidth />
+                  {renderSelectField("Account Type", dicBankForm.strAccountType, (objValue) => updateBankField("strAccountType", String(objValue)), objFormOptions?.lstBankAccountTypes ?? [], blnViewOnly)}
                   <TextField data-controlid="employee.editor.account-number.input" inputProps={{ "data-controlid": "employee.editor.account-number.input" }} label={renderRequiredLabel(t("field_account_number", dicConstant.employeeMaster.fields.accountNumber))} inputRef={dicFieldRefs.strAccountNumber} value={dicBankForm.strAccountNumber} onChange={(objEvent) => updateBankField("strAccountNumber", objEvent.target.value)} error={Boolean(dicBankErrors.strAccountNumber)} helperText={dicBankErrors.strAccountNumber} disabled={blnViewOnly} fullWidth />
                   <TextField data-controlid="employee.editor.ifsc-code.input" inputProps={{ "data-controlid": "employee.editor.ifsc-code.input" }} label={t("field_ifsc_code", dicConstant.employeeMaster.fields.ifscCode)} value={dicBankForm.strIfscCode} onChange={(objEvent) => updateBankField("strIfscCode", objEvent.target.value.toUpperCase())} disabled={blnViewOnly} fullWidth />
+                  <TextField data-controlid="employee.editor.swift-code.input" inputProps={{ "data-controlid": "employee.editor.swift-code.input", maxLength: 20 }} label="SWIFT Code" value={dicBankForm.strSwiftCode} onChange={(objEvent) => updateBankField("strSwiftCode", objEvent.target.value.toUpperCase())} disabled={blnViewOnly} fullWidth />
+                  <TextField type="email" label="Account Holder Email" value={dicBankForm.strAccountHolderEmail} onChange={(objEvent) => updateBankField("strAccountHolderEmail", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
                 </Box>
               </Box>
 
@@ -1671,15 +1879,21 @@ export default function EmployeeEditorScreen({
           ) : null}
 
           {blnCanViewStatutoryDetails && strVisibleActiveTab === "statutory" ? (
-            <Stack spacing={2.5} sx={{ width: { xs: "100%", md: "calc(100% - 138px)" } }}>
-              <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" } }}>
-                <TextField data-controlid="employee.editor.pan-number.input" inputProps={{ "data-controlid": "employee.editor.pan-number.input" }} label={t("field_pan_number", dicConstant.employeeMaster.fields.panNumber)} value={dicStatutoryForm.strPanNumber} onChange={(objEvent) => updateStatutoryField("strPanNumber", objEvent.target.value.toUpperCase())} disabled={blnViewOnly} fullWidth />
-                <TextField data-controlid="employee.editor.uan-number.input" inputProps={{ "data-controlid": "employee.editor.uan-number.input" }} label={t("field_uan_number", dicConstant.employeeMaster.fields.uanNumber)} value={dicStatutoryForm.strUanNumber} onChange={(objEvent) => updateStatutoryField("strUanNumber", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
-                {renderSelectField(t("field_tax_regime", dicConstant.employeeMaster.fields.taxRegimeCode), dicStatutoryForm.strTaxRegimeCode, (objValue) => updateStatutoryField("strTaxRegimeCode", String(objValue)), objFormOptions?.lstTaxRegimeCodes ?? [], blnViewOnly)}
+            <Stack spacing={3} sx={{ width: "100%" }}>
+              <Box>
+                <Typography sx={{ mb: 1.5, fontWeight: 700, color: "#334155" }}>Tax & National Identification</Typography>
+                <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(3, minmax(0, 1fr))" } }}>
+                  <TextField data-controlid="employee.editor.pan-number.input" inputProps={{ "data-controlid": "employee.editor.pan-number.input" }} label={t("field_pan_number", dicConstant.employeeMaster.fields.panNumber)} value={dicStatutoryForm.strPanNumber} onChange={(objEvent) => updateStatutoryField("strPanNumber", objEvent.target.value.toUpperCase())} disabled={blnViewOnly} fullWidth />
+                  {renderSelectField(t("field_tax_regime", dicConstant.employeeMaster.fields.taxRegimeCode), dicStatutoryForm.strTaxRegimeCode, (objValue) => updateStatutoryField("strTaxRegimeCode", String(objValue)), objFormOptions?.lstTaxRegimeCodes ?? [], blnViewOnly)}
+                  <TextField label="SSN Number" value={dicStatutoryForm.strSsnNumber} onChange={(objEvent) => updateStatutoryField("strSsnNumber", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+                  <TextField label="PRAN Number" value={dicStatutoryForm.strPranNumber} onChange={(objEvent) => updateStatutoryField("strPranNumber", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+                  <TextField label="Gratuity Number" value={dicStatutoryForm.strGratuityNumber} onChange={(objEvent) => updateStatutoryField("strGratuityNumber", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+                  <TextField data-controlid="employee.editor.uan-number.input" inputProps={{ "data-controlid": "employee.editor.uan-number.input" }} label={t("field_uan_number", dicConstant.employeeMaster.fields.uanNumber)} value={dicStatutoryForm.strUanNumber} onChange={(objEvent) => updateStatutoryField("strUanNumber", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+                </Box>
               </Box>
-              <Stack spacing={2}>
-                <Box sx={{ display: "grid", gap: 2, alignItems: "center", gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" } }}>
-                  <Box sx={{ display: "flex", alignItems: "center", minHeight: 56 }}>
+              <Box sx={{ display: "grid", gap: 2, alignItems: "stretch", gridTemplateColumns: { xs: "1fr", lg: "repeat(3, minmax(0, 1fr))" } }}>
+                <Stack spacing={1.5} alignItems="stretch" sx={{ border: "1px solid rgba(148,163,184,0.24)", borderRadius: "18px", p: 2 }}>
+                  <Typography sx={{ fontWeight: 700, color: "#334155" }}>Provident Fund</Typography>
                     <FormControlLabel
                       control={
                         <Switch
@@ -1694,8 +1908,8 @@ export default function EmployeeEditorScreen({
                         />
                       }
                       label={t("field_pf_applicable", "PF Applicable")}
+                      sx={{ m: 0 }}
                     />
-                  </Box>
                   {dicStatutoryForm.blnPfApplicable ? (
                     <TextField
                       data-controlid="employee.editor.pf-number.input"
@@ -1709,9 +1923,9 @@ export default function EmployeeEditorScreen({
                       fullWidth
                     />
                   ) : null}
-                </Box>
-                <Box sx={{ display: "grid", gap: 2, alignItems: "center", gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" } }}>
-                  <Box sx={{ display: "flex", alignItems: "center", minHeight: 56 }}>
+                </Stack>
+                <Stack spacing={1.5} alignItems="stretch" sx={{ border: "1px solid rgba(148,163,184,0.24)", borderRadius: "18px", p: 2 }}>
+                  <Typography sx={{ fontWeight: 700, color: "#334155" }}>ESI</Typography>
                     <FormControlLabel
                       control={
                         <Switch
@@ -1726,8 +1940,9 @@ export default function EmployeeEditorScreen({
                         />
                       }
                       label={t("field_esi_applicable", "ESI Applicable")}
+                      sx={{ m: 0 }}
                     />
-                  </Box>
+                  <TextField label="ESI Code" value={dicStatutoryForm.strEsiCode} onChange={(objEvent) => updateStatutoryField("strEsiCode", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
                   {dicStatutoryForm.blnEsiApplicable ? (
                     <TextField
                       data-controlid="employee.editor.esi-number.input"
@@ -1741,13 +1956,16 @@ export default function EmployeeEditorScreen({
                       fullWidth
                     />
                   ) : null}
-                </Box>
-                <Box sx={{ display: "grid", gap: 2, alignItems: "center", gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" } }}>
-                  <Box sx={{ display: "flex", alignItems: "center", minHeight: 56 }}>
-                    <FormControlLabel control={<Switch checked={dicStatutoryForm.blnPtApplicable} onChange={(_, blnChecked) => updateStatutoryField("blnPtApplicable", blnChecked)} disabled={blnViewOnly} />} label={t("field_pt_applicable", "PT Applicable")} />
-                  </Box>
-                </Box>
-              </Stack>
+                </Stack>
+                <Stack spacing={1.5} alignItems="stretch" sx={{ border: "1px solid rgba(148,163,184,0.24)", borderRadius: "18px", p: 2 }}>
+                  <Typography sx={{ fontWeight: 700, color: "#334155" }}>Professional Tax</Typography>
+                  <FormControlLabel
+                    control={<Switch checked={dicStatutoryForm.blnPtApplicable} onChange={(_, blnChecked) => updateStatutoryField("blnPtApplicable", blnChecked)} disabled={blnViewOnly} />}
+                    label={t("field_pt_applicable", "PT Applicable")}
+                    sx={{ m: 0 }}
+                  />
+                </Stack>
+              </Box>
             </Stack>
           ) : null}
 
@@ -1755,7 +1973,6 @@ export default function EmployeeEditorScreen({
             <Stack spacing={2.5}>
               <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.5}>
                 <Box>
-                  <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{t("section_experience", "Experience")}</Typography>
                   <Typography sx={{ mt: 0.5, color: "#64748b" }}>
                     {t("section_experience_help", "Capture prior roles, durations, and compensation details for this employee.")}
                   </Typography>
@@ -1931,7 +2148,6 @@ export default function EmployeeEditorScreen({
             <Stack spacing={2.5}>
               <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.5}>
                 <Box>
-                  <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{t("section_qualification", "Qualification")}</Typography>
                   <Typography sx={{ mt: 0.5, color: "#64748b" }}>
                     {t("section_qualification_help", "Maintain academic background, certifications, and identify the highest qualification.")}
                   </Typography>

@@ -33,6 +33,10 @@ const dicEmptyForm: EmployeeBankFormValues = {
   strAccountHolderName: "",
   strAccountNumber: "",
   strIfscCode: "",
+  strSwiftCode: "",
+  strBranchName: "",
+  strAccountType: "",
+  strAccountHolderEmail: "",
   intSecondaryBankID: "",
   strSecondaryAccountHolderName: "",
   strSecondaryAccountNumber: "",
@@ -97,6 +101,10 @@ export default function EssMyBankDetailsPage() {
           strAccountHolderName: dicBank.strAccountHolderName ?? "",
           strAccountNumber: dicBank.strAccountNumber ?? "",
           strIfscCode: dicBank.strIfscCode ?? "",
+          strSwiftCode: dicBank.strSwiftCode ?? "",
+          strBranchName: dicBank.strBranchName ?? "",
+          strAccountType: dicBank.strAccountType ?? "",
+          strAccountHolderEmail: dicBank.strAccountHolderEmail ?? "",
           intSecondaryBankID: dicBank.intSecondaryBankID ?? "",
           strSecondaryAccountHolderName: dicBank.strSecondaryAccountHolderName ?? "",
           strSecondaryAccountNumber: dicBank.strSecondaryAccountNumber ?? "",
@@ -159,6 +167,7 @@ export default function EssMyBankDetailsPage() {
         strAccountHolderName: dicSaved.strAccountHolderName ?? dicForm.strAccountHolderName,
         strAccountNumber: dicSaved.strAccountNumber ?? dicForm.strAccountNumber,
         strIfscCode: dicSaved.strIfscCode ?? "",
+        strSwiftCode: dicSaved.strSwiftCode ?? "",
         intSecondaryBankID: dicSaved.intSecondaryBankID ?? "",
         strSecondaryAccountHolderName: dicSaved.strSecondaryAccountHolderName ?? "",
         strSecondaryAccountNumber: dicSaved.strSecondaryAccountNumber ?? "",
@@ -287,6 +296,19 @@ export default function EssMyBankDetailsPage() {
               value={dicForm.strIfscCode}
               onChange={(objEvent) => {
                 setDicForm((dicPrevious) => ({ ...dicPrevious, strIfscCode: objEvent.target.value.toUpperCase() }));
+              }}
+              disabled={!blnCanModify}
+            />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <TextField
+              controlId="ess.my-bank-details.swift-code.input"
+              fullWidth
+              label={t("field_swift_code", "SWIFT Code")}
+              value={dicForm.strSwiftCode}
+              inputProps={{ maxLength: 20 }}
+              onChange={(objEvent) => {
+                setDicForm((dicPrevious) => ({ ...dicPrevious, strSwiftCode: objEvent.target.value.toUpperCase() }));
               }}
               disabled={!blnCanModify}
             />
