@@ -526,6 +526,17 @@ export default function SalaryStructureEditorPage({
     return lstFlexiBasketLines.map((dicLine) => dicLine.strRowID).join("|");
   }, [lstFlexiBasketLines]);
   const dicStructureSummary = useMemo(() => {
+    function getSummaryComponentName(
+      dicLine: SalaryStructureLineFormValue,
+      dicComponent: SalaryStructureFormOptions["lstSalaryComponents"][number] | undefined,
+    ) {
+      return dicLine.strComponentName.trim()
+        || dicComponent?.strLabel?.trim()
+        || dicLine.strComponentCode.trim()
+        || dicComponent?.strCode?.trim()
+        || t("salary_component", "Salary Component");
+    }
+
     const dicTotals = dicForm.lstComponents.reduce(
       (dicTotals, dicLine) => {
         if (dicLine.intSalaryComponentID === "") {
@@ -568,25 +579,46 @@ export default function SalaryStructureEditorPage({
           blnIsFlexiBasket
           || (blnIsEarning && !blnIsDeductionLike && !blnIsEmployerContributionLike && !blnIsInformationLike)
         );
+        const dicSummaryComponent = {
+          strName: getSummaryComponentName(dicLine, dicComponent),
+          fltAnnualAmount: fltYearlyAmount,
+        };
 
         if (blnIsActiveLine && blnIncludedInCtc && (blnIsFlexiBasket || blnIsEmployerContributionLike || (blnIsEarning && !blnIsDeductionLike && !blnIsInformationLike))) {
           dicTotals.fltTotalCtc += fltYearlyAmount;
+          dicTotals.lstCtcComponents.push(dicSummaryComponent);
         }
         if (blnIsActiveLine && (blnIsFlexiBasket || strFlexiType === "basket")) {
           dicTotals.fltFlexiBasket += fltYearlyAmount;
+          dicTotals.lstFlexiBasketComponents.push(dicSummaryComponent);
         } else if (blnIsActiveLine && blnIsEmployerContributionLike) {
           dicTotals.fltEmployerContribution += fltYearlyAmount;
+          dicTotals.lstEmployerContributionComponents.push(dicSummaryComponent);
         } else if (blnIsActiveLine && strGroup === "variablepay" && blnIsEarning) {
           dicTotals.fltVariablePay += fltYearlyAmount;
+          dicTotals.lstVariablePayComponents.push(dicSummaryComponent);
         } else if (blnIsActiveLine && blnIsFixedPayEarning) {
           dicTotals.fltFixedPay += fltYearlyAmount;
         }
         if (blnIsPayableGrossComponent) {
           dicTotals.fltGrossAnnual += fltYearlyAmount;
+          dicTotals.lstGrossComponents.push(dicSummaryComponent);
         }
         return dicTotals;
       },
-      { fltTotalCtc: 0, fltGrossAnnual: 0, fltFixedPay: 0, fltVariablePay: 0, fltFlexiBasket: 0, fltEmployerContribution: 0 }
+      {
+        fltTotalCtc: 0,
+        fltGrossAnnual: 0,
+        fltFixedPay: 0,
+        fltVariablePay: 0,
+        fltFlexiBasket: 0,
+        fltEmployerContribution: 0,
+        lstCtcComponents: [] as Array<{ strName: string; fltAnnualAmount: number }>,
+        lstGrossComponents: [] as Array<{ strName: string; fltAnnualAmount: number }>,
+        lstVariablePayComponents: [] as Array<{ strName: string; fltAnnualAmount: number }>,
+        lstEmployerContributionComponents: [] as Array<{ strName: string; fltAnnualAmount: number }>,
+        lstFlexiBasketComponents: [] as Array<{ strName: string; fltAnnualAmount: number }>,
+      }
     );
     const fltGrossAnnual = dicTotals.fltGrossAnnual;
     return {
@@ -597,8 +629,13 @@ export default function SalaryStructureEditorPage({
       fltVariablePay: dicTotals.fltVariablePay,
       fltFlexiBasket: dicTotals.fltFlexiBasket,
       fltEmployerContribution: dicTotals.fltEmployerContribution,
+      lstCtcComponents: dicTotals.lstCtcComponents,
+      lstGrossComponents: dicTotals.lstGrossComponents,
+      lstVariablePayComponents: dicTotals.lstVariablePayComponents,
+      lstEmployerContributionComponents: dicTotals.lstEmployerContributionComponents,
+      lstFlexiBasketComponents: dicTotals.lstFlexiBasketComponents,
     };
-  }, [dicComponentByID, dicForm.lstComponents]);
+  }, [dicComponentByID, dicForm.lstComponents, t]);
   const dicFlexiSummary = useMemo(() => {
     const dicBucketLine = lstFlexiBasketLines[0];
     const fltBucketAnnual = dicBucketLine ? (parseLineAmount(dicBucketLine.fltFixedAmount) ?? 0) * 12 : 0;
@@ -617,14 +654,22 @@ export default function SalaryStructureEditorPage({
     }, 0);
     const dicBucketComponent = dicComponentByID.get(Number(dicBucketLine?.intSalaryComponentID));
     const dicResidualComponent = dicComponentByID.get(Number(dicBucketComponent?.intResidualComponentID));
+    const lstEntitlementComponents = dicForm.lstComponents.flatMap((dicLine) => dicLine.lstFlexiMappings)
+      .filter((dicMapping) => dicMapping.blnIsActive && dicMapping.intFlexiComponentID !== "")
+      .map((dicMapping) => ({
+        strName: dicMapping.strFlexiComponentName.trim() || dicMapping.strFlexiComponentCode.trim() || t("flexi_component", "Flexi Component"),
+        fltAnnualAmount: Math.max(parseLineAmount(dicMapping.fltMaxAmount) ?? 0, 0),
+      }))
+      .filter((dicComponent) => dicComponent.fltAnnualAmount > 0);
     return {
       fltDefaultAllocatedAnnual,
       fltDefaultBalanceAnnual: Math.max(0, fltBucketAnnual - fltDefaultAllocatedAnnual),
       fltEntitlementAnnual,
       fltResidualTaxableProjection: Math.max(0, fltBucketAnnual - fltEntitlementAnnual),
       strResidualComponentName: dicResidualComponent?.strLabel ?? "",
+      lstEntitlementComponents,
     };
-  }, [dicComponentByID, dicForm.lstComponents, lstFlexiBasketLines]);
+  }, [dicComponentByID, dicForm.lstComponents, lstFlexiBasketLines, t]);
   const lstCompensationWarnings = useMemo(() => {
     const lstWarnings: Array<{ strSeverity: "error" | "warning" | "info"; strMessage: string }> = [];
     const blnHasActiveFlexiOption = dicForm.lstComponents.some((dicLine) =>
@@ -1564,6 +1609,46 @@ export default function SalaryStructureEditorPage({
     }
   }
 
+  function renderCompensationCalculationTooltip(
+    strLogic: string,
+    lstComponents: Array<{ strName: string; fltAnnualAmount: number }>,
+    fltResult: number,
+    intAnnualDivisor = 1,
+  ) {
+    return (
+      <Box sx={{ maxHeight: 420, minWidth: 260, overflowY: "auto", p: 0.5 }}>
+        <Typography sx={{ fontSize: "0.8rem", fontWeight: 800, mb: 0.5 }}>
+          {t("calculation_details", "Calculation details")}
+        </Typography>
+        <Typography sx={{ fontSize: "0.72rem", lineHeight: 1.4, mb: 1, opacity: 0.9 }}>
+          {strLogic}
+        </Typography>
+        {lstComponents.length > 0 ? (
+          <Stack spacing={0.45}>
+            {lstComponents.map((dicComponent, intIndex) => (
+              <Stack key={`${dicComponent.strName}-${intIndex}`} direction="row" justifyContent="space-between" spacing={2}>
+                <Typography sx={{ fontSize: "0.72rem", overflowWrap: "anywhere" }}>{dicComponent.strName}</Typography>
+                <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, whiteSpace: "nowrap" }}>
+                  ₹ {formatSummaryAmount(dicComponent.fltAnnualAmount / intAnnualDivisor)}
+                </Typography>
+              </Stack>
+            ))}
+          </Stack>
+        ) : (
+          <Typography sx={{ fontSize: "0.72rem", fontStyle: "italic", opacity: 0.85 }}>
+            {t("no_contributing_components", "No contributing components")}
+          </Typography>
+        )}
+        <Stack direction="row" justifyContent="space-between" spacing={2} sx={{ borderTop: "1px solid rgba(255,255,255,0.35)", mt: 1, pt: 0.75 }}>
+          <Typography sx={{ fontSize: "0.74rem", fontWeight: 800 }}>{t("calculated_total", "Calculated total")}</Typography>
+          <Typography sx={{ fontSize: "0.74rem", fontWeight: 800, whiteSpace: "nowrap" }}>
+            ₹ {formatSummaryAmount(fltResult)}
+          </Typography>
+        </Stack>
+      </Box>
+    );
+  }
+
   if (blnLoading || blnRightsLoading) {
     return (
       <Box sx={{ minHeight: 360, display: "grid", placeItems: "center" }}>
@@ -2201,22 +2286,77 @@ export default function SalaryStructureEditorPage({
             </Typography>
             <Stack spacing={1.6}>
               {[
-                [t("annual_ctc", "Annual CTC"), formatFlexiAmount(dicStructureSummary.fltTotalCtc), "#0757b8"],
-                [t("monthly_ctc", "Monthly CTC"), formatFlexiAmount(dicStructureSummary.fltTotalCtc / 12), "#0757b8"],
-                [t("gross_annual", "Gross Annual"), formatFlexiAmount(dicStructureSummary.fltGrossAnnual), "#0f172a"],
-                [t("gross_monthly", "Gross Monthly"), formatFlexiAmount(dicStructureSummary.fltGrossMonthly), "#0f172a"],
-                [t("variable_pay", "Variable Pay"), formatFlexiAmount(dicStructureSummary.fltVariablePay), "#0f172a"],
-                [t("employer_contributions", "Employer Contributions"), formatFlexiAmount(dicStructureSummary.fltEmployerContribution), "#0f172a"],
-                [t("flexi_basket_amount", "Flexi Basket Amount"), formatFlexiAmount(dicStructureSummary.fltFlexiBasket), "#067647"],
-                [t("flexi_entitlement_total", "Flexi Entitlement Total"), formatFlexiAmount(dicFlexiSummary.fltEntitlementAnnual), "#0f766e"],
-                [t("residual_flexi_capacity", "Residual Flexi Capacity"), formatFlexiAmount(dicFlexiSummary.fltResidualTaxableProjection), "#b45309"],
-              ].map(([strLabel, strValue, strColor], intSummaryIndex) => {
-                const blnCurrencyValue = strLabel !== t("residual_component", "Residual Component");
+                {
+                  strLabel: t("annual_ctc", "Annual CTC"), fltValue: dicStructureSummary.fltTotalCtc, strColor: "#0757b8",
+                  strLogic: t("annual_ctc_calculation_logic", "Sum of annual amounts (monthly amount × 12) for active earnings, Flexi Basket, and employer contributions marked as Included in CTC."),
+                  lstComponents: dicStructureSummary.lstCtcComponents, intAnnualDivisor: 1,
+                },
+                {
+                  strLabel: t("monthly_ctc", "Monthly CTC"), fltValue: dicStructureSummary.fltTotalCtc / 12, strColor: "#0757b8",
+                  strLogic: t("monthly_ctc_calculation_logic", "Annual CTC ÷ 12. Each amount below is the component's monthly contribution."),
+                  lstComponents: dicStructureSummary.lstCtcComponents, intAnnualDivisor: 12,
+                },
+                {
+                  strLabel: t("gross_annual", "Gross Annual"), fltValue: dicStructureSummary.fltGrossAnnual, strColor: "#0f172a",
+                  strLogic: t("gross_annual_calculation_logic", "Sum of annual amounts for active payable earnings and Flexi Basket. Deductions, employer contributions, and information-only components are excluded."),
+                  lstComponents: dicStructureSummary.lstGrossComponents, intAnnualDivisor: 1,
+                },
+                {
+                  strLabel: t("gross_monthly", "Gross Monthly"), fltValue: dicStructureSummary.fltGrossMonthly, strColor: "#0f172a",
+                  strLogic: t("gross_monthly_calculation_logic", "Gross Annual ÷ 12. Each amount below is the component's monthly contribution."),
+                  lstComponents: dicStructureSummary.lstGrossComponents, intAnnualDivisor: 12,
+                },
+                {
+                  strLabel: t("variable_pay", "Variable Pay"), fltValue: dicStructureSummary.fltVariablePay, strColor: "#0f172a",
+                  strLogic: t("variable_pay_calculation_logic", "Sum of annual amounts for active earning components in the Variable Pay group."),
+                  lstComponents: dicStructureSummary.lstVariablePayComponents, intAnnualDivisor: 1,
+                },
+                {
+                  strLabel: t("employer_contributions", "Employer Contributions"), fltValue: dicStructureSummary.fltEmployerContribution, strColor: "#0f172a",
+                  strLogic: t("employer_contributions_calculation_logic", "Sum of annual amounts for active components classified as employer contributions."),
+                  lstComponents: dicStructureSummary.lstEmployerContributionComponents, intAnnualDivisor: 1,
+                },
+                {
+                  strLabel: t("flexi_basket_amount", "Flexi Basket Amount"), fltValue: dicStructureSummary.fltFlexiBasket, strColor: "#067647",
+                  strLogic: t("flexi_basket_calculation_logic", "Sum of annual amounts for active components classified as a Flexi Basket."),
+                  lstComponents: dicStructureSummary.lstFlexiBasketComponents, intAnnualDivisor: 1,
+                },
+                {
+                  strLabel: t("flexi_entitlement_total", "Flexi Entitlement Total"), fltValue: dicFlexiSummary.fltEntitlementAnnual, strColor: "#0f766e",
+                  strLogic: t("flexi_entitlement_calculation_logic", "Sum of the annual entitlement limits for active Flexi component mappings."),
+                  lstComponents: dicFlexiSummary.lstEntitlementComponents, intAnnualDivisor: 1,
+                },
+                {
+                  strLabel: t("residual_flexi_capacity", "Residual Flexi Capacity"), fltValue: dicFlexiSummary.fltResidualTaxableProjection, strColor: "#b45309",
+                  strLogic: t("residual_flexi_calculation_logic", "Flexi Basket Amount − Flexi Entitlement Total, with a minimum result of zero."),
+                  lstComponents: [
+                    { strName: t("flexi_basket_amount", "Flexi Basket Amount"), fltAnnualAmount: dicStructureSummary.fltFlexiBasket },
+                    { strName: t("less_flexi_entitlement_total", "Less: Flexi Entitlement Total"), fltAnnualAmount: -dicFlexiSummary.fltEntitlementAnnual },
+                  ],
+                  intAnnualDivisor: 1,
+                },
+              ].map((dicSummaryItem, intSummaryIndex) => {
                 return (
-                <Stack key={`summary-${intSummaryIndex}-${String(strLabel)}`} direction="row" justifyContent="space-between" alignItems="center">
-                  <Typography sx={{ color: "#172554", fontSize: "0.84rem", whiteSpace: "nowrap" }}>{strLabel}</Typography>
-                  <Typography sx={{ color: strColor, fontSize: blnCurrencyValue ? "0.84rem" : "0.76rem", fontWeight: 800, ml: 1.5, textAlign: "right", whiteSpace: "nowrap" }}>{blnCurrencyValue ? "₹ " : ""}{strValue}</Typography>
-                </Stack>
+                  <Stack key={`summary-${intSummaryIndex}-${dicSummaryItem.strLabel}`} direction="row" justifyContent="space-between" alignItems="center">
+                    <Typography sx={{ color: "#172554", fontSize: "0.84rem", whiteSpace: "nowrap" }}>{dicSummaryItem.strLabel}</Typography>
+                    <Tooltip
+                      arrow
+                      placement="left"
+                      enterTouchDelay={0}
+                      slotProps={{ tooltip: { sx: { maxWidth: 420 } } }}
+                      title={renderCompensationCalculationTooltip(dicSummaryItem.strLogic, dicSummaryItem.lstComponents, dicSummaryItem.fltValue, dicSummaryItem.intAnnualDivisor)}
+                    >
+                      <Typography
+                        component="span"
+                        tabIndex={0}
+                        aria-label={`${dicSummaryItem.strLabel}: ₹ ${formatSummaryAmount(dicSummaryItem.fltValue)}. ${t("hover_for_calculation", "Hover for calculation details.")}`}
+                        data-controlid={`salary-structures.editor.compensation-summary.${normalizeSelectToken(dicSummaryItem.strLabel)}.amount`}
+                        sx={{ borderBottom: "1px dotted currentColor", color: dicSummaryItem.strColor, cursor: "help", fontSize: "0.84rem", fontWeight: 800, ml: 1.5, textAlign: "right", whiteSpace: "nowrap" }}
+                      >
+                        ₹ {formatFlexiAmount(dicSummaryItem.fltValue)}
+                      </Typography>
+                    </Tooltip>
+                  </Stack>
                 );
               })}
               {lstCompensationWarnings.map((dicWarning) => (
