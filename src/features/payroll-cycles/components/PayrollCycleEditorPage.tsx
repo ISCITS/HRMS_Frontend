@@ -57,12 +57,12 @@ export default function PayrollCycleEditorPage({
   const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
-  // The screen opens read-only and offers Edit only when the server grants the right, so
-  // nothing about the mode travels in the URL for a user to change.
-  const [blnEditRequested, setBlnEditRequested] = useState(strMode === "add");
-  const blnReadOnly = !blnEditRequested || (strMode === "edit" && blnCanView && !blnCanEdit);
+  // Rights decide the mode: a caller holding the edit right lands straight in an editable form,
+  // a caller holding only view gets the same screen read-only. Nothing about the mode travels in
+  // the URL, so there is no mode for a user to flip and no extra Edit click on the way in.
+  const blnReadOnly = strMode === "add" ? !blnCanAdd : !blnCanEdit;
   const blnCanLoadWorkspace = strMode === "add" ? blnCanAdd : blnCanView;
-  const blnCanSave = blnEditRequested && (strMode === "add" ? blnCanAdd : blnCanEdit);
+  const blnCanSave = strMode === "add" ? blnCanAdd : blnCanEdit;
   const blnFieldDisabled = blnSaving || blnReadOnly || !blnCanSave;
 
   useEffect(() => {
@@ -280,8 +280,6 @@ export default function PayrollCycleEditorPage({
       {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
       <CommonEditModeBanner
         blnReadOnly={blnReadOnly}
-        blnCanEdit={strMode === "edit" && blnCanEdit}
-        fnOnEdit={() => setBlnEditRequested(true)}
         strReadOnlyMessage={t("schedule_read_only_mode")}
       />
 

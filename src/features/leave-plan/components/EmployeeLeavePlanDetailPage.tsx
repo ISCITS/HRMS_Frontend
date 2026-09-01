@@ -145,9 +145,9 @@ export default function EmployeeLeavePlanDetailPage({ strEmployeeID }: { strEmpl
   // The Employee Leave Assignment menu grants the generic action set (view/edit/add/...);
   // older ESS-style setups use the compound LEAVE_VIEW/LEAVE_MANAGE codes, so accept either.
   // Opens read-only; Edit appears only when the server grants it, so no mode is in the URL.
-  const [blnEditRequested, setBlnEditRequested] = useState(false);
-  const blnCanManageRight = canDo("EMPLOYEE_LEAVE_ASSIGNMENT", "EDIT") || canDo("EMPLOYEE_LEAVE_ASSIGNMENT", "ADD") || canDo("EMPLOYEE_LEAVE_ASSIGNMENT", "LEAVE_MANAGE");
-  const blnCanManage = blnCanManageRight && blnEditRequested;
+  // Rights alone decide the mode - an editable form for a caller who can manage assignments,
+  // the same screen read-only for one who can only view.
+  const blnCanManage = canDo("EMPLOYEE_LEAVE_ASSIGNMENT", "EDIT") || canDo("EMPLOYEE_LEAVE_ASSIGNMENT", "ADD") || canDo("EMPLOYEE_LEAVE_ASSIGNMENT", "LEAVE_MANAGE");
   const blnCanView = canDo("EMPLOYEE_LEAVE_ASSIGNMENT", "VIEW") || canDo("EMPLOYEE_LEAVE_ASSIGNMENT", "LEAVE_VIEW");
   const objAssignmentSchema = useMemo(() => buildAssignmentSchema(t), [t]);
   const objMovementSchema = useMemo(() => buildMovementSchema(t), [t]);
@@ -285,8 +285,6 @@ export default function EmployeeLeavePlanDetailPage({ strEmployeeID }: { strEmpl
       <Box sx={{ mt: 1.5 }}>
         <CommonEditModeBanner
           blnReadOnly={!blnCanManage}
-          blnCanEdit={blnCanManageRight}
-          fnOnEdit={() => setBlnEditRequested(true)}
           strReadOnlyMessage={t("assignment_read_only", "You are viewing this leave assignment.")}
         />
       </Box>

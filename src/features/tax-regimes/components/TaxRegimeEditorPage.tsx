@@ -67,10 +67,10 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID, blnEmbedd
   const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
-  // The screen opens read-only and offers Edit only when the server grants the right, so
-  // nothing about the mode travels in the URL for a user to change.
-  const [blnEditRequested, setBlnEditRequested] = useState(strMode === "add");
-  const blnReadOnly = !blnEditRequested || (strMode === "edit" && blnCanView && !blnCanEdit);
+  // Rights decide the mode: a caller holding the edit right lands straight in an editable form,
+  // a caller holding only view gets the same screen read-only. Nothing about the mode travels in
+  // the URL, so there is no mode for a user to flip and no extra Edit click on the way in.
+  const blnReadOnly = strMode === "add" ? !blnCanAdd : !blnCanEdit;
   const blnCanLoadWorkspace = strMode === "add" ? blnCanAdd : blnCanView;
   const blnCanSave = strMode === "add" ? blnCanAdd : strMode === "edit" ? blnCanEdit : false;
   const blnFieldDisabled = blnSaving || blnReadOnly || !blnCanSave;
@@ -277,8 +277,6 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID, blnEmbedd
       {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
       <CommonEditModeBanner
         blnReadOnly={blnReadOnly}
-        blnCanEdit={strMode === "edit" && blnCanEdit}
-        fnOnEdit={() => setBlnEditRequested(true)}
         strReadOnlyMessage={t("read_only_mode", "You have view-only access for Tax Regimes.")}
       />
 

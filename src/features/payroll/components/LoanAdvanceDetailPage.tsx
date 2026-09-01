@@ -10,7 +10,7 @@ import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import UndoRoundedIcon from "@mui/icons-material/UndoRounded";
 import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Step, StepLabel, Stepper, Tab, Tabs, TextField, Typography } from "@mui/material";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { MenuItem as AuthMenuItem } from "@/models/AuthModels";
 
@@ -169,7 +169,6 @@ function hasMenuRoute(lstItems: AuthMenuItem[], strRoute: string): boolean {
 
 export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "payroll" }: { intLoanAdvanceID?: number; strMode?: "payroll" | "ess" }) {
   const objRouter = useRouter();
-  const objSearchParams = useSearchParams();
   const { t, blnLoadingLabels, strLabelError } = useModuleLabels("loans-advances");
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(strMode === "ess" ? lstEssModuleCodes : lstModuleCodes);
   const [objRecord, setObjRecord] = useState<LoanAdvanceRecord | null>(null);
@@ -204,8 +203,6 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
   });
 
   const blnIsEssMode = strMode === "ess";
-  const strPageMode = (objSearchParams.get("mode") || (intLoanAdvanceID ? "view" : "add")).toLowerCase();
-  const blnExplicitEditMode = strPageMode === "edit";
   const canLoanAction = (strAction: keyof typeof dicPayrollActionAliases) =>
     (blnIsEssMode ? dicEssActionAliases[strAction] : dicPayrollActionAliases[strAction])?.some((strAlias) => canDoAny(strAlias)) ?? false;
   const blnCanView = blnHasMenuFallbackAccess || canViewAny() || canLoanAction("view");
@@ -222,11 +219,12 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
   const blnCanClose = canLoanAction("close");
   const blnCanCancel = canLoanAction("cancel");
   const strStatus = objRecord?.strWorkflowStatus || "draft";
+  // Rights decide the mode, not the URL: someone holding the edit right opens an editable form,
+  // someone holding only view opens the same screen read-only. A workflow status that locks the
+  // record still wins over both - that is record state, not a permission.
   const blnReadonly =
-    strPageMode === "view" ||
     Boolean(objRecord && lstReadonlyStatuses.includes(strStatus)) ||
-    (!intLoanAdvanceID && !blnCanAdd) ||
-    (Boolean(intLoanAdvanceID) && (!blnCanEdit || !blnExplicitEditMode));
+    (intLoanAdvanceID ? !blnCanEdit : !blnCanAdd);
   const objSelectedEmployee = useMemo(() => lstEmployees.find((objEmployee) => objEmployee.intID === Number(dicValues.intEmployeeID)) || null, [lstEmployees, dicValues.intEmployeeID]);
   const lstFilteredCategories = useMemo(() => lstCategories.filter((objCategory) => objCategory.strRequestType === dicValues.strRequestType), [lstCategories, dicValues.strRequestType]);
   const lstSchedulePreview = useMemo(() => buildSchedulePreview(dicValues, objPolicy), [dicValues, objPolicy]);

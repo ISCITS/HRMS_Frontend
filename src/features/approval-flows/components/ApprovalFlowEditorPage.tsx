@@ -67,9 +67,8 @@ export default function ApprovalFlowEditorPage({ intApprovalFlowID }: ApprovalFl
   const objRouter = useRouter();
   const { canDo, blnLoading: blnRightsLoading } = useActionRights();
   // Opens read-only; Edit appears only when the server grants it, so no mode is in the URL.
-  const [blnEditRequested, setBlnEditRequested] = useState(false);
   const blnCanEditRight = canDo("settings", "EDIT");
-  const blnReadOnly = !blnEditRequested || !blnCanEditRight;
+  const blnReadOnly = !blnCanEditRight;
   const blnCanEdit = !blnReadOnly;
   const blnIsEdit = Boolean(intApprovalFlowID);
 
@@ -325,8 +324,6 @@ export default function ApprovalFlowEditorPage({ intApprovalFlowID }: ApprovalFl
       <Box sx={{ pb: 2 }}>
         <CommonEditModeBanner
           blnReadOnly={blnReadOnly}
-          blnCanEdit={blnCanEditRight}
-          fnOnEdit={() => setBlnEditRequested(true)}
           strReadOnlyMessage="You have view-only access to Approval Workflows."
         />
       </Box>

@@ -50,7 +50,7 @@ export default function PayrollScheduleEditRoutePage({
 
   return (
     <PayrollCycleEditorPage
-      strMode={objSearchParams.get("mode") === "view" ? "view" : "edit"}
+      strMode="edit"
       intPayrollCycleID={intResolvedPayrollCycleID}
     />
   );

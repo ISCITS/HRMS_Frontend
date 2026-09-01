@@ -177,9 +177,11 @@ export default function EmployeePayrollInputEditorPage({
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
   // Opens read-only; Edit appears only when the server grants it, so no mode is in the URL.
-  const [blnEditRequested, setBlnEditRequested] = useState(strMode === "add");
-  const blnCanSave = blnEditRequested && (strMode === "add" ? blnCanAdd : blnCanEdit);
-  const blnReadOnly = !blnEditRequested || (strMode === "edit" && blnCanView && !blnCanEdit);
+  const blnCanSave = strMode === "add" ? blnCanAdd : blnCanEdit;
+  // Rights decide the mode: a caller holding the edit right lands straight in an editable form,
+  // a caller holding only view gets the same screen read-only. Nothing about the mode travels in
+  // the URL, so there is no mode for a user to flip and no extra Edit click on the way in.
+  const blnReadOnly = strMode === "add" ? !blnCanAdd : !blnCanEdit;
 
   useEffect(() => {
     if (blnRightsLoading) {
@@ -633,8 +635,6 @@ export default function EmployeePayrollInputEditorPage({
       {strSuccess ? <Alert severity="success" onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
       <CommonEditModeBanner
         blnReadOnly={blnReadOnly}
-        blnCanEdit={strMode === "edit" && blnCanEdit}
-        fnOnEdit={() => setBlnEditRequested(true)}
         strReadOnlyMessage={t("read_only_mode", "This payroll input is open in view mode.")}
       />
       {blnSelectedRunBlocksInputChanges && !objDismissedNotices.has("runBlocks") ? <Alert severity="warning" onClose={() => dismissNotice("runBlocks")}>{t("run_locked_input_warning", "Selected payroll run is locked, so payroll input cannot be edited.")}</Alert> : null}

@@ -1366,8 +1366,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
   const blnCanMutate = blnCanAdd || blnCanEdit || blnCanSubmit;
   // Opens read-only; Edit appears only when the server grants a mutating right, so no mode is in
   // the URL for a user to change.
-  const [blnEditRequested, setBlnEditRequested] = useState(false);
-  const blnEffectiveViewMode = !blnEditRequested || isReadOnly() || (blnCanView && !blnCanMutate);
+  const blnEffectiveViewMode = isReadOnly() || (blnCanView && !blnCanMutate);
   const blnCanLoadWorkspace = blnCanView;
   const blnHasAssignedSalary = Boolean(objDetail?.objAssignedStructure);
   const blnCanViewWageBreakdownPreview = hasPermissionCode("WAGES_VIEW") && !blnIsRevisionMode;
@@ -2656,8 +2655,6 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
           {strSuccess ? <Alert severity="success" onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
           <CommonEditModeBanner
             blnReadOnly={blnEffectiveViewMode}
-            blnCanEdit={!isReadOnly() && blnCanMutate}
-            fnOnEdit={() => setBlnEditRequested(true)}
             strReadOnlyMessage={t("employee_salary_read_only_mode", "You have view-only access for Employee Salary.")}
           />
           {strPayrollLockMessage ? <Alert severity="warning">{strPayrollLockMessage}</Alert> : null}

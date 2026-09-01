@@ -16,6 +16,7 @@ import { Controller, useFieldArray, useForm, useWatch, type Resolver } from "rea
 import * as yup from "yup";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
+import CommonEditModeBanner from "@/Common/components/CommonEditModeBanner";
 import styles from "@/components/master/MasterScreen.module.css";
 import { useLeavePlanEditor } from "@/features/leave-plan/hooks/useLeavePlanEditor";
 import type { LeavePlanItem, LeavePlanSaveRequest, LeavePlanText, LeavePolicyOption } from "@/features/leave-plan/types/LeavePlanTypes";
@@ -125,8 +126,7 @@ export default function LeavePlanEditorPage({ strMode, strPlanID, strReturnTo }:
   const lstWatchedTexts = useWatch({ control, name: "lstText" });
   const blnCanManage = canDo("LEAVE_PLANS", "EDIT") || canDo("LEAVE_PLANS", "ADD") || canDo("LEAVE_PLANS", "LEAVE_MANAGE");
   // Opens read-only; Edit appears only when the server grants it, so no mode is in the URL.
-  const [blnEditRequested, setBlnEditRequested] = useState(strMode === "new");
-  const blnReadOnly = !blnEditRequested || !blnCanManage;
+  const blnReadOnly = !blnCanManage;
   const strBackPath = strReturnTo?.startsWith("/leave/plans") ? strReturnTo : "/leave/plans";
 
   useEffect(() => {
@@ -256,6 +256,12 @@ export default function LeavePlanEditorPage({ strMode, strPlanID, strReturnTo }:
             ) : null}
           </Stack>
         </Stack>
+        <Box sx={{ mt: 1.5 }}>
+          <CommonEditModeBanner
+            blnReadOnly={blnReadOnly}
+            strReadOnlyMessage={t("plan_read_only", "You have view-only access to Leave Plans.")}
+          />
+        </Box>
       </Paper>
 
       {strError ? <Alert severity="error">{strError}</Alert> : null}
