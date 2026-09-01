@@ -1478,7 +1478,7 @@ export default function SalaryComponentEditorPage({
             label={t("active_component", "Active Component")}
           />
         </Stack>
-        <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" } }}>
+        <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))" } }}>
           <TextField
             required
             label={t("component_name", "Component Name")}
@@ -1512,30 +1512,6 @@ export default function SalaryComponentEditorPage({
               {t("ctc_treatment_help", "CTC Treatment is derived from component category and reimbursement configuration.")}
             </Typography>
           </Box>
-          <TextField select label={t("component_group", "Component Group")} value={dicForm.intComponentGroupID} onChange={(objEvent) => handleLookupSelection(setDicForm, "intComponentGroupID", "strComponentGroup", lstGroupOptions, objEvent.target.value === "" ? "" : Number(objEvent.target.value))} disabled={blnFieldDisabled || blnIsFlexiBucketCategory} fullWidth {...buildSelectTestIdProps("salary-components.editor.component-group.select")}>
-            <MenuItem value="" data-controlid="salary-components.editor.component-group.none.option">{t("none", "None")}</MenuItem>
-            {lstGroupOptions.map((dicOption) => (
-              <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.component-group.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{dicOption.strDisplayName}</MenuItem>
-            ))}
-          </TextField>
-          <TextField required select label={t("payroll_processing_mode", "Payroll Processing Mode")} value={dicForm.intPayrollProcessingModeID} onChange={(objEvent) => handleLookupSelection(setDicForm, "intPayrollProcessingModeID", "strPayrollProcessingMode", lstPayrollProcessingModeOptions, Number(objEvent.target.value))} disabled={blnFieldDisabled} fullWidth {...buildSelectTestIdProps("salary-components.editor.payroll-processing-mode.select")}>
-            {lstPayrollProcessingModeOptions.map((dicOption) => (
-              <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.payroll-processing-mode.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{dicOption.strDisplayName}</MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            required
-            label={t("component_code", "Component Code")}
-            value={dicForm.strComponentCode}
-            onChange={(objEvent) => updateRootField("strComponentCode", objEvent.target.value.toUpperCase())}
-            disabled={blnFieldDisabled || strMode === "edit"}
-            helperText={strMode === "edit"
-              ? t("component_code_read_only_help", "Component code can be entered during creation and is read-only after save.")
-              : t("component_code_create_help", "Set the internal component code used for system references.")}
-            fullWidth
-            data-controlid="salary-components.editor.component-code.input"
-            inputProps={buildInputTestIdProps("salary-components.editor.component-code.input")}
-          />
           {!blnHideWageType ? (
             <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 0.5, minHeight: 56 }}>
               <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 1.5 }}>
@@ -1567,6 +1543,30 @@ export default function SalaryComponentEditorPage({
               </Typography>
             </Box>
           ) : null}
+          <TextField select label={t("component_group", "Component Group")} value={dicForm.intComponentGroupID} onChange={(objEvent) => handleLookupSelection(setDicForm, "intComponentGroupID", "strComponentGroup", lstGroupOptions, objEvent.target.value === "" ? "" : Number(objEvent.target.value))} disabled={blnFieldDisabled || blnIsFlexiBucketCategory} fullWidth {...buildSelectTestIdProps("salary-components.editor.component-group.select")}>
+            <MenuItem value="" data-controlid="salary-components.editor.component-group.none.option">{t("none", "None")}</MenuItem>
+            {lstGroupOptions.map((dicOption) => (
+              <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.component-group.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{dicOption.strDisplayName}</MenuItem>
+            ))}
+          </TextField>
+          <TextField required select label={t("payroll_processing_mode", "Payroll Processing Mode")} value={dicForm.intPayrollProcessingModeID} onChange={(objEvent) => handleLookupSelection(setDicForm, "intPayrollProcessingModeID", "strPayrollProcessingMode", lstPayrollProcessingModeOptions, Number(objEvent.target.value))} disabled={blnFieldDisabled} fullWidth {...buildSelectTestIdProps("salary-components.editor.payroll-processing-mode.select")}>
+            {lstPayrollProcessingModeOptions.map((dicOption) => (
+              <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.payroll-processing-mode.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{dicOption.strDisplayName}</MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            required
+            label={t("component_code", "Component Code")}
+            value={dicForm.strComponentCode}
+            onChange={(objEvent) => updateRootField("strComponentCode", objEvent.target.value.toUpperCase())}
+            disabled={blnFieldDisabled || strMode === "edit"}
+            helperText={strMode === "edit"
+              ? t("component_code_read_only_help", "Component code can be entered during creation and is read-only after save.")
+              : t("component_code_create_help", "Set the internal component code used for system references.")}
+            fullWidth
+            data-controlid="salary-components.editor.component-code.input"
+            inputProps={buildInputTestIdProps("salary-components.editor.component-code.input")}
+          />
           <TextField
             label={t("description", "Description")}
             value={dicForm.strComponentDescription}
@@ -1575,7 +1575,6 @@ export default function SalaryComponentEditorPage({
             fullWidth
             data-controlid="salary-components.editor.description.input"
             inputProps={buildInputTestIdProps("salary-components.editor.description.input")}
-            sx={{ gridColumn: { xs: "1 / -1", md: "1 / -1" } }}
           />
         </Box>
       </Paper>
