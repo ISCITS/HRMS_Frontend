@@ -39,10 +39,19 @@ video {
 }
 
 button,
-input,
+input:not([type="checkbox"]):not([type="radio"]),
 select,
 textarea {
   max-width: 100%;
+}
+
+/* MUI Switch/Checkbox/Radio render an oversized hidden <input> (Switch uses
+   left:-100%;width:300%) as the click target. A blanket `input { max-width: 100% }`
+   clamps that width while leaving the offset, sliding the hit area off the visible
+   control - the switch then looks fine but ignores clicks. */
+.MuiSwitch-input,
+.PrivateSwitchBase-input {
+  max-width: none;
 }
 
 /* Keep responsive overflow local to data-heavy controls instead of the viewport. */

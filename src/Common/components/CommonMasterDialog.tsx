@@ -80,7 +80,16 @@ export default function CommonMasterDialog({
     >
       <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, ...titleSx }}>
         <Box component="span">{strTitle}</Box>
-        {nodeTitleAction ? <Box sx={{ display: "flex", alignItems: "center", ml: "auto" }}>{nodeTitleAction}</Box> : null}
+        {/* Callers pass a compact control here (usually a status toggle) via the `.switchRow`
+            CSS-module class, which forces min-height:68px. Emotion runs with prepend:true, so a
+            caller's `sx={{ minHeight: "auto" }}` loses the cascade and the row overflows the
+            short DialogTitle - DialogContent then paints over the lower half of the control and
+            eats its clicks. Force the row back to its natural height here, where !important wins. */}
+        {nodeTitleAction ? (
+          <Box sx={{ display: "flex", alignItems: "center", ml: "auto", flexShrink: 0, "& > *": { minHeight: "unset !important" } }}>
+            {nodeTitleAction}
+          </Box>
+        ) : null}
       </DialogTitle>
       <DialogContent dividers sx={contentSx}>{nodeContent}</DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
