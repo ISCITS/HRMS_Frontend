@@ -253,14 +253,18 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
   }
 
   const objFilterGridSx = {
-    display: "grid",
+    display: "flex",
+    flexWrap: "nowrap",
+    alignItems: "center",
     gap: 1,
-    gridTemplateColumns: "repeat(auto-fit, minmax(145px, 1fr))",
-    mt: 1
+    mt: 1,
+    overflowX: "auto",
+    pb: 0.5,
+    "& > .MuiTextField-root": { flex: "1 1 150px", minWidth: 150 }
   } as const;
 
   const objFilterActions = (
-    <Box sx={{ display: "flex", gap: 1, alignItems: "center", gridColumn: "1 / -1", justifyContent: "flex-end" }}>
+    <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexShrink: 0, ml: "auto" }}>
       <Button className={styles.primaryButton} size="small" startIcon={<SearchRoundedIcon />} onClick={() => void loadRows()}>{t("search", "Search")}</Button>
       <Button className={styles.secondaryButton} size="small" startIcon={<ClearRoundedIcon />} onClick={clearFilters}>{t("clear", "Clear")}</Button>
     </Box>

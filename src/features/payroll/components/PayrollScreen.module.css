@@ -344,7 +344,7 @@
 }
 
 .payrollRunSearchRow {
-  grid-template-columns: minmax(170px, 0.9fr) minmax(150px, 0.75fr) minmax(130px, 0.55fr) auto auto;
+  grid-template-columns: minmax(150px, 0.9fr) minmax(140px, 0.7fr) minmax(140px, 0.7fr) minmax(110px, 0.5fr) auto auto;
 }
 
 .payrollRunSearchRow .searchActions {
@@ -904,11 +904,12 @@
   }
 
   .payrollRunSearchRow {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   }
 
   .payrollRunSearchRow .searchActions {
     display: flex;
+    grid-column: 1 / -1;
   }
 }
 
