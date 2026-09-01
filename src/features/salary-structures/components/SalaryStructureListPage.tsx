@@ -211,8 +211,8 @@ export default function SalaryStructureListPage() {
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
       { field: "action", headerName: t("action", "Action"), sortable: false, filterable: false, exportable: false, width: 120 },
-      { field: "strStructureCode", headerName: t("structure_code", "Structure Code") },
       { field: "strStructureName", headerName: t("structure_name", "Structure Name") },
+      { field: "strStructureCode", headerName: t("structure_code", "Structure Code") },
       { field: "strScopeLabel", headerName: t("scope", "Scope") },
       { field: "strCurrencyCode", headerName: t("currency", "Currency") },
       { field: "dtEffectiveFrom", headerName: t("effective_from", "Effective From"), sortAccessor: (dicRow) => dicRow.strEffectiveFromSort },
@@ -320,20 +320,20 @@ export default function SalaryStructureListPage() {
 
         <Box className={styles.searchRow}>
           <TextField
-            controlId="salary-structures.list.search-code.input"
-            inputProps={{ "controlId": "salary-structures.list.search-code.input" }}
-            value={dicSearchDraft.strCode}
-            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, strCode: objEvent.target.value.toUpperCase() }))}
-            placeholder={t("search_structure_code", "Search structure code")}
-            fullWidth
-          />
-          
-          <TextField
             controlId="salary-structures.list.search-name.input"
             inputProps={{ "controlId": "salary-structures.list.search-name.input" }}
             value={dicSearchDraft.strName}
             onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, strName: objEvent.target.value }))}
             placeholder={t("search_structure_name", "Search structure name")}
+            fullWidth
+          />
+
+          <TextField
+            controlId="salary-structures.list.search-code.input"
+            inputProps={{ "controlId": "salary-structures.list.search-code.input" }}
+            value={dicSearchDraft.strCode}
+            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, strCode: objEvent.target.value.toUpperCase() }))}
+            placeholder={t("search_structure_code", "Search structure code")}
             fullWidth
           />
 
