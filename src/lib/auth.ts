@@ -214,7 +214,10 @@ export const authHelpers = {
 
     blnSessionExpiryRedirectInProgress = true;
     const strSessionExpiredUrl = this.getSessionExpiredUrl();
-    this.clearSession();
+    // Preserve the tenant UUID cookie so the "Login again" step (and any later
+    // visit to "/") returns the user to their tenant login page rather than the
+    // generic email-only one.
+    this.clearSession(true);
     window.location.replace(strSessionExpiredUrl);
   },
   resetSessionExpiryRedirect() {
