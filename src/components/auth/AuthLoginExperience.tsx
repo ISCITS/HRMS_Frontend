@@ -9,7 +9,7 @@ import SecurityRoundedIcon from "@mui/icons-material/SecurityRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VpnKeyRoundedIcon from "@mui/icons-material/VpnKeyRounded";
-import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, IconButton, InputAdornment, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, ButtonBase, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, IconButton, InputAdornment, Paper, Stack, TextField, Typography } from "@mui/material";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -699,7 +699,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
               <Typography className={styles.welcomeTitle}>{getLoginLabel("welcomeTitle")}</Typography>
               <Typography className={styles.welcomeSubtitle}>{getLoginLabel("welcomeSubtitle")}</Typography>
             </Box>
-            <Typography className={styles.title}>
+            <Typography className={lstPortalChoices.length > 1 ? styles.portalChoiceTitle : styles.title}>
               {lstPortalChoices.length > 1
                 ? getLoginLabel("continueToTitle")
                 : blnOtpStep
@@ -710,27 +710,40 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
             {lstPortalChoices.length > 1 ? (
               <Stack spacing={2} sx={{ mt: 3 }}>
                 <Typography sx={{ color: "#64748b" }}>{getLoginLabel("continueToSubtitle")}</Typography>
-                {/* Portal choices use the Login button treatment and share one equal-width row.
-                    HRMS is shown first, independent of the order the server returns. */}
-                <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 2 }}>
+                {/* Each portal is a card rather than a bare button: the two names alone do not tell
+                    a dual-access user which side of the product they are choosing, so each carries
+                    a line describing what it lets them do. HRMS is shown first, independent of the
+                    order the server returns. */}
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
+                    gap: 1.5,
+                    alignItems: "stretch",
+                  }}
+                >
                   {lstPortalDisplayOrder.map((strPortal) => (
-                    <Button
+                    <ButtonBase
                       key={strPortal}
-                      variant="contained"
-                      size="large"
+                      className={styles.portalCard}
                       disabled={blnPortalSwitching}
                       onClick={() => void selectPortal(strPortal)}
                       data-controlid={`auth.login.portal.${strPortal.toLowerCase()}.button`}
-                      sx={{
-                        minWidth: 0,
-                        minHeight: 52,
-                        borderRadius: "10px",
-                        background: "linear-gradient(135deg, #132a63 0%, #184a8b 100%)",
-                        boxShadow: "0 10px 20px rgba(24, 74, 139, 0.24)",
-                      }}
                     >
-                      {strPortal === "HRMS" ? getLoginLabel("portalHrms") : getLoginLabel("portalEss")}
-                    </Button>
+                      <Typography component="span" className={styles.portalCardTitle}>
+                        {strPortal === "HRMS" ? getLoginLabel("portalHrms") : getLoginLabel("portalEss")}
+                      </Typography>
+                      <Box component="ul" className={styles.portalCardPoints}>
+                        {(strPortal === "HRMS"
+                          ? (["portalHrmsPoint1", "portalHrmsPoint2", "portalHrmsPoint3"] as const)
+                          : (["portalEssPoint1", "portalEssPoint2", "portalEssPoint3"] as const)
+                        ).map((strPointKey) => (
+                          <Typography key={strPointKey} component="li" className={styles.portalCardPoint}>
+                            {getLoginLabel(strPointKey)}
+                          </Typography>
+                        ))}
+                      </Box>
+                    </ButtonBase>
                   ))}
                 </Box>
                 {strError ? <Alert severity="error">{strError}</Alert> : null}
@@ -1044,7 +1057,13 @@ type LoginLabelKey =
   | "continueToTitle"
   | "continueToSubtitle"
   | "portalHrms"
+  | "portalHrmsPoint1"
+  | "portalHrmsPoint2"
+  | "portalHrmsPoint3"
   | "portalEss"
+  | "portalEssPoint1"
+  | "portalEssPoint2"
+  | "portalEssPoint3"
   | "forgotPassword"
   | "heroImageAlt"
   | "loginIdLabel"
@@ -1092,6 +1111,12 @@ const dicLoginFallbacks: Record<LoginLabelKey, string> = {
   continueToSubtitle: "This account can access both portals. Choose where to continue.",
   portalHrms: "HRMS",
   portalEss: "Employee Self Service",
+  portalHrmsPoint1: "Manage employees and organisation setup",
+  portalHrmsPoint2: "Run payroll and publish payslips",
+  portalHrmsPoint3: "Review leave, attendance and approvals",
+  portalEssPoint1: "View your payslips and tax documents",
+  portalEssPoint2: "Apply for leave and track approvals",
+  portalEssPoint3: "Update your own profile details",
   ssoCallbackTitle: enMessages.auth.ssoCallbackTitle,
   ssoRedirectStatus: "Workspace verified. Redirecting to Microsoft sign-in.",
   tenantSubtitle: enMessages.auth.tenantSubtitle,
@@ -1120,6 +1145,12 @@ const dicLoginServerKeyMap: Record<LoginLabelKey, string> = {
   continueToSubtitle: "continue_to_subtitle",
   portalHrms: "portal_hrms",
   portalEss: "portal_ess",
+  portalHrmsPoint1: "portal_hrms_point_1",
+  portalHrmsPoint2: "portal_hrms_point_2",
+  portalHrmsPoint3: "portal_hrms_point_3",
+  portalEssPoint1: "portal_ess_point_1",
+  portalEssPoint2: "portal_ess_point_2",
+  portalEssPoint3: "portal_ess_point_3",
   resendingOtpButton: "resending_otp_button",
   resolvedWorkspaceLabel: "resolved_workspace_label",
   resolvingTenantStatus: "resolving_tenant_status",

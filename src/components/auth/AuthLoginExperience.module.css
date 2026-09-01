@@ -428,3 +428,79 @@
     font-size: clamp(1.55rem, 8vw, 2rem);
   }
 }
+
+/* Portal chooser ---------------------------------------------------------- */
+
+/* The chooser is a step, not the page's headline, so it sits below the "Sign In"
+   heading size that .title carries for the credential and OTP steps. */
+.portalChoiceTitle {
+  margin: 0;
+  font-size: clamp(1.25rem, 1.6vw, 1.5rem);
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+  text-align: center;
+  font-weight: 700;
+}
+
+.portalCard {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 1rem 1.15rem 1.05rem;
+  border-radius: 10px;
+  text-align: left;
+  /* Same treatment as the Sign In button, so the two portals read as the primary action. */
+  background: linear-gradient(135deg, #132a63 0%, #184a8b 100%);
+  box-shadow: 0 10px 20px rgba(24, 74, 139, 0.24);
+  color: #ffffff;
+  transition: box-shadow 140ms ease, transform 140ms ease;
+}
+
+.portalCard:hover {
+  box-shadow: 0 14px 26px rgba(24, 74, 139, 0.32);
+  transform: translateY(-1px);
+}
+
+.portalCard:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: -4px;
+}
+
+.portalCardTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+}
+
+.portalCardPoints {
+  margin: 0;
+  padding-left: 1.05rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  list-style: disc;
+}
+
+.portalCardPoint {
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.portalCardPoint::marker {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portalCard,
+  .portalCard:hover {
+    transition: none;
+    transform: none;
+  }
+}
