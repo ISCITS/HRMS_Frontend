@@ -146,6 +146,11 @@ export type PayrollRunRecord = {
   intScopedEmployeeID: number | null;
   dtPayrollMonth: string;
   strRunStatus: PayrollRunStatus;
+  intRunTypeID: number | null;
+  strRunTypeCode: string;
+  dtPaymentDate: string | null;
+  intVariablePayTypeID: number | null;
+  intReferencePayrollRunID: number | null;
   blnIsLocked: boolean;
   intEmployeeCount: number;
   intProcessedEmployeeCount: number;
@@ -185,6 +190,23 @@ export type PayrollRunFormValues = {
   strRunStatus: PayrollRunStatus;
   blnIsLocked: boolean;
   strRemarks: string;
+  intRunTypeID: number | "";
+  dtPaymentDate: string;
+  intVariablePayTypeID: number | "";
+  intReferencePayrollRunID: number | "";
+};
+
+export type PayrollRunTypeLookupOption = {
+  intID: number;
+  strValueCode: string;
+  strDisplayName: string;
+};
+
+export type VariablePayTypeOption = {
+  intID: number;
+  strValueCode: string;
+  strDisplayName: string;
+  intSalaryComponentID: number | null;
 };
 
 export type PayrollRunFormOptions = {
@@ -197,6 +219,8 @@ export type PayrollRunFormOptions = {
     strPayrollGroupName: string | null;
   }>;
   lstEmployees: PayrollSelectOption[];
+  lstPayrollRunTypeLookups?: PayrollRunTypeLookupOption[];
+  lstVariablePayTypes?: VariablePayTypeOption[];
 };
 
 export type FNFSettlementStatus =

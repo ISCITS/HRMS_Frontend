@@ -36,6 +36,10 @@ export function createInitialPayrollRunForm(): PayrollRunFormValues {
     strRunStatus: "DRAFT",
     blnIsLocked: false,
     strRemarks: "",
+    intRunTypeID: "",
+    dtPaymentDate: "",
+    intVariablePayTypeID: "",
+    intReferencePayrollRunID: "",
   };
 }
 
@@ -52,6 +56,10 @@ function toPayload(dicValues: PayrollRunFormValues) {
     strRunStatus: dicValues.strRunStatus,
     blnIsLocked: dicValues.blnIsLocked,
     strRemarks: dicValues.strRemarks.trim() || undefined,
+    intRunTypeID: dicValues.intRunTypeID || undefined,
+    dtPaymentDate: dicValues.dtPaymentDate || undefined,
+    intVariablePayTypeID: dicValues.intVariablePayTypeID || undefined,
+    intReferencePayrollRunID: dicValues.intReferencePayrollRunID || undefined,
   };
 }
 

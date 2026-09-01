@@ -40,7 +40,14 @@ export type EssPayslipHrefRow = {
   payroll_month?: string;
   payslip_id?: number | null;
   result_id?: number;
+  payslip_generated_on?: string | null;
 };
+
+function getRowSortTime(objRow: EssPayslipHrefRow): number {
+  const strDate = objRow.payslip_generated_on || objRow.payroll_month || "";
+  const intTime = new Date(strDate).getTime();
+  return Number.isNaN(intTime) ? 0 : intTime;
+}
 
 export function resolveCurrentMonthPayslipHref(
   lstPayslips: EssPayslipHrefRow[],
@@ -51,8 +58,9 @@ export function resolveCurrentMonthPayslipHref(
     return null;
   }
 
+  const lstSortedPayslips = [...lstPayslips].sort((objA, objB) => getRowSortTime(objB) - getRowSortTime(objA));
   const strTargetYearMonth = `${objToday.getFullYear()}-${String(objToday.getMonth() + 1).padStart(2, "0")}`;
-  const objMatch = lstPayslips.find((objRow) => {
+  const objMatch = lstSortedPayslips.find((objRow) => {
     if (!objRow.payroll_month) {
       return false;
     }
@@ -64,7 +72,7 @@ export function resolveCurrentMonthPayslipHref(
     return strRowYearMonth === strTargetYearMonth;
   });
 
-  const objTarget = objMatch || lstPayslips[0] || null;
+  const objTarget = objMatch || lstSortedPayslips[0] || null;
   if (objTarget?.payslip_id) {
     return `/ess/my-payslips/document/${objTarget.payslip_id}`;
   }

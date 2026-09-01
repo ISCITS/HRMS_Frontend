@@ -53,6 +53,7 @@ import { payrollResultService } from "@/features/payroll/services/payrollResultS
 import { payslipService } from "@/features/payroll/services/payslipService";
 import { payrollRunService } from "@/features/payroll/services/payrollRunService";
 import { attendancePayrollService } from "@/features/payroll/services/attendancePayrollService";
+import { variablePayService } from "@/features/variable-pay/services/variablePayService";
 import type {
   PayslipRunListRecord,
   PayrollProcessSummary,
@@ -166,7 +167,12 @@ function isWorkflowStepEnabled(
     case "Process":
       return canProcessPayrollRun(objRun, blnCanProcess);
     case "Generate Payslips":
-      return blnCanGeneratePayslip && !blnPayslipLoading && ["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus);
+      return (
+        blnCanGeneratePayslip
+        && !blnPayslipLoading
+        && objRun.strRunTypeCode !== "VARIABLE_PAY"
+        && ["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus)
+      );
     default:
       return false;
   }
@@ -686,6 +692,36 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
       setBlnSaving(false);
       setStrActionLoaderLabel("");
     }
+  }
+
+  async function fetchVariablePayInPayroll() {
+    if (!blnCanEdit) {
+      return;
+    }
+    setBlnSaving(true);
+    setStrActionLoaderLabel(t("fetching_variable_pay", "Fetching Variable Pay data..."));
+    setStrError("");
+    setStrSuccess("");
+    try {
+      const dicResult = await variablePayService.fetchVariablePay(intRunID);
+      await loadRun(false);
+      setStrSuccess(
+        t(
+          "fetch_variable_pay_success",
+          `Fetched ${dicResult.intFetchedCount} Variable Pay transaction(s) into this payroll run.`,
+        ),
+      );
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to fetch Variable Pay data.");
+    } finally {
+      setBlnSaving(false);
+      setStrActionLoaderLabel("");
+    }
+  }
+
+  function goToMonthlyVariablePay() {
+    handleCloseActions();
+    objRouter.push(`/payroll/monthly-variable-pay?runId=${intRunID}`);
   }
 
   function viewBlockedAttendanceEmployees() {
@@ -1259,6 +1295,35 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
                   </span>
                 </Tooltip>
               ) : null}
+              {objRun.strRunTypeCode === "VARIABLE_PAY" ? (
+                <>
+                  <Button
+                    className={styles.secondaryButton}
+                    onClick={goToMonthlyVariablePay}
+                    startIcon={<PaidRoundedIcon sx={{ fontSize: 16 }} />}
+                    sx={{ height: 32, minHeight: 32 }}
+                    controlId="payroll.run-detail.open-variable-pay-inputs.button"
+                  >
+                    {t("variable_pay_inputs_button", "Variable Pay Inputs")}
+                  </Button>
+                  {blnCanEdit ? (
+                    <Tooltip title={t("fetch_variable_pay_tooltip", "Pull APPROVED Variable Pay transactions into this payroll run's inputs. Idempotent - safe to run again.")}>
+                      <span>
+                        <Button
+                          className={styles.secondaryButton}
+                          onClick={fetchVariablePayInPayroll}
+                          startIcon={<RestartAltRoundedIcon sx={{ fontSize: 16 }} />}
+                          disabled={blnSaving}
+                          sx={{ height: 32, minHeight: 32 }}
+                          controlId="payroll.run-detail.fetch-variable-pay.button"
+                        >
+                          {t("fetch_variable_pay_button", "Fetch Variable Pay")}
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  ) : null}
+                </>
+              ) : null}
             </Box>
           </Box>
           <Box
@@ -1299,7 +1364,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
               <ReceiptLongRoundedIcon sx={{ color: "#2563eb", fontSize: 20 }} />
               {t("payslip_panel", "Payslips")}
             </Typography>
-            {blnCanGeneratePayslip ? (
+            {blnCanGeneratePayslip && objRun.strRunTypeCode !== "VARIABLE_PAY" ? (
               <Button
                 className={styles.secondaryButton}
                 startIcon={<ReceiptLongRoundedIcon />}
@@ -1340,7 +1405,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
                 fnRender: (dicRow) => (
                   <Stack direction="row" spacing={1} justifyContent="center" flexWrap="wrap">
                     <Button className={styles.secondaryButton} onClick={() => viewPayslip(dicRow)} disabled={blnPayslipLoading} controlId="payroll.run-detail.payslip.view.button" data-row-key={dicRow.intEmployeeID}>{t("view", "View")}</Button>
-                    {blnCanGeneratePayslip ? <Button className={styles.secondaryButton} onClick={() => generatePayslip(dicRow)} disabled={blnPayslipLoading} controlId="payroll.run-detail.payslip.generate.button" data-row-key={dicRow.intEmployeeID}>{t("generate", "Generate")}</Button> : null}
+                    {blnCanGeneratePayslip && objRun.strRunTypeCode !== "VARIABLE_PAY" ? <Button className={styles.secondaryButton} onClick={() => generatePayslip(dicRow)} disabled={blnPayslipLoading} controlId="payroll.run-detail.payslip.generate.button" data-row-key={dicRow.intEmployeeID}>{t("generate", "Generate")}</Button> : null}
                     {blnCanExport ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => openPayslipDocument(dicRow, false)} disabled={blnPayslipLoading} controlId="payroll.run-detail.payslip.download.button" data-row-key={dicRow.intEmployeeID}>{t("download", "Download")}</Button> : null}
                     {blnCanExport ? <Button className={styles.secondaryButton} startIcon={<PrintRoundedIcon />} onClick={() => openPayslipDocument(dicRow, true)} disabled={blnPayslipLoading} controlId="payroll.run-detail.payslip.print.button" data-row-key={dicRow.intEmployeeID}>{t("print", "Print")}</Button> : null}
                   </Stack>

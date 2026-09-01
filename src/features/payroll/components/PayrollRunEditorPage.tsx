@@ -84,6 +84,11 @@ export default function PayrollRunEditorPage() {
     return blnUseCycleLabel ? `${strMonthLabel} ${strCycleLabel}` : `${strMonthLabel} Payroll`;
   }
 
+  const strSelectedRunTypeCode = (
+    objOptions?.lstPayrollRunTypeLookups ?? []
+  ).find((dicOption) => dicOption.intID === dicForm.intRunTypeID)?.strValueCode;
+  const blnIsVariablePayRun = strSelectedRunTypeCode === "VARIABLE_PAY";
+
   function validateForm() {
     if (!dicForm.intPayrollCycleID) {
       return t("payroll_cycle_required", "Payroll cycle is required.");
@@ -96,6 +101,12 @@ export default function PayrollRunEditorPage() {
     }
     if (dicForm.strScopeType === "SelectedEmployee" && !dicForm.intScopedEmployeeID) {
       return t("scoped_employee_required", "Employee is required for selected employee payroll run.");
+    }
+    if (blnIsVariablePayRun && !dicForm.intVariablePayTypeID) {
+      return t("variable_pay_type_required", "Variable Pay Type is required for a Variable Pay run.");
+    }
+    if (blnIsVariablePayRun && !dicForm.dtPaymentDate) {
+      return t("payment_date_required", "Payment Date is required for a Variable Pay run.");
     }
     return "";
   }
@@ -379,6 +390,65 @@ export default function PayrollRunEditorPage() {
               controlId="payroll.run-editor.payroll-month.input"
               fullWidth
             />
+            <TextField
+              select
+              label={t("run_type", "Run Type")}
+              value={dicForm.intRunTypeID}
+              controlId="payroll.run-editor.run-type.select"
+              onChange={(objEvent) =>
+                setDicForm((dicPrevious) => ({
+                  ...dicPrevious,
+                  intRunTypeID: objEvent.target.value ? Number(objEvent.target.value) : "",
+                }))
+              }
+              disabled={blnFieldDisabled}
+              fullWidth
+              helperText={t("run_type_help", "Regular Payroll runs normal salary; Variable Pay processes Monthly Variable Pay amounts only.")}
+            >
+              <MenuItem value="">{t("select_run_type", "Select run type")}</MenuItem>
+              {(objOptions?.lstPayrollRunTypeLookups ?? []).map((dicOption) => (
+                <MenuItem key={dicOption.intID} value={dicOption.intID}>
+                  {dicOption.strDisplayName}
+                </MenuItem>
+              ))}
+            </TextField>
+            {blnIsVariablePayRun ? (
+              <TextField
+                select
+                required
+                label={t("variable_pay_type", "Variable Pay Type")}
+                value={dicForm.intVariablePayTypeID}
+                controlId="payroll.run-editor.variable-pay-type.select"
+                onChange={(objEvent) =>
+                  updateField(
+                    "intVariablePayTypeID",
+                    objEvent.target.value ? Number(objEvent.target.value) : ""
+                  )
+                }
+                disabled={blnFieldDisabled}
+                fullWidth
+              >
+                <MenuItem value="">{t("select_variable_pay_type", "Select Variable Pay Type")}</MenuItem>
+                {(objOptions?.lstVariablePayTypes ?? []).map((dicOption) => (
+                  <MenuItem key={dicOption.intID} value={dicOption.intID}>
+                    {dicOption.strDisplayName}
+                  </MenuItem>
+                ))}
+              </TextField>
+            ) : null}
+            {blnIsVariablePayRun ? (
+              <TextField
+                type="date"
+                required
+                label={t("payment_date", "Payment Date")}
+                value={dicForm.dtPaymentDate}
+                onChange={(objEvent) => updateField("dtPaymentDate", objEvent.target.value)}
+                InputLabelProps={{ shrink: true }}
+                disabled={blnFieldDisabled}
+                controlId="payroll.run-editor.payment-date.input"
+                fullWidth
+              />
+            ) : null}
             <TextField
               label={t("remarks", "Remarks")}
               value={dicForm.strRemarks}

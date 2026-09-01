@@ -122,6 +122,8 @@ export type SalaryComponentFormValues = {
   strComponentCategory: string;
   intComponentGroupID: number | "";
   strComponentGroup: string;
+  intPayrollProcessingModeID: number | "";
+  strPayrollProcessingMode: string;
   intCalcMethodID: number | "";
   strCalcMethod: string;
   strFormulaExpression: string;
@@ -187,6 +189,8 @@ export type SalaryComponentDetailRecord = SalaryComponentListRecord & {
   intComponentCategoryID?: number | null;
   intComponentGroupID?: number | null;
   strComponentGroup: string | null;
+  intPayrollProcessingModeID?: number | null;
+  strPayrollProcessingMode?: string | null;
   intCalcMethodID?: number | null;
   strFormulaExpression: string | null;
   decDefaultPercentageValue?: number | null;
@@ -252,6 +256,7 @@ export type SalaryComponentFormOptions = {
   lstComponentCategories: string[];
   lstComponentGroupLookups?: SalaryComponentLookupOption[];
   lstComponentGroups: string[];
+  lstPayrollProcessingModeLookups?: SalaryComponentLookupOption[];
   lstCalcMethodLookups?: SalaryComponentLookupOption[];
   lstCalcMethods: string[];
   lstRoundingRuleLookups?: SalaryComponentLookupOption[];

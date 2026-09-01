@@ -132,6 +132,7 @@ function syncLookupBackedFields(
   type LookupIDField =
     | "intComponentCategoryID"
     | "intComponentGroupID"
+    | "intPayrollProcessingModeID"
     | "intCalcMethodID"
     | "intRoundingRuleID"
     | "intDefaultPeriodicityID"
@@ -145,6 +146,7 @@ function syncLookupBackedFields(
   type LookupTextField =
     | "strComponentCategory"
     | "strComponentGroup"
+    | "strPayrollProcessingMode"
     | "strCalcMethod"
     | "strRoundingRule"
     | "strDefaultPeriodicity"
@@ -170,6 +172,11 @@ function syncLookupBackedFields(
       strIDField: "intComponentGroupID",
       strLegacyField: "strComponentGroup",
       lstOptions: objOptions.lstComponentGroupLookups,
+    },
+    {
+      strIDField: "intPayrollProcessingModeID",
+      strLegacyField: "strPayrollProcessingMode",
+      lstOptions: objOptions.lstPayrollProcessingModeLookups,
     },
     {
       strIDField: "intCalcMethodID",
@@ -260,6 +267,8 @@ function haveLookupBackedFieldsChanged(
     || dicPrevious.strComponentCategory !== dicNext.strComponentCategory
     || dicPrevious.intComponentGroupID !== dicNext.intComponentGroupID
     || dicPrevious.strComponentGroup !== dicNext.strComponentGroup
+    || dicPrevious.intPayrollProcessingModeID !== dicNext.intPayrollProcessingModeID
+    || dicPrevious.strPayrollProcessingMode !== dicNext.strPayrollProcessingMode
     || dicPrevious.intCalcMethodID !== dicNext.intCalcMethodID
     || dicPrevious.strCalcMethod !== dicNext.strCalcMethod
     || dicPrevious.intRoundingRuleID !== dicNext.intRoundingRuleID
@@ -551,6 +560,7 @@ export default function SalaryComponentEditorPage({
   }, [lstFlexiEligibilityQuestions]);
   const lstCategoryOptions = objFormOptions?.lstComponentCategoryLookups ?? [];
   const lstGroupOptions = objFormOptions?.lstComponentGroupLookups ?? [];
+  const lstPayrollProcessingModeOptions = objFormOptions?.lstPayrollProcessingModeLookups ?? [];
   const lstCalcMethodOptions = objFormOptions?.lstCalcMethodLookups ?? [];
   const lstRoundingRuleOptions = objFormOptions?.lstRoundingRuleLookups ?? [];
   const lstDefaultPeriodicityOptions = objFormOptions?.lstDefaultPeriodicityLookups ?? [];
@@ -1018,6 +1028,7 @@ export default function SalaryComponentEditorPage({
       const blnEmployerContributionCategory = isCategory(strCategoryValue, "employer contribution") || isCategory(strCategoryValue, "contribution");
       const blnEarningCategory = isCategory(strCategoryValue, "earning");
       const blnInformationCategory = isCategory(strCategoryValue, "information");
+      const blnCtcProvisionCategory = isCategory(strCategoryValue, "ctc provision");
       const blnAllowCategoryPayslipSectionDefault = strMode === "add" && !strPayslipSectionValue;
       const dicNext = {
         ...dicPrevious,
@@ -1126,6 +1137,20 @@ export default function SalaryComponentEditorPage({
         dicNext.blnIncludeInRemuneration = false;
         if (dicNext.blnIncludeInPayslip) {
           applyPayslipSectionDefault("information");
+        }
+      }
+      if (blnCtcProvisionCategory) {
+        dicNext.blnIncludedInCtc = true;
+        dicNext.blnIsWages = false;
+        dicNext.blnIncludeInPF = false;
+        dicNext.blnIncludeInESIC = false;
+        dicNext.blnIncludeInGratuity = false;
+        dicNext.blnIncludeInRemuneration = false;
+        // Default Show on Payslip to Off only at the moment of switching into this category
+        // (add mode), so a later manual toggle by the user isn't fought on the next effect run.
+        if (strMode === "add" && !isCategory(dicPrevious.strComponentCategory, "ctc provision")) {
+          dicNext.blnIncludeInPayslip = false;
+          applyLookupValue("intPayslipSectionID", "strPayslipSection", lstPayslipSections, "");
         }
       }
       if (!dicNext.blnIncludeInPayslip) {
@@ -1491,6 +1516,11 @@ export default function SalaryComponentEditorPage({
             <MenuItem value="" data-controlid="salary-components.editor.component-group.none.option">{t("none", "None")}</MenuItem>
             {lstGroupOptions.map((dicOption) => (
               <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.component-group.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{dicOption.strDisplayName}</MenuItem>
+            ))}
+          </TextField>
+          <TextField required select label={t("payroll_processing_mode", "Payroll Processing Mode")} value={dicForm.intPayrollProcessingModeID} onChange={(objEvent) => handleLookupSelection(setDicForm, "intPayrollProcessingModeID", "strPayrollProcessingMode", lstPayrollProcessingModeOptions, Number(objEvent.target.value))} disabled={blnFieldDisabled} fullWidth {...buildSelectTestIdProps("salary-components.editor.payroll-processing-mode.select")}>
+            {lstPayrollProcessingModeOptions.map((dicOption) => (
+              <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.payroll-processing-mode.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{dicOption.strDisplayName}</MenuItem>
             ))}
           </TextField>
           <TextField

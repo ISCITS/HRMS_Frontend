@@ -88,6 +88,21 @@ export function testResolveCurrentMonthPayslipHrefUsesMostRecentRowWhenNoMonthMa
   );
 }
 
+export function testResolveCurrentMonthPayslipHrefUsesLatestGeneratedDocumentWhenRowsAreUnsorted() {
+  assertEqual(
+    resolveCurrentMonthPayslipHref(
+      [
+        { payroll_month: "2026-07-01", payslip_id: 71, payslip_generated_on: "2026-08-05T10:00:00Z" },
+        { payroll_month: "2026-06-01", payslip_id: 61, payslip_generated_on: "2026-08-29T16:00:00Z" },
+      ],
+      true,
+      new Date(2026, 7, 8)
+    ),
+    "/ess/my-payslips/document/61",
+    "Should open the latest generated payslip document when no row matches the current calendar month"
+  );
+}
+
 export function testResolvePunchButtonStateDefaultsToInWhenOverviewMissing() {
   const objState = resolvePunchButtonState(null, false);
   assertEqual(objState.strDirection, "in", "Direction should default to 'in' before the overview has loaded");
