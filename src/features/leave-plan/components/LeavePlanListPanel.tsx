@@ -88,7 +88,7 @@ export default function LeavePlanListPanel() {
   }
 
   function openEditor(objPlan?: LeavePlan, blnView = false) {
-    const strPath = objPlan ? `/leave/plans/${objPlan.intID}` : "/leave/plans/new";
+    const strPath = objPlan ? `/leave/plans/${objPlan.strRecordUUID}` : "/leave/plans/new";
     objRouter.push(strPath);
   }
 

@@ -465,8 +465,7 @@ export default function StateMasterPanel() {
         onClose={closeConfirmDialog}
         onConfirm={executeConfirmedAction} />
 
-      <BlockingLoader 
-        blnOpen={blnLoading || blnRightsLoading || blnSubmitting}
+      <BlockingLoader blnOpen={blnSubmitting || ((blnLoading || blnRightsLoading) && !blnDialogOpen)}
         strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing} 
         intZIndex={1400} />
 

@@ -106,11 +106,12 @@ function collectFirstErrorMessage(objErrors: unknown): string | undefined {
   return undefined;
 }
 
-export default function LeavePlanEditorPage({ strMode, intPlanID, strReturnTo }: { strMode: "new" | "edit"; intPlanID?: number; strReturnTo?: string }) {
+// The URL carries the plan's public identifier (record_uuid), not the internal row id.
+export default function LeavePlanEditorPage({ strMode, strPlanID, strReturnTo }: { strMode: "new" | "edit"; strPlanID?: string; strReturnTo?: string }) {
   const objRouter = useRouter();
   const { t } = useModuleLabels("leave_plan");
   const { canDo, blnLoading: blnRightsLoading } = useActionRights();
-  const { objPlan, lstLeaveTypes, objLanguages, dicPolicies, blnLoading, blnSaving, strError, loadPolicies, savePlan } = useLeavePlanEditor(intPlanID);
+  const { objPlan, lstLeaveTypes, objLanguages, dicPolicies, blnLoading, blnSaving, strError, loadPolicies, savePlan } = useLeavePlanEditor(strPlanID);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "error" });
   const objSchema = useMemo(() => buildPlanSchema(t), [t]);
   const objForm = useForm<PlanForm>({ resolver: yupResolver(objSchema) as Resolver<PlanForm>, defaultValues: emptyForm(), mode: "onBlur" });

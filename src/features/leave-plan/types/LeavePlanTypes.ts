@@ -26,6 +26,8 @@ export type LeavePlanUsage = { intAssignments: number; intAssignedEmployeeCount:
 
 export type LeavePlan = {
   intID: number;
+  /** Public identifier used in URLs; the internal id stays server-side. */
+  strRecordUUID: string;
   intCompanyID: number;
   strPlanCode: string;
   strPlanName: string;
@@ -45,7 +47,8 @@ export type LeavePlan = {
   objUsage?: LeavePlanUsage;
 };
 
-export type LeavePlanSaveRequest = Omit<LeavePlan, "intID" | "intCompanyID" | "strDisplayName" | "intItemCount" | "intAssignedEmployeeCount" | "lstItems" | "lstText" | "objUsage"> & {
+// strRecordUUID is server-assigned identity, never part of a save payload.
+export type LeavePlanSaveRequest = Omit<LeavePlan, "intID" | "strRecordUUID" | "intCompanyID" | "strDisplayName" | "intItemCount" | "intAssignedEmployeeCount" | "lstItems" | "lstText" | "objUsage"> & {
   intCompanyID?: number;
   lstItems: LeavePlanItem[];
   lstText: LeavePlanText[];

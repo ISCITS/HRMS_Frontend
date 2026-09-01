@@ -37,7 +37,7 @@ export const leavePlanService = {
     });
     return objResult.Data ?? [];
   },
-  async getPlan(intPlanID: number): Promise<LeavePlan> {
+  async getPlan(intPlanID: string | number): Promise<LeavePlan> {
     const objResult = await requestApi<LeavePlan>({ strPath: `/leave/plans/${intPlanID}`, strMethod: ApiRequestMethod.Get, strMenuAction: strLeaveViewAction });
     return objResult.Data;
   },
@@ -45,15 +45,15 @@ export const leavePlanService = {
     const objResult = await requestApi<LeavePlan>({ strPath: "/leave/plans", strMethod: ApiRequestMethod.Post, strMenuAction: strLeaveManageAction, objBody: objPayload });
     return objResult.Data;
   },
-  async updatePlan(intPlanID: number, objPayload: LeavePlanSaveRequest): Promise<LeavePlan> {
+  async updatePlan(intPlanID: string | number, objPayload: LeavePlanSaveRequest): Promise<LeavePlan> {
     const objResult = await requestApi<LeavePlan>({ strPath: `/leave/plans/${intPlanID}`, strMethod: ApiRequestMethod.Put, strMenuAction: strLeaveManageAction, objBody: objPayload });
     return objResult.Data;
   },
-  async setPlanStatus(intPlanID: number, blnIsActive: boolean): Promise<LeavePlan> {
+  async setPlanStatus(intPlanID: string | number, blnIsActive: boolean): Promise<LeavePlan> {
     const objResult = await requestApi<LeavePlan>({ strPath: `/leave/plans/${intPlanID}/status`, strMethod: ApiRequestMethod.Post, strMenuAction: strLeaveManageAction, objQueryParams: { is_active: blnIsActive }, objBody: {} });
     return objResult.Data;
   },
-  async deletePlan(intPlanID: number): Promise<void> {
+  async deletePlan(intPlanID: string | number): Promise<void> {
     await requestApi<LeavePlan>({ strPath: `/leave/plans/${intPlanID}`, strMethod: ApiRequestMethod.Delete, strMenuAction: strLeaveManageAction });
   },
   async getActiveLeaveTypes(): Promise<LeaveTypeOption[]> {

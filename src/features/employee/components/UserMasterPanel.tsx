@@ -1125,7 +1125,15 @@ export default function UserMasterPanel() {
         onConfirm={executeConfirmedAction}
       />
 
-      <BlockingLoader blnOpen={blnLoading || blnSubmitting || blnRightsLoading} strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
+      {/* The page-level loader sits above the modal layer, so it must never be raised while the
+          dialog is open - a background list refresh would otherwise cover the dialog and swallow
+          every click on it. Submitting still blocks, because that is user-initiated and the dialog
+          shows a disabled primary button while it runs. */}
+      <BlockingLoader
+        blnOpen={blnSubmitting || ((blnLoading || blnRightsLoading) && !blnDialogOpen)}
+        strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing}
+        intZIndex={1400}
+      />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert severity={objToast.strSeverity} onClose={closeToast} variant="filled" sx={{ width: "100%" }}>{objToast.strMessage}</Alert>

@@ -1444,6 +1444,21 @@ export type EmployeeSalaryRevisionPreviewApiRecord = {
   };
 };
 
+const objRecordUuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Body for a POST-shaped record lookup.
+ *
+ * Detail endpoints take the identifier in the body rather than the path. While resources migrate
+ * from the internal id to record_uuid a caller may hold either, and the server accepts both. A
+ * numeric value produces exactly the payload these endpoints have always received, so unconverted
+ * resources are unaffected.
+ */
+function buildRecordLookupBody(objID: string | number) {
+  const strValue = String(objID ?? "").trim();
+  return objRecordUuidPattern.test(strValue) ? { strRecordUUID: strValue } : { intID: Number(strValue) };
+}
+
 function buildApiPath(objResource: MasterApiResource, ...lstSegments: Array<string | number>) {
   return [objResource, ...lstSegments.map(String)].join("/");
 }
@@ -2611,11 +2626,10 @@ export const masterApiService = {
   // Accepts the public record_uuid or the legacy internal id; the endpoint resolves either while
   // callers migrate, and use of the internal id is counted server-side.
   getEmployeeById(objID: string | number, strMenuAction: MasterMenuAction | string = MasterMenuAction.EmployeeView) {
-    const objBody = typeof objID === "string" && !/^\d+$/.test(objID) ? { strRecordUUID: objID } : { intID: Number(objID) };
     return requestApi<EmployeeDetailApiRecord>({
       strPath: buildApiPath(MasterApiResource.Employee, MasterApiRouteSegment.Detail),
       strMethod: ApiRequestMethod.Post,
-      objBody,
+      objBody: buildRecordLookupBody(objID),
       strMenuAction
     });
   },
@@ -3003,11 +3017,10 @@ export const masterApiService = {
 
   // Accepts the public record_uuid or the legacy internal id; the endpoint resolves either.
   getPayrollGroup(objID: string | number) {
-    const objBody = typeof objID === "string" && !/^\d+$/.test(objID) ? { strRecordUUID: objID } : { intID: Number(objID) };
     return requestApi<PayrollGroupApiRecord>({
       strPath: buildApiPath(MasterApiResource.PayrollGroups, MasterApiRouteSegment.Detail),
       strMethod: ApiRequestMethod.Post,
-      objBody,
+      objBody: buildRecordLookupBody(objID),
       strMenuAction: MasterMenuAction.PayrollGroupGet
     });
   },
@@ -3411,7 +3424,7 @@ export const masterApiService = {
     return requestApi<EmployeeSalaryDetailApiRecord>({
       strPath: buildApiPath(MasterApiResource.EmployeeSalary, MasterApiRouteSegment.Detail),
       strMethod: ApiRequestMethod.Post,
-      objBody: { intID: intEmployeeID },
+      objBody: buildRecordLookupBody(intEmployeeID),
       strMenuAction: MasterMenuAction.EmployeeSalaryView
     });
   },
@@ -3424,7 +3437,7 @@ export const masterApiService = {
         MasterApiRouteSegment.Detail
       ),
       strMethod: ApiRequestMethod.Post,
-      objBody: { intID: intEmployeeID },
+      objBody: buildRecordLookupBody(intEmployeeID),
       strMenuAction: MasterMenuAction.EmployeeSalarySummary
     });
   },

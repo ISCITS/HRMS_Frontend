@@ -525,7 +525,7 @@ export default function EmployeeMasterPanel() {
         </Box>
       </Dialog>
 
-      <BlockingLoader blnOpen={blnLoading || blnSubmitting} strLabel={blnLoading ? "Loading..." : "Processing..."} intZIndex={1400} />
+      <BlockingLoader blnOpen={blnSubmitting || ((blnLoading) && !blnDialogOpen)} strLabel={blnLoading ? "Loading..." : "Processing..."} intZIndex={1400} />
     </Box>
   );
 }

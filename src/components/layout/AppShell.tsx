@@ -128,29 +128,34 @@ function getPageTitle(strPathname: string) {
     return "Work on Holiday";
   }
 
+  // The shell header names the screen; it is not a breadcrumb of the address bar. Joining the path
+  // segments exposed the route structure and, once records were addressed by record_uuid, the
+  // identifier itself ("Leave / Leave Types / De4449e0 2f92..."). Only the most specific
+  // human-meaningful segment is kept, and record identifiers never appear.
   const lstSegments = strPathname
     .split("/")
     .filter(Boolean)
-    .map((strSegment) => {
-      if (strSegment === "add") {
-        return "Add";
-      }
-
-      if (strSegment === "edit") {
-        return "Edit";
-      }
-
-      if (/^\d+$/.test(strSegment)) {
-        return "";
-      }
-
-      return strSegment
+    .filter((strSegment) => !isRecordIdentifierSegment(strSegment))
+    .map((strSegment) =>
+      strSegment
         .replace(/[-_]/g, " ")
-        .replace(/\b\w/g, (strCharacter) => strCharacter.toUpperCase());
-    })
-    .filter(Boolean);
+        .replace(/\b\w/g, (strCharacter) => strCharacter.toUpperCase())
+    );
 
-  return lstSegments.join(" / ") || "Dashboard";
+  return lstSegments.at(-1) || "Dashboard";
+}
+
+// A path segment that identifies one record or the action being taken on it, rather than naming a
+// screen: a legacy numeric id, a record_uuid, or the add/edit/view verbs.
+function isRecordIdentifierSegment(strSegment: string) {
+  const strValue = strSegment.trim().toLowerCase();
+  if (strValue === "add" || strValue === "edit" || strValue === "view" || strValue === "new") {
+    return true;
+  }
+  if (/^\d+$/.test(strValue)) {
+    return true;
+  }
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(strValue);
 }
 
 function getCommonPageTitle(strPathname: string, tCommon: (strKey: string, strFallback?: string) => string) {

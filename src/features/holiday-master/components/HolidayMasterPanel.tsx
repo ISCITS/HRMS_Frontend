@@ -421,7 +421,7 @@ export default function HolidayMasterPanel() {
       />
 
       <CommonConfirmDialog blnOpen={Boolean(objConfirmDialog)} strTitle={objConfirmDialog?.strTitle} strMessage={objConfirmDialog?.strMessage} strCancelLabel={t("cancel", "Cancel")} strConfirmLabel={t("confirm", "Confirm")} blnConfirmDisabled={blnSubmitting} onClose={() => setObjConfirmDialog(null)} onConfirm={() => void executeConfirmedAction()} />
-      <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnSubmitting} strLabel={t("loading", "Loading...")} intZIndex={1400} />
+      <BlockingLoader blnOpen={blnSubmitting || ((blnLoading || blnRightsLoading) && !blnDialogOpen)} strLabel={t("loading", "Loading...")} intZIndex={1400} />
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={() => setObjToast((objPrevious) => ({ ...objPrevious, blnOpen: false }))} anchorOrigin={{ vertical: "top", horizontal: "right" }}><Alert severity={objToast.strSeverity} variant="filled" onClose={() => setObjToast((objPrevious) => ({ ...objPrevious, blnOpen: false }))}>{objToast.strMessage}</Alert></Snackbar>
     </Box>
   );
