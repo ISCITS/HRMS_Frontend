@@ -352,9 +352,9 @@ export default function EssMyProfilePage() {
     minHeight: 48,
     minWidth: { xs: 105, sm: 115 },
     px: 1.2,
-    textTransform: "none",
     color: "#475467",
     typography: "button",
+    textTransform: "none",
     fontWeight: 600,
     "&.Mui-selected": {
       color: "var(--app-primary-color)",
