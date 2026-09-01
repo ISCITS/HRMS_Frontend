@@ -383,6 +383,10 @@
     margin-top: 14px !important;
   }
 
+  .formCard .portalChoiceIntro {
+    margin-bottom: 44px;
+  }
+
   .formCard :global(.MuiFormHelperText-root) {
     margin-top: 2px;
     line-height: 1.2;
@@ -441,6 +445,10 @@
   color: #0f172a;
   text-align: center;
   font-weight: 700;
+}
+
+.formCard .portalChoiceIntro {
+  margin: 0 0 56px;
 }
 
 .portalCard {

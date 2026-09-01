@@ -709,7 +709,9 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
  
             {lstPortalChoices.length > 1 ? (
               <Stack spacing={2} sx={{ mt: 3 }}>
-                <Typography sx={{ color: "#64748b" }}>{getLoginLabel("continueToSubtitle")}</Typography>
+                <Typography className={styles.portalChoiceIntro} sx={{ color: "#64748b" }}>
+                  {getLoginLabel("continueToSubtitle")}
+                </Typography>
                 {/* Each portal is a card rather than a bare button: the two names alone do not tell
                     a dual-access user which side of the product they are choosing, so each carries
                     a line describing what it lets them do. HRMS is shown first, independent of the
@@ -1108,9 +1110,9 @@ const dicLoginFallbacks: Record<LoginLabelKey, string> = {
   resolvingTenantStatus: "Resolving tenant...",
   signInButton: "Sign In",
   continueToTitle: "Continue To",
-  continueToSubtitle: "This account can access both portals. Choose where to continue.",
-  portalHrms: "HRMS",
-  portalEss: "Employee Self Service",
+  continueToSubtitle: "This account can access both portals. Click on the card to continue.",
+  portalHrms: "Go to HRMS",
+  portalEss: "Go to Employee Self Service",
   portalHrmsPoint1: "Manage employees and organisation setup",
   portalHrmsPoint2: "Run payroll and publish payslips",
   portalHrmsPoint3: "Review leave, attendance and approvals",
