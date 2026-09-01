@@ -700,10 +700,7 @@ export default function SalaryStructureEditorPage({
     return lstWarnings;
   }, [dicFlexiSummary.fltEntitlementAnnual, dicForm.lstComponents, dicStructureSummary.fltFlexiBasket, dicStructureSummary.fltTotalCtc, lstFlexiBasketLines.length, t]);
   const intDefaultLanguageID = authHelpers.getLanguageID() ?? objFormOptions?.lstLanguages[0]?.intID ?? 1;
-  const intSecondaryLanguageID =
-    authHelpers.getSecondaryLanguageID()
-    ?? objFormOptions?.lstLanguages.find((dicLanguage) => dicLanguage.intID !== intDefaultLanguageID)?.intID
-    ?? intDefaultLanguageID;
+  const intSecondaryLanguageID = authHelpers.getSecondaryLanguageID();
 
   function buildFixedLanguageRow(
     intLanguageID: number,
@@ -751,6 +748,12 @@ export default function SalaryStructureEditorPage({
       dicDefaultExistingText?.strStructureDescription ?? dicValues.lstTexts[0]?.strStructureDescription ?? "",
       dicValues.lstTexts,
     );
+    if (!intSecondaryLanguageID || intSecondaryLanguageID === intDefaultLanguageID) {
+      return {
+        ...dicValues,
+        lstTexts: ensureUniqueTextRowIDs([dicDefaultRow]),
+      };
+    }
     const dicSecondaryExistingText = dicValues.lstTexts.find(
       (dicText) => Number(dicText.intLanguageID) === intSecondaryLanguageID
     );
@@ -760,12 +763,9 @@ export default function SalaryStructureEditorPage({
       dicSecondaryExistingText?.strStructureDescription ?? "",
       dicValues.lstTexts,
     );
-    const lstRows = intSecondaryLanguageID === intDefaultLanguageID
-      ? [dicDefaultRow]
-      : [dicDefaultRow, dicSecondaryRow];
     return {
       ...dicValues,
-      lstTexts: ensureUniqueTextRowIDs(lstRows),
+      lstTexts: ensureUniqueTextRowIDs([dicDefaultRow, dicSecondaryRow]),
     };
   }
 
@@ -1314,7 +1314,7 @@ export default function SalaryStructureEditorPage({
     if (!dicSecondaryRow) {
       return;
     }
-    await translateTextRow(dicSecondaryRow.strRowID, Number(dicSecondaryRow.intLanguageID) || intSecondaryLanguageID);
+    await translateTextRow(dicSecondaryRow.strRowID, Number(dicSecondaryRow.intLanguageID));
   }
 
   useEffect(() => {
@@ -2561,6 +2561,7 @@ export default function SalaryStructureEditorPage({
         ) : null}
       </Box>
 
+      {intSecondaryLanguageID ? (
       <Paper variant="outlined" sx={{ borderColor: "#d9e6ef", borderRadius: "8px", boxShadow: "0 1px 5px rgba(15, 23, 42, 0.08)", p: 2 }}>
         <Stack direction={{ xs: "column", md: "row" }} alignItems={{ xs: "stretch", md: "center" }} justifyContent="space-between" spacing={1.5} sx={{ mb: 1.5 }}>
           <Box>
@@ -2655,6 +2656,7 @@ export default function SalaryStructureEditorPage({
           ))}
         </Stack>
       </Paper>
+      ) : null}
     </Stack>
   );
 }

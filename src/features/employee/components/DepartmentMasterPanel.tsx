@@ -221,11 +221,7 @@ export default function DepartmentMasterPanel() {
     objFormOptions.lstLanguages[0]?.intID ??
     1;
 
-  const intSecondaryLanguageID =
-    authHelpers.getSecondaryLanguageID() ??
-    objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.strCode?.toLowerCase() === "hi")?.intID ??
-    objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID !== intDefaultLanguageID)?.intID ??
-    intDefaultLanguageID;
+  const intSecondaryLanguageID = authHelpers.getSecondaryLanguageID();
 
   function buildFixedLanguageRow(
     intLanguageID: number,
@@ -252,6 +248,12 @@ export default function DepartmentMasterPanel() {
       dicValues.code,
       dicValues.lstTexts,
     );
+    if (!intSecondaryLanguageID) {
+      return {
+        ...dicValues,
+        lstTexts: [dicDefaultRow],
+      };
+    }
     const dicSecondaryExistingText = dicValues.lstTexts.find(
       (dicText) => Number(dicText.intLanguageID) === intSecondaryLanguageID
     );
@@ -895,6 +897,8 @@ export default function DepartmentMasterPanel() {
               />
             </Box>
 
+            {intSecondaryLanguageID ? (
+            <>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1.25, flexWrap: "wrap" }}>
               <Box>
                 <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("multilingual_text", "Multilingual Text")}</Typography>
@@ -1000,6 +1004,8 @@ export default function DepartmentMasterPanel() {
                 </Box>
               ))}
             </Box>
+            </>
+            ) : null}
           </Box>
         }
       />

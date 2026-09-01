@@ -127,11 +127,7 @@ export default function PayrollGroupEditorPage({
     authHelpers.getLanguageID() ??
     objFormOptions?.lstLanguages[0]?.intID ??
     1;
-  const intSecondaryLanguageID =
-    authHelpers.getSecondaryLanguageID() ??
-    objFormOptions?.lstLanguages.find((dicLanguage) => dicLanguage.strCode?.toLowerCase() === "hi")?.intID ??
-    objFormOptions?.lstLanguages.find((dicLanguage) => dicLanguage.intID !== intDefaultLanguageID)?.intID ??
-    intDefaultLanguageID;
+  const intSecondaryLanguageID = authHelpers.getSecondaryLanguageID();
 
   function buildFixedLanguageRow(
     intLanguageID: number,
@@ -148,6 +144,13 @@ export default function PayrollGroupEditorPage({
 
   function ensureTenantLanguageRows(dicValues: PayrollGroupFormValues): PayrollGroupFormValues {
     const dicDefaultRow = buildFixedLanguageRow(intDefaultLanguageID, dicValues.strPayrollGroupName, dicValues.lstTexts);
+    if (!intSecondaryLanguageID) {
+      return {
+        ...dicValues,
+        intLanguageID: intDefaultLanguageID,
+        lstTexts: [dicDefaultRow]
+      };
+    }
     const dicSecondaryExistingText = dicValues.lstTexts.find(
       (dicText) => Number(dicText.intLanguageID) === intSecondaryLanguageID
     );
@@ -190,7 +193,7 @@ export default function PayrollGroupEditorPage({
   }
 
   async function translateSecondaryLanguageRow() {
-    if (!objFormOptions || intSecondaryLanguageID === intDefaultLanguageID) {
+    if (!objFormOptions || !intSecondaryLanguageID || intSecondaryLanguageID === intDefaultLanguageID) {
       return;
     }
     const strSourceName = dicForm.strPayrollGroupName.trim();
@@ -427,6 +430,7 @@ export default function PayrollGroupEditorPage({
         </Stack>
       </Paper>
 
+      {intSecondaryLanguageID ? (
       <Paper
         sx={{
           borderRadius: "var(--app-card-radius)",
@@ -525,6 +529,7 @@ export default function PayrollGroupEditorPage({
           </Box>
         </Stack>
       </Paper>
+      ) : null}
     </Stack>
   );
 }

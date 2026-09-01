@@ -631,19 +631,12 @@ export default function SalaryComponentEditorPage({
   const intEnglishLanguageID =
     objFormOptions?.lstLanguages.find((dicLanguage) => dicLanguage.strCode?.toLowerCase() === "en")?.intID
     ?? null;
-  const intHindiLanguageID =
-    objFormOptions?.lstLanguages.find((dicLanguage) => dicLanguage.strCode?.toLowerCase() === "hi")?.intID
-    ?? null;
   const intDefaultLanguageID =
     intEnglishLanguageID
     ?? authHelpers.getLanguageID()
     ?? objFormOptions?.lstLanguages[0]?.intID
     ?? 1;
-  const intSecondaryLanguageID =
-    intHindiLanguageID
-    ?? authHelpers.getSecondaryLanguageID()
-    ?? objFormOptions?.lstLanguages.find((dicLanguage) => dicLanguage.intID !== intDefaultLanguageID)?.intID
-    ?? intDefaultLanguageID;
+  const intSecondaryLanguageID = authHelpers.getSecondaryLanguageID();
 
   function buildFixedLanguageRow(
     intLanguageID: number,
@@ -688,6 +681,12 @@ export default function SalaryComponentEditorPage({
       dicValues.strComponentDescription,
       dicValues.lstTexts,
     );
+    if (!intSecondaryLanguageID || intSecondaryLanguageID === intDefaultLanguageID) {
+      return {
+        ...dicValues,
+        lstTexts: ensureUniqueTextRowIDs([dicDefaultRow]),
+      };
+    }
     const dicSecondaryExistingText = dicValues.lstTexts.find(
       (dicText) => Number(dicText.intLanguageID) === intSecondaryLanguageID
     );
@@ -697,12 +696,9 @@ export default function SalaryComponentEditorPage({
       dicSecondaryExistingText?.strComponentDescription ?? "",
       dicValues.lstTexts,
     );
-    const lstRows = intSecondaryLanguageID === intDefaultLanguageID
-      ? [dicDefaultRow]
-      : [dicDefaultRow, dicSecondaryRow];
     return {
       ...dicValues,
-      lstTexts: ensureUniqueTextRowIDs(lstRows),
+      lstTexts: ensureUniqueTextRowIDs([dicDefaultRow, dicSecondaryRow]),
     };
   }
 
@@ -990,7 +986,7 @@ export default function SalaryComponentEditorPage({
     if (!dicSecondaryRow) {
       return;
     }
-    await translateTextRow(dicSecondaryRow.strRowID, Number(dicSecondaryRow.intLanguageID) || intSecondaryLanguageID);
+    await translateTextRow(dicSecondaryRow.strRowID, Number(dicSecondaryRow.intLanguageID));
   }
 
   useEffect(() => {
@@ -2102,6 +2098,7 @@ export default function SalaryComponentEditorPage({
         </Stack>
       </Paper>
 
+      {intSecondaryLanguageID ? (
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5} sx={{ mb: 1.5 }}>
           <Box>
@@ -2172,6 +2169,7 @@ export default function SalaryComponentEditorPage({
           ))}
         </Stack>
       </Paper>
+      ) : null}
 
       {blnShowCalculationDependencies ? (
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>

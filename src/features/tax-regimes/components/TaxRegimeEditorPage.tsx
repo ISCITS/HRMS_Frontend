@@ -22,6 +22,7 @@ import { useRouter } from "next/navigation";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/components/master/MasterScreen.module.css";
 import CommonEditModeBanner from "@/Common/components/CommonEditModeBanner";
+import { authHelpers } from "@/lib/auth";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { usePayrollLookups } from "@/features/payroll-lookups/hooks/usePayrollLookups";
 import { useTaxRegimeLabels } from "@/features/tax-regimes/hooks/useTaxRegimeLabels";
@@ -95,7 +96,21 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID, blnEmbedd
           return;
         }
         setObjFormOptions(objOptions);
-        const lstLanguageRows = (objOptions.lstLanguages.length > 0 ? objOptions.lstLanguages : [{ intID: 1, strLabel: "English", strCode: "en" }]).map((dicLanguage) =>
+        const lstAvailableLanguages = objOptions.lstLanguages.length > 0 ? objOptions.lstLanguages : [{ intID: 1, strLabel: "English", strCode: "en" }];
+        const intDefaultLanguageID =
+          authHelpers.getLanguageID() ??
+          lstAvailableLanguages.find((dicLanguage) => dicLanguage.strCode?.toLowerCase() === "en")?.intID ??
+          lstAvailableLanguages[0]?.intID ??
+          1;
+        const intSecondaryLanguageID = authHelpers.getSecondaryLanguageID();
+        const dicDefaultLanguage = lstAvailableLanguages.find((dicLanguage) => dicLanguage.intID === intDefaultLanguageID) ?? lstAvailableLanguages[0];
+        const dicSecondaryLanguage = intSecondaryLanguageID
+          ? lstAvailableLanguages.find((dicLanguage) => dicLanguage.intID === intSecondaryLanguageID)
+          : undefined;
+        const lstTenantLanguages = [dicDefaultLanguage, dicSecondaryLanguage].filter(
+          (dicLanguage): dicLanguage is TaxRegimeFormOptions["lstLanguages"][number] => Boolean(dicLanguage),
+        );
+        const lstLanguageRows = lstTenantLanguages.map((dicLanguage) =>
           createFallbackTextRow(dicLanguage.intID, dicLanguage.strLabel),
         );
         if (strMode !== "add" && intTaxRegimeID) {

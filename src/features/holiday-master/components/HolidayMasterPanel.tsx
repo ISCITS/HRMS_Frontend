@@ -5,8 +5,8 @@ import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { yupResolver } from "@hookform/resolvers/yup";
 import {
-  Alert, Box, Button, Checkbox, CircularProgress, FormControlLabel, MenuItem, Snackbar,
-  Switch, TextField, Typography,
+  Alert, Box, Button, Checkbox, CircularProgress, MenuItem, Snackbar,
+  TextField, Typography,
 } from "@mui/material";
 import { useMemo, useState, type InputHTMLAttributes } from "react";
 import { Controller, useFieldArray, useForm, type Resolver } from "react-hook-form";
@@ -97,6 +97,7 @@ export default function HolidayMasterPanel() {
   });
   const { fields: lstTextFields } = useFieldArray({ control, name: "lstTexts" });
   const intPrimaryLanguageID = authHelpers.getLanguageID() ?? objOptions.lstLanguages[0]?.intID;
+  const intSecondaryLanguageID = authHelpers.getSecondaryLanguageID();
   const intPrimaryTextIndex = lstTextFields.findIndex((objText) => objText.intLanguageID === intPrimaryLanguageID);
   const blnFormActive = watch("blnIsActive");
   const blnCanView = canViewAny();
@@ -169,8 +170,7 @@ export default function HolidayMasterPanel() {
   async function translateHolidayFields() {
     const objValues = getValues();
     const intSourceLanguageID = authHelpers.getLanguageID() ?? objOptions.lstLanguages[0]?.intID;
-    const intTargetLanguageID = authHelpers.getSecondaryLanguageID()
-      ?? objOptions.lstLanguages.find((objLanguage) => objLanguage.intID !== intSourceLanguageID)?.intID;
+    const intTargetLanguageID = intSecondaryLanguageID;
     const intTargetIndex = objValues.lstTexts.findIndex((objText) => objText.intLanguageID === intTargetLanguageID);
     if (!intSourceLanguageID || !intTargetLanguageID || intSourceLanguageID === intTargetLanguageID || intTargetIndex < 0) {
       showToast(t("translation_language_unavailable", "A secondary tenant language is not configured."), "error");
@@ -392,7 +392,8 @@ export default function HolidayMasterPanel() {
             <Box sx={{ gridColumn: { xs: "auto", md: "span 2" } }}><TextField {...register("strHolidayName", { onChange: (objEvent) => { if (intPrimaryTextIndex >= 0) setValue(`lstTexts.${intPrimaryTextIndex}.strHolidayName`, objEvent.target.value, { shouldValidate: true }); } })} inputProps={{ "data-control-id": "holiday-master.dialog.name.input" }} label={t("name", "Holiday Name")} disabled={strMode === "view"} error={Boolean(errors.strHolidayName)} helperText={errors.strHolidayName?.message} fullWidth /></Box>
           </Box>
           <TextField {...register("strHolidayDescription", { onChange: (objEvent) => { if (intPrimaryTextIndex >= 0) setValue(`lstTexts.${intPrimaryTextIndex}.strHolidayDescription`, objEvent.target.value, { shouldValidate: true }); } })} inputProps={{ "data-control-id": "holiday-master.dialog.description.input" }} label={t("description", "Description")} disabled={strMode === "view"} error={Boolean(errors.strHolidayDescription)} helperText={errors.strHolidayDescription?.message} multiline minRows={2} fullWidth />
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, max-content)", lg: "repeat(4, max-content)" }, columnGap: 3, rowGap: 1, alignItems: "center" }}>{([ ["blnIsPaid", "paid", "Paid"], ["blnIsOptional", "optional", "Optional"], ["blnIsWorkOnHoliday", "work_on_holiday", "Work on Holiday"], ["blnIsCompensatoryOffApplicable", "comp_off_short_label", "Comp-Off"] ] as const).map(([strName, strKey, strFallback]) => <Controller key={strName} control={control} name={strName} render={({ field }) => <FormControlLabel sx={{ m: 0 }} control={<Switch data-control-id={`holiday-master.dialog.${strName}.switch`} checked={field.value} disabled={strMode === "view"} onChange={(_, blnChecked) => field.onChange(blnChecked)} />} label={t(strKey, strFallback)} />} />)}</Box>
+          {intSecondaryLanguageID ? (
+          <>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1.25, flexWrap: "wrap" }}>
             <Box>
               <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("multilingual_text", "Multilingual Text")}</Typography>
@@ -417,6 +418,8 @@ export default function HolidayMasterPanel() {
               );
             })}
           </Box>
+          </>
+          ) : null}
         </Box>}
       />
 

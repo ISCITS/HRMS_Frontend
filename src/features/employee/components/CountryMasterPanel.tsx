@@ -160,11 +160,7 @@ export default function CountryMasterPanel() {
     objFormOptions.lstLanguages[0]?.intID ??
     1;
 
-  const intSecondaryLanguageID =
-    authHelpers.getSecondaryLanguageID() ??
-    objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.strCode?.toLowerCase() === "hi")?.intID ??
-    objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID !== intDefaultLanguageID)?.intID ??
-    intDefaultLanguageID;
+  const intSecondaryLanguageID = authHelpers.getSecondaryLanguageID();
 
   function buildFixedLanguageRow(
     intLanguageID: number,
@@ -186,6 +182,9 @@ export default function CountryMasterPanel() {
 
   function ensureTenantLanguageRows(dicValues: CountryFormValues) {
     const dicDefaultRow = buildFixedLanguageRow(intDefaultLanguageID, dicValues.name, dicValues.code, dicValues.lstTexts);
+    if (!intSecondaryLanguageID) {
+      return { ...dicValues, lstTexts: [dicDefaultRow] };
+    }
     const dicSecondaryExistingText = dicValues.lstTexts.find((dicText) => Number(dicText.intLanguageID) === intSecondaryLanguageID);
     const dicSecondaryRow = buildFixedLanguageRow(intSecondaryLanguageID, dicSecondaryExistingText?.strCountryName ?? "", dicValues.code, dicValues.lstTexts);
     return { ...dicValues, lstTexts: [dicDefaultRow, dicSecondaryRow] };
@@ -753,6 +752,8 @@ export default function CountryMasterPanel() {
               />
             </Box>
 
+            {intSecondaryLanguageID ? (
+            <>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1.25, flexWrap: "wrap" }}>
               <Box>
                 <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("multilingual_text", "Multilingual Text")}</Typography>
@@ -845,6 +846,8 @@ export default function CountryMasterPanel() {
                 </Box>
               ))}
             </Box>
+            </>
+            ) : null}
           </Box>
         )}
       />
