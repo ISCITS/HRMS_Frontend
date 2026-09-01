@@ -160,6 +160,24 @@ function SectionNum(props: { label: string; value: number | null | undefined; on
     />
   );
 }
+// Max Hour Limit needs what SectionNum does not offer: a required marker and an inline error, plus a
+// positive-only spinner. It stays a number input so the field reads like the rest of the section.
+function SectionNumRequired(props: { label: string; value: number | null | undefined; onChange: (v: number | null) => void; strError?: string }) {
+  return (
+    <TextField
+      label={props.label}
+      type="number"
+      required
+      value={props.value ?? ""}
+      onChange={(e) => props.onChange(toNum(e.target.value))}
+      size="small"
+      fullWidth
+      error={Boolean(props.strError)}
+      helperText={props.strError || undefined}
+      inputProps={{ min: 0.5, step: 0.5 }}
+    />
+  );
+}
 function SectionSelect(props: { label: string; value: string; onChange: (v: string) => void; options: { code: string; label: string }[] }) {
   return (
     <TextField label={props.label} select value={props.value} onChange={(e) => props.onChange(e.target.value)} size="small" fullWidth>
@@ -253,6 +271,7 @@ function emptyAggregate(): LeaveTypeAggregate {
     strDescription: "",
     strLeaveCategoryCode: "REGULAR",
     strUnit: "day",
+    decMaxHourLimit: null,
     blnIsPaid: true,
     strPayrollTreatmentCode: "PAID",
     strAttendanceStatusCode: "ON_LEAVE",
@@ -302,7 +321,7 @@ export default function LeaveTypeEditorPage({ strMode, strLeaveTypeID }: { strMo
   // Advanced Configuration (Applicability / Advanced Rules / Combination) is collapsed by default for the POC.
   const [blnAdvancedOpen, setBlnAdvancedOpen] = useState(false);
   // Field-level validation messages shown inline below the control (not as a generic toast).
-  const [dicFieldErrors, setDicFieldErrors] = useState<{ strTypeCode?: string; strTypeName?: string }>({});
+  const [dicFieldErrors, setDicFieldErrors] = useState<{ strTypeCode?: string; strTypeName?: string; decMaxHourLimit?: string }>({});
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
   const [lstEmployeeOptions, setLstEmployeeOptions] = useState<EmployeeListRecord[]>([]);
   const [blnEmployeesLoading, setBlnEmployeesLoading] = useState(false);
@@ -417,6 +436,21 @@ export default function LeaveTypeEditorPage({ strMode, strLeaveTypeID }: { strMo
       return { ...objPrev, objPolicy: { ...objBase, strAccrualFrequency: strValue, decAccrualQty: computeCreditPerCycle(objBase.decEntitlementQty, strValue) } };
     });
   }
+  // The Unit drives the Max Hour Limit: it only exists for "hour". Switching away clears the stored cap
+  // (the server does the same) so a Day type can never carry a dormant hour limit, and the policy's
+  // hourly flag is kept in step so the two cannot disagree.
+  const blnHourUnit = objForm.strUnit === "hour";
+  function setUnit(strValue: string) {
+    const blnHour = strValue === "hour";
+    setObjForm((objPrev) => ({
+      ...objPrev,
+      strUnit: strValue,
+      decMaxHourLimit: blnHour ? objPrev.decMaxHourLimit ?? null : null,
+      objPolicy: { ...(objPrev.objPolicy ?? emptyPolicy()), blnHourlyLeaveAllowed: blnHour },
+    }));
+    if (!blnHour) setDicFieldErrors((objPrev) => ({ ...objPrev, decMaxHourLimit: undefined }));
+  }
+
   // Stage 3 (Eligibility): a single "Leave Eligibility" select replaces the two independent credit switches.
   function setLeaveEligibility(strValue: string) {
     const blnConfirmation = strValue === "CONFIRMATION";
@@ -435,10 +469,15 @@ export default function LeaveTypeEditorPage({ strMode, strLeaveTypeID }: { strMo
   const blnShowEncashment = objForm.blnIsEncashable && blnBalanceTracked;
 
   async function submit() {
-    const dicErrors: { strTypeCode?: string; strTypeName?: string } = {};
+    const dicErrors: { strTypeCode?: string; strTypeName?: string; decMaxHourLimit?: string } = {};
     if (!objForm.strTypeCode.trim()) dicErrors.strTypeCode = "Code is required.";
     if (!objForm.strTypeName.trim()) dicErrors.strTypeName = "Name is required.";
-    if (dicErrors.strTypeCode || dicErrors.strTypeName) {
+    if (blnHourUnit) {
+      const decLimit = objForm.decMaxHourLimit;
+      if (decLimit === null || decLimit === undefined || Number.isNaN(Number(decLimit))) dicErrors.decMaxHourLimit = "Max Hour Limit is required when the unit is Hour.";
+      else if (Number(decLimit) <= 0) dicErrors.decMaxHourLimit = "Max Hour Limit must be greater than zero.";
+    }
+    if (dicErrors.strTypeCode || dicErrors.strTypeName || dicErrors.decMaxHourLimit) {
       setDicFieldErrors(dicErrors);
       return;
     }
@@ -469,6 +508,7 @@ export default function LeaveTypeEditorPage({ strMode, strLeaveTypeID }: { strMo
       strTypeCode: objForm.strTypeCode.trim().toUpperCase(),
       strTypeName: objForm.strTypeName.trim(),
       strDescription: emptyToNull(objForm.strDescription),
+      decMaxHourLimit: blnHourUnit ? Number(objForm.decMaxHourLimit) : null,
       dtEffectiveFrom: strEffectiveFrom,
       dtEffectiveTo: strEffectiveTo,
       lstText,
@@ -637,7 +677,16 @@ export default function LeaveTypeEditorPage({ strMode, strLeaveTypeID }: { strMo
             <SectionText label="Code" required value={objForm.strTypeCode} strError={dicFieldErrors.strTypeCode} onChange={(v) => { setMaster("strTypeCode", v.toUpperCase()); if (dicFieldErrors.strTypeCode) setDicFieldErrors((objPrev) => ({ ...objPrev, strTypeCode: undefined })); }} />
             <SectionText label="Default Name" required value={objForm.strTypeName} strError={dicFieldErrors.strTypeName} onChange={(v) => { setMaster("strTypeName", v); if (dicFieldErrors.strTypeName) setDicFieldErrors((objPrev) => ({ ...objPrev, strTypeName: undefined })); }} />
             <SectionSelect label="Category" value={objForm.strLeaveCategoryCode} onChange={(v) => setMaster("strLeaveCategoryCode", v)} options={optionsFor("LEAVE_CATEGORY", ["REGULAR", "STATUTORY", "UNPAID", "ON_DUTY", "COMPENSATORY", "RESTRICTED_HOLIDAY"])} />
-            <SectionSelect label="Unit" value={objForm.strUnit} onChange={(v) => setMaster("strUnit", v)} options={optionsFor("LEAVE_UNIT", ["DAY", "HALF_DAY", "HOUR"]).map((o) => ({ code: o.code.toLowerCase(), label: o.label }))} />
+            <SectionSelect label="Unit" value={objForm.strUnit} onChange={setUnit} options={optionsFor("LEAVE_UNIT", ["DAY", "HALF_DAY", "HOUR"]).map((o) => ({ code: o.code.toLowerCase(), label: o.label }))} />
+            {/* Shown only for an Hour unit — a Day leave type has no hour ceiling to configure. */}
+            {blnHourUnit ? (
+              <SectionNumRequired
+                label="Max Hour Limit"
+                value={objForm.decMaxHourLimit}
+                onChange={(v) => { setMaster("decMaxHourLimit", v); if (dicFieldErrors.decMaxHourLimit) setDicFieldErrors((objPrev) => ({ ...objPrev, decMaxHourLimit: undefined })); }}
+                strError={dicFieldErrors.decMaxHourLimit}
+              />
+            ) : null}
             <SectionSelect label="Payroll Treatment" value={objForm.strPayrollTreatmentCode} onChange={(v) => setMaster("strPayrollTreatmentCode", v)} options={optionsFor("LEAVE_PAYROLL_TREATMENT", ["PAID", "UNPAID", "NO_PAY_IMPACT"])} />
             <SectionSelect label="Attendance Status" value={objForm.strAttendanceStatusCode} onChange={(v) => setMaster("strAttendanceStatusCode", v)} options={lstAttendanceStatuses.map((c) => ({ code: c, label: c.replace(/_/g, " ") }))} />
             {/* POC: Approval Route hidden — Approval Steps below is the single visible routing source.
@@ -686,7 +735,7 @@ export default function LeaveTypeEditorPage({ strMode, strLeaveTypeID }: { strMo
               <SectionNum label="Annual Entitlement" value={objPolicy.decEntitlementQty} onChange={(v) => setEntitlementQty(v)} />
               <SectionSelect label="Accrual Frequency" value={objPolicy.strAccrualFrequency} onChange={(v) => setAccrualFrequency(v)} options={[{ code: "yearly", label: "Yearly" }, { code: "monthly", label: "Monthly" }, { code: "none", label: "Manual Credit" }]} />
               {/* Credit per Cycle is calculated (read-only) regardless of view/edit mode. */}
-              <TextField label="Credit per Cycle" value={computeCreditPerCycle(objPolicy.decEntitlementQty, objPolicy.strAccrualFrequency)} size="small" fullWidth disabled helperText="Auto-calculated from entitlement" />
+              <TextField label="Credit per Cycle" value={computeCreditPerCycle(objPolicy.decEntitlementQty, objPolicy.strAccrualFrequency)} size="small" fullWidth disabled />
               <SectionSelect label="Credit Timing" value={objPolicy.strAccrualTimingCode} onChange={(v) => setPolicy("strAccrualTimingCode", v)} options={optsWithCurrent([{ code: "PERIOD_START", label: "Start of Cycle" }, { code: "PERIOD_END", label: "End of Cycle" }], objPolicy.strAccrualTimingCode)} />
               <SectionSelect label="Rounding" value={objPolicy.strAccrualRoundingCode} onChange={(v) => setPolicy("strAccrualRoundingCode", v)} options={optsWithCurrent(lstPocRounding, objPolicy.strAccrualRoundingCode)} />
               {/* POC: Waiting Gap (waiting days) and Minimum Service Days hidden — values preserved. */}

@@ -10,6 +10,8 @@ export type LeaveTypeDto = {
   strLeaveCategoryCode?: string | null;
   blnIsPaid: boolean;
   strUnit: string;
+  /** Ceiling on a single hour-based request; set only while strUnit === "hour". */
+  decMaxHourLimit?: number | null;
   blnRequiresProof: boolean;
   blnAllowHalfDay: boolean;
   blnIsEncashable: boolean;
@@ -40,6 +42,7 @@ export type LeaveTypeEnrichedDto = {
   strLeaveCategoryCode: string;
   blnIsPaid: boolean;
   strUnit: string;
+  decMaxHourLimit?: number | null;
   blnRequiresProof: boolean;
   blnAllowHalfDay: boolean;
   blnIsEncashable: boolean;
@@ -197,6 +200,8 @@ export type LeaveTypeAggregate = {
   strDescription?: string | null;
   strLeaveCategoryCode: string;
   strUnit: string;
+  /** Max Hour Limit — required when strUnit === "hour", cleared by the server for every other unit. */
+  decMaxHourLimit?: number | null;
   blnIsPaid: boolean;
   strPayrollTreatmentCode: string;
   strAttendanceStatusCode: string;
@@ -378,6 +383,11 @@ export type LeavePreviewDto = {
   lstWarnings: LeaveValidationMessage[];
   lstDateBreakdown: LeaveDateBreakdownDto[];
   decCalculatedDays: number;
+  /** The unit decCalculatedDays is expressed in ("day" | "half_day" | "hour"). */
+  strUnit?: string | null;
+  blnHourBased?: boolean;
+  decRequestedHours?: number | null;
+  decMaxHourLimit?: number | null;
   blnProofRequired: boolean;
   strBackupResourceRuleCode: string | null;
   blnManagerCancelApprovedAllowed: boolean | null;
@@ -401,6 +411,10 @@ export type LeaveApplicationDto = {
   blnToHalf: boolean;
   strFromHalfSession?: "first" | "second" | null;
   strToHalfSession?: "first" | "second" | null;
+  /** Unit decDays is denominated in, plus the hour window on an hour-based application. */
+  strUnit?: string | null;
+  tmStartTime?: string | null;
+  tmEndTime?: string | null;
   strReason: string | null;
   intBackupEmployeeID?: number | null;
   strStatus: string;
@@ -426,6 +440,9 @@ export type LeaveApplyRequest = {
   blnToHalf: boolean;
   strFromHalfSession?: "first" | "second" | null;
   strToHalfSession?: "first" | "second" | null;
+  /** Hour-based leave window ("HH:MM"); sent only for a Leave Type whose unit is "hour". */
+  tmStartTime?: string | null;
+  tmEndTime?: string | null;
   strReason?: string | null;
   strContactDuringLeave?: string | null;
   strBackupEmployee?: string | null;

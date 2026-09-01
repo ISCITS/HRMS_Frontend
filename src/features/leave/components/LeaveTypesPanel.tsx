@@ -238,8 +238,12 @@ export default function LeaveTypesPanel() {
             flexWrap: "nowrap",
             gap: 1.25,
             alignItems: "center",
-            mt: 1,
             overflowX: "auto",
+            // overflow-x: auto makes overflow-y compute to auto as well, so this row is a scroll box
+            // in both axes. A shrunk outlined label is translated 9px ABOVE its field, so without room
+            // inside the box it is clipped. The top gap is padding (inside the scroll box) rather than
+            // the previous margin (outside it), which is what leaves the label somewhere to render.
+            pt: 1.25,
             pb: 0.5,
             "& > .MuiTextField-root, & > .MuiFormControl-root": { flex: "1 1 170px", minWidth: 160 },
           }}
