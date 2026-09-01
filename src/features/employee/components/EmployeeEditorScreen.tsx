@@ -1518,7 +1518,7 @@ export default function EmployeeEditorScreen({
 
       <Paper sx={{ borderRadius: "26px", border: "1px solid rgba(148,163,184,0.24)", p: { xs: 2, md: 3 } }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={2.5} alignItems={{ xs: "stretch", md: "flex-start" }}>
-          <Box sx={{ display: "grid", gap: 2, flex: 1, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" } }}>
+          <Box sx={{ display: "grid", gap: 2, flex: 1, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" } }}>
             <TextField data-controlid="employee.editor.employee-code.input" inputProps={{ "data-controlid": "employee.editor.employee-code.input" }} label={renderRequiredLabel(t("field_employee_code", dicConstant.employeeMaster.fields.employeeCode))} inputRef={dicFieldRefs.strEmployeeCode} value={dicBasicForm.strEmployeeCode} onChange={(objEvent) => updateBasicField("strEmployeeCode", objEvent.target.value.toUpperCase())} error={Boolean(dicBasicErrors.strEmployeeCode)} helperText={dicBasicErrors.strEmployeeCode} disabled={blnViewOnly} fullWidth />
             <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: "repeat(2, minmax(0, 1fr))", minWidth: 0 }}>
               {renderSelectField(t("field_gender", dicConstant.employeeMaster.fields.gender), dicBasicForm.strGender, (objValue) => updateBasicField("strGender", String(objValue)), objFormOptions?.lstGenders ?? [], blnViewOnly)}
@@ -1690,7 +1690,7 @@ export default function EmployeeEditorScreen({
           {(["basicInfo", "personalIdentification", "serviceContract", "additionalEmployment"] as TabKey[]).includes(strVisibleActiveTab) ? (
             <Stack spacing={3}>
               {strVisibleActiveTab === "basicInfo" ? <Box>
-                <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(3, minmax(0, 1fr))" } }}>
+                <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", lg: "repeat(3, minmax(0, 1fr))" } }}>
                   <TextField data-controlid="employee.editor.date-of-joining.input" inputProps={{ "data-controlid": "employee.editor.date-of-joining.input" }} type="date" label={renderRequiredLabel(t("field_date_of_joining", dicConstant.employeeMaster.fields.dateOfJoining))} inputRef={dicFieldRefs.dtDateOfJoining} value={dicBasicForm.dtDateOfJoining} onChange={(objEvent) => updateBasicField("dtDateOfJoining", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfJoining)} helperText={dicBasicErrors.dtDateOfJoining} InputLabelProps={{ shrink: true }} disabled={blnViewOnly} fullWidth />
                   {renderSelectField(renderRequiredLabel(t("field_employment_type", dicConstant.employeeMaster.fields.employmentType)), dicBasicForm.intEmploymentTypeID, (objValue) => updateBasicField("intEmploymentTypeID", objValue as number | ""), objFormOptions?.lstEmploymentTypes ?? [], blnViewOnly, dicBasicErrors.intEmploymentTypeID, Boolean(dicBasicErrors.intEmploymentTypeID), dicFieldRefs.intEmploymentTypeID)}
                   <Box sx={{ display: "flex", alignItems: "center", height: 56, alignSelf: "start" }}>
@@ -1737,19 +1737,19 @@ export default function EmployeeEditorScreen({
                 <Stack spacing={3}>
                   <Box>
                     <Typography sx={{ mb: 1.5, fontWeight: 700, color: "#334155" }}>Appointment & Joining</Typography>
-                    <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" } }}>
+                    <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" } }}>
                       {lstAppointmentJoiningFields.map((dicField) => renderOptionalEmployeeField(dicField.strField, dicField.strLabel, dicField.strType))}
                     </Box>
                   </Box>
                   <Box>
                     <Typography sx={{ mb: 1.5, fontWeight: 700, color: "#334155" }}>Probation & Confirmation</Typography>
-                    <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" } }}>
+                    <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" } }}>
                       {lstProbationConfirmationFields.map((dicField) => renderOptionalEmployeeField(dicField.strField, dicField.strLabel, dicField.strType))}
                     </Box>
                   </Box>
                   <Box>
                     <Typography sx={{ mb: 1.5, fontWeight: 700, color: "#334155" }}>Contract / Service Period</Typography>
-                    <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" } }}>
+                    <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" } }}>
                       {lstContractServiceFields.map((dicField) => renderOptionalEmployeeField(dicField.strField, dicField.strLabel, dicField.strType))}
                       <TextField data-controlid="employee.editor.date-of-exit.input" inputProps={{ "data-controlid": "employee.editor.date-of-exit.input" }} type="date" label={t("field_date_of_exit", dicConstant.employeeMaster.fields.dateOfExit)} value={dicBasicForm.dtDateOfExit} onChange={(objEvent) => updateBasicField("dtDateOfExit", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfExit)} helperText={dicBasicErrors.dtDateOfExit} InputLabelProps={{ shrink: true }} disabled={blnViewOnly || dicBasicForm.strEmploymentStatus === "Active"} fullWidth />
                     </Box>
@@ -1758,7 +1758,7 @@ export default function EmployeeEditorScreen({
               ) : null}
 
               {strVisibleActiveTab === "additionalEmployment" ? <Box>
-                <Box sx={{ display: "grid", gap: 2, alignItems: "center", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", xl: "repeat(3, minmax(0, 1fr))" } }}>
+                <Box sx={{ display: "grid", gap: 2, alignItems: "center", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(3, minmax(0, 1fr))" } }}>
                   {lstAdditionalEmploymentFields.slice(0, 5).map((dicField) => renderOptionalEmployeeField(dicField.strField, dicField.strLabel, dicField.strType))}
                   <FormControlLabel control={<Switch checked={dicBasicForm.blnFlatGiven} onChange={(_, value) => updateBasicField("blnFlatGiven", value)} disabled={blnViewOnly} />} label="Flat Given" sx={{ m: 0 }} />
                   {renderOptionalEmployeeField("strPrefixLogic", "Prefix Logic")}
@@ -1836,7 +1836,7 @@ export default function EmployeeEditorScreen({
                     />
                   </Stack>
                 </Stack>
-                <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", xl: "repeat(2, minmax(0, 1fr))" } }}>
+                <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", lg: "repeat(2, minmax(0, 1fr))" } }}>
                   {renderSelectField(renderRequiredLabel(t("field_bank", dicConstant.employeeMaster.fields.bank)), dicBankForm.intBankID, (objValue) => updateBankField("intBankID", objValue as number | ""), objFormOptions?.lstBanks ?? [], blnViewOnly, dicBankErrors.intBankID, Boolean(dicBankErrors.intBankID), dicFieldRefs.intBankID)}
                   <TextField label="Branch Name" value={dicBankForm.strBranchName} onChange={(objEvent) => updateBankField("strBranchName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
                   <TextField data-controlid="employee.editor.account-holder-name.input" inputProps={{ "data-controlid": "employee.editor.account-holder-name.input" }} label={renderRequiredLabel(t("field_account_holder_name", dicConstant.employeeMaster.fields.accountHolderName))} inputRef={dicFieldRefs.strAccountHolderName} value={dicBankForm.strAccountHolderName} onChange={(objEvent) => updateBankField("strAccountHolderName", objEvent.target.value)} error={Boolean(dicBankErrors.strAccountHolderName)} helperText={dicBankErrors.strAccountHolderName} disabled={blnViewOnly} fullWidth />
@@ -1872,7 +1872,7 @@ export default function EmployeeEditorScreen({
                   />
                 </Stack>
                 {dicBankForm.blnSecondaryIsActive ? (
-                  <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", xl: "repeat(2, minmax(0, 1fr))" } }}>
+                  <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", lg: "repeat(2, minmax(0, 1fr))" } }}>
                     {renderSelectField(renderRequiredLabel(t("field_secondary_bank", dicConstant.employeeMaster.fields.secondaryBank)), dicBankForm.intSecondaryBankID, (objValue) => updateBankField("intSecondaryBankID", objValue as number | ""), objFormOptions?.lstBanks ?? [], blnViewOnly, dicBankErrors.intSecondaryBankID, Boolean(dicBankErrors.intSecondaryBankID), dicFieldRefs.intSecondaryBankID)}
                     <TextField data-controlid="employee.editor.secondary-account-holder-name.input" inputProps={{ "data-controlid": "employee.editor.secondary-account-holder-name.input" }} label={renderRequiredLabel(t("field_secondary_account_holder_name", dicConstant.employeeMaster.fields.secondaryAccountHolderName))} inputRef={dicFieldRefs.strSecondaryAccountHolderName} value={dicBankForm.strSecondaryAccountHolderName} onChange={(objEvent) => updateBankField("strSecondaryAccountHolderName", objEvent.target.value)} error={Boolean(dicBankErrors.strSecondaryAccountHolderName)} helperText={dicBankErrors.strSecondaryAccountHolderName} disabled={blnViewOnly} fullWidth />
                     <TextField data-controlid="employee.editor.secondary-account-number.input" inputProps={{ "data-controlid": "employee.editor.secondary-account-number.input" }} label={renderRequiredLabel(t("field_secondary_account_number", dicConstant.employeeMaster.fields.secondaryAccountNumber))} inputRef={dicFieldRefs.strSecondaryAccountNumber} value={dicBankForm.strSecondaryAccountNumber} onChange={(objEvent) => updateBankField("strSecondaryAccountNumber", objEvent.target.value)} error={Boolean(dicBankErrors.strSecondaryAccountNumber)} helperText={dicBankErrors.strSecondaryAccountNumber} disabled={blnViewOnly} fullWidth />
@@ -1887,7 +1887,7 @@ export default function EmployeeEditorScreen({
             <Stack spacing={3} sx={{ width: "100%" }}>
               <Box>
                 <Typography sx={{ mb: 1.5, fontWeight: 700, color: "#334155" }}>Tax & National Identification</Typography>
-                <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(3, minmax(0, 1fr))" } }}>
+                <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", lg: "repeat(3, minmax(0, 1fr))" } }}>
                   <TextField data-controlid="employee.editor.pan-number.input" inputProps={{ "data-controlid": "employee.editor.pan-number.input" }} label={t("field_pan_number", dicConstant.employeeMaster.fields.panNumber)} value={dicStatutoryForm.strPanNumber} onChange={(objEvent) => updateStatutoryField("strPanNumber", objEvent.target.value.toUpperCase())} disabled={blnViewOnly} fullWidth />
                   {renderSelectField(t("field_tax_regime", dicConstant.employeeMaster.fields.taxRegimeCode), dicStatutoryForm.strTaxRegimeCode, (objValue) => updateStatutoryField("strTaxRegimeCode", String(objValue)), objFormOptions?.lstTaxRegimeCodes ?? [], blnViewOnly)}
                   <TextField label="SSN Number" value={dicStatutoryForm.strSsnNumber} onChange={(objEvent) => updateStatutoryField("strSsnNumber", objEvent.target.value)} disabled={blnViewOnly} fullWidth />

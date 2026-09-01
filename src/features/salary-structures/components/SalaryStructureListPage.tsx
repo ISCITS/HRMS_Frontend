@@ -211,7 +211,7 @@ export default function SalaryStructureListPage() {
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
       { field: "action", headerName: t("action", "Action"), sortable: false, filterable: false, exportable: false, width: 120 },
-      { field: "strStructureCode", headerName: t("code", "Code") },
+      { field: "strStructureCode", headerName: t("structure_code", "Structure Code") },
       { field: "strStructureName", headerName: t("structure_name", "Structure Name") },
       { field: "strScopeLabel", headerName: t("scope", "Scope") },
       { field: "strCurrencyCode", headerName: t("currency", "Currency") },
