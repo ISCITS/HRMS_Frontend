@@ -85,6 +85,10 @@ function CardHeading({ objIcon, strText }: { objIcon: ReactElement; strText: str
   );
 }
 
+function SectionHeading({ strText }: { strText: string }) {
+  return <Typography sx={{ color: "#344054", fontWeight: 700, mb: 0.75 }}>{strText}</Typography>;
+}
+
 const dicReadOnlyCardSx = {
   borderRadius: "9px",
   overflow: "hidden",
@@ -339,13 +343,18 @@ export default function EssMyProfilePage() {
   const strLineManager = resolveLookupLabel(objFormOptions?.lstManagers, objEmployee?.intLineManagerEmployeeID ?? null, strNotAvailable);
   const strPayrollGroup = resolveLookupLabel(objFormOptions?.lstPayrollGroups, objEmployee?.intPayrollGroupID ?? null, strNotAvailable);
   const strPreferredLanguage = resolveLookupLabel(objFormOptions?.lstLanguages, objEmployee?.intPreferredLanguageID ?? null, strNotAvailable);
+  const strNationality = resolveLookupLabel(objFormOptions?.lstNationalities, objEmployee?.intNationalityCountryID ?? null, strNotAvailable);
+  const strMotherTongue = resolveLookupLabel(objFormOptions?.lstMotherTongues, objEmployee?.intMotherTongueLanguageID ?? null, strNotAvailable);
+  const strRelatedEmployee = resolveLookupLabel(objFormOptions?.lstManagers, objEmployee?.intRelatedEmployeeID ?? null, strNotAvailable);
+  const yesNoOrNotAvailable = (blnValue: boolean | null | undefined) => blnValue == null ? strNotAvailable : (blnValue ? t("yes", "Yes") : t("no", "No"));
+  const numberOrNotAvailable = (objValue: number | null | undefined) => objValue == null ? strNotAvailable : String(objValue);
   const dicTabSx = {
     minHeight: 48,
     minWidth: { xs: 105, sm: 115 },
     px: 1.2,
-    textTransform: "none",
     color: "#475467",
     typography: "button",
+    textTransform: "none",
     fontWeight: 600,
     "&.Mui-selected": {
       color: "var(--app-primary-color)",
@@ -447,8 +456,11 @@ export default function EssMyProfilePage() {
                   }
                 }}
               >
-                <Tab value="basicInfo" icon={<PersonRoundedIcon />} iconPosition="start" label={t("tab_personal_contact_info", "Personal & Contact Info")} sx={dicTabSx} />
-                <Tab value="contactDetails" icon={<PhoneOutlinedIcon />} iconPosition="start" label={t("tab_employment", "Employment Information")} sx={dicTabSx} />
+                <Tab value="basicInfo" icon={<WorkOutlineRoundedIcon />} iconPosition="start" label={t("tab_basic_info", "Employment Info")} sx={dicTabSx} />
+                <Tab value="personalIdentification" icon={<PersonRoundedIcon />} iconPosition="start" label={t("tab_personal_identification", "Personal & Identification")} sx={dicTabSx} />
+                <Tab value="serviceContract" icon={<WorkOutlineRoundedIcon />} iconPosition="start" label={t("tab_service_contract", "Service & Contract")} sx={dicTabSx} />
+                <Tab value="additionalEmployment" icon={<ApartmentOutlinedIcon />} iconPosition="start" label={t("tab_additional_employment", "Additional Employment Details")} sx={dicTabSx} />
+                <Tab value="address" icon={<PhoneOutlinedIcon />} iconPosition="start" label={t("tab_address", "Contact Details")} sx={dicTabSx} />
                 <Tab value="bankDetails" icon={<AccountBalanceWalletOutlinedIcon />} iconPosition="start" label={t("tab_bank_details", "Bank Details")} sx={dicTabSx} />
                 <Tab value="statutory" icon={<AccountBalanceOutlinedIcon />} iconPosition="start" label={t("tab_statutory", "Statutory")} sx={dicTabSx} />
                 <Tab value="experience" icon={<WorkOutlineRoundedIcon />} iconPosition="start" label={t("tab_experience", "Experience")} sx={dicTabSx} />
@@ -468,46 +480,139 @@ export default function EssMyProfilePage() {
               }}
             >
               {strActiveTab === "basicInfo" ? (
-                <Stack spacing={2.1}>
-                  <Paper variant="outlined" sx={dicReadOnlyCardSx}>
-                    <Box sx={{ px: 1.5 }}>
-                    <DetailRow strLabel={t("field_employee_code", "Employee Code")} strValue={valueOrNotAvailable(objEmployee?.strEmployeeCode)} />
-                    <DetailRow strLabel={t("field_name", "Name")} strValue={strFullName} />
-                    <DetailRow strLabel={t("field_date_of_birth", "Date of Birth")} strValue={formatDate(objEmployee?.dtDateOfBirth ?? null, strNotAvailable)} />
-                    <DetailRow strLabel={t("field_gender", "Gender")} strValue={translateKnownValue(objEmployee?.strGender)} />
-                    <DetailRow strLabel={t("field_work_email", "Work Email")} strValue={valueOrNotAvailable(objEmployee?.strWorkEmail)} />
-                    <DetailRow strLabel={t("field_personal_email", "Personal Email")} strValue={valueOrNotAvailable(objEmployee?.strPersonalEmail)} />
-                    <DetailRow strLabel={t("field_mobile_number", "Mobile Number")} strValue={valueOrNotAvailable(objEmployee?.strMobileNumber)} />
-                    <DetailRow strLabel={t("field_address_type", "Address Type")} strValue={translateKnownValue(objAddress?.strAddressType)} />
-                    <DetailRow strLabel={t("field_address_line_1", "Address Line 1")} strValue={valueOrNotAvailable(objAddress?.strAddressLine1)} />
-                    <DetailRow strLabel={t("field_address_line_2", "Address Line 2")} strValue={valueOrNotAvailable(objAddress?.strAddressLine2)} />
-                    <DetailRow strLabel={t("field_city", "City")} strValue={valueOrNotAvailable(objAddress?.strCityName)} />
-                    <DetailRow strLabel={t("field_state", "State")} strValue={resolveLookupLabel(objFormOptions?.lstStates, objAddress?.intStateID ?? null, strNotAvailable)} />
-                    <DetailRow strLabel={t("field_postal_code", "Postal Code")} strValue={valueOrNotAvailable(objAddress?.strPostalCode)} />
-                    <DetailRow strLabel={t("field_country", "Country")} strValue={resolveLookupLabel(objFormOptions?.lstCountries, objAddress?.intCountryID ?? null, strNotAvailable)} />
-                    </Box>
-                  </Paper>
+                <ReadOnlyCard lstRows={[
+                  { strLabel: t("field_date_of_joining", "Date of Joining"), strValue: formatDate(objEmployee?.dtDateOfJoining ?? null, strNotAvailable) },
+                  { strLabel: t("field_employment_type", "Employment Type"), strValue: translateKnownValue(resolveLookupLabel(objFormOptions?.lstEmploymentTypes, objEmployee?.intEmploymentTypeID ?? null, strNotAvailable)) },
+                  { strLabel: t("field_ess_enabled", "ESS Enabled"), strValue: yesNoOrNotAvailable(objEmployee?.blnIsEssEnabled) },
+                  { strLabel: t("field_department", "Department"), strValue: strDepartment },
+                  { strLabel: t("field_designation", "Designation"), strValue: strDesignation },
+                  { strLabel: t("field_grade", "Grade"), strValue: resolveLookupLabel(objFormOptions?.lstGrades, objEmployee?.intGradeID ?? null, strNotAvailable) },
+                  { strLabel: t("field_location", "Location"), strValue: strLocation },
+                  { strLabel: t("field_cost_center", "Cost Center"), strValue: resolveLookupLabel(objFormOptions?.lstCostCenters, objEmployee?.intCostCenterID ?? null, strNotAvailable) },
+                  { strLabel: t("field_payroll_group", "Payroll Group"), strValue: strPayrollGroup },
+                  { strLabel: t("field_manager", "Manager"), strValue: strManager },
+                  { strLabel: t("field_line_manager", "Line Manager"), strValue: strLineManager },
+                  { strLabel: t("field_preferred_language", "Preferred Language"), strValue: strPreferredLanguage },
+                  { strLabel: t("field_employee_function", "Employee Function"), strValue: valueOrNotAvailable(objEmployee?.strEmployeeFunction) },
+                  { strLabel: t("field_functional_area", "Functional Area"), strValue: valueOrNotAvailable(objEmployee?.strFunctionalArea) },
+                  { strLabel: t("field_employee_category", "Employee Category"), strValue: valueOrNotAvailable(objEmployee?.strEmployeeCategory) },
+                  { strLabel: t("field_job_type", "Job Type"), strValue: valueOrNotAvailable(objEmployee?.strJobType) },
+                  { strLabel: t("field_rest_day", "Rest Day"), strValue: valueOrNotAvailable(objEmployee?.strRestDay) },
+                  { strLabel: t("field_payment_type", "Payment Type"), strValue: valueOrNotAvailable(objEmployee?.strPaymentType) }
+                ]} />
+              ) : null}
+
+              {strActiveTab === "personalIdentification" ? (
+                <ReadOnlyCard lstRows={[
+                  { strLabel: t("field_employee_code", "Employee Code"), strValue: valueOrNotAvailable(objEmployee?.strEmployeeCode) },
+                  { strLabel: t("field_title", "Title"), strValue: valueOrNotAvailable(objEmployee?.strTitle) },
+                  { strLabel: t("field_name", "Name"), strValue: strFullName },
+                  { strLabel: t("field_date_of_birth", "Date of Birth"), strValue: formatDate(objEmployee?.dtDateOfBirth ?? null, strNotAvailable) },
+                  { strLabel: t("field_gender", "Gender"), strValue: translateKnownValue(objEmployee?.strGender) },
+                  { strLabel: t("field_worker_category", "Worker Category"), strValue: objEmployee?.blnIsWorker ? t("worker", "Worker") : t("non_worker", "Non-Worker") },
+                  { strLabel: t("field_nationality", "Nationality"), strValue: strNationality },
+                  { strLabel: t("field_mother_tongue", "Mother Tongue"), strValue: strMotherTongue },
+                  { strLabel: t("field_marital_status", "Marital Status"), strValue: valueOrNotAvailable(objEmployee?.strMaritalStatus) },
+                  { strLabel: t("field_blood_group", "Blood Group"), strValue: valueOrNotAvailable(objEmployee?.strBloodGroup) },
+                  { strLabel: t("field_religion", "Religion"), strValue: valueOrNotAvailable(objEmployee?.strReligion) },
+                  { strLabel: t("field_place_of_birth", "Place of Birth"), strValue: valueOrNotAvailable(objEmployee?.strPlaceOfBirth) },
+                  { strLabel: t("field_identification_marks", "Identification Marks"), strValue: valueOrNotAvailable(objEmployee?.strIdentificationMarks) },
+                  { strLabel: t("field_father_husband_name", "Father / Husband Name"), strValue: valueOrNotAvailable(objEmployee?.strFatherOrHusbandName) },
+                  { strLabel: t("field_mother_name", "Mother Name"), strValue: valueOrNotAvailable(objEmployee?.strMotherName) },
+                  { strLabel: t("field_spouse_name", "Spouse Name"), strValue: valueOrNotAvailable(objEmployee?.strSpouseName) },
+                  { strLabel: t("field_spouse_occupation", "Spouse Occupation"), strValue: valueOrNotAvailable(objEmployee?.strSpouseOccupation) },
+                  { strLabel: t("field_passport_number", "Passport Number"), strValue: valueOrNotAvailable(objEmployee?.strPassportNumber) },
+                  { strLabel: t("field_passport_place_of_issue", "Passport Place of Issue"), strValue: valueOrNotAvailable(objEmployee?.strPassportPlaceOfIssue) },
+                  { strLabel: t("field_passport_issue_date", "Passport Issue Date"), strValue: formatDate(objEmployee?.dtPassportIssueDate ?? null, strNotAvailable) },
+                  { strLabel: t("field_passport_expiry_date", "Passport Expiry Date"), strValue: formatDate(objEmployee?.dtPassportExpiryDate ?? null, strNotAvailable) },
+                  { strLabel: t("field_driving_licence_number", "Driving Licence Number"), strValue: valueOrNotAvailable(objEmployee?.strDrivingLicenceNumber) },
+                  { strLabel: t("field_driving_licence_valid_upto", "Driving Licence Valid Upto"), strValue: formatDate(objEmployee?.dtDrivingLicenceValidUpto ?? null, strNotAvailable) },
+                  { strLabel: t("field_has_disability", "Has Disability"), strValue: yesNoOrNotAvailable(objEmployee?.blnHasDisability) },
+                  { strLabel: t("field_superannuation", "Superannuation"), strValue: yesNoOrNotAvailable(objEmployee?.blnSuperannuationFlag) },
+                  { strLabel: t("field_related_employee", "Related Employee"), strValue: objEmployee?.blnIsRelatedEmployee ? strRelatedEmployee : yesNoOrNotAvailable(objEmployee?.blnIsRelatedEmployee) }
+                ]} />
+              ) : null}
+
+              {strActiveTab === "serviceContract" ? (
+                <Stack spacing={1.5}>
+                  <SectionHeading strText={t("section_appointment_joining", "Appointment & Joining")} />
+                  <ReadOnlyCard lstRows={[
+                    { strLabel: t("field_appointment_date", "Appointment Date"), strValue: formatDate(objEmployee?.dtAppointmentDate ?? null, strNotAvailable) },
+                    { strLabel: t("field_appointment_order_number", "Appointment Order Number"), strValue: valueOrNotAvailable(objEmployee?.strAppointmentOrderNumber) },
+                    { strLabel: t("field_location_joining_date", "Location Joining Date"), strValue: formatDate(objEmployee?.dtLocationJoiningDate ?? null, strNotAvailable) },
+                    { strLabel: t("field_initial_posting_location", "Initial Posting Location"), strValue: valueOrNotAvailable(objEmployee?.strInitialPostingLocation) },
+                    { strLabel: t("field_entry_mode", "Entry Mode"), strValue: valueOrNotAvailable(objEmployee?.strEntryMode) },
+                    { strLabel: t("field_reference_number", "Reference Number"), strValue: valueOrNotAvailable(objEmployee?.strReferenceNumber) },
+                    { strLabel: t("field_referred_by", "Referred By"), strValue: valueOrNotAvailable(objEmployee?.strReferredBy) },
+                    { strLabel: t("field_agency", "Agency"), strValue: valueOrNotAvailable(objEmployee?.strAgency) }
+                  ]} />
+                  <SectionHeading strText={t("section_probation_confirmation", "Probation & Confirmation")} />
+                  <ReadOnlyCard lstRows={[
+                    { strLabel: t("field_probation_start_date", "Probation Start Date"), strValue: formatDate(objEmployee?.dtProbationStartDate ?? null, strNotAvailable) },
+                    { strLabel: t("field_probation_end_date", "Probation End Date"), strValue: formatDate(objEmployee?.dtProbationEndDate ?? null, strNotAvailable) },
+                    { strLabel: t("field_tentative_confirmation_date", "Tentative Confirmation Date"), strValue: formatDate(objEmployee?.dtTentativeConfirmationDate ?? null, strNotAvailable) },
+                    { strLabel: t("field_confirmation_date", "Confirmation Date"), strValue: formatDate(objEmployee?.dtConfirmationDate ?? null, strNotAvailable) },
+                    { strLabel: t("field_confirmation_type", "Confirmation Type"), strValue: valueOrNotAvailable(objEmployee?.strConfirmationType) },
+                    { strLabel: t("field_confirmation_comments", "Confirmation Comments"), strValue: valueOrNotAvailable(objEmployee?.strConfirmationComments) },
+                    { strLabel: t("field_last_increment_date", "Last Increment Date"), strValue: formatDate(objEmployee?.dtLastIncrementDate ?? null, strNotAvailable) },
+                    { strLabel: t("field_status_effective_date", "Status Effective Date"), strValue: formatDate(objEmployee?.dtStatusEffectiveDate ?? null, strNotAvailable) }
+                  ]} />
+                  <SectionHeading strText={t("section_contract_service_period", "Contract / Service Period")} />
+                  <ReadOnlyCard lstRows={[
+                    { strLabel: t("field_contract_start_date", "Contract Start Date"), strValue: formatDate(objEmployee?.dtContractStartDate ?? null, strNotAvailable) },
+                    { strLabel: t("field_contract_end_date", "Contract End Date"), strValue: formatDate(objEmployee?.dtContractEndDate ?? null, strNotAvailable) },
+                    { strLabel: t("field_from_date", "From Date"), strValue: formatDate(objEmployee?.dtFromDate ?? null, strNotAvailable) },
+                    { strLabel: t("field_to_date", "To Date"), strValue: formatDate(objEmployee?.dtToDate ?? null, strNotAvailable) },
+                    { strLabel: t("field_notice_period_days", "Notice Period (Days)"), strValue: numberOrNotAvailable(objEmployee?.intNoticePeriodDays) },
+                    { strLabel: t("field_retirement_date", "Retirement Date"), strValue: formatDate(objEmployee?.dtRetirementDate ?? null, strNotAvailable) },
+                    { strLabel: t("field_date_of_exit", "Date of Exit"), strValue: formatDate(objEmployee?.dtDateOfExit ?? null, strNotAvailable) }
+                  ]} />
                 </Stack>
               ) : null}
 
-              {strActiveTab === "contactDetails" ? (
-                <Paper variant="outlined" sx={dicReadOnlyCardSx}>
-                  <Box sx={{ px: 1.5 }}>
-                  <DetailRow strLabel={t("field_employment_type", "Employment Type")} strValue={translateKnownValue(resolveLookupLabel(objFormOptions?.lstEmploymentTypes, objEmployee?.intEmploymentTypeID ?? null, strNotAvailable))} />
-                  <DetailRow strLabel={t("field_date_of_joining", "Date of Joining")} strValue={formatDate(objEmployee?.dtDateOfJoining ?? null, strNotAvailable)} />
-                  <DetailRow strLabel={t("field_department", "Department")} strValue={strDepartment} />
-                  <DetailRow strLabel={t("field_designation", "Designation")} strValue={strDesignation} />
-                  <DetailRow strLabel={t("field_grade", "Grade")} strValue={resolveLookupLabel(objFormOptions?.lstGrades, objEmployee?.intGradeID ?? null, strNotAvailable)} />
-                  <DetailRow strLabel={t("field_cost_center", "Cost Center")} strValue={resolveLookupLabel(objFormOptions?.lstCostCenters, objEmployee?.intCostCenterID ?? null, strNotAvailable)} />
-                  <DetailRow strLabel={t("field_location", "Location")} strValue={strLocation} />
-                  <DetailRow strLabel={t("field_payroll_group", "Payroll Group")} strValue={strPayrollGroup} />
-                  <DetailRow strLabel={t("field_line_manager", "Line Manager")} strValue={strLineManager} />
-                  <DetailRow strLabel={t("field_preferred_language", "Preferred Language")} strValue={strPreferredLanguage} />
-                  <DetailRow strLabel={t("field_employment_status", "Employment Status")} strValue={translateKnownValue(objEmployee?.strEmploymentStatus)} />
-                  <DetailRow strLabel={t("field_date_of_exit", "Date of Exit")} strValue={formatDate(objEmployee?.dtDateOfExit ?? null, strNotAvailable)} />
-                  <DetailRow strLabel={t("field_worker_category", "Worker Category")} strValue={objEmployee?.blnIsWorker ? t("worker", "Worker") : t("non_worker", "Non-Worker")} />
-                  </Box>
-                </Paper>
+              {strActiveTab === "additionalEmployment" ? (
+                <ReadOnlyCard lstRows={[
+                  { strLabel: t("field_employee_workgroup", "Employee Workgroup"), strValue: valueOrNotAvailable(objEmployee?.strEmployeeWorkgroup) },
+                  { strLabel: t("field_employee_reservation", "Employee Reservation"), strValue: valueOrNotAvailable(objEmployee?.strEmployeeReservation) },
+                  { strLabel: t("field_swon", "SWON"), strValue: valueOrNotAvailable(objEmployee?.strSwon) },
+                  { strLabel: t("field_accommodation_type", "Accommodation Type"), strValue: valueOrNotAvailable(objEmployee?.strAccommodationType) },
+                  { strLabel: t("field_housing_allowance", "Housing Allowance"), strValue: numberOrNotAvailable(objEmployee?.decHousingAllowance) },
+                  { strLabel: t("field_flat_given", "Flat Given"), strValue: yesNoOrNotAvailable(objEmployee?.blnFlatGiven) },
+                  { strLabel: t("field_prefix_logic", "Prefix Logic"), strValue: valueOrNotAvailable(objEmployee?.strPrefixLogic) },
+                  { strLabel: t("field_ugc_appraisal", "UGC Appraisal"), strValue: yesNoOrNotAvailable(objEmployee?.blnUgcAppraisalFlag) },
+                  { strLabel: t("field_employee_remark", "Employee Remark"), strValue: valueOrNotAvailable(objEmployee?.strEmployeeRemark) }
+                ]} />
+              ) : null}
+
+              {strActiveTab === "address" ? (
+                <Stack spacing={1.5}>
+                  <SectionHeading strText={t("section_employee_contact", "Employee Contact")} />
+                  <ReadOnlyCard lstRows={[
+                    { strLabel: t("field_work_email", "Work Email"), strValue: valueOrNotAvailable(objEmployee?.strWorkEmail) },
+                    { strLabel: t("field_personal_email", "Personal Email"), strValue: valueOrNotAvailable(objEmployee?.strPersonalEmail) },
+                    { strLabel: t("field_mobile_country_code", "Mobile Country Code"), strValue: valueOrNotAvailable(objEmployee?.strMobileCountryCode) },
+                    { strLabel: t("field_mobile_number", "Mobile Number"), strValue: valueOrNotAvailable(objEmployee?.strMobileNumber) },
+                    { strLabel: t("field_whatsapp_country_code", "WhatsApp Country Code"), strValue: valueOrNotAvailable(objEmployee?.strWhatsappCountryCode) },
+                    { strLabel: t("field_whatsapp_number", "WhatsApp Number"), strValue: valueOrNotAvailable(objEmployee?.strWhatsappNumber) }
+                  ]} />
+                  <SectionHeading strText={t("section_emergency_contact", "Emergency Contact")} />
+                  <ReadOnlyCard lstRows={[
+                    { strLabel: t("field_emergency_contact_person", "Emergency Contact Person"), strValue: valueOrNotAvailable(objEmployee?.strEmergencyContactPerson) },
+                    { strLabel: t("field_emergency_country_code", "Emergency Country Code"), strValue: valueOrNotAvailable(objEmployee?.strEmergencyCountryCode) },
+                    { strLabel: t("field_emergency_mobile_number", "Emergency Mobile Number"), strValue: valueOrNotAvailable(objEmployee?.strEmergencyMobileNumber) },
+                    { strLabel: t("field_emergency_email", "Emergency Email"), strValue: valueOrNotAvailable(objEmployee?.strEmergencyEmail) }
+                  ]} />
+                  <SectionHeading strText={t("section_address", "Address")} />
+                  <ReadOnlyCard lstRows={[
+                    { strLabel: t("field_address_type", "Address Type"), strValue: translateKnownValue(objAddress?.strAddressType) },
+                    { strLabel: t("field_address_line_1", "Address Line 1"), strValue: valueOrNotAvailable(objAddress?.strAddressLine1) },
+                    { strLabel: t("field_address_line_2", "Address Line 2"), strValue: valueOrNotAvailable(objAddress?.strAddressLine2) },
+                    { strLabel: t("field_city", "City"), strValue: valueOrNotAvailable(objAddress?.strCityName) },
+                    { strLabel: t("field_state", "State"), strValue: resolveLookupLabel(objFormOptions?.lstStates, objAddress?.intStateID ?? null, strNotAvailable) },
+                    { strLabel: t("field_country", "Country"), strValue: resolveLookupLabel(objFormOptions?.lstCountries, objAddress?.intCountryID ?? null, strNotAvailable) },
+                    { strLabel: t("field_postal_code", "Postal Code"), strValue: valueOrNotAvailable(objAddress?.strPostalCode) }
+                  ]} />
+                </Stack>
               ) : null}
 
               {strActiveTab === "bankDetails" ? (
@@ -516,9 +621,13 @@ export default function EssMyProfilePage() {
                   <ReadOnlyCard
                     lstRows={[
                       { strLabel: t("field_bank", "Bank"), strValue: resolveLookupLabel(objFormOptions?.lstBanks, objBank?.intBankID ?? null, strNotAvailable) },
+                      { strLabel: t("field_branch_name", "Branch Name"), strValue: valueOrNotAvailable(objBank?.strBranchName) },
                       { strLabel: t("field_account_holder_name", "Account Holder Name"), strValue: valueOrNotAvailable(objBank?.strAccountHolderName) },
+                      { strLabel: t("field_account_type", "Account Type"), strValue: valueOrNotAvailable(objBank?.strAccountType) },
                       { strLabel: t("field_account_number", "Account Number"), strValue: valueOrNotAvailable(objBank?.strAccountNumberMasked || objBank?.strAccountNumber) },
                       { strLabel: t("field_ifsc_code", "IFSC Code"), strValue: valueOrNotAvailable(objBank?.strIfscCode) },
+                      { strLabel: t("field_swift_code", "SWIFT Code"), strValue: valueOrNotAvailable(objBank?.strSwiftCode) },
+                      { strLabel: t("field_account_holder_email", "Account Holder Email"), strValue: valueOrNotAvailable(objBank?.strAccountHolderEmail) },
                       { strLabel: t("field_is_primary", "Primary Account"), strValue: objBank ? (objBank.blnIsPrimary ? t("yes", "Yes") : t("no", "No")) : strNotAvailable },
                       { strLabel: t("field_bank_active", "Active"), strValue: objBank ? (objBank.blnIsActive ? t("yes", "Yes") : t("no", "No")) : strNotAvailable }
                     ]}
@@ -542,11 +651,15 @@ export default function EssMyProfilePage() {
                 <Paper variant="outlined" sx={dicReadOnlyCardSx}>
                   <Box sx={{ px: 1.5 }}>
                     <DetailRow strLabel={t("field_pan_number", "PAN Number")} strValue={valueOrNotAvailable(objStatutory?.strPanNumber)} />
-                    <DetailRow strLabel={t("field_uan_number", "UAN Number")} strValue={valueOrNotAvailable(objStatutory?.strUanNumber)} />
                     <DetailRow strLabel={t("field_tax_regime", "Tax Regime")} strValue={translateKnownValue(objStatutory?.strTaxRegimeCode)} />
+                    <DetailRow strLabel={t("field_ssn_number", "SSN Number")} strValue={valueOrNotAvailable(objStatutory?.strSsnNumber)} />
+                    <DetailRow strLabel={t("field_pran_number", "PRAN Number")} strValue={valueOrNotAvailable(objStatutory?.strPranNumber)} />
+                    <DetailRow strLabel={t("field_gratuity_number", "Gratuity Number")} strValue={valueOrNotAvailable(objStatutory?.strGratuityNumber)} />
+                    <DetailRow strLabel={t("field_uan_number", "UAN Number")} strValue={valueOrNotAvailable(objStatutory?.strUanNumber)} />
                     <DetailRow strLabel={t("field_pf_applicable", "PF Applicable")} strValue={objStatutory ? (objStatutory.blnPfApplicable ? t("yes", "Yes") : t("no", "No")) : strNotAvailable} />
                     <DetailRow strLabel={t("field_pf_number", "PF Number")} strValue={valueOrNotAvailable(objStatutory?.strPfNumber)} />
                     <DetailRow strLabel={t("field_esi_applicable", "ESI Applicable")} strValue={objStatutory ? (objStatutory.blnEsiApplicable ? t("yes", "Yes") : t("no", "No")) : strNotAvailable} />
+                    <DetailRow strLabel={t("field_esi_code", "ESI Code")} strValue={valueOrNotAvailable(objStatutory?.strEsiCode)} />
                     <DetailRow strLabel={t("field_esi_number", "ESI Number")} strValue={valueOrNotAvailable(objStatutory?.strEsiNumber)} />
                     <DetailRow strLabel={t("field_pt_applicable", "PT Applicable")} strValue={objStatutory ? (objStatutory.blnPtApplicable ? t("yes", "Yes") : t("no", "No")) : strNotAvailable} />
                   </Box>

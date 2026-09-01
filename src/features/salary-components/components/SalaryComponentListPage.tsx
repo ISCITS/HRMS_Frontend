@@ -337,6 +337,7 @@ export default function SalaryComponentListPage() {
             />
           ),
           strComponentName: dicRow.strComponentName,
+          strComponentCode: dicRow.strComponentCode,
           strComponentCategory: getCategoryLabel(dicRow.strComponentCategory),
           strComponentGroup: dicRow.strComponentGroup ?? "-",
           strCalcMethod: dicRow.strCalcMethod,
@@ -374,6 +375,7 @@ export default function SalaryComponentListPage() {
       },
       { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 110 },
       { field: "strComponentName", headerName: t("component_name", "Component Name") },
+      { field: "strComponentCode", headerName: t("component_code", "Component Code") },
       { field: "strComponentCategory", headerName: t("category", "Category") },
       { field: "strComponentGroup", headerName: t("payroll_group", "Payroll Group") },
       { field: "strCalcMethod", headerName: t("calc_method", "Calc Method") },
