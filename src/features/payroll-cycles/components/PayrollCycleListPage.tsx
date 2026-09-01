@@ -181,19 +181,17 @@ export default function PayrollCycleListPage() {
       </Box>
 
       <Box className={styles.controlsCard}>
-        <Box className={styles.searchRow}>
+        <Box className={styles.searchRow} sx={{ display: "flex", gridTemplateColumns: "none", flexWrap: "nowrap", alignItems: "center", gap: 1.25, overflowX: "auto", pb: 0.5, "& > .MuiTextField-root": { flex: "1 1 240px", minWidth: 200 } }}>
           <TextField controlId="payroll-cycles.list.cycle-name.input" inputProps={{ "controlId": "payroll-cycles.list.cycle-name.input" }} label={t("schedule_name", "Payroll Schedule")} value={dicSearchDraft.strName} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strName: objEvent.target.value }))} size="small" />
           <TextField controlId="payroll-cycles.list.search-status.select" inputProps={{ "controlId": "payroll-cycles.list.search-status.select" }} select label={t("status")} value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} size="small">
             <MenuItem controlId="payroll-cycles.list.search-status.all.option" value="All">{t("all")}</MenuItem>
             <MenuItem controlId="payroll-cycles.list.search-status.active.option" value="Active">{t("active")}</MenuItem>
             <MenuItem controlId="payroll-cycles.list.search-status.inactive.option" value="Inactive">{t("inactive")}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions}>
+          <Box className={styles.searchActions} sx={{ flexShrink: 0, ml: "auto" }}>
             <Button controlId="payroll-cycles.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }}>
               {t("search")}
             </Button>
-          </Box>
-          <Box className={styles.searchActions}>
             <Button
               className={styles.secondaryButton}
               startIcon={<ClearRoundedIcon />}

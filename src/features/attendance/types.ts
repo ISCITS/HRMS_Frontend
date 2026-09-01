@@ -28,8 +28,8 @@ export type AttendancePolicy = {
   blnOtEnabled: boolean;
   decOtMinHours: number;
   blnLateDeductionEnabled: boolean;
-  intLateArrivalsPerHalfDay: number | null;
-  intLateArrivalsPerFullDay: number | null;
+  intLateArrivalDays: number | null;
+  strLateArrivalDeductionType: "HALF_DAY" | "FULL_DAY" | null;
   strWeeklyOffPattern: string;
   blnIsDefault: boolean;
   dtEffectiveFrom: string;

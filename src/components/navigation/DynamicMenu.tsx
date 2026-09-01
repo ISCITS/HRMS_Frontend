@@ -56,6 +56,17 @@ function resolveMenuIconName(objItem: MenuItem, strFallbackIconName = "workspace
     return "dashboard";
   }
 
+  const strRoute = resolveMenuRoute(objItem)?.trim().toLowerCase() ?? "";
+  if (strRoute === "/attendance/daily") {
+    return "event_available";
+  }
+  if (strRoute === "/attendance/review") {
+    return "badge";
+  }
+  if (strRoute === "/attendance/import") {
+    return "upload_file";
+  }
+
   const strResolvedIconName = toMaterialIconName(objItem.strIconName ?? "");
   return strResolvedIconName || strFallbackIconName;
 }

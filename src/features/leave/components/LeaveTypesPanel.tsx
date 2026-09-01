@@ -234,11 +234,14 @@ export default function LeaveTypesPanel() {
       <Box className={styles.controlsCard}>
         <Box
           sx={{
-            display: "grid",
+            display: "flex",
+            flexWrap: "nowrap",
             gap: 1.25,
-            gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(6, minmax(0, 1fr))" },
             alignItems: "center",
             mt: 1,
+            overflowX: "auto",
+            pb: 0.5,
+            "& > .MuiTextField-root, & > .MuiFormControl-root": { flex: "1 1 170px", minWidth: 160 },
           }}
         >
           <TextField
@@ -314,7 +317,7 @@ export default function LeaveTypesPanel() {
             <MenuItem value="Active">Active</MenuItem>
             <MenuItem value="Inactive">Inactive</MenuItem>
           </TextField>
-          <Box sx={{ display: "flex", gap: 1, gridColumn: "1 / -1", justifyContent: "flex-end" }}>
+          <Box sx={{ display: "flex", gap: 1, flexShrink: 0, ml: "auto" }}>
             <Button controlId="leave.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applySearch(dicSearchDraft)} disabled={blnLoading}>
               Search
             </Button>

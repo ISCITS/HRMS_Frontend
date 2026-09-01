@@ -659,10 +659,13 @@ export default function PayrollResultListPage({
         {!blnPayslipScreen && (
           <Box
             sx={{
-              display: "grid",
+              display: "flex",
+              flexWrap: "nowrap",
               gap: 1.2,
-              gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(5, minmax(0, 1fr))" },
-              alignItems: "end",
+              alignItems: "center",
+              overflowX: "auto",
+              pb: 0.5,
+              "& > .MuiTextField-root, & > .MuiFormControl-root": { flex: "1 1 180px", minWidth: 170 },
             }}
           >
               <TextField
@@ -751,7 +754,7 @@ export default function PayrollResultListPage({
                 <MenuItem value="Published">{t("status_published", "Published")}</MenuItem>
                 <MenuItem value="Paid">{t("status_paid", "Paid")}</MenuItem>
               </TextField>
-              <Box sx={{ display: "flex", gap: 1, gridColumn: "1 / -1", justifyContent: "flex-end" }}>
+              <Box sx={{ display: "flex", gap: 1, flexShrink: 0, ml: "auto" }}>
                 <Button
                   controlId="payroll-results.list.search.button"
                   className={styles.primaryButton}
