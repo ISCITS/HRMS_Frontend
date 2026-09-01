@@ -285,7 +285,6 @@ export default function HolidayMasterPanel() {
   }
 
   const lstTableRows = useMemo(() => lstHolidays.map((objHoliday) => {
-    const fnBooleanLabel = (blnValue: boolean) => blnValue ? t("yes", "Yes") : t("no", "No");
     return {
       id: String(objHoliday.intID),
       select: <Checkbox controlId={`holiday-master.list.row.${objHoliday.intID}.select.checkbox`} checked={lstSelectedIDs.includes(objHoliday.intID)} onChange={() => toggleSelection(objHoliday.intID)} inputProps={{ "data-control-id": `holiday-master.list.row.${objHoliday.intID}.select.checkbox` } as InputHTMLAttributes<HTMLInputElement>} />,
@@ -294,9 +293,6 @@ export default function HolidayMasterPanel() {
       code: objHoliday.strHolidayCode,
       name: objHoliday.strHolidayName,
       type: objOptions.lstHolidayTypes.find((objType) => objType.strCode === objHoliday.strHolidayTypeCode)?.strLabel ?? objHoliday.strHolidayTypeCode,
-      paid: fnBooleanLabel(objHoliday.blnIsPaid),
-      workOnHoliday: fnBooleanLabel(objHoliday.blnIsWorkOnHoliday),
-      compOffEligible: fnBooleanLabel(objHoliday.blnIsCompensatoryOffApplicable),
       status: <span className={`${styles.statusPill} ${objHoliday.blnIsActive ? styles.statusActive : styles.statusInactive}`}>{objHoliday.blnIsActive ? t("active", "Active") : t("inactive", "Inactive")}</span>,
     };
   }), [blnCanEdit, blnCanView, lstHolidays, lstSelectedIDs, objOptions.lstHolidayTypes, strLanguageCode, t]);
@@ -308,9 +304,6 @@ export default function HolidayMasterPanel() {
     { field: "name", headerName: t("name", "Holiday Name") },
     { field: "code", headerName: t("code", "Holiday Code"), width: 150 },
     { field: "type", headerName: t("type", "Holiday Type"), width: 170 },
-    { field: "paid", headerName: t("paid_holiday", "Paid Holiday"), width: 140 },
-    { field: "workOnHoliday", headerName: t("can_work_on_holiday", "Can Work on Holiday"), width: 190 },
-    { field: "compOffEligible", headerName: t("comp_off_eligible", "Comp-Off Eligible"), width: 170 },
     { field: "status", headerName: t("status", "Status"), sortable: false, width: 120 },
   ], [blnAllSelected, blnSomeSelected, lstTableRows, t]);
 
