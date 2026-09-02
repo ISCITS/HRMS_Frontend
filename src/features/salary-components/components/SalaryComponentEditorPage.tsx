@@ -1495,34 +1495,34 @@ export default function SalaryComponentEditorPage({
               <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.component-category.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{getCategoryLabel(dicOption.strDisplayName)}</MenuItem>
             ))}
           </TextField>
-          <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 0.75, minHeight: 56 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
-              <Typography sx={{ fontSize: "0.875rem", color: "rgba(15, 23, 42, 0.6)", whiteSpace: "nowrap" }}>
+          <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "flex-start", minWidth: 0, pt: 0 }}>
+            <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1, minWidth: 0 }}>
+              <Typography sx={{ fontSize: "0.75rem", lineHeight: "18px", color: "rgba(15, 23, 42, 0.6)", whiteSpace: "nowrap" }}>
                 {t("ctc_treatment", "CTC Treatment")}:
               </Typography>
               <Chip
                 size="small"
                 color={blnDerivedIncludedInCtc ? "success" : "default"}
                 label={blnDerivedIncludedInCtc ? t("included_in_ctc", "Included in CTC") : t("not_included_in_ctc", "Not Included in CTC")}
-                sx={{ flexShrink: 0, fontWeight: 700 }}
+                sx={{ flexShrink: 0, height: 22, fontWeight: 700, "& .MuiChip-label": { px: 1, fontSize: "0.72rem" } }}
                 data-controlid="salary-components.editor.ctc-treatment.chip"
               />
             </Box>
-            <Typography sx={{ color: "#64748b", fontSize: "0.78rem", lineHeight: 1.35 }}>
-              {t("ctc_treatment_help", "CTC Treatment is derived from component category and reimbursement configuration.")}
+            <Typography sx={{ color: "#64748b", fontSize: "0.68rem", lineHeight: 1.3, mt: 0.5, whiteSpace: "nowrap" }}>
+              {t("ctc_treatment_help_single_line", "Derived from component category and reimbursement configuration.")}
             </Typography>
           </Box>
           {!blnHideWageType ? (
-            <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 0.5, minHeight: 56 }}>
-              <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 1.5 }}>
-                <Typography sx={{ fontSize: "0.875rem", color: "rgba(15, 23, 42, 0.6)", whiteSpace: "nowrap" }}>
+            <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "flex-start", minWidth: 0, pt: 0 }}>
+              <Box sx={{ display: "flex", alignItems: "flex-start", flexWrap: "nowrap", gap: 1.5, minWidth: 0 }}>
+                <Typography sx={{ fontSize: "0.75rem", lineHeight: "18px", color: "rgba(15, 23, 42, 0.6)", whiteSpace: "nowrap" }}>
                   {t("wage_type", "Wage Type")}
                 </Typography>
                 <RadioGroup
                   row
                   value={dicForm.blnIsWages ? "wages" : "nonWages"}
                   onChange={(objEvent) => updateRootField("blnIsWages", objEvent.target.value === "wages")}
-                  sx={{ flexWrap: "nowrap" }}
+                  sx={{ flexWrap: "nowrap", alignItems: "flex-start", mt: -0.5, "& .MuiFormControlLabel-root": { mr: 1.25, ml: 0 }, "& .MuiFormControlLabel-label": { fontSize: "0.875rem" }, "& .MuiRadio-root": { p: 0.5 } }}
                 >
                   <FormControlLabel
                     value="wages"
@@ -1538,8 +1538,8 @@ export default function SalaryComponentEditorPage({
                   />
                 </RadioGroup>
               </Box>
-              <Typography sx={{ color: "#64748b", fontSize: "0.75rem", lineHeight: 1.66 }}>
-                {t("wage_type_help", "Determines whether the component is considered part of wages for statutory calculations.")}
+              <Typography sx={{ color: "#64748b", fontSize: "0.68rem", lineHeight: 1.3, mt: 0.5, whiteSpace: "nowrap" }}>
+                {t("wage_type_help_single_line", "Is component considered part of wages for statutory calculations.")}
               </Typography>
             </Box>
           ) : null}
@@ -1561,9 +1561,12 @@ export default function SalaryComponentEditorPage({
             onChange={(objEvent) => updateRootField("strComponentCode", objEvent.target.value.toUpperCase())}
             disabled={blnFieldDisabled || strMode === "edit"}
             helperText={strMode === "edit"
-              ? t("component_code_read_only_help", "Component code can be entered during creation and is read-only after save.")
+              ? t("component_code_read_only_help_single_line", "Code can be entered during creation and is read-only after save.")
               : t("component_code_create_help", "Set the internal component code used for system references.")}
             fullWidth
+            FormHelperTextProps={{
+              sx: { fontSize: "0.68rem", whiteSpace: "nowrap" },
+            }}
             data-controlid="salary-components.editor.component-code.input"
             inputProps={buildInputTestIdProps("salary-components.editor.component-code.input")}
           />
