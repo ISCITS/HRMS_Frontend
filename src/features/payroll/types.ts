@@ -946,6 +946,28 @@ export type StatutoryReportRow = {
   strRemarks: string | null;
 };
 
+export type TdsReportRow = {
+  intID: number;
+  intEmployeePayrollResultID: number;
+  intEmployeeID: number;
+  strRunCode: string;
+  strRunName: string;
+  dtPayrollMonth: string | null;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strDepartmentName?: string | null;
+  strLocationName?: string | null;
+  strStatus: string;
+  strFinancialYearCode: string | null;
+  strRegimeUsed: string | null;
+  decGrossTaxableIncomeYtd: number;
+  decNetTaxableIncome: number;
+  decTotalTaxLiability: number;
+  decTaxDeductedYtd: number;
+  decMonthlyTds: number;
+  strSlabProfileCode: string | null;
+};
+
 export type PayslipLineRecord = {
   strGroupCode: string;
   strSectionLabel: string;

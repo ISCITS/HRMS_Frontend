@@ -1,5 +1,5 @@
 import { payrollResultService } from "@/features/payroll/services/payrollResultService";
-import type { PayrollResultListRecord, StatutoryReportCode, StatutoryReportRow } from "@/features/payroll/types";
+import type { PayrollResultListRecord, StatutoryReportCode, StatutoryReportRow, TdsReportRow } from "@/features/payroll/types";
 
 export type PayrollReportFilters = {
   strSearchEmployee?: string;
@@ -37,5 +37,11 @@ export const payrollReportService = {
     objFilters?: StatutoryReportFilters,
   ): Promise<StatutoryReportRow[]> {
     return payrollResultService.getStatutoryReportRows(objFilters);
+  },
+
+  async getTdsReportRows(
+    objFilters?: PayrollReportFilters,
+  ): Promise<TdsReportRow[]> {
+    return payrollResultService.getTdsReportRows(objFilters);
   },
 };
