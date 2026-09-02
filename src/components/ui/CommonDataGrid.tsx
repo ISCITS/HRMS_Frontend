@@ -509,6 +509,9 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                     sx={[
                       {
                         height: 50,
+                        "&:hover": {
+                          cursor: "pointer"
+                        },
                         "& td": {
                           borderBottom: "1px solid",
                           borderColor: "divider",

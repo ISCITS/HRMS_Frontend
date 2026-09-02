@@ -451,7 +451,13 @@ export default function SalaryStructureEditorPage({
         setObjFormOptions(objOptions);
 
         if (dicDetail) {
-          setDicForm(applyFlexiEligibilityToForm(toSalaryStructureFormValues(dicDetail), objOptions));
+          const dicLoadedForm = applyFlexiEligibilityToForm(toSalaryStructureFormValues(dicDetail), objOptions);
+          const dicLoadedComponentByID = new Map(objOptions.lstSalaryComponents.map((dicOption) => [dicOption.intID, dicOption]));
+          // Reapply derived amounts on initial detail load so persisted percentage values respect annual caps immediately.
+          setDicForm({
+            ...dicLoadedForm,
+            lstComponents: recalculateDerivedLineAmounts(dicLoadedForm.lstComponents, dicLoadedComponentByID)
+          });
         } else {
           const intEnglishID = objOptions.lstLanguages.find((dicLanguage) => dicLanguage.strCode?.toLowerCase() === "en")?.intID ?? objOptions.lstLanguages[0]?.intID ?? "";
           setDicForm((dicPrevious) => ({
@@ -930,7 +936,10 @@ export default function SalaryStructureEditorPage({
     }
   }
 
-  function recalculateDerivedLineAmounts(lstComponents: SalaryStructureLineFormValue[]) {
+  function recalculateDerivedLineAmounts(
+    lstComponents: SalaryStructureLineFormValue[],
+    dicCalculationComponentByID = dicComponentByID
+  ) {
     const dicComputedMonthlyByComponentID = new Map<number, number>();
     const dicFormulaVariables: Record<string, number> = {};
     const dicFormulaAggregates = {
@@ -968,6 +977,7 @@ export default function SalaryStructureEditorPage({
       )
       .reduce((lstCalculated, dicLine) => {
         let fltCalculatedAmount = parseLineAmount(dicLine.fltFixedAmount);
+        let blnPercentageAmountCapped = false;
         const strValueSource = normalizeSelectToken(dicLine.strValueSource);
 
         if (strValueSource === "percentage") {
@@ -976,6 +986,18 @@ export default function SalaryStructureEditorPage({
           fltCalculatedAmount = fltPercentage !== null && fltBasisAmount !== undefined
             ? (fltBasisAmount * fltPercentage) / 100
             : null;
+
+          // Line min/max values are annual, while calculated line amounts are stored monthly.
+          const fltAnnualMaximum = parseLineAmount(dicLine.fltMaxAmount);
+          if (
+            fltCalculatedAmount !== null
+            && fltAnnualMaximum !== null
+            && fltAnnualMaximum >= 0
+            && fltCalculatedAmount * 12 > fltAnnualMaximum
+          ) {
+            fltCalculatedAmount = fltAnnualMaximum / 12;
+            blnPercentageAmountCapped = true;
+          }
         } else if (strValueSource === "formula") {
           fltCalculatedAmount = dicLine.strFormulaExpression.trim()
             ? evaluateFormulaExpression(dicLine.strFormulaExpression, dicFormulaVariables)
@@ -983,10 +1005,18 @@ export default function SalaryStructureEditorPage({
         }
 
         const dicCalculatedLine = strValueSource === "percentage" || strValueSource === "formula"
-          ? { ...dicLine, fltFixedAmount: fltCalculatedAmount !== null ? formatCalculatedLineAmount(fltCalculatedAmount) : "" }
+          ? {
+            ...dicLine,
+            fltFixedAmount: fltCalculatedAmount !== null
+              // Preserve enough monthly precision for the derived yearly value to equal the annual cap.
+              ? (blnPercentageAmountCapped
+                ? Number(fltCalculatedAmount.toFixed(6)).toString()
+                : formatCalculatedLineAmount(fltCalculatedAmount))
+              : ""
+          }
           : dicLine;
         const fltResolvedAmount = parseLineAmount(dicCalculatedLine.fltFixedAmount);
-        const dicComponent = dicComponentByID.get(Number(dicCalculatedLine.intSalaryComponentID));
+        const dicComponent = dicCalculationComponentByID.get(Number(dicCalculatedLine.intSalaryComponentID));
         if (dicCalculatedLine.intSalaryComponentID !== "" && fltResolvedAmount !== null) {
           const intSalaryComponentID = Number(dicCalculatedLine.intSalaryComponentID);
           dicComputedMonthlyByComponentID.set(intSalaryComponentID, fltResolvedAmount);
@@ -1002,7 +1032,7 @@ export default function SalaryStructureEditorPage({
           }
           if (dicComponent?.blnIncludedInCtc !== false) {
             dicFormulaAggregates.ctcAnnual += fltResolvedAmount * 12;
-            if (isWageComponent({ intSalaryComponentID }, dicComponentByID)) {
+            if (isWageComponent({ intSalaryComponentID }, dicCalculationComponentByID)) {
               dicFormulaAggregates.wageMonthly += fltResolvedAmount;
             } else {
               dicFormulaAggregates.nonWageMonthly += fltResolvedAmount;
@@ -1076,12 +1106,22 @@ export default function SalaryStructureEditorPage({
     return formatNormalizedAmount(fltAnnualAmount / 12, 6);
   }
 
-  function getAnnualAmountFromMonthly(strMonthlyAmount: string | number | boolean) {
+  function getAnnualAmountFromMonthly(
+    strMonthlyAmount: string | number | boolean,
+    strAnnualMaximum: string | number | boolean = ""
+  ) {
     const fltMonthlyAmount = parseLineAmount(strMonthlyAmount);
     if (fltMonthlyAmount === null) {
       return "";
     }
-    return formatCalculatedLineAmount(fltMonthlyAmount * 12);
+    const fltAnnualAmount = fltMonthlyAmount * 12;
+    const fltAnnualMaximum = parseLineAmount(strAnnualMaximum);
+
+    // A capped monthly amount is stored with finite precision; display its exact annual cap.
+    if (fltAnnualMaximum !== null && Math.abs(fltAnnualAmount - fltAnnualMaximum) < 0.0001) {
+      return Number(fltAnnualMaximum.toFixed(2)).toString();
+    }
+    return formatCalculatedLineAmount(fltAnnualAmount);
   }
 
   function updateLineRow(strRowID: string, strField: keyof SalaryStructureLineFormValue, objValue: string | number | boolean) {
@@ -1938,7 +1978,10 @@ export default function SalaryStructureEditorPage({
               <tbody>
                 {lstSortedComponentLines.map((dicLine) => {
                   const dicComponent = dicComponentByID.get(Number(dicLine.intSalaryComponentID));
-                  const strLineYearlyAmount = getAnnualAmountFromMonthly(dicLine.fltFixedAmount);
+                  const strLineYearlyAmount = getAnnualAmountFromMonthly(
+                    dicLine.fltFixedAmount,
+                    normalizeSelectToken(dicLine.strValueSource) === "percentage" ? dicLine.fltMaxAmount : ""
+                  );
                   const strFlexiRoleBadge = getFlexiRoleForLine(dicLine, dicComponent);
                   const lstLineBadges = dicComponent ? [
                     dicComponent.blnIncludedInCtc === false ? t("non_ctc", "Non-CTC") : t("ctc", "CTC"),
