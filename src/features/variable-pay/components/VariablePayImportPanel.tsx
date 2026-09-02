@@ -30,9 +30,10 @@ import type { VariablePayImportPreviewResult } from "@/features/variable-pay/typ
 type VariablePayImportPanelProps = {
   intRunID: number;
   onImported?: () => void;
+  blnInlineActions?: boolean;
 };
 
-export default function VariablePayImportPanel({ intRunID, onImported }: VariablePayImportPanelProps) {
+export default function VariablePayImportPanel({ intRunID, onImported, blnInlineActions = false }: VariablePayImportPanelProps) {
   const { t } = useModuleLabels("variable-pay", "Unable to load Monthly Variable Pay labels.");
 
   const objFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -122,20 +123,24 @@ export default function VariablePayImportPanel({ intRunID, onImported }: Variabl
 
   const lstRows = objPreview?.lstRows ?? [];
 
-  return (
-    <Paper sx={{ p: 2 }}>
+  const objPanelContent = (
+    <>
       <BlockingLoader blnOpen={blnBusy} strLabel={t("working", "Please wait...")} />
-      <Typography variant="h6" gutterBottom>
-        {t("import_title", "Import Variable Pay")}
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {t(
-          "import_description",
-          "Bulk-load Variable Pay amounts. Download the template, fill it in, then upload it below for review before committing.",
-        )}
-      </Typography>
+      {!blnInlineActions ? (
+        <>
+          <Typography variant="h6" gutterBottom>
+            {t("import_title", "Import Variable Pay")}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {t(
+              "import_description",
+              "Bulk-load Variable Pay amounts. Download the template, fill it in, then upload it below for review before committing.",
+            )}
+          </Typography>
+        </>
+      ) : null}
 
-      <Box sx={{ display: "flex", gap: 2, mb: 2, flexWrap: "wrap" }}>
+      <Box sx={{ display: "flex", gap: 2, mb: objPreview || strCommitSummary ? 2 : 0, flexWrap: "wrap", justifyContent: blnInlineActions ? "flex-end" : "flex-start" }}>
         <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleDownloadTemplate} data-controlid="variable-pay.import.download-template.button">
           {t("download_template", "Download Template")}
         </Button>
@@ -223,6 +228,16 @@ export default function VariablePayImportPanel({ intRunID, onImported }: Variabl
           {strError}
         </Alert>
       </Snackbar>
+    </>
+  );
+
+  if (blnInlineActions) {
+    return <Box sx={{ width: "100%" }}>{objPanelContent}</Box>;
+  }
+
+  return (
+    <Paper sx={{ p: 2 }}>
+      {objPanelContent}
     </Paper>
   );
 }
