@@ -369,15 +369,15 @@ function getLocalizedHeaderTitle(
   if (strHeaderModuleName === "reimbursements") {
     const blnEmployeeReimbursementSource = strSource.trim().toLowerCase() === "employee-reimbursement";
     if (strLowerPath === "/ess/reimbursements/new") {
-      return blnEmployeeReimbursementSource ? tHeader("page_title_new", "Ess / Reimbursements / New") : tHeader("review_reimbursements", "Review Reimbursements");
+      return blnEmployeeReimbursementSource ? tHeader("page_title_new", "Reimbursements / New") : tHeader("review_reimbursements", "Review Reimbursements");
     }
     if (strLowerPath.match(/^\/ess\/reimbursements\/\d+\/edit$/)) {
-      return blnEmployeeReimbursementSource ? tHeader("page_title_edit", "Ess / Reimbursements / Edit") : tHeader("review_reimbursements", "Review Reimbursements");
+      return blnEmployeeReimbursementSource ? tHeader("page_title_edit", "Reimbursements / Edit") : tHeader("review_reimbursements", "Review Reimbursements");
     }
     if (strLowerPath.match(/^\/ess\/reimbursements\/\d+$/)) {
-      return blnEmployeeReimbursementSource ? tHeader("page_title_view", "Ess / Reimbursements / View") : tHeader("review_reimbursements", "Review Reimbursements");
+      return blnEmployeeReimbursementSource ? tHeader("page_title_view", "Reimbursements / View") : tHeader("review_reimbursements", "Review Reimbursements");
     }
-    return tHeader("page_title", "Ess / Reimbursements");
+    return tHeader("page_title", "Reimbursements");
   }
   if (strHeaderModuleName === "loans-advances") {
     const blnViewMode = strViewMode === "view";

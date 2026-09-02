@@ -78,8 +78,17 @@ export default function CommonMasterDialog({
       maxWidth={maxWidth}
       PaperProps={{ className: paperClassName, sx: paperSx }}
     >
-      <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, ...titleSx }}>
-        <Box component="span">{strTitle}</Box>
+      <DialogTitle
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: { xs: 1, sm: 2 },
+          fontSize: "1.25rem",
+          ...titleSx,
+        }}
+      >
+        <Box component="span" sx={{ minWidth: 0, overflowWrap: "anywhere" }}>{strTitle}</Box>
         {/* Callers pass a compact control here (usually a status toggle) via the `.switchRow`
             CSS-module class, which forces min-height:68px. Emotion runs with prepend:true, so a
             caller's `sx={{ minHeight: "auto" }}` loses the cascade and the row overflows the
