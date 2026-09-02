@@ -99,6 +99,11 @@ export const authHelpers = {
     window.localStorage.setItem(AuthStorageKey.TenantId, String(intTenantID));
     if (typeof intCompanyID === "number" && Number.isFinite(intCompanyID)) {
       window.localStorage.setItem(AuthStorageKey.CompanyId, String(intCompanyID));
+    } else {
+      // Same rule as the secondary language below: a tenant switch must not retain another tenant's
+      // company. Leaving a stale id here made it travel on X-Company-Id, where the server accepts it
+      // ahead of the signed-in identity — scoping the new tenant's screens to a foreign company.
+      window.localStorage.removeItem(AuthStorageKey.CompanyId);
     }
 
     if (typeof intLanguageID === "number" && Number.isFinite(intLanguageID)) {
