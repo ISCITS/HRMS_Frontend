@@ -282,14 +282,16 @@
 .overrideDetailedAmountTable :is(th, td):nth-child(5),
 .overrideDetailedAmountTable :is(th, td):nth-child(6),
 .overrideDetailedAmountTable :is(th, td):nth-child(7),
-.overrideDetailedAmountTable :is(th, td):nth-child(8) {
+.overrideDetailedAmountTable :is(th, td):nth-child(8),
+.overrideDetailedAmountTable :is(th, td):nth-child(9),
+.overrideDetailedAmountTable :is(th, td):nth-child(10) {
   text-align: right;
 }
 
 .flexiAmountTable :is(td:nth-child(3), td:nth-child(4), td:nth-child(5)) input,
 .flexiCompactAmountTable :is(td:nth-child(2), td:nth-child(3), td:nth-child(4), td:nth-child(5)) input,
 .overrideSimpleAmountTable :is(td:nth-child(2), td:nth-child(3), td:nth-child(4), td:nth-child(5), td:nth-child(6)) input,
-.overrideDetailedAmountTable :is(td:nth-child(4), td:nth-child(5), td:nth-child(6), td:nth-child(7), td:nth-child(8)) input {
+.overrideDetailedAmountTable :is(td:nth-child(4), td:nth-child(5), td:nth-child(6), td:nth-child(7), td:nth-child(8), td:nth-child(9), td:nth-child(10)) input {
   text-align: right;
 }
 

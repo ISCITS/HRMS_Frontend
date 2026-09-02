@@ -1306,6 +1306,8 @@ export type EmployeeSalaryStructureComponentOptionApiRecord = {
   decFormulaAmount?: number | null;
   decPercentageValue?: number | null;
   decPercentageAmount?: number | null;
+  fltMinAmount?: number | null;
+  fltMaxAmount?: number | null;
   blnAllowManualOverride: boolean;
   intLineOrder: number;
 };

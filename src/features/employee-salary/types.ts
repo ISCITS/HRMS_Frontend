@@ -72,6 +72,8 @@ export type EmployeeSalaryStructureComponentOption = {
   decReimbursementMaxClaimMonthlyLimit?: number | null;
   decReimbursementMaxClaimYearlyLimit?: number | null;
   decPercentageValue?: number | null;
+  fltMinAmount?: number | null;
+  fltMaxAmount?: number | null;
   strFormulaExpression?: string | null;
   strFlexiComponentRole?: string | null;
   blnIsFlexiBasketLine?: boolean;
@@ -305,6 +307,9 @@ export type EmployeeSalaryOverrideFormValue = {
   strDefaultMonthly: string;
   strDefaultAnnual: string;
   strDefaultPercentage: string;
+  strMinAmount: string;
+  strMaxAmount: string;
+  blnAmountOverridden?: boolean;
   strRemarks: string;
 };
 
