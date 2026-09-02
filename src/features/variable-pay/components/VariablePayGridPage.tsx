@@ -193,23 +193,34 @@ export default function VariablePayGridPage() {
       {strSuccess ? <Alert severity="success" onClose={() => setStrSuccess(null)}>{strSuccess}</Alert> : null}
 
       <Paper sx={{ p: 2 }}>
-        <TextField
-          select
-          required
-          label={t("select_run", "Variable Pay Run")}
-          value={intSelectedRunID}
-          onChange={(objEvent) => handleSelectRun(objEvent.target.value ? Number(objEvent.target.value) : "")}
-          fullWidth
-          sx={{ maxWidth: 480 }}
-          data-controlid="variable-pay.grid.run-select"
-        >
-          <MenuItem value="">{t("select_run_placeholder", "Select a Variable Pay run")}</MenuItem>
-          {lstRuns.map((objRun) => (
-            <MenuItem key={objRun.intID} value={objRun.intID}>
-              {objRun.strRunCode} - {objRun.strRunName}
-            </MenuItem>
-          ))}
-        </TextField>
+        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "flex-start" }} gap={2}>
+          <TextField
+            select
+            required
+            label={t("select_run", "Variable Pay Run")}
+            value={intSelectedRunID}
+            onChange={(objEvent) => handleSelectRun(objEvent.target.value ? Number(objEvent.target.value) : "")}
+            fullWidth
+            sx={{ maxWidth: { xs: "100%", md: 480 } }}
+            data-controlid="variable-pay.grid.run-select"
+          >
+            <MenuItem value="">{t("select_run_placeholder", "Select a Variable Pay run")}</MenuItem>
+            {lstRuns.map((objRun) => (
+              <MenuItem key={objRun.intID} value={objRun.intID}>
+                {objRun.strRunCode} - {objRun.strRunName}
+              </MenuItem>
+            ))}
+          </TextField>
+          {objContext && blnCanEdit ? (
+            <Box sx={{ minWidth: { xs: "100%", md: "auto" } }}>
+              <VariablePayImportPanel
+                intRunID={intSelectedRunID as number}
+                onImported={() => intSelectedRunID && loadRun(intSelectedRunID)}
+                blnInlineActions
+              />
+            </Box>
+          ) : null}
+        </Stack>
 
         {objContext ? (
           <Box sx={{ mt: 2, display: "flex", flexWrap: "wrap", gap: 1.5 }}>
@@ -334,7 +345,6 @@ export default function VariablePayGridPage() {
             </TableContainer>
           </Paper>
 
-          {blnCanEdit ? <VariablePayImportPanel intRunID={intSelectedRunID as number} onImported={() => intSelectedRunID && loadRun(intSelectedRunID)} /> : null}
         </>
       ) : null}
     </Stack>
