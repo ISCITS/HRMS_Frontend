@@ -6,6 +6,7 @@ import type {
   StatutoryReportCode,
   StatutoryReportRow,
   TaxCalculationDetailRecord,
+  TdsReportRow,
 } from "@/features/payroll/types";
 
 async function requestApi<TData>(objOptions: {
@@ -107,6 +108,42 @@ export const payrollResultService = {
     const strQuery = objParams.toString();
     const objResult = await requestApi<StatutoryReportRow[]>({
       strPath: `/payroll/results/statutory-report${strQuery ? `?${strQuery}` : ""}`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_RESULT_LIST",
+    });
+    return objResult.Data;
+  },
+
+  async getTdsReportRows(objFilters?: {
+    strSearchEmployee?: string;
+    strSearchRun?: string;
+    strStatus?: string;
+    strDepartment?: string;
+    strLocation?: string;
+    strPayrollMonth?: string;
+  }): Promise<TdsReportRow[]> {
+    const objParams = new URLSearchParams();
+    if (objFilters?.strSearchEmployee?.trim()) {
+      objParams.set("strSearchEmployee", objFilters.strSearchEmployee.trim());
+    }
+    if (objFilters?.strSearchRun?.trim()) {
+      objParams.set("strSearchRun", objFilters.strSearchRun.trim());
+    }
+    if (objFilters?.strStatus?.trim() && objFilters.strStatus !== "All") {
+      objParams.set("strStatus", objFilters.strStatus.trim());
+    }
+    if (objFilters?.strDepartment?.trim()) {
+      objParams.set("strDepartment", objFilters.strDepartment.trim());
+    }
+    if (objFilters?.strLocation?.trim()) {
+      objParams.set("strLocation", objFilters.strLocation.trim());
+    }
+    if (objFilters?.strPayrollMonth?.trim()) {
+      objParams.set("strPayrollMonth", objFilters.strPayrollMonth.trim());
+    }
+    const strQuery = objParams.toString();
+    const objResult = await requestApi<TdsReportRow[]>({
+      strPath: `/payroll/results/tds-report${strQuery ? `?${strQuery}` : ""}`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_RESULT_LIST",
     });

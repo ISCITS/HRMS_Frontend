@@ -27,6 +27,11 @@ const lstReports = [
     strDescription: "PF, ESI, professional tax, labour welfare fund, summary, challan, payment, and returns.",
     strHref: "/reports/statutory",
   },
+  {
+    strTitle: "TDS Register",
+    strDescription: "Employee-wise monthly TDS deducted, year-to-date TDS, and total tax liability.",
+    strHref: "/reports/tds-register",
+  },
 ];
 
 export default function ReportsPage() {
