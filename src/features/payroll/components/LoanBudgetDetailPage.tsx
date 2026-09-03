@@ -3,8 +3,9 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
-import { Alert, Box, Button, FormControlLabel, IconButton, MenuItem, Radio, RadioGroup, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Collapse, FormControlLabel, IconButton, MenuItem, Radio, RadioGroup, TextField, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -44,6 +45,7 @@ export default function LoanBudgetDetailPage({
   const [objSummary, setObjSummary] = useState<LoanBudgetSummaryRecord | null>(null);
   const [lstDesignationOptions, setLstDesignationOptions] = useState<{ intID: number; strDesignationName: string }[]>([]);
   const [blnBudgetStarted, setBlnBudgetStarted] = useState(blnEditMode);
+  const [objCollapsedDesignationRows, setObjCollapsedDesignationRows] = useState<Set<number>>(new Set());
   const [blnLoading, setBlnLoading] = useState(blnEditMode);
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
@@ -104,6 +106,18 @@ export default function LoanBudgetDetailPage({
 
   function removeDesignationRow(intIndex: number) {
     setDicValues((dicPrev) => ({ ...dicPrev, lstDesignationLimits: dicPrev.lstDesignationLimits.filter((_, i) => i !== intIndex) }));
+  }
+
+  function toggleDesignationRowEmployees(intIndex: number) {
+    setObjCollapsedDesignationRows((objPrev) => {
+      const objNext = new Set(objPrev);
+      if (objNext.has(intIndex)) {
+        objNext.delete(intIndex);
+      } else {
+        objNext.add(intIndex);
+      }
+      return objNext;
+    });
   }
 
   async function onDesignationChange(intIndex: number, intDesignationID: number) {
@@ -303,44 +317,65 @@ export default function LoanBudgetDetailPage({
                   ) : null}
                 </Box>
 
-                {objRow.lstEmployees.length > 0 ? (
-                  <Box sx={{ mt: 1.4, border: "1px solid var(--app-card-border-color)", borderRadius: "8px", overflow: "hidden" }}>
-                    <Box sx={{ display: "grid", gridTemplateColumns: "1fr 170px", background: "var(--app-grid-header-background, #f8fafc)", px: 1.4, py: 0.7 }}>
-                      <Typography sx={{ fontSize: ".68rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: ".03em" }}>
-                        {t("employees_in_designation", "Employees in this designation")} ({objRow.lstEmployees.length})
-                      </Typography>
-                      <Typography sx={{ fontSize: ".68rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: ".03em" }}>
-                        {t("field_limit", "Limit")}
-                      </Typography>
-                    </Box>
-                    {objRow.lstEmployees.map((objEmployee) => (
+                {objRow.lstEmployees.length > 0 ? (() => {
+                  const blnCollapsed = objCollapsedDesignationRows.has(intIndex);
+                  return (
+                    <Box sx={{ mt: 1.4, border: "1px solid var(--app-card-border-color)", borderRadius: "8px", overflow: "hidden" }}>
                       <Box
-                        key={objEmployee.intEmployeeID}
+                        onClick={() => toggleDesignationRowEmployees(intIndex)}
                         sx={{
                           display: "grid",
-                          gridTemplateColumns: "1fr 170px",
+                          gridTemplateColumns: "1fr 170px 32px",
                           alignItems: "center",
+                          background: "var(--app-grid-header-background, #f8fafc)",
                           px: 1.4,
-                          py: 0.9,
-                          borderTop: "1px solid var(--app-card-border-color)",
-                          "&:hover": { background: "var(--app-grid-row-hover-background, #f8fafc)" },
+                          py: 0.7,
+                          cursor: "pointer",
+                          userSelect: "none",
                         }}
                       >
-                        <Typography sx={{ fontSize: ".86rem", fontWeight: 600 }}>
-                          {objEmployee.strEmployeeName} <Typography component="span" sx={{ color: "#94a3b8", fontSize: ".82rem", fontWeight: 400 }}>({objEmployee.strEmployeeCode})</Typography>
+                        <Typography sx={{ fontSize: ".68rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: ".03em" }}>
+                          {t("employees_in_designation", "Employees in this designation")} ({objRow.lstEmployees.length})
                         </Typography>
-                        <TextField
-                          type="number"
-                          size="small"
-                          value={objEmployee.decLimitAmount}
-                          onChange={(e) => onEmployeeLimitChange(intIndex, objEmployee.intEmployeeID, e.target.value)}
-                          disabled={!blnCanEdit || objRow.strEmployeeScope !== "specific"}
-                          sx={{ maxWidth: 150 }}
+                        <Typography sx={{ fontSize: ".68rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: ".03em" }}>
+                          {blnCollapsed ? "" : t("field_limit", "Limit")}
+                        </Typography>
+                        <ExpandMoreRoundedIcon
+                          fontSize="small"
+                          sx={{ color: "#64748b", justifySelf: "end", transform: blnCollapsed ? "rotate(-90deg)" : "rotate(0deg)", transition: "transform .15s ease" }}
                         />
                       </Box>
-                    ))}
-                  </Box>
-                ) : null}
+                      <Collapse in={!blnCollapsed}>
+                        {objRow.lstEmployees.map((objEmployee) => (
+                          <Box
+                            key={objEmployee.intEmployeeID}
+                            sx={{
+                              display: "grid",
+                              gridTemplateColumns: "1fr 170px",
+                              alignItems: "center",
+                              px: 1.4,
+                              py: 0.9,
+                              borderTop: "1px solid var(--app-card-border-color)",
+                              "&:hover": { background: "var(--app-grid-row-hover-background, #f8fafc)" },
+                            }}
+                          >
+                            <Typography sx={{ fontSize: ".86rem", fontWeight: 600 }}>
+                              {objEmployee.strEmployeeName} <Typography component="span" sx={{ color: "#94a3b8", fontSize: ".82rem", fontWeight: 400 }}>({objEmployee.strEmployeeCode})</Typography>
+                            </Typography>
+                            <TextField
+                              type="number"
+                              size="small"
+                              value={objEmployee.decLimitAmount}
+                              onChange={(e) => onEmployeeLimitChange(intIndex, objEmployee.intEmployeeID, e.target.value)}
+                              disabled={!blnCanEdit || objRow.strEmployeeScope !== "specific"}
+                              sx={{ maxWidth: 150 }}
+                            />
+                          </Box>
+                        ))}
+                      </Collapse>
+                    </Box>
+                  );
+                })() : null}
               </Box>
             ))}
           </Box>
