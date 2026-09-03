@@ -29,6 +29,19 @@ function parseOptionalAmount(strValue: string | null | undefined) {
   return strNormalizedValue.trim() && Number.isFinite(decValue) ? decValue : null;
 }
 
+export function clampAnnualAmountToRange(
+  decAnnualAmount: number,
+  strMinimumAnnual: number | string | null | undefined,
+  strMaximumAnnual: number | string | null | undefined
+) {
+  const decMinimumAnnual = parseOptionalAmount(String(strMinimumAnnual ?? ""));
+  const decMaximumAnnual = parseOptionalAmount(String(strMaximumAnnual ?? ""));
+  return Math.min(
+    decMaximumAnnual ?? Number.POSITIVE_INFINITY,
+    Math.max(decMinimumAnnual ?? Number.NEGATIVE_INFINITY, decAnnualAmount)
+  );
+}
+
 function normalizeSelectToken(strValue: string | null | undefined) {
   return String(strValue ?? "").trim().toLowerCase().replace(/[\s_-]+/g, "");
 }
@@ -214,14 +227,30 @@ function recalculateDerivedOverrideRows(
           : null;
       }
 
+      if (usesAutoCalculatedOverrideValue(dicOverride.strValueSource) && decCalculatedMonthly !== null) {
+        decCalculatedMonthly = clampAnnualAmountToRange(
+          decCalculatedMonthly * 12,
+          dicOverride.strMinAmount,
+          dicOverride.strMaxAmount
+        ) / 12;
+      }
+
       const dicNextOverride = usesAutoCalculatedOverrideValue(dicOverride.strValueSource)
-        ? {
+        ? (() => {
+            const decManualAnnual = dicOverride.blnAmountOverridden
+              ? parseOptionalAmount(dicOverride.decAmountAnnual)
+              : null;
+            const decResolvedMonthly = decManualAnnual !== null
+              ? decManualAnnual / 12
+              : decCalculatedMonthly;
+            return {
             ...dicOverride,
-            decAmountMonthly: decCalculatedMonthly !== null ? formatOptionalDefaultValue(decCalculatedMonthly) : "",
-            decAmountAnnual: decCalculatedMonthly !== null ? formatOptionalDefaultValue(decCalculatedMonthly * 12) : "",
+            decAmountMonthly: decResolvedMonthly !== null ? formatOptionalDefaultValue(decResolvedMonthly) : "",
+            decAmountAnnual: decResolvedMonthly !== null ? formatOptionalDefaultValue(decResolvedMonthly * 12) : "",
             strDefaultMonthly: decCalculatedMonthly !== null ? formatOptionalDefaultValue(decCalculatedMonthly) : dicOverride.strDefaultMonthly,
             strDefaultAnnual: decCalculatedMonthly !== null ? formatOptionalDefaultValue(decCalculatedMonthly * 12) : dicOverride.strDefaultAnnual,
-          }
+            };
+          })()
         : {
             ...dicOverride,
             decAmountMonthly: decCalculatedMonthly !== null ? formatOptionalDefaultValue(decCalculatedMonthly) : dicOverride.decAmountMonthly,
@@ -294,6 +323,9 @@ export function syncCalculatedOverrideRowsFromPreview(
     }
     const dicPreviewLine = mapPreviewComponentByID.get(dicOverride.intSalaryComponentID);
     if (!dicPreviewLine) {
+      return dicOverride;
+    }
+    if (dicOverride.blnAmountOverridden) {
       return dicOverride;
     }
     const decPreviewMonthly =

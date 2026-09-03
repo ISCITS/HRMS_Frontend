@@ -20,6 +20,8 @@ import {
   IconButton,
   MenuItem,
   Paper,
+  Radio,
+  RadioGroup,
   Stack,
   Switch,
   TextField,
@@ -56,6 +58,8 @@ type SalaryStructureEditorPageProps = {
   strMode: "add" | "edit";
   intSalaryStructureID?: number;
 };
+
+type AmountOverrideMode = "annual" | "monthly" | "both";
 
 const lstSalaryStructureModuleCodes = ["SALARY_STRUCTURE", "SALARY_STRUCTURES", "MASTER_SALARY_STRUCTURE"];
 
@@ -412,6 +416,7 @@ export default function SalaryStructureEditorPage({
   const [dicTextTranslationLoading, setDicTextTranslationLoading] = useState<Record<string, boolean>>({});
   const [dicLastTranslatedSourceByRow, setDicLastTranslatedSourceByRow] = useState<Record<string, string>>({});
   const [strAddModeFlexiHostRowID, setStrAddModeFlexiHostRowID] = useState("");
+  const [strAmountOverrideMode, setStrAmountOverrideMode] = useState<AmountOverrideMode>("both");
 
   const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
@@ -1919,41 +1924,120 @@ export default function SalaryStructureEditorPage({
       <Box>
         <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) 300px" } }}>
           <Paper variant="outlined" sx={{ borderColor: "#d9e6ef", borderRadius: "8px", boxShadow: "0 1px 5px rgba(15, 23, 42, 0.08)", overflow: "hidden" }}>
-            <Stack direction={{ xs: "column", md: "row" }} alignItems={{ xs: "stretch", md: "center" }} justifyContent="space-between" spacing={1.5} sx={{ borderBottom: "1px solid #d9e6ef", px: 2, py: 1.2 }}>
-              <Box>
-                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
-                  {t("component_line_configuration", "Salary Component Lines")}
-                </Typography>
-                <Typography sx={{ color: "#64748b", fontSize: "0.9rem", mt: 0.4 }}>
-                  {t(
-                    "component_line_configuration_help",
-                    "Configure line order, value source, fixed or percentage rules, basis components, formula logic, range controls, and active flags in the same master-grid style."
-                  )}
-                </Typography>
-              </Box>
-              <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />}
-                controlId="salary-structures.editor.add-line.button"
-                onClick={handleAddLineRow} disabled={blnFieldDisabled}
-                sx={{
-                  borderRadius: "14px",
-                  height: 38,
-                  minHeight: 38,
-                  py: 0,
-                  px: 2.25,
-                  minWidth: 100,
-                  fontSize: "0.9rem",
-                  whiteSpace: "nowrap",
-                  flexShrink: 0,
-                  "& .MuiButton-startIcon": {
-                    mr: 0.75,
-                    "& svg": {
-                      fontSize: "1rem"
+            <Box sx={{ borderBottom: "1px solid #d9e6ef", backgroundColor: "#f8fafc", px: 2, py: 1.2 }}>
+              <Stack
+                direction={{ xs: "column", lg: "row" }}
+                spacing={2}
+                alignItems={{ xs: "stretch", lg: "center" }}
+                justifyContent="space-between"
+              >
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
+                    {t("component_line_configuration", "Salary Component Lines")}
+                  </Typography>
+                  <Typography sx={{ color: "#64748b", fontSize: "0.9rem", mt: 0.4 }}>
+                    {t(
+                      "component_line_configuration_help",
+                      "Configure line order, value source, fixed or percentage rules, basis components, formula logic, range controls, and active flags in the same master-grid style."
+                    )}
+                  </Typography>
+                </Box>
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={1.5}
+                  alignItems={{ xs: "stretch", sm: "flex-end" }}
+                  sx={{ flexShrink: 0 }}
+                >
+                <Box>
+                  <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0.45 }}>
+                    <Typography sx={{ color: "#334155", fontSize: "0.72rem", fontWeight: 700 }}>
+                      {t("override_mode", "Override Mode")}
+                    </Typography>
+                    <Tooltip
+                      arrow
+                      title={t("override_mode_help", "Choose whether annual, monthly, or both amount fields can be edited.")}
+                    >
+                      <InfoOutlinedIcon sx={{ color: "#64748b", fontSize: "0.9rem" }} />
+                    </Tooltip>
+                  </Stack>
+                  <RadioGroup
+                    row
+                    value={strAmountOverrideMode}
+                    onChange={(objEvent) => setStrAmountOverrideMode(objEvent.target.value as AmountOverrideMode)}
+                    aria-label={t("override_mode", "Override Mode")}
+                    controlId="salary-structures.editor.override-mode.toggle-group"
+                    sx={{
+                      flexWrap: "nowrap",
+                      gap: 1.25,
+                      minHeight: 34,
+                      "& .MuiFormControlLabel-root": {
+                        m: 0
+                      },
+                      "& .MuiFormControlLabel-label": {
+                        color: "#334155",
+                        fontSize: "0.75rem",
+                        fontWeight: 700
+                      },
+                      "& .MuiRadio-root": {
+                        color: "#94a3b8",
+                        p: 0.4,
+                        mr: 0.25,
+                        "&.Mui-checked": { color: "#1267e5" }
+                      }
+                    }}
+                  >
+                    <FormControlLabel
+                      value="annual"
+                      disabled={blnFieldDisabled}
+                      control={<Radio size="small" inputProps={buildInputTestIdProps("salary-structures.editor.override-mode.annual.radio")} />}
+                      label={t("annual", "Annual")}
+                    />
+                    <FormControlLabel
+                      value="monthly"
+                      disabled={blnFieldDisabled}
+                      control={<Radio size="small" inputProps={buildInputTestIdProps("salary-structures.editor.override-mode.monthly.radio")} />}
+                      label={t("monthly", "Monthly")}
+                    />
+                    <FormControlLabel
+                      value="both"
+                      disabled={blnFieldDisabled}
+                      control={<Radio size="small" inputProps={buildInputTestIdProps("salary-structures.editor.override-mode.both.radio")} />}
+                      label={t("both", "Both")}
+                    />
+                  </RadioGroup>
+                  <Typography sx={{ color: "#64748b", fontSize: "0.68rem", mt: 0.45, whiteSpace: "nowrap" }}>
+                    {strAmountOverrideMode === "annual"
+                      ? t("override_mode_annual_help", "Allow overriding component values in Annual.")
+                      : strAmountOverrideMode === "monthly"
+                        ? t("override_mode_monthly_help", "Allow overriding component values in Monthly.")
+                        : t("override_mode_both_help", "Allow overriding component values in both Annual and Monthly.")}
+                  </Typography>
+                </Box>
+                <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />}
+                  controlId="salary-structures.editor.add-line.button"
+                  onClick={handleAddLineRow} disabled={blnFieldDisabled}
+                  sx={{
+                    borderRadius: "14px",
+                    height: 38,
+                    minHeight: 38,
+                    py: 0,
+                    px: 2.25,
+                    minWidth: 100,
+                    fontSize: "0.9rem",
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                    "& .MuiButton-startIcon": {
+                      mr: 0.75,
+                      "& svg": {
+                        fontSize: "1rem"
+                      }
                     }
-                  }
-                }}>
-                {t("add_line", "Add Line")}
-              </Button>
-            </Stack>
+                  }}>
+                  {t("add_line", "Add Line")}
+                </Button>
+                </Stack>
+              </Stack>
+            </Box>
           <Box
             sx={{
               overflowX: "auto",
@@ -1979,8 +2063,8 @@ export default function SalaryStructureEditorPage({
                   <th style={{ left: 0, minWidth: 106, position: "sticky", zIndex: 4 }}>{t("line_order", "Line Order")}</th>
                   <th style={{ left: 106, minWidth: 320, position: "sticky", zIndex: 4 }}>{t("salary_component", "Salary Component")}</th>
                   <th>{t("value_source", "Value Source")}</th>
-                  <th>{t("yearly_amount", "Yearly Amount")}</th>
                   <th>{t("monthly_amount", "Monthly Amount")}</th>
+                  <th>{t("yearly_amount", "Yearly Amount")}</th>
                   <th>{t("percentage_value", "% Value")}</th>
                   <th>{t("basis_component", "Basis Component")}</th>
                   <th>{t("formula", "Formula")}</th>
@@ -2156,9 +2240,24 @@ export default function SalaryStructureEditorPage({
                     <td style={{ paddingBottom: 4, paddingTop: 4, verticalAlign: "top" }}>
                       <TextField
                         size="small"
+                        value={dicLine.fltFixedAmount}
+                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "fltFixedAmount", objEvent.target.value)}
+                        disabled={blnFieldDisabled || normalizeSelectToken(dicLine.strValueSource) !== "fixed" || strAmountOverrideMode === "annual"}
+                        controlId="salary-structures.editor.line.fixed-amount.input"
+                        inputProps={buildInputTestIdProps("salary-structures.editor.line.fixed-amount.input", {
+                          "data-row-key": dicLine.strRowID,
+                          inputMode: "decimal",
+                          pattern: "[0-9]*[.]?[0-9]*"
+                        })}
+                        sx={{ minWidth: 118 }}
+                      />
+                    </td>
+                    <td style={{ paddingBottom: 4, paddingTop: 4, verticalAlign: "top" }}>
+                      <TextField
+                        size="small"
                         value={strLineYearlyAmount}
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "fltFixedAmount", getMonthlyAmountFromAnnual(objEvent.target.value))}
-                        disabled={blnFieldDisabled || normalizeSelectToken(dicLine.strValueSource) !== "fixed"}
+                        disabled={blnFieldDisabled || normalizeSelectToken(dicLine.strValueSource) !== "fixed" || strAmountOverrideMode === "monthly"}
                         controlId="salary-structures.editor.line.yearly-amount.input"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.yearly-amount.input", {
                           "data-row-key": dicLine.strRowID,
@@ -2166,16 +2265,6 @@ export default function SalaryStructureEditorPage({
                           pattern: "[0-9]*[.]?[0-9]*"
                         })}
                         sx={{ minWidth: 128 }}
-                      />
-                    </td>
-                    <td style={{ paddingBottom: 4, paddingTop: 4, verticalAlign: "top" }}>
-                      <TextField
-                        size="small"
-                        value={dicLine.fltFixedAmount}
-                        disabled
-                        controlId="salary-structures.editor.line.fixed-amount.input"
-                        inputProps={buildInputTestIdProps("salary-structures.editor.line.fixed-amount.input", { "data-row-key": dicLine.strRowID })}
-                        sx={{ minWidth: 118 }}
                       />
                     </td>
                     <td style={{ paddingBottom: 4, paddingTop: 4, verticalAlign: "top" }}>

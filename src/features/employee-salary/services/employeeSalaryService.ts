@@ -1,6 +1,5 @@
 import { masterApiService } from "@/services/master/MasterApiService";
 import { resolveLookupDisplayLabel } from "@/features/payroll-lookups/utils/lookupLabel";
-import { usesAutoCalculatedOverrideValue, usesFixedOverrideValue } from "@/features/employee-salary/utils/overrideRecalculation";
 import type {
   EmployeeSalaryDetailRecord,
   EmployeeSalaryFormOptions,
@@ -47,7 +46,6 @@ function areOptionalDecimalsEqual(decLeft: number | null, decRight: number | nul
 }
 
 function shouldPersistOverride(dicOverride: EmployeeSalaryOverrideFormValue) {
-  const blnUsesCalculatedAmounts = usesAutoCalculatedOverrideValue(dicOverride.strValueSource);
   const decAmountMonthly = parseOptionalDecimal(dicOverride.decAmountMonthly);
   const decAmountAnnual = parseOptionalDecimal(dicOverride.decAmountAnnual);
   const decPercentageValue = parseOptionalDecimal(dicOverride.decPercentageValue);
@@ -55,6 +53,9 @@ function shouldPersistOverride(dicOverride: EmployeeSalaryOverrideFormValue) {
   const decDefaultAnnual = parseOptionalDecimal(dicOverride.strDefaultAnnual);
   const decDefaultPercentage = parseOptionalDecimal(dicOverride.strDefaultPercentage);
   const strRemarks = dicOverride.strRemarks.trim();
+  const blnAmountOverridden = Boolean(dicOverride.blnAmountOverridden) ||
+    !areOptionalDecimalsEqual(decAmountMonthly, decDefaultMonthly) ||
+    !areOptionalDecimalsEqual(decAmountAnnual, decDefaultAnnual);
 
   return {
     decAmountMonthly,
@@ -62,11 +63,10 @@ function shouldPersistOverride(dicOverride: EmployeeSalaryOverrideFormValue) {
     decPercentageValue,
     strRemarks,
     blnShouldPersist:
-      (!blnUsesCalculatedAmounts &&
-        (!areOptionalDecimalsEqual(decAmountMonthly, decDefaultMonthly) ||
-          !areOptionalDecimalsEqual(decAmountAnnual, decDefaultAnnual))) ||
+      blnAmountOverridden ||
       !areOptionalDecimalsEqual(decPercentageValue, decDefaultPercentage) ||
-      Boolean(strRemarks)
+      Boolean(strRemarks),
+    blnAmountOverridden
   };
 }
 
@@ -74,10 +74,8 @@ function mapOverridePayload(dicOverride: EmployeeSalaryOverrideFormValue) {
   const dicNormalizedOverride = shouldPersistOverride(dicOverride);
   return {
     intSalaryComponentID: dicOverride.intSalaryComponentID,
-    decAmountMonthly:
-      usesFixedOverrideValue(dicOverride.strValueSource) ? dicNormalizedOverride.decAmountMonthly : null,
-    decAmountAnnual:
-      usesFixedOverrideValue(dicOverride.strValueSource) ? dicNormalizedOverride.decAmountAnnual : null,
+    decAmountMonthly: dicNormalizedOverride.blnAmountOverridden ? dicNormalizedOverride.decAmountMonthly : null,
+    decAmountAnnual: dicNormalizedOverride.blnAmountOverridden ? dicNormalizedOverride.decAmountAnnual : null,
     decPercentageValue: dicNormalizedOverride.decPercentageValue,
     strRemarks: dicNormalizedOverride.strRemarks || null,
     blnShouldPersist: dicNormalizedOverride.blnShouldPersist

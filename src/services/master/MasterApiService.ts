@@ -1346,9 +1346,15 @@ export type EmployeeSalaryComponentLineApiRecord = {
   strCtcTreatment?: string | null;
   blnAllowManualOverride: boolean;
   strComponentValueType: string;
+  strValueSource?: string | null;
   decAmountMonthly: number | null;
   decAmountAnnual: number | null;
   decPercentageValue: number | null;
+  decDefaultAmountMonthly?: number | null;
+  decDefaultAmountAnnual?: number | null;
+  decDefaultPercentageValue?: number | null;
+  fltMinAmount?: number | null;
+  fltMaxAmount?: number | null;
   intBasisComponentID: number | null;
   strFormulaExpression: string | null;
   blnIsOverride: boolean;
