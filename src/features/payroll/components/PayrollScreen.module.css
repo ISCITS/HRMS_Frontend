@@ -862,6 +862,14 @@
   padding: 16px 18px;
 }
 
+/* Use alongside .sectionBar when the surrounding layout (e.g. a flex row that also has a
+   button) already owns the spacing below it -- overrides sectionBar's own margin-bottom.
+   A same-file class beats an inline sx override reliably; relying on sx alone here raced
+   against CSS Modules injection order in dev and lost. */
+.sectionBarTight {
+  margin-bottom: 0;
+}
+
 .dialogGrid {
   display: grid;
   gap: 18px 22px;

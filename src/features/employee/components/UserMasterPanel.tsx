@@ -83,6 +83,7 @@ type UserTableRow = {
   loginName: string;
   email: string;
   mobile: string;
+  employeeName: string;
   userGroupName: string;
   status: ReactNode;
 };
@@ -110,6 +111,7 @@ type UserForm = {
 type SearchForm = {
   code: string;
   name: string;
+  employeeName: string;
   status: "All" | UserStatus;
 };
 
@@ -145,7 +147,7 @@ const dicEmptyForm: UserForm = {
   hrmsUserGroupID: "",
   status: "Active"
 };
-const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
+const dicEmptySearch: SearchForm = { code: "", name: "", employeeName: "", status: "All" };
 const objSelectAllCheckboxInputProps = { "data-controlid": "user-master.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>;
 const lstDefaultUsers: UserRecord[] = [];
 function normalizeSelectToken(strValue: string) {
@@ -247,10 +249,12 @@ export default function UserMasterPanel() {
     dialogViewTitle: t("dialog_view_title", "View User"),
     searchCodePlaceholder: t("search_code_placeholder"),
     searchNamePlaceholder: t("search_name_placeholder"),
+    searchEmployeePlaceholder: t("search_employee_placeholder", "Search Linked Employee"),
     searchStatusPlaceholder: t("search_status_placeholder"),
     tableLoginName: t("table_login_name"),
     tableEmail: t("table_email"),
     tableMobile: t("table_mobile"),
+    tableLinkedEmployee: t("table_linked_employee", "Linked Employee"),
     tableUserGroup: t("table_user_group", "User Group"),
     tableStatus: t("table_status"),
     tableActions: t("table_actions"),
@@ -375,8 +379,9 @@ export default function UserMasterPanel() {
   const lstFilteredUsers = useMemo(() => lstUsers.filter((dicUser) => {
     const blnCodeMatch = !dicSearchApplied.code || dicUser.loginName.toLowerCase().includes(dicSearchApplied.code.toLowerCase());
     const blnNameMatch = !dicSearchApplied.name || dicUser.email.toLowerCase().includes(dicSearchApplied.name.toLowerCase());
+    const blnEmployeeMatch = !dicSearchApplied.employeeName || dicUser.employeeName.toLowerCase().includes(dicSearchApplied.employeeName.toLowerCase());
     const blnStatusMatch = dicSearchApplied.status === "All" || dicUser.status === dicSearchApplied.status;
-    return blnCodeMatch && blnNameMatch && blnStatusMatch;
+    return blnCodeMatch && blnNameMatch && blnEmployeeMatch && blnStatusMatch;
   }), [dicSearchApplied, lstUsers]);
 
   const blnAllVisibleSelected = lstFilteredUsers.length > 0 && lstFilteredUsers.every((dicUser) => lstSelectedIds.includes(dicUser.id));
@@ -425,6 +430,7 @@ export default function UserMasterPanel() {
     loginName: dicUser.loginName,
     email: dicUser.email,
     mobile: dicUser.mobile || "-",
+    employeeName: dicUser.employeeName || "-",
     userGroupName: dicUser.userGroupName || "-",
     status: (
       <span className={`${styles.statusPill} ${dicUser.status === "Active" ? styles.statusActive : styles.statusInactive}`}>
@@ -445,9 +451,10 @@ export default function UserMasterPanel() {
     { field: "loginName", headerName: dicModuleLabels.tableLoginName },
     { field: "email", headerName: dicModuleLabels.tableEmail },
     { field: "mobile", headerName: dicModuleLabels.tableMobile },
+    { field: "employeeName", headerName: dicModuleLabels.tableLinkedEmployee },
     { field: "userGroupName", headerName: dicModuleLabels.tableUserGroup },
     { field: "status", headerName: dicModuleLabels.tableStatus, sortable: false, filterable: false },
-  ], [blnAllVisibleSelected, blnSomeVisibleSelected, dicModuleLabels.tableActions, dicModuleLabels.tableEmail, dicModuleLabels.tableLoginName, dicModuleLabels.tableMobile, dicModuleLabels.tableStatus, dicModuleLabels.tableUserGroup]);
+  ], [blnAllVisibleSelected, blnSomeVisibleSelected, dicModuleLabels.tableActions, dicModuleLabels.tableEmail, dicModuleLabels.tableLinkedEmployee, dicModuleLabels.tableLoginName, dicModuleLabels.tableMobile, dicModuleLabels.tableStatus, dicModuleLabels.tableUserGroup]);
 
   async function openDialog(strNextMode: UserMode, dicUser?: UserRecord) {
     let objResolvedFormOptions = objFormOptions;
@@ -763,7 +770,7 @@ export default function UserMasterPanel() {
       <Box className={styles.controlsCard}>
         {strRightsError ? <Alert severity="warning" sx={{ mb: 2 }}>{strRightsError}</Alert> : null}
         {blnReadOnly ? <Alert severity="info" sx={{ mb: 2 }}>You have read-only access to this screen.</Alert> : null}
-        <Box className={styles.searchRow}>
+        <Box className={styles.userSearchRow}>
           <TextField
             inputProps={{ "data-controlid": "user-master.list.search.login-id.input" }}
             value={dicSearchDraft.code}
@@ -777,6 +784,13 @@ export default function UserMasterPanel() {
             placeholder={dicModuleLabels.searchNamePlaceholder}
             fullWidth
             onChange={(objEvent) => setDicSearchDraft((objPrevious) => ({ ...objPrevious, name: objEvent.target.value }))}
+          />
+          <TextField
+            inputProps={{ "data-controlid": "user-master.list.search.employee.input" }}
+            value={dicSearchDraft.employeeName}
+            placeholder={dicModuleLabels.searchEmployeePlaceholder}
+            fullWidth
+            onChange={(objEvent) => setDicSearchDraft((objPrevious) => ({ ...objPrevious, employeeName: objEvent.target.value }))}
           />
           <TextField
             select
