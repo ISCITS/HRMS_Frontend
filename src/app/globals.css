@@ -1,0 +1,111 @@
+@import url("https://fonts.googleapis.com/icon?family=Material+Icons");
+@import "./common/common.css";
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  background: var(--app-bg-color);
+  color: var(--app-text-color);
+  font-family: var(--app-font-family);
+}
+
+html {
+  min-height: 100%;
+}
+
+body {
+  min-height: 100dvh;
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+img,
+video {
+  height: auto;
+}
+
+button,
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  max-width: 100%;
+}
+
+/* MUI Switch/Checkbox/Radio render an oversized hidden <input> (Switch uses
+   left:-100%;width:300%) as the click target. A blanket `input { max-width: 100% }`
+   clamps that width while leaving the offset, sliding the hit area off the visible
+   control - the switch then looks fine but ignores clicks. */
+.MuiSwitch-input,
+.PrivateSwitchBase-input {
+  max-width: none;
+}
+
+/* Keep responsive overflow local to data-heavy controls instead of the viewport. */
+.MuiTableContainer-root,
+.MuiDataGrid-root,
+.MuiTabs-root {
+  max-width: 100%;
+  min-width: 0;
+}
+
+body,
+button,
+input,
+select,
+textarea {
+  font-family: var(--app-font-family);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* High-density laptops often retain a desktop-width viewport while offering limited vertical space. */
+@media (min-width: 901px) and (max-width: 1440px),
+  (min-width: 901px) and (max-height: 900px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 600px) {
+  .MuiDialog-paper:not(.MuiDialog-paperFullScreen) {
+    width: calc(100% - 24px);
+    max-width: calc(100% - 24px);
+    margin: 12px;
+  }
+
+  .MuiDialogTitle-root,
+  .MuiDialogContent-root,
+  .MuiDialogActions-root {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .MuiDialogActions-root {
+    flex-wrap: wrap;
+  }
+
+  .MuiCardContent-root {
+    padding: 16px;
+  }
+
+  .MuiCardContent-root:last-child {
+    padding-bottom: 16px;
+  }
+}
