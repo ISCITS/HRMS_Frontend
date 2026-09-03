@@ -776,6 +776,8 @@ export type SalaryComponentApiRecord = {
   strComponentCategory: string;
   intComponentGroupID?: number | null;
   strComponentGroup: string | null;
+  intPayrollProcessingModeID?: number | null;
+  strPayrollProcessingMode?: string | null;
   intCalcMethodID?: number | null;
   strCalcMethod: string;
   strFormulaExpression: string | null;

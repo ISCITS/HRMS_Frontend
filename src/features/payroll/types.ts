@@ -1014,6 +1014,31 @@ export type TdsReportRow = {
   strSlabProfileCode: string | null;
 };
 
+export type VariablePayRegisterRow = {
+  intID: number;
+  intPayrollRunID: number;
+  strRunCode: string;
+  strRunName: string;
+  dtPayrollMonth: string | null;
+  intEmployeeID: number;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strVariablePayTypeName: string;
+  strComponentName: string;
+  decInputAmount: number;
+  decApprovedAmount: number;
+  decFinalAmount: number;
+  strTransactionStatus: string;
+  strSourceType: string;
+  strExternalReference: string | null;
+  strRemarks: string | null;
+  strRegimeUsed: string | null;
+  decGrossEarningsAmount: number;
+  decTaxTotal: number;
+  decNetPayAmount: number;
+  strPayrollRunStatus: string;
+};
+
 export type PayslipLineRecord = {
   strGroupCode: string;
   strSectionLabel: string;
