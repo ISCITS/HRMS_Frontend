@@ -38,7 +38,7 @@ import CommonEditModeBanner from "@/Common/components/CommonEditModeBanner";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useEmployeeSalaryLabels } from "@/features/employee-salary/hooks/useEmployeeSalaryLabels";
 import { employeeSalaryService, type EmployeeSalaryRevisionPreviewRecord } from "@/features/employee-salary/services/employeeSalaryService";
-import { syncCalculatedOverrideRowsFromPreview, usesAutoCalculatedOverrideValue } from "@/features/employee-salary/utils/overrideRecalculation";
+import { clampAnnualAmountToRange, syncCalculatedOverrideRowsFromPreview, usesAutoCalculatedOverrideValue } from "@/features/employee-salary/utils/overrideRecalculation";
 import { calculateEmployeeSalaryBaseSummaryMetrics, calculateEmployeeSalaryWageMetrics } from "@/features/employee-salary/utils/employeeSalarySummary";
 import { masterApiService, type SalaryComponentApiRecord } from "@/services/master/MasterApiService";
 import type {
@@ -267,6 +267,7 @@ type OverrideSourceLine = {
   strComponentCode?: string | null;
   strComponentName?: string | null;
   strValueSource?: string | null;
+  strComponentValueType?: string | null;
   blnAllowManualOverride: boolean;
   decAmountMonthly?: number | null;
   decAmountAnnual?: number | null;
@@ -274,6 +275,10 @@ type OverrideSourceLine = {
   decFormulaAmount?: number | null;
   decPercentageValue?: number | null;
   decPercentageAmount?: number | null;
+  fltMinAmount?: number | null;
+  fltMaxAmount?: number | null;
+  decMinAmount?: number | null;
+  decMaxAmount?: number | null;
   decDefaultAmountMonthly?: number | null;
   decDefaultAmountAnnual?: number | null;
   decDefaultPercentageValue?: number | null;
@@ -995,6 +1000,25 @@ function getOverrideAnnualAmount(dicOverride: EmployeeSalaryOverrideFormValue | 
   return decDefaultMonthly !== null ? decDefaultMonthly * 12 : 0;
 }
 
+function getOverrideRangeError(dicOverride: EmployeeSalaryOverrideFormValue) {
+  if (!dicOverride.blnAmountOverridden) {
+    return "";
+  }
+  const decAnnual = parseOptionalAmount(dicOverride.decAmountAnnual);
+  const decMinimum = parseOptionalAmount(dicOverride.strMinAmount);
+  const decMaximum = parseOptionalAmount(dicOverride.strMaxAmount);
+  if (decAnnual === null) {
+    return "Annual override is required.";
+  }
+  if (decMinimum !== null && decAnnual < decMinimum) {
+    return `Annual override must be at least ${formatOptionalDefaultValue(decMinimum)}.`;
+  }
+  if (decMaximum !== null && decAnnual > decMaximum) {
+    return `Annual override cannot exceed ${formatOptionalDefaultValue(decMaximum)}.`;
+  }
+  return "";
+}
+
 function getFlexiAllocationSummary(
   objDetail: EmployeeSalaryDetailRecord | null
 ): EmployeeSalaryFlexiAllocationSummary {
@@ -1027,7 +1051,10 @@ function buildOverrideRows(
     const dicSalaryComponent = dicSalaryComponentByID?.get(dicLine.intSalaryComponentID);
     const dicReusableOverride = dicLine.blnAllowManualOverride ? dicExistingOverride : null;
     const blnIsFlexiPayLine = isFlexiPayComponentName(dicLine.strComponentName ?? dicLine.strComponentCode ?? "");
-    const strValueSource = String(dicLine.strValueSource ?? "").trim().toLowerCase();
+    const strResolvedValueSource = dicLine.strValueSource ?? dicLine.strComponentValueType ?? "";
+    const strValueSource = String(strResolvedValueSource).trim().toLowerCase();
+    const decMinimumAnnual = dicLine.fltMinAmount ?? dicLine.decMinAmount;
+    const decMaximumAnnual = dicLine.fltMaxAmount ?? dicLine.decMaxAmount;
     const decStoredDefaultMonthly =
       strValueSource.includes("formula")
         ? dicLine.decFormulaAmount
@@ -1051,12 +1078,20 @@ function buildOverrideRows(
           : dicLine.decFixedAmount);
     const decResolvedDefaultAnnual =
       decResolvedDefaultMonthly != null ? Number(decResolvedDefaultMonthly) * 12 : null;
-    const decDefaultMonthly =
+    const decUnclampedDefaultMonthly =
       blnIsFlexiPayLine && getNumberValue(objFlexiAllocation?.decFlexiBasketAvailableMonthly) > 0
         ? getNumberValue(objFlexiAllocation?.decFlexiBasketAvailableMonthly)
         : decResolvedDefaultMonthly;
+    const decUnclampedDefaultAnnual =
+      decUnclampedDefaultMonthly != null ? Number(decUnclampedDefaultMonthly) * 12 : decResolvedDefaultAnnual;
     const decDefaultAnnual =
-      decDefaultMonthly != null ? Number(decDefaultMonthly) * 12 : decResolvedDefaultAnnual;
+      usesAutoCalculatedOverrideValue(strValueSource) && decUnclampedDefaultAnnual != null
+        ? clampAnnualAmountToRange(decUnclampedDefaultAnnual, decMinimumAnnual, decMaximumAnnual)
+        : decUnclampedDefaultAnnual;
+    const decDefaultMonthly =
+      usesAutoCalculatedOverrideValue(strValueSource) && decDefaultAnnual != null
+        ? decDefaultAnnual / 12
+        : decUnclampedDefaultMonthly;
     const strDefaultMonthly = formatOptionalDefaultValue(
       decDefaultMonthly
     );
@@ -1107,7 +1142,7 @@ function buildOverrideRows(
         dicLine.strComponentCode ??
         `${fnTranslate?.("employee_salary_component", "Component") ?? "Component"} ${dicLine.intSalaryComponentID}`,
       blnAllowManualOverride: dicLine.blnAllowManualOverride,
-      strValueSource: dicLine.strValueSource ?? "",
+      strValueSource: strResolvedValueSource,
       strFormulaExpression:
         "strFormulaExpression" in dicLine && typeof dicLine.strFormulaExpression === "string"
           ? dicLine.strFormulaExpression
@@ -1129,6 +1164,17 @@ function buildOverrideRows(
       strDefaultMonthly,
       strDefaultAnnual,
       strDefaultPercentage,
+      strMinAmount: formatOptionalDefaultValue(decMinimumAnnual),
+      strMaxAmount: formatOptionalDefaultValue(decMaximumAnnual),
+      blnAmountOverridden: Boolean(
+        dicReusableOverride &&
+        (
+          (dicReusableOverride.decAmountAnnual != null &&
+            (decDefaultAnnual == null || Math.abs(Number(dicReusableOverride.decAmountAnnual) - Number(decDefaultAnnual)) > 0.01)) ||
+          (dicReusableOverride.decAmountMonthly != null &&
+            (decDefaultMonthly == null || Math.abs(Number(dicReusableOverride.decAmountMonthly) - Number(decDefaultMonthly)) > 0.01))
+        )
+      ),
       strRemarks: dicReusableOverride?.strRemarks ?? ""
     };
   });
@@ -2077,6 +2123,11 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
       );
       return;
     }
+    const dicInvalidOverride = dicRevisionForm.lstOverrides.find((dicOverride) => getOverrideRangeError(dicOverride));
+    if (dicInvalidOverride) {
+      setStrError(`${dicInvalidOverride.strComponentName}: ${getOverrideRangeError(dicInvalidOverride)}`);
+      return;
+    }
     if (blnShowFlexiBenefitAllocation && decDialogFlexiAllocated - decFlexiPayAllocationAnnual > 0.01) {
       setStrError(
         t(
@@ -2338,6 +2389,8 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
               <thead>
                 <tr>
                   <th>{t("employee_salary_component", "Component")}</th>
+                  <th>{t("employee_salary_min", "Min")}</th>
+                  <th>{t("employee_salary_max", "Max")}</th>
                   <th>{t("employee_salary_default_annual", "Default Annual")}</th>
                   <th>{t("employee_salary_annual", "Annual")}</th>
                   <th>{t("employee_salary_default_monthly", "Default Monthly")}</th>
@@ -2349,13 +2402,15 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
               <tbody>
                 {lstRevisionOverrideRows.length === 0 ? (
                   <tr>
-                    <td className={styles.emptyState} colSpan={7}>{t("employee_salary_no_component_lines_found", "No salary component lines found.")}</td>
+                    <td className={styles.emptyState} colSpan={9}>{t("employee_salary_no_component_lines_found", "No salary component lines found.")}</td>
                   </tr>
                 ) : lstRevisionOverrideRows.map(({ dicOverride, intOverrideIndex }) => (
                   <tr key={dicOverride.intSalaryComponentID}>
                     <td>
                       <Typography sx={{ color: "#07163b", fontSize: "0.84rem", fontWeight: 700 }}>{dicOverride.strComponentName}</Typography>
                     </td>
+                    <td><Typography sx={{ color: "#475569", fontSize: "0.84rem", fontWeight: 700 }}>{dicOverride.strMinAmount || "-"}</Typography></td>
+                    <td><Typography sx={{ color: "#475569", fontSize: "0.84rem", fontWeight: 700 }}>{dicOverride.strMaxAmount || "-"}</Typography></td>
                     <td>
                       <Typography sx={{ color: "#475569", fontSize: "0.84rem", fontWeight: 700 }}>{dicOverride.strDefaultAnnual || "-"}</Typography>
                     </td>
@@ -2368,12 +2423,15 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
                         size="small"
                         sx={objOverrideValueFieldSx}
                         disabled={!dicOverride.blnAllowManualOverride}
+                        error={Boolean(getOverrideRangeError(dicOverride))}
+                        helperText={getOverrideRangeError(dicOverride) || undefined}
                         onChange={(objEvent) => updateRevisionOverrides(
-                          (lstOverrides) => lstOverrides.map((dicRow, intRowIndex) => (
-                            intRowIndex === intOverrideIndex
-                              ? { ...dicRow, decAmountAnnual: objEvent.target.value }
-                              : dicRow
-                          )),
+                          (lstOverrides) => lstOverrides.map((dicRow, intRowIndex) => {
+                            if (intRowIndex !== intOverrideIndex) return dicRow;
+                            const strAnnual = sanitizeDecimalInput(objEvent.target.value);
+                            const decAnnual = parseOptionalAmount(strAnnual);
+                            return { ...dicRow, decAmountAnnual: strAnnual, decAmountMonthly: decAnnual !== null ? formatAmountInput(decAnnual / 12) : "", blnAmountOverridden: true };
+                          }),
                           true
                         )}
                       />
@@ -2389,43 +2447,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
                         placeholder={dicOverride.strDefaultMonthly}
                         size="small"
                         sx={objOverrideValueFieldSx}
-                        disabled={!dicOverride.blnAllowManualOverride}
-                        onChange={(objEvent) => updateRevisionOverrides(
-                          (lstOverrides) => lstOverrides.map((dicRow, intRowIndex) => {
-                            if (intRowIndex !== intOverrideIndex) {
-                              return dicRow;
-                            }
-                            const decMonthly = parseOptionalAmount(objEvent.target.value);
-                            return {
-                              ...dicRow,
-                              decAmountMonthly: objEvent.target.value,
-                              decAmountAnnual: decMonthly !== null ? formatAmountInput(decMonthly * 12) : ""
-                            };
-                          }),
-                          true
-                        )}
-                      />
-                    </td>
-                    <td>
-                      <Typography sx={{ color: "#475569", fontSize: "0.84rem", fontWeight: 700 }}>{dicOverride.strDefaultAnnual || "-"}</Typography>
-                    </td>
-                    <td>
-                      <TextField
-                        data-controlid="employee-salary.revision.override.annual.input"
-                        inputProps={{ "data-controlid": "employee-salary.revision.override.annual.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
-                        value={dicOverride.decAmountAnnual}
-                        placeholder={dicOverride.strDefaultAnnual}
-                        size="small"
-                        sx={objOverrideValueFieldSx}
-                        disabled={!dicOverride.blnAllowManualOverride}
-                        onChange={(objEvent) => updateRevisionOverrides(
-                          (lstOverrides) => lstOverrides.map((dicRow, intRowIndex) => (
-                            intRowIndex === intOverrideIndex
-                              ? { ...dicRow, decAmountAnnual: objEvent.target.value }
-                              : dicRow
-                          )),
-                          true
-                        )}
+                        disabled
                       />
                     </td>
                     <td>
@@ -2845,6 +2867,8 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
                     <th>{t("employee_salary_component", "Component")}</th>
                     <th>{t("employee_salary_value_source", "Value Source")}</th>
                     <th>{t("employee_salary_formula", "Formula")}</th>
+                    <th>{t("employee_salary_min", "Min")}</th>
+                    <th>{t("employee_salary_max", "Max")}</th>
                     <th>{t("employee_salary_default_annual", "Default Annual")}</th>
                     <th>{t("employee_salary_revised_annual", "Revised Annual")}</th>
                     <th>{t("employee_salary_default_monthly", "Default Monthly")}</th>
@@ -2857,7 +2881,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
               <tbody>
                 {lstRevisionOverrideRows.length === 0 ? (
                   <tr>
-                    <td className={styles.emptyState} colSpan={10}>{t("employee_salary_no_component_lines_found", "No salary component lines found.")}</td>
+                    <td className={styles.emptyState} colSpan={12}>{t("employee_salary_no_component_lines_found", "No salary component lines found.")}</td>
                   </tr>
                 ) : lstRevisionOverrideRows.map(({ dicOverride, intOverrideIndex }) => (
                     <tr key={dicOverride.intSalaryComponentID}>
@@ -2870,6 +2894,8 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
                       <td>
                         <Typography sx={{ color: "#475569", fontSize: "0.84rem", fontWeight: 700 }}>{dicOverride.strFormulaExpression || "-"}</Typography>
                       </td>
+                      <td><Typography sx={{ color: "#475569", fontSize: "0.84rem", fontWeight: 700 }}>{dicOverride.strMinAmount || "-"}</Typography></td>
+                      <td><Typography sx={{ color: "#475569", fontSize: "0.84rem", fontWeight: 700 }}>{dicOverride.strMaxAmount || "-"}</Typography></td>
                       <td>
                         <Typography sx={{ color: "#475569", fontSize: "0.84rem", fontWeight: 700 }}>{dicOverride.strDefaultAnnual || "-"}</Typography>
                       </td>
@@ -2881,7 +2907,9 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
                         placeholder={dicOverride.strDefaultAnnual}
                         size="small"
                         sx={objOverrideValueFieldSx}
-                        disabled={!dicOverride.blnAllowManualOverride || usesAutoCalculatedOverrideValue(dicOverride.strValueSource)}
+                        disabled={!dicOverride.blnAllowManualOverride}
+                        error={Boolean(getOverrideRangeError(dicOverride))}
+                        helperText={getOverrideRangeError(dicOverride) || undefined}
                         onChange={(objEvent) => updateRevisionOverrides(
                           (lstOverrides) => lstOverrides.map((dicRow, intRowIndex) => {
                             if (intRowIndex !== intOverrideIndex) {
@@ -2892,7 +2920,8 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
                             return {
                               ...dicRow,
                               decAmountAnnual: strSanitizedAnnualValue,
-                              decAmountMonthly: decAnnual !== null ? formatAmountInput(decAnnual / 12) : ""
+                              decAmountMonthly: decAnnual !== null ? formatAmountInput(decAnnual / 12) : "",
+                              blnAmountOverridden: true
                             };
                           }),
                           true
@@ -2914,7 +2943,23 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
                       />
                     </td>
                     <td>
-                      <Typography sx={{ color: "#475569", fontSize: "0.84rem", fontWeight: 700 }}>{dicOverride.decPercentageValue || dicOverride.strDefaultPercentage || "-"}</Typography>
+                      <TextField
+                        data-controlid="employee-salary.revision.override.percentage.input"
+                        inputProps={{ "data-controlid": "employee-salary.revision.override.percentage.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
+                        value={dicOverride.decPercentageValue}
+                        placeholder={dicOverride.strDefaultPercentage}
+                        size="small"
+                        sx={objOverrideValueFieldSx}
+                        disabled={!dicOverride.blnAllowManualOverride || !String(dicOverride.strValueSource).toLowerCase().includes("percent")}
+                        onChange={(objEvent) => updateRevisionOverrides(
+                          (lstOverrides) => lstOverrides.map((dicRow, intRowIndex) =>
+                            intRowIndex === intOverrideIndex
+                              ? { ...dicRow, decPercentageValue: sanitizeDecimalInput(objEvent.target.value) }
+                              : dicRow
+                          ),
+                          true
+                        )}
+                      />
                     </td>
                     <td>
                       <Typography sx={{ color: "#475569", fontSize: "0.84rem", fontWeight: 700 }}>{dicOverride.strBasisComponentName || "-"}</Typography>
