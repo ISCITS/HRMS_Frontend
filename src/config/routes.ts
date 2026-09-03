@@ -19,6 +19,7 @@ export const appRoutes = {
   payrollReimbursements: "/payroll/reimbursements",
   reports: "/reports",
   payrollRegisterReport: "/reports/payroll-register",
+  variablePayRegisterReport: "/reports/variable-pay-register",
   bankFileReport: "/reports/bank-file",
   essMyReimbursements: "/ess/reimbursements",
   essMyLoansAdvances: "/ess/loans-advances",

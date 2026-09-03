@@ -7,6 +7,7 @@ import type {
   StatutoryReportRow,
   TaxCalculationDetailRecord,
   TdsReportRow,
+  VariablePayRegisterRow,
 } from "@/features/payroll/types";
 
 async function requestApi<TData>(objOptions: {
@@ -144,6 +145,38 @@ export const payrollResultService = {
     const strQuery = objParams.toString();
     const objResult = await requestApi<TdsReportRow[]>({
       strPath: `/payroll/results/tds-report${strQuery ? `?${strQuery}` : ""}`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_RESULT_LIST",
+    });
+    return objResult.Data;
+  },
+
+  async getVariablePayRegisterRows(objFilters?: {
+    strSearchEmployee?: string;
+    strSearchRun?: string;
+    strStatus?: string;
+    strPayrollMonth?: string;
+    strVariablePayType?: string;
+  }): Promise<VariablePayRegisterRow[]> {
+    const objParams = new URLSearchParams();
+    if (objFilters?.strSearchEmployee?.trim()) {
+      objParams.set("strSearchEmployee", objFilters.strSearchEmployee.trim());
+    }
+    if (objFilters?.strSearchRun?.trim()) {
+      objParams.set("strSearchRun", objFilters.strSearchRun.trim());
+    }
+    if (objFilters?.strStatus?.trim() && objFilters.strStatus !== "All") {
+      objParams.set("strStatus", objFilters.strStatus.trim());
+    }
+    if (objFilters?.strPayrollMonth?.trim()) {
+      objParams.set("strPayrollMonth", objFilters.strPayrollMonth.trim());
+    }
+    if (objFilters?.strVariablePayType?.trim()) {
+      objParams.set("strVariablePayType", objFilters.strVariablePayType.trim());
+    }
+    const strQuery = objParams.toString();
+    const objResult = await requestApi<VariablePayRegisterRow[]>({
+      strPath: `/payroll/results/variable-pay-register${strQuery ? `?${strQuery}` : ""}`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_RESULT_LIST",
     });
