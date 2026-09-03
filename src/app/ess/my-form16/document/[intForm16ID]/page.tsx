@@ -6,5 +6,5 @@ export default async function EssForm16DocumentRoute({
   params: Promise<{ intForm16ID: string }>;
 }) {
   const { intForm16ID } = await params;
-  return <Form16DocumentPage intForm16ID={Number(intForm16ID)} strBackRoute="/ess/my-form16" />;
+  return <Form16DocumentPage strForm16ID={intForm16ID} strBackRoute="/ess/my-form16" />;
 }

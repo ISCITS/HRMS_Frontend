@@ -8,5 +8,5 @@ export default async function PayrollRunDetailRoute({
   params,
 }: PayrollRunDetailRouteProps) {
   const { intRunID } = await params;
-  return <PayrollRunDetailDashboardPage intRunID={Number(intRunID)} />;
+  return <PayrollRunDetailDashboardPage strRunID={intRunID} />;
 }

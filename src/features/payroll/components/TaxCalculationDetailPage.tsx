@@ -32,7 +32,8 @@ import type {
 } from "@/features/payroll/types";
 
 type Props = {
-  intResultID: number;
+  /** record_uuid from the URL; the internal id is never routed on. */
+  strResultID: string;
   blnPayslipScreen?: boolean;
   strBackRoute?: string;
 };
@@ -210,7 +211,7 @@ function DeclarationItemsTable({ lstItems, decTotal, strTotalLabel }: { lstItems
   );
 }
 
-export default function TaxCalculationDetailPage({ intResultID, blnPayslipScreen = false, strBackRoute }: Props) {
+export default function TaxCalculationDetailPage({ strResultID, blnPayslipScreen = false, strBackRoute }: Props) {
   const objRouter = useRouter();
   const { t } = useModuleLabels("payslips");
   const [objDetail, setObjDetail] = useState<TaxCalculationDetailRecord | null>(null);
@@ -223,7 +224,7 @@ export default function TaxCalculationDetailPage({ intResultID, blnPayslipScreen
       setBlnLoading(true);
       setStrError("");
       try {
-        const objResult = await payrollResultService.getTaxCalculationDetails(intResultID);
+        const objResult = await payrollResultService.getTaxCalculationDetails(strResultID);
         if (!blnCancelled) setObjDetail(objResult);
       } catch (objErr) {
         if (!blnCancelled) {
@@ -237,10 +238,10 @@ export default function TaxCalculationDetailPage({ intResultID, blnPayslipScreen
     return () => {
       blnCancelled = true;
     };
-  }, [intResultID]);
+  }, [strResultID]);
 
   const strResolvedBackRoute =
-    strBackRoute || (blnPayslipScreen ? `/reports/payslips/${intResultID}` : `/payroll/results/${intResultID}`);
+    strBackRoute || (blnPayslipScreen ? `/reports/payslips/${strResultID}` : `/payroll/results/${strResultID}`);
 
   if (blnLoading) return <BlockingLoader blnOpen strLabel="Loading tax calculation details..." />;
 

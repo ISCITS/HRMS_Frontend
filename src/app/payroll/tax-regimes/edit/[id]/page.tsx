@@ -9,7 +9,7 @@ export default async function EditTaxRegimePage({ params }: EditTaxRegimePagePro
   return (
     <TaxRegimeWorkspaceTabs
       strMode={"edit"}
-      intTaxRegimeID={Number(id)}
+      strTaxRegimeID={id}
     />
   );
 }

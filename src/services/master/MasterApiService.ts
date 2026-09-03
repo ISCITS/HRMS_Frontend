@@ -302,6 +302,8 @@ export type PayrollGroupFormOptionsApiRecord = {
 
 export type TaxRegimeApiRecord = {
   intID: number;
+  /** Public identifier used in URLs and API paths; the internal id stays server-side. */
+  strRecordUUID: string;
   strRegimeCode: string;
   strRegimeName: string;
   strCountryCode: string;
@@ -383,7 +385,7 @@ export type TaxSlabSetApiRecord = {
 
 export type TaxStandardDeductionRuleApiRecord = {
   intID: number;
-  intTaxRegimeID: number;
+  strRecordUUID: string;
   intCompanyID?: number | null;
   strTaxYearCode: string;
   strIncomeSourceCode: string;
@@ -402,7 +404,7 @@ export type TaxStandardDeductionRuleApiRecord = {
 
 export type TaxRebateRuleApiRecord = {
   intID: number;
-  intTaxRegimeID: number;
+  strRecordUUID: string;
   intCompanyID?: number | null;
   strTaxYearCode: string;
   strRebateCode: string;
@@ -424,7 +426,7 @@ export type TaxRebateRuleApiRecord = {
 
 export type TaxSurchargeSlabApiRecord = {
   intID: number;
-  intTaxRegimeID: number;
+  strRecordUUID: string;
   intCompanyID?: number | null;
   strTaxYearCode: string;
   strSurchargeProfileCode: string;
@@ -443,7 +445,7 @@ export type TaxSurchargeSlabApiRecord = {
 
 export type TaxCessRuleApiRecord = {
   intID: number;
-  intTaxRegimeID: number;
+  strRecordUUID: string;
   intCompanyID?: number | null;
   strTaxYearCode: string;
   strCessCode: string;
@@ -466,7 +468,9 @@ export type TaxRuleSetApiRecord<TRecord> = {
 
 export type PayrollProcessLogApiRecord = {
   intID: number;
+  strRecordUUID: string;
   intPayrollRunID: number;
+  strPayrollRunRecordUUID: string;
   intEmployeeID: number | null;
   strEmployeeCode: string | null;
   strEmployeeName: string | null;
@@ -768,6 +772,8 @@ export type InvestmentOptionApiRecord = {
 
 export type SalaryComponentApiRecord = {
   intID: number;
+  /** Public identifier used in URLs and API paths; the internal id stays server-side. */
+  strRecordUUID: string;
   strComponentCode: string;
   strComponentName: string;
   strComponentDescription?: string | null;
@@ -1154,6 +1160,8 @@ export type FlexiComponentEligibilityApiRecord = {
 
 export type SalaryStructureApiRecord = {
   intID: number;
+  /** Public identifier used in URLs and API paths; the internal id stays server-side. */
+  strRecordUUID: string;
   strStructureCode: string;
   strStructureName: string;
   strCurrencyCode: string;
@@ -1495,6 +1503,13 @@ async function requestApi<TData>(objOptions: {
     blnUseAuthHeader: true
   });
 }
+
+const buildTaxRegimeLookupBody = (strRecordUUID: string, dicExtra: Record<string, unknown> = {}) => {
+  const intLegacyID = Number(strRecordUUID);
+  return Number.isInteger(intLegacyID) && intLegacyID > 0
+    ? { intID: intLegacyID, ...dicExtra }
+    : { strRecordUUID, ...dicExtra };
+};
 
 export const masterApiService = {
   getHolidays(intYear: number, objFilters?: { strSearchName?: string; strSearchCode?: string; strHolidayTypeCode?: string; strStatus?: string; dtFromDate?: string; dtToDate?: string }) {
@@ -2875,11 +2890,15 @@ export const masterApiService = {
     });
   },
 
-  getSalaryComponent(intID: number) {
+  // Addressed by record_uuid. The server's lookup schema still accepts a legacy numeric id, so a
+  // numeric string is forwarded as intID for any caller that has not migrated.
+  getSalaryComponent(strRecordUUID: string) {
+    const intLegacyID = Number(strRecordUUID);
+    const objBody = Number.isInteger(intLegacyID) && intLegacyID > 0 ? { intID: intLegacyID } : { strRecordUUID };
     return requestApi<SalaryComponentApiRecord>({
       strPath: buildApiPath(MasterApiResource.SalaryComponents, MasterApiRouteSegment.Detail),
       strMethod: ApiRequestMethod.Post,
-      objBody: { intID },
+      objBody,
       strMenuAction: MasterMenuAction.SalaryComponentGet
     });
   },
@@ -2903,18 +2922,18 @@ export const masterApiService = {
     });
   },
 
-  updateSalaryComponent(intID: number, objBody: Record<string, unknown>) {
+  updateSalaryComponent(strRecordUUID: string, objBody: Record<string, unknown>) {
     return requestApi<SalaryComponentApiRecord>({
-      strPath: buildApiPath(MasterApiResource.SalaryComponents, intID),
+      strPath: buildApiPath(MasterApiResource.SalaryComponents, strRecordUUID),
       strMethod: ApiRequestMethod.Put,
       objBody,
       strMenuAction: MasterMenuAction.SalaryComponentUpdate
     });
   },
 
-  setSalaryComponentStatus(intID: number, blnIsActive: boolean) {
+  setSalaryComponentStatus(strRecordUUID: string, blnIsActive: boolean) {
     return requestApi<SalaryComponentApiRecord>({
-      strPath: buildApiPath(MasterApiResource.SalaryComponents, intID, MasterApiRouteSegment.Status),
+      strPath: buildApiPath(MasterApiResource.SalaryComponents, strRecordUUID, MasterApiRouteSegment.Status),
       strMethod: ApiRequestMethod.Post,
       objBody: { blnIsActive },
       strMenuAction: MasterMenuAction.SalaryComponentStatus
@@ -2930,9 +2949,9 @@ export const masterApiService = {
     });
   },
 
-  deleteSalaryComponent(intID: number) {
+  deleteSalaryComponent(strRecordUUID: string) {
     return requestApi<{ blnSuccess: boolean }>({
-      strPath: buildApiPath(MasterApiResource.SalaryComponents, intID),
+      strPath: buildApiPath(MasterApiResource.SalaryComponents, strRecordUUID),
       strMethod: ApiRequestMethod.Delete,
       strMenuAction: MasterMenuAction.SalaryComponentDelete
     });
@@ -3072,15 +3091,15 @@ export const masterApiService = {
   },
 
   getPayrollProcessLogs(objFilters?: {
-    intPayrollRunID?: number | null;
+    strPayrollRunRecordUUID?: string | null;
     intEmployeeID?: number | null;
     strProcessStage?: string | null;
     strProcessStatus?: string | null;
     strSearchText?: string | null;
   }) {
     const objParams = new URLSearchParams();
-    if (objFilters?.intPayrollRunID) {
-      objParams.set("intPayrollRunID", String(objFilters.intPayrollRunID));
+    if (objFilters?.strPayrollRunRecordUUID) {
+      objParams.set("strPayrollRunRecordUUID", objFilters.strPayrollRunRecordUUID);
     }
     if (objFilters?.intEmployeeID) {
       objParams.set("intEmployeeID", String(objFilters.intEmployeeID));
@@ -3188,11 +3207,11 @@ export const masterApiService = {
     });
   },
 
-  getTaxRegime(intID: number, intLanguageID?: number | null) {
+  getTaxRegime(strRecordUUID: string, intLanguageID?: number | null) {
     return requestApi<TaxRegimeApiRecord>({
       strPath: buildApiPath(MasterApiResource.TaxRegimes, MasterApiRouteSegment.Detail),
       strMethod: ApiRequestMethod.Post,
-      objBody: { intID, intLanguageID: intLanguageID ?? undefined },
+      objBody: buildTaxRegimeLookupBody(strRecordUUID, { intLanguageID: intLanguageID ?? undefined }),
       strMenuAction: MasterMenuAction.TaxRegimeGet
     });
   },
@@ -3215,25 +3234,25 @@ export const masterApiService = {
     });
   },
 
-  updateTaxRegime(intID: number, objBody: Record<string, unknown>) {
+  updateTaxRegime(strRecordUUID: string, objBody: Record<string, unknown>) {
     return requestApi<TaxRegimeApiRecord>({
-      strPath: buildApiPath(MasterApiResource.TaxRegimes, intID),
+      strPath: buildApiPath(MasterApiResource.TaxRegimes, strRecordUUID),
       strMethod: ApiRequestMethod.Put,
       objBody,
       strMenuAction: MasterMenuAction.TaxRegimeUpdate
     });
   },
 
-  setTaxRegimeStatus(intID: number, blnIsActive: boolean) {
+  setTaxRegimeStatus(strRecordUUID: string, blnIsActive: boolean) {
     return requestApi<TaxRegimeApiRecord>({
-      strPath: buildApiPath(MasterApiResource.TaxRegimes, intID, MasterApiRouteSegment.Status),
+      strPath: buildApiPath(MasterApiResource.TaxRegimes, strRecordUUID, MasterApiRouteSegment.Status),
       strMethod: ApiRequestMethod.Post,
       objBody: { blnIsActive },
       strMenuAction: MasterMenuAction.TaxRegimeStatus
     });
   },
 
-  getTaxSlabs(intTaxRegimeID: number) {
+  getTaxSlabs(strRecordUUID: string) {
     return requestApi<TaxSlabSetApiRecord>({
       strPath: buildApiPath(
         MasterApiResource.TaxRegimes,
@@ -3241,86 +3260,86 @@ export const masterApiService = {
         MasterApiRouteSegment.Detail
       ),
       strMethod: ApiRequestMethod.Post,
-      objBody: { intID: intTaxRegimeID },
+      objBody: buildTaxRegimeLookupBody(strRecordUUID),
       strMenuAction: MasterMenuAction.TaxSlabList
     });
   },
 
-  saveTaxSlabs(intTaxRegimeID: number, objBody: Record<string, unknown>) {
+  saveTaxSlabs(strRecordUUID: string, objBody: Record<string, unknown>) {
     return requestApi<TaxSlabSetApiRecord>({
-      strPath: buildApiPath(MasterApiResource.TaxRegimes, intTaxRegimeID, MasterApiRouteSegment.Slabs),
+      strPath: buildApiPath(MasterApiResource.TaxRegimes, strRecordUUID, MasterApiRouteSegment.Slabs),
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.TaxSlabSave
     });
   },
 
-  getTaxStandardDeductionRules(intTaxRegimeID: number) {
+  getTaxStandardDeductionRules(strRecordUUID: string) {
     return requestApi<TaxRuleSetApiRecord<TaxStandardDeductionRuleApiRecord>>({
       strPath: buildApiPath(MasterApiResource.TaxRegimes, "standard-deductions", MasterApiRouteSegment.Detail),
       strMethod: ApiRequestMethod.Post,
-      objBody: { intID: intTaxRegimeID },
+      objBody: buildTaxRegimeLookupBody(strRecordUUID),
       strMenuAction: MasterMenuAction.TaxRegimeGet
     });
   },
 
-  saveTaxStandardDeductionRules(intTaxRegimeID: number, objBody: Record<string, unknown>) {
+  saveTaxStandardDeductionRules(strRecordUUID: string, objBody: Record<string, unknown>) {
     return requestApi<TaxRuleSetApiRecord<TaxStandardDeductionRuleApiRecord>>({
-      strPath: buildApiPath(MasterApiResource.TaxRegimes, intTaxRegimeID, "standard-deductions"),
+      strPath: buildApiPath(MasterApiResource.TaxRegimes, strRecordUUID, "standard-deductions"),
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.TaxRegimeUpdate
     });
   },
 
-  getTaxRebateRules(intTaxRegimeID: number) {
+  getTaxRebateRules(strRecordUUID: string) {
     return requestApi<TaxRuleSetApiRecord<TaxRebateRuleApiRecord>>({
       strPath: buildApiPath(MasterApiResource.TaxRegimes, "rebates", MasterApiRouteSegment.Detail),
       strMethod: ApiRequestMethod.Post,
-      objBody: { intID: intTaxRegimeID },
+      objBody: buildTaxRegimeLookupBody(strRecordUUID),
       strMenuAction: MasterMenuAction.TaxRegimeGet
     });
   },
 
-  saveTaxRebateRules(intTaxRegimeID: number, objBody: Record<string, unknown>) {
+  saveTaxRebateRules(strRecordUUID: string, objBody: Record<string, unknown>) {
     return requestApi<TaxRuleSetApiRecord<TaxRebateRuleApiRecord>>({
-      strPath: buildApiPath(MasterApiResource.TaxRegimes, intTaxRegimeID, "rebates"),
+      strPath: buildApiPath(MasterApiResource.TaxRegimes, strRecordUUID, "rebates"),
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.TaxRegimeUpdate
     });
   },
 
-  getTaxSurchargeSlabs(intTaxRegimeID: number) {
+  getTaxSurchargeSlabs(strRecordUUID: string) {
     return requestApi<TaxRuleSetApiRecord<TaxSurchargeSlabApiRecord>>({
       strPath: buildApiPath(MasterApiResource.TaxRegimes, "surcharges", MasterApiRouteSegment.Detail),
       strMethod: ApiRequestMethod.Post,
-      objBody: { intID: intTaxRegimeID },
+      objBody: buildTaxRegimeLookupBody(strRecordUUID),
       strMenuAction: MasterMenuAction.TaxRegimeGet
     });
   },
 
-  saveTaxSurchargeSlabs(intTaxRegimeID: number, objBody: Record<string, unknown>) {
+  saveTaxSurchargeSlabs(strRecordUUID: string, objBody: Record<string, unknown>) {
     return requestApi<TaxRuleSetApiRecord<TaxSurchargeSlabApiRecord>>({
-      strPath: buildApiPath(MasterApiResource.TaxRegimes, intTaxRegimeID, "surcharges"),
+      strPath: buildApiPath(MasterApiResource.TaxRegimes, strRecordUUID, "surcharges"),
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.TaxRegimeUpdate
     });
   },
 
-  getTaxCessRules(intTaxRegimeID: number) {
+  getTaxCessRules(strRecordUUID: string) {
     return requestApi<TaxRuleSetApiRecord<TaxCessRuleApiRecord>>({
       strPath: buildApiPath(MasterApiResource.TaxRegimes, "cess", MasterApiRouteSegment.Detail),
       strMethod: ApiRequestMethod.Post,
-      objBody: { intID: intTaxRegimeID },
+      objBody: buildTaxRegimeLookupBody(strRecordUUID),
       strMenuAction: MasterMenuAction.TaxRegimeGet
     });
   },
 
-  saveTaxCessRules(intTaxRegimeID: number, objBody: Record<string, unknown>) {
+  saveTaxCessRules(strRecordUUID: string, objBody: Record<string, unknown>) {
     return requestApi<TaxRuleSetApiRecord<TaxCessRuleApiRecord>>({
-      strPath: buildApiPath(MasterApiResource.TaxRegimes, intTaxRegimeID, "cess"),
+      strPath: buildApiPath(MasterApiResource.TaxRegimes, strRecordUUID, "cess"),
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.TaxRegimeUpdate
@@ -3335,11 +3354,15 @@ export const masterApiService = {
     });
   },
 
-  getSalaryStructure(intID: number) {
+  // Addressed by record_uuid. The server's lookup schema still accepts a legacy numeric id, so a
+  // numeric string is forwarded as intID for any caller that has not migrated.
+  getSalaryStructure(strRecordUUID: string) {
+    const intLegacyID = Number(strRecordUUID);
+    const objBody = Number.isInteger(intLegacyID) && intLegacyID > 0 ? { intID: intLegacyID } : { strRecordUUID };
     return requestApi<SalaryStructureApiRecord>({
       strPath: buildApiPath(MasterApiResource.SalaryStructures, MasterApiRouteSegment.Detail),
       strMethod: ApiRequestMethod.Post,
-      objBody: { intID },
+      objBody,
       strMenuAction: MasterMenuAction.SalaryStructureGet
     });
   },
@@ -3379,36 +3402,36 @@ export const masterApiService = {
     });
   },
 
-  updateSalaryStructure(intID: number, objBody: Record<string, unknown>) {
+  updateSalaryStructure(strRecordUUID: string, objBody: Record<string, unknown>) {
     return requestApi<SalaryStructureApiRecord>({
-      strPath: buildApiPath(MasterApiResource.SalaryStructures, intID),
+      strPath: buildApiPath(MasterApiResource.SalaryStructures, strRecordUUID),
       strMethod: ApiRequestMethod.Put,
       objBody,
       strMenuAction: MasterMenuAction.SalaryStructureUpdate
     });
   },
 
-  cloneSalaryStructure(intID: number, objBody: Record<string, unknown>) {
+  cloneSalaryStructure(strRecordUUID: string, objBody: Record<string, unknown>) {
     return requestApi<SalaryStructureApiRecord>({
-      strPath: buildApiPath(MasterApiResource.SalaryStructures, intID, MasterApiRouteSegment.Clone),
+      strPath: buildApiPath(MasterApiResource.SalaryStructures, strRecordUUID, MasterApiRouteSegment.Clone),
       strMethod: ApiRequestMethod.Post,
       objBody,
       strMenuAction: MasterMenuAction.SalaryStructureClone
     });
   },
 
-  setSalaryStructureStatus(intID: number, blnIsActive: boolean) {
+  setSalaryStructureStatus(strRecordUUID: string, blnIsActive: boolean) {
     return requestApi<SalaryStructureApiRecord>({
-      strPath: buildApiPath(MasterApiResource.SalaryStructures, intID, MasterApiRouteSegment.Status),
+      strPath: buildApiPath(MasterApiResource.SalaryStructures, strRecordUUID, MasterApiRouteSegment.Status),
       strMethod: ApiRequestMethod.Post,
       objBody: { blnIsActive },
       strMenuAction: MasterMenuAction.SalaryStructureStatus
     });
   },
 
-  deleteSalaryStructure(intID: number) {
+  deleteSalaryStructure(strRecordUUID: string) {
     return requestApi<{ blnSuccess: boolean }>({
-      strPath: buildApiPath(MasterApiResource.SalaryStructures, intID),
+      strPath: buildApiPath(MasterApiResource.SalaryStructures, strRecordUUID),
       strMethod: ApiRequestMethod.Delete,
       strMenuAction: MasterMenuAction.SalaryStructureDelete
     });

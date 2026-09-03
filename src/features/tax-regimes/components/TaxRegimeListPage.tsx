@@ -118,8 +118,8 @@ export default function TaxRegimeListPage() {
               rowKey={dicRow.intID}
               blnCanView={blnCanView}
               blnCanEdit={blnCanEdit}
-              onView={() => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}`)}
-              onEdit={blnCanEdit ? () => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}`) : undefined}
+              onView={() => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.strRecordUUID}`)}
+              onEdit={blnCanEdit ? () => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.strRecordUUID}`) : undefined}
             />
           </Box>
         ),

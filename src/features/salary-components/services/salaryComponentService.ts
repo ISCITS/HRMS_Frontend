@@ -133,6 +133,7 @@ function mapApiRecord(dicRecord: SalaryComponentApiRecord): SalaryComponentDetai
   );
   return {
     intID: dicRecord.intID,
+    strRecordUUID: dicRecord.strRecordUUID,
     strComponentCode: dicRecord.strComponentCode,
     strComponentName: dicRecord.strComponentName,
     blnIsWages: Boolean(dicRecord.blnIsWages),
@@ -594,6 +595,7 @@ export const salaryComponentService = {
       const dicDetail = mapApiRecord(dicRecord);
       return {
         intID: dicDetail.intID,
+        strRecordUUID: dicDetail.strRecordUUID,
         strComponentCode: dicDetail.strComponentCode,
         strComponentName: dicDetail.strComponentName,
         blnIsWages: dicDetail.blnIsWages,
@@ -640,8 +642,8 @@ export const salaryComponentService = {
     });
   },
 
-  async getSalaryComponentById(intSalaryComponentID: number): Promise<SalaryComponentDetailRecord> {
-    const objResult = await masterApiService.getSalaryComponent(intSalaryComponentID);
+  async getSalaryComponentById(strRecordUUID: string): Promise<SalaryComponentDetailRecord> {
+    const objResult = await masterApiService.getSalaryComponent(strRecordUUID);
     return mapApiRecord(objResult.Data);
   },
 
@@ -697,9 +699,15 @@ export const salaryComponentService = {
     return mapApiRecord(objResult.Data);
   },
 
-  async updateSalaryComponent(intSalaryComponentID: number, dicValues: SalaryComponentFormValues): Promise<SalaryComponentDetailRecord> {
+  async updateSalaryComponent(
+    strRecordUUID: string,
+    dicValues: SalaryComponentFormValues,
+    intSalaryComponentID?: number,
+  ): Promise<SalaryComponentDetailRecord> {
     const objResult = await masterApiService.updateSalaryComponent(
-      intSalaryComponentID,
+      strRecordUUID,
+      // The internal id is only used to filter the component out of its own dependency mapping,
+      // which is expressed in internal ids; it is not part of how the row is addressed.
       toPayload(dicValues, intSalaryComponentID)
     );
     return mapApiRecord(objResult.Data);
@@ -714,8 +722,8 @@ export const salaryComponentService = {
     return objResult.Data.strTranslatedText;
   },
 
-  async setSalaryComponentStatus(intSalaryComponentID: number, blnIsActive: boolean): Promise<SalaryComponentDetailRecord> {
-    const objResult = await masterApiService.setSalaryComponentStatus(intSalaryComponentID, blnIsActive);
+  async setSalaryComponentStatus(strRecordUUID: string, blnIsActive: boolean): Promise<SalaryComponentDetailRecord> {
+    const objResult = await masterApiService.setSalaryComponentStatus(strRecordUUID, blnIsActive);
     return mapApiRecord(objResult.Data);
   },
 
@@ -723,8 +731,8 @@ export const salaryComponentService = {
     await masterApiService.bulkSalaryComponentStatus(lstIDs, blnIsActive);
   },
 
-  async deleteSalaryComponent(intSalaryComponentID: number): Promise<void> {
-    await masterApiService.deleteSalaryComponent(intSalaryComponentID);
+  async deleteSalaryComponent(strRecordUUID: string): Promise<void> {
+    await masterApiService.deleteSalaryComponent(strRecordUUID);
   },
 
   async bulkDeleteSalaryComponents(lstIDs: number[]): Promise<void> {

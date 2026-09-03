@@ -52,7 +52,8 @@ import type {
 
 type SalaryComponentEditorPageProps = {
   strMode: "add" | "edit" | "view";
-  intSalaryComponentID?: number;
+  /** record_uuid from the URL. The internal id is never routed on; it arrives with the loaded record. */
+  strSalaryComponentID?: string;
   strBackRoute?: string;
 };
 
@@ -442,7 +443,7 @@ function deriveCtcTreatment(dicValues: SalaryComponentFormValues) {
 
 export default function SalaryComponentEditorPage({
   strMode,
-  intSalaryComponentID,
+  strSalaryComponentID,
   strBackRoute
 }: SalaryComponentEditorPageProps) {
   const objRouter = useRouter();
@@ -508,8 +509,8 @@ export default function SalaryComponentEditorPage({
           return;
         }
         setObjFormOptions(objOptions);
-        if ((strMode === "edit" || strMode === "view") && intSalaryComponentID) {
-          const dicDetail = await salaryComponentService.getSalaryComponentById(intSalaryComponentID);
+        if ((strMode === "edit" || strMode === "view") && strSalaryComponentID) {
+          const dicDetail = await salaryComponentService.getSalaryComponentById(strSalaryComponentID);
           if (!blnMounted) {
             return;
           }
@@ -549,7 +550,7 @@ export default function SalaryComponentEditorPage({
     return () => {
       blnMounted = false;
     };
-  }, [blnCanLoadWorkspace, blnRightsLoading, intCurrentLanguageID, intSalaryComponentID, strMode]);
+  }, [blnCanLoadWorkspace, blnRightsLoading, intCurrentLanguageID, strSalaryComponentID, strMode]);
 
   const dicDependencyOptionByID = useMemo(() => {
     return new Map((objFormOptions?.lstDependencyComponents ?? []).map((dicOption) => [dicOption.intID, dicOption]));
@@ -602,7 +603,7 @@ export default function SalaryComponentEditorPage({
   const lstActiveFormulaCodes = useMemo(() => {
     const setCodes = new Set<string>();
     (objFormOptions?.lstDependencyComponents ?? [])
-      .filter((dicOption) => dicOption.intID !== intSalaryComponentID)
+      .filter((dicOption) => dicOption.intID !== objDetail?.intID)
       .forEach((dicOption) => {
         const strCode = sanitizeFormulaCode(String(dicOption.strCode ?? dicOption.strLabel ?? ""));
         if (strCode) {
@@ -610,7 +611,7 @@ export default function SalaryComponentEditorPage({
         }
       });
     return Array.from(setCodes).sort((strLeft, strRight) => strLeft.localeCompare(strRight));
-  }, [intSalaryComponentID, objFormOptions]);
+  }, [objDetail?.intID, objFormOptions]);
   const lstAllowedFormulaTokens = useMemo(
     () => ["DEEMED_WAGE_BASE", ...lstActiveFormulaCodes],
     [lstActiveFormulaCodes]
@@ -1318,8 +1319,8 @@ export default function SalaryComponentEditorPage({
     setBlnSaving(true);
     setStrError("");
     try {
-      const dicSavedRecord = strMode === "edit" && intSalaryComponentID
-        ? await salaryComponentService.updateSalaryComponent(intSalaryComponentID, dicForm)
+      const dicSavedRecord = strMode === "edit" && strSalaryComponentID
+        ? await salaryComponentService.updateSalaryComponent(strSalaryComponentID, dicForm, objDetail?.intID)
         : await salaryComponentService.createSalaryComponent(dicForm);
       setObjDetail(dicSavedRecord);
       setDicForm((dicPrevious) => {
@@ -1337,7 +1338,7 @@ export default function SalaryComponentEditorPage({
           : t("salary_component_created", "Salary component created successfully.")
       );
       if (strMode === "add") {
-        objRouter.push(`/salary-components/edit/${dicSavedRecord.intID}?backRoute=${encodeURIComponent(strResolvedBackRoute)}`);
+        objRouter.push(`/salary-components/edit/${dicSavedRecord.strRecordUUID}?backRoute=${encodeURIComponent(strResolvedBackRoute)}`);
       }
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to save salary component.");
@@ -1627,7 +1628,7 @@ export default function SalaryComponentEditorPage({
             >
               <MenuItem value="" data-controlid="salary-components.editor.default-basis-component.select.option">{t("select", "Select")}</MenuItem>
               {(objFormOptions?.lstDependencyComponents ?? [])
-                .filter((dicOption) => dicOption.intID !== intSalaryComponentID)
+                .filter((dicOption) => dicOption.intID !== objDetail?.intID)
                 .map((dicOption) => (
                   <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.default-basis-component.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
                     {dicOption.strCode ? `${dicOption.strCode} - ${dicOption.strLabel}` : dicOption.strLabel}
@@ -1752,7 +1753,7 @@ export default function SalaryComponentEditorPage({
               {...buildSelectTestIdProps("salary-components.editor.residual-component.select")}
             >
               <MenuItem value="" data-controlid="salary-components.editor.residual-component.none.option">{t("none", "None")}</MenuItem>
-              {(objFormOptions?.lstResidualComponents ?? []).filter((dicOption) => dicOption.intID !== intSalaryComponentID).map((dicOption) => (
+              {(objFormOptions?.lstResidualComponents ?? []).filter((dicOption) => dicOption.intID !== objDetail?.intID).map((dicOption) => (
                 <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.residual-component.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>{dicOption.strCode ? `${dicOption.strCode} - ${dicOption.strLabel}` : dicOption.strLabel}</MenuItem>
               ))}
             </TextField>
@@ -2238,7 +2239,7 @@ export default function SalaryComponentEditorPage({
             fullWidth
           >
             {(objFormOptions?.lstDependencyComponents ?? [])
-              .filter((dicOption) => dicOption.intID !== intSalaryComponentID)
+              .filter((dicOption) => dicOption.intID !== objDetail?.intID)
               .map((dicOption) => (
                 <MenuItem
                   key={dicOption.intID}

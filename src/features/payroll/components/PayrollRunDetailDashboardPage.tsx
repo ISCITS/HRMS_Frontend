@@ -71,7 +71,8 @@ import {
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 type PayrollRunDetailDashboardPageProps = {
-  intRunID: number;
+  /** record_uuid from the URL. Screens and services not yet migrated read objRun.intID instead. */
+  strRunID: string;
 };
 
 type Tone = "blue" | "green" | "amber" | "red" | "slate";
@@ -458,7 +459,7 @@ function getWorkflowButtonVariant(strStep: string, objRun: PayrollRunDetailRecor
   return blnEnabled ? "available" : "disabled";
 }
 
-export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDetailDashboardPageProps) {
+export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDetailDashboardPageProps) {
   const objRouter = useRouter();
   const strPathname = usePathname();
   const { t } = useModuleLabels("payroll-runs");
@@ -514,11 +515,11 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
     }
     setStrError("");
     try {
-      const dicRun = await payrollRunService.getPayrollRunById(intRunID);
+      const dicRun = await payrollRunService.getPayrollRunById(strRunID);
       setObjRun(dicRun);
       setBlnIsLocked(dicRun.blnIsLocked);
       if (["PROCESSED", "FINALIZED"].includes(dicRun.strRunStatus) && dicRun.strRunTypeCode !== "VARIABLE_PAY") {
-        setLstPayslips(await payslipService.getRunPayslips(intRunID));
+        setLstPayslips(await payslipService.getRunPayslips(strRunID));
         try {
           const lstResults = await payrollResultService.getPayrollResults({ strSearchRun: dicRun.strRunName });
           setLstRunResults(lstResults.filter((dicResult) => dicResult.intPayrollRunID === dicRun.intID));
@@ -543,7 +544,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
       return;
     }
     loadRun().catch(() => undefined);
-  }, [intRunID, blnRightsLoading, blnCanView]);
+  }, [strRunID, blnRightsLoading, blnCanView]);
 
   useEffect(() => {
     if (strActiveTab === "review" && objRun && !["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus)) {
@@ -561,7 +562,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
     setStrSuccess("");
     try {
       const dicRun = await payrollRunService.updatePayrollRunStatus(
-        intRunID,
+        strRunID,
         objRun.strRunStatus,
         blnNextLocked,
         objRun.strScopeType,
@@ -598,7 +599,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
     setStrError("");
     setStrSuccess("");
     try {
-      const dicRun = await payrollRunService.reopenPayrollRun(intRunID, strReason);
+      const dicRun = await payrollRunService.reopenPayrollRun(strRunID, strReason);
       setObjRun(dicRun);
       setBlnIsLocked(dicRun.blnIsLocked);
       setStrSuccess(t("reopen_complete", "Payroll run reopened successfully."));
@@ -628,7 +629,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
     setStrError("");
     setStrSuccess("");
     try {
-      const dicRun = await payrollRunService.cancelPayrollRun(intRunID);
+      const dicRun = await payrollRunService.cancelPayrollRun(strRunID);
       setObjRun(dicRun);
       setStrSuccess(t("cancel_complete", "Payroll run cancelled."));
     } catch (objError) {
@@ -649,7 +650,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
     setStrSuccess("");
     setObjProcessSummary(null);
     try {
-      const dicSummary = await payrollRunService.validatePayrollRun(intRunID);
+      const dicSummary = await payrollRunService.validatePayrollRun(strRunID);
       setObjValidationSummary(dicSummary);
       setObjAttendanceValidationResult(dicSummary.dicAttendanceSync ?? null);
       await loadRun(false);
@@ -675,7 +676,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
     setStrError("");
     setStrSuccess("");
     try {
-      const dicAttendanceResult = await attendancePayrollService.validateRunAttendance(intRunID);
+      const dicAttendanceResult = await attendancePayrollService.validateRunAttendance(strRunID);
       setObjAttendanceValidationResult(dicAttendanceResult);
       await loadRun(false);
       if (dicAttendanceResult.intAppliedCount === 0 && dicAttendanceResult.intBlockedCount > 0) {
@@ -705,7 +706,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
     setStrError("");
     setStrSuccess("");
     try {
-      const dicResult = await variablePayService.fetchVariablePay(intRunID);
+      const dicResult = await variablePayService.fetchVariablePay(objRun!.intID);
       await loadRun(false);
       setStrSuccess(
         t(
@@ -723,7 +724,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
 
   function goToMonthlyVariablePay() {
     handleCloseActions();
-    objRouter.push(`/payroll/monthly-variable-pay?runId=${intRunID}`);
+    objRouter.push(`/payroll/monthly-variable-pay?runId=${objRun?.intID ?? ""}`);
   }
 
   function viewBlockedAttendanceEmployees() {
@@ -746,7 +747,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
     setStrError("");
     setStrSuccess("");
     try {
-      const dicSummary = await payrollRunService.processPayrollRun(intRunID);
+      const dicSummary = await payrollRunService.processPayrollRun(strRunID);
       setObjProcessSummary(dicSummary);
       setObjValidationSummary(dicSummary.dicValidationSummary ?? null);
       if (dicSummary.strStatus === "ValidationFailed") {
@@ -786,7 +787,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
     setStrError("");
     setStrSuccess("");
     try {
-      const dicSummary = await payrollRunService.reprocessPayrollRun(intRunID, strReason);
+      const dicSummary = await payrollRunService.reprocessPayrollRun(strRunID, strReason);
       setObjProcessSummary(dicSummary);
       setObjValidationSummary(dicSummary.dicValidationSummary ?? null);
       setObjAttendanceValidationResult(dicSummary.dicAttendanceSync ?? null);
@@ -805,7 +806,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
       setLstPayslips([]);
       return;
     }
-    setLstPayslips(await payslipService.getRunPayslips(intRunID));
+    setLstPayslips(await payslipService.getRunPayslips(strRunID));
   }
 
   async function generateAllPayslips() {
@@ -817,7 +818,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
     setStrError("");
     setStrSuccess("");
     try {
-      const dicSummary = await payslipService.generateAll(intRunID);
+      const dicSummary = await payslipService.generateAll(strRunID);
       setStrSuccess(t("payslip_generate_all_success", `${dicSummary.intGeneratedCount} payslips generated successfully.`));
       await reloadPayslips();
     } catch (objError) {
@@ -837,7 +838,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
     setStrError("");
     setStrSuccess("");
     try {
-      const dicPayslip = await payslipService.generatePayslip(intRunID, dicRow.intEmployeeID);
+      const dicPayslip = await payslipService.generatePayslip(strRunID, dicRow.intEmployeeID);
       setStrSuccess(t("payslip_generated", "Payslip generated successfully."));
       await reloadPayslips();
       return dicPayslip;
@@ -857,7 +858,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
     try {
       let intPayslipID = dicRow.intPayslipID;
       let dicPayslip = intPayslipID
-        ? await payslipService.getPayslipPreview(intRunID, dicRow.intEmployeeID)
+        ? await payslipService.getPayslipPreview(strRunID, dicRow.intEmployeeID)
         : await generatePayslip(dicRow);
       intPayslipID = dicPayslip?.intPayslipID ?? intPayslipID;
       if (!intPayslipID) {
@@ -865,7 +866,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
         return;
       }
       setIntPreviewResultID(dicPayslip?.dicFooter?.intPayrollResultID ?? null);
-      setStrPayslipPreviewHtml(await payslipService.getDownloadHtml(intPayslipID));
+      setStrPayslipPreviewHtml(await payslipService.getDownloadHtml(dicPayslip?.strPayslipRecordUUID ?? String(intPayslipID)));
       setBlnPayslipDialogOpen(true);
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to load payslip preview.");
@@ -884,14 +885,16 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
     setStrError("");
     try {
       let intPayslipID = dicRow.intPayslipID;
+      let strPayslipUUID = dicRow.strPayslipRecordUUID ?? null;
       if (!intPayslipID) {
         const dicPayslip = await generatePayslip(dicRow);
         intPayslipID = dicPayslip?.intPayslipID ?? null;
+        strPayslipUUID = dicPayslip?.strPayslipRecordUUID ?? strPayslipUUID;
       }
       if (!intPayslipID) {
         return;
       }
-      const strHtml = await payslipService.getDownloadHtml(intPayslipID);
+      const strHtml = await payslipService.getDownloadHtml(strPayslipUUID ?? String(intPayslipID));
       if (blnPrint) {
         printPayslipHtml(strHtml);
       } else {
@@ -915,25 +918,25 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
 
   function goToAttendanceLeaveInputs() {
     handleCloseActions();
-    objRouter.push(`/payroll/attendance-leave-inputs?runId=${intRunID}`);
+    objRouter.push(`/payroll/attendance-leave-inputs?runId=${strRunID}`);
   }
 
   function goToPayrollInputs() {
     handleCloseActions();
-    objRouter.push(`/payroll/inputs?runId=${intRunID}`);
+    objRouter.push(`/payroll/inputs?runId=${objRun?.intID ?? ""}`);
   }
 
   function goToProcessingHistory() {
     handleCloseActions();
-    objRouter.push(`/payroll/process-log/run/${intRunID}`);
+    objRouter.push(`/payroll/process-log/run/${objRun?.strRecordUUID ?? strRunID}`);
   }
 
-  async function openResultLinesDialog(intResultID: number) {
+  async function openResultLinesDialog(strResultID: string) {
     setBlnResultLinesLoading(true);
     setStrActionLoaderLabel(t("opening_result_lines", "Opening earnings & deductions..."));
     setStrError("");
     try {
-      setObjResultLinesRecord(await payrollResultService.getPayrollResultById(intResultID));
+      setObjResultLinesRecord(await payrollResultService.getPayrollResultById(strResultID));
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to load earnings & deductions.");
     } finally {
@@ -1034,7 +1037,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
         dicIssue.objNavigationTarget?.strEntityName === "tblemployee_payroll_input" ? (
           <Button
             size="small"
-            onClick={() => objRouter.push(`/payroll/inputs?runId=${intRunID}${dicIssue.intEmployeeID ? `&employeeId=${dicIssue.intEmployeeID}` : ""}`)}
+            onClick={() => objRouter.push(`/payroll/inputs?runId=${objRun?.intID ?? ""}${dicIssue.intEmployeeID ? `&employeeId=${dicIssue.intEmployeeID}` : ""}`)}
             controlId="payroll.run-detail.validation.fix-link.button"
             data-row-key={`${dicIssue.strValidationCode}-${dicIssue.intEmployeeID ?? "run"}-${intIndex}`}
             sx={{ minWidth: 0, fontSize: "0.76rem", fontWeight: 800 }}
@@ -1063,7 +1066,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
         rowKey={dicRow.intID}
         blnCanView
         blnCanEdit={false}
-        onView={() => openResultLinesDialog(dicRow.intID)}
+        onView={() => openResultLinesDialog(dicRow.strRecordUUID)}
       />
     ),
     strEmployeeCode: dicRow.strEmployeeCode,
@@ -1485,8 +1488,8 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
             defaultPageSize={20}
             showPaginationSummary
             showExportOptions={blnCanExport}
-            exportFileName={`payroll-results-${objRun.strRunCode || intRunID}`}
-            onRowDoubleClick={(dicRow) => openResultLinesDialog(Number(dicRow.id))}
+            exportFileName={`payroll-results-${objRun.strRunCode || objRun.intID}`}
+            onRowDoubleClick={(dicRow) => openResultLinesDialog(String(dicRow.id))}
             emptyMessage={t("review_results_empty", "No processed payroll results are available for this run.")}
             testIdPrefix="payroll.run-detail.review-results"
           />

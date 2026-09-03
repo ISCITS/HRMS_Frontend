@@ -171,9 +171,9 @@ export default function SalaryStructureListPage() {
             blnCanView={!blnCanEdit && blnCanView}
             blnCanEdit={blnCanEdit}
             blnCanDelete={blnCanDelete}
-            onView={() => objRouter.push(`/salary-structures/edit/${dicRow.intID}`)}
-            onEdit={() => objRouter.push(`/salary-structures/edit/${dicRow.intID}`)}
-            onDelete={() => deleteStructure(dicRow.intID)}
+            onView={() => objRouter.push(`/salary-structures/edit/${dicRow.strRecordUUID}`)}
+            onEdit={() => objRouter.push(`/salary-structures/edit/${dicRow.strRecordUUID}`)}
+            onDelete={() => deleteStructure(dicRow.strRecordUUID)}
           />
           {blnCanClone ? (
             <button
@@ -182,7 +182,7 @@ export default function SalaryStructureListPage() {
               className={`${styles.iconButton} ${styles.editIcon}`}
               style={{ color: "#6D6D6D" }}
               type="button"
-              onClick={() => handleCloneOpen(dicRow.intID)}
+              onClick={() => handleCloneOpen(dicRow.strRecordUUID)}
               title={t("clone_button", "Clone")}
             >
               <ContentCopyRoundedIcon data-testid={undefined} data-controlid="salary-structures.list.row.clone.button.icon" fontSize="small" />
@@ -254,22 +254,22 @@ export default function SalaryStructureListPage() {
     }
   }
 
-  function deleteStructure(intSalaryStructureID: number) {
+  function deleteStructure(strRecordUUID: string) {
     openConfirmDialog({
       strTitle: t("confirm_delete_title", "Delete Salary Structure"),
       strMessage: t("confirm_delete_message", "Are you sure you want to delete this salary structure record?"),
       strConfirmLabel: t("delete_button", "Delete"),
       fnOnConfirm: async () => {
-        await salaryStructureService.deleteSalaryStructure(intSalaryStructureID);
+        await salaryStructureService.deleteSalaryStructure(strRecordUUID);
         await loadStructures();
         showToast(t("delete_success", "Salary structure deleted successfully."));
       }
     });
   }
 
-  async function handleCloneOpen(intSalaryStructureID: number) {
+  async function handleCloneOpen(strRecordUUID: string) {
     try {
-      const dicDetail = await salaryStructureService.getSalaryStructureById(intSalaryStructureID);
+      const dicDetail = await salaryStructureService.getSalaryStructureById(strRecordUUID);
       setObjCloneSource(dicDetail);
       setDicCloneForm(createCloneForm(dicDetail));
       setStrCloneError("");
@@ -290,7 +290,7 @@ export default function SalaryStructureListPage() {
     setStrCloneError("");
     setBlnCloneSaving(true);
     try {
-      const dicRecord = await salaryStructureService.cloneSalaryStructure(objCloneSource.intID, dicCloneForm);
+      const dicRecord = await salaryStructureService.cloneSalaryStructure(objCloneSource.strRecordUUID, dicCloneForm);
       setBlnCloneOpen(false);
       setStrCloneError("");
       showToast("Salary structure cloned successfully.");

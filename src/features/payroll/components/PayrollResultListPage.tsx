@@ -402,7 +402,7 @@ export default function PayrollResultListPage({
     setStrError("");
     try {
       const dicPayslip = await payslipService.getPayslipPreview(
-        dicRow.intPayrollRunID,
+        dicRow.strPayrollRunRecordUUID ?? String(dicRow.intPayrollRunID),
         dicRow.intEmployeeID
       );
       const intPayslipID =
@@ -412,7 +412,7 @@ export default function PayrollResultListPage({
           ? null
           : (
               await payslipService.generatePayslip(
-                dicRow.intPayrollRunID,
+                dicRow.strPayrollRunRecordUUID ?? String(dicRow.intPayrollRunID),
                 dicRow.intEmployeeID
               )
             ).intPayslipID);
@@ -420,7 +420,7 @@ export default function PayrollResultListPage({
         setStrError(t("payslip_not_generated", "Payslip could not be generated for this employee."));
         return;
       }
-      const strHtml = await payslipService.getDownloadHtml(intPayslipID);
+      const strHtml = await payslipService.getDownloadHtml(String(intPayslipID));
       if (blnPrint) {
         printPayslipHtml(strHtml);
       } else {
@@ -462,7 +462,7 @@ export default function PayrollResultListPage({
                 rowKey={dicRow.intID}
                 blnCanView={blnCanAccessResults}
                 blnCanEdit={false}
-                onView={() => objRouter.push(`/payroll/results/${dicRow.intID}`)}
+                onView={() => objRouter.push(`/payroll/results/${dicRow.strRecordUUID}`)}
               />
             )}
             {blnPayslipScreen ? (

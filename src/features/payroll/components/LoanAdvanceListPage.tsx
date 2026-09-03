@@ -200,8 +200,8 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
             rowKey={objRow.intID}
             blnCanView
             blnCanEdit={blnCanEdit}
-            onView={() => objRouter.push(blnIsEssMode ? `/ess/loans-advances/${objRow.intID}` : `/payroll/loans-advances/${objRow.intID}`)}
-            onEdit={() => objRouter.push(blnIsEssMode ? `/ess/loans-advances/${objRow.intID}` : `/payroll/loans-advances/${objRow.intID}`)}
+            onView={() => objRouter.push(blnIsEssMode ? `/ess/loans-advances/${objRow.strRecordUUID}` : `/payroll/loans-advances/${objRow.strRecordUUID}`)}
+            onEdit={() => objRouter.push(blnIsEssMode ? `/ess/loans-advances/${objRow.strRecordUUID}` : `/payroll/loans-advances/${objRow.strRecordUUID}`)}
           />
         ),
         employee: (

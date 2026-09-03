@@ -167,7 +167,7 @@ function hasMenuRoute(lstItems: AuthMenuItem[], strRoute: string): boolean {
   return lstItems.some((objItem) => objItem.strRoute === strRoute || hasMenuRoute(objItem.lstChildren, strRoute));
 }
 
-export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "payroll" }: { intLoanAdvanceID?: number; strMode?: "payroll" | "ess" }) {
+export default function LoanAdvanceDetailPage({ strLoanAdvanceID, strMode = "payroll" }: { /** record_uuid from the URL; the internal id is never routed on. */ strLoanAdvanceID?: string; strMode?: "payroll" | "ess" }) {
   const objRouter = useRouter();
   const { t, blnLoadingLabels, strLabelError } = useModuleLabels("loans-advances");
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(strMode === "ess" ? lstEssModuleCodes : lstModuleCodes);
@@ -178,7 +178,7 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
   const [lstExistingLoans, setLstExistingLoans] = useState<LoanAdvanceRecord[]>([]);
   const [objPolicy, setObjPolicy] = useState<LoanAdvanceCategoryRecord | null>(null);
   const [intTab, setIntTab] = useState(0);
-  const [blnLoading, setBlnLoading] = useState(Boolean(intLoanAdvanceID));
+  const [blnLoading, setBlnLoading] = useState(Boolean(strLoanAdvanceID));
   const [blnHasMenuFallbackAccess, setBlnHasMenuFallbackAccess] = useState(false);
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
@@ -224,7 +224,7 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
   // record still wins over both - that is record state, not a permission.
   const blnReadonly =
     Boolean(objRecord && lstReadonlyStatuses.includes(strStatus)) ||
-    (intLoanAdvanceID ? !blnCanEdit : !blnCanAdd);
+    (strLoanAdvanceID ? !blnCanEdit : !blnCanAdd);
   const objSelectedEmployee = useMemo(() => lstEmployees.find((objEmployee) => objEmployee.intID === Number(dicValues.intEmployeeID)) || null, [lstEmployees, dicValues.intEmployeeID]);
   const lstFilteredCategories = useMemo(() => lstCategories.filter((objCategory) => objCategory.strRequestType === dicValues.strRequestType), [lstCategories, dicValues.strRequestType]);
   const lstSchedulePreview = useMemo(() => buildSchedulePreview(dicValues, objPolicy), [dicValues, objPolicy]);
@@ -271,11 +271,11 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
   const intWorkflowStep = Math.max(0, lstWorkflow.indexOf(strStatus === "sent_back" ? "draft" : strStatus));
 
   async function loadRecord() {
-    if (!intLoanAdvanceID) return;
+    if (!strLoanAdvanceID) return;
     setBlnLoading(true);
     setStrError("");
     try {
-      const objNextRecord = await (blnIsEssMode ? loanAdvanceService.getEssLoan(intLoanAdvanceID) : loanAdvanceService.getLoan(intLoanAdvanceID));
+      const objNextRecord = await (blnIsEssMode ? loanAdvanceService.getEssLoan(strLoanAdvanceID) : loanAdvanceService.getLoan(strLoanAdvanceID));
       setObjRecord(objNextRecord);
       setDicValues(toLoanAdvanceForm(objNextRecord));
       setObjPolicy(objNextRecord.objCategory || null);
@@ -298,7 +298,7 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
       setLstCategories(lstCategoryRows);
       setLstExistingLoans(lstLoanRows);
     });
-  }, [blnRightsLoading, blnCanView, intLoanAdvanceID, blnIsEssMode]);
+  }, [blnRightsLoading, blnCanView, strLoanAdvanceID, blnIsEssMode]);
 
   useEffect(() => {
     if (!dicValues.intCategoryID) {
@@ -379,15 +379,15 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
     setStrSuccess("");
     try {
       const objSnapshot = { lstPreviewSchedule: lstSchedulePreview, objPolicy };
-      const objSaved = intLoanAdvanceID
-        ? await (blnIsEssMode ? loanAdvanceService.updateEssLoan(intLoanAdvanceID, dicValues, objSnapshot) : loanAdvanceService.updateLoan(intLoanAdvanceID, dicValues, objSnapshot))
+      const objSaved = strLoanAdvanceID
+        ? await (blnIsEssMode ? loanAdvanceService.updateEssLoan(strLoanAdvanceID, dicValues, objSnapshot) : loanAdvanceService.updateLoan(strLoanAdvanceID, dicValues, objSnapshot))
         : await (blnIsEssMode ? loanAdvanceService.createEssLoan(dicValues, objSnapshot) : loanAdvanceService.createLoan(dicValues, objSnapshot));
-      const objFinal = blnSubmit ? await (blnIsEssMode ? loanAdvanceService.essAction(objSaved.intID, "submit") : loanAdvanceService.action(objSaved.intID, "submit")) : objSaved;
+      const objFinal = blnSubmit ? await (blnIsEssMode ? loanAdvanceService.essAction(objSaved.strRecordUUID, "submit") : loanAdvanceService.action(objSaved.strRecordUUID, "submit")) : objSaved;
       setObjRecord(objFinal);
       setDicValues(toLoanAdvanceForm(objFinal));
       setBlnShowFieldErrors(false);
       setStrSuccess(blnSubmit ? t("message_submitted", "Request submitted for approval.") : t("message_saved", "Request saved."));
-      if (!intLoanAdvanceID) objRouter.replace(blnIsEssMode ? `/ess/loans-advances/${objFinal.intID}` : `/payroll/loans-advances/${objFinal.intID}`);
+      if (!strLoanAdvanceID) objRouter.replace(blnIsEssMode ? `/ess/loans-advances/${objFinal.strRecordUUID}` : `/payroll/loans-advances/${objFinal.strRecordUUID}`);
       return objFinal;
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : t("error_save", "Unable to save loan or advance."));
@@ -456,8 +456,8 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
         strReason: dicActionValues.strReason || undefined,
       };
       const objNextRecord = blnIsEssMode && ["submit", "cancel"].includes(objActionDialog.strAction)
-        ? await loanAdvanceService.essAction(objRecord.intID, objActionDialog.strAction as "submit" | "cancel", objPayload)
-        : await loanAdvanceService.action(objRecord.intID, objActionDialog.strAction, objPayload);
+        ? await loanAdvanceService.essAction(objRecord.strRecordUUID, objActionDialog.strAction as "submit" | "cancel", objPayload)
+        : await loanAdvanceService.action(objRecord.strRecordUUID, objActionDialog.strAction, objPayload);
       setObjRecord(objNextRecord);
       setDicValues(toLoanAdvanceForm(objNextRecord));
       setObjActionDialog(null);

@@ -193,7 +193,7 @@ export default function PayrollRunEditorPage() {
       const dicRun = await payrollRunService.createPayrollRun(dicForm);
       setStrSuccess(t("save_success", "Payroll run saved successfully."));
       window.setTimeout(() => {
-        objRouter.push(`/payroll/runs/${dicRun.intID}`);
+        objRouter.push(`/payroll/runs/${dicRun.strRecordUUID}`);
       }, 500);
     } catch (objError) {
       setStrError(

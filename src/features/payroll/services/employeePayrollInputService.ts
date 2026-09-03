@@ -217,10 +217,10 @@ export const employeePayrollInputService = {
   },
 
   async getEmployeePayrollInputById(
-    intInputID: number
+    strRecordUUID: string
   ): Promise<EmployeePayrollInputDetailRecord> {
     const objResult = await requestApi<EmployeePayrollInputApiRecord>({
-      strPath: `${strEmployeePayrollInputApiPath}/${intInputID}`,
+      strPath: `${strEmployeePayrollInputApiPath}/${strRecordUUID}`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_EMPLOYEE_PAYROLL_INPUT_VIEW",
     });
@@ -240,11 +240,11 @@ export const employeePayrollInputService = {
   },
 
   async updateEmployeePayrollInput(
-    intInputID: number,
+    strRecordUUID: string,
     dicValues: EmployeePayrollInputFormValues
   ): Promise<EmployeePayrollInputDetailRecord> {
     const objResult = await requestApi<EmployeePayrollInputApiRecord>({
-      strPath: `${strEmployeePayrollInputApiPath}/${intInputID}`,
+      strPath: `${strEmployeePayrollInputApiPath}/${strRecordUUID}`,
       strMethod: "PUT",
       objBody: toPayload(dicValues),
       strMenuAction: "PAYROLL_EMPLOYEE_PAYROLL_INPUT_UPDATE",
@@ -253,10 +253,10 @@ export const employeePayrollInputService = {
   },
 
   async unlockEmployeePayrollInput(
-    intInputID: number
+    strRecordUUID: string
   ): Promise<EmployeePayrollInputDetailRecord> {
     const objResult = await requestApi<EmployeePayrollInputApiRecord>({
-      strPath: `${strEmployeePayrollInputApiPath}/${intInputID}/unlock`,
+      strPath: `${strEmployeePayrollInputApiPath}/${strRecordUUID}/unlock`,
       strMethod: "POST",
       strMenuAction: "PAYROLL_EMPLOYEE_PAYROLL_INPUT_UPDATE",
     });

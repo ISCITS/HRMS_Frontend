@@ -247,7 +247,7 @@ export default function SalaryRegisterReportPage() {
     }
     setBlnLoadingReport(true);
     try {
-      const lstDetailRows = await Promise.all(lstRows.map((dicRow) => payrollResultService.getPayrollResultById(dicRow.intID)));
+      const lstDetailRows = await Promise.all(lstRows.map((dicRow) => payrollResultService.getPayrollResultById(dicRow.strRecordUUID)));
       setLstDetails(lstDetailRows);
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to load Salary register.");

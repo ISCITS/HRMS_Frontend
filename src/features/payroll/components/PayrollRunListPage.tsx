@@ -141,7 +141,7 @@ export default function PayrollRunListPage() {
             testIdPrefix="payroll-runs.list.row"
             rowKey={dicRow.intID}
             blnCanView={blnCanView}
-            onView={() => objRouter.push(`/payroll/runs/${dicRow.intID}`)}
+            onView={() => objRouter.push(`/payroll/runs/${dicRow.strRecordUUID}`)}
           />
         ),
         strRunName: dicRow.strRunName,

@@ -17,7 +17,7 @@ export default async function PayrollResultTaxInformationRoute({
   const objSearchParams = searchParams ? await searchParams : undefined;
   return (
     <TaxCalculationDetailPage
-      intResultID={Number(intResultID)}
+      strResultID={intResultID}
       strBackRoute={objSearchParams?.backRoute}
     />
   );

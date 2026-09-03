@@ -65,10 +65,10 @@ export const payrollResultService = {
   },
 
   async getPayrollResultById(
-    intResultID: number
+    strResultID: string
   ): Promise<PayrollResultDetailRecord> {
     const objResult = await requestApi<PayrollResultDetailRecord>({
-      strPath: `/payroll/results/${intResultID}`,
+      strPath: `/payroll/results/${strResultID}`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_RESULT_VIEW",
     });
@@ -184,10 +184,10 @@ export const payrollResultService = {
   },
 
   async getTaxCalculationDetails(
-    intResultID: number
+    strResultID: string
   ): Promise<TaxCalculationDetailRecord> {
     const objResult = await requestApi<TaxCalculationDetailRecord>({
-      strPath: `/payroll/results/${intResultID}/tax-information`,
+      strPath: `/payroll/results/${strResultID}/tax-information`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_RESULT_VIEW",
     });

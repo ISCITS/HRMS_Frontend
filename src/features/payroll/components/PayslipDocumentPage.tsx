@@ -12,11 +12,12 @@ import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payslipService } from "@/features/payroll/services/payslipService";
 
 type PayslipDocumentPageProps = {
-  intPayslipID: number;
+  /** record_uuid from the URL; the internal id is never routed on. */
+  strPayslipID: string;
   strBackRoute?: string;
 };
 
-export default function PayslipDocumentPage({ intPayslipID, strBackRoute }: PayslipDocumentPageProps) {
+export default function PayslipDocumentPage({ strPayslipID, strBackRoute }: PayslipDocumentPageProps) {
   const objRouter = useRouter();
   const { t } = useModuleLabels("payslips");
   const [strHtml, setStrHtml] = useState("");
@@ -32,8 +33,8 @@ export default function PayslipDocumentPage({ intPayslipID, strBackRoute }: Pays
       setStrError("");
       try {
         const [strDocumentHtml, dicSummary] = await Promise.all([
-          payslipService.getDownloadHtml(intPayslipID),
-          payslipService.getPayslipSummary(intPayslipID).catch(() => null),
+          payslipService.getDownloadHtml(strPayslipID),
+          payslipService.getPayslipSummary(strPayslipID).catch(() => null),
         ]);
         if (!blnCancelled) {
           setStrHtml(strDocumentHtml);
@@ -55,7 +56,7 @@ export default function PayslipDocumentPage({ intPayslipID, strBackRoute }: Pays
     return () => {
       blnCancelled = true;
     };
-  }, [intPayslipID, t]);
+  }, [strPayslipID, t]);
 
   if (blnLoading) {
     return <BlockingLoader blnOpen strLabel={t("loading_payslip", "Loading payslip...")} />;

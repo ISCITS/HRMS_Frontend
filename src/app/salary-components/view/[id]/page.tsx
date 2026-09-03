@@ -12,5 +12,5 @@ type ViewSalaryComponentPageProps = {
 export default async function ViewSalaryComponentPage({ params, searchParams }: ViewSalaryComponentPageProps) {
   const { id } = await params;
   const objSearchParams = searchParams ? await searchParams : undefined;
-  return <SalaryComponentEditorPage strMode="view" intSalaryComponentID={Number(id)} strBackRoute={objSearchParams?.backRoute} />;
+  return <SalaryComponentEditorPage strMode="view" strSalaryComponentID={id} strBackRoute={objSearchParams?.backRoute} />;
 }

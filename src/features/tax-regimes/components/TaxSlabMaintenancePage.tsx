@@ -29,7 +29,8 @@ import type { TaxRegimeDetailRecord, TaxSlabLineFormValue } from "@/features/tax
 import { objTaxRegimeCommonTableSx, TaxRegimeActionGroup, TaxRegimeWorkspaceHeader, type TaxRegimeSaveBridge } from "@/features/tax-regimes/components/TaxRegimeWorkspace";
 
 type TaxSlabMaintenancePageProps = {
-  intTaxRegimeID: number;
+  /** record_uuid from the URL; the internal id is never routed on. */
+  strTaxRegimeID: string;
   blnEmbedded?: boolean;
   onSaveBridgeChange?: (objBridge: TaxRegimeSaveBridge) => void;
 };
@@ -38,7 +39,7 @@ const lstTaxRegimeModuleCodes = ["TAX_REGIME", "TAX_REGIMES", "MASTER_TAX_REGIME
 const lstProfileCodes = ["GENERAL", "SENIOR", "SUPER_SENIOR"];
 const lstResidentialStatuses = ["RESIDENT", "NON_RESIDENT", "RNOR"];
 
-export default function TaxSlabMaintenancePage({ intTaxRegimeID, blnEmbedded, onSaveBridgeChange }: TaxSlabMaintenancePageProps) {
+export default function TaxSlabMaintenancePage({ strTaxRegimeID, blnEmbedded, onSaveBridgeChange }: TaxSlabMaintenancePageProps) {
   const objRouter = useRouter();
   const { t } = useTaxRegimeLabels();
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstTaxRegimeModuleCodes);
@@ -72,7 +73,7 @@ export default function TaxSlabMaintenancePage({ intTaxRegimeID, blnEmbedded, on
       setBlnLoading(true);
       setStrError("");
       try {
-        const dicWorkspace = await taxRegimeService.getTaxSlabs(intTaxRegimeID);
+        const dicWorkspace = await taxRegimeService.getTaxSlabs(strTaxRegimeID);
         if (!blnMounted) {
           return;
         }
@@ -93,7 +94,7 @@ export default function TaxSlabMaintenancePage({ intTaxRegimeID, blnEmbedded, on
     return () => {
       blnMounted = false;
     };
-  }, [blnCanLoadWorkspace, blnRightsLoading, intTaxRegimeID]);
+  }, [blnCanLoadWorkspace, blnRightsLoading, strTaxRegimeID]);
 
   function updateLine(strRowID: string, strField: keyof TaxSlabLineFormValue, objValue: string | boolean) {
     setLstSlabs((lstPrevious) => lstPrevious.map((dicLine) => dicLine.strRowID === strRowID ? { ...dicLine, [strField]: objValue } : dicLine));
@@ -123,7 +124,7 @@ export default function TaxSlabMaintenancePage({ intTaxRegimeID, blnEmbedded, on
     setStrError("");
     setStrSuccess("");
     try {
-      const dicWorkspace = await taxRegimeService.saveTaxSlabs(intTaxRegimeID, lstSlabs);
+      const dicWorkspace = await taxRegimeService.saveTaxSlabs(strTaxRegimeID, lstSlabs);
       setObjRegime(dicWorkspace.objRegime);
       setLstFinancialYears(dicWorkspace.lstFinancialYears);
       setLstSlabs(toTaxSlabFormValues(dicWorkspace));

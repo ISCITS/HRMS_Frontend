@@ -2,6 +2,6 @@
 
 import ReimbursementClaimEditorPage from "@/features/reimbursements/components/ReimbursementClaimEditorPage";
 
-export default function ReimbursementClaimDetailPage({ intClaimID, blnEditableRoute = false }: { intClaimID: number; blnEditableRoute?: boolean }) {
-  return <ReimbursementClaimEditorPage intClaimID={intClaimID} strMode={blnEditableRoute ? "edit" : "detail"} />;
+export default function ReimbursementClaimDetailPage({ strClaimID, blnEditableRoute = false }: { strClaimID: string; blnEditableRoute?: boolean }) {
+  return <ReimbursementClaimEditorPage strClaimID={strClaimID} strMode={blnEditableRoute ? "edit" : "detail"} />;
 }

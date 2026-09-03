@@ -6,5 +6,5 @@ type EditTaxSlabsPageProps = {
 
 export default async function EditTaxSlabsPage({ params }: EditTaxSlabsPageProps) {
   const { id } = await params;
-  return <TaxSlabMaintenancePage intTaxRegimeID={Number(id)} />;
+  return <TaxSlabMaintenancePage strTaxRegimeID={id} />;
 }

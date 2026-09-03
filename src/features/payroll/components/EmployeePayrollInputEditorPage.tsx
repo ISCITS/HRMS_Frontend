@@ -59,7 +59,8 @@ const lstEmployeePayrollInputLineTypes: Array<{ strCode: EmployeePayrollInputFor
 
 type EmployeePayrollInputEditorPageProps = {
   strMode: "add" | "edit";
-  intInputID?: number;
+  /** record_uuid from the URL; the internal id is never routed on. */
+  strInputID?: string;
   strBackRoute?: string;
 };
 
@@ -146,7 +147,7 @@ const objReadOnlyFieldSx = {
 
 export default function EmployeePayrollInputEditorPage({
   strMode,
-  intInputID,
+  strInputID,
   strBackRoute,
 }: EmployeePayrollInputEditorPageProps) {
   type FieldErrorState = Partial<Record<"intEmployeeID" | "intPayrollRunID" | "strManualLwpReason", string>>;
@@ -205,8 +206,8 @@ export default function EmployeePayrollInputEditorPage({
       try {
         const [objOptionsResult, objInputResult] = await Promise.all([
           employeePayrollInputService.getFormOptions(),
-          strMode === "edit" && intInputID
-            ? employeePayrollInputService.getEmployeePayrollInputById(intInputID)
+          strMode === "edit" && strInputID
+            ? employeePayrollInputService.getEmployeePayrollInputById(strInputID)
             : Promise.resolve(null),
         ]);
         if (!blnMounted) {
@@ -242,7 +243,7 @@ export default function EmployeePayrollInputEditorPage({
     return () => {
       blnMounted = false;
     };
-  }, [intInputID, strMode, blnRightsLoading, blnCanView, blnCanSave]);
+  }, [strInputID, strMode, blnRightsLoading, blnCanView, blnCanSave]);
 
   const dicSelectedEmployee = useMemo(
     () =>
@@ -313,12 +314,12 @@ export default function EmployeePayrollInputEditorPage({
   }
 
   async function updateLocked(blnChecked: boolean) {
-    if (!blnChecked && strMode === "edit" && intInputID && blnRecordLocked) {
+    if (!blnChecked && strMode === "edit" && strInputID && blnRecordLocked) {
       setBlnSaving(true);
       setStrError("");
       setStrSuccess("");
       try {
-        const dicUnlockedRecord = await employeePayrollInputService.unlockEmployeePayrollInput(intInputID);
+        const dicUnlockedRecord = await employeePayrollInputService.unlockEmployeePayrollInput(strInputID);
         setDicForm(toEmployeePayrollInputFormValues(dicUnlockedRecord));
         setStrSuccess(t("unlock_success", "Payroll input unlocked successfully."));
       } catch (objError) {
@@ -497,9 +498,9 @@ export default function EmployeePayrollInputEditorPage({
     setStrError("");
     setStrSuccess("");
     try {
-      if (strMode === "edit" && intInputID) {
+      if (strMode === "edit" && strInputID) {
         await employeePayrollInputService.updateEmployeePayrollInput(
-          intInputID,
+          strInputID,
           dicForm
         );
         setStrSuccess(

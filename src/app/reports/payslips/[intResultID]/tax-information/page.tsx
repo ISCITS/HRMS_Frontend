@@ -17,7 +17,7 @@ export default async function ReportPayslipTaxInformationRoute({
   const objSearchParams = searchParams ? await searchParams : undefined;
   return (
     <TaxCalculationDetailPage
-      intResultID={Number(intResultID)}
+      strResultID={intResultID}
       blnPayslipScreen
       strBackRoute={objSearchParams?.backRoute}
     />

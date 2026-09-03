@@ -1,5 +1,7 @@
 export type AttendanceLeaveInputRow = {
   intInputID: number | null;
+  /** Public identifier of the payroll input row; null when no input exists yet. */
+  strInputRecordUUID: string | null;
   intEmployeeID: number;
   strEmployeeCode: string;
   strEmployeeName: string;

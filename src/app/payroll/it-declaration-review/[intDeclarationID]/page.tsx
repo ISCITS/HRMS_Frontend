@@ -6,6 +6,6 @@ type RouteProps = {
 
 export default async function PayrollItDeclarationReviewDetailRoute({ params }: RouteProps) {
   const { intDeclarationID } = await params;
-  return <ITDeclarationReviewDetailPage intDeclarationID={Number(intDeclarationID)} />;
+  return <ITDeclarationReviewDetailPage strDeclarationRecordUUID={intDeclarationID} />;
 }
 

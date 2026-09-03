@@ -81,6 +81,7 @@ type UserTableRow = {
   select: ReactNode;
   rowActions: ReactNode;
   loginName: string;
+  loginId: string;
   email: string;
   mobile: string;
   employeeName: string;
@@ -252,6 +253,7 @@ export default function UserMasterPanel() {
     searchEmployeePlaceholder: t("search_employee_placeholder", "Search Linked Employee"),
     searchStatusPlaceholder: t("search_status_placeholder"),
     tableLoginName: t("table_login_name"),
+    tableLoginId: t("table_login_id", "Login ID"),
     tableEmail: t("table_email"),
     tableMobile: t("table_mobile"),
     tableLinkedEmployee: t("table_linked_employee", "Linked Employee"),
@@ -428,6 +430,7 @@ export default function UserMasterPanel() {
       />
     ),
     loginName: dicUser.loginName,
+    loginId: dicUser.loginId || "-",
     email: dicUser.email,
     mobile: dicUser.mobile || "-",
     employeeName: dicUser.employeeName || "-",
@@ -449,12 +452,13 @@ export default function UserMasterPanel() {
     },
     { field: "rowActions", headerName: dicModuleLabels.tableActions, width: 140, sortable: false, filterable: false, exportable: false },
     { field: "loginName", headerName: dicModuleLabels.tableLoginName },
+    { field: "loginId", headerName: dicModuleLabels.tableLoginId },
     { field: "email", headerName: dicModuleLabels.tableEmail },
     { field: "mobile", headerName: dicModuleLabels.tableMobile },
     { field: "employeeName", headerName: dicModuleLabels.tableLinkedEmployee },
     { field: "userGroupName", headerName: dicModuleLabels.tableUserGroup },
     { field: "status", headerName: dicModuleLabels.tableStatus, sortable: false, filterable: false },
-  ], [blnAllVisibleSelected, blnSomeVisibleSelected, dicModuleLabels.tableActions, dicModuleLabels.tableEmail, dicModuleLabels.tableLinkedEmployee, dicModuleLabels.tableLoginName, dicModuleLabels.tableMobile, dicModuleLabels.tableStatus, dicModuleLabels.tableUserGroup]);
+  ], [blnAllVisibleSelected, blnSomeVisibleSelected, dicModuleLabels.tableActions, dicModuleLabels.tableEmail, dicModuleLabels.tableLinkedEmployee, dicModuleLabels.tableLoginId, dicModuleLabels.tableLoginName, dicModuleLabels.tableMobile, dicModuleLabels.tableStatus, dicModuleLabels.tableUserGroup]);
 
   async function openDialog(strNextMode: UserMode, dicUser?: UserRecord) {
     let objResolvedFormOptions = objFormOptions;

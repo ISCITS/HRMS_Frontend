@@ -20,7 +20,7 @@ export default async function PayrollInputEditPage({
   return (
     <EmployeePayrollInputEditorPage
       strMode={strMode}
-      intInputID={Number(intInputID)}
+      strInputID={intInputID}
       strBackRoute={objSearchParams?.backRoute}
     />
   );

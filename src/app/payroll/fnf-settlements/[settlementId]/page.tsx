@@ -6,5 +6,5 @@ type PayrollFNFSettlementDetailRouteProps = {
 
 export default async function PayrollFNFSettlementDetailRoute({ params }: PayrollFNFSettlementDetailRouteProps) {
   const { settlementId } = await params;
-  return <FNFSettlementDetailPage intSettlementID={Number(settlementId)} />;
+  return <FNFSettlementDetailPage strSettlementID={settlementId} />;
 }

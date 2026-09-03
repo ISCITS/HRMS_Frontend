@@ -528,6 +528,7 @@ export const hrItDeclarationService = {
 export type HrItDeclarationListRecord = {
   strDeclarationCode: string;
   intDeclarationID: number;
+  strRecordUUID: string;
   strEmployeeCode: string;
   strEmployeeName: string;
   strFinancialYearCode: string;
@@ -585,6 +586,7 @@ export type HrItDeclarationAuditRecord = {
 
 export type HrItDeclarationDetailRecord = {
   intDeclarationID: number;
+  strRecordUUID: string;
   strDeclarationCode: string;
   strEmployeeCode: string;
   strEmployeeName: string;
@@ -613,89 +615,89 @@ export const hrItDeclarationReviewService = {
     return objResult.Data ?? { lstRows: [], objSummary: {} };
   },
 
-  async getDetail(intDeclarationID: number): Promise<HrItDeclarationDetailRecord> {
+  async getDetail(strDeclarationRecordUUID: string): Promise<HrItDeclarationDetailRecord> {
     const objResult = await requestApi<HrItDeclarationDetailRecord>({
-      strPath: `/payroll/it-declaration-review/${intDeclarationID}`,
+      strPath: `/payroll/it-declaration-review/${strDeclarationRecordUUID}`,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: "PAYROLL_IT_DECLARATION_VIEW",
     });
     return objResult.Data;
   },
 
-  async startReview(intDeclarationID: number) {
+  async startReview(strDeclarationRecordUUID: string) {
     return requestApi({
-      strPath: `/payroll/it-declaration-review/${intDeclarationID}/start-review`,
+      strPath: `/payroll/it-declaration-review/${strDeclarationRecordUUID}/start-review`,
       strMethod: ApiRequestMethod.Post,
       strMenuAction: "PAYROLL_IT_DECLARATION_REVIEW",
     });
   },
 
-  async reviewItem(intDeclarationID: number, intItemID: number, strAction: "approve" | "reject" | "partial-approve" | "proof-pending", objPayload?: unknown) {
+  async reviewItem(strDeclarationRecordUUID: string, intItemID: number, strAction: "approve" | "reject" | "partial-approve" | "proof-pending", objPayload?: unknown) {
     return requestApi({
-      strPath: `/payroll/it-declaration-review/${intDeclarationID}/items/${intItemID}/${strAction}`,
+      strPath: `/payroll/it-declaration-review/${strDeclarationRecordUUID}/items/${intItemID}/${strAction}`,
       strMethod: ApiRequestMethod.Post,
       objBody: objPayload,
       strMenuAction: strAction === "reject" ? "PAYROLL_IT_DECLARATION_REJECT" : "PAYROLL_IT_DECLARATION_APPROVE",
     });
   },
 
-  async reviewProof(intDeclarationID: number, intItemID: number, strAction: "verify" | "reject", objPayload?: unknown) {
+  async reviewProof(strDeclarationRecordUUID: string, intItemID: number, strAction: "verify" | "reject", objPayload?: unknown) {
     return requestApi({
-      strPath: `/payroll/it-declaration-review/${intDeclarationID}/items/${intItemID}/proof/${strAction}`,
+      strPath: `/payroll/it-declaration-review/${strDeclarationRecordUUID}/items/${intItemID}/proof/${strAction}`,
       strMethod: ApiRequestMethod.Post,
       objBody: objPayload,
       strMenuAction: "PAYROLL_IT_DECLARATION_PROOF_VERIFY",
     });
   },
 
-  async reviewHeader(intDeclarationID: number, strAction: "approve" | "reject", objPayload?: unknown) {
+  async reviewHeader(strDeclarationRecordUUID: string, strAction: "approve" | "reject", objPayload?: unknown) {
     return requestApi({
-      strPath: `/payroll/it-declaration-review/${intDeclarationID}/${strAction}`,
+      strPath: `/payroll/it-declaration-review/${strDeclarationRecordUUID}/${strAction}`,
       strMethod: ApiRequestMethod.Post,
       objBody: objPayload,
       strMenuAction: strAction === "approve" ? "PAYROLL_IT_DECLARATION_APPROVE" : "PAYROLL_IT_DECLARATION_REJECT",
     });
   },
 
-  async release(intDeclarationID: number, objPayload: { strRemarks: string }) {
+  async release(strDeclarationRecordUUID: string, objPayload: { strRemarks: string }) {
     return requestApi({
-      strPath: `/payroll/it-declaration-review/${intDeclarationID}/release`,
+      strPath: `/payroll/it-declaration-review/${strDeclarationRecordUUID}/release`,
       strMethod: ApiRequestMethod.Post,
       objBody: objPayload,
       strMenuAction: "PAYROLL_IT_DECLARATION_RELEASE",
     });
   },
 
-  async lock(intDeclarationID: number, objPayload?: { strRemarks?: string }) {
+  async lock(strDeclarationRecordUUID: string, objPayload?: { strRemarks?: string }) {
     return requestApi({
-      strPath: `/payroll/it-declaration-review/${intDeclarationID}/lock`,
+      strPath: `/payroll/it-declaration-review/${strDeclarationRecordUUID}/lock`,
       strMethod: ApiRequestMethod.Post,
       objBody: objPayload,
       strMenuAction: "PAYROLL_IT_DECLARATION_LOCK",
     });
   },
 
-  async getAudit(intDeclarationID: number): Promise<HrItDeclarationAuditRecord[]> {
+  async getAudit(strDeclarationRecordUUID: string): Promise<HrItDeclarationAuditRecord[]> {
     const objResult = await requestApi<HrItDeclarationAuditRecord[]>({
-      strPath: `/payroll/it-declaration-review/${intDeclarationID}/audit`,
+      strPath: `/payroll/it-declaration-review/${strDeclarationRecordUUID}/audit`,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: "PAYROLL_IT_DECLARATION_AUDIT_VIEW",
     });
     return objResult.Data ?? [];
   },
 
-  async previewProof(intDeclarationID: number, intItemID: number): Promise<ItDeclarationProofPreviewDto> {
+  async previewProof(strDeclarationRecordUUID: string, intItemID: number): Promise<ItDeclarationProofPreviewDto> {
     const objResult = await requestApi<ItDeclarationProofPreviewDto>({
-      strPath: `/payroll/it-declaration-review/${intDeclarationID}/items/${intItemID}/proof`,
+      strPath: `/payroll/it-declaration-review/${strDeclarationRecordUUID}/items/${intItemID}/proof`,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: "PAYROLL_IT_DECLARATION_VIEW",
     });
     return objResult.Data;
   },
 
-  async previewProofByID(intDeclarationID: number, intProofID: number): Promise<ItDeclarationProofPreviewDto> {
+  async previewProofByID(strDeclarationRecordUUID: string, intProofID: number): Promise<ItDeclarationProofPreviewDto> {
     const objResult = await requestApi<ItDeclarationProofPreviewDto>({
-      strPath: `/payroll/it-declaration-review/${intDeclarationID}/proof/${intProofID}`,
+      strPath: `/payroll/it-declaration-review/${strDeclarationRecordUUID}/proof/${intProofID}`,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: "PAYROLL_IT_DECLARATION_VIEW",
     });

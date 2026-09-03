@@ -97,19 +97,19 @@ export const form16Service = {
   },
 
   async getSummary(
-    intForm16ID: number
-  ): Promise<{ intEmployeeID: number; intForm16ID: number }> {
-    const objResult = await requestApi<{ intEmployeeID: number; intForm16ID: number }>({
-      strPath: `/form16/${intForm16ID}/summary`,
+    strForm16ID: string
+  ): Promise<{ intEmployeeID: number; strForm16ID: string }> {
+    const objResult = await requestApi<{ intEmployeeID: number; strForm16ID: string }>({
+      strPath: `/form16/${strForm16ID}/summary`,
       strMethod: "GET",
       strMenuAction: "FORM16_VIEW",
     });
     return objResult.Data;
   },
 
-  async getDownloadHtml(intForm16ID: number): Promise<string> {
+  async getDownloadHtml(strForm16ID: string): Promise<string> {
     const objResponse = await axiosInstance.get(
-      `${ApiRoutePrefix.ApiV1}/form16/${intForm16ID}/download`,
+      `${ApiRoutePrefix.ApiV1}/form16/${strForm16ID}/download`,
       {
         csrfMenuAction: "FORM16_EXPORT",
         responseType: "text",

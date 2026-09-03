@@ -119,14 +119,14 @@ export default function ITDeclarationReviewListPage() {
   }
   const lstTableRows = useMemo(
     () => lstRows.map((objRow) => ({
-      id: objRow.intDeclarationID,
+      id: objRow.strRecordUUID,
       action: (
         <Button
           size="small"
           disabled={!blnCanView}
-          onClick={() => objRouter.push(`/payroll/it-declaration-review/${objRow.intDeclarationID}`)}
+          onClick={() => objRouter.push(`/payroll/it-declaration-review/${objRow.strRecordUUID}`)}
           controlId="it-declaration.review-list.row.view.button"
-          data-row-key={objRow.intDeclarationID}
+          data-row-key={objRow.strRecordUUID}
         >
           {t("IT_DECLARATION_REVIEW_VIEW", "View")}
         </Button>

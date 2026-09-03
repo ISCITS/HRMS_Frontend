@@ -8,5 +8,5 @@ type EssPayslipDocumentRouteProps = {
 
 export default async function EssPayslipDocumentRoute({ params }: EssPayslipDocumentRouteProps) {
   const { intPayslipID } = await params;
-  return <PayslipDocumentPage intPayslipID={Number(intPayslipID)} strBackRoute="/ess/my-payslips" />;
+  return <PayslipDocumentPage strPayslipID={intPayslipID} strBackRoute="/ess/my-payslips" />;
 }

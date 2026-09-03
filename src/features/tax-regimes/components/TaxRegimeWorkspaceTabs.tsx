@@ -14,17 +14,18 @@ import { useTaxRegimeLabels } from "@/features/tax-regimes/hooks/useTaxRegimeLab
 
 type TaxRegimeWorkspaceTabsProps = {
   strMode: "add" | "edit" | "view";
-  intTaxRegimeID?: number;
+  /** record_uuid from the URL; the internal id is never routed on. */
+  strTaxRegimeID?: string;
 };
 
-export default function TaxRegimeWorkspaceTabs({ strMode, intTaxRegimeID }: TaxRegimeWorkspaceTabsProps) {
+export default function TaxRegimeWorkspaceTabs({ strMode, strTaxRegimeID }: TaxRegimeWorkspaceTabsProps) {
   const objRouter = useRouter();
   const { t } = useTaxRegimeLabels();
   const objSearchParams = useSearchParams();
   const strTabParam = objSearchParams.get("tab");
 
   const [intActiveTab, setIntActiveTab] = useState(() => {
-    if (!intTaxRegimeID) {
+    if (!strTaxRegimeID) {
       return 0;
     }
     if (strTabParam === "slabs") return 1;
@@ -49,7 +50,7 @@ export default function TaxRegimeWorkspaceTabs({ strMode, intTaxRegimeID }: TaxR
         <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" sx={{ pr: 1.5 }}>
           <Tabs value={intActiveTab} onChange={(_, intNextTab) => handleTabChange(intNextTab)} sx={{ minHeight: 44, px: 1 }}>
             <Tab label={strRegimeTabLabel} />
-            <Tab label={t("manage_slabs", "Manage Slabs")} disabled={!intTaxRegimeID} />
+            <Tab label={t("manage_slabs", "Manage Slabs")} disabled={!strTaxRegimeID} />
           </Tabs>
           <Stack direction="row" spacing={1} alignItems="center" sx={{ py: 1 }}>
             <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/tax-regimes")}>
@@ -66,10 +67,10 @@ export default function TaxRegimeWorkspaceTabs({ strMode, intTaxRegimeID }: TaxR
 
       <Box sx={{ flex: "1 1 auto", minHeight: 0 }}>
         {intActiveTab === 0 ? (
-          <TaxRegimeEditorPage strMode={strMode} intTaxRegimeID={intTaxRegimeID} blnEmbedded onSaveBridgeChange={setObjSaveBridge} />
+          <TaxRegimeEditorPage strMode={strMode} strTaxRegimeID={strTaxRegimeID} blnEmbedded onSaveBridgeChange={setObjSaveBridge} />
         ) : null}
-        {intActiveTab === 1 && intTaxRegimeID ? (
-          <TaxSlabMaintenancePage intTaxRegimeID={intTaxRegimeID} blnEmbedded onSaveBridgeChange={setObjSaveBridge} />
+        {intActiveTab === 1 && strTaxRegimeID ? (
+          <TaxSlabMaintenancePage strTaxRegimeID={strTaxRegimeID} blnEmbedded onSaveBridgeChange={setObjSaveBridge} />
         ) : null}
       </Box>
     </Box>

@@ -123,7 +123,7 @@ export default function Form16ListPage({ blnAdminMode = false }: Form16ListPageP
 
   async function handleView(objRow: Form16ListRecord) {
     const strRoute = blnAdminMode ? "/reports/form16/document" : "/ess/my-form16/document";
-    objRouter.push(`${strRoute}/${objRow.intForm16ID}`);
+    objRouter.push(`${strRoute}/${objRow.strRecordUUID}`);
   }
 
   async function handleDownload(objRow: Form16ListRecord, blnPrint: boolean) {
@@ -131,7 +131,7 @@ export default function Form16ListPage({ blnAdminMode = false }: Form16ListPageP
     setStrDownloadingKey(strKey);
     setStrActionError("");
     try {
-      const strHtml = await form16Service.getDownloadHtml(objRow.intForm16ID);
+      const strHtml = await form16Service.getDownloadHtml(objRow.strRecordUUID);
       if (blnPrint) {
         printForm16Html(strHtml);
       } else {

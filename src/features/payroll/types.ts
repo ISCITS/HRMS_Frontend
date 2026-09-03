@@ -137,6 +137,8 @@ export type PayrollProcessSummary = {
 
 export type PayrollRunRecord = {
   intID: number;
+  /** Public identifier the UI routes on; the internal id stays out of the address bar. */
+  strRecordUUID: string;
   intPayrollCycleID: number;
   strPayrollScheduleName: string | null;
   strPayrollGroupName: string | null;
@@ -282,6 +284,8 @@ export type FNFSettlementLineRecord = {
 
 export type FNFSettlementRecord = {
   intID: number;
+  /** Public identifier used in URLs and API paths; the internal id stays server-side. */
+  strRecordUUID: string;
   intEmployeeID: number;
   strEmployeeCode?: string | null;
   strDepartmentName?: string | null;
@@ -439,6 +443,8 @@ export type LoanAdvanceLedgerRecord = {
 
 export type LoanAdvanceRecord = {
   intID: number;
+  /** Public identifier used in URLs and API paths; the internal id stays server-side. */
+  strRecordUUID: string;
   intEmployeeID: number;
   strLoanAdvanceNumber?: string | null;
   strRequestType: LoanAdvanceRequestType;
@@ -551,6 +557,8 @@ export type EmployeePayrollInputLineRecord = {
 
 export type EmployeePayrollInputRecord = {
   intID: number;
+  /** Public identifier used in URLs and API paths; the internal id stays server-side. */
+  strRecordUUID: string;
   intPayrollRunID: number;
   strRunCode: string;
   strRunName: string;
@@ -798,7 +806,11 @@ export type WageRulePreviewRecord = {
 
 export type PayrollResultRecord = {
   intID: number;
+  /** Public identifier used in URLs and API paths; the internal id stays server-side. */
+  strRecordUUID: string;
   intPayrollRunID: number;
+  /** The run's public identifier, so run-scoped calls from result screens need no internal id. */
+  strPayrollRunRecordUUID: string | null;
   intEmployeePayrollInputID: number | null;
   strRunCode: string;
   strRunName: string;
@@ -873,6 +885,8 @@ export type PayrollResultRecord = {
   decLwpDays?: number | null;
   decLopDays: number | null;
   intPayslipID: number | null;
+  /** Public identifier the payslip-document URL routes on; null when no payslip exists yet. */
+  strPayslipRecordUUID?: string | null;
   strPayslipNumber: string | null;
   strPayslipStatus: string | null;
   blnPayslipGenerated: boolean;
@@ -1057,6 +1071,8 @@ export type PayslipLineRecord = {
 
 export type PayslipPreviewRecord = {
   intPayslipID: number | null;
+  /** Public identifier the payslip-document URL routes on; null when no payslip exists yet. */
+  strPayslipRecordUUID?: string | null;
   strPayslipNumber: string | null;
   strPayslipStatus: string;
   blnGenerated: boolean;
@@ -1165,6 +1181,8 @@ export type PayslipPreviewRecord = {
 
 export type PayslipRunListRecord = {
   intPayslipID: number | null;
+  /** Public identifier the payslip-document URL routes on; null when no payslip exists yet. */
+  strPayslipRecordUUID?: string | null;
   intPayrollRunID: number;
   intEmployeeID: number;
   strPayslipNumber: string | null;
@@ -1185,6 +1203,8 @@ export type PayslipGenerateAllSummary = {
   intGeneratedCount: number;
   lstPayslips: {
     intPayslipID: number | null;
+  /** Public identifier the payslip-document URL routes on; null when no payslip exists yet. */
+  strPayslipRecordUUID?: string | null;
     strPayslipNumber: string | null;
     strEmployeeCode: string | null;
     strEmployeeName: string | null;
@@ -1194,6 +1214,8 @@ export type PayslipGenerateAllSummary = {
 
 export type Form16ListRecord = {
   intForm16ID: number;
+  /** Public identifier the Form 16 document URL routes on. */
+  strRecordUUID: string;
   strForm16Number: string;
   strFinancialYearCode: string;
   strGenerationStatus: string;

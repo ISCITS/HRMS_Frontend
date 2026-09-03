@@ -304,13 +304,13 @@ export default function SalaryComponentListPage() {
     });
   }
 
-  function deleteSalaryComponent(intSalaryComponentID: number) {
+  function deleteSalaryComponent(strRecordUUID: string) {
     openConfirmDialog({
       strTitle: t("confirm_delete_title", "Delete Salary Component"),
       strMessage: t("confirm_delete_message", "Are you sure you want to delete this salary component record?"),
       strConfirmLabel: t("delete_button", "Delete"),
       fnOnConfirm: async () => {
-        await salaryComponentService.deleteSalaryComponent(intSalaryComponentID);
+        await salaryComponentService.deleteSalaryComponent(strRecordUUID);
         await loadComponents();
         showToast(t("delete_success", "Salary component deleted successfully."));
       }
@@ -331,9 +331,9 @@ export default function SalaryComponentListPage() {
               blnCanView={blnCanView}
               blnCanEdit={blnCanEdit}
               blnCanDelete={blnCanDelete}
-              onView={() => objRouter.push(`/salary-components/view/${dicRow.intID}?backRoute=${encodeURIComponent(strCurrentListRoute)}`)}
-              onEdit={() => objRouter.push(`/salary-components/edit/${dicRow.intID}?backRoute=${encodeURIComponent(strCurrentListRoute)}`)}
-              onDelete={() => deleteSalaryComponent(dicRow.intID)}
+              onView={() => objRouter.push(`/salary-components/view/${dicRow.strRecordUUID}?backRoute=${encodeURIComponent(strCurrentListRoute)}`)}
+              onEdit={() => objRouter.push(`/salary-components/edit/${dicRow.strRecordUUID}?backRoute=${encodeURIComponent(strCurrentListRoute)}`)}
+              onDelete={() => deleteSalaryComponent(dicRow.strRecordUUID)}
             />
           ),
           strComponentName: dicRow.strComponentName,

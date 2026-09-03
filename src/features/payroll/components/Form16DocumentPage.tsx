@@ -15,11 +15,12 @@ import { form16Service } from "@/features/payroll/services/form16Service";
 import { buildForm16FileName, downloadForm16Html, printForm16Html } from "@/features/payroll/utils/form16Document";
 
 type Form16DocumentPageProps = {
-  intForm16ID: number;
+  /** record_uuid from the URL; the internal id is never routed on. */
+  strForm16ID: string;
   strBackRoute?: string;
 };
 
-export default function Form16DocumentPage({ intForm16ID, strBackRoute }: Form16DocumentPageProps) {
+export default function Form16DocumentPage({ strForm16ID, strBackRoute }: Form16DocumentPageProps) {
   const objRouter = useRouter();
   const { t } = useModuleLabels("form16");
   const [strHtml, setStrHtml] = useState("");
@@ -33,7 +34,7 @@ export default function Form16DocumentPage({ intForm16ID, strBackRoute }: Form16
       setBlnLoading(true);
       setStrError("");
       try {
-        const strDocumentHtml = await form16Service.getDownloadHtml(intForm16ID);
+        const strDocumentHtml = await form16Service.getDownloadHtml(strForm16ID);
         if (!blnCancelled) {
           setStrHtml(strDocumentHtml);
         }
@@ -55,7 +56,7 @@ export default function Form16DocumentPage({ intForm16ID, strBackRoute }: Form16
     return () => {
       blnCancelled = true;
     };
-  }, [intForm16ID, t]);
+  }, [strForm16ID, t]);
 
   if (blnLoading) {
     return <BlockingLoader blnOpen strLabel={t("loading_form16", "Loading Form 16...")} />;
@@ -83,7 +84,7 @@ export default function Form16DocumentPage({ intForm16ID, strBackRoute }: Form16
             <Button
               className={styles.primaryButton}
               startIcon={<DownloadRoundedIcon />}
-              onClick={() => downloadForm16Html(strHtml, buildForm16FileName("form16", intForm16ID))}
+              onClick={() => downloadForm16Html(strHtml, buildForm16FileName("form16", strForm16ID))}
             >
               {t("download_button", "Download")}
             </Button>

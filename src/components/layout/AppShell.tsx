@@ -993,8 +993,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
     objSearchParams.get("source") === "employee-reimbursement";
   const strLowerPathname = strPathname?.toLowerCase() || "";
   const blnEmployeeSalaryEditorRoute = /^\/employee-salary\/\d+(?:\/revise)?$/.test(strLowerPathname);
-  const blnSalaryComponentEditorRoute = /^\/salary-components\/(?:add|(?:edit|view)\/\d+)$/.test(strLowerPathname);
-  const blnSalaryStructureEditorRoute = /^\/salary-structures\/(?:add|edit\/\d+)$/.test(strLowerPathname);
+  // The id segment is a record_uuid now, not a number; a legacy numeric URL still matches.
+  const blnSalaryComponentEditorRoute = /^\/salary-components\/(?:add|(?:edit|view)\/[\w-]+)$/.test(strLowerPathname);
+  // The id segment is a record_uuid now, not a number; a legacy numeric URL still matches.
+  const blnSalaryStructureEditorRoute = /^\/salary-structures\/(?:add|edit\/[\w-]+)$/.test(strLowerPathname);
   // The Leave Type / Leave Plan editors carry their own title in the Back/Save toolbar, like the
   // salary editors.
   const blnLeaveTypeEditorRoute = /^\/leave\/leave-types\/(?:new|\d+)$/.test(strLowerPathname);

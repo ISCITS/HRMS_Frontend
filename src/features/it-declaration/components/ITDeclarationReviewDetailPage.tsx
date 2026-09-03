@@ -18,7 +18,7 @@ import {
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { masterApiService, type EssDeclarationCategoryApiRecord } from "@/services/master/MasterApiService";
 
-type Props = { intDeclarationID: number };
+type Props = { strDeclarationRecordUUID: string };
 type ConfirmAction = "approve_all" | "reject" | "release" | "lock" | null;
 type DeclarationSectionGroup = {
   strSection: string;
@@ -192,7 +192,7 @@ function DeclarationDetailPanel({ strTitle, objDetails }: { strTitle: string; ob
   );
 }
 
-export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Props) {
+export default function ITDeclarationReviewDetailPage({ strDeclarationRecordUUID }: Props) {
   const objRouter = useRouter();
   const { blnLoading: blnRightsLoading, canDoAny, objRights } = useModuleActionAccess([
     "it_declaration_review",
@@ -259,7 +259,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
     setStrError("");
     try {
       const [objFetched, lstRules] = await Promise.all([
-        hrItDeclarationReviewService.getDetail(intDeclarationID),
+        hrItDeclarationReviewService.getDetail(strDeclarationRecordUUID),
         loadCategoryRules(),
       ]);
       setObjDetail(objFetched);
@@ -305,7 +305,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
   useEffect(() => {
     if (blnRightsLoading) return;
     void loadData();
-  }, [blnRightsLoading, intDeclarationID]);
+  }, [blnRightsLoading, strDeclarationRecordUUID]);
 
   async function handleItemAction(intItemID: number, strAction: "approve" | "reject", objPayload?: { strRemarks?: string; decApprovedAmount?: number }) {
     if (!intItemID) return;
@@ -319,7 +319,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
     }
     if (blnSubmittedPendingReview || blnDraftPendingReview) {
       try {
-        await hrItDeclarationReviewService.startReview(intDeclarationID);
+        await hrItDeclarationReviewService.startReview(strDeclarationRecordUUID);
         await loadData();
       } catch (objError) {
         setStrError(objError instanceof Error ? objError.message : "Unable to start review.");
@@ -331,7 +331,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
       return;
     }
     try {
-      await hrItDeclarationReviewService.reviewItem(intDeclarationID, intItemID, strAction, objPayload);
+      await hrItDeclarationReviewService.reviewItem(strDeclarationRecordUUID, intItemID, strAction, objPayload);
       setStrToast("Action completed successfully.");
       await loadData();
     } catch (objError) {
@@ -342,7 +342,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
   async function previewProof(intProofID: number) {
     if (!objDetail) return;
     try {
-      const objPreview = await hrItDeclarationReviewService.previewProofByID(objDetail.intDeclarationID, intProofID);
+      const objPreview = await hrItDeclarationReviewService.previewProofByID(strDeclarationRecordUUID, intProofID);
       const strUrl = base64ToObjectUrl(objPreview.strBase64Content, objPreview.strMimeType);
       window.open(strUrl, "_blank", "noopener,noreferrer");
       window.setTimeout(() => URL.revokeObjectURL(strUrl), 60_000);
@@ -354,7 +354,7 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
   async function downloadProof(intProofID: number) {
     if (!objDetail) return;
     try {
-      const objPreview = await hrItDeclarationReviewService.previewProofByID(objDetail.intDeclarationID, intProofID);
+      const objPreview = await hrItDeclarationReviewService.previewProofByID(strDeclarationRecordUUID, intProofID);
       const strUrl = base64ToObjectUrl(objPreview.strBase64Content, objPreview.strMimeType);
       const objAnchor = document.createElement("a");
       objAnchor.href = strUrl;
@@ -376,12 +376,12 @@ export default function ITDeclarationReviewDetailPage({ intDeclarationID }: Prop
     }
     try {
       if (["approve_all", "reject"].includes(strConfirm) && ["draft", "submitted"].includes(strDeclarationStatus)) {
-        await hrItDeclarationReviewService.startReview(objDetail.intDeclarationID);
+        await hrItDeclarationReviewService.startReview(strDeclarationRecordUUID);
       }
-      if (strConfirm === "approve_all") await hrItDeclarationReviewService.reviewHeader(objDetail.intDeclarationID, "approve");
-      if (strConfirm === "reject") await hrItDeclarationReviewService.reviewHeader(objDetail.intDeclarationID, "reject", { strRemarks: strReason.trim() });
-      if (strConfirm === "release") await hrItDeclarationReviewService.release(objDetail.intDeclarationID, { strRemarks: strReason.trim() });
-      if (strConfirm === "lock") await hrItDeclarationReviewService.lock(objDetail.intDeclarationID, { strRemarks: strReason.trim() || undefined });
+      if (strConfirm === "approve_all") await hrItDeclarationReviewService.reviewHeader(strDeclarationRecordUUID, "approve");
+      if (strConfirm === "reject") await hrItDeclarationReviewService.reviewHeader(strDeclarationRecordUUID, "reject", { strRemarks: strReason.trim() });
+      if (strConfirm === "release") await hrItDeclarationReviewService.release(strDeclarationRecordUUID, { strRemarks: strReason.trim() });
+      if (strConfirm === "lock") await hrItDeclarationReviewService.lock(strDeclarationRecordUUID, { strRemarks: strReason.trim() || undefined });
       setStrConfirm(null);
       setStrReason("");
       setStrDialogError("");

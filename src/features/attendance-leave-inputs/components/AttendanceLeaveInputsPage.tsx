@@ -68,10 +68,9 @@ export default function AttendanceLeaveInputsPage() {
   const { t } = useModuleLabels("attendance-leave-inputs");
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstAttendanceLeaveInputModuleCodes);
   const [lstRuns, setLstRuns] = useState<PayrollRunListRecord[]>([]);
-  const [intSelectedRunID, setIntSelectedRunID] = useState<number | "">(() => {
-    const strRunID = objSearchParams.get("runId");
-    return strRunID ? Number(strRunID) : "";
-  });
+  // runId in the query string is the run's record_uuid, not its internal id. A legacy numeric link
+  // still resolves (see fnFindRun), so old bookmarks keep working.
+  const [strSelectedRunKey, setStrSelectedRunKey] = useState<string>(() => objSearchParams.get("runId") ?? "");
   const [objRun, setObjRun] = useState<PayrollRunDetailRecord | null>(null);
   const [lstRows, setLstRows] = useState<AttendanceLeaveInputRow[]>([]);
   const [objSummary, setObjSummary] = useState<AttendanceLeaveInputsSummary | null>(null);
@@ -84,6 +83,16 @@ export default function AttendanceLeaveInputsPage() {
   const [strSuccess, setStrSuccess] = useState("");
   const [blnReopenDialogOpen, setBlnReopenDialogOpen] = useState(false);
   const [strReopenReason, setStrReopenReason] = useState("");
+
+  // The picker's runs are the source of truth for the mapping; matching intID as well keeps a
+  // pre-migration /payroll/attendance-leave-inputs?runId=36 link working.
+  const objSelectedRun = useMemo(
+    () => lstRuns.find((dicRun) => dicRun.strRecordUUID === strSelectedRunKey || String(dicRun.intID) === strSelectedRunKey) ?? null,
+    [lstRuns, strSelectedRunKey],
+  );
+  // The payroll services address a run by its record_uuid, and so does this page's URL, so the
+  // resolved run's public identifier is what everything downstream uses.
+  const strSelectedRunUUID = objSelectedRun?.strRecordUUID ?? "";
 
   const blnCanView = canViewAny();
   const blnCanManage = canDoAny("manage") || canDoAny("edit");
@@ -101,7 +110,7 @@ export default function AttendanceLeaveInputsPage() {
       .finally(() => setBlnLoadingRuns(false));
   }, [blnRightsLoading, blnCanView]);
 
-  async function loadDetail(intRunID: number) {
+  async function loadDetail(strRunID: string) {
     setBlnLoadingDetail(true);
     setStrError("");
     try {
@@ -110,7 +119,7 @@ export default function AttendanceLeaveInputsPage() {
         lstRows: lstNewRows,
         objSummary: dicSummary,
         objIntegrationStatus: dicIntegrationStatus,
-      } = await loadAttendanceLeaveInputsForRun(intRunID);
+      } = await loadAttendanceLeaveInputsForRun(strRunID);
       setObjRun(dicRun);
       setLstRows(lstNewRows);
       setObjSummary(dicSummary);
@@ -123,25 +132,24 @@ export default function AttendanceLeaveInputsPage() {
   }
 
   useEffect(() => {
-    if (!intSelectedRunID) {
+    if (!strSelectedRunUUID) {
       setObjRun(null);
       setLstRows([]);
       setObjSummary(null);
       setObjIntegrationStatus(null);
       return;
     }
-    loadDetail(intSelectedRunID).catch(() => undefined);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [intSelectedRunID]);
+    loadDetail(strSelectedRunUUID).catch(() => undefined);
+  }, [strSelectedRunUUID]);
 
-  function selectRun(intRunID: number | "") {
-    setIntSelectedRunID(intRunID);
-    const strTarget = intRunID ? `/payroll/attendance-leave-inputs?runId=${intRunID}` : "/payroll/attendance-leave-inputs";
+  function selectRun(strRunKey: string) {
+    setStrSelectedRunKey(strRunKey);
+    const strTarget = strRunKey ? `/payroll/attendance-leave-inputs?runId=${strRunKey}` : "/payroll/attendance-leave-inputs";
     objRouter.replace(strTarget);
   }
 
   async function importOrRefresh() {
-    if (!intSelectedRunID || !blnCanManage) {
+    if (!strSelectedRunUUID || !blnCanManage) {
       return;
     }
     setBlnActionLoading(true);
@@ -149,8 +157,8 @@ export default function AttendanceLeaveInputsPage() {
     setStrError("");
     setStrSuccess("");
     try {
-      const dicImportResult = await attendanceLeaveInputsService.importOrRefresh(intSelectedRunID);
-      await loadDetail(intSelectedRunID);
+      const dicImportResult = await attendanceLeaveInputsService.importOrRefresh(strSelectedRunUUID);
+      await loadDetail(strSelectedRunUUID);
       if (dicImportResult.intTotalEmployees === 0) {
         setStrError(
           t(
@@ -179,7 +187,7 @@ export default function AttendanceLeaveInputsPage() {
   }
 
   async function finalizeInputs() {
-    if (!intSelectedRunID || !blnCanManage) {
+    if (!strSelectedRunUUID || !blnCanManage) {
       return;
     }
     setBlnActionLoading(true);
@@ -187,8 +195,8 @@ export default function AttendanceLeaveInputsPage() {
     setStrError("");
     setStrSuccess("");
     try {
-      await attendanceLeaveInputsService.finalize(intSelectedRunID);
-      await loadDetail(intSelectedRunID);
+      await attendanceLeaveInputsService.finalize(strSelectedRunUUID);
+      await loadDetail(strSelectedRunUUID);
       setStrSuccess(t("finalize_success", "Attendance & leave inputs finalized successfully."));
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to finalize attendance & leave inputs.");
@@ -208,7 +216,7 @@ export default function AttendanceLeaveInputsPage() {
 
   async function reopenAndRefresh() {
     const strReason = strReopenReason.trim();
-    if (!intSelectedRunID || !blnCanOverride || !strReason) {
+    if (!strSelectedRunUUID || !blnCanOverride || !strReason) {
       return;
     }
     setBlnReopenDialogOpen(false);
@@ -217,8 +225,8 @@ export default function AttendanceLeaveInputsPage() {
     setStrError("");
     setStrSuccess("");
     try {
-      const dicImportResult = await attendanceLeaveInputsService.reopenAndRefresh(intSelectedRunID, strReason);
-      await loadDetail(intSelectedRunID);
+      const dicImportResult = await attendanceLeaveInputsService.reopenAndRefresh(strSelectedRunUUID, strReason);
+      await loadDetail(strSelectedRunUUID);
       if (dicImportResult.intTotalEmployees === 0) {
         setStrError(
           t(
@@ -266,7 +274,7 @@ export default function AttendanceLeaveInputsPage() {
           <Button
             size="small"
             startIcon={<VisibilityRoundedIcon sx={{ fontSize: 16 }} />}
-            onClick={() => objRouter.push(`/payroll/inputs/${dicRow.intInputID}/edit`)}
+            onClick={() => objRouter.push(`/payroll/inputs/${dicRow.strInputRecordUUID}/edit`)}
             controlId="attendance-leave-inputs.list.row.view.button"
             data-row-key={dicRow.intInputID}
           >
@@ -335,21 +343,21 @@ export default function AttendanceLeaveInputsPage() {
           <TextField
             select
             label={t("payroll_run", "Payroll Run")}
-            value={intSelectedRunID}
-            onChange={(objEvent) => selectRun(objEvent.target.value ? Number(objEvent.target.value) : "")}
+            value={objSelectedRun?.strRecordUUID ?? ""}
+            onChange={(objEvent) => selectRun(objEvent.target.value)}
             controlId="attendance-leave-inputs.run-select.select"
             fullWidth
           >
             <MenuItem value="">{t("select_run", "Select a payroll run")}</MenuItem>
             {lstRuns.map((dicRunOption) => (
-              <MenuItem key={dicRunOption.intID} value={dicRunOption.intID}>
+              <MenuItem key={dicRunOption.intID} value={dicRunOption.strRecordUUID}>
                 {dicRunOption.strRunName}
               </MenuItem>
             ))}
           </TextField>
           <TextField label={t("payroll_period", "Payroll Period")} value={objRun ? formatMonth(objRun.dtPayrollMonth) : "-"} disabled fullWidth />
           <TextField label={t("payroll_group", "Payroll Group")} value={objRun?.strPayrollGroupName ?? "-"} disabled fullWidth />
-          <TextField label={t("integration_status", "Integration Status")} value={intSelectedRunID ? `${strIntegrationStatus}${strIntegrationVersionSuffix}` : "-"} disabled fullWidth />
+          <TextField label={t("integration_status", "Integration Status")} value={strSelectedRunUUID ? `${strIntegrationStatus}${strIntegrationVersionSuffix}` : "-"} disabled fullWidth />
         </Box>
       </Box>
 
@@ -357,7 +365,9 @@ export default function AttendanceLeaveInputsPage() {
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
 
-      {!intSelectedRunID ? (
+      {/* A deep link names the run by uuid, which cannot be resolved until the run list arrives —
+          so the "pick a run" prompt waits rather than flashing over a run that is about to load. */}
+      {!strSelectedRunUUID && !(blnLoadingRuns && strSelectedRunKey) ? (
         <Alert severity="info">{t("select_run_prompt", "Select a payroll run to view or import its attendance & leave inputs.")}</Alert>
       ) : blnLoadingDetail ? (
         <BlockingLoader blnOpen strLabel={t("loading_run", "Loading run details...")} />
@@ -370,7 +380,7 @@ export default function AttendanceLeaveInputsPage() {
         </Alert>
       ) : null}
 
-      {intSelectedRunID && !blnLoadingDetail ? (
+      {strSelectedRunUUID && !blnLoadingDetail ? (
         <>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
             {blnCanManage ? (

@@ -173,7 +173,7 @@ export default function FNFSettlementCreatePage() {
         `Leave Encashment Total: ${decLeaveTotal}`,
       ].filter(Boolean).join("\n");
       const objCreated = await fnfSettlementService.createSettlement({ ...dicForm, strRemarks: strWizardSummary });
-      objRouter.push(`/payroll/fnf-settlements/${objCreated.intID}`);
+      objRouter.push(`/payroll/fnf-settlements/${objCreated.strRecordUUID}`);
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to create FNF settlement.");
     } finally {

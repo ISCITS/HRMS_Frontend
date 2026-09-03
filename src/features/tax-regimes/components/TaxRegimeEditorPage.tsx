@@ -32,7 +32,8 @@ import { TaxRegimeActionGroup, TaxRegimeWorkspaceHeader, type TaxRegimeSaveBridg
 
 type TaxRegimeEditorPageProps = {
   strMode: "add" | "edit" | "view";
-  intTaxRegimeID?: number;
+  /** record_uuid from the URL; the internal id is never routed on. */
+  strTaxRegimeID?: string;
   blnEmbedded?: boolean;
   onSaveBridgeChange?: (objBridge: TaxRegimeSaveBridge) => void;
 };
@@ -53,7 +54,7 @@ function createFallbackTextRow(intLanguageID: number, strLanguageName: string): 
   };
 }
 
-export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID, blnEmbedded, onSaveBridgeChange }: TaxRegimeEditorPageProps) {
+export default function TaxRegimeEditorPage({ strMode, strTaxRegimeID, blnEmbedded, onSaveBridgeChange }: TaxRegimeEditorPageProps) {
   const objRouter = useRouter();
   const { t } = useTaxRegimeLabels();
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstTaxRegimeModuleCodes);
@@ -113,8 +114,8 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID, blnEmbedd
         const lstLanguageRows = lstTenantLanguages.map((dicLanguage) =>
           createFallbackTextRow(dicLanguage.intID, dicLanguage.strLabel),
         );
-        if (strMode !== "add" && intTaxRegimeID) {
-          const dicDetail = await taxRegimeService.getTaxRegimeById(intTaxRegimeID);
+        if (strMode !== "add" && strTaxRegimeID) {
+          const dicDetail = await taxRegimeService.getTaxRegimeById(strTaxRegimeID);
           if (!blnMounted) {
             return;
           }
@@ -149,7 +150,7 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID, blnEmbedd
     return () => {
       blnMounted = false;
     };
-  }, [blnCanLoadWorkspace, blnRightsLoading, intTaxRegimeID, strMode]);
+  }, [blnCanLoadWorkspace, blnRightsLoading, strTaxRegimeID, strMode]);
 
   const lstEffectiveYearOptions = useMemo(() => {
     const lstOptions = [...(objFormOptions?.lstFinancialYears ?? [])];
@@ -200,8 +201,8 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID, blnEmbedd
     setStrError("");
     setStrSuccess("");
     try {
-      const dicSavedRecord = strMode === "edit" && intTaxRegimeID
-        ? await taxRegimeService.updateTaxRegime(intTaxRegimeID, dicForm)
+      const dicSavedRecord = strMode === "edit" && strTaxRegimeID
+        ? await taxRegimeService.updateTaxRegime(strTaxRegimeID, dicForm)
         : await taxRegimeService.createTaxRegime(dicForm);
       setDicForm((dicPrevious) => {
         const dicNextForm = toTaxRegimeFormValues(dicSavedRecord);
@@ -218,7 +219,7 @@ export default function TaxRegimeEditorPage({ strMode, intTaxRegimeID, blnEmbedd
       });
       setStrSuccess(strMode === "edit" ? t("update_success", "Tax regime updated successfully.") : t("create_success", "Tax regime created successfully."));
       if (strMode === "add") {
-        objRouter.push(`/payroll/tax-regimes/edit/${dicSavedRecord.intID}`);
+        objRouter.push(`/payroll/tax-regimes/edit/${dicSavedRecord.strRecordUUID}`);
       }
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : t("save_failed", "Unable to save tax regime."));

@@ -128,24 +128,24 @@ export const fnfSettlementService = {
     });
     return objResult.Data;
   },
-  async getSettlement(intID: number): Promise<FNFSettlementRecord> {
+  async getSettlement(strRecordUUID: string): Promise<FNFSettlementRecord> {
     const objResult = await requestApi<FNFSettlementRecord>({
-      strPath: `/payroll/fnf-settlements/${intID}`,
+      strPath: `/payroll/fnf-settlements/${strRecordUUID}`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_FNF_VIEW",
     });
     return objResult.Data;
   },
-  async updateSettlement(intID: number, dicValues: FNFSettlementFormValues): Promise<FNFSettlementRecord> {
+  async updateSettlement(strRecordUUID: string, dicValues: FNFSettlementFormValues): Promise<FNFSettlementRecord> {
     const objResult = await requestApi<FNFSettlementRecord>({
-      strPath: `/payroll/fnf-settlements/${intID}`,
+      strPath: `/payroll/fnf-settlements/${strRecordUUID}`,
       strMethod: "PUT",
       objBody: toSettlementPayload(dicValues),
       strMenuAction: "PAYROLL_FNF_EDIT",
     });
     return objResult.Data;
   },
-  async action(intID: number, strAction: string, objBody?: unknown): Promise<FNFSettlementRecord> {
+  async action(strRecordUUID: string, strAction: string, objBody?: unknown): Promise<FNFSettlementRecord> {
     const dicActionCodeByAction: Record<string, string> = {
       calculate: "PAYROLL_FNF_CALCULATE",
       "submit-review": "PAYROLL_FNF_EDIT",
@@ -157,50 +157,50 @@ export const fnfSettlementService = {
       cancel: "PAYROLL_FNF_CANCEL",
     };
     const objResult = await requestApi<FNFSettlementRecord>({
-      strPath: `/payroll/fnf-settlements/${intID}/${strAction}`,
+      strPath: `/payroll/fnf-settlements/${strRecordUUID}/${strAction}`,
       strMethod: "POST",
       objBody,
       strMenuAction: dicActionCodeByAction[strAction] || "PAYROLL_FNF_VIEW",
     });
     return objResult.Data;
   },
-  async getAudit(intID: number): Promise<FNFAuditRecord[]> {
+  async getAudit(strRecordUUID: string): Promise<FNFAuditRecord[]> {
     const objResult = await requestApi<FNFAuditRecord[]>({
-      strPath: `/payroll/fnf-settlements/${intID}/audit`,
+      strPath: `/payroll/fnf-settlements/${strRecordUUID}/audit`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_FNF_AUDIT_VIEW",
     });
     return objResult.Data;
   },
-  async getStatement(intID: number): Promise<FNFStatementRecord> {
+  async getStatement(strRecordUUID: string): Promise<FNFStatementRecord> {
     const objResult = await requestApi<FNFStatementRecord>({
-      strPath: `/payroll/fnf-settlements/${intID}/statement`,
+      strPath: `/payroll/fnf-settlements/${strRecordUUID}/statement`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_FNF_VIEW",
     });
     return objResult.Data;
   },
-  async addLine(intID: number, dicValues: FNFLineFormValues): Promise<FNFSettlementLineRecord> {
+  async addLine(strRecordUUID: string, dicValues: FNFLineFormValues): Promise<FNFSettlementLineRecord> {
     const objResult = await requestApi<FNFSettlementLineRecord>({
-      strPath: `/payroll/fnf-settlements/${intID}/lines`,
+      strPath: `/payroll/fnf-settlements/${strRecordUUID}/lines`,
       strMethod: "POST",
       objBody: toLinePayload(dicValues),
       strMenuAction: "PAYROLL_FNF_EDIT",
     });
     return objResult.Data;
   },
-  async updateLine(intID: number, intLineID: number, dicValues: FNFLineFormValues): Promise<FNFSettlementLineRecord> {
+  async updateLine(strRecordUUID: string, intLineID: number, dicValues: FNFLineFormValues): Promise<FNFSettlementLineRecord> {
     const objResult = await requestApi<FNFSettlementLineRecord>({
-      strPath: `/payroll/fnf-settlements/${intID}/lines/${intLineID}`,
+      strPath: `/payroll/fnf-settlements/${strRecordUUID}/lines/${intLineID}`,
       strMethod: "PUT",
       objBody: toLinePayload(dicValues),
       strMenuAction: "PAYROLL_FNF_EDIT",
     });
     return objResult.Data;
   },
-  async deleteLine(intID: number, intLineID: number): Promise<void> {
+  async deleteLine(strRecordUUID: string, intLineID: number): Promise<void> {
     await requestApi({
-      strPath: `/payroll/fnf-settlements/${intID}/lines/${intLineID}`,
+      strPath: `/payroll/fnf-settlements/${strRecordUUID}/lines/${intLineID}`,
       strMethod: "DELETE",
       strMenuAction: "PAYROLL_FNF_EDIT",
     });

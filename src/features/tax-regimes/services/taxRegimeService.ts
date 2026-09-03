@@ -85,6 +85,7 @@ function mapTaxRegimeApiRecord(dicRecord: TaxRegimeApiRecord): TaxRegimeDetailRe
   const strEffectiveFromYear = normalizeFinancialYearCode(dicRecord.strEffectiveFromYear ?? dicRecord.strTaxYearCode ?? "");
   return {
     intID: dicRecord.intID,
+    strRecordUUID: dicRecord.strRecordUUID,
     strRegimeCode: dicRecord.strRegimeCode,
     strRegimeName: dicRecord.strRegimeName,
     strCountryCode: dicRecord.strCountryCode,
@@ -452,8 +453,8 @@ export const taxRegimeService = {
     return objResult.Data.map(mapTaxRegimeApiRecord);
   },
 
-  async getTaxRegimeById(intTaxRegimeID: number): Promise<TaxRegimeDetailRecord> {
-    const objResult = await masterApiService.getTaxRegime(intTaxRegimeID, getCurrentLanguageID());
+  async getTaxRegimeById(strRecordUUID: string): Promise<TaxRegimeDetailRecord> {
+    const objResult = await masterApiService.getTaxRegime(strRecordUUID, getCurrentLanguageID());
     return mapTaxRegimeApiRecord(objResult.Data);
   },
 
@@ -467,33 +468,33 @@ export const taxRegimeService = {
     return mapTaxRegimeApiRecord(objResult.Data);
   },
 
-  async updateTaxRegime(intTaxRegimeID: number, dicValues: TaxRegimeFormValues): Promise<TaxRegimeDetailRecord> {
-    const objResult = await masterApiService.updateTaxRegime(intTaxRegimeID, toTaxRegimePayload(dicValues));
+  async updateTaxRegime(strRecordUUID: string, dicValues: TaxRegimeFormValues): Promise<TaxRegimeDetailRecord> {
+    const objResult = await masterApiService.updateTaxRegime(strRecordUUID, toTaxRegimePayload(dicValues));
     return mapTaxRegimeApiRecord(objResult.Data);
   },
 
-  async setTaxRegimeStatus(intTaxRegimeID: number, blnIsActive: boolean): Promise<TaxRegimeDetailRecord> {
-    const objResult = await masterApiService.setTaxRegimeStatus(intTaxRegimeID, blnIsActive);
+  async setTaxRegimeStatus(strRecordUUID: string, blnIsActive: boolean): Promise<TaxRegimeDetailRecord> {
+    const objResult = await masterApiService.setTaxRegimeStatus(strRecordUUID, blnIsActive);
     return mapTaxRegimeApiRecord(objResult.Data);
   },
 
-  async getTaxSlabs(intTaxRegimeID: number): Promise<TaxSlabSetRecord> {
-    const objResult = await masterApiService.getTaxSlabs(intTaxRegimeID);
+  async getTaxSlabs(strRecordUUID: string): Promise<TaxSlabSetRecord> {
+    const objResult = await masterApiService.getTaxSlabs(strRecordUUID);
     return mapTaxSlabSetApiRecord(objResult.Data);
   },
 
-  async saveTaxSlabs(intTaxRegimeID: number, lstSlabs: TaxSlabLineFormValue[]): Promise<TaxSlabSetRecord> {
-    const objResult = await masterApiService.saveTaxSlabs(intTaxRegimeID, toTaxSlabPayload(lstSlabs));
+  async saveTaxSlabs(strRecordUUID: string, lstSlabs: TaxSlabLineFormValue[]): Promise<TaxSlabSetRecord> {
+    const objResult = await masterApiService.saveTaxSlabs(strRecordUUID, toTaxSlabPayload(lstSlabs));
     return mapTaxSlabSetApiRecord(objResult.Data);
   },
 
-  async getTaxStandardDeductionRules(intTaxRegimeID: number): Promise<TaxRuleWorkspaceRecord<TaxStandardDeductionRuleFormValue>> {
-    const objResult = await masterApiService.getTaxStandardDeductionRules(intTaxRegimeID);
+  async getTaxStandardDeductionRules(strRecordUUID: string): Promise<TaxRuleWorkspaceRecord<TaxStandardDeductionRuleFormValue>> {
+    const objResult = await masterApiService.getTaxStandardDeductionRules(strRecordUUID);
     return mapRuleWorkspace(objResult.Data, mapStandardDeductionRule);
   },
 
-  async saveTaxStandardDeductionRules(intTaxRegimeID: number, lstRules: TaxStandardDeductionRuleFormValue[]): Promise<TaxRuleWorkspaceRecord<TaxStandardDeductionRuleFormValue>> {
-    const objResult = await masterApiService.saveTaxStandardDeductionRules(intTaxRegimeID, {
+  async saveTaxStandardDeductionRules(strRecordUUID: string, intTaxRegimeID: number, lstRules: TaxStandardDeductionRuleFormValue[]): Promise<TaxRuleWorkspaceRecord<TaxStandardDeductionRuleFormValue>> {
+    const objResult = await masterApiService.saveTaxStandardDeductionRules(strRecordUUID, {
       lstRules: lstRules.map((dicRule) => ({
         intTaxRegimeID,
         strTaxYearCode: dicRule.strTaxYearCode.trim(),
@@ -514,13 +515,13 @@ export const taxRegimeService = {
     return mapRuleWorkspace(objResult.Data, mapStandardDeductionRule);
   },
 
-  async getTaxRebateRules(intTaxRegimeID: number): Promise<TaxRuleWorkspaceRecord<TaxRebateRuleFormValue>> {
-    const objResult = await masterApiService.getTaxRebateRules(intTaxRegimeID);
+  async getTaxRebateRules(strRecordUUID: string): Promise<TaxRuleWorkspaceRecord<TaxRebateRuleFormValue>> {
+    const objResult = await masterApiService.getTaxRebateRules(strRecordUUID);
     return mapRuleWorkspace(objResult.Data, mapRebateRule);
   },
 
-  async saveTaxRebateRules(intTaxRegimeID: number, lstRules: TaxRebateRuleFormValue[]): Promise<TaxRuleWorkspaceRecord<TaxRebateRuleFormValue>> {
-    const objResult = await masterApiService.saveTaxRebateRules(intTaxRegimeID, {
+  async saveTaxRebateRules(strRecordUUID: string, intTaxRegimeID: number, lstRules: TaxRebateRuleFormValue[]): Promise<TaxRuleWorkspaceRecord<TaxRebateRuleFormValue>> {
+    const objResult = await masterApiService.saveTaxRebateRules(strRecordUUID, {
       lstRules: lstRules.map((dicRule) => ({
         intTaxRegimeID,
         strTaxYearCode: dicRule.strTaxYearCode.trim(),
@@ -543,13 +544,13 @@ export const taxRegimeService = {
     return mapRuleWorkspace(objResult.Data, mapRebateRule);
   },
 
-  async getTaxSurchargeSlabs(intTaxRegimeID: number): Promise<TaxRuleWorkspaceRecord<TaxSurchargeSlabFormValue>> {
-    const objResult = await masterApiService.getTaxSurchargeSlabs(intTaxRegimeID);
+  async getTaxSurchargeSlabs(strRecordUUID: string): Promise<TaxRuleWorkspaceRecord<TaxSurchargeSlabFormValue>> {
+    const objResult = await masterApiService.getTaxSurchargeSlabs(strRecordUUID);
     return mapRuleWorkspace(objResult.Data, mapSurchargeSlab);
   },
 
-  async saveTaxSurchargeSlabs(intTaxRegimeID: number, lstRules: TaxSurchargeSlabFormValue[]): Promise<TaxRuleWorkspaceRecord<TaxSurchargeSlabFormValue>> {
-    const objResult = await masterApiService.saveTaxSurchargeSlabs(intTaxRegimeID, {
+  async saveTaxSurchargeSlabs(strRecordUUID: string, intTaxRegimeID: number, lstRules: TaxSurchargeSlabFormValue[]): Promise<TaxRuleWorkspaceRecord<TaxSurchargeSlabFormValue>> {
+    const objResult = await masterApiService.saveTaxSurchargeSlabs(strRecordUUID, {
       lstSlabs: lstRules.map((dicRule) => ({
         intTaxRegimeID,
         strTaxYearCode: dicRule.strTaxYearCode.trim(),
@@ -569,13 +570,13 @@ export const taxRegimeService = {
     return mapRuleWorkspace(objResult.Data, mapSurchargeSlab);
   },
 
-  async getTaxCessRules(intTaxRegimeID: number): Promise<TaxRuleWorkspaceRecord<TaxCessRuleFormValue>> {
-    const objResult = await masterApiService.getTaxCessRules(intTaxRegimeID);
+  async getTaxCessRules(strRecordUUID: string): Promise<TaxRuleWorkspaceRecord<TaxCessRuleFormValue>> {
+    const objResult = await masterApiService.getTaxCessRules(strRecordUUID);
     return mapRuleWorkspace(objResult.Data, mapCessRule);
   },
 
-  async saveTaxCessRules(intTaxRegimeID: number, lstRules: TaxCessRuleFormValue[]): Promise<TaxRuleWorkspaceRecord<TaxCessRuleFormValue>> {
-    const objResult = await masterApiService.saveTaxCessRules(intTaxRegimeID, {
+  async saveTaxCessRules(strRecordUUID: string, intTaxRegimeID: number, lstRules: TaxCessRuleFormValue[]): Promise<TaxRuleWorkspaceRecord<TaxCessRuleFormValue>> {
+    const objResult = await masterApiService.saveTaxCessRules(strRecordUUID, {
       lstRules: lstRules.map((dicRule) => ({
         intTaxRegimeID,
         strTaxYearCode: dicRule.strTaxYearCode.trim(),

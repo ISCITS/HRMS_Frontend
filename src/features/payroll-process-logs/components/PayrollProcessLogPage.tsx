@@ -39,7 +39,7 @@ type ToastState = {
 };
 
 type PayrollProcessLogPageProps = {
-  intInitialPayrollRunID?: number;
+  strInitialPayrollRunRecordUUID?: string;
 };
 
 const lstModuleCodes = ["PAYROLL_PROCESS_LOG", "PAYROLL_PROCESS_LOGS", "MASTER_PAYROLL_PROCESS_LOG"];
@@ -69,13 +69,13 @@ function formatDateTime(strValue: string | null | undefined) {
   });
 }
 
-export default function PayrollProcessLogPage({ intInitialPayrollRunID }: PayrollProcessLogPageProps) {
+export default function PayrollProcessLogPage({ strInitialPayrollRunRecordUUID }: PayrollProcessLogPageProps) {
   const objRouter = useRouter();
   const { t } = usePayrollProcessLogLabels();
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly } = useModuleActionAccess(lstModuleCodes);
   const dicInitialFilters = useMemo(
-    () => createInitialPayrollProcessLogFilters(intInitialPayrollRunID),
-    [intInitialPayrollRunID]
+    () => createInitialPayrollProcessLogFilters(strInitialPayrollRunRecordUUID),
+    [strInitialPayrollRunRecordUUID]
   );
 
   const [lstLogs, setLstLogs] = useState<PayrollProcessLogListRecord[]>([]);
@@ -87,7 +87,7 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
   const blnCanView = canViewAny();
   const blnCanExport = canDoAny("export");
   const blnReadOnly = isReadOnly();
-  const blnRunScoped = typeof intInitialPayrollRunID === "number" && !Number.isNaN(intInitialPayrollRunID);
+  const blnRunScoped = Boolean(strInitialPayrollRunRecordUUID);
 
   function showToast(strMessage: string, strSeverity: ToastState["strSeverity"] = "success") {
     setObjToast({ blnOpen: true, strMessage, strSeverity });
@@ -129,13 +129,13 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
 
   const lstTableRows = useMemo(
     () => lstLogs.map((dicRow) => ({
-      id: dicRow.intID,
+      id: dicRow.strRecordUUID,
       action: (
         <CommonRowActions
           testIdPrefix="payroll-process-logs.list.row"
-          rowKey={dicRow.intID}
+          rowKey={dicRow.strRecordUUID}
           blnCanView
-          onView={() => objRouter.push(`/payroll/process-log/run/${dicRow.intPayrollRunID}`)}
+          onView={() => objRouter.push(`/payroll/process-log/run/${dicRow.strPayrollRunRecordUUID}`)}
         />
       ),
       employee: (
@@ -305,8 +305,7 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
 
       {blnRunScoped ? (
         <Alert severity="info">
-          {t("run_scoped_message", "Showing payroll process logs for the selected payroll run only.")}{" "}
-          <strong>#{intInitialPayrollRunID}</strong>
+          {t("run_scoped_message", "Showing payroll process logs for the selected payroll run only.")}
         </Alert>
       ) : null}
 

@@ -264,7 +264,7 @@ export default function ReimbursementReviewListPage() {
           <Box sx={{ display: "flex", justifyContent: "center" }}>
             <IconButton
               size="small"
-              onClick={() => objRouter.push(`/payroll/reimbursements/${objClaim.intID}`)}
+              onClick={() => objRouter.push(`/payroll/reimbursements/${objClaim.strRecordUUID}`)}
               aria-label="Open reimbursement claim"
               controlId="reimbursements.review-list.row.view.button"
               data-row-key={objClaim.intID}
@@ -348,7 +348,7 @@ export default function ReimbursementReviewListPage() {
       setStrCreateError("Select a valid employee.");
       return;
     }
-    const objParams = new URLSearchParams({ employee_id: String(intEmployeeID) });
+    const objParams = new URLSearchParams({ employee_id: objEmployee.strRecordUUID });
     if (blnEmployeeReimbursementContext) {
       objParams.set("source", "employee-reimbursement");
     }
@@ -357,8 +357,11 @@ export default function ReimbursementReviewListPage() {
 
   function getEssReimbursementRoute(objClaim: ReimbursementClaimDto, strMode: "view" | "edit") {
     const objParams = new URLSearchParams();
-    if (objClaim.intEmployeeID) {
-      objParams.set("employee_id", String(objClaim.intEmployeeID));
+    // The claim carries only the internal employee id, so the loaded employee list supplies the
+    // public one; a claim whose employee is not in that list simply omits the parameter.
+    const strClaimEmployeeUUID = objClaim.intEmployeeID ? mapEmployees.get(objClaim.intEmployeeID)?.strRecordUUID : undefined;
+    if (strClaimEmployeeUUID) {
+      objParams.set("employee_id", strClaimEmployeeUUID);
     }
     if (blnEmployeeReimbursementContext) {
       objParams.set("source", "employee-reimbursement");

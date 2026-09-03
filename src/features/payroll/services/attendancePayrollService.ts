@@ -25,7 +25,7 @@ async function requestApi<TData>(objOptions: {
 
 export const attendancePayrollService = {
   async validateRunAttendance(
-    intRunID: number,
+    strRunID: string,
     lstEmployeeIDs?: number[],
     blnAllowFinalizedOverride?: boolean,
     strOverrideReason?: string
@@ -39,7 +39,7 @@ export const attendancePayrollService = {
       objBody.strOverrideReason = strOverrideReason;
     }
     const objResult = await requestApi<AttendanceValidateRunResult>({
-      strPath: `/payroll/runs/${intRunID}/attendance/validate`,
+      strPath: `/payroll/runs/${strRunID}/attendance/validate`,
       strMethod: "POST",
       objBody: Object.keys(objBody).length ? objBody : undefined,
       strMenuAction: "PAYROLL_ATTENDANCE_VALIDATE",
@@ -48,19 +48,19 @@ export const attendancePayrollService = {
   },
 
   async finalizeAttendanceIntegration(
-    intRunID: number
+    strRunID: string
   ): Promise<{ intPayrollRunID: number; blnFinalized: boolean; intVersionNumber?: number; dicIntegrationStatus?: AttendanceIntegrationStatusRecord }> {
     const objResult = await requestApi<{ intPayrollRunID: number; blnFinalized: boolean; intVersionNumber?: number; dicIntegrationStatus?: AttendanceIntegrationStatusRecord }>({
-      strPath: `/payroll/runs/${intRunID}/attendance/finalize`,
+      strPath: `/payroll/runs/${strRunID}/attendance/finalize`,
       strMethod: "POST",
       strMenuAction: "PAYROLL_ATTENDANCE_FINALIZE",
     });
     return objResult.Data;
   },
 
-  async getIntegrationStatus(intRunID: number): Promise<AttendanceIntegrationStatusRecord> {
+  async getIntegrationStatus(strRunID: string): Promise<AttendanceIntegrationStatusRecord> {
     const objResult = await requestApi<AttendanceIntegrationStatusRecord>({
-      strPath: `/payroll/runs/${intRunID}/attendance/status`,
+      strPath: `/payroll/runs/${strRunID}/attendance/status`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_ATTENDANCE_VALIDATE",
     });
@@ -68,11 +68,11 @@ export const attendancePayrollService = {
   },
 
   async previewEmployeeAttendance(
-    intRunID: number,
+    strRunID: string,
     intEmployeeID: number
   ): Promise<EmployeeAttendancePreview> {
     const objResult = await requestApi<EmployeeAttendancePreview>({
-      strPath: `/payroll/runs/${intRunID}/employees/${intEmployeeID}/attendance/preview`,
+      strPath: `/payroll/runs/${strRunID}/employees/${intEmployeeID}/attendance/preview`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_ATTENDANCE_PREVIEW",
     });
@@ -91,12 +91,12 @@ export const attendancePayrollService = {
   },
 
   async recomputeHistoricalAdjustment(
-    intResultID: number,
+    strResultID: string,
     strSourceRecordType: string,
     intSourceRecordID: number
   ): Promise<unknown> {
     const objResult = await requestApi<unknown>({
-      strPath: `/payroll/results/${intResultID}/attendance/recompute-adjustment`,
+      strPath: `/payroll/results/${strResultID}/attendance/recompute-adjustment`,
       strMethod: "POST",
       objBody: { strSourceRecordType, intSourceRecordID },
       strMenuAction: "PAYROLL_ARREAR_RECOMPUTE",
@@ -105,11 +105,11 @@ export const attendancePayrollService = {
   },
 
   async getEmployeeArrears(
-    intRunID: number,
+    strRunID: string,
     intEmployeeID: number
   ): Promise<ArrearAdjustmentLine[]> {
     const objResult = await requestApi<ArrearAdjustmentLine[]>({
-      strPath: `/payroll/runs/${intRunID}/employees/${intEmployeeID}/arrears`,
+      strPath: `/payroll/runs/${strRunID}/employees/${intEmployeeID}/arrears`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_ARREARS_LIST",
     });

@@ -56,7 +56,8 @@ import type {
 
 type SalaryStructureEditorPageProps = {
   strMode: "add" | "edit";
-  intSalaryStructureID?: number;
+  /** record_uuid from the URL; the internal id is never routed on. */
+  strSalaryStructureID?: string;
 };
 
 type AmountOverrideMode = "annual" | "monthly" | "both";
@@ -402,7 +403,7 @@ function normalizeFormulaExpressionInput(strValue: string) {
 
 export default function SalaryStructureEditorPage({
   strMode,
-  intSalaryStructureID
+  strSalaryStructureID
 }: SalaryStructureEditorPageProps) {
   const objRouter = useRouter();
   const { t } = useSalaryStructureLabels();
@@ -446,8 +447,8 @@ export default function SalaryStructureEditorPage({
       setStrError("");
       try {
         const objOptionsPromise = salaryStructureService.getFormOptions();
-        const dicDetailPromise = strMode === "edit" && intSalaryStructureID
-          ? salaryStructureService.getSalaryStructureById(intSalaryStructureID)
+        const dicDetailPromise = strMode === "edit" && strSalaryStructureID
+          ? salaryStructureService.getSalaryStructureById(strSalaryStructureID)
           : Promise.resolve(null);
         const [objOptions, dicDetail] = await Promise.all([objOptionsPromise, dicDetailPromise]);
         if (!blnMounted) {
@@ -491,7 +492,7 @@ export default function SalaryStructureEditorPage({
     return () => {
       blnMounted = false;
     };
-  }, [blnCanLoadWorkspace, blnRightsLoading, intSalaryStructureID, strMode]);
+  }, [blnCanLoadWorkspace, blnRightsLoading, strSalaryStructureID, strMode]);
 
   const dicComponentByID = useMemo(() => {
     return new Map((objFormOptions?.lstSalaryComponents ?? []).map((dicOption) => [dicOption.intID, dicOption]));
@@ -1644,8 +1645,8 @@ export default function SalaryStructureEditorPage({
     setBlnSaving(true);
     setStrError("");
     try {
-      const dicSavedRecord = strMode === "edit" && intSalaryStructureID
-        ? await salaryStructureService.updateSalaryStructure(intSalaryStructureID, dicForm)
+      const dicSavedRecord = strMode === "edit" && strSalaryStructureID
+        ? await salaryStructureService.updateSalaryStructure(strSalaryStructureID, dicForm)
         : await salaryStructureService.createSalaryStructure(dicForm);
       const objLatestOptions = await salaryStructureService.getFormOptions();
       setObjFormOptions(objLatestOptions);

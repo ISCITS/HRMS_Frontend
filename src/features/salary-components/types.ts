@@ -49,6 +49,8 @@ export type SalaryComponentListRecord = {
   blnAllowManualOverride: boolean;
   blnIsActive: boolean;
   intDependencyCount: number;
+  /** Public identifier used in URLs and API paths; the internal id stays server-side. */
+  strRecordUUID: string;
 };
 
 export type SalaryComponentOption = {

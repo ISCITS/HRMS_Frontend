@@ -8,5 +8,5 @@ type EditSalaryStructurePageProps = {
 
 export default async function EditSalaryStructurePage({ params }: EditSalaryStructurePageProps) {
   const { id } = await params;
-  return <SalaryStructureEditorPage strMode="edit" intSalaryStructureID={Number(id)} />;
+  return <SalaryStructureEditorPage strMode="edit" strSalaryStructureID={id} />;
 }

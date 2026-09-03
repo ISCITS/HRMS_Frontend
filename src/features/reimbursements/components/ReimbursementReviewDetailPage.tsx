@@ -50,7 +50,7 @@ function isReimbursementPayrollPushRunEditable(objRun: PayrollRunOption) {
   return setReimbursementPayrollPushRunStatuses.has((objRun.strStatus || "").trim().toLowerCase()) && !objRun.blnIsLocked;
 }
 
-export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaimID: number }) {
+export default function ReimbursementReviewDetailPage({ strClaimRecordUUID }: { strClaimRecordUUID: string }) {
   const objRouter = useRouter();
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstReimbursementReviewModuleCodes);
   const [objClaim, setObjClaim] = useState<ReimbursementClaimDto | null>(null);
@@ -96,9 +96,9 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
     setStrError("");
     try {
       const [objLoadedClaim, objLoadedOptions, lstLoadedAudit] = await Promise.all([
-        payrollReimbursementService.getClaim(intClaimID),
+        payrollReimbursementService.getClaim(strClaimRecordUUID),
         reimbursementService.getOptions().catch(() => objEmptyOptions),
-        payrollReimbursementService.listAudit(intClaimID).catch(() => []),
+        payrollReimbursementService.listAudit(strClaimRecordUUID).catch(() => []),
       ]);
       setObjClaim(objLoadedClaim);
       setObjOptions(objLoadedOptions);
@@ -116,7 +116,7 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
     }
 
     void loadDetail();
-  }, [intClaimID, blnRightsLoading, blnCanView]);
+  }, [strClaimRecordUUID, blnRightsLoading, blnCanView]);
 
   const dicSalaryComponentNameByID = useMemo(
     () => new Map(objOptions.lstSalaryComponents.map((objComponent) => [objComponent.intID, objComponent.strComponentName])),
@@ -153,7 +153,7 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
     setStrDialogError("");
     try {
       if (!objClaim) return;
-      const lstEligibleRuns = await payrollReimbursementService.listEligiblePayrollRuns(objClaim.intID);
+      const lstEligibleRuns = await payrollReimbursementService.listEligiblePayrollRuns(strClaimRecordUUID);
       const lstEditableRuns = lstEligibleRuns.filter(isReimbursementPayrollPushRunEditable);
       setLstPayrollRuns(lstEligibleRuns);
       const objClaimRun = lstEditableRuns.find((objRun) => objRun.intID === objClaim?.intPayrollRunID);
@@ -189,7 +189,7 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
     try {
       const objUpdatedClaim = await fnAction();
       setObjClaim(objUpdatedClaim);
-      setLstAudit(await payrollReimbursementService.listAudit(objUpdatedClaim.intID).catch(() => []));
+      setLstAudit(await payrollReimbursementService.listAudit(strClaimRecordUUID).catch(() => []));
       setStrSuccess(strMessage);
       closeDialog();
     } catch (objError) {
@@ -206,11 +206,11 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
 
   async function handleActionBar(strAction: "start" | "approve" | "reject" | "release" | "lock" | "push" | "finance_settle") {
     if (!objClaim) return;
-    if (strAction === "start") await runAction(() => payrollReimbursementService.startReview(objClaim.intID), "Review started.");
+    if (strAction === "start") await runAction(() => payrollReimbursementService.startReview(strClaimRecordUUID), "Review started.");
     if (strAction === "approve") openReasonDialog("approve_claim");
     if (strAction === "reject") openReasonDialog("reject_claim");
     if (strAction === "release") openReasonDialog("release_claim");
-    if (strAction === "lock") await runAction(() => payrollReimbursementService.lockClaim(objClaim.intID), "Claim locked for payroll.");
+    if (strAction === "lock") await runAction(() => payrollReimbursementService.lockClaim(strClaimRecordUUID), "Claim locked for payroll.");
     if (strAction === "push") openReasonDialog("push_payroll");
     if (strAction === "finance_settle") openReasonDialog("finance_settle");
   }
@@ -223,14 +223,14 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
       return;
     }
     await runAction(
-      () => payrollReimbursementService.approveItem(objClaim.intID, objItem.intID, { decApprovedAmount, strRemarks: strItemRemarks || null }),
+      () => payrollReimbursementService.approveItem(strClaimRecordUUID, objItem.intID, { decApprovedAmount, strRemarks: strItemRemarks || null }),
       "Item approval saved."
     );
   }
 
   async function verifyProof(intProofID: number) {
     if (!objClaim) return;
-    await runAction(() => payrollReimbursementService.verifyProof(objClaim.intID, intProofID, { strRemarks: "Proof verified." }), "Proof verified.");
+    await runAction(() => payrollReimbursementService.verifyProof(strClaimRecordUUID, intProofID, { strRemarks: "Proof verified." }), "Proof verified.");
   }
 
   async function submitDialogAction() {
@@ -250,14 +250,14 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
       setStrDialogError("Select a Draft, Open, or Submitted unlocked payroll run before continuing.");
       return;
     }
-    if (strDialogAction === "approve_claim") await runAction(() => payrollReimbursementService.approveClaim(objClaim.intID, { strRemarks: strCleanRemarks || null }), "Claim approved.");
-    if (strDialogAction === "reject_claim") await runAction(() => payrollReimbursementService.rejectClaim(objClaim.intID, { strRemarks: strCleanRemarks }), "Claim rejected.");
-    if (strDialogAction === "release_claim") await runAction(() => payrollReimbursementService.releaseClaim(objClaim.intID, { strRemarks: strCleanRemarks }), "Claim released to employee.");
-    if (strDialogAction === "push_payroll") await runAction(() => payrollReimbursementService.pushToPayroll(objClaim.intID, { intPayrollRunID: strPayrollRunID ? Number(strPayrollRunID) : null, strRemarks: strCleanRemarks || null }), "Claim pushed to payroll.");
-    if (strDialogAction === "finance_settle") await runAction(() => payrollReimbursementService.markFinanceSettled(objClaim.intID, { strPaymentReference: strPaymentReference.trim() || null, strRemarks: strCleanRemarks || null }), "Finance settlement marked.");
-    if (strDialogAction === "reject_item" && objSelectedItem) await runAction(() => payrollReimbursementService.rejectItem(objClaim.intID, objSelectedItem.intID, { strRemarks: strCleanRemarks }), "Item rejected.");
-    if (strDialogAction === "proof_pending" && objSelectedItem) await runAction(() => payrollReimbursementService.markProofPending(objClaim.intID, objSelectedItem.intID, { strRemarks: strCleanRemarks || null }), "Item marked proof pending.");
-    if (strDialogAction === "reject_proof" && intSelectedProofID) await runAction(() => payrollReimbursementService.rejectProof(objClaim.intID, intSelectedProofID, { strRemarks: strCleanRemarks }), "Proof rejected.");
+    if (strDialogAction === "approve_claim") await runAction(() => payrollReimbursementService.approveClaim(strClaimRecordUUID, { strRemarks: strCleanRemarks || null }), "Claim approved.");
+    if (strDialogAction === "reject_claim") await runAction(() => payrollReimbursementService.rejectClaim(strClaimRecordUUID, { strRemarks: strCleanRemarks }), "Claim rejected.");
+    if (strDialogAction === "release_claim") await runAction(() => payrollReimbursementService.releaseClaim(strClaimRecordUUID, { strRemarks: strCleanRemarks }), "Claim released to employee.");
+    if (strDialogAction === "push_payroll") await runAction(() => payrollReimbursementService.pushToPayroll(strClaimRecordUUID, { intPayrollRunID: strPayrollRunID ? Number(strPayrollRunID) : null, strRemarks: strCleanRemarks || null }), "Claim pushed to payroll.");
+    if (strDialogAction === "finance_settle") await runAction(() => payrollReimbursementService.markFinanceSettled(strClaimRecordUUID, { strPaymentReference: strPaymentReference.trim() || null, strRemarks: strCleanRemarks || null }), "Finance settlement marked.");
+    if (strDialogAction === "reject_item" && objSelectedItem) await runAction(() => payrollReimbursementService.rejectItem(strClaimRecordUUID, objSelectedItem.intID, { strRemarks: strCleanRemarks }), "Item rejected.");
+    if (strDialogAction === "proof_pending" && objSelectedItem) await runAction(() => payrollReimbursementService.markProofPending(strClaimRecordUUID, objSelectedItem.intID, { strRemarks: strCleanRemarks || null }), "Item marked proof pending.");
+    if (strDialogAction === "reject_proof" && intSelectedProofID) await runAction(() => payrollReimbursementService.rejectProof(strClaimRecordUUID, intSelectedProofID, { strRemarks: strCleanRemarks }), "Proof rejected.");
   }
 
   const strDialogTitle = {
@@ -318,7 +318,7 @@ export default function ReimbursementReviewDetailPage({ intClaimID }: { intClaim
           {(objClaim?.lstItems ?? []).map((objItem) => (
             <ReimbursementItemReviewPanel
               key={objItem.intID}
-              intClaimID={objClaim?.intID ?? 0}
+              strClaimRecordUUID={strClaimRecordUUID}
               objItem={objItem}
               strClaimName={getClaimDisplayName(objClaim)}
               strReimbursementTypeName={getItemReimbursementTypeName(objItem)}

@@ -12,7 +12,7 @@ import { formatCurrency, formatDateLabel } from "@/features/reimbursements/forma
 import type { ReimbursementClaimItemDto } from "@/features/reimbursements/types";
 
 type ItemReviewPanelProps = {
-  intClaimID: number;
+  strClaimRecordUUID: string;
   objItem: ReimbursementClaimItemDto;
   strClaimName?: string | null;
   strReimbursementTypeName?: string | null;
@@ -28,7 +28,7 @@ type ItemReviewPanelProps = {
 };
 
 export default function ReimbursementItemReviewPanel({
-  intClaimID,
+  strClaimRecordUUID,
   objItem,
   strClaimName,
   strReimbursementTypeName,
@@ -116,7 +116,7 @@ export default function ReimbursementItemReviewPanel({
           <Stack spacing={1} alignItems={{ xs: "flex-start", md: "flex-end" }} sx={{ mr: { xs: 0, md: 1 } }}>
             <ReimbursementStatusBadge strStatus={objItem.strItemStatus} />
             <Box sx={{ width: "100%" }}>
-              <ReimbursementProofViewer intClaimID={intClaimID} lstProofs={objItem.lstProofs} blnActionsDisabled={blnActionsDisabled || !blnCanProofReview} onVerify={onVerifyProof} onReject={onRejectProof} />
+              <ReimbursementProofViewer strClaimRecordUUID={strClaimRecordUUID} lstProofs={objItem.lstProofs} blnActionsDisabled={blnActionsDisabled || !blnCanProofReview} onVerify={onVerifyProof} onReject={onRejectProof} />
             </Box>
           </Stack>
         </Grid>

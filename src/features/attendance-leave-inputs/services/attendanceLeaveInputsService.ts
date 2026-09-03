@@ -7,7 +7,7 @@ import type { AttendanceLeaveInputRow, AttendanceLeaveInputsSummary } from "@/fe
 const setAttendanceValidationCodePrefix = "PAY_";
 
 export async function loadAttendanceLeaveInputsForRun(
-  intRunID: number
+  strRunID: string
 ): Promise<{
   objRun: PayrollRunDetailRecord;
   lstRows: AttendanceLeaveInputRow[];
@@ -15,8 +15,8 @@ export async function loadAttendanceLeaveInputsForRun(
   objIntegrationStatus: AttendanceIntegrationStatusRecord | null;
 }> {
   const [objRun, objIntegrationStatus] = await Promise.all([
-    payrollRunService.getPayrollRunById(intRunID),
-    attendancePayrollService.getIntegrationStatus(intRunID).catch(() => null),
+    payrollRunService.getPayrollRunById(strRunID),
+    attendancePayrollService.getIntegrationStatus(strRunID).catch(() => null),
   ]);
   const lstInputs = await employeePayrollInputService.getEmployeePayrollInputs({
     intPayrollRunID: objRun.intID,
@@ -55,6 +55,7 @@ export async function loadAttendanceLeaveInputsForRun(
             : "Ready";
       return {
         intInputID: dicInput.intID,
+        strInputRecordUUID: dicInput.strRecordUUID,
         intEmployeeID: dicInput.intEmployeeID,
         strEmployeeCode: dicInput.strEmployeeCode,
         strEmployeeName: dicInput.strEmployeeName,
@@ -78,6 +79,7 @@ export async function loadAttendanceLeaveInputsForRun(
     const objFirstIssue = lstEmployeeIssues[0];
     lstRows.push({
       intInputID: null,
+      strInputRecordUUID: null,
       intEmployeeID,
       strEmployeeCode: objFirstIssue.strEmployeeCode ?? "-",
       strEmployeeName: objFirstIssue.strEmployeeName ?? "-",
@@ -108,8 +110,8 @@ export async function loadAttendanceLeaveInputsForRun(
 }
 
 export const attendanceLeaveInputsService = {
-  importOrRefresh: (intRunID: number) => attendancePayrollService.validateRunAttendance(intRunID),
-  finalize: (intRunID: number) => attendancePayrollService.finalizeAttendanceIntegration(intRunID),
-  reopenAndRefresh: (intRunID: number, strReason: string) =>
-    attendancePayrollService.validateRunAttendance(intRunID, undefined, true, strReason),
+  importOrRefresh: (strRunID: string) => attendancePayrollService.validateRunAttendance(strRunID),
+  finalize: (strRunID: string) => attendancePayrollService.finalizeAttendanceIntegration(strRunID),
+  reopenAndRefresh: (strRunID: string, strReason: string) =>
+    attendancePayrollService.validateRunAttendance(strRunID, undefined, true, strReason),
 };

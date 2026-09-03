@@ -59,11 +59,11 @@ function extractHtmlPayload(objData: unknown): string {
 
 export const payslipService = {
   async getPayslipPreview(
-    intRunID: number,
+    strRunID: string,
     intEmployeeID: number
   ): Promise<PayslipPreviewRecord> {
     const objResult = await requestApi<PayslipPreviewRecord>({
-      strPath: `/payroll/runs/${intRunID}/employees/${intEmployeeID}/payslip`,
+      strPath: `/payroll/runs/${strRunID}/employees/${intEmployeeID}/payslip`,
       strMethod: "GET",
       strMenuAction: "PAYSLIP_VIEW",
     });
@@ -71,29 +71,29 @@ export const payslipService = {
   },
 
   async generatePayslip(
-    intRunID: number,
+    strRunID: string,
     intEmployeeID: number
   ): Promise<PayslipPreviewRecord> {
     const objResult = await requestApi<PayslipPreviewRecord>({
-      strPath: `/payroll/runs/${intRunID}/employees/${intEmployeeID}/payslip/generate`,
+      strPath: `/payroll/runs/${strRunID}/employees/${intEmployeeID}/payslip/generate`,
       strMethod: "POST",
       strMenuAction: "PAYSLIP_GENERATE",
     });
     return objResult.Data;
   },
 
-  async getRunPayslips(intRunID: number): Promise<PayslipRunListRecord[]> {
+  async getRunPayslips(strRunID: string): Promise<PayslipRunListRecord[]> {
     const objResult = await requestApi<PayslipRunListRecord[]>({
-      strPath: `/payroll/runs/${intRunID}/payslips`,
+      strPath: `/payroll/runs/${strRunID}/payslips`,
       strMethod: "GET",
       strMenuAction: "PAYSLIP_LIST",
     });
     return objResult.Data;
   },
 
-  async generateAll(intRunID: number): Promise<PayslipGenerateAllSummary> {
+  async generateAll(strRunID: string): Promise<PayslipGenerateAllSummary> {
     const objResult = await requestApi<PayslipGenerateAllSummary>({
-      strPath: `/payroll/runs/${intRunID}/payslips/generate-all`,
+      strPath: `/payroll/runs/${strRunID}/payslips/generate-all`,
       strMethod: "POST",
       strMenuAction: "PAYSLIP_GENERATE_ALL",
     });
@@ -101,23 +101,23 @@ export const payslipService = {
   },
 
   async getPayslipSummary(
-    intPayslipID: number
+    strPayslipID: string
   ): Promise<{ intEmployeeID: number; intPayrollRunID: number; intEmployeePayrollResultID: number }> {
     const objResult = await requestApi<{
       intEmployeeID: number;
       intPayrollRunID: number;
       intEmployeePayrollResultID: number;
     }>({
-      strPath: `/payslips/${intPayslipID}/summary`,
+      strPath: `/payslips/${strPayslipID}/summary`,
       strMethod: "GET",
       strMenuAction: "PAYSLIP_VIEW",
     });
     return objResult.Data;
   },
 
-  async getDownloadHtml(intPayslipID: number): Promise<string> {
+  async getDownloadHtml(strPayslipID: string): Promise<string> {
     const objResponse = await axiosInstance.get(
-      `${ApiRoutePrefix.ApiV1}/payslips/${intPayslipID}/download`,
+      `${ApiRoutePrefix.ApiV1}/payslips/${strPayslipID}/download`,
       {
         csrfMenuAction: "PAYSLIP_EXPORT",
         responseType: "text",

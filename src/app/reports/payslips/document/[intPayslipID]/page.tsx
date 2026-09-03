@@ -8,5 +8,5 @@ type ReportPayslipDocumentRouteProps = {
 
 export default async function ReportPayslipDocumentRoute({ params }: ReportPayslipDocumentRouteProps) {
   const { intPayslipID } = await params;
-  return <PayslipDocumentPage intPayslipID={Number(intPayslipID)} strBackRoute="/reports/payslips" />;
+  return <PayslipDocumentPage strPayslipID={intPayslipID} strBackRoute="/reports/payslips" />;
 }

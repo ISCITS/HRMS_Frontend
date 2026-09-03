@@ -1,5 +1,7 @@
 export type SalaryStructureListRecord = {
   intID: number;
+  /** Public identifier used in URLs and API paths; the internal id stays server-side. */
+  strRecordUUID: string;
   strStructureCode: string;
   strStructureName: string;
   strCurrencyCode: string;

@@ -45,7 +45,8 @@ import {
 } from "@/features/payroll/utils/payslipDocument";
 
 type PayrollRunDetailPageProps = {
-  intRunID: number;
+  /** record_uuid of the run; every payroll service addresses a run by it. */
+  strRunID: string;
 };
 
 const lstPayrollRunModuleCodes = ["PAYROLL_RUN", "PAYROLL_RUNS", "PAYROLL_PROCESS", "PAYROLL_PROCESSES"];
@@ -207,7 +208,7 @@ function DetailValue({
 }
 
 function PayrollRunDetailPageLegacy({
-  intRunID,
+  strRunID,
 }: PayrollRunDetailPageProps) {
   const objRouter = useRouter();
   const { t } = useModuleLabels("payroll-runs");
@@ -248,12 +249,12 @@ function PayrollRunDetailPageLegacy({
     }
     setStrError("");
     try {
-      const dicRun = await payrollRunService.getPayrollRunById(intRunID);
+      const dicRun = await payrollRunService.getPayrollRunById(strRunID);
       setObjRun(dicRun);
       setBlnIsLocked(dicRun.blnIsLocked);
       setStrSavedRunStatus(dicRun.strRunStatus);
       if (["PROCESSED", "FINALIZED"].includes(dicRun.strRunStatus)) {
-        setLstPayslips(await payslipService.getRunPayslips(intRunID));
+        setLstPayslips(await payslipService.getRunPayslips(strRunID));
       } else {
         setLstPayslips([]);
       }
@@ -274,7 +275,7 @@ function PayrollRunDetailPageLegacy({
     }
 
     loadRun().catch(() => undefined);
-  }, [intRunID, blnRightsLoading, blnCanView]);
+  }, [strRunID, blnRightsLoading, blnCanView]);
 
   async function saveLockState() {
     if (!blnCanEdit || !objRun) {
@@ -291,7 +292,7 @@ function PayrollRunDetailPageLegacy({
           ? "DRAFT"
           : objRun.strRunStatus;
       const dicRun = await payrollRunService.updatePayrollRunStatus(
-        intRunID,
+        strRunID,
         strRunStatusForSave,
         blnIsLocked,
         objRun.strScopeType,
@@ -322,7 +323,7 @@ function PayrollRunDetailPageLegacy({
     setStrSuccess("");
     setObjProcessSummary(null);
     try {
-      const dicSummary = await payrollRunService.validatePayrollRun(intRunID);
+      const dicSummary = await payrollRunService.validatePayrollRun(strRunID);
       setObjValidationSummary(dicSummary);
       await loadRun(false);
       setStrSuccess(
@@ -351,7 +352,7 @@ function PayrollRunDetailPageLegacy({
     setStrError("");
     setStrSuccess("");
     try {
-      const dicSummary = await payrollRunService.processPayrollRun(intRunID);
+      const dicSummary = await payrollRunService.processPayrollRun(strRunID);
       setObjProcessSummary(dicSummary);
       setObjValidationSummary(dicSummary.dicValidationSummary ?? null);
       if (dicSummary.strStatus === "ValidationFailed") {
@@ -396,7 +397,7 @@ function PayrollRunDetailPageLegacy({
     setStrSuccess("");
     try {
       const dicSummary = await payrollRunService.reprocessPayrollRun(
-        intRunID,
+        strRunID,
         strReason.trim()
       );
       setObjProcessSummary(dicSummary);
@@ -423,7 +424,7 @@ function PayrollRunDetailPageLegacy({
     setStrError("");
     setStrSuccess("");
     try {
-      const dicRun = await payrollRunService.closePayrollRun(intRunID);
+      const dicRun = await payrollRunService.closePayrollRun(strRunID);
       setObjRun(dicRun);
       setBlnIsLocked(dicRun.blnIsLocked);
       setStrSuccess(t("close_complete", "Payroll run closed successfully."));
@@ -441,7 +442,7 @@ function PayrollRunDetailPageLegacy({
       setLstPayslips([]);
       return;
     }
-    setLstPayslips(await payslipService.getRunPayslips(intRunID));
+    setLstPayslips(await payslipService.getRunPayslips(strRunID));
   }
 
   async function generateAllPayslips() {
@@ -453,7 +454,7 @@ function PayrollRunDetailPageLegacy({
     setStrError("");
     setStrSuccess("");
     try {
-      const dicSummary = await payslipService.generateAll(intRunID);
+      const dicSummary = await payslipService.generateAll(strRunID);
       setStrSuccess(
         t(
           "payslip_generate_all_success",
@@ -480,7 +481,7 @@ function PayrollRunDetailPageLegacy({
     setStrSuccess("");
     try {
       const dicPayslip = await payslipService.generatePayslip(
-        intRunID,
+        strRunID,
         dicRow.intEmployeeID
       );
       setStrSuccess(t("payslip_generated", "Payslip generated successfully."));
@@ -509,7 +510,7 @@ function PayrollRunDetailPageLegacy({
         setStrError(t("payslip_not_generated", "Payslip could not be generated for this employee."));
         return;
       }
-      setStrPayslipPreviewHtml(await payslipService.getDownloadHtml(intPayslipID));
+      setStrPayslipPreviewHtml(await payslipService.getDownloadHtml(String(intPayslipID)));
       setBlnPayslipDialogOpen(true);
     } catch (objError) {
       setStrError(
@@ -536,7 +537,7 @@ function PayrollRunDetailPageLegacy({
       if (!intPayslipID) {
         return;
       }
-      const strHtml = await payslipService.getDownloadHtml(intPayslipID);
+      const strHtml = await payslipService.getDownloadHtml(String(intPayslipID));
       if (blnPrint) {
         printPayslipHtml(strHtml);
       } else {

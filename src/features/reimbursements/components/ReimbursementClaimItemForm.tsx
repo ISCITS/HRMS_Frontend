@@ -41,14 +41,16 @@ type ItemFormState = {
 };
 
 type ItemFormProps = {
-  intClaimID?: number | null;
+  /** record_uuid of the owning claim; the internal id is never routed on. */
+  strClaimID?: string | null;
   objItem?: ReimbursementClaimItemDto | null;
   objOptions: ReimbursementOptionsDto;
   blnOpen: boolean;
   blnSaving: boolean;
   intUploadProgress?: number;
   blnReadOnly?: boolean;
-  intEmployeeID?: number | null;
+  /** record_uuid of the on-behalf employee, when creating for someone else. */
+  strEmployeeID?: string | null;
   onClose: () => void;
   onSave: (objPayload: ReimbursementClaimItemRequest, intItemID?: number | null, objProofFile?: File | null) => Promise<void>;
   onDeleteProof?: (intItemID: number, intProofID: number) => Promise<void>;
@@ -120,7 +122,7 @@ function ComponentInfoMetric({ strLabel, strValue, objIcon, strIconColor, strIco
   );
 }
 
-export default function ReimbursementClaimItemForm({ intClaimID, objItem, objOptions, blnOpen, blnSaving, intUploadProgress = 0, blnReadOnly = false, intEmployeeID = null, onClose, onSave, onDeleteProof }: ItemFormProps) {
+export default function ReimbursementClaimItemForm({ strClaimID, objItem, objOptions, blnOpen, blnSaving, intUploadProgress = 0, blnReadOnly = false, strEmployeeID = null, onClose, onSave, onDeleteProof }: ItemFormProps) {
   const { t } = useReimbursementLabels();
   const [objForm, setObjForm] = useState<ItemFormState>(buildStateFromItem(objItem));
   const [objProofFile, setObjProofFile] = useState<File | null>(null);
@@ -179,7 +181,7 @@ export default function ReimbursementClaimItemForm({ intClaimID, objItem, objOpt
   }
 
   async function viewProof(objProof: ReimbursementProofDto) {
-    if (!intClaimID) {
+    if (!strClaimID) {
       setStrProofError(t("save_claim_item_before_viewing_proof", "Save the claim item before viewing proof."));
       return;
     }
@@ -188,8 +190,8 @@ export default function ReimbursementClaimItemForm({ intClaimID, objItem, objOpt
     setStrProofError("");
     try {
       const objPreview = objItem?.intID
-        ? await reimbursementService.previewProof(intClaimID, objItem.intID, objProof.intID, intEmployeeID)
-        : await reimbursementService.previewProofByID(intClaimID, objProof.intID, intEmployeeID);
+        ? await reimbursementService.previewProof(strClaimID, objItem.intID, objProof.intID, strEmployeeID)
+        : await reimbursementService.previewProofByID(strClaimID, objProof.intID, strEmployeeID);
       openBlobInNewTab(objPreview);
     } catch (objError) {
       setStrProofError(objError instanceof Error ? objError.message : t("unable_open_proof_file", "Unable to open proof file."));

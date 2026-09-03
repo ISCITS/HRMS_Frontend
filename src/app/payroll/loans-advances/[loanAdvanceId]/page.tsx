@@ -6,5 +6,5 @@ type PayrollLoanAdvanceDetailRouteProps = {
 
 export default async function PayrollLoanAdvanceDetailRoute({ params }: PayrollLoanAdvanceDetailRouteProps) {
   const { loanAdvanceId } = await params;
-  return <LoanAdvanceDetailPage intLoanAdvanceID={Number(loanAdvanceId)} />;
+  return <LoanAdvanceDetailPage strLoanAdvanceID={loanAdvanceId} />;
 }

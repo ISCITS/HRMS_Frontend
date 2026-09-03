@@ -8,5 +8,5 @@ type PayrollReimbursementDetailRouteProps = {
 
 export default async function PayrollReimbursementDetailRoute({ params }: PayrollReimbursementDetailRouteProps) {
   const { claimId } = await params;
-  return <ReimbursementReviewDetailPage intClaimID={Number(claimId)} />;
+  return <ReimbursementReviewDetailPage strClaimRecordUUID={claimId} />;
 }

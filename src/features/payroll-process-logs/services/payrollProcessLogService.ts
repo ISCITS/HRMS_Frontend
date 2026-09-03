@@ -11,7 +11,9 @@ import type {
 function mapApiRecord(dicRecord: PayrollProcessLogApiRecord): PayrollProcessLogListRecord {
   return {
     intID: dicRecord.intID,
+    strRecordUUID: dicRecord.strRecordUUID,
     intPayrollRunID: dicRecord.intPayrollRunID,
+    strPayrollRunRecordUUID: dicRecord.strPayrollRunRecordUUID,
     intEmployeeID: dicRecord.intEmployeeID,
     strEmployeeCode: dicRecord.strEmployeeCode ?? null,
     strEmployeeName: dicRecord.strEmployeeName ?? null,
@@ -25,9 +27,8 @@ function mapApiRecord(dicRecord: PayrollProcessLogApiRecord): PayrollProcessLogL
 }
 
 function toFilterPayload(dicFilters: PayrollProcessLogFilters) {
-  const strRunID = dicFilters.intPayrollRunID.trim();
   return {
-    intPayrollRunID: strRunID ? Number(strRunID) : null,
+    strPayrollRunRecordUUID: dicFilters.strPayrollRunRecordUUID.trim() || null,
     intEmployeeID: dicFilters.intEmployeeID === "" ? null : Number(dicFilters.intEmployeeID),
     strProcessStage: dicFilters.strProcessStage || null,
     strProcessStatus: dicFilters.strProcessStatus || null,
@@ -35,9 +36,9 @@ function toFilterPayload(dicFilters: PayrollProcessLogFilters) {
   };
 }
 
-export function createInitialPayrollProcessLogFilters(intPayrollRunID?: number): PayrollProcessLogFilters {
+export function createInitialPayrollProcessLogFilters(strPayrollRunRecordUUID?: string): PayrollProcessLogFilters {
   return {
-    intPayrollRunID: intPayrollRunID ? String(intPayrollRunID) : "",
+    strPayrollRunRecordUUID: strPayrollRunRecordUUID ?? "",
     intEmployeeID: "",
     strProcessStage: "",
     strProcessStatus: "",

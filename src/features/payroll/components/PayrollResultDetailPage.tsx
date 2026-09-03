@@ -99,7 +99,8 @@ const lstPayrollResultAccessModuleHints = [
 ];
 
 type PayrollResultDetailPageProps = {
-  intResultID: number;
+  /** record_uuid from the URL; the internal id is never routed on. */
+  strResultID: string;
   blnPayslipScreen?: boolean;
   strBackRoute?: string;
 };
@@ -441,7 +442,7 @@ function PaginatedSummaryCard({
 }
 
 export default function PayrollResultDetailPage({
-  intResultID,
+  strResultID,
   blnPayslipScreen = false,
   strBackRoute,
 }: PayrollResultDetailPageProps) {
@@ -487,7 +488,7 @@ export default function PayrollResultDetailPage({
       setBlnLoading(true);
       setStrError("");
       try {
-        const dicResult = await payrollResultService.getPayrollResultById(intResultID);
+        const dicResult = await payrollResultService.getPayrollResultById(strResultID);
         if (!blnMounted) {
           return;
         }
@@ -512,13 +513,13 @@ export default function PayrollResultDetailPage({
     return () => {
       blnMounted = false;
     };
-  }, [intResultID]);
+  }, [strResultID]);
 
   const strResolvedBackRoute = strBackRoute || (blnPayslipScreen ? "/reports/payslips" : "/payroll/results");
   const strTaxInformationHref = (() => {
     const strBasePath = blnPayslipScreen
-      ? `/reports/payslips/${intResultID}/tax-information`
-      : `/payroll/results/${intResultID}/tax-information`;
+      ? `/reports/payslips/${strResultID}/tax-information`
+      : `/payroll/results/${strResultID}/tax-information`;
     const strCurrentPath = strPathname || strResolvedBackRoute;
     return `${strBasePath}?backRoute=${encodeURIComponent(strCurrentPath)}`;
   })();
@@ -541,7 +542,7 @@ export default function PayrollResultDetailPage({
       setStrAttendanceError("");
       try {
         const dicPreview = await attendancePayrollService.previewEmployeeAttendance(
-          objResult!.intPayrollRunID,
+          objResult!.strPayrollRunRecordUUID ?? String(objResult!.intPayrollRunID),
           objResult!.intEmployeeID
         );
         if (!blnMounted) {
@@ -566,7 +567,7 @@ export default function PayrollResultDetailPage({
       setStrArrearsError("");
       try {
         const lstResult = await attendancePayrollService.getEmployeeArrears(
-          objResult!.intPayrollRunID,
+          objResult!.strPayrollRunRecordUUID ?? String(objResult!.intPayrollRunID),
           objResult!.intEmployeeID
         );
         if (!blnMounted) {
@@ -621,7 +622,7 @@ export default function PayrollResultDetailPage({
         return;
       }
       setObjPayslip(dicPayslip);
-      setStrPayslipPreviewHtml(await payslipService.getDownloadHtml(dicPayslip.intPayslipID));
+      setStrPayslipPreviewHtml(await payslipService.getDownloadHtml(dicPayslip.strPayslipRecordUUID ?? String(dicPayslip.intPayslipID)));
     } catch (objError) {
       setStrError(
         objError instanceof Error ? objError.message : "Unable to load payslip preview."
@@ -637,7 +638,7 @@ export default function PayrollResultDetailPage({
     setStrSuccess("");
     try {
       const dicPayslip = await payslipService.generatePayslip(
-        objResult!.intPayrollRunID,
+        objResult!.strPayrollRunRecordUUID ?? String(objResult!.intPayrollRunID),
         objResult!.intEmployeeID
       );
       setObjPayslip(dicPayslip);
@@ -668,7 +669,7 @@ export default function PayrollResultDetailPage({
       if (!dicPayslip?.intPayslipID) {
         return;
       }
-      const strHtml = await payslipService.getDownloadHtml(dicPayslip.intPayslipID);
+      const strHtml = await payslipService.getDownloadHtml(dicPayslip.strPayslipRecordUUID ?? String(dicPayslip.intPayslipID));
       if (blnPrint) {
         printPayslipHtml(strHtml);
       } else {
