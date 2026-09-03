@@ -119,17 +119,19 @@ function getPayrollRunStatusLabel(strStatus: string) {
   return dicLabels[strStatus] ?? strStatus;
 }
 
-function getWorkflowSteps(strRunStatus: string) {
+function getWorkflowSteps(strRunStatus: string, blnIsVariablePayRun: boolean) {
   const strCurrentStep =
     strRunStatus === "FINALIZED" || strRunStatus === "PROCESSED"
-      ? "Generate Payslips"
+      ? (blnIsVariablePayRun ? "Process" : "Generate Payslips")
       : strRunStatus === "VALIDATED"
         ? "Process"
         : "Validate";
-  return lstWorkflowStepNames.map((strStep) => ({
-    strStep,
-    blnActive: strStep === strCurrentStep,
-  }));
+  return lstWorkflowStepNames
+    .filter((strStep) => strStep !== "Generate Payslips" || !blnIsVariablePayRun)
+    .map((strStep) => ({
+      strStep,
+      blnActive: strStep === strCurrentStep,
+    }));
 }
 
 function canProcessPayrollRun(objRun: PayrollRunDetailRecord, blnCanProcess: boolean) {
@@ -515,7 +517,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
       const dicRun = await payrollRunService.getPayrollRunById(intRunID);
       setObjRun(dicRun);
       setBlnIsLocked(dicRun.blnIsLocked);
-      if (["PROCESSED", "FINALIZED"].includes(dicRun.strRunStatus)) {
+      if (["PROCESSED", "FINALIZED"].includes(dicRun.strRunStatus) && dicRun.strRunTypeCode !== "VARIABLE_PAY") {
         setLstPayslips(await payslipService.getRunPayslips(intRunID));
         try {
           const lstResults = await payrollResultService.getPayrollResults({ strSearchRun: dicRun.strRunName });
@@ -973,7 +975,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
   const strScopeLabel = objRun.strScopeType === "SelectedEmployee"
     ? `${t("scope_selected_employee", "Selected Employees")} #${objRun.intScopedEmployeeID ?? "-"}`
     : (objRun.strPayrollGroupName ?? t("scope_payroll_group", "Payroll Group"));
-  const lstWorkflowSteps = getWorkflowSteps(objRun.strRunStatus);
+  const lstWorkflowSteps = getWorkflowSteps(objRun.strRunStatus, objRun.strRunTypeCode === "VARIABLE_PAY");
   const blnShowReviewResults = ["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus);
 
   const objCardSx = {
@@ -1270,30 +1272,34 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
               {t("summary_title", "Run Summary")}
             </Typography>
             <Box sx={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 0.75 }}>
-              <Button
-                className={styles.secondaryButton}
-                onClick={goToAttendanceLeaveInputs}
-                startIcon={<ShieldOutlinedIcon sx={{ fontSize: 16 }} />}
-                sx={{ height: 32, minHeight: 32 }}
-                controlId="payroll.run-detail.open-attendance-leave-inputs.button"
-              >
-                {tAttendance("ATTENDANCE_OPEN_SCREEN_BUTTON_SHORT", "Attendance Inputs")}
-              </Button>
-              {blnCanEdit ? (
-                <Tooltip title={t("fetch_attendance_tooltip", "Pull approved attendance & leave data into this payroll run's inputs. Skip this if you want to process payroll from manual inputs only.")}>
-                  <span>
-                    <Button
-                      className={styles.secondaryButton}
-                      onClick={fetchAttendanceInPayroll}
-                      startIcon={<RestartAltRoundedIcon sx={{ fontSize: 16 }} />}
-                      disabled={blnSaving}
-                      sx={{ height: 32, minHeight: 32 }}
-                      controlId="payroll.run-detail.fetch-in-payroll.button"
-                    >
-                      {tAttendance("ATTENDANCE_FETCH_IN_PAYROLL_BUTTON", "Fetch in Payroll")}
-                    </Button>
-                  </span>
-                </Tooltip>
+              {objRun.strRunTypeCode !== "VARIABLE_PAY" ? (
+                <>
+                  <Button
+                    className={styles.secondaryButton}
+                    onClick={goToAttendanceLeaveInputs}
+                    startIcon={<ShieldOutlinedIcon sx={{ fontSize: 16 }} />}
+                    sx={{ height: 32, minHeight: 32 }}
+                    controlId="payroll.run-detail.open-attendance-leave-inputs.button"
+                  >
+                    {tAttendance("ATTENDANCE_OPEN_SCREEN_BUTTON_SHORT", "Attendance Inputs")}
+                  </Button>
+                  {blnCanEdit ? (
+                    <Tooltip title={t("fetch_attendance_tooltip", "Pull approved attendance & leave data into this payroll run's inputs. Skip this if you want to process payroll from manual inputs only.")}>
+                      <span>
+                        <Button
+                          className={styles.secondaryButton}
+                          onClick={fetchAttendanceInPayroll}
+                          startIcon={<RestartAltRoundedIcon sx={{ fontSize: 16 }} />}
+                          disabled={blnSaving}
+                          sx={{ height: 32, minHeight: 32 }}
+                          controlId="payroll.run-detail.fetch-in-payroll.button"
+                        >
+                          {tAttendance("ATTENDANCE_FETCH_IN_PAYROLL_BUTTON", "Fetch in Payroll")}
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  ) : null}
+                </>
               ) : null}
               {objRun.strRunTypeCode === "VARIABLE_PAY" ? (
                 <>
@@ -1341,7 +1347,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
               <KpiTile key={dicTile.strLabel} objIcon={dicTile.objIcon} strLabel={dicTile.strLabel} strValue={dicTile.strValue} strTone={dicTile.strTone} />
             ))}
           </Box>
-          {objAttendanceValidationResult && objAttendanceValidationResult.intBlockedCount > 0 ? (
+          {objRun.strRunTypeCode !== "VARIABLE_PAY" && objAttendanceValidationResult && objAttendanceValidationResult.intBlockedCount > 0 ? (
             <Box sx={{ mt: 1 }}>
               <Chip
                 label={tAttendance(
@@ -1358,13 +1364,14 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
           ) : null}
         </Box>
 
+        {objRun.strRunTypeCode !== "VARIABLE_PAY" ? (
         <Box sx={{ ...objCardSx, minWidth: 0, mt: 1.25, p: 1.25 }}>
           <Box sx={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 1, justifyContent: "space-between", mb: 1 }}>
             <Typography sx={{ alignItems: "center", display: "flex", fontSize: "1rem", fontWeight: 900, gap: 0.75 }}>
               <ReceiptLongRoundedIcon sx={{ color: "#2563eb", fontSize: 20 }} />
               {t("payslip_panel", "Payslips")}
             </Typography>
-            {blnCanGeneratePayslip && objRun.strRunTypeCode !== "VARIABLE_PAY" ? (
+            {blnCanGeneratePayslip ? (
               <Button
                 className={styles.secondaryButton}
                 startIcon={<ReceiptLongRoundedIcon />}
@@ -1405,7 +1412,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
                 fnRender: (dicRow) => (
                   <Stack direction="row" spacing={1} justifyContent="center" flexWrap="wrap">
                     <Button className={styles.secondaryButton} onClick={() => viewPayslip(dicRow)} disabled={blnPayslipLoading} controlId="payroll.run-detail.payslip.view.button" data-row-key={dicRow.intEmployeeID}>{t("view", "View")}</Button>
-                    {blnCanGeneratePayslip && objRun.strRunTypeCode !== "VARIABLE_PAY" ? <Button className={styles.secondaryButton} onClick={() => generatePayslip(dicRow)} disabled={blnPayslipLoading} controlId="payroll.run-detail.payslip.generate.button" data-row-key={dicRow.intEmployeeID}>{t("generate", "Generate")}</Button> : null}
+                    {blnCanGeneratePayslip ? <Button className={styles.secondaryButton} onClick={() => generatePayslip(dicRow)} disabled={blnPayslipLoading} controlId="payroll.run-detail.payslip.generate.button" data-row-key={dicRow.intEmployeeID}>{t("generate", "Generate")}</Button> : null}
                     {blnCanExport ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => openPayslipDocument(dicRow, false)} disabled={blnPayslipLoading} controlId="payroll.run-detail.payslip.download.button" data-row-key={dicRow.intEmployeeID}>{t("download", "Download")}</Button> : null}
                     {blnCanExport ? <Button className={styles.secondaryButton} startIcon={<PrintRoundedIcon />} onClick={() => openPayslipDocument(dicRow, true)} disabled={blnPayslipLoading} controlId="payroll.run-detail.payslip.print.button" data-row-key={dicRow.intEmployeeID}>{t("print", "Print")}</Button> : null}
                   </Stack>
@@ -1418,6 +1425,7 @@ export default function PayrollRunDetailDashboardPage({ intRunID }: PayrollRunDe
             objSx={{ maxHeight: 420, minHeight: 300 }}
           />
         </Box>
+        ) : null}
         </>
         ) : null}
 

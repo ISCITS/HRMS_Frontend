@@ -777,7 +777,6 @@ function groupHrEmployeeServicesMenus(lstItems: MenuItem[]): MenuItem[] {
     "/payroll/it-declaration-review",
     "/payroll/employee-reimbursement",
     "/payroll/reimbursements",
-    "/payroll/loans-advances",
     "/payroll/fnf-settlements",
   ];
   const setEmployeeServiceRoutes = new Set(lstEmployeeServiceRoutes);
@@ -793,10 +792,12 @@ function groupHrEmployeeServicesMenus(lstItems: MenuItem[]): MenuItem[] {
     "reimbursement_review",
     "reimbursements_review",
     "payroll_reimbursement",
-    "payroll_loans_advances",
     "payroll_fnf_settlements",
     "fnf_settlements",
     "payroll_fnf",
+    // Loan Management (payroll_loan_management_group) is deliberately NOT listed here -- it's
+    // its own top-level sidebar group (parent_menu_id NULL in the DB), not part of Employee
+    // Services, so it must not be swept in by this whitelist.
   ]);
   const dicRouteOrder = new Map(
     lstEmployeeServiceRoutes.map((strRoute, intIndex) => [strRoute, intIndex]),
@@ -813,10 +814,9 @@ function groupHrEmployeeServicesMenus(lstItems: MenuItem[]): MenuItem[] {
     ["reimbursement_review", 3],
     ["reimbursements_review", 3],
     ["payroll_reimbursement", 3],
-    ["payroll_loans_advances", 4],
-    ["payroll_fnf_settlements", 5],
-    ["fnf_settlements", 5],
-    ["payroll_fnf", 5],
+    ["payroll_fnf_settlements", 4],
+    ["fnf_settlements", 4],
+    ["payroll_fnf", 4],
   ]);
 
   function isHrEmployeeServiceItem(objItem: MenuItem): boolean {

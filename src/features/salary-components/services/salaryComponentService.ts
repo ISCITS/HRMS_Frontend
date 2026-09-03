@@ -141,6 +141,8 @@ function mapApiRecord(dicRecord: SalaryComponentApiRecord): SalaryComponentDetai
     strComponentCategory: dicRecord.strComponentCategory,
     intComponentGroupID: dicRecord.intComponentGroupID ?? null,
     strComponentGroup: dicRecord.strComponentGroup ?? null,
+    intPayrollProcessingModeID: dicRecord.intPayrollProcessingModeID ?? null,
+    strPayrollProcessingMode: dicRecord.strPayrollProcessingMode ?? null,
     intCalcMethodID: dicRecord.intCalcMethodID ?? null,
     strCalcMethod: dicRecord.strCalcMethod,
     strFormulaExpression: dicRecord.strFormulaExpression,

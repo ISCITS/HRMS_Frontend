@@ -1117,12 +1117,20 @@ export default function SalaryComponentEditorPage({
       if (blnDeductionCategory) {
         dicNext.blnIncludedInCtc = false;
         dicNext.blnIncludeInRemuneration = false;
-        dicNext.blnIncludeInPayslip = true;
+        // Default Show on Payslip to On only at the moment of switching into this category
+        // (add mode), so a later manual toggle by the user isn't fought on the next effect run.
+        if (strMode === "add" && !isCategory(dicPrevious.strComponentCategory, "deduction")) {
+          dicNext.blnIncludeInPayslip = true;
+        }
         applyPayslipSectionDefault("deductions");
       }
       if (blnEarningCategory) {
         dicNext.blnIncludedInCtc = true;
-        dicNext.blnIncludeInPayslip = true;
+        // Default Show on Payslip to On only at the moment of switching into this category
+        // (add mode), so a later manual toggle by the user isn't fought on the next effect run.
+        if (strMode === "add" && !isCategory(dicPrevious.strComponentCategory, "earning")) {
+          dicNext.blnIncludeInPayslip = true;
+        }
         applyPayslipSectionDefault("earnings");
       }
       if (blnEmployerContributionCategory) {

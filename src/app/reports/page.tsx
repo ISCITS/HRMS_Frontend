@@ -32,6 +32,11 @@ const lstReports = [
     strDescription: "Employee-wise monthly TDS deducted, year-to-date TDS, and total tax liability.",
     strHref: "/reports/tds-register",
   },
+  {
+    strTitle: "Variable Pay Register",
+    strDescription: "Employee-wise Variable Pay (Separate Payroll) transactions, amounts, tax, and net pay.",
+    strHref: "/reports/variable-pay-register",
+  },
 ];
 
 export default function ReportsPage() {

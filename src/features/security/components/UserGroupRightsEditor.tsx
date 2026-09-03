@@ -86,6 +86,9 @@ function normalizeRightsMenuName(objNode: SecurityMenuNode): string {
   if (strRoute.includes("/reports/statutory") || strMenuCode.includes("statutory_report")) {
     return "Statutory Reports";
   }
+  if (strRoute.includes("/reports/variable-pay-register") || strMenuCode.includes("variable_pay_register")) {
+    return "Variable Pay Register";
+  }
 
   return strMenuName;
 }

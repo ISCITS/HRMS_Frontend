@@ -493,6 +493,52 @@ export type LoanAdvanceFormValues = {
   blnAutoDeductInPayroll: boolean;
 };
 
+export type LoanBudgetEmployeeScope = "all" | "specific";
+
+export type LoanBudgetSummaryRecord = {
+  intID: number;
+  strFinancialYear: string;
+  decTotalBudgetAmount: number;
+  decApprovedTotal: number;
+  decOutstandingTotal: number;
+  decRemaining: number;
+  blnIsActive: boolean;
+  strRemarks?: string | null;
+};
+
+export type LoanBudgetEmployeeLimitRecord = {
+  intEmployeeID: number;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  decLimitAmount: number;
+};
+
+export type LoanBudgetDesignationLimitRecord = {
+  intID: number;
+  intDesignationID: number;
+  strDesignationName?: string | null;
+  strEmployeeScope: LoanBudgetEmployeeScope;
+  decLimitAmount: number;
+  lstEmployees: LoanBudgetEmployeeLimitRecord[];
+};
+
+export type LoanBudgetConfigurationRecord = {
+  objBudget: LoanBudgetSummaryRecord;
+  lstDesignationLimits: LoanBudgetDesignationLimitRecord[];
+};
+
+export type LoanBudgetFormValues = {
+  strFinancialYear: string;
+  decTotalBudgetAmount: string;
+  strRemarks: string;
+  lstDesignationLimits: {
+    intDesignationID: number | "";
+    decLimitAmount: string;
+    strEmployeeScope: LoanBudgetEmployeeScope;
+    lstEmployees: { intEmployeeID: number; strEmployeeCode: string; strEmployeeName: string; decLimitAmount: string }[];
+  }[];
+};
+
 export type EmployeePayrollInputLineRecord = {
   intID: number;
   intSalaryComponentID: number;
@@ -966,6 +1012,31 @@ export type TdsReportRow = {
   decTaxDeductedYtd: number;
   decMonthlyTds: number;
   strSlabProfileCode: string | null;
+};
+
+export type VariablePayRegisterRow = {
+  intID: number;
+  intPayrollRunID: number;
+  strRunCode: string;
+  strRunName: string;
+  dtPayrollMonth: string | null;
+  intEmployeeID: number;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strVariablePayTypeName: string;
+  strComponentName: string;
+  decInputAmount: number;
+  decApprovedAmount: number;
+  decFinalAmount: number;
+  strTransactionStatus: string;
+  strSourceType: string;
+  strExternalReference: string | null;
+  strRemarks: string | null;
+  strRegimeUsed: string | null;
+  decGrossEarningsAmount: number;
+  decTaxTotal: number;
+  decNetPayAmount: number;
+  strPayrollRunStatus: string;
 };
 
 export type PayslipLineRecord = {
