@@ -1,0 +1,1078 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  margin: 0;
+  min-height: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+.breadcrumbs {
+  color: #697586;
+  font-size: 14px;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.topBar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.backButton {
+  display: none !important;
+}
+
+.controlsCard,
+.tableCard,
+.dialogShell {
+  background: var(--app-surface-color);
+  border: 1px solid var(--app-card-border-color);
+  border-radius: var(--app-card-radius);
+  box-shadow: var(--app-shadow-soft);
+}
+
+.controlsCard {
+  padding: 10px;
+  flex: 0 0 auto;
+}
+
+.controlsHeader {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.title {
+  color: var(--app-page-heading-color);
+  font-size: var(--app-page-heading-size);
+  font-weight: var(--app-page-heading-weight);
+  margin: 0;
+  line-height: var(--app-page-heading-line-height);
+}
+
+.headerActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.detailHeader {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.detailHeaderActions {
+  align-items: center;
+  margin-left: auto;
+}
+
+.detailHeaderActions :global(.MuiChip-root) {
+  align-self: center;
+}
+
+.listUtilityBar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 10px;
+}
+
+.listUtilityActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.hiddenHeader {
+  display: none;
+}
+
+.primaryButton {
+  background: var(--app-button-primary-background) !important;
+  border-radius: var(--app-button-radius) !important;
+  box-shadow: var(--app-button-primary-shadow) !important;
+  color: var(--app-button-primary-text) !important;
+  font-weight: var(--app-button-font-weight) !important;
+  font-size: var(--app-button-font-size) !important;
+  min-height: var(--app-button-height);
+  padding: 0 var(--app-button-horizontal-padding) !important;
+}
+
+.primaryButton:hover {
+  background: var(--app-button-primary-hover) !important;
+}
+
+.secondaryButton {
+  background: var(--app-button-secondary-background) !important;
+  border: 1px solid var(--app-button-secondary-border) !important;
+  border-radius: var(--app-button-radius) !important;
+  color: var(--app-button-secondary-text) !important;
+  font-weight: var(--app-button-font-weight) !important;
+  font-size: var(--app-button-font-size) !important;
+  min-height: var(--app-button-height);
+  padding: 0 var(--app-button-horizontal-padding) !important;
+}
+
+.secondaryButton:hover {
+  background: var(--app-grid-row-hover-background) !important;
+}
+
+.fnfCreateTitleBlock {
+  padding: 6px 0;
+}
+
+.fnfCreateCard {
+  flex: 0 1 auto;
+  width: 100%;
+  max-width: 100%;
+}
+
+.fnfCreateForm {
+  width: 100%;
+}
+
+.fnfCreateGrid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.fnfCreateActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.fnfCreateActions .primaryButton {
+  min-width: 176px !important;
+  width: auto;
+}
+
+.fnfWizardSingleField {
+  max-width: 520px;
+  width: 100%;
+}
+
+.fnfWizardGrid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.fnfWizardActions {
+  align-items: center;
+  border-top: 1px solid #d9e6ef;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 10px;
+  padding: 12px 16px;
+}
+
+.fnfActionButton {
+  border-radius: 9px !important;
+  box-shadow: 0 12px 24px rgba(29, 93, 150, 0.22) !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+  font-size: 0.84rem !important;
+  min-height: 34px;
+  padding: 0 10px !important;
+}
+
+.compactButton {
+  border-radius: 7px !important;
+  font-size: 0.76rem !important;
+  height: 24px;
+  line-height: 1.1 !important;
+  min-height: 24px;
+  min-width: 0 !important;
+  padding: 0 7px !important;
+}
+
+.compactButton :global(.MuiButton-startIcon) {
+  margin-left: -2px;
+  margin-right: 4px;
+}
+
+.compactButton :global(.MuiSvgIcon-root) {
+  font-size: 1rem;
+}
+
+.searchRow {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) auto;
+}
+
+.bankFileSearchPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.payslipSearchPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.payslipSearchLinePrimary {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns:
+    minmax(180px, 220px)
+    minmax(180px, 220px)
+    minmax(150px, 180px)
+    minmax(150px, 180px)
+    minmax(150px, 180px)
+    minmax(180px, 220px)
+    auto;
+}
+
+.payslipSearchLineSecondary {
+  display: none;
+}
+
+.bankFileSearchLinePrimary {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.bankFileSearchLineSecondary {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(220px, 260px) auto;
+}
+
+.payrollRegisterSearchPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.payrollRegisterSearchLinePrimary {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.payrollRegisterSearchLineSecondary {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(220px, 260px) auto;
+}
+
+.statutorySearchPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.statutorySearchLinePrimary {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(170px, 0.9fr) minmax(220px, 1.15fr) minmax(180px, 1fr) minmax(170px, 0.85fr) minmax(170px, 0.9fr);
+}
+
+.statutorySearchLineSecondary {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(170px, 0.9fr) minmax(170px, 0.9fr) auto;
+}
+
+.quickFilterRow {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(170px, 220px));
+}
+
+.searchActions {
+  align-items: center;
+  align-self: end;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-start;
+  margin-top: 0;
+  padding-top: 0;
+  white-space: nowrap;
+}
+
+.reportSearchPanelRow {
+  align-items: center;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.reportSearchField {
+  flex: 1 1 180px;
+  min-width: 170px;
+}
+
+.reportSearchPanelRow .searchActions {
+  flex: 0 0 auto;
+}
+
+.reportSearchPanelRow .reportBottomRightActions {
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.employeePayrollInputSearchRow {
+  grid-template-columns: minmax(220px, 1.15fr) minmax(200px, 1fr) minmax(150px, 0.65fr) auto;
+}
+
+.payrollRunSearchRow {
+  grid-template-columns: minmax(150px, 0.9fr) minmax(140px, 0.7fr) minmax(140px, 0.7fr) minmax(110px, 0.5fr) auto auto;
+}
+
+.payrollRunSearchRow .searchActions {
+  display: contents;
+}
+
+.quickFilterRow :global(.MuiInputBase-root),
+.searchRow :global(.MuiInputBase-root),
+.bankFileSearchPanel :global(.MuiInputBase-root),
+.payrollRegisterSearchPanel :global(.MuiInputBase-root) {
+  min-height: 40px;
+}
+
+.quickFilterRow :global(.MuiOutlinedInput-input),
+.searchRow :global(.MuiOutlinedInput-input),
+.bankFileSearchPanel :global(.MuiOutlinedInput-input),
+.payrollRegisterSearchPanel :global(.MuiOutlinedInput-input) {
+  padding-bottom: 10px;
+  padding-top: 10px;
+}
+
+.bulkBar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.bulkCount {
+  color: #4f5b67;
+  font-size: 0.95rem;
+}
+
+.bulkActivate,
+.bulkDeactivate,
+.bulkDelete {
+  border-radius: 14px !important;
+  font-weight: 700 !important;
+  min-height: 40px;
+  padding: 0 16px !important;
+}
+
+.bulkActivate {
+  background: rgba(227, 246, 233, 0.95) !important;
+  border: 1px solid #7ab98b !important;
+  color: #2f7e3d !important;
+}
+
+.bulkDeactivate {
+  background: rgba(255, 240, 225, 0.96) !important;
+  border: 1px solid #ffb16d !important;
+  color: #ef6b00 !important;
+}
+
+.bulkDelete {
+  background: rgba(255, 239, 239, 0.96) !important;
+  border: 1px solid #f09999 !important;
+  color: #e73a3a !important;
+}
+
+.tableCard {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 10px;
+  min-height: 0;
+}
+
+.detailPage {
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.detailScrollCard {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 10px;
+  scrollbar-gutter: stable;
+}
+
+.tableWrap {
+  flex: 0 1 auto;
+  height: auto;
+  max-height: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  min-height: 0;
+}
+
+.table {
+  border-collapse: collapse;
+  min-width: 980px;
+  width: 100%;
+}
+
+.table thead th {
+  background: var(--app-grid-header-background);
+  border-bottom: 1px solid var(--app-grid-border-color);
+  color: var(--app-grid-header-color);
+  font-size: var(--app-grid-header-font-size);
+  font-weight: 700;
+  padding: var(--app-grid-cell-padding-block) var(--app-grid-cell-padding-inline);
+  text-align: left;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.table thead th + th {
+  position: sticky;
+}
+
+.table thead th:not(:last-child)::after {
+  background: var(--app-grid-border-color);
+  content: "";
+  height: 18px;
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+}
+
+.table tbody td {
+  border-bottom: 1px solid var(--app-grid-border-color);
+  color: var(--app-grid-row-color);
+  font-size: var(--app-grid-row-font-size);
+  padding: var(--app-grid-cell-padding-block) var(--app-grid-cell-padding-inline);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.table tbody tr:hover {
+  background: var(--app-grid-row-hover-background);
+}
+
+.resultLinesTable {
+  min-width: 1280px;
+}
+
+.resultLinesTable thead th {
+  background: #f8fbff;
+  color: #0f2444;
+  font-size: 0.74rem;
+  padding: 7px 10px;
+}
+
+.resultLinesTable tbody td {
+  color: #20385f;
+  font-size: 0.78rem;
+  padding: 7px 10px;
+}
+
+.resultLinesTable tbody tr:hover {
+  background: #f8fbff;
+}
+
+.resultLinesTable th:nth-child(5),
+.resultLinesTable th:nth-child(6),
+.resultLinesTable td:nth-child(5),
+.resultLinesTable td:nth-child(6) {
+  text-align: right;
+}
+
+.fnfDenseTable {
+  min-width: 900px;
+}
+
+.fnfDenseTable thead th {
+  font-size: 0.78rem;
+  padding: 6px 8px;
+}
+
+.fnfDenseTable tbody td {
+  font-size: 0.8rem;
+  padding: 4px 8px;
+}
+
+.fnfStatementPreview {
+  color: #172033;
+}
+
+.fnfStatementPreview :global(h1) {
+  color: #1f2937;
+  font-size: 1.25rem;
+  line-height: 1.2;
+  margin: 0 0 14px;
+}
+
+.fnfStatementPreview :global(p) {
+  font-size: 0.86rem;
+  margin: 0 0 10px;
+}
+
+.fnfStatementPreview :global(table) {
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  width: 100%;
+}
+
+.fnfStatementPreview :global(th),
+.fnfStatementPreview :global(td) {
+  padding: 5px 8px !important;
+}
+
+.fnfStatementPreview :global(p:has(strong)) {
+  font-size: 0.9rem;
+}
+
+.fnfStatementPreview :global(p:has(strong):nth-of-type(2)) {
+  font-weight: 900;
+  margin-top: 12px;
+}
+
+.fnfStatementPreview :global(p:has(strong):nth-of-type(3)) {
+  font-weight: 900;
+}
+
+.fnfStatementNetPayable {
+  color: #2563eb;
+  font-weight: 900;
+}
+
+.fnfStatementNetRecoverable {
+  color: #dc2626;
+  font-weight: 900;
+}
+
+.fnfStepperShell {
+  border-bottom: 1px solid #d9e6ef;
+  padding: 0 0 14px;
+}
+
+.fnfStepperShell :global(.MuiStepLabel-label) {
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.fnfStepperShell :global(.MuiStepIcon-root.Mui-active),
+.fnfStepperShell :global(.MuiStepIcon-root.Mui-completed) {
+  color: var(--app-primary-color);
+}
+
+.fnfWorkflowGrid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.fnfWorkflowPanel {
+  border: 1px solid #d9e6ef;
+  border-radius: 8px;
+  min-height: 94px;
+  padding: 12px;
+}
+
+.fnfWorkflowTitle {
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.2;
+  margin: 0 0 8px;
+}
+
+.fnfWorkflowValue {
+  color: #0f172a;
+  font-size: 0.98rem;
+  font-weight: 900;
+  line-height: 1.25;
+  margin: 0 0 6px;
+  overflow-wrap: anywhere;
+}
+
+.fnfWorkflowMeta {
+  color: #64748b;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.fnfEditDetailsGrid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.fnfEditDetailsFull {
+  grid-column: 1 / -1;
+}
+
+.selectedRow {
+  background: rgba(220, 229, 239, 0.76);
+}
+
+.statusPill {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.1;
+  padding: 5px 12px;
+}
+
+.statusActive {
+  background: #2f7e3d;
+  color: #fff;
+}
+
+.statusInactive {
+  background: #ef6b00;
+  color: #fff;
+}
+
+.actionCell {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.actionsColumn {
+  text-align: center !important;
+}
+
+.iconButton {
+  align-items: center;
+  background: transparent;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  display: inline-flex;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0;
+}
+
+.table :global(.MuiCheckbox-root) {
+  padding: 4px;
+}
+
+.table :global(.MuiSvgIcon-root) {
+  font-size: 1.35rem;
+}
+
+.viewIcon {
+  color: #6d6d6d;
+}
+
+.editIcon {
+  color: var(--app-primary-color);
+}
+
+.deleteIcon {
+  color: #e33b3b;
+}
+
+.toggleIcon {
+  color: #ef6b00;
+}
+
+.emptyState {
+  color: #697586;
+  padding: 32px 12px;
+  text-align: center;
+}
+
+.paginationBar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 0 2px 0;
+}
+
+.paginationInfo {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.paginationLabel,
+.paginationRange {
+  color: #51606f;
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.rowsPerPageSelect {
+  min-width: 70px;
+}
+
+.rowsPerPageSelect :global(.MuiInputBase-root) {
+  min-height: 34px;
+}
+
+.rowsPerPageSelect :global(.MuiSelect-select) {
+  font-size: 0.82rem;
+  padding-bottom: 7px;
+  padding-top: 7px;
+}
+
+.paginationBar :global(.MuiPagination-ul) {
+  gap: 2px;
+}
+
+.paginationBar :global(.MuiPaginationItem-root) {
+  color: var(--app-primary-color);
+  font-size: 0.78rem;
+  height: 26px;
+  margin: 0;
+  min-width: 26px;
+}
+
+.paginationBar :global(.MuiPaginationItem-root.Mui-selected) {
+  background-color: var(--app-primary-color);
+  color: #ffffff;
+}
+
+.paginationBar :global(.MuiPaginationItem-root:hover) {
+  background-color: var(--app-primary-soft);
+}
+
+.paginationBar :global(.MuiPaginationItem-root.Mui-selected:hover) {
+  background-color: var(--app-primary-hover);
+}
+
+.dialogPaper {
+  background:
+    linear-gradient(180deg, rgba(248, 251, 254, 0.98) 0%, rgba(255, 255, 255, 0.98) 52%, rgba(246, 250, 253, 0.98) 100%) !important;
+  border-radius: 30px !important;
+  max-width: 1215px;
+  width: min(90vw, 1215px);
+}
+
+.confirmDialogPaper {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border-radius: 22px !important;
+  max-width: 520px;
+  width: min(92vw, 520px);
+}
+
+.compactDialogPaper {
+  background:
+    linear-gradient(180deg, rgba(248, 251, 254, 0.98) 0%, rgba(255, 255, 255, 0.98) 52%, rgba(246, 250, 253, 0.98) 100%) !important;
+  border-radius: 24px !important;
+  max-width: 620px;
+  width: min(92vw, 620px);
+}
+
+.confirmDialogTitle {
+  border-bottom: 1px solid var(--app-divider-color);
+  color: #173b63;
+  font-size: 1.15rem;
+  font-weight: 800;
+  padding: 18px 22px !important;
+}
+
+.confirmDialogContent {
+  padding: 18px 22px 14px !important;
+}
+
+.confirmDialogMessage {
+  color: #334155;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.confirmDialogActions {
+  align-items: center;
+  border-top: 1px solid var(--app-divider-color);
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 14px 22px 18px !important;
+}
+
+.dialogTitle {
+  border-bottom: 1px solid var(--app-divider-color);
+  color: #173b63;
+  font-size: 1.8rem;
+  font-weight: 800;
+  padding: 24px 30px !important;
+}
+
+.dialogContent {
+  padding: 20px 30px !important;
+}
+
+.sectionBar {
+  background: rgba(242, 246, 250, 0.98);
+  border-radius: 999px;
+  color: #173b63;
+  font-size: 1.05rem;
+  font-weight: 800;
+  margin-bottom: 18px;
+  padding: 16px 18px;
+}
+
+/* Use alongside .sectionBar when the surrounding layout (e.g. a flex row that also has a
+   button) already owns the spacing below it -- overrides sectionBar's own margin-bottom.
+   A same-file class beats an inline sx override reliably; relying on sx alone here raced
+   against CSS Modules injection order in dev and lost. */
+.sectionBarTight {
+  margin-bottom: 0;
+}
+
+.dialogGrid {
+  display: grid;
+  gap: 18px 22px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 28px;
+}
+
+.dialogFooter {
+  align-items: center;
+  border-top: 1px solid #d9e6ef;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 20px 30px 24px !important;
+}
+
+.textAction {
+  color: var(--app-primary-color) !important;
+  font-weight: 700 !important;
+}
+
+.switchRow {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  min-height: 68px;
+}
+
+@media (max-width: 1200px) {
+  .payslipSearchLinePrimary,
+  .bankFileSearchLinePrimary,
+  .payrollRegisterSearchLinePrimary,
+  .statutorySearchLinePrimary {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .bankFileSearchLineSecondary,
+  .payrollRegisterSearchLineSecondary,
+  .statutorySearchLineSecondary,
+  .employeePayrollInputSearchRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .payrollRunSearchRow {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  .payrollRunSearchRow .searchActions {
+    display: flex;
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1440px),
+  (min-width: 901px) and (max-height: 900px) {
+  .page {
+    gap: 8px;
+  }
+
+  .controlsCard,
+  .tableCard,
+  .listUtilityBar {
+    padding: 8px;
+  }
+
+  .controlsHeader,
+  .headerActions,
+  .searchRow,
+  .tableHeaderActions,
+  .listUtilityBar,
+  .listUtilityActions {
+    gap: 8px;
+  }
+
+  .fnfCreateGrid,
+  .fnfWizardGrid {
+    gap: 12px;
+  }
+}
+
+@media (max-width: 900px) {
+  .quickFilterRow,
+  .searchRow,
+  .employeePayrollInputSearchRow,
+  .payrollRunSearchRow {
+    grid-template-columns: 1fr !important;
+  }
+
+  .payslipSearchLinePrimary,
+  .payslipSearchLineSecondary,
+  .bankFileSearchLinePrimary,
+  .bankFileSearchLineSecondary,
+  .payrollRegisterSearchLinePrimary,
+  .payrollRegisterSearchLineSecondary,
+  .statutorySearchLinePrimary,
+  .statutorySearchLineSecondary {
+    grid-template-columns: 1fr !important;
+  }
+
+  .fnfCreateGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .fnfWizardGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .fnfWorkflowGrid,
+  .fnfEditDetailsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .dialogGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .page,
+  .detailPage {
+    height: auto;
+    min-height: 100%;
+    overflow: visible;
+  }
+
+  .controlsHeader,
+  .detailHeader,
+  .listUtilityBar,
+  .tableHeaderActions,
+  .paginationBar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .headerActions,
+  .detailHeaderActions,
+  .listUtilityActions,
+  .searchActions {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .headerActions > *,
+  .detailHeaderActions > *,
+  .listUtilityActions > *,
+  .searchActions > * {
+    flex: 1 1 auto;
+  }
+
+  .paginationBar,
+  .paginationInfo {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 600px) {
+  .page {
+    gap: 8px;
+  }
+
+  .controlsCard,
+  .tableCard,
+  .listUtilityBar {
+    padding: 8px;
+  }
+
+  .headerActions > *,
+  .detailHeaderActions > *,
+  .listUtilityActions > *,
+  .searchActions > *,
+  .fnfWizardActions > * {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .fnfWizardActions,
+  .dialogFooter {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .fnfCreateActions .primaryButton {
+    min-width: 0 !important;
+    width: 100%;
+  }
+
+  .table {
+    min-width: 720px;
+  }
+
+  .dialogPaper,
+  .confirmDialogPaper,
+  .compactDialogPaper {
+    border-radius: 18px !important;
+    width: calc(100vw - 24px);
+  }
+
+  .dialogTitle {
+    font-size: 1.35rem;
+  }
+
+  .dialogTitle,
+  .dialogContent,
+  .dialogFooter {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+}

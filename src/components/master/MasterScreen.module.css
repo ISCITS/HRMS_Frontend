@@ -1,0 +1,787 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  margin: 0;
+  min-height: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+.breadcrumbs {
+  color: #697586;
+  font-size: 14px;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.topBar {
+  align-items: center;
+  display: none;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.backButton {
+  display: none !important;
+}
+
+.controlsCard,
+.tableCard,
+.dialogShell {
+  background: var(--app-surface-color);
+  border: 1px solid var(--app-card-border-color);
+  border-radius: var(--app-card-radius);
+  box-shadow: var(--app-shadow-soft);
+}
+
+.controlsCard {
+  padding: 10px;
+  flex: 0 0 auto;
+}
+
+.workbenchTabsCard {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(187, 213, 232, 0.78);
+  border-radius: var(--app-card-radius);
+  box-shadow: var(--app-shadow-soft);
+  padding: 8px;
+}
+
+.workbenchTabsCard :global(.MuiTabs-indicator) {
+  display: none;
+}
+
+.workbenchTabsCard :global(.MuiTabs-flexContainer) {
+  gap: 0;
+}
+
+.workbenchTabsCard :global(.MuiTab-root) {
+  color: #435a74;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  min-height: 40px;
+  padding: 10px 16px;
+  text-transform: uppercase;
+}
+
+.workbenchTabsCard :global(.MuiTab-root:hover) {
+  background: transparent;
+  color: var(--app-primary-color);
+}
+
+.workbenchTabsCard :global(.MuiTab-root.Mui-selected) {
+  background: transparent;
+  color: #0f5fa8;
+}
+
+.controlsHeader {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.title {
+  color: var(--app-page-heading-color);
+  font-size: var(--app-page-heading-size);
+  font-weight: var(--app-page-heading-weight);
+  margin: 0;
+  line-height: var(--app-page-heading-line-height);
+}
+
+.headerActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.primaryButton {
+  background: var(--app-button-primary-background) !important;
+  border-radius: var(--app-button-radius) !important;
+  box-shadow: var(--app-button-primary-shadow) !important;
+  color: var(--app-button-primary-text) !important;
+  font-weight: var(--app-button-font-weight) !important;
+  font-size: var(--app-button-font-size) !important;
+  min-height: var(--app-button-height);
+  padding: 0 var(--app-button-horizontal-padding) !important;
+}
+
+.primaryButton:hover {
+  background: var(--app-button-primary-hover) !important;
+}
+
+.primaryButton:disabled {
+  background: rgba(0, 0, 0, 0.12) !important;
+  box-shadow: none !important;
+  color: rgba(0, 0, 0, 0.26) !important;
+}
+
+.secondaryButton {
+  background: var(--app-button-secondary-background) !important;
+  border: 1px solid var(--app-button-secondary-border) !important;
+  border-radius: var(--app-button-radius) !important;
+  color: var(--app-button-secondary-text) !important;
+  font-weight: var(--app-button-font-weight) !important;
+  font-size: var(--app-button-font-size) !important;
+  min-height: var(--app-button-height);
+  padding: 0 var(--app-button-horizontal-padding) !important;
+}
+
+.secondaryButton:hover {
+  background: var(--app-grid-row-hover-background) !important;
+}
+
+.searchRow {
+  align-items: stretch;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(220px, 1.2fr) minmax(220px, 1.2fr) minmax(150px, 0.7fr) auto auto;
+}
+
+.employeeSearchRow {
+  align-items: stretch;
+  display: grid;
+  gap: 10px;
+  grid-template-columns:
+    minmax(220px, 1fr)
+    minmax(220px, 1fr)
+    minmax(150px, 0.6fr)
+    minmax(150px, 0.6fr)
+    minmax(120px, 0.4fr)
+    auto
+    auto;
+}
+
+.userSearchRow {
+  align-items: stretch;
+  display: grid;
+  gap: 10px;
+  grid-template-columns:
+    minmax(200px, 1fr)
+    minmax(200px, 1fr)
+    minmax(200px, 1fr)
+    minmax(150px, 0.7fr)
+    auto
+    auto;
+}
+
+.taxRegimeSearchRow {
+  grid-template-columns:
+    minmax(140px, 0.9fr)
+    minmax(170px, 1.1fr)
+    minmax(120px, 0.7fr)
+    minmax(110px, 0.6fr)
+    minmax(100px, 0.5fr)
+    auto;
+}
+
+.searchActions {
+  display: flex;
+  gap: 10px;
+}
+
+.filterActions {
+  align-items: stretch;
+  min-width: 250px;
+}
+
+.filterActions > button {
+  min-width: 112px;
+  white-space: nowrap;
+}
+
+@media (max-width: 599px) {
+  .filterActions {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .filterActions > button {
+    flex: 1 1 0;
+  }
+}
+
+.bulkBar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.bulkCount {
+  color: #4f5b67;
+  font-size: 0.95rem;
+}
+
+.bulkActivate,
+.bulkDeactivate,
+.bulkDelete {
+  border-radius: 14px !important;
+  font-weight: 700 !important;
+  min-height: 40px;
+  padding: 0 16px !important;
+}
+
+.bulkActivate {
+  background: rgba(227, 246, 233, 0.95) !important;
+  border: 1px solid #7ab98b !important;
+  color: #2f7e3d !important;
+}
+
+.bulkDeactivate {
+  background: rgba(255, 240, 225, 0.96) !important;
+  border: 1px solid #ffb16d !important;
+  color: #ef6b00 !important;
+}
+
+.bulkDelete {
+  background: rgba(255, 239, 239, 0.96) !important;
+  border: 1px solid #f09999 !important;
+  color: #e73a3a !important;
+}
+
+.tableCard {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 10px;
+  min-height: 0;
+}
+
+.tableHeaderActions {
+  align-items: flex-start;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 10px;
+  justify-content: flex-start;
+  padding-bottom: 10px;
+}
+
+.tableWrap {
+  flex: 0 1 auto;
+  height: auto;
+  max-height: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  min-height: 0;
+}
+
+.salaryStructureAmountTable :is(th, td):nth-child(4),
+.salaryStructureAmountTable :is(th, td):nth-child(5),
+.revisionHistoryAmountTable :is(th, td):nth-child(4),
+.revisionHistoryAmountTable :is(th, td):nth-child(5),
+.flexiAmountTable :is(th, td):nth-child(3),
+.flexiAmountTable :is(th, td):nth-child(4),
+.flexiAmountTable :is(th, td):nth-child(5),
+.flexiCompactAmountTable :is(th, td):nth-child(2),
+.flexiCompactAmountTable :is(th, td):nth-child(3),
+.flexiCompactAmountTable :is(th, td):nth-child(4),
+.flexiCompactAmountTable :is(th, td):nth-child(5),
+.overrideSimpleAmountTable :is(th, td):nth-child(2),
+.overrideSimpleAmountTable :is(th, td):nth-child(3),
+.overrideSimpleAmountTable :is(th, td):nth-child(4),
+.overrideSimpleAmountTable :is(th, td):nth-child(5),
+.overrideSimpleAmountTable :is(th, td):nth-child(6),
+.overrideSimpleAmountTable :is(th, td):nth-child(7),
+.overrideSimpleAmountTable :is(th, td):nth-child(8),
+.overrideDetailedAmountTable :is(th, td):nth-child(4),
+.overrideDetailedAmountTable :is(th, td):nth-child(5),
+.overrideDetailedAmountTable :is(th, td):nth-child(6),
+.overrideDetailedAmountTable :is(th, td):nth-child(7),
+.overrideDetailedAmountTable :is(th, td):nth-child(8),
+.overrideDetailedAmountTable :is(th, td):nth-child(9),
+.overrideDetailedAmountTable :is(th, td):nth-child(10) {
+  text-align: right;
+}
+
+.flexiAmountTable :is(td:nth-child(3), td:nth-child(4), td:nth-child(5)) input,
+.flexiCompactAmountTable :is(td:nth-child(2), td:nth-child(3), td:nth-child(4), td:nth-child(5)) input,
+.overrideSimpleAmountTable :is(td:nth-child(2), td:nth-child(3), td:nth-child(4), td:nth-child(5), td:nth-child(6), td:nth-child(7), td:nth-child(8)) input,
+.overrideDetailedAmountTable :is(td:nth-child(4), td:nth-child(5), td:nth-child(6), td:nth-child(7), td:nth-child(8), td:nth-child(9), td:nth-child(10)) input {
+  text-align: right;
+}
+
+.revisionContent {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.revisionCard {
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+.revisionTableWrap {
+  flex: 0 0 auto;
+  max-height: none;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.table {
+  border-collapse: collapse;
+  min-width: 980px;
+  width: 100%;
+}
+
+.table thead th {
+  background: var(--app-grid-header-background);
+  border-bottom: 1px solid var(--app-grid-border-color);
+  color: var(--app-grid-header-color);
+  font-size: var(--app-grid-header-font-size);
+  font-weight: 700;
+  padding: var(--app-grid-cell-padding-block) var(--app-grid-cell-padding-inline);
+  text-align: left;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.table thead th + th {
+  position: sticky;
+}
+
+.table thead th:not(:last-child)::after {
+  background: var(--app-grid-border-color);
+  content: "";
+  height: 18px;
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+}
+
+.table tbody td {
+  border-bottom: 1px solid var(--app-grid-border-color);
+  color: var(--app-grid-row-color);
+  font-size: var(--app-grid-row-font-size);
+  padding: var(--app-grid-cell-padding-block) var(--app-grid-cell-padding-inline);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.table tbody tr:hover {
+  background: var(--app-grid-row-hover-background);
+}
+
+.selectedRow {
+  background: var(--app-grid-row-selected-background);
+}
+
+.statusPill {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 2px 9px;
+}
+
+.statusActive {
+  background: #2f7e3d;
+  color: #fff;
+}
+
+.statusInactive {
+  background: #ef6b00;
+  color: #fff;
+}
+
+.statusNegative {
+  background: #dc2626;
+  color: #fff;
+}
+
+.statusNeutral {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.actionCell {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.iconButton {
+  align-items: center;
+  background: transparent;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  display: inline-flex;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0;
+}
+
+.table :global(.MuiCheckbox-root) {
+  padding: 4px;
+}
+
+.table :global(.MuiSvgIcon-root) {
+  font-size: 1.35rem;
+}
+
+.viewIcon {
+  color: #6d6d6d;
+}
+
+.editIcon {
+  color: var(--app-primary-color);
+}
+
+.deleteIcon {
+  color: #e33b3b;
+}
+
+.toggleIcon {
+  color: #ef6b00;
+}
+
+.toggleActiveIcon {
+  color: #16a34a;
+}
+
+.toggleInactiveIcon {
+  color: #dc2626;
+}
+
+.emptyState {
+  color: #697586;
+  padding: 32px 12px;
+  text-align: center;
+}
+
+.paginationBar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 0 2px 0;
+}
+
+.paginationInfo {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.paginationLabel,
+.paginationRange {
+  color: #51606f;
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.rowsPerPageSelect {
+  min-width: 70px;
+}
+
+.rowsPerPageSelect :global(.MuiInputBase-root) {
+  min-height: 34px;
+}
+
+.rowsPerPageSelect :global(.MuiSelect-select) {
+  font-size: 0.82rem;
+  padding-bottom: 7px;
+  padding-top: 7px;
+}
+
+.paginationBar :global(.MuiPagination-ul) {
+  gap: 2px;
+}
+
+.paginationBar :global(.MuiPaginationItem-root) {
+  color: var(--app-primary-color);
+  font-size: 0.78rem;
+  height: 26px;
+  margin: 0;
+  min-width: 26px;
+}
+
+.paginationBar :global(.MuiPaginationItem-root.Mui-selected) {
+  background-color: var(--app-primary-color);
+  color: #ffffff;
+}
+
+.paginationBar :global(.MuiPaginationItem-root:hover) {
+  background-color: var(--app-primary-soft);
+}
+
+.paginationBar :global(.MuiPaginationItem-root.Mui-selected:hover) {
+  background-color: var(--app-primary-hover);
+}
+
+.dialogPaper {
+  background:
+    linear-gradient(180deg, rgba(248, 251, 254, 0.98) 0%, rgba(255, 255, 255, 0.98) 52%, rgba(246, 250, 253, 0.98) 100%) !important;
+  border-radius: 30px !important;
+  max-width: 1215px;
+  width: min(90vw, 1215px);
+}
+
+.dialogPaperDapartment {
+  background:
+    linear-gradient(180deg, rgba(248, 251, 254, 0.98) 0%, rgba(255, 255, 255, 0.98) 52%, rgba(246, 250, 253, 0.98) 100%) !important;
+  border-radius: 30px !important;
+  max-width: 900px;
+  width: min(90vw, 900px);
+}
+
+.confirmDialogPaper {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border-radius: 22px !important;
+  max-width: 520px;
+  width: min(92vw, 520px);
+}
+
+.compactDialogPaper {
+  background:
+    linear-gradient(180deg, rgba(248, 251, 254, 0.98) 0%, rgba(255, 255, 255, 0.98) 52%, rgba(246, 250, 253, 0.98) 100%) !important;
+  border-radius: 24px !important;
+  max-width: 620px;
+  width: min(92vw, 620px);
+}
+
+.confirmDialogTitle {
+  border-bottom: 1px solid var(--app-divider-color);
+  color: #173b63;
+  font-size: 1.15rem;
+  font-weight: 800;
+  padding: 18px 22px !important;
+}
+
+.confirmDialogContent {
+  padding: 18px 22px 14px !important;
+}
+
+.confirmDialogMessage {
+  color: #334155;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.confirmDialogActions {
+  align-items: center;
+  border-top: 1px solid var(--app-divider-color);
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 14px 22px 18px !important;
+}
+
+.dialogTitle {
+  border-bottom: 1px solid var(--app-divider-color);
+  color: #173b63;
+  font-size: 1.8rem;
+  font-weight: 800;
+  padding: 24px 30px !important;
+}
+
+.dialogContent {
+  padding: 20px 30px !important;
+}
+
+.sectionBar {
+  background: rgba(242, 246, 250, 0.98);
+  border-radius: 999px;
+  color: #173b63;
+  font-size: 1.05rem;
+  font-weight: 800;
+  margin-bottom: 18px;
+  padding: 16px 18px;
+}
+
+.dialogGrid {
+  display: grid;
+  gap: 18px 22px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 28px;
+}
+
+.dialogFooter {
+  align-items: center;
+  border-top: 1px solid #d9e6ef;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 20px 30px 24px !important;
+}
+
+.textAction {
+  color: var(--app-primary-color) !important;
+  font-weight: 700 !important;
+}
+
+.switchRow {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  min-height: 68px;
+}
+
+.switchLabel {
+  color: #1f2937;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+@media (max-width: 1200px) {
+  .searchRow,
+  .employeeSearchRow,
+  .userSearchRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .taxRegimeSearchRow {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1440px),
+  (min-width: 901px) and (max-height: 900px) {
+  .page {
+    gap: 8px;
+  }
+
+  .controlsCard,
+  .tableCard {
+    padding: 8px;
+  }
+
+  .controlsHeader,
+  .headerActions,
+  .searchRow,
+  .employeeSearchRow,
+  .tableHeaderActions {
+    gap: 8px;
+  }
+
+  .bulkBar {
+    margin-top: 6px;
+  }
+}
+
+@media (max-width: 900px) {
+  .searchRow,
+  .employeeSearchRow,
+  .taxRegimeSearchRow,
+  .dialogGrid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .headerActions,
+  .searchActions,
+  .dialogFooter {
+    width: 100%;
+  }
+
+  .headerActions > *,
+  .searchActions > *,
+  .dialogFooter > * {
+    flex: 1 1 auto;
+  }
+
+  .page {
+    height: auto;
+    min-height: 100%;
+    overflow: visible;
+  }
+
+  .controlsHeader,
+  .tableHeaderActions,
+  .paginationBar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .paginationBar {
+    justify-content: center;
+  }
+
+  .paginationInfo {
+    justify-content: center;
+  }
+
+  .workbenchTabsCard {
+    overflow-x: auto;
+  }
+
+  .workbenchTabsCard :global(.MuiTabs-root) {
+    min-width: max-content;
+  }
+
+  .dialogTitle,
+  .dialogContent,
+  .dialogFooter {
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .page {
+    gap: 8px;
+  }
+
+  .controlsCard,
+  .tableCard,
+  .workbenchTabsCard {
+    padding: 8px;
+  }
+
+  .headerActions,
+  .searchActions,
+  .dialogFooter {
+    gap: 8px;
+  }
+
+  .headerActions > *,
+  .searchActions > *,
+  .dialogFooter > * {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .table {
+    min-width: 720px;
+  }
+
+  .dialogPaper,
+  .dialogPaperDapartment,
+  .confirmDialogPaper,
+  .compactDialogPaper {
+    border-radius: 18px !important;
+    width: calc(100vw - 24px);
+  }
+
+  .dialogTitle {
+    font-size: 1.35rem;
+  }
+
+  .dialogTitle,
+  .dialogContent,
+  .dialogFooter {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+}

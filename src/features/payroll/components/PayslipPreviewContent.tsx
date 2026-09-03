@@ -1,0 +1,369 @@
+"use client";
+
+import { Box, Stack, Typography } from "@mui/material";
+
+import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import styles from "@/features/payroll/components/PayrollScreen.module.css";
+import type { PayslipLineRecord, PayslipPreviewRecord } from "@/features/payroll/types";
+
+const PAYSLIP_COMPANY_DISPLAY_NAME = "ABC India Pvt Ltd";
+
+type PayslipPreviewContentProps = {
+  objPayslip: PayslipPreviewRecord;
+};
+
+function normalizePayslipCompanyName(strCompanyName: string | null | undefined) {
+  const strValue = (strCompanyName || "").trim();
+  if (!strValue) {
+    return "-";
+  }
+  if (["acma india", "acme india"].includes(strValue.toLowerCase())) {
+    return PAYSLIP_COMPANY_DISPLAY_NAME;
+  }
+  return strValue;
+}
+
+function hasDisplayAmount(decAmount: number | null | undefined) {
+  return Number(decAmount ?? 0) > 0;
+}
+
+function formatCurrency(decValue: number) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(decValue || 0);
+}
+
+function formatDate(strDate: string | null) {
+  if (!strDate) {
+    return "-";
+  }
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(strDate));
+}
+
+function toLabelKey(strValue: string | null | undefined) {
+  return String(strValue ?? "")
+    .trim()
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/[^a-zA-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .toLowerCase();
+}
+
+function formatDynamicFallback(strValue: string | null | undefined) {
+  const strTrimmed = String(strValue ?? "").trim();
+  if (!strTrimmed) {
+    return "-";
+  }
+  return strTrimmed
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (strChar) => strChar.toUpperCase());
+}
+
+function translateDynamicLabel(
+  t: (strKey: string, strFallback?: string) => string,
+  strValue: string | null | undefined
+) {
+  const strKey = toLabelKey(strValue);
+  if (!strKey) {
+    return "-";
+  }
+  return t(strKey, formatDynamicFallback(strValue));
+}
+
+function DetailRow({
+  strLabel,
+  strValue,
+}: {
+  strLabel: string;
+  strValue: string | null | undefined;
+}) {
+  return (
+    <Box sx={{ display: "grid", gridTemplateColumns: "130px 1fr", gap: 1 }}>
+      <Typography sx={{ color: "#64748b", fontSize: "0.84rem" }}>{strLabel}</Typography>
+      <Typography sx={{ color: "#172033", fontSize: "0.84rem", fontWeight: 600 }}>
+        {strValue || "-"}
+      </Typography>
+    </Box>
+  );
+}
+
+function LineTable({
+  strTitle,
+  lstLines,
+  strComponentLabel,
+  strAmountLabel,
+  strNoLinesLabel,
+  translateLineLabel,
+}: {
+  strTitle: string;
+  lstLines: PayslipLineRecord[];
+  strComponentLabel: string;
+  strAmountLabel: string;
+  strNoLinesLabel: string;
+  translateLineLabel: (strValue: string | null | undefined) => string;
+}) {
+  const lstVisibleLines = lstLines.filter((dicLine) => hasDisplayAmount(dicLine.decAmount));
+
+  return (
+    <Box sx={{ border: "1px solid #d9e6ef", background: "#fff", p: 2 }}>
+      <Typography sx={{ color: "#173b63", fontWeight: 800, mb: 1.5 }}>
+        {strTitle}
+      </Typography>
+      <Box className={styles.tableWrap}>
+        <table className={styles.table} style={{ minWidth: 420 }}>
+          <thead>
+            <tr>
+              <th>{strComponentLabel}</th>
+              <th style={{ textAlign: "right" }}>{strAmountLabel}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lstVisibleLines.length ? (
+              lstVisibleLines.map((dicLine, intIndex) => (
+                <tr key={`${dicLine.strGroupCode}-${dicLine.strLineCode ?? dicLine.strLineLabel}-${intIndex}`}>
+                  <td>{translateLineLabel(dicLine.strLineLabel)}</td>
+                  <td style={{ textAlign: "right" }}>{formatCurrency(dicLine.decAmount)}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={2} className={styles.emptyState}>
+                  {strNoLinesLabel}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </Box>
+    </Box>
+  );
+}
+
+export default function PayslipPreviewContent({
+  objPayslip,
+}: PayslipPreviewContentProps) {
+  const { t } = useModuleLabels("payslips");
+  const dicEmployee = objPayslip.dicEmployee;
+  const dicRun = objPayslip.dicRun;
+  const dicCompany = objPayslip.dicCompany;
+  const dicTax = objPayslip.dicTax;
+  const dicTotals = objPayslip.dicTotals;
+  const dicSummary = objPayslip.dicSummary;
+  const dicFooter = objPayslip.dicFooter;
+  const lstReimbursements = objPayslip.lstReimbursements ?? [];
+  const lstStatutoryInformation = objPayslip.lstStatutoryInformation ?? [];
+  const dicLineTableLabels = {
+    strComponentLabel: t("component", "Component"),
+    strAmountLabel: t("amount", "Amount"),
+    strNoLinesLabel: t("no_lines", "No lines"),
+    translateLineLabel: (strValue: string | null | undefined) => translateDynamicLabel(t, strValue),
+  };
+  const lstTaxBreakdownRows = [
+    { strLabel: t("taxable_income", "Taxable Income"), decValue: dicTax?.decTaxableIncome },
+    { strLabel: t("standard_deduction", "Standard Deduction"), decValue: dicTax?.decStandardDeductionAmount },
+    { strLabel: t("tax_before_rebate", "Tax Before Rebate"), decValue: dicTax?.decTaxBeforeRebate },
+    {
+      strLabel: t("rebate_relief", "Rebate + Relief"),
+      decValue: (dicTax?.decRebateAmount ?? 0) + (dicTax?.decMarginalRebateReliefAmount ?? 0),
+    },
+    {
+      strLabel: t("surcharge_net", "Surcharge (Net)"),
+      decValue: (dicTax?.decSurchargeAmount ?? 0) - (dicTax?.decMarginalSurchargeReliefAmount ?? 0),
+    },
+    { strLabel: t("cess", "Cess"), decValue: dicTax?.decCessAmount },
+    { strLabel: t("annual_tax", "Annual Tax Amount"), decValue: dicTax?.decTotalTaxLiability },
+    { strLabel: t("monthly_tds", "TDS This Month"), decValue: dicTax?.decCurrentMonthTds ?? dicTotals.decTaxTotal },
+    { strLabel: t("tax_total", "Tax Total"), decValue: dicTotals.decTaxTotal },
+  ];
+
+  return (
+    <Box sx={{ background: "#f8fbff", border: "1px solid #d9e6ef", p: 2 }}>
+      <Box
+        sx={{
+          alignItems: "flex-start",
+          borderBottom: "2px solid #173b63",
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 2,
+          justifyContent: "space-between",
+          pb: 2,
+        }}
+      >
+        <Box>
+          <Typography sx={{ color: "#173b63", fontSize: "1.35rem", fontWeight: 900 }}>
+            {normalizePayslipCompanyName(dicCompany.strCompanyName)}
+          </Typography>
+          <Typography sx={{ color: "#64748b", fontSize: "0.88rem" }}>
+            {dicCompany.strCompanyAddress || ""}
+          </Typography>
+        </Box>
+        <Box sx={{ textAlign: { xs: "left", sm: "right" } }}>
+          <Typography sx={{ color: "#172033", fontSize: "1.1rem", fontWeight: 900 }}>
+            {t("payslip", "Payslip")}
+          </Typography>
+          <Typography sx={{ color: "#64748b", fontSize: "0.88rem" }}>
+            {dicRun.strPayrollMonthLabel}
+          </Typography>
+          <Typography sx={{ color: "#64748b", fontSize: "0.88rem" }}>
+            {objPayslip.strPayslipNumber || t("preview", "Preview")}
+          </Typography>
+        </Box>
+      </Box>
+
+      <Box
+        sx={{
+          display: "grid",
+          gap: 1.5,
+          gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+          mt: 2,
+        }}
+      >
+        <Box sx={{ border: "1px solid #d9e6ef", background: "#fff", p: 2 }}>
+          <Typography sx={{ color: "#173b63", fontWeight: 800, mb: 1.5 }}>
+            {t("employee_information", "Employee Information")}
+          </Typography>
+          <Stack spacing={0.8}>
+            <DetailRow strLabel={t("code", "Code")} strValue={dicEmployee.strEmployeeCode} />
+            <DetailRow strLabel={t("name", "Name")} strValue={dicEmployee.strEmployeeName} />
+            <DetailRow strLabel={t("department", "Department")} strValue={dicEmployee.strDepartmentName} />
+            <DetailRow strLabel={t("designation", "Designation")} strValue={dicEmployee.strDesignationName} />
+            <DetailRow strLabel={t("location", "Location")} strValue={dicEmployee.strLocationName} />
+            <DetailRow strLabel={t("doj", "DOJ")} strValue={formatDate(dicEmployee.dtDateOfJoining)} />
+          </Stack>
+        </Box>
+
+        <Box sx={{ border: "1px solid #d9e6ef", background: "#fff", p: 2 }}>
+          <Typography sx={{ color: "#173b63", fontWeight: 800, mb: 1.5 }}>
+            {t("payroll_information", "Payroll Information")}
+          </Typography>
+          <Stack spacing={0.8}>
+            <DetailRow strLabel={t("period", "Payroll Period")} strValue={dicRun.strPayrollMonthLabel} />
+            <DetailRow strLabel={t("pay_date", "Pay Date")} strValue={formatDate(dicFooter?.dtGeneratedOn ?? null)} />
+            <DetailRow strLabel={t("working_days", "Working Days")} strValue={String(objPayslip.dicAttendance.decCalendarDays ?? "-")} />
+            <DetailRow strLabel={t("paid_days", "Paid Days")} strValue={String(objPayslip.dicAttendance.decPaidDays ?? "-")} />
+            <DetailRow strLabel={t("lop_days", "LOP Days")} strValue={String(objPayslip.dicAttendance.decLopDays ?? "-")} />
+            <DetailRow strLabel={t("pan", "PAN")} strValue={dicEmployee.strPanNumber} />
+            <DetailRow strLabel={t("tax_regime", "Tax Regime")} strValue={dicTax?.strRegimeUsed} />
+            <DetailRow strLabel={t("uan", "UAN")} strValue={dicEmployee.strUanNumber} />
+            <DetailRow strLabel={t("esi", "ESI")} strValue={dicEmployee.strEsiNumber} />
+            <DetailRow strLabel={t("bank", "Bank")} strValue={dicEmployee.strBankName} />
+            <DetailRow strLabel={t("account", "Account")} strValue={dicEmployee.strBankAccountMasked} />
+          </Stack>
+        </Box>
+      </Box>
+
+      <Box
+        sx={{
+          display: "grid",
+          gap: 1.5,
+          gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+          mt: 2,
+        }}
+      >
+        <LineTable strTitle={t("earnings", "Earnings")} lstLines={objPayslip.lstEarnings} {...dicLineTableLabels} />
+        <LineTable strTitle={t("deductions", "Deductions")} lstLines={objPayslip.lstDeductions} {...dicLineTableLabels} />
+      </Box>
+
+      <Box sx={{ mt: 2 }}>
+        <LineTable strTitle={t("information", "Information")} lstLines={objPayslip.lstInformation} {...dicLineTableLabels} />
+      </Box>
+
+      <Box sx={{ background: "#fff", border: "1px solid #d9e6ef", mt: 2, p: 2 }}>
+        <Typography sx={{ color: "#173b63", fontWeight: 800, mb: 1.5 }}>
+          {t("tax_summary", "Tax Summary")}
+        </Typography>
+        <Stack spacing={0.8}>
+          <DetailRow strLabel={t("tax_regime", "Tax Regime")} strValue={dicTax?.strRegimeUsed} />
+          {lstTaxBreakdownRows.length ? (
+            lstTaxBreakdownRows.map((dicRow) => (
+              <DetailRow
+                key={dicRow.strLabel}
+                strLabel={dicRow.strLabel}
+                strValue={formatCurrency(dicRow.decValue ?? 0)}
+              />
+            ))
+          ) : (
+            <DetailRow strLabel={t("tax_summary", "Tax Summary")} strValue="-" />
+          )}
+          <DetailRow strLabel={t("slab_profile", "Slab Profile")} strValue={dicTax?.strSlabProfileCode ?? "-"} />
+        </Stack>
+      </Box>
+
+      {lstReimbursements.some((dicLine) => hasDisplayAmount(dicLine.decAmount)) ? (
+        <Box sx={{ mt: 2 }}>
+          <LineTable
+            strTitle={t("reimbursements", "Reimbursements")}
+            lstLines={lstReimbursements}
+            {...dicLineTableLabels}
+          />
+        </Box>
+      ) : null}
+
+      {lstStatutoryInformation.some((dicLine) => hasDisplayAmount(dicLine.decAmount)) ? (
+        <Box sx={{ mt: 2 }}>
+          <LineTable
+            strTitle={t("statutory_information", "Statutory Information")}
+            lstLines={lstStatutoryInformation}
+            {...dicLineTableLabels}
+          />
+        </Box>
+      ) : null}
+
+      {objPayslip.lstEmployerContributions.some((dicLine) => hasDisplayAmount(dicLine.decAmount)) ? (
+        <Box sx={{ mt: 2 }}>
+          <LineTable
+            strTitle={t("employer_contributions", "Employer Contributions")}
+            lstLines={objPayslip.lstEmployerContributions}
+            {...dicLineTableLabels}
+          />
+        </Box>
+      ) : null}
+
+      <Box sx={{ background: "#fff", border: "1px solid #d9e6ef", mt: 2, p: 2 }}>
+        <Box
+          sx={{
+            display: "grid",
+            gap: 1,
+            gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" },
+          }}
+        >
+          <DetailRow strLabel={t("gross_pay", "Gross Pay")} strValue={formatCurrency(dicTotals.decGrossEarnings)} />
+          <DetailRow strLabel={t("employee_deductions", "Total Employee Deductions")} strValue={formatCurrency(dicTotals.decEmployeeDeductions)} />
+          <DetailRow strLabel={t("tax_total", "Total Tax")} strValue={formatCurrency(dicTotals.decTaxTotal)} />
+          <DetailRow strLabel={t("deductions", "Total Deductions")} strValue={formatCurrency(dicTotals.decTotalDeductions)} />
+          <DetailRow strLabel={t("net_pay", "Net Pay")} strValue={formatCurrency(dicTotals.decNetPay)} />
+          <DetailRow strLabel={t("employer_contribution_total", "Employer Contributions")} strValue={formatCurrency(dicTotals.decEmployerContributionTotal)} />
+          <DetailRow strLabel={t("total_employer_cost", "Total Employer Cost")} strValue={formatCurrency(dicTotals.decTotalEmployerCost)} />
+          <DetailRow strLabel={t("flexi_bucket", "Flexi Bucket")} strValue={formatCurrency(dicSummary?.decFlexiBucketAmount ?? 0)} />
+          <DetailRow strLabel={t("declared_flexi", "Declared Flexi")} strValue={formatCurrency(dicSummary?.decDeclaredFlexiAmount ?? 0)} />
+          <DetailRow strLabel={t("residual_flexi", "Residual Flexi")} strValue={formatCurrency(dicSummary?.decResidualFlexiAmount ?? 0)} />
+        </Box>
+        <Typography sx={{ color: "#475569", fontSize: "0.88rem", mt: 1.5 }}>
+          {dicTotals.strNetPayInWords}
+        </Typography>
+      </Box>
+
+      <Box sx={{ background: "#fff", border: "1px solid #d9e6ef", mt: 2, p: 2 }}>
+        <Typography sx={{ color: "#173b63", fontWeight: 800, mb: 1.5 }}>
+          {t("footer", "Footer")}
+        </Typography>
+        <Stack spacing={0.8}>
+          <DetailRow strLabel={t("run_code", "Payroll Run")} strValue={dicFooter?.strPayrollRunCode || dicRun.strRunCode} />
+          <DetailRow strLabel={t("result_id", "Payroll Result ID")} strValue={dicFooter ? String(dicFooter.intPayrollResultID) : "-"} />
+          <DetailRow strLabel={t("result_version", "Result Version")} strValue={dicFooter ? String(dicFooter.intPayrollResultVersion) : "-"} />
+          <DetailRow strLabel={t("generated_on", "Generated On")} strValue={formatDate(dicFooter?.dtGeneratedOn ?? null)} />
+          <DetailRow strLabel={t("note", "Note")} strValue={dicFooter?.strSystemNote || "-"} />
+        </Stack>
+      </Box>
+    </Box>
+  );
+}
