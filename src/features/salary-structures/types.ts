@@ -1,3 +1,5 @@
+export type SalaryStructureOverrideMode = "annual" | "monthly" | "both";
+
 export type SalaryStructureListRecord = {
   intID: number;
   /** Public identifier used in URLs and API paths; the internal id stays server-side. */
@@ -5,6 +7,7 @@ export type SalaryStructureListRecord = {
   strStructureCode: string;
   strStructureName: string;
   strCurrencyCode: string;
+  strOverrideMode: SalaryStructureOverrideMode;
   dtEffectiveFrom: string;
   dtEffectiveTo: string | null;
   blnIsDefault: boolean;
@@ -154,6 +157,7 @@ export type SalaryStructureFormValues = {
   strStructureCode: string;
   strStructureName: string;
   strCurrencyCode: string;
+  strOverrideMode: SalaryStructureOverrideMode;
   dtEffectiveFrom: string;
   dtEffectiveTo: string;
   blnIsDefault: boolean;
