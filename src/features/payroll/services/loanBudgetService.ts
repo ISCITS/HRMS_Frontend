@@ -16,6 +16,7 @@ export function createInitialLoanBudgetForm(strFinancialYear: string): LoanBudge
   return {
     strFinancialYear,
     decTotalBudgetAmount: "",
+    strDesignationScope: "specific",
     strRemarks: "",
     lstDesignationLimits: [],
   };
@@ -25,6 +26,7 @@ export function toLoanBudgetForm(objRecord: LoanBudgetConfigurationRecord): Loan
   return {
     strFinancialYear: objRecord.objBudget.strFinancialYear,
     decTotalBudgetAmount: String(objRecord.objBudget.decTotalBudgetAmount ?? ""),
+    strDesignationScope: objRecord.objBudget.strDesignationScope || "specific",
     strRemarks: objRecord.objBudget.strRemarks || "",
     lstDesignationLimits: objRecord.lstDesignationLimits.map((objRow) => ({
       intDesignationID: objRow.intDesignationID,
@@ -45,6 +47,7 @@ function toPayload(dicValues: LoanBudgetFormValues) {
     objBudget: {
       strFinancialYear: dicValues.strFinancialYear,
       decTotalBudgetAmount: Number(dicValues.decTotalBudgetAmount || 0),
+      strDesignationScope: dicValues.strDesignationScope,
       strRemarks: dicValues.strRemarks.trim() || undefined,
     },
     lstDesignationLimits: dicValues.lstDesignationLimits

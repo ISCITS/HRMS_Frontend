@@ -1,19 +1,17 @@
 "use client";
 
-import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
-import { Alert, Box, Button, Collapse, FormControlLabel, IconButton, MenuItem, Radio, RadioGroup, TextField, Typography } from "@mui/material";
-import { useEffect, useState } from "react";
+import { Alert, Box, Button, Collapse, FormControlLabel, MenuItem, Radio, RadioGroup, TextField, Typography } from "@mui/material";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { createInitialLoanBudgetForm, loanBudgetService, toLoanBudgetForm } from "@/features/payroll/services/loanBudgetService";
-import type { LoanBudgetFormValues, LoanBudgetSummaryRecord } from "@/features/payroll/types";
+import type { LoanBudgetDesignationScope, LoanBudgetFormValues, LoanBudgetSummaryRecord } from "@/features/payroll/types";
 
 const lstModuleCodes = ["LOAN_BUDGET", "PAYROLL_LOAN_BUDGET"];
 
@@ -21,10 +19,37 @@ function formatCurrency(decValue?: number | null) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(Number(decValue || 0));
 }
 
-function defaultNextFinancialYear() {
+function currentFinancialYearStart() {
   const objToday = new Date();
-  const intStartYear = objToday.getMonth() < 3 ? objToday.getFullYear() - 1 : objToday.getFullYear();
+  return objToday.getMonth() < 3 ? objToday.getFullYear() - 1 : objToday.getFullYear();
+}
+
+function defaultNextFinancialYear() {
+  const intStartYear = currentFinancialYearStart();
   return `${intStartYear}-${String(intStartYear + 1).slice(-2)}`;
+}
+
+// A handful of years around "now" is enough for the header dropdown -- always includes
+// whichever FY is currently being viewed/edited even if it falls outside that window.
+function buildFinancialYearOptions(strIncludeFinancialYear?: string): string[] {
+  const intCurrentStartYear = currentFinancialYearStart();
+  const objYears = new Set<string>();
+  for (let intOffset = -5; intOffset <= 2; intOffset++) {
+    const intStartYear = intCurrentStartYear + intOffset;
+    objYears.add(`${intStartYear}-${String(intStartYear + 1).slice(-2)}`);
+  }
+  if (strIncludeFinancialYear) {
+    objYears.add(strIncludeFinancialYear);
+  }
+  return Array.from(objYears).sort();
+}
+
+function mirrorSharedLimit(lstRows: LoanBudgetFormValues["lstDesignationLimits"], strValue: string) {
+  return lstRows.map((objRow) => ({
+    ...objRow,
+    decLimitAmount: strValue,
+    lstEmployees: objRow.strEmployeeScope === "all" ? objRow.lstEmployees.map((objEmployee) => ({ ...objEmployee, decLimitAmount: strValue })) : objRow.lstEmployees,
+  }));
 }
 
 export default function LoanBudgetDetailPage({
@@ -49,6 +74,12 @@ export default function LoanBudgetDetailPage({
   const [blnLoading, setBlnLoading] = useState(blnEditMode);
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
+  // Gates the designation auto-fill effect below until the existing record (if any) has finished
+  // loading -- otherwise it would race the record load and fill in designations using the still-
+  // empty initial form, only to have that load immediately overwrite them.
+  const [blnRecordLoaded, setBlnRecordLoaded] = useState(!blnEditMode);
+  const blnPopulatingDesignationsRef = useRef(false);
+  const lstFinancialYearOptions = useMemo(() => buildFinancialYearOptions(strFinancialYear), [strFinancialYear]);
 
   useEffect(() => {
     loanBudgetService.listDesignationOptions().then(setLstDesignationOptions).catch(() => setLstDesignationOptions([]));
@@ -65,11 +96,48 @@ export default function LoanBudgetDetailPage({
         setBlnBudgetStarted(true);
       })
       .catch((objError) => setStrError(objError instanceof Error ? objError.message : t("error_load", "Unable to load this budget.")))
-      .finally(() => setBlnLoading(false));
+      .finally(() => {
+        setBlnLoading(false);
+        setBlnRecordLoaded(true);
+      });
   }, [blnEditMode, strFinancialYear]);
 
-  // "Set Budget" only opens up the designation-limits step -- it never talks to the backend.
-  // The header Save button is the one and only place a request gets written.
+  // Every real designation belongs in the Designation Limits section, whichever scope is picked --
+  // there's no more "Add Designation" picker. Runs once budget-started + designation options +
+  // (for an existing record) the saved rows are all in hand, and only adds whatever's still
+  // missing -- so a budget saved before this feature existed, or before some designation existed,
+  // gets topped up on load instead of silently showing a partial list.
+  useEffect(() => {
+    if (!blnBudgetStarted || !blnRecordLoaded || lstDesignationOptions.length === 0 || blnPopulatingDesignationsRef.current) return;
+    const objExistingIDs = new Set(dicValues.lstDesignationLimits.map((objRow) => objRow.intDesignationID));
+    const lstMissing = lstDesignationOptions.filter((objOption) => !objExistingIDs.has(objOption.intID));
+    if (lstMissing.length === 0) return;
+    blnPopulatingDesignationsRef.current = true;
+    setBlnLoading(true);
+    const strMirroredLimit = dicValues.strDesignationScope === "all" ? dicValues.lstDesignationLimits[0]?.decLimitAmount || "" : "";
+    (async () => {
+      try {
+        const lstNewRows = await Promise.all(
+          lstMissing.map(async (objOption) => {
+            const lstEmployees = await loanBudgetService.listEmployeesInDesignation(objOption.intID).catch(() => []);
+            return {
+              intDesignationID: objOption.intID as number | "",
+              decLimitAmount: strMirroredLimit,
+              strEmployeeScope: "all" as const,
+              lstEmployees: lstEmployees.map((objEmployee) => ({ ...objEmployee, decLimitAmount: strMirroredLimit })),
+            };
+          })
+        );
+        setDicValues((dicPrev) => ({ ...dicPrev, lstDesignationLimits: [...dicPrev.lstDesignationLimits, ...lstNewRows] }));
+      } finally {
+        blnPopulatingDesignationsRef.current = false;
+        setBlnLoading(false);
+      }
+    })();
+  }, [blnBudgetStarted, blnRecordLoaded, lstDesignationOptions]);
+
+  // "Set Budget" just validates and opens up the designation-limits step -- the effect above does
+  // the actual populating. The header Save button is the one and only place a request is written.
   function startBudgetProcess() {
     setStrError("");
     if (!dicValues.strFinancialYear.trim()) {
@@ -97,15 +165,19 @@ export default function LoanBudgetDetailPage({
     }
   }
 
-  function addDesignationRow() {
+  // Company-level scope: "all" mirrors one shared limit across every designation row; "specific"
+  // lets each designation keep its own. Switching to "all" mirrors the first row's current
+  // amount (or blank) across the rest; switching to "specific" leaves whatever is there editable.
+  function onDesignationScopeChange(strScope: LoanBudgetDesignationScope) {
     setDicValues((dicPrev) => ({
       ...dicPrev,
-      lstDesignationLimits: [...dicPrev.lstDesignationLimits, { intDesignationID: "", decLimitAmount: "", strEmployeeScope: "all", lstEmployees: [] }],
+      strDesignationScope: strScope,
+      lstDesignationLimits: strScope === "all" ? mirrorSharedLimit(dicPrev.lstDesignationLimits, dicPrev.lstDesignationLimits[0]?.decLimitAmount || "") : dicPrev.lstDesignationLimits,
     }));
   }
 
-  function removeDesignationRow(intIndex: number) {
-    setDicValues((dicPrev) => ({ ...dicPrev, lstDesignationLimits: dicPrev.lstDesignationLimits.filter((_, i) => i !== intIndex) }));
+  function onSharedDesignationLimitChange(strValue: string) {
+    setDicValues((dicPrev) => ({ ...dicPrev, lstDesignationLimits: mirrorSharedLimit(dicPrev.lstDesignationLimits, strValue) }));
   }
 
   function toggleDesignationRowEmployees(intIndex: number) {
@@ -118,18 +190,6 @@ export default function LoanBudgetDetailPage({
       }
       return objNext;
     });
-  }
-
-  async function onDesignationChange(intIndex: number, intDesignationID: number) {
-    const lstEmployees = await loanBudgetService.listEmployeesInDesignation(intDesignationID).catch(() => []);
-    setDicValues((dicPrev) => ({
-      ...dicPrev,
-      lstDesignationLimits: dicPrev.lstDesignationLimits.map((objRow, i) =>
-        i === intIndex
-          ? { ...objRow, intDesignationID, lstEmployees: lstEmployees.map((objEmployee) => ({ ...objEmployee, decLimitAmount: objRow.decLimitAmount })) }
-          : objRow
-      ),
-    }));
   }
 
   function onDesignationLimitChange(intIndex: number, strValue: string) {
@@ -168,30 +228,48 @@ export default function LoanBudgetDetailPage({
           already names the screen. */}
       <Box className={styles.controlsCard} sx={{ py: 1, minHeight: 0 }}>
         <Box className={`${styles.controlsHeader} ${styles.detailHeader}`} sx={{ alignItems: "center", minHeight: 0 }}>
-          {objSummary ? (
-            <Box sx={{ display: "flex", alignItems: "center", flex: "1 1 auto", flexWrap: "wrap", gap: 3.5, pl: 2, pr: 3 }}>
-              {[
-                [t("summary_budget", "Total Company Budget"), formatCurrency(objSummary.decTotalBudgetAmount)],
-                [t("summary_outstanding", "Outstanding (this FY)"), formatCurrency(objSummary.decOutstandingTotal)],
-                [t("summary_approved", "Approved (this FY)"), formatCurrency(objSummary.decApprovedTotal)],
-                [t("summary_remaining", "Remaining"), formatCurrency(objSummary.decRemaining)],
-              ].map(([strLabel, strValue], intIndex, lstAll) => (
-                <Box
-                  key={strLabel}
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 0.3,
-                    pr: intIndex < lstAll.length - 1 ? 3.5 : 0,
-                    borderRight: intIndex < lstAll.length - 1 ? "1px solid var(--app-divider-color)" : "none",
-                  }}
-                >
-                  <Typography sx={{ fontSize: ".68rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: ".03em", color: "#64748b", m: 0, lineHeight: 1.3, whiteSpace: "nowrap" }}>{strLabel}</Typography>
-                  <Typography sx={{ fontSize: "1.1rem", fontWeight: 800, color: "#0f172a", m: 0, lineHeight: 1.3, whiteSpace: "nowrap" }}>{strValue}</Typography>
-                </Box>
+          <Box sx={{ display: "flex", alignItems: "center", flex: "1 1 auto", flexWrap: "wrap", gap: 3, pl: 2 }}>
+            <TextField
+              select
+              size="small"
+              label={t("field_financial_year", "Financial Year")}
+              value={dicValues.strFinancialYear}
+              onChange={(e) => setDicValues((d) => ({ ...d, strFinancialYear: e.target.value }))}
+              disabled={blnEditMode}
+              sx={{ minWidth: 150 }}
+              controlId="loan-budget.detail.financial-year.select"
+            >
+              {lstFinancialYearOptions.map((strYear) => (
+                <MenuItem key={strYear} value={strYear}>
+                  {strYear}
+                </MenuItem>
               ))}
-            </Box>
-          ) : null}
+            </TextField>
+            {objSummary ? (
+              <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 3.5, pr: 3 }}>
+                {[
+                  [t("summary_budget", "Total Company Budget"), formatCurrency(objSummary.decTotalBudgetAmount)],
+                  [t("summary_outstanding", "Outstanding (this FY)"), formatCurrency(objSummary.decOutstandingTotal)],
+                  [t("summary_approved", "Approved (this FY)"), formatCurrency(objSummary.decApprovedTotal)],
+                  [t("summary_remaining", "Remaining"), formatCurrency(objSummary.decRemaining)],
+                ].map(([strLabel, strValue], intIndex, lstAll) => (
+                  <Box
+                    key={strLabel}
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 0.3,
+                      pr: intIndex < lstAll.length - 1 ? 3.5 : 0,
+                      borderRight: intIndex < lstAll.length - 1 ? "1px solid var(--app-divider-color)" : "none",
+                    }}
+                  >
+                    <Typography sx={{ fontSize: ".68rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: ".03em", color: "#64748b", m: 0, lineHeight: 1.3, whiteSpace: "nowrap" }}>{strLabel}</Typography>
+                    <Typography sx={{ fontSize: "1.1rem", fontWeight: 800, color: "#0f172a", m: 0, lineHeight: 1.3, whiteSpace: "nowrap" }}>{strValue}</Typography>
+                  </Box>
+                ))}
+              </Box>
+            ) : null}
+          </Box>
           <Box className={styles.detailHeaderActions} sx={{ display: "flex", gap: 1, alignItems: "center" }}>
             <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={onBack} controlId="loan-budget.detail.back.button">
               {t("back_button", "Back")}
@@ -219,15 +297,6 @@ export default function LoanBudgetDetailPage({
         <Typography className={styles.sectionBar}>{t("section_company_budget", "Company budget")}</Typography>
         <Box sx={{ display: "flex", gap: 1.2, flexWrap: "wrap", alignItems: "flex-end" }}>
           <TextField
-            label={t("field_financial_year", "Financial Year")}
-            value={dicValues.strFinancialYear}
-            onChange={(e) => setDicValues((d) => ({ ...d, strFinancialYear: e.target.value }))}
-            placeholder="2026-27"
-            size="small"
-            disabled={blnEditMode}
-            sx={{ minWidth: 160 }}
-          />
-          <TextField
             label={t("field_budget_amount", "Budget Amount")}
             type="number"
             value={dicValues.decTotalBudgetAmount}
@@ -248,19 +317,29 @@ export default function LoanBudgetDetailPage({
             </Button>
           ) : null}
         </Box>
+        <RadioGroup row value={dicValues.strDesignationScope} onChange={(e) => onDesignationScopeChange(e.target.value as LoanBudgetDesignationScope)} sx={{ mt: 0.5 }}>
+          <FormControlLabel value="all" control={<Radio size="small" disabled={!blnCanEdit} />} label={t("designation_scope_all", "Apply for all Designations")} />
+          <FormControlLabel value="specific" control={<Radio size="small" disabled={!blnCanEdit} />} label={t("designation_scope_specific", "Designation Specific")} />
+        </RadioGroup>
       </Box>
 
       {/* Designation limits: grows to fill remaining height, its row list scrolls internally */}
       {blnBudgetStarted ? (
         <Box className={styles.tableCard}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flex: "0 0 auto", mb: 1.2 }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flex: "0 0 auto", mb: 1.2, gap: 1.2, flexWrap: "wrap" }}>
             <Typography className={`${styles.sectionBar} ${styles.sectionBarTight}`}>
               {t("section_designation_limits", "Designation limits")}
             </Typography>
-            {blnCanEdit ? (
-              <Button size="small" startIcon={<AddRoundedIcon />} className={styles.secondaryButton} onClick={addDesignationRow} controlId="loan-budget.detail.add-designation.button">
-                {t("add_designation_button", "Add Designation")}
-              </Button>
+            {dicValues.strDesignationScope === "all" && blnCanEdit ? (
+              <TextField
+                label={t("field_shared_limit", "Limit Amount (applies to all designations)")}
+                type="number"
+                size="small"
+                value={dicValues.lstDesignationLimits[0]?.decLimitAmount || ""}
+                onChange={(e) => onSharedDesignationLimitChange(e.target.value)}
+                sx={{ minWidth: 280 }}
+                controlId="loan-budget.detail.shared-limit.input"
+              />
             ) : null}
           </Box>
 
@@ -286,10 +365,9 @@ export default function LoanBudgetDetailPage({
                     select
                     label={t("field_designation", "Designation")}
                     value={objRow.intDesignationID}
-                    onChange={(e) => onDesignationChange(intIndex, Number(e.target.value))}
                     size="small"
                     sx={{ minWidth: 220 }}
-                    disabled={!blnCanEdit}
+                    disabled
                   >
                     {lstDesignationOptions.map((objOption) => (
                       <MenuItem key={objOption.intID} value={objOption.intID}>
@@ -304,17 +382,12 @@ export default function LoanBudgetDetailPage({
                     onChange={(e) => onDesignationLimitChange(intIndex, e.target.value)}
                     size="small"
                     sx={{ minWidth: 160 }}
-                    disabled={!blnCanEdit}
+                    disabled={!blnCanEdit || dicValues.strDesignationScope === "all"}
                   />
                   <RadioGroup row value={objRow.strEmployeeScope} onChange={(e) => onScopeChange(intIndex, e.target.value as "all" | "specific")}>
                     <FormControlLabel value="all" control={<Radio size="small" disabled={!blnCanEdit} />} label={t("scope_all", "Applicable for all")} />
                     <FormControlLabel value="specific" control={<Radio size="small" disabled={!blnCanEdit} />} label={t("scope_specific", "Employee specific")} />
                   </RadioGroup>
-                  {blnCanEdit ? (
-                    <IconButton size="small" color="error" onClick={() => removeDesignationRow(intIndex)} sx={{ ml: "auto" }} controlId="loan-budget.detail.remove-designation.button">
-                      <DeleteOutlineRoundedIcon fontSize="small" />
-                    </IconButton>
-                  ) : null}
                 </Box>
 
                 {objRow.lstEmployees.length > 0 ? (() => {

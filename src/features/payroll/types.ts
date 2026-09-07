@@ -500,6 +500,9 @@ export type LoanAdvanceFormValues = {
 };
 
 export type LoanBudgetEmployeeScope = "all" | "specific";
+// Company-level choice, one level up from LoanBudgetEmployeeScope: "all" means one shared limit
+// applies to every designation; "specific" means each designation carries its own limit amount.
+export type LoanBudgetDesignationScope = "all" | "specific";
 
 export type LoanBudgetSummaryRecord = {
   intID: number;
@@ -508,6 +511,7 @@ export type LoanBudgetSummaryRecord = {
   decApprovedTotal: number;
   decOutstandingTotal: number;
   decRemaining: number;
+  strDesignationScope: LoanBudgetDesignationScope;
   blnIsActive: boolean;
   strRemarks?: string | null;
 };
@@ -536,6 +540,7 @@ export type LoanBudgetConfigurationRecord = {
 export type LoanBudgetFormValues = {
   strFinancialYear: string;
   decTotalBudgetAmount: string;
+  strDesignationScope: LoanBudgetDesignationScope;
   strRemarks: string;
   lstDesignationLimits: {
     intDesignationID: number | "";
