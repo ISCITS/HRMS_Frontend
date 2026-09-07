@@ -617,8 +617,8 @@ export default function LoanAdvanceDetailPage({ strLoanAdvanceID, strMode = "pay
 
   return (
     <Box className={`${styles.page} ${styles.detailPage}`}>
-      <Box className={styles.controlsCard}>
-        <Box className={`${styles.controlsHeader} ${styles.detailHeader}`}>
+      <Box className={styles.controlsCard} sx={{ py: 1, minHeight: 0 }}>
+        <Box className={`${styles.controlsHeader} ${styles.detailHeader}`} sx={{ alignItems: "center", minHeight: 0 }}>
           <Box>
             <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push(blnIsEssMode ? "/ess/loans-advances" : "/payroll/loans-advances")}>{t("back_button", "Back")}</Button>
           </Box>

@@ -3,7 +3,7 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, MenuItem, TextField, Typography } from "@mui/material";
+import { Alert, Autocomplete, Box, Button, MenuItem, TextField, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { MenuItem as AuthMenuItem } from "@/models/AuthModels";
@@ -204,12 +204,8 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
             onEdit={() => objRouter.push(blnIsEssMode ? `/ess/loans-advances/${objRow.strRecordUUID}` : `/payroll/loans-advances/${objRow.strRecordUUID}`)}
           />
         ),
-        employee: (
-          <>
-            <Typography sx={{ fontWeight: 900, fontSize: "0.86rem" }}>{getEmployeeName(objRow)}</Typography>
-            <Typography sx={{ color: "#64748b", fontSize: "0.76rem" }}>{objRow.objEmployee?.strEmployeeCode || "-"}</Typography>
-          </>
-        ),
+        employeeName: <Typography sx={{ fontWeight: 900, fontSize: "0.86rem" }}>{getEmployeeName(objRow)}</Typography>,
+        employeeCode: <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{objRow.objEmployee?.strEmployeeCode || "-"}</Typography>,
         department: objRow.objEmployee?.strDepartmentName || "-",
         requestType: t(`type_${objRow.strRequestType}`, objRow.strRequestType),
         category: objRow.objCategory?.strCategoryName ? t(toLabelKey(objRow.objCategory.strCategoryName), objRow.objCategory.strCategoryName) : "-",
@@ -231,7 +227,8 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
       { field: "action", headerName: t("table_actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 110 },
-      { field: "employee", headerName: t("table_employee", "Employee"), width: 220, sortable: false },
+      { field: "employeeName", headerName: t("table_employee_name", "Employee Name"), width: 170, sortable: false },
+      { field: "employeeCode", headerName: t("table_employee_code", "Employee Code"), width: 130, sortable: false },
       { field: "department", headerName: t("table_department", "Department"), width: 180 },
       { field: "requestType", headerName: t("table_request_type", "Request Type"), width: 150 },
       { field: "category", headerName: t("table_category", "Category"), width: 180 },
@@ -260,7 +257,7 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
     mt: 1,
     overflowX: "auto",
     pb: 0.5,
-    "& > .MuiTextField-root": { flex: "1 1 150px", minWidth: 150 }
+    "& > .MuiTextField-root, & > .MuiAutocomplete-root": { flex: "1 1 150px", minWidth: 150 }
   } as const;
 
   const objFilterActions = (
@@ -285,14 +282,17 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
 
   const objFilters = (
     <Box sx={objFilterGridSx}>
-      <TextField fullWidth select size="small" label={t("filter_employee", "Employee")} value={dicFilters.employee_code} onChange={(e) => setDicFilters((d) => ({ ...d, employee_code: e.target.value }))} SelectProps={{ MenuProps: objSelectMenuProps }}>
-        <MenuItem value="">{t("all", "All")}</MenuItem>
-        {lstEmployeeOptions.map((objEmployee) => (
-          <MenuItem key={objEmployee.intID} value={objEmployee.strEmployeeCode}>
-            {getEmployeeLabel(objEmployee)}
-          </MenuItem>
-        ))}
-      </TextField>
+      <Autocomplete
+        fullWidth
+        size="small"
+        options={lstEmployeeOptions}
+        value={lstEmployeeOptions.find((objEmployee) => objEmployee.strEmployeeCode === dicFilters.employee_code) || null}
+        getOptionLabel={(objOption) => getEmployeeLabel(objOption)}
+        isOptionEqualToValue={(objOption, objValue) => objOption.strEmployeeCode === objValue.strEmployeeCode}
+        onChange={(_, objValue) => setDicFilters((d) => ({ ...d, employee_code: objValue?.strEmployeeCode || "" }))}
+        slotProps={{ popper: { sx: { zIndex: 1802 } } }}
+        renderInput={(params) => <TextField {...params} label={t("filter_employee", "Employee")} />}
+      />
       <TextField fullWidth select size="small" label={t("filter_department", "Department")} value={dicFilters.department} onChange={(e) => setDicFilters((d) => ({ ...d, department: e.target.value }))} SelectProps={{ MenuProps: objSelectMenuProps }}>
         <MenuItem value="">{t("all", "All")}</MenuItem>
         {lstDepartmentOptions.map((strDepartment) => (
