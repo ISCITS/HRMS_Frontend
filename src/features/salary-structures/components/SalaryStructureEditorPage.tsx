@@ -1224,10 +1224,6 @@ export default function SalaryStructureEditorPage({
             fltMaxAmount: dicComponent?.fltMaxAmount?.toString() ?? dicLine.fltMaxAmount,
             blnIsMandatory: dicComponent?.blnIsMandatory ?? dicLine.blnIsMandatory,
             blnIsActive: dicLine.blnIsActive ?? true,
-            intLineOrder: normalizeLineOrder(
-              dicComponent?.intDefaultLineOrder ?? dicComponent?.intDisplayOrder ?? dicLine.intLineOrder,
-              dicLine.intLineOrder || 10
-            ),
             lstFlexiMappings: blnIsFlexiBasket ? [...dicLine.lstFlexiMappings, ...lstMissingFlexiMappings] : []
           };
         }
