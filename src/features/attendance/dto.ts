@@ -91,3 +91,7 @@ export const ATTENDANCE_STATUS_COLORS: Record<string, { bg: string; fg: string; 
   absent: { bg: "#fee2e2", fg: "#991b1b", short: "A" },
   on_duty: { bg: "#f1f5f9", fg: "#475569", short: "OD" },
 };
+
+// Overlay badge for a late arrival, shown on top of a day's status color rather than
+// replacing it - kept visually distinct from ATTENDANCE_STATUS_COLORS above.
+export const LATE_ARRIVAL_BADGE_COLOR = { bg: "#f1e4c8", fg: "#7c5a17" };
