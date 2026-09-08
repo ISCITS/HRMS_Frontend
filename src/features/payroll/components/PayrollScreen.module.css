@@ -870,6 +870,16 @@
   margin-bottom: 0;
 }
 
+/* Use alongside .sectionBar (and usually .sectionBarTight) when the header just needs to read as
+   a bold text line in limited height, not the padded pill background -- e.g. the Loan Budget
+   screen's "Company budget" / "Designation limits" headers. */
+.sectionBarCompact {
+  background: none;
+  border-radius: 0;
+  padding: 0;
+  font-size: 0.95rem;
+}
+
 .dialogGrid {
   display: grid;
   gap: 18px 22px;

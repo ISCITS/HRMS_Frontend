@@ -34,7 +34,7 @@ import { useRouter } from "next/navigation";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import styles from "@/components/master/MasterScreen.module.css";
-import { ATTENDANCE_STATUS_COLORS, type AttendanceDayDto } from "@/features/attendance/dto";
+import { ATTENDANCE_STATUS_COLORS, LATE_ARRIVAL_BADGE_COLOR, type AttendanceDayDto } from "@/features/attendance/dto";
 import { useMyAttendance } from "@/features/attendance/hooks/useMyAttendance";
 import { attendanceService } from "@/features/attendance/services/attendanceService";
 import type { MyAttendanceOverview, MyAttendancePunch } from "@/features/attendance/types/MyAttendanceTypes";
@@ -805,11 +805,29 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
         </Grid>
 
         <Grid item xs={12} md={5}>
-          <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", height: { xs: "auto", md: 120 }, minHeight: 120, boxShadow: 0, overflow: "hidden" }}>
+          <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", minHeight: 120, boxShadow: 0, overflow: "hidden" }}>
             <Typography fontWeight={900} sx={{ mb: 0.25 }}>{t("monthly_summary", "Monthly Summary")}</Typography>
-            <Typography variant="caption" color="text.secondary">
-              {objMonth.toLocaleDateString([], { month: "long", year: "numeric" })}
-            </Typography>
+            <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "baseline", columnGap: 1 }}>
+              <Typography variant="caption" color="text.secondary">
+                {objMonth.toLocaleDateString([], { month: "long", year: "numeric" })}
+              </Typography>
+              {objHistory?.objSummary.objLateArrivalLop ? (
+                <Typography
+                  variant="caption"
+                  data-control-id="ess.my-attendance.late-arrival-lop-note"
+                  sx={{ textAlign: "right" }}
+                  color={objHistory.objSummary.objLateArrivalLop.decLopDaysMtd > 0 ? "warning.dark" : "text.secondary"}
+                  fontWeight={objHistory.objSummary.objLateArrivalLop.decLopDaysMtd > 0 ? 700 : 400}
+                >
+                  {objHistory.objSummary.objLateArrivalLop.decLopDaysMtd > 0
+                    ? `${objHistory.objSummary.objLateArrivalLop.decLopDaysMtd} ${t("late_arrival_lop_applied_suffix", "day LOP applied this month from late arrivals")}`
+                    : `${objHistory.objSummary.objLateArrivalLop.intOccurrencesUntilNextDeduction} ${t(
+                        "late_arrival_lop_progress_suffix",
+                        `more late arrival(s) triggers ${objHistory.objSummary.objLateArrivalLop.decUnitDeductionDays} day LOP`,
+                      )}`}
+                </Typography>
+              ) : null}
+            </Box>
             <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", columnGap: 0.5, mt: 1, alignItems: "start" }}>
               {[
                 [t("present", "Present"), dicDisplayStatusCounts.present ?? 0],
@@ -865,9 +883,26 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
                         : objDay ? formatDuration(objDay.decWorkedHours) : t("not_recorded", "No attendance record")}
                     </Typography>
                   </Box>
-                  {blnUnresolvedFutureDate
-                    ? <Chip size="small" label={t("not_processed", "Not Processed")} />
-                    : renderStatusChip(objDay)}
+                  <Stack direction="row" spacing={0.5} alignItems="center">
+                    {!blnUnresolvedFutureDate && objDay && objDay.intLateMinutes > 0 ? (
+                      <Chip
+                        data-control-id={`ess.my-attendance.day.${strDate}.late-badge`}
+                        size="small"
+                        label={t("attendance_late_arrival_short", "Late")}
+                        sx={{
+                          height: 18,
+                          fontSize: "0.65rem",
+                          fontWeight: 700,
+                          bgcolor: LATE_ARRIVAL_BADGE_COLOR.bg,
+                          color: LATE_ARRIVAL_BADGE_COLOR.fg,
+                          "& .MuiChip-label": { px: 0.6 },
+                        }}
+                      />
+                    ) : null}
+                    {blnUnresolvedFutureDate
+                      ? <Chip size="small" label={t("not_processed", "Not Processed")} />
+                      : renderStatusChip(objDay)}
+                  </Stack>
                 </ButtonBase>
               );
             })}
@@ -889,14 +924,34 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
                 const objColor = objDay ? ATTENDANCE_STATUS_COLORS[strDayDisplayStatus] : null;
                 const blnFutureDate = strDate > strToday;
                 const blnUnresolvedFutureDate = blnFutureDate && !objDay;
+                const blnLateArrival = !blnUnresolvedFutureDate && Boolean(objDay && objDay.intLateMinutes > 0);
                 return (
                   <ButtonBase
                     key={strDate}
                     data-control-id={`ess.my-attendance.day.${strDate}.button`}
                     disabled={blnUnresolvedFutureDate}
                     onClick={() => setStrSelectedDate(strDate)}
-                    sx={{ minHeight: 66, alignItems: "stretch", justifyContent: "flex-start", p: 0.85, border: "1px solid", borderColor: strSelectedDate === strDate ? "primary.main" : "divider", borderRadius: "6px", bgcolor: objColor?.bg ?? "background.paper", opacity: blnUnresolvedFutureDate ? 0.45 : 1, textAlign: "left" }}
+                    sx={{ position: "relative", minHeight: 66, alignItems: "stretch", justifyContent: "flex-start", p: 0.85, border: "1px solid", borderColor: strSelectedDate === strDate ? "primary.main" : "divider", borderRadius: "6px", bgcolor: objColor?.bg ?? "background.paper", opacity: blnUnresolvedFutureDate ? 0.45 : 1, textAlign: "left" }}
                   >
+                    {blnLateArrival ? (
+                      <Chip
+                        data-control-id={`ess.my-attendance.day.${strDate}.late-badge`}
+                        label={t("attendance_late_arrival_short", "Late")}
+                        size="small"
+                        sx={{
+                          position: "absolute",
+                          top: 4,
+                          right: 4,
+                          height: 16,
+                          fontSize: "0.6rem",
+                          fontWeight: 700,
+                          px: 0.3,
+                          bgcolor: LATE_ARRIVAL_BADGE_COLOR.bg,
+                          color: LATE_ARRIVAL_BADGE_COLOR.fg,
+                          "& .MuiChip-label": { px: 0.5 },
+                        }}
+                      />
+                    ) : null}
                     <Stack width="100%" height="100%" spacing={0.25}>
                       <Typography variant="h6" fontWeight={900} lineHeight={1} sx={{ letterSpacing: 0 }}>{Number(strDate.slice(-2))}</Typography>
                       <Stack alignItems="center" justifyContent="center" spacing={0.25} sx={{ flex: 1, minHeight: 0, minWidth: 0, textAlign: "center" }}>
