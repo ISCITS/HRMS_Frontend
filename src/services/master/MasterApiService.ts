@@ -1165,6 +1165,7 @@ export type SalaryStructureApiRecord = {
   strStructureCode: string;
   strStructureName: string;
   strCurrencyCode: string;
+  strOverrideMode?: "annual" | "monthly" | "both";
   dtEffectiveFrom: string;
   dtEffectiveTo: string | null;
   blnIsDefault: boolean;

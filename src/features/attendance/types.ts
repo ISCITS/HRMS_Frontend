@@ -113,6 +113,9 @@ export type DailyAttendanceRow = {
   decOtHours: number;
   blnIsPaid: boolean;
   strRemark: string | null;
+  strLopStatus?: "ON_TIME" | "LOP" | "LWP" | null;
+  strLopReasonLabel?: string | null;
+  decLopDays?: number | null;
 };
 
 export type DailyAttendanceSaveRow = {

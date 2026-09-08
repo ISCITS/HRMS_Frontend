@@ -51,6 +51,7 @@ import type {
   SalaryStructureFormValues,
   SalaryStructureFlexiMappingFormValue,
   SalaryStructureLineFormValue,
+  SalaryStructureOverrideMode,
   SalaryStructureTextFormValue
 } from "@/features/salary-structures/types";
 
@@ -59,8 +60,6 @@ type SalaryStructureEditorPageProps = {
   /** record_uuid from the URL; the internal id is never routed on. */
   strSalaryStructureID?: string;
 };
-
-type AmountOverrideMode = "annual" | "monthly" | "both";
 
 const lstSalaryStructureModuleCodes = ["SALARY_STRUCTURE", "SALARY_STRUCTURES", "MASTER_SALARY_STRUCTURE"];
 
@@ -417,8 +416,6 @@ export default function SalaryStructureEditorPage({
   const [dicTextTranslationLoading, setDicTextTranslationLoading] = useState<Record<string, boolean>>({});
   const [dicLastTranslatedSourceByRow, setDicLastTranslatedSourceByRow] = useState<Record<string, string>>({});
   const [strAddModeFlexiHostRowID, setStrAddModeFlexiHostRowID] = useState("");
-  const [strAmountOverrideMode, setStrAmountOverrideMode] = useState<AmountOverrideMode>("both");
-
   const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
@@ -1227,10 +1224,6 @@ export default function SalaryStructureEditorPage({
             fltMaxAmount: dicComponent?.fltMaxAmount?.toString() ?? dicLine.fltMaxAmount,
             blnIsMandatory: dicComponent?.blnIsMandatory ?? dicLine.blnIsMandatory,
             blnIsActive: dicLine.blnIsActive ?? true,
-            intLineOrder: normalizeLineOrder(
-              dicComponent?.intDefaultLineOrder ?? dicComponent?.intDisplayOrder ?? dicLine.intLineOrder,
-              dicLine.intLineOrder || 10
-            ),
             lstFlexiMappings: blnIsFlexiBasket ? [...dicLine.lstFlexiMappings, ...lstMissingFlexiMappings] : []
           };
         }
@@ -1963,8 +1956,8 @@ export default function SalaryStructureEditorPage({
                   </Stack>
                   <RadioGroup
                     row
-                    value={strAmountOverrideMode}
-                    onChange={(objEvent) => setStrAmountOverrideMode(objEvent.target.value as AmountOverrideMode)}
+                    value={dicForm.strOverrideMode}
+                    onChange={(objEvent) => updateRootField("strOverrideMode", objEvent.target.value as SalaryStructureOverrideMode)}
                     aria-label={t("override_mode", "Override Mode")}
                     controlId="salary-structures.editor.override-mode.toggle-group"
                     sx={{
@@ -2007,9 +2000,9 @@ export default function SalaryStructureEditorPage({
                     />
                   </RadioGroup>
                   <Typography sx={{ color: "#64748b", fontSize: "0.68rem", mt: 0.45, whiteSpace: "nowrap" }}>
-                    {strAmountOverrideMode === "annual"
+                    {dicForm.strOverrideMode === "annual"
                       ? t("override_mode_annual_help", "Allow overriding component values in Annual.")
-                      : strAmountOverrideMode === "monthly"
+                      : dicForm.strOverrideMode === "monthly"
                         ? t("override_mode_monthly_help", "Allow overriding component values in Monthly.")
                         : t("override_mode_both_help", "Allow overriding component values in both Annual and Monthly.")}
                   </Typography>
@@ -2243,7 +2236,7 @@ export default function SalaryStructureEditorPage({
                         size="small"
                         value={dicLine.fltFixedAmount}
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "fltFixedAmount", objEvent.target.value)}
-                        disabled={blnFieldDisabled || normalizeSelectToken(dicLine.strValueSource) !== "fixed" || strAmountOverrideMode === "annual"}
+                        disabled={blnFieldDisabled || normalizeSelectToken(dicLine.strValueSource) !== "fixed" || dicForm.strOverrideMode === "annual"}
                         controlId="salary-structures.editor.line.fixed-amount.input"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.fixed-amount.input", {
                           "data-row-key": dicLine.strRowID,
@@ -2258,7 +2251,7 @@ export default function SalaryStructureEditorPage({
                         size="small"
                         value={strLineYearlyAmount}
                         onChange={(objEvent) => updateLineRow(dicLine.strRowID, "fltFixedAmount", getMonthlyAmountFromAnnual(objEvent.target.value))}
-                        disabled={blnFieldDisabled || normalizeSelectToken(dicLine.strValueSource) !== "fixed" || strAmountOverrideMode === "monthly"}
+                        disabled={blnFieldDisabled || normalizeSelectToken(dicLine.strValueSource) !== "fixed" || dicForm.strOverrideMode === "monthly"}
                         controlId="salary-structures.editor.line.yearly-amount.input"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.yearly-amount.input", {
                           "data-row-key": dicLine.strRowID,
