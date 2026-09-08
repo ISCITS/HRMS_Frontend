@@ -44,6 +44,31 @@ function buildFinancialYearOptions(strIncludeFinancialYear?: string): string[] {
   return Array.from(objYears).sort();
 }
 
+// Same rule the backend re-checks on save: an employee-specific override may adjust within its
+// designation's own limit, never past it. Returns the first offending row + employee, if any.
+function findExceedingEmployeeOverride(lstRows: LoanBudgetFormValues["lstDesignationLimits"]) {
+  for (const objRow of lstRows) {
+    if (objRow.strEmployeeScope !== "specific") continue;
+    const decDesignationLimit = Number(objRow.decLimitAmount || 0);
+    const objEmployee = objRow.lstEmployees.find((objCandidate) => Number(objCandidate.decLimitAmount || 0) > decDesignationLimit);
+    if (objEmployee) {
+      return { objRow, objEmployee, decDesignationLimit, decEmployeeLimit: Number(objEmployee.decLimitAmount || 0) };
+    }
+  }
+  return null;
+}
+
+// Same rule the backend re-checks on save: each row contributes either its own limit, or --
+// when it's carrying employee-specific overrides -- the sum of those overrides instead.
+function computeConfiguredLimitTotal(lstRows: LoanBudgetFormValues["lstDesignationLimits"]): number {
+  return lstRows.reduce((decTotal, objRow) => {
+    if (objRow.strEmployeeScope === "specific" && objRow.lstEmployees.length > 0) {
+      return decTotal + objRow.lstEmployees.reduce((decSum, objEmployee) => decSum + Number(objEmployee.decLimitAmount || 0), 0);
+    }
+    return decTotal + Number(objRow.decLimitAmount || 0);
+  }, 0);
+}
+
 function mirrorSharedLimit(lstRows: LoanBudgetFormValues["lstDesignationLimits"], strValue: string) {
   return lstRows.map((objRow) => ({
     ...objRow,
@@ -70,7 +95,9 @@ export default function LoanBudgetDetailPage({
   const [objSummary, setObjSummary] = useState<LoanBudgetSummaryRecord | null>(null);
   const [lstDesignationOptions, setLstDesignationOptions] = useState<{ intID: number; strDesignationName: string }[]>([]);
   const [blnBudgetStarted, setBlnBudgetStarted] = useState(blnEditMode);
-  const [objCollapsedDesignationRows, setObjCollapsedDesignationRows] = useState<Set<number>>(new Set());
+  // Tracks which rows' employee lists are expanded -- empty by default so every row starts
+  // collapsed, including ones added later by the designation auto-fill effect.
+  const [objExpandedDesignationRows, setObjExpandedDesignationRows] = useState<Set<number>>(new Set());
   const [blnLoading, setBlnLoading] = useState(blnEditMode);
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
@@ -152,8 +179,30 @@ export default function LoanBudgetDetailPage({
   }
 
   async function handleSave() {
-    setBlnSaving(true);
     setStrError("");
+    const objExceeding = findExceedingEmployeeOverride(dicValues.lstDesignationLimits);
+    if (objExceeding) {
+      const strDesignationName = lstDesignationOptions.find((objOption) => objOption.intID === objExceeding.objRow.intDesignationID)?.strDesignationName || t("field_designation", "Designation");
+      setStrError(
+        t(
+          "error_employee_limit_exceeds_designation",
+          `${objExceeding.objEmployee.strEmployeeName}'s limit (${formatCurrency(objExceeding.decEmployeeLimit)}) exceeds the ${strDesignationName} designation limit (${formatCurrency(objExceeding.decDesignationLimit)}). Reduce the employee limit or raise the designation limit first.`
+        )
+      );
+      return;
+    }
+    const decConfiguredTotal = computeConfiguredLimitTotal(dicValues.lstDesignationLimits);
+    const decBudget = Number(dicValues.decTotalBudgetAmount || 0);
+    if (decConfiguredTotal > decBudget) {
+      setStrError(
+        t(
+          "error_limits_exceed_budget",
+          `Configured designation/employee limits total ${formatCurrency(decConfiguredTotal)}, which exceeds the company budget amount ${formatCurrency(decBudget)}. Reduce the limits or increase the budget before saving.`
+        )
+      );
+      return;
+    }
+    setBlnSaving(true);
     try {
       const objRecord = await loanBudgetService.saveBudget(dicValues);
       setObjSummary(objRecord.objBudget);
@@ -181,7 +230,7 @@ export default function LoanBudgetDetailPage({
   }
 
   function toggleDesignationRowEmployees(intIndex: number) {
-    setObjCollapsedDesignationRows((objPrev) => {
+    setObjExpandedDesignationRows((objPrev) => {
       const objNext = new Set(objPrev);
       if (objNext.has(intIndex)) {
         objNext.delete(intIndex);
@@ -294,7 +343,13 @@ export default function LoanBudgetDetailPage({
 
       {/* Company budget: fixed, small form */}
       <Box className={styles.controlsCard}>
-        <Typography className={styles.sectionBar}>{t("section_company_budget", "Company budget")}</Typography>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1, mb: 1.2 }}>
+          <Typography className={`${styles.sectionBar} ${styles.sectionBarTight}`}>{t("section_company_budget", "Company budget")}</Typography>
+          <RadioGroup row value={dicValues.strDesignationScope} onChange={(e) => onDesignationScopeChange(e.target.value as LoanBudgetDesignationScope)}>
+            <FormControlLabel value="all" control={<Radio size="small" disabled={!blnCanEdit} />} label={t("designation_scope_all", "Apply for all Designations")} />
+            <FormControlLabel value="specific" control={<Radio size="small" disabled={!blnCanEdit} />} label={t("designation_scope_specific", "Designation Specific")} />
+          </RadioGroup>
+        </Box>
         <Box sx={{ display: "flex", gap: 1.2, flexWrap: "wrap", alignItems: "flex-end" }}>
           <TextField
             label={t("field_budget_amount", "Budget Amount")}
@@ -317,10 +372,6 @@ export default function LoanBudgetDetailPage({
             </Button>
           ) : null}
         </Box>
-        <RadioGroup row value={dicValues.strDesignationScope} onChange={(e) => onDesignationScopeChange(e.target.value as LoanBudgetDesignationScope)} sx={{ mt: 0.5 }}>
-          <FormControlLabel value="all" control={<Radio size="small" disabled={!blnCanEdit} />} label={t("designation_scope_all", "Apply for all Designations")} />
-          <FormControlLabel value="specific" control={<Radio size="small" disabled={!blnCanEdit} />} label={t("designation_scope_specific", "Designation Specific")} />
-        </RadioGroup>
       </Box>
 
       {/* Designation limits: grows to fill remaining height, its row list scrolls internally */}
@@ -362,19 +413,12 @@ export default function LoanBudgetDetailPage({
               >
                 <Box sx={{ display: "flex", gap: 1.2, flexWrap: "wrap", alignItems: "flex-end" }}>
                   <TextField
-                    select
                     label={t("field_designation", "Designation")}
-                    value={objRow.intDesignationID}
+                    value={lstDesignationOptions.find((objOption) => objOption.intID === objRow.intDesignationID)?.strDesignationName || ""}
                     size="small"
                     sx={{ minWidth: 220 }}
                     disabled
-                  >
-                    {lstDesignationOptions.map((objOption) => (
-                      <MenuItem key={objOption.intID} value={objOption.intID}>
-                        {objOption.strDesignationName}
-                      </MenuItem>
-                    ))}
-                  </TextField>
+                  />
                   <TextField
                     label={t("field_limit", "Limit")}
                     type="number"
@@ -391,15 +435,16 @@ export default function LoanBudgetDetailPage({
                 </Box>
 
                 {objRow.lstEmployees.length > 0 ? (() => {
-                  const blnCollapsed = objCollapsedDesignationRows.has(intIndex);
+                  const blnCollapsed = !objExpandedDesignationRows.has(intIndex);
+                  const strEmployeeGridColumns = "1fr 160px 160px";
                   return (
                     <Box sx={{ mt: 1.4, border: "1px solid var(--app-card-border-color)", borderRadius: "8px", overflow: "hidden" }}>
                       <Box
                         onClick={() => toggleDesignationRowEmployees(intIndex)}
                         sx={{
-                          display: "grid",
-                          gridTemplateColumns: "1fr 170px 32px",
+                          display: "flex",
                           alignItems: "center",
+                          justifyContent: "space-between",
                           background: "var(--app-grid-header-background, #f8fafc)",
                           px: 1.4,
                           py: 0.7,
@@ -410,21 +455,32 @@ export default function LoanBudgetDetailPage({
                         <Typography sx={{ fontSize: ".68rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: ".03em" }}>
                           {t("employees_in_designation", "Employees in this designation")} ({objRow.lstEmployees.length})
                         </Typography>
-                        <Typography sx={{ fontSize: ".68rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: ".03em" }}>
-                          {blnCollapsed ? "" : t("field_limit", "Limit")}
-                        </Typography>
                         <ExpandMoreRoundedIcon
                           fontSize="small"
-                          sx={{ color: "#64748b", justifySelf: "end", transform: blnCollapsed ? "rotate(-90deg)" : "rotate(0deg)", transition: "transform .15s ease" }}
+                          sx={{ color: "#64748b", transform: blnCollapsed ? "rotate(-90deg)" : "rotate(0deg)", transition: "transform .15s ease" }}
                         />
                       </Box>
                       <Collapse in={!blnCollapsed}>
+                        <Box
+                          sx={{
+                            display: "grid",
+                            gridTemplateColumns: strEmployeeGridColumns,
+                            alignItems: "center",
+                            px: 1.4,
+                            py: 0.6,
+                            borderTop: "1px solid var(--app-card-border-color)",
+                          }}
+                        >
+                          <Typography sx={{ fontSize: ".68rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: ".03em" }}>{t("table_employee_name", "Employee Name")}</Typography>
+                          <Typography sx={{ fontSize: ".68rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: ".03em" }}>{t("table_employee_code", "Employee ID")}</Typography>
+                          <Typography sx={{ fontSize: ".68rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: ".03em" }}>{t("field_limit", "Limit")}</Typography>
+                        </Box>
                         {objRow.lstEmployees.map((objEmployee) => (
                           <Box
                             key={objEmployee.intEmployeeID}
                             sx={{
                               display: "grid",
-                              gridTemplateColumns: "1fr 170px",
+                              gridTemplateColumns: strEmployeeGridColumns,
                               alignItems: "center",
                               px: 1.4,
                               py: 0.9,
@@ -432,9 +488,8 @@ export default function LoanBudgetDetailPage({
                               "&:hover": { background: "var(--app-grid-row-hover-background, #f8fafc)" },
                             }}
                           >
-                            <Typography sx={{ fontSize: ".86rem", fontWeight: 600 }}>
-                              {objEmployee.strEmployeeName} <Typography component="span" sx={{ color: "#94a3b8", fontSize: ".82rem", fontWeight: 400 }}>({objEmployee.strEmployeeCode})</Typography>
-                            </Typography>
+                            <Typography sx={{ fontSize: ".86rem", fontWeight: 600 }}>{objEmployee.strEmployeeName}</Typography>
+                            <Typography sx={{ fontSize: ".82rem", color: "#64748b" }}>{objEmployee.strEmployeeCode}</Typography>
                             <TextField
                               type="number"
                               size="small"
