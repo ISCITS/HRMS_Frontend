@@ -3,8 +3,8 @@
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
-import { Alert, Box, Button, Collapse, FormControlLabel, MenuItem, Radio, RadioGroup, TextField, Typography } from "@mui/material";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Box, Button, FormControlLabel, MenuItem, Pagination, Radio, RadioGroup, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, TextField, Typography } from "@mui/material";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
@@ -101,12 +101,53 @@ export default function LoanBudgetDetailPage({
   const [blnLoading, setBlnLoading] = useState(blnEditMode);
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
+  const [strSuccess, setStrSuccess] = useState("");
   // Gates the designation auto-fill effect below until the existing record (if any) has finished
   // loading -- otherwise it would race the record load and fill in designations using the still-
   // empty initial form, only to have that load immediately overwrite them.
   const [blnRecordLoaded, setBlnRecordLoaded] = useState(!blnEditMode);
   const blnPopulatingDesignationsRef = useRef(false);
   const lstFinancialYearOptions = useMemo(() => buildFinancialYearOptions(strFinancialYear), [strFinancialYear]);
+  const [strDesignationSortBy, setStrDesignationSortBy] = useState<"designation" | "limit" | null>(null);
+  const [strDesignationSortDirection, setStrDesignationSortDirection] = useState<"asc" | "desc">("asc");
+
+  function handleDesignationSort(strColumn: "designation" | "limit") {
+    if (strDesignationSortBy === strColumn) {
+      setStrDesignationSortDirection((strPrev) => (strPrev === "asc" ? "desc" : "asc"));
+    } else {
+      setStrDesignationSortBy(strColumn);
+      setStrDesignationSortDirection("asc");
+    }
+  }
+
+  // Sorts by display order only -- each entry keeps its original array index, so every handler
+  // below (which addresses rows/employees by that index) and the expand/collapse state (also
+  // keyed by index) stay correctly attached to their row regardless of sort order.
+  const lstSortedDesignationLimits = useMemo(() => {
+    const lstIndexed = dicValues.lstDesignationLimits.map((objRow, intIndex) => ({ objRow, intIndex }));
+    if (!strDesignationSortBy) return lstIndexed;
+    const intDirection = strDesignationSortDirection === "asc" ? 1 : -1;
+    return [...lstIndexed].sort((objA, objB) => {
+      if (strDesignationSortBy === "limit") {
+        return (Number(objA.objRow.decLimitAmount || 0) - Number(objB.objRow.decLimitAmount || 0)) * intDirection;
+      }
+      const strNameA = lstDesignationOptions.find((objOption) => objOption.intID === objA.objRow.intDesignationID)?.strDesignationName || "";
+      const strNameB = lstDesignationOptions.find((objOption) => objOption.intID === objB.objRow.intDesignationID)?.strDesignationName || "";
+      return strNameA.localeCompare(strNameB) * intDirection;
+    });
+  }, [dicValues.lstDesignationLimits, strDesignationSortBy, strDesignationSortDirection, lstDesignationOptions]);
+
+  // Pagination is over designation rows only -- each page still renders every employee sub-row
+  // for the designations on it, exactly like sort keeps them, so a designation is never split
+  // from its own employees across a page boundary.
+  const [intDesignationPage, setIntDesignationPage] = useState(0);
+  const [intDesignationRowsPerPage, setIntDesignationRowsPerPage] = useState(5);
+  const intDesignationPageCount = Math.max(1, Math.ceil(lstSortedDesignationLimits.length / intDesignationRowsPerPage));
+  const intClampedDesignationPage = Math.min(intDesignationPage, intDesignationPageCount - 1);
+  const lstPagedDesignationLimits = useMemo(
+    () => lstSortedDesignationLimits.slice(intClampedDesignationPage * intDesignationRowsPerPage, (intClampedDesignationPage + 1) * intDesignationRowsPerPage),
+    [lstSortedDesignationLimits, intClampedDesignationPage, intDesignationRowsPerPage]
+  );
 
   useEffect(() => {
     loanBudgetService.listDesignationOptions().then(setLstDesignationOptions).catch(() => setLstDesignationOptions([]));
@@ -167,6 +208,7 @@ export default function LoanBudgetDetailPage({
   // the actual populating. The header Save button is the one and only place a request is written.
   function startBudgetProcess() {
     setStrError("");
+    setStrSuccess("");
     if (!dicValues.strFinancialYear.trim()) {
       setStrError(t("error_fy_required", "Financial year is required."));
       return;
@@ -180,6 +222,7 @@ export default function LoanBudgetDetailPage({
 
   async function handleSave() {
     setStrError("");
+    setStrSuccess("");
     const objExceeding = findExceedingEmployeeOverride(dicValues.lstDesignationLimits);
     if (objExceeding) {
       const strDesignationName = lstDesignationOptions.find((objOption) => objOption.intID === objExceeding.objRow.intDesignationID)?.strDesignationName || t("field_designation", "Designation");
@@ -206,6 +249,7 @@ export default function LoanBudgetDetailPage({
     try {
       const objRecord = await loanBudgetService.saveBudget(dicValues);
       setObjSummary(objRecord.objBudget);
+      setStrSuccess(t("message_saved", "Budget saved successfully."));
       onSaved(objRecord.objBudget.strFinancialYear);
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : t("error_save", "Unable to save this budget."));
@@ -338,16 +382,17 @@ export default function LoanBudgetDetailPage({
         </Box>
       </Box>
 
-      {strError ? <Alert severity="error" sx={{ flex: "0 0 auto" }}>{strError}</Alert> : null}
+      {strError ? <Alert severity="error" sx={{ flex: "0 0 auto" }} onClose={() => setStrError("")}>{strError}</Alert> : null}
+      {strSuccess ? <Alert severity="success" sx={{ flex: "0 0 auto" }} onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
       {!blnCanEdit ? <Alert severity="warning" sx={{ flex: "0 0 auto" }}>{t("read_only", "You have view-only access to loan budgets.")}</Alert> : null}
 
       {/* Company budget: fixed, small form */}
       <Box className={styles.controlsCard}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1, mb: 1.2 }}>
-          <Typography className={`${styles.sectionBar} ${styles.sectionBarTight}`}>{t("section_company_budget", "Company budget")}</Typography>
+          <Typography className={`${styles.sectionBar} ${styles.sectionBarTight} ${styles.sectionBarCompact}`}>{t("section_company_budget", "Company budget")}</Typography>
           <RadioGroup row value={dicValues.strDesignationScope} onChange={(e) => onDesignationScopeChange(e.target.value as LoanBudgetDesignationScope)}>
-            <FormControlLabel value="all" control={<Radio size="small" disabled={!blnCanEdit} />} label={t("designation_scope_all", "Apply for all Designations")} />
-            <FormControlLabel value="specific" control={<Radio size="small" disabled={!blnCanEdit} />} label={t("designation_scope_specific", "Designation Specific")} />
+            <FormControlLabel value="all" control={<Radio size="small" disabled={!blnCanEdit} sx={{ p: 0.4 }} />} label={t("designation_scope_all", "Apply for all Designations")} />
+            <FormControlLabel value="specific" control={<Radio size="small" disabled={!blnCanEdit} sx={{ p: 0.4 }} />} label={t("designation_scope_specific", "Designation Specific")} />
           </RadioGroup>
         </Box>
         <Box sx={{ display: "flex", gap: 1.2, flexWrap: "wrap", alignItems: "flex-end" }}>
@@ -378,7 +423,7 @@ export default function LoanBudgetDetailPage({
       {blnBudgetStarted ? (
         <Box className={styles.tableCard}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flex: "0 0 auto", mb: 1.2, gap: 1.2, flexWrap: "wrap" }}>
-            <Typography className={`${styles.sectionBar} ${styles.sectionBarTight}`}>
+            <Typography className={`${styles.sectionBar} ${styles.sectionBarTight} ${styles.sectionBarCompact}`}>
               {t("section_designation_limits", "Designation limits")}
             </Typography>
             {dicValues.strDesignationScope === "all" && blnCanEdit ? (
@@ -394,119 +439,148 @@ export default function LoanBudgetDetailPage({
             ) : null}
           </Box>
 
-          <Box sx={{ flex: "1 1 auto", overflowY: "auto", minHeight: 0, pr: 0.5 }}>
-            {dicValues.lstDesignationLimits.length === 0 ? (
-              <Typography sx={{ color: "#94a3b8", fontSize: ".88rem", py: 2 }}>{t("no_designation_limits", "No designation limits configured yet.")}</Typography>
-            ) : null}
+          {/* One continuous table: each designation is a row (expandable in-place, chevron and
+              all, only when it's carrying employee-specific overrides) followed directly by its
+              employee sub-rows -- no separate "Employees in this designation" header row. */}
+          <TableContainer
+            sx={{
+              flex: "1 1 auto",
+              overflowY: "auto",
+              minHeight: 0,
+              border: "1px solid var(--app-card-border-color)",
+              borderRadius: "var(--app-card-radius)",
+            }}
+          >
+            <Table
+              size="small"
+              stickyHeader
+              sx={{
+                "& .MuiTableCell-root": { borderBottom: "1px solid var(--app-card-border-color)" },
+                "& .MuiTableRow-root:last-of-type .MuiTableCell-root": { borderBottom: "none" },
+              }}
+            >
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ background: "var(--app-grid-header-background, #f8fafc)", borderBottom: "2px solid var(--app-card-border-color) !important", fontSize: ".68rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: ".03em", color: "#64748b" }}>
+                    <TableSortLabel active={strDesignationSortBy === "designation"} direction={strDesignationSortBy === "designation" ? strDesignationSortDirection : "asc"} onClick={() => handleDesignationSort("designation")}>
+                      {t("field_designation", "Designation")}
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell sx={{ background: "var(--app-grid-header-background, #f8fafc)", borderBottom: "2px solid var(--app-card-border-color) !important", fontSize: ".68rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: ".03em", color: "#64748b" }}>{t("table_employee_code", "Employee ID")}</TableCell>
+                  <TableCell sx={{ background: "var(--app-grid-header-background, #f8fafc)", borderBottom: "2px solid var(--app-card-border-color) !important", fontSize: ".68rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: ".03em", color: "#64748b" }}>
+                    <TableSortLabel active={strDesignationSortBy === "limit"} direction={strDesignationSortBy === "limit" ? strDesignationSortDirection : "asc"} onClick={() => handleDesignationSort("limit")}>
+                      {t("field_limit", "Limit")}
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell sx={{ background: "var(--app-grid-header-background, #f8fafc)", borderBottom: "2px solid var(--app-card-border-color) !important", fontSize: ".68rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: ".03em", color: "#64748b" }}>{t("field_scope", "Scope")}</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {dicValues.lstDesignationLimits.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} sx={{ color: "#94a3b8", textAlign: "center", py: 3 }}>
+                      {t("no_designation_limits", "No designation limits configured yet.")}
+                    </TableCell>
+                  </TableRow>
+                ) : null}
 
-            {dicValues.lstDesignationLimits.map((objRow, intIndex) => (
-              <Box
-                key={intIndex}
-                sx={{
-                  border: "1px solid var(--app-card-border-color)",
-                  borderRadius: "var(--app-card-radius)",
-                  boxShadow: "var(--app-shadow-soft)",
-                  background: "var(--app-surface-color)",
-                  p: 1.6,
-                  mb: 1.4,
-                }}
-              >
-                <Box sx={{ display: "flex", gap: 1.2, flexWrap: "wrap", alignItems: "flex-end" }}>
-                  <TextField
-                    label={t("field_designation", "Designation")}
-                    value={lstDesignationOptions.find((objOption) => objOption.intID === objRow.intDesignationID)?.strDesignationName || ""}
-                    size="small"
-                    sx={{ minWidth: 220 }}
-                    disabled
-                  />
-                  <TextField
-                    label={t("field_limit", "Limit")}
-                    type="number"
-                    value={objRow.decLimitAmount}
-                    onChange={(e) => onDesignationLimitChange(intIndex, e.target.value)}
-                    size="small"
-                    sx={{ minWidth: 160 }}
-                    disabled={!blnCanEdit || dicValues.strDesignationScope === "all"}
-                  />
-                  <RadioGroup row value={objRow.strEmployeeScope} onChange={(e) => onScopeChange(intIndex, e.target.value as "all" | "specific")}>
-                    <FormControlLabel value="all" control={<Radio size="small" disabled={!blnCanEdit} />} label={t("scope_all", "Applicable for all")} />
-                    <FormControlLabel value="specific" control={<Radio size="small" disabled={!blnCanEdit} />} label={t("scope_specific", "Employee specific")} />
-                  </RadioGroup>
-                </Box>
-
-                {objRow.lstEmployees.length > 0 ? (() => {
-                  const blnCollapsed = !objExpandedDesignationRows.has(intIndex);
-                  const strEmployeeGridColumns = "1fr 160px 160px";
+                {lstPagedDesignationLimits.map(({ objRow, intIndex }) => {
+                  const blnExpandable = objRow.strEmployeeScope === "specific" && objRow.lstEmployees.length > 0;
+                  const blnExpanded = blnExpandable && objExpandedDesignationRows.has(intIndex);
+                  const strDesignationName = lstDesignationOptions.find((objOption) => objOption.intID === objRow.intDesignationID)?.strDesignationName || "";
                   return (
-                    <Box sx={{ mt: 1.4, border: "1px solid var(--app-card-border-color)", borderRadius: "8px", overflow: "hidden" }}>
-                      <Box
-                        onClick={() => toggleDesignationRowEmployees(intIndex)}
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          background: "var(--app-grid-header-background, #f8fafc)",
-                          px: 1.4,
-                          py: 0.7,
-                          cursor: "pointer",
-                          userSelect: "none",
-                        }}
+                    <Fragment key={intIndex}>
+                      <TableRow
+                        hover={blnExpandable}
+                        sx={{ cursor: blnExpandable ? "pointer" : "default", background: "var(--app-grid-header-background, #f8fafc)" }}
+                        onClick={() => blnExpandable && toggleDesignationRowEmployees(intIndex)}
                       >
-                        <Typography sx={{ fontSize: ".68rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: ".03em" }}>
-                          {t("employees_in_designation", "Employees in this designation")} ({objRow.lstEmployees.length})
-                        </Typography>
-                        <ExpandMoreRoundedIcon
-                          fontSize="small"
-                          sx={{ color: "#64748b", transform: blnCollapsed ? "rotate(-90deg)" : "rotate(0deg)", transition: "transform .15s ease" }}
-                        />
-                      </Box>
-                      <Collapse in={!blnCollapsed}>
-                        <Box
-                          sx={{
-                            display: "grid",
-                            gridTemplateColumns: strEmployeeGridColumns,
-                            alignItems: "center",
-                            px: 1.4,
-                            py: 0.6,
-                            borderTop: "1px solid var(--app-card-border-color)",
-                          }}
-                        >
-                          <Typography sx={{ fontSize: ".68rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: ".03em" }}>{t("table_employee_name", "Employee Name")}</Typography>
-                          <Typography sx={{ fontSize: ".68rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: ".03em" }}>{t("table_employee_code", "Employee ID")}</Typography>
-                          <Typography sx={{ fontSize: ".68rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: ".03em" }}>{t("field_limit", "Limit")}</Typography>
-                        </Box>
-                        {objRow.lstEmployees.map((objEmployee) => (
-                          <Box
-                            key={objEmployee.intEmployeeID}
-                            sx={{
-                              display: "grid",
-                              gridTemplateColumns: strEmployeeGridColumns,
-                              alignItems: "center",
-                              px: 1.4,
-                              py: 0.9,
-                              borderTop: "1px solid var(--app-card-border-color)",
-                              "&:hover": { background: "var(--app-grid-row-hover-background, #f8fafc)" },
-                            }}
-                          >
-                            <Typography sx={{ fontSize: ".86rem", fontWeight: 600 }}>{objEmployee.strEmployeeName}</Typography>
-                            <Typography sx={{ fontSize: ".82rem", color: "#64748b" }}>{objEmployee.strEmployeeCode}</Typography>
-                            <TextField
-                              type="number"
-                              size="small"
-                              value={objEmployee.decLimitAmount}
-                              onChange={(e) => onEmployeeLimitChange(intIndex, objEmployee.intEmployeeID, e.target.value)}
-                              disabled={!blnCanEdit || objRow.strEmployeeScope !== "specific"}
-                              sx={{ maxWidth: 150 }}
+                        <TableCell>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                            <ExpandMoreRoundedIcon
+                              fontSize="small"
+                              sx={{ color: blnExpandable ? "#64748b" : "transparent", transform: blnExpanded ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform .15s ease" }}
                             />
+                            <Typography sx={{ fontWeight: 700, fontSize: ".88rem" }}>{strDesignationName}</Typography>
                           </Box>
-                        ))}
-                      </Collapse>
-                    </Box>
+                        </TableCell>
+                        <TableCell />
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <TextField
+                            type="number"
+                            size="small"
+                            value={objRow.decLimitAmount}
+                            onChange={(e) => onDesignationLimitChange(intIndex, e.target.value)}
+                            disabled={!blnCanEdit || dicValues.strDesignationScope === "all"}
+                            sx={{ maxWidth: 160 }}
+                          />
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <RadioGroup row value={objRow.strEmployeeScope} onChange={(e) => onScopeChange(intIndex, e.target.value as "all" | "specific")}>
+                            <FormControlLabel value="all" control={<Radio size="small" disabled={!blnCanEdit} sx={{ p: 0.4 }} />} label={t("scope_all", "Applicable for all")} />
+                            <FormControlLabel value="specific" control={<Radio size="small" disabled={!blnCanEdit} sx={{ p: 0.4 }} />} label={t("scope_specific", "Employee specific")} />
+                          </RadioGroup>
+                        </TableCell>
+                      </TableRow>
+                      {blnExpanded
+                        ? objRow.lstEmployees.map((objEmployee) => (
+                            <TableRow key={objEmployee.intEmployeeID} hover>
+                              <TableCell sx={{ pl: 5, fontSize: ".86rem" }}>{objEmployee.strEmployeeName}</TableCell>
+                              <TableCell sx={{ color: "#64748b", fontSize: ".82rem" }}>{objEmployee.strEmployeeCode}</TableCell>
+                              <TableCell colSpan={2}>
+                                <TextField
+                                  type="number"
+                                  size="small"
+                                  value={objEmployee.decLimitAmount}
+                                  onChange={(e) => onEmployeeLimitChange(intIndex, objEmployee.intEmployeeID, e.target.value)}
+                                  disabled={!blnCanEdit || objRow.strEmployeeScope !== "specific"}
+                                  sx={{ maxWidth: 160 }}
+                                />
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        : null}
+                    </Fragment>
                   );
-                })() : null}
-              </Box>
-            ))}
-          </Box>
+                })}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          {dicValues.lstDesignationLimits.length > 0 ? (
+            <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end", gap: 1.25, mt: 1, flex: "0 0 auto" }}>
+              <TextField
+                select
+                size="small"
+                value={String(intDesignationRowsPerPage)}
+                onChange={(e) => {
+                  setIntDesignationRowsPerPage(Number(e.target.value));
+                  setIntDesignationPage(0);
+                }}
+                sx={{ width: 86 }}
+                controlId="loan-budget.detail.designation-rows-per-page.select"
+              >
+                {[5, 10, 20].map((intOption) => (
+                  <MenuItem key={intOption} value={String(intOption)}>
+                    {intOption}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <Typography sx={{ fontSize: ".82rem", color: "#64748b" }}>
+                {`${intClampedDesignationPage * intDesignationRowsPerPage + 1}-${Math.min((intClampedDesignationPage + 1) * intDesignationRowsPerPage, lstSortedDesignationLimits.length)} of ${lstSortedDesignationLimits.length}`}
+              </Typography>
+              <Pagination
+                count={intDesignationPageCount}
+                page={intClampedDesignationPage + 1}
+                onChange={(_, intNextPage) => setIntDesignationPage(intNextPage - 1)}
+                size="small"
+                color="primary"
+                showFirstButton
+                showLastButton
+                controlId="loan-budget.detail.designation-pagination"
+              />
+            </Box>
+          ) : null}
         </Box>
       ) : null}
 
