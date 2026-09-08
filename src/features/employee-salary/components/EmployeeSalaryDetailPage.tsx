@@ -2844,7 +2844,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
       ) : null}
 
       {blnIsRevisionMode ? (
-        <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", xl: "minmax(0, 4fr) minmax(0, 1fr)" } }}>
+        <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 4fr) minmax(260px, 1fr)" } }}>
         <Stack spacing={1.5} sx={{ minWidth: 0 }}>
           <Box className={`${styles.tableCard} ${styles.revisionCard}`}>
             <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }} spacing={1.5} sx={{ pb: 1, pl: "10px" }}>

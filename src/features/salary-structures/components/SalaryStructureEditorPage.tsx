@@ -113,6 +113,15 @@ function formatSummaryAmount(fltValue: number) {
   return fltValue.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function formatEditableAmount(objValue: string | number | boolean) {
+  const strValue = String(objValue ?? "").trim();
+  if (!strValue) {
+    return "";
+  }
+  const fltValue = parseCommaAmount(strValue);
+  return Number.isFinite(fltValue) ? fltValue.toFixed(2) : strValue;
+}
+
 function formatFlexiAmount(fltValue: number | null | undefined) {
   return Number(fltValue ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
 }
@@ -416,6 +425,7 @@ export default function SalaryStructureEditorPage({
   const [dicTextTranslationLoading, setDicTextTranslationLoading] = useState<Record<string, boolean>>({});
   const [dicLastTranslatedSourceByRow, setDicLastTranslatedSourceByRow] = useState<Record<string, string>>({});
   const [strAddModeFlexiHostRowID, setStrAddModeFlexiHostRowID] = useState("");
+  const [dicActiveAmountInput, setDicActiveAmountInput] = useState<{ strInputID: string; strValue: string } | null>(null);
   const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
@@ -2071,6 +2081,8 @@ export default function SalaryStructureEditorPage({
               </thead>
               <tbody>
                 {lstSortedComponentLines.map((dicLine) => {
+                  const strMonthlyAmountInputID = `${dicLine.strRowID}:monthly`;
+                  const strYearlyAmountInputID = `${dicLine.strRowID}:yearly`;
                   const dicComponent = dicComponentByID.get(Number(dicLine.intSalaryComponentID));
                   const strNormalizedLineValueSource = normalizeSelectToken(dicLine.strValueSource);
                   const blnIsDerivedValueSource = strNormalizedLineValueSource === "percentage" || strNormalizedLineValueSource === "formula";
@@ -2234,8 +2246,21 @@ export default function SalaryStructureEditorPage({
                     <td style={{ paddingBottom: 4, paddingTop: 4, verticalAlign: "top" }}>
                       <TextField
                         size="small"
-                        value={dicLine.fltFixedAmount}
-                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "fltFixedAmount", objEvent.target.value)}
+                        value={dicActiveAmountInput?.strInputID === strMonthlyAmountInputID
+                          ? dicActiveAmountInput.strValue
+                          : formatEditableAmount(dicLine.fltFixedAmount)}
+                        onFocus={(objEvent) => setDicActiveAmountInput({
+                          strInputID: strMonthlyAmountInputID,
+                          strValue: objEvent.target.value
+                        })}
+                        onChange={(objEvent) => {
+                          const strValue = sanitizeDecimalInput(objEvent.target.value);
+                          setDicActiveAmountInput({ strInputID: strMonthlyAmountInputID, strValue });
+                          updateLineRow(dicLine.strRowID, "fltFixedAmount", strValue);
+                        }}
+                        onBlur={() => setDicActiveAmountInput((dicPrevious) => (
+                          dicPrevious?.strInputID === strMonthlyAmountInputID ? null : dicPrevious
+                        ))}
                         disabled={blnFieldDisabled || normalizeSelectToken(dicLine.strValueSource) !== "fixed" || dicForm.strOverrideMode === "annual"}
                         controlId="salary-structures.editor.line.fixed-amount.input"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.fixed-amount.input", {
@@ -2249,8 +2274,21 @@ export default function SalaryStructureEditorPage({
                     <td style={{ paddingBottom: 4, paddingTop: 4, verticalAlign: "top" }}>
                       <TextField
                         size="small"
-                        value={strLineYearlyAmount}
-                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "fltFixedAmount", getMonthlyAmountFromAnnual(objEvent.target.value))}
+                        value={dicActiveAmountInput?.strInputID === strYearlyAmountInputID
+                          ? dicActiveAmountInput.strValue
+                          : formatEditableAmount(strLineYearlyAmount)}
+                        onFocus={(objEvent) => setDicActiveAmountInput({
+                          strInputID: strYearlyAmountInputID,
+                          strValue: objEvent.target.value
+                        })}
+                        onChange={(objEvent) => {
+                          const strValue = sanitizeDecimalInput(objEvent.target.value);
+                          setDicActiveAmountInput({ strInputID: strYearlyAmountInputID, strValue });
+                          updateLineRow(dicLine.strRowID, "fltFixedAmount", getMonthlyAmountFromAnnual(strValue));
+                        }}
+                        onBlur={() => setDicActiveAmountInput((dicPrevious) => (
+                          dicPrevious?.strInputID === strYearlyAmountInputID ? null : dicPrevious
+                        ))}
                         disabled={blnFieldDisabled || normalizeSelectToken(dicLine.strValueSource) !== "fixed" || dicForm.strOverrideMode === "monthly"}
                         controlId="salary-structures.editor.line.yearly-amount.input"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.yearly-amount.input", {
