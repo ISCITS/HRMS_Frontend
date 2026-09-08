@@ -23,6 +23,7 @@ import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import styles from "@/components/master/MasterScreen.module.css";
+import { LATE_ARRIVAL_BADGE_COLOR } from "@/features/attendance/dto";
 import { useAttendancePoc } from "@/features/attendance/hooks/useAttendancePoc";
 import type { AttendancePolicyAssignmentEmployee, AttendancePolicyAssignmentHistory, AttendancePolicyFormValues, DailyAttendanceFinalizeResult, DailyAttendanceRow, DailyAttendanceSaveRow } from "@/features/attendance/types";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -568,10 +569,21 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
     lastOut: <Typography variant="body2" data-control-id={`attendance.daily.${objRow.intEmployeeID}.last-out.value`}>{formatTimeWithoutSeconds(objRow.strLastOut) || "—"}</Typography>,
     workedHours: <Typography variant="body2" color="text.secondary" data-control-id={`attendance.daily.${objRow.intEmployeeID}.decWorkedHours.value`}>{formatWorkedDuration(objRow.decWorkedHours)}</Typography>,
     lateMinutes: <Typography variant="body2" color="text.secondary" data-control-id={`attendance.daily.${objRow.intEmployeeID}.intLateMinutes.value`}>{objRow.intLateMinutes} {t("minutes_short","min")}</Typography>,
-    earlyMinutes: <Typography variant="body2" color="text.secondary" data-control-id={`attendance.daily.${objRow.intEmployeeID}.intEarlyMinutes.value`}>{objRow.intEarlyMinutes} {t("minutes_short","min")}</Typography>,
+    lopStatus: objRow.strLopStatus === "LOP" ? (
+      <Chip
+        size="small"
+        data-control-id={`attendance.daily.${objRow.intEmployeeID}.lopStatus.value`}
+        label={t("lop", "LOP")}
+        sx={{ bgcolor: LATE_ARRIVAL_BADGE_COLOR.bg, color: LATE_ARRIVAL_BADGE_COLOR.fg, fontWeight: 700 }}
+      />
+    ) : objRow.strLopStatus === "LWP" ? (
+      <Chip size="small" data-control-id={`attendance.daily.${objRow.intEmployeeID}.lopStatus.value`} label={t("lwp", "LWP")} variant="outlined" />
+    ) : (
+      <Typography variant="body2" color="text.secondary" data-control-id={`attendance.daily.${objRow.intEmployeeID}.lopStatus.value`}>{t("on_time", "On Time")}</Typography>
+    ),
     otHours: <Typography variant="body2" color="text.secondary" data-control-id={`attendance.daily.${objRow.intEmployeeID}.decOtHours.value`}>{formatWorkedDuration(objRow.decOtHours)}</Typography>,
     paidDay: <Chip size="small" data-control-id={`attendance.daily.${objRow.intEmployeeID}.paid.value`} label={objRow.blnIsPaid ? t("yes","Yes") : t("no","No")} title={t("paid_day_auto_hint","Derived automatically from status")} />,
-    remarks: <Typography variant="body2" color="text.secondary" data-control-id={`attendance.daily.${objRow.intEmployeeID}.remarks.value`}>{objRow.strRemark ?? ""}</Typography>,
+    remarks: <Typography variant="body2" color={objRow.strRemark ? "text.primary" : "text.secondary"} data-control-id={`attendance.daily.${objRow.intEmployeeID}.remarks.value`}>{objRow.strRemark || objRow.strLopReasonLabel || ""}</Typography>,
   }));
   const lstDailyColumns: CommonTableColumn<(typeof lstDailyGridRows)[number]>[] = [
     { field: "employeeCode", headerName: t("table_employee_code", "Employee Code"), width: 130 },
@@ -583,7 +595,7 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
     { field: "lastOut", headerName: t("table_last_out", "Last Out"), width: 100 },
     { field: "workedHours", headerName: t("table_worked_hours", "Worked Hours"), width: 120 },
     { field: "lateMinutes", headerName: t("table_late_minutes", "Late Minutes"), width: 120 },
-    { field: "earlyMinutes", headerName: t("table_early_minutes", "Early Minutes"), width: 120 },
+    { field: "lopStatus", headerName: t("table_lop_status", "LOP Status"), sortable: false, width: 130 },
     { field: "otHours", headerName: t("table_ot_hours", "OT Hours"), width: 100 },
     { field: "paidDay", headerName: t("table_paid_day", "Paid Day"), width: 100 },
     { field: "remarks", headerName: t("table_remarks", "Remarks"), width: 180 },
