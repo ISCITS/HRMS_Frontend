@@ -179,12 +179,31 @@ export const loanAdvanceService = {
       "manual-recovery": "LOAN_ADV_MANUAL_RECOVERY",
       "skip-installment": "LOAN_ADV_SKIP_INSTALLMENT",
       "adjust-schedule": "LOAN_ADV_ADJUST_SCHEDULE",
+      finalize: "LOAN_ADV_FINALIZE",
+      "reopen-finalization": "LOAN_ADV_REOPEN_FINALIZATION",
     };
     const objResult = await requestApi<LoanAdvanceRecord>({
       strPath: `/payroll/loans-advances/${strRecordUUID}/${strAction}`,
       strMethod: "POST",
       objBody,
       strMenuAction: dicActionCodeByAction[strAction] || "LOAN_ADV_VIEW",
+    });
+    return objResult.Data;
+  },
+  async finalizeSchedule(strRecordUUID: string, intScheduleID: number): Promise<LoanAdvanceRecord> {
+    const objResult = await requestApi<LoanAdvanceRecord>({
+      strPath: `/payroll/loans-advances/${strRecordUUID}/schedule/${intScheduleID}/finalize`,
+      strMethod: "POST",
+      strMenuAction: "LOAN_ADV_FINALIZE",
+    });
+    return objResult.Data;
+  },
+  async reopenScheduleFinalization(strRecordUUID: string, intScheduleID: number, strReason: string): Promise<LoanAdvanceRecord> {
+    const objResult = await requestApi<LoanAdvanceRecord>({
+      strPath: `/payroll/loans-advances/${strRecordUUID}/schedule/${intScheduleID}/reopen-finalization`,
+      strMethod: "POST",
+      objBody: { strReason },
+      strMenuAction: "LOAN_ADV_REOPEN_FINALIZATION",
     });
     return objResult.Data;
   },

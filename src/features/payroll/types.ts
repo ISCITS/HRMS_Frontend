@@ -428,6 +428,13 @@ export type LoanAdvanceScheduleRecord = {
   decRecoveredTotalAmount?: number;
   decClosingPrincipalBalance: number;
   strScheduleStatus: string;
+  // HR verification step on the Loan Finalization screen -- one installment at a time.
+  blnIsFinalized?: boolean;
+  dtFinalizedOn?: string | null;
+  intFinalizedBy?: number | null;
+  dtFinalizationReopenedOn?: string | null;
+  intFinalizationReopenedBy?: number | null;
+  strFinalizationReopenReason?: string | null;
 };
 
 export type LoanAdvanceLedgerRecord = {
@@ -471,6 +478,13 @@ export type LoanAdvanceRecord = {
   dtDisbursementDate?: string | null;
   strPaymentMode?: string | null;
   strTransactionReferenceNo?: string | null;
+  // HR verification step on the Loan Finalization screen -- independent of strWorkflowStatus.
+  blnIsFinalized?: boolean;
+  dtFinalizedOn?: string | null;
+  intFinalizedBy?: number | null;
+  dtFinalizationReopenedOn?: string | null;
+  intFinalizationReopenedBy?: number | null;
+  strFinalizationReopenReason?: string | null;
   objEmployee?: LoanAdvanceEmployeeRecord | null;
   objCategory?: LoanAdvanceCategoryRecord | null;
   objPolicySnapshot?: LoanAdvanceCategoryRecord | Record<string, unknown> | null;
