@@ -257,6 +257,11 @@ function getLocalizedHeaderTitle(
     const strTitle = tHeader("header_title", "Salary Register");
     return stripMasterTitle(strTitle.split("/").pop()?.trim() || "Salary Register");
   }
+  if (strHeaderModuleName === "salary-statement") {
+    const strTitle = tHeader("header_title", "Salary Statement");
+    return stripMasterTitle(strTitle.split("/").pop()?.trim() || "Salary Statement");
+  }
+  if (strHeaderModuleName === "ctc-format") return "CTC Format";
 
   if (strHeaderModuleName === "payslips") {
     const blnEssPayslipContext =
