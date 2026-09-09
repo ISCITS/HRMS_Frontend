@@ -558,6 +558,21 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
       <Box className={styles.tableCard}><Box className={styles.tableHeaderActions}><Button data-control-id="attendance.policy.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} disabled={blnReadOnly} onClick={() => void openPolicy(null)}>{t("add_policy", "Add Policy")}</Button><Button data-control-id="attendance.policy.assign.button" className={styles.secondaryButton} startIcon={<GroupAddRoundedIcon />} disabled={blnReadOnly} onClick={() => void openAssignment(null)}>{t("assign_employees", "Assign Employees")}</Button></Box><CommonTable columns={lstPolicyColumns} rows={lstPolicyRows} rowIdField="id" hideToolbar minTableWidth={1000} emptyMessage={t("no_policies", "No attendance policies found.")} testIdPrefix="attendance.policy.list" onRowDoubleClick={(objRow) => void openPolicy(Number(objRow.id), blnReadOnly)} />{blnLoading ? <Box sx={{ p: 3, textAlign: "center" }}><CircularProgress /></Box> : null}</Box>{nodeToast}</Box>;
   }
 
+  const SET_BLANK_REMARK_PLACEHOLDERS = new Set(["NA", "N/A", "N.A.", "-", "NIL", "NONE"]);
+  const isBlankRemark = (strRemark: string | null | undefined) =>
+    !strRemark || SET_BLANK_REMARK_PLACEHOLDERS.has(strRemark.trim().toUpperCase());
+
+  const formatOrdinal = (intValue: number) => {
+    const intMod100 = intValue % 100;
+    if (intMod100 >= 11 && intMod100 <= 13) return `${intValue}th`;
+    switch (intValue % 10) {
+      case 1: return `${intValue}st`;
+      case 2: return `${intValue}nd`;
+      case 3: return `${intValue}rd`;
+      default: return `${intValue}th`;
+    }
+  };
+
   const lstDailyGridRows = lstEditableRows.map((objRow) => ({
     intEmployeeID: objRow.intEmployeeID,
     employeeCode: objRow.strEmployeeCode,
@@ -569,21 +584,21 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
     lastOut: <Typography variant="body2" data-control-id={`attendance.daily.${objRow.intEmployeeID}.last-out.value`}>{formatTimeWithoutSeconds(objRow.strLastOut) || "—"}</Typography>,
     workedHours: <Typography variant="body2" color="text.secondary" data-control-id={`attendance.daily.${objRow.intEmployeeID}.decWorkedHours.value`}>{formatWorkedDuration(objRow.decWorkedHours)}</Typography>,
     lateMinutes: <Typography variant="body2" color="text.secondary" data-control-id={`attendance.daily.${objRow.intEmployeeID}.intLateMinutes.value`}>{objRow.intLateMinutes} {t("minutes_short","min")}</Typography>,
-    lopStatus: objRow.strLopStatus === "LOP" ? (
+    arrivalStatus: objRow.strArrivalStatus === "LATE" ? (
       <Chip
         size="small"
-        data-control-id={`attendance.daily.${objRow.intEmployeeID}.lopStatus.value`}
-        label={t("lop", "LOP")}
+        data-control-id={`attendance.daily.${objRow.intEmployeeID}.arrivalStatus.value`}
+        label={`${t("late_arrival", "Late Arrival")}${objRow.intLateOccurrenceNumber ? ` (${formatOrdinal(objRow.intLateOccurrenceNumber)})` : ""}`}
         sx={{ bgcolor: LATE_ARRIVAL_BADGE_COLOR.bg, color: LATE_ARRIVAL_BADGE_COLOR.fg, fontWeight: 700 }}
       />
-    ) : objRow.strLopStatus === "LWP" ? (
-      <Chip size="small" data-control-id={`attendance.daily.${objRow.intEmployeeID}.lopStatus.value`} label={t("lwp", "LWP")} variant="outlined" />
+    ) : objRow.strArrivalStatus === "ON_TIME" ? (
+      <Typography variant="body2" color="text.secondary" data-control-id={`attendance.daily.${objRow.intEmployeeID}.arrivalStatus.value`}>{t("on_time", "On Time")}</Typography>
     ) : (
-      <Typography variant="body2" color="text.secondary" data-control-id={`attendance.daily.${objRow.intEmployeeID}.lopStatus.value`}>{t("on_time", "On Time")}</Typography>
+      <Typography variant="body2" color="text.disabled" data-control-id={`attendance.daily.${objRow.intEmployeeID}.arrivalStatus.value`}>—</Typography>
     ),
     otHours: <Typography variant="body2" color="text.secondary" data-control-id={`attendance.daily.${objRow.intEmployeeID}.decOtHours.value`}>{formatWorkedDuration(objRow.decOtHours)}</Typography>,
     paidDay: <Chip size="small" data-control-id={`attendance.daily.${objRow.intEmployeeID}.paid.value`} label={objRow.blnIsPaid ? t("yes","Yes") : t("no","No")} title={t("paid_day_auto_hint","Derived automatically from status")} />,
-    remarks: <Typography variant="body2" color={objRow.strRemark ? "text.primary" : "text.secondary"} data-control-id={`attendance.daily.${objRow.intEmployeeID}.remarks.value`}>{objRow.strRemark || objRow.strLopReasonLabel || ""}</Typography>,
+    remarks: <Typography variant="body2" color={!isBlankRemark(objRow.strRemark) ? "text.primary" : "text.secondary"} data-control-id={`attendance.daily.${objRow.intEmployeeID}.remarks.value`}>{!isBlankRemark(objRow.strRemark) ? objRow.strRemark : (objRow.strLopReasonLabel || objRow.strRemark || "")}</Typography>,
   }));
   const lstDailyColumns: CommonTableColumn<(typeof lstDailyGridRows)[number]>[] = [
     { field: "employeeCode", headerName: t("table_employee_code", "Employee Code"), width: 130 },
@@ -595,7 +610,7 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
     { field: "lastOut", headerName: t("table_last_out", "Last Out"), width: 100 },
     { field: "workedHours", headerName: t("table_worked_hours", "Worked Hours"), width: 120 },
     { field: "lateMinutes", headerName: t("table_late_minutes", "Late Minutes"), width: 120 },
-    { field: "lopStatus", headerName: t("table_lop_status", "LOP Status"), sortable: false, width: 130 },
+    { field: "arrivalStatus", headerName: t("table_arrival_status", "Arrival Status"), sortable: false, width: 160 },
     { field: "otHours", headerName: t("table_ot_hours", "OT Hours"), width: 100 },
     { field: "paidDay", headerName: t("table_paid_day", "Paid Day"), width: 100 },
     { field: "remarks", headerName: t("table_remarks", "Remarks"), width: 180 },
