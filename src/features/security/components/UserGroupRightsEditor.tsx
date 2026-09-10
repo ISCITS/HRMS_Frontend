@@ -80,6 +80,9 @@ function normalizeRightsMenuName(objNode: SecurityMenuNode): string {
   if (strRoute.includes("/reports/salary-register") || strMenuCode.includes("salary_register")) {
     return "Salary Register";
   }
+  if (strRoute.includes("/reports/salary-statement") || strMenuCode.includes("salary_statement")) {
+    return "Salary Statement";
+  }
   if (strRoute.includes("/reports/bank-file") || strMenuCode.includes("bank_file")) {
     return "Bank File";
   }

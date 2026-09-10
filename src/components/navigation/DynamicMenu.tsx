@@ -8,6 +8,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { useActionRights } from "@/features/security/hooks/useActionRights";
+import { hasCtcAction } from "@/features/reports/utils/ctcAccess";
 import { authHelpers } from "@/lib/auth";
 import type { MenuItem } from "@/models/AuthModels";
 
@@ -940,7 +942,7 @@ function groupHrEmployeeServicesMenus(lstItems: MenuItem[]): MenuItem[] {
   ];
 }
 
-function prepareMenuItems(lstItems: MenuItem[], blnEssOnly: boolean): MenuItem[] {
+function prepareMenuItems(lstItems: MenuItem[], blnEssOnly: boolean, canViewCtc: boolean): MenuItem[] {
   const lstPreparedItems = promoteEssWorkOnHolidayMenu(
     collapseDuplicateMenuBranches(
       appendGeneratedReportsMenu(
@@ -954,7 +956,26 @@ function prepareMenuItems(lstItems: MenuItem[], blnEssOnly: boolean): MenuItem[]
       ),
     ),
   );
-  return blnEssOnly ? buildEssOnlyMenu(lstPreparedItems) : groupHrEmployeeServicesMenus(lstPreparedItems);
+  return blnEssOnly ? buildEssOnlyMenu(lstPreparedItems) : groupHrEmployeeServicesMenus(canViewCtc ? appendCtcReportMenu(lstPreparedItems) : lstPreparedItems);
+}
+
+function appendCtcReportMenu(items: MenuItem[]): MenuItem[] {
+  if (hasRoute(items, "/reports/ctc-format") || !hasRoute(items, "/employee-salary")) return items;
+  const report: MenuItem = {
+    strModuleCode: "REPORT_CTC_FORMAT", strModuleName: "CTC Format",
+    strRoute: "/reports/ctc-format", strIconName: "ReceiptLong",
+    lstPermissionCodes: [], blnIsHome: false, lstChildren: [],
+  };
+  let inserted = false;
+  const append = (nodes: MenuItem[]): MenuItem[] => nodes.map(node => {
+    if (!inserted && (node.strRoute === "/reports" || node.strModuleName.toLowerCase() === "reports")) {
+      inserted = true;
+      return { ...node, lstChildren: [...node.lstChildren, report] };
+    }
+    return { ...node, lstChildren: append(node.lstChildren) };
+  });
+  const updated = append(items);
+  return inserted ? updated : [...updated, { strModuleCode: "CTC_REPORTS", strModuleName: "Reports", strRoute: "", strIconName: "Source", lstPermissionCodes: [], blnIsHome: false, lstChildren: [report] }];
 }
 
 function getMenuNodeKey(objItem: MenuItem, intDepth: number) {
@@ -1020,6 +1041,16 @@ const objGeneratedSalaryRegisterMenu: MenuItem = {
   lstChildren: [],
 };
 
+const objGeneratedSalaryStatementMenu: MenuItem = {
+  strModuleCode: "SALARY_STATEMENT",
+  strModuleName: "Salary Statement",
+  strRoute: "/reports/salary-statement",
+  strIconName: "ReceiptLong",
+  lstPermissionCodes: ["REPORT_PAYROLL_REGISTER", "PAYROLL_RESULT_VIEW", "export"],
+  blnIsHome: false,
+  lstChildren: [],
+};
+
 function isReportsMenuBranch(objItem: MenuItem): boolean {
   const strRoute = resolveMenuRoute(objItem)?.toLowerCase() ?? "";
   const strModuleCode = objItem.strModuleCode.toLowerCase();
@@ -1034,7 +1065,7 @@ function isReportsMenuBranch(objItem: MenuItem): boolean {
 }
 
 function appendGeneratedReportsMenu(lstItems: MenuItem[]): MenuItem[] {
-  if (hasRoute(lstItems, "/reports/statutory") && hasRoute(lstItems, "/reports/salary-register")) {
+  if (hasRoute(lstItems, "/reports/statutory") && hasRoute(lstItems, "/reports/salary-register") && hasRoute(lstItems, "/reports/salary-statement")) {
     return lstItems;
   }
 
@@ -1050,7 +1081,7 @@ function appendGeneratedReportsMenu(lstItems: MenuItem[]): MenuItem[] {
       objItem.lstChildren.length > 0 &&
       isReportsMenuBranch(objItem) &&
       (hasRoute(lstChildren, "/reports/payroll-register") || hasRoute(lstChildren, "/reports/bank-file")) &&
-      (!hasRoute(lstChildren, "/reports/statutory") || !hasRoute(lstChildren, "/reports/salary-register"));
+      (!hasRoute(lstChildren, "/reports/statutory") || !hasRoute(lstChildren, "/reports/salary-register") || !hasRoute(lstChildren, "/reports/salary-statement"));
 
     if (!blnShouldAppendHere) {
       return lstChildren === objItem.lstChildren ? objItem : { ...objItem, lstChildren };
@@ -1061,6 +1092,9 @@ function appendGeneratedReportsMenu(lstItems: MenuItem[]): MenuItem[] {
     if (!hasRoute(lstGeneratedChildren, "/reports/salary-register")) {
       lstGeneratedChildren.push(objGeneratedSalaryRegisterMenu);
     }
+    if (!hasRoute(lstGeneratedChildren, "/reports/salary-statement")) {
+      lstGeneratedChildren.push(objGeneratedSalaryStatementMenu);
+    }
     if (!hasRoute(lstGeneratedChildren, "/reports/statutory")) {
       lstGeneratedChildren.push(objGeneratedStatutoryReportMenu);
     }
@@ -1070,7 +1104,7 @@ function appendGeneratedReportsMenu(lstItems: MenuItem[]): MenuItem[] {
     };
   });
 
-  if (blnInserted || (hasRoute(lstUpdatedItems, "/reports/statutory") && hasRoute(lstUpdatedItems, "/reports/salary-register"))) {
+  if (blnInserted || (hasRoute(lstUpdatedItems, "/reports/statutory") && hasRoute(lstUpdatedItems, "/reports/salary-register") && hasRoute(lstUpdatedItems, "/reports/salary-statement"))) {
     return lstUpdatedItems;
   }
 
@@ -1364,6 +1398,10 @@ export default function DynamicMenu({
       return resolveKnownMenuLabel(strModuleName, "Salary Register", "Salary Register");
     }
 
+    if (strRoute.includes("/reports/salary-statement") || strModuleCode.includes("salary_statement")) {
+      return resolveKnownMenuLabel(strModuleName, "Salary Statement", "Salary Statement");
+    }
+
     if (strRoute.includes("/reports/bank-file") || strModuleCode.includes("bank_file")) {
       return resolveKnownMenuLabel(strModuleName, "Bank File", "बैंक फ़ाइल");
     }
@@ -1430,14 +1468,17 @@ export default function DynamicMenu({
     );
   }
 
+  const ctcRights = useActionRights();
+  const canViewCtc = hasCtcAction(ctcRights.objRights, "view") || hasCtcAction(ctcRights.objRights, "list");
   const lstRenderedMenuItems = useMemo(
     // The same user may be both an employee and a manager. Route context keeps
     // HR-only links out of the ESS workspace without removing their HR access.
     () => prepareMenuItems(
       lstMenuItems,
       blnEssOnly || strPathname === "/ess" || strPathname.startsWith("/ess/"),
+      canViewCtc,
     ),
-    [blnEssOnly, lstMenuItems, strPathname],
+    [blnEssOnly, lstMenuItems, strPathname, canViewCtc],
   );
   const dicDefaultExpanded = useMemo(
     () => collectExpandableDefaults(lstRenderedMenuItems),

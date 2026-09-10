@@ -9,8 +9,13 @@ const lstReports = [
   },
   {
     strTitle: "Salary Register",
-    strDescription: "Employee yearly salary component register with Apr-Mar month totals.",
+    strDescription: "Employee-wise, component-wise monthly salary register from the CTC/salary structure, with filters and a grand total per employee.",
     strHref: "/reports/salary-register",
+  },
+  {
+    strTitle: "Salary Statement",
+    strDescription: "Employee yearly salary component register with Apr-Mar month totals.",
+    strHref: "/reports/salary-statement",
   },
   {
     strTitle: "Bank File",

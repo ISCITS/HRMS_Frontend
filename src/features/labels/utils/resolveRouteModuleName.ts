@@ -62,6 +62,10 @@ export function resolveRouteModuleName(strPathname: string) {
   if (strLowerPath.startsWith("/reports/salary-register")) {
     return "salary-register";
   }
+  if (strLowerPath.startsWith("/reports/salary-statement")) {
+    return "salary-statement";
+  }
+  if (strLowerPath.startsWith("/reports/ctc-format")) return "ctc-format";
   if (
     strLowerPath.startsWith("/payroll/employee-payroll-inputs") ||
     strLowerPath.startsWith("/payroll/employee-payroll-input") ||
