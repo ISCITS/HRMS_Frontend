@@ -1308,3 +1308,57 @@ export type Form16GenerateCompanySummary = {
   intFailedCount: number;
   lstResults: Form16GenerateResultRow[];
 };
+
+// Payroll-integration lifecycle for one loan/advance installment -- separate from its business
+// strScheduleStatus (pending/recovered/partial/...), which never changes because of posting.
+export const dicLoanRecoveryPostingStatus = {
+  NOT_POSTED: 0,
+  POSTED_TO_PAYROLL_INPUT: 10,
+  PAYROLL_PROCESSED: 20,
+  REVERSED_OR_UNPOSTED: 30,
+  POSTING_ERROR: 90,
+} as const;
+export type LoanRecoveryPostingStatus = (typeof dicLoanRecoveryPostingStatus)[keyof typeof dicLoanRecoveryPostingStatus];
+
+export type LoanRecoveryRunOption = {
+  intID: number;
+  strRecordUUID: string;
+  strRunCode: string;
+  strRunName: string;
+  dtPayrollMonth: string;
+  strRunStatus: string;
+};
+
+export type LoanRecoveryRow = {
+  intScheduleID: number;
+  intLoanAdvanceID: number;
+  strLoanRecordUUID: string;
+  strLoanAdvanceNumber?: string | null;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strCategoryName: string;
+  intInstallmentNo: number;
+  decOpeningPrincipalBalance: number;
+  decPrincipalDueAmount: number;
+  decInterestDueAmount: number;
+  decTotalDueAmount: number;
+  decClosingPrincipalBalance: number;
+  strScheduleStatus: string;
+  intPayrollPostingStatus: LoanRecoveryPostingStatus;
+  blnRecoveryComponentConfigured: boolean;
+  strPostingErrorMessage?: string | null;
+  blnCanSkip: boolean;
+  blnCanAdjust: boolean;
+  blnCanPost: boolean;
+  blnCanUnpost: boolean;
+};
+
+export type LoanRecoveryEligibleResult = {
+  objRun: LoanRecoveryRunOption;
+  lstRows: LoanRecoveryRow[];
+};
+
+export type LoanRecoveryPostResult = LoanRecoveryEligibleResult & {
+  intPostedCount: number;
+  intFailedCount: number;
+};

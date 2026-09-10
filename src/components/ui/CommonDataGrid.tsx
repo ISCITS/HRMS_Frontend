@@ -370,7 +370,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
               justifyContent={{ xs: "flex-start", lg: "flex-end" }}
               sx={{ width: { xs: "100%", lg: "auto" }, flexWrap: "wrap" }}
             >
-              <Box className={styles.paginationInfo}>
+              <Box className={styles.paginationInfo} sx={{ flexWrap: "nowrap" }}>
                 <TextField
                   data-controlid={`${testIdPrefix}.rows-per-page.select`}
                   className={styles.rowsPerPageSelect}
@@ -381,7 +381,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                     setRowsPerPage(parseInt(event.target.value, 10));
                     setPage(0);
                   }}
-                  sx={{ width: 86 }}
+                  sx={{ width: 86, flexShrink: 0 }}
                 >
                   {pageSizeOptions.map((intOption) => (
                     <MenuItem key={intOption} value={String(intOption)} data-controlid={`${testIdPrefix}.rows-per-page.${intOption}.option`}>
@@ -389,7 +389,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                     </MenuItem>
                   ))}
                 </TextField>
-                <Typography className={styles.paginationRange}>
+                <Typography className={styles.paginationRange} sx={{ whiteSpace: "nowrap", flexShrink: 0 }}>
                   {filteredAndSortedRows.length === 0
                     ? `0 ${strPaginationSeparator} 0`
                     : `${page * rowsPerPage + 1}-${Math.min((page + 1) * rowsPerPage, filteredAndSortedRows.length)} ${strPaginationSeparator} ${filteredAndSortedRows.length}`}
