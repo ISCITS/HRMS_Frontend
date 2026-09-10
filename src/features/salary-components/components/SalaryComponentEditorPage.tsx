@@ -2117,7 +2117,7 @@ export default function SalaryComponentEditorPage({
           }}
         >
           <FormControlLabel
-            sx={{ m: 0, pt: { xs: 0, md: 1.25 }, minHeight: 56, alignItems: "center" }}
+            sx={{ m: 0, minHeight: 40, alignSelf: "center", alignItems: "center" }}
             control={<Switch checked={dicForm.blnIncludeInPayslip} onChange={(objEvent) => updateRootField("blnIncludeInPayslip", objEvent.target.checked)} disabled={blnFieldDisabled || blnIsFlexiBucketCategory} inputProps={buildInputTestIdProps("salary-components.editor.include-in-payslip.switch")} />}
             label={t("show_on_payslip", "Show on Payslip")}
           />
