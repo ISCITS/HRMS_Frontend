@@ -83,7 +83,6 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
     status: "All",
     date_from: "",
     date_to: "",
-    payroll_month: "",
   });
   const blnIsEssMode = strMode === "ess";
   const canLoanAction = (strAction: "view" | "create" | "edit") =>
@@ -129,8 +128,7 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
     setBlnLoading(true);
     setStrError("");
     try {
-      const dicApiFilters = { ...dicNextFilters, payroll_month: dicNextFilters.payroll_month ? `${dicNextFilters.payroll_month}-01` : "" };
-      setLstRows(await (blnIsEssMode ? loanAdvanceService.listEssLoans(dicApiFilters) : loanAdvanceService.listLoans(dicApiFilters)));
+      setLstRows(await (blnIsEssMode ? loanAdvanceService.listEssLoans(dicNextFilters) : loanAdvanceService.listLoans(dicNextFilters)));
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : t("error_load_list", "Unable to load loans and advances."));
     } finally {
@@ -244,20 +242,18 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
   );
 
   function clearFilters() {
-    const dicReset = { employee_code: "", department: "", request_type: "All", category_id: "", status: "All", date_from: "", date_to: "", payroll_month: "" };
+    const dicReset = { employee_code: "", department: "", request_type: "All", category_id: "", status: "All", date_from: "", date_to: "" };
     setDicFilters(dicReset);
     void loadRows(dicReset);
   }
 
   const objFilterGridSx = {
     display: "flex",
-    flexWrap: "nowrap",
+    flexWrap: "wrap",
     alignItems: "center",
-    gap: 1,
+    gap: 1.2,
     mt: 1,
-    overflowX: "auto",
-    pb: 0.5,
-    "& > .MuiTextField-root, & > .MuiAutocomplete-root": { flex: "1 1 150px", minWidth: 150 }
+    "& > .MuiTextField-root, & > .MuiAutocomplete-root": { flex: "1 1 180px", minWidth: 180 }
   } as const;
 
   const objFilterActions = (
@@ -313,7 +309,6 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
       </TextField>
       <TextField fullWidth size="small" type="date" label={t("filter_date_from", "Date From")} InputLabelProps={{ shrink: true }} value={dicFilters.date_from} onChange={(e) => setDicFilters((d) => ({ ...d, date_from: e.target.value }))} />
       <TextField fullWidth size="small" type="date" label={t("filter_date_to", "Date To")} InputLabelProps={{ shrink: true }} value={dicFilters.date_to} onChange={(e) => setDicFilters((d) => ({ ...d, date_to: e.target.value }))} />
-      <TextField fullWidth size="small" type="month" label={t("filter_payroll_month", "Payroll Month")} InputLabelProps={{ shrink: true }} value={dicFilters.payroll_month} onChange={(e) => setDicFilters((d) => ({ ...d, payroll_month: e.target.value }))} />
       {objFilterActions}
     </Box>
   );
