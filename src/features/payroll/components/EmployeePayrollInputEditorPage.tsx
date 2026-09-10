@@ -3,12 +3,17 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
+import CurrencyRupeeIcon from "@mui/icons-material/CurrencyRupee";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
+import EventNoteOutlinedIcon from "@mui/icons-material/EventNoteOutlined";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import LockOpenRoundedIcon from "@mui/icons-material/LockOpenRounded";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
-import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
 import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
+import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
+import StorageRoundedIcon from "@mui/icons-material/StorageRounded";
 import {
   Alert,
   Box,
@@ -21,7 +26,9 @@ import {
   InputAdornment,
   MenuItem,
   Stack,
+  Switch,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
@@ -398,6 +405,19 @@ export default function EmployeePayrollInputEditorPage({
     setBlnOverrideDialogOpen(false);
   }
 
+  // The Override switch replaces the earlier inline "Override" button: turning it on opens the
+  // same reason-capture dialog (which then flips blnAttendanceOverrideActive), turning it off
+  // re-locks the imported attendance fields without touching any saved value.
+  function handleOverrideToggle(blnChecked: boolean) {
+    if (blnChecked) {
+      if (!blnAttendanceOverrideActive) {
+        openOverrideDialog();
+      }
+      return;
+    }
+    setBlnAttendanceOverrideActive(false);
+  }
+
   function validateForm() {
     const dicNextFieldErrors: FieldErrorState = {};
 
@@ -563,6 +583,17 @@ export default function EmployeePayrollInputEditorPage({
     );
   }
 
+  const objStartCalendarAdornment = (
+    <InputAdornment position="start">
+      <CalendarMonthOutlinedIcon sx={{ color: "#94a3b8", fontSize: 18 }} />
+    </InputAdornment>
+  );
+  const objStartDescriptionAdornment = (
+    <InputAdornment position="start">
+      <DescriptionOutlinedIcon sx={{ color: "#94a3b8", fontSize: 18 }} />
+    </InputAdornment>
+  );
+
   const lstAdjustmentRows = dicForm.lstLines.map((dicLine) => ({
     id: dicLine.intTempID,
     strComponent: (
@@ -574,8 +605,15 @@ export default function EmployeePayrollInputEditorPage({
         fullWidth
         size="small"
         sx={objFieldSx}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <StorageRoundedIcon sx={{ color: "#94a3b8", fontSize: 18 }} />
+            </InputAdornment>
+          ),
+        }}
       >
-        <MenuItem value="">{t("select_component", "Select Component")}</MenuItem>
+        <MenuItem value="">{t("select_component", "Select component")}</MenuItem>
         {(objOptions?.lstSalaryComponents ?? []).map((dicComponent) => (
           <MenuItem key={dicComponent.intID} value={dicComponent.intID}>
             {dicComponent.strLabel}
@@ -584,7 +622,22 @@ export default function EmployeePayrollInputEditorPage({
       </TextField>
     ),
     strCategory: (
-      <TextField select value={dicLine.strLineType} onChange={(objEvent) => updateLine(dicLine.intTempID, "strLineType", objEvent.target.value as EmployeePayrollInputFormLine["strLineType"])} disabled={blnFormLocked} fullWidth size="small" sx={objFieldSx}>
+      <TextField
+        select
+        value={dicLine.strLineType}
+        onChange={(objEvent) => updateLine(dicLine.intTempID, "strLineType", objEvent.target.value as EmployeePayrollInputFormLine["strLineType"])}
+        disabled={blnFormLocked}
+        fullWidth
+        size="small"
+        sx={objFieldSx}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <SettingsOutlinedIcon sx={{ color: "#94a3b8", fontSize: 18 }} />
+            </InputAdornment>
+          ),
+        }}
+      >
         {lstEmployeePayrollInputLineTypes.map((dicType) => (
           <MenuItem key={dicType.strCode} value={dicType.strCode}>
             {t(dicType.strLabelKey, dicType.strLabel)}
@@ -593,10 +646,34 @@ export default function EmployeePayrollInputEditorPage({
       </TextField>
     ),
     strAmount: (
-      <TextField value={dicLine.strAmount} onChange={(objEvent) => updateLine(dicLine.intTempID, "strAmount", objEvent.target.value)} disabled={blnFormLocked} placeholder="0.00" fullWidth size="small" sx={objFieldSx} />
+      <TextField
+        value={dicLine.strAmount}
+        onChange={(objEvent) => updateLine(dicLine.intTempID, "strAmount", objEvent.target.value)}
+        disabled={blnFormLocked}
+        placeholder="0.00"
+        fullWidth
+        size="small"
+        sx={objFieldSx}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <CurrencyRupeeIcon sx={{ color: "#94a3b8", fontSize: 16 }} />
+            </InputAdornment>
+          ),
+        }}
+      />
     ),
     strRemarks: (
-      <TextField value={dicLine.strRemarks} onChange={(objEvent) => updateLine(dicLine.intTempID, "strRemarks", objEvent.target.value)} disabled={blnFormLocked} placeholder={t("line_remarks", "Optional remarks")} fullWidth size="small" sx={objFieldSx} />
+      <TextField
+        value={dicLine.strRemarks}
+        onChange={(objEvent) => updateLine(dicLine.intTempID, "strRemarks", objEvent.target.value)}
+        disabled={blnFormLocked}
+        placeholder={t("line_remarks", "Optional line remarks")}
+        fullWidth
+        size="small"
+        sx={objFieldSx}
+        InputProps={{ startAdornment: objStartDescriptionAdornment }}
+      />
     ),
     strActions: blnCanSave ? (
       <Button onClick={() => removeLine(dicLine.intTempID)} disabled={blnFormLocked} sx={{ minWidth: 34, width: 34, height: 34, borderRadius: "10px", border: "1px solid rgba(255,169,169,0.9)", background: "#fff2f2", color: "#ff2c2c", "&:hover": { background: "#ffe3e3", borderColor: "#ff8f8f" } }}>
@@ -608,7 +685,7 @@ export default function EmployeePayrollInputEditorPage({
   const lstAdjustmentColumns: CommonTableColumn<(typeof lstAdjustmentRows)[number]>[] = [
     { field: "strComponent", headerName: `${t("component", "Component")} *`, width: 260, sortable: false },
     { field: "strCategory", headerName: `${t("line_type", "Input Category")} *`, width: 200, sortable: false },
-    { field: "strAmount", headerName: `${t("amount", "Input Amount (INR)")} *`, width: 200, sortable: false },
+    { field: "strAmount", headerName: `${t("amount", "Input Amount")} *`, width: 200, sortable: false },
     { field: "strRemarks", headerName: t("remarks", "Remarks"), width: 260, sortable: false },
     { field: "strActions", headerName: t("actions", "Actions"), width: 90, sortable: false, align: "center", exportable: false },
   ];
@@ -650,11 +727,16 @@ export default function EmployeePayrollInputEditorPage({
         }}
       >
       <Box sx={{ pt: 0.5 }}>
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", columnGap: 1, rowGap: 1.25, mb: 3 }}>
-          <Typography sx={{ display: "flex", alignItems: "center", gap: 1, fontWeight: 800, color: "#0f172a", fontSize: "0.96rem" }}>
-            <PersonOutlineRoundedIcon sx={{ color: "#2563eb", fontSize: 20 }} />
-            {t("section_employee_run", "Employee and Run Details").replace(/^\d+\.\s*/, "")}
-          </Typography>
+        <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", columnGap: 1, rowGap: 1.25, mb: 2.5 }}>
+          <Box>
+            <Typography sx={{ display: "flex", alignItems: "center", gap: 1, fontWeight: 800, color: "#0f172a", fontSize: "0.96rem" }}>
+              <PersonOutlineRoundedIcon sx={{ color: "#2563eb", fontSize: 20 }} />
+              {t("section_employee_run", "Employee and Run Details").replace(/^\d+\.\s*/, "")}
+            </Typography>
+            <Typography sx={{ color: "#64748b", mt: 0.35, fontSize: "0.83rem" }}>
+              {t("section_employee_run_help", "Select the employee and payroll run to view or edit attendance/leave inputs.")}
+            </Typography>
+          </Box>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ alignItems: { xs: "stretch", sm: "center" } }}>
             <Button
               controlId="employee-payroll-input.editor.back.button"
@@ -662,9 +744,9 @@ export default function EmployeePayrollInputEditorPage({
               startIcon={<ArrowBackRoundedIcon />}
               onClick={() => objRouter.push(strBackRoute || "/payroll/employee-payroll-inputs")}
               disabled={blnSaving}
-              sx={{ minWidth: 120, minHeight: 38 }}
+              sx={{ minWidth: 104, minHeight: 38 }}
             >
-              {t("back_to_list", "Back to List")}
+              {t("back", "Back")}
             </Button>
             {blnCanSave && !blnReadOnly ? (
               <Button
@@ -734,55 +816,68 @@ export default function EmployeePayrollInputEditorPage({
         </Box>
       </Box>
 
-      <Box sx={{ pt: 1.5, mt: 1.5, borderTop: "1px solid #e2e8f0" }}>
-        <Typography sx={{ display: "flex", alignItems: "center", gap: 1, fontWeight: 800, color: "#0f172a", fontSize: "0.96rem", mb: 1.25 }}>
-          <CalendarMonthOutlinedIcon sx={{ color: "#2563eb", fontSize: 20 }} />
-          {t("section_attendance", "Attendance / LWP / LOP").replace(/^\d+\.\s*/, "")}
-        </Typography>
-
-        {blnAttendanceSystemSourced ? (
-          <Alert
-            severity="info"
-            sx={{ mb: 1.25 }}
-            action={
-              blnCanOverrideAttendance ? (
-                <Button color="inherit" size="small" onClick={openOverrideDialog} sx={{ fontWeight: 700 }}>
-                  {t("override", "Override")}
-                </Button>
-              ) : undefined
-            }
-          >
-            {blnAttendanceOverrideActive
-              ? t(
-                  "attendance_override_active",
-                  "Editing values imported from Attendance & Leave Inputs. Saving will record this as a manual override."
-                )
-              : t(
+      <Box
+        sx={{
+          mt: 2,
+          borderRadius: "16px",
+          border: "1px solid #d5e3fb",
+          background: "linear-gradient(180deg, #f1f6ff 0%, #eaf1ff 100%)",
+          p: { xs: 1.5, md: 2.25 },
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", columnGap: 2, rowGap: 1 }}>
+          <Box sx={{ maxWidth: 680 }}>
+            <Typography sx={{ display: "flex", alignItems: "center", gap: 1, fontWeight: 800, color: "#0f172a", fontSize: "0.96rem" }}>
+              <CalendarMonthOutlinedIcon sx={{ color: "#2563eb", fontSize: 20 }} />
+              {t("section_attendance", "Attendance / LWP / LOP Details").replace(/^\d+\.\s*/, "")}
+            </Typography>
+            <Typography sx={{ color: "#5b6b86", mt: 0.35, fontSize: "0.82rem" }}>
+              {blnAttendanceOverrideActive
+                ? t("attendance_override_active", "Editing values imported from Attendance & Leave Inputs. Saving will record this as a manual override.")
+                : blnAttendanceSystemSourced
+                ? t("attendance_sourced_readonly", "These values were imported from Attendance & Leave Inputs and are read-only. Use Override to edit them manually.")
+                : t("attendance_manual_help", "Enter attendance, LWP and LOP days for this payroll period.")}
+            </Typography>
+          </Box>
+          {blnAttendanceSystemSourced ? (
+            <Stack direction="row" spacing={0.75} sx={{ alignItems: "center", flexShrink: 0 }}>
+              <Switch
+                checked={blnAttendanceOverrideActive}
+                onChange={(objEvent) => handleOverrideToggle(objEvent.target.checked)}
+                disabled={!blnAttendanceOverrideActive && !blnCanOverrideAttendance}
+                size="small"
+                inputProps={{ "aria-label": t("override", "Override") } as InputHTMLAttributes<HTMLInputElement>}
+              />
+              <Typography sx={{ fontWeight: 700, color: "#0f172a", fontSize: "0.85rem" }}>
+                {t("override", "Override")}
+              </Typography>
+              <Tooltip
+                title={t(
                   "attendance_sourced_readonly",
                   "These values were imported from Attendance & Leave Inputs and are read-only. Use Override to edit them manually."
                 )}
-          </Alert>
-        ) : null}
-
-        <Box sx={{ display: "grid", columnGap: 1.5, rowGap: 1.25, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" }, alignItems: "start", width: "100%" }}>
-          <TextField type="number" label={t("working_days", "Working Days")} value={dicForm.strWorkingDays} onChange={(objEvent) => updateField("strWorkingDays", objEvent.target.value)} disabled={blnAttendanceFieldsLocked} InputProps={{ readOnly: blnAttendanceFieldsLocked }} placeholder={t("enter_working_days", "Enter Working Days")} inputProps={{ min: 0, step: "0.5" } as InputHTMLAttributes<HTMLInputElement>} helperText={t("working_days_help", "HR-entered working days for the period.")} fullWidth sx={blnAttendanceFieldsLocked ? objReadOnlyFieldSx : objFieldSx} />
-          <TextField type="number" label={t("payable_days", "Payable Days")} value={dicForm.strPayableDays} onChange={(objEvent) => updateField("strPayableDays", objEvent.target.value)} disabled={blnAttendanceFieldsLocked} InputProps={{ readOnly: blnAttendanceFieldsLocked }} placeholder={t("enter_payable_days", "Enter Payable Days")} inputProps={{ min: 0, step: "0.5" } as InputHTMLAttributes<HTMLInputElement>} helperText={t("payable_days_help", "Applicable denominator used for LWP/LOP validation when entered.")} fullWidth sx={blnAttendanceFieldsLocked ? objReadOnlyFieldSx : objFieldSx} />
-          <TextField type="number" label={t("lwp_days", "LWP (Leave Without Pay)")} value={dicForm.strLwpDays} onChange={(objEvent) => updateField("strLwpDays", objEvent.target.value)} disabled={blnAttendanceFieldsLocked} InputProps={{ readOnly: blnAttendanceFieldsLocked }} placeholder={t("enter_lwp_days", "Enter LWP Days")} inputProps={{ min: 0, step: "0.5" } as InputHTMLAttributes<HTMLInputElement>} helperText={t("lwp_days_help", "Manual Leave Without Pay days for payroll processing.")} fullWidth sx={blnAttendanceFieldsLocked ? objReadOnlyFieldSx : objFieldSx} />
-          <TextField type="number" label={t("lop_days", "LOP (Loss of Pay)")} value={dicForm.strLopDays} onChange={(objEvent) => updateField("strLopDays", objEvent.target.value)} disabled={blnAttendanceFieldsLocked} InputProps={{ readOnly: blnAttendanceFieldsLocked }} placeholder={t("enter_lop_days", "Enter LOP Days")} inputProps={{ min: 0, step: "0.5" } as InputHTMLAttributes<HTMLInputElement>} helperText={t("lop_days_help", "Manual Loss of Pay days for payroll processing.")} fullWidth sx={blnAttendanceFieldsLocked ? objReadOnlyFieldSx : objFieldSx} />
-          <TextField label={t("manual_lwp_reason", "Manual LWP/LOP Reason")} value={dicForm.strManualLwpReason} onChange={(objEvent) => updateField("strManualLwpReason", objEvent.target.value)} disabled={blnAttendanceFieldsLocked} InputProps={{ readOnly: blnAttendanceFieldsLocked }} placeholder={t("enter_manual_lwp_reason", "Enter Manual LWP/LOP Reason")} error={Boolean(dicFieldErrors.strManualLwpReason)} helperText={dicFieldErrors.strManualLwpReason || t("manual_lwp_reason_help", "Reason is required when LWP or LOP days are entered.")} fullWidth sx={{ ...(blnAttendanceFieldsLocked ? objReadOnlyFieldSx : objFieldSx), gridColumn: "1 / -1" }} />
+              >
+                <InfoOutlinedIcon sx={{ color: "#94a3b8", fontSize: 18 }} />
+              </Tooltip>
+            </Stack>
+          ) : null}
         </Box>
-      </Box>
 
-      <Box sx={{ pt: 1.5, mt: 1.5, borderTop: "1px solid #e2e8f0" }}>
-        <Typography sx={{ display: "flex", alignItems: "center", gap: 1, fontWeight: 800, color: "#0f172a", fontSize: "0.96rem", mb: 1.25 }}>
-          <CalendarMonthOutlinedIcon sx={{ color: "#2563eb", fontSize: 20 }} />
-          {t("technical_details", "Technical Details")}
-        </Typography>
-        <Box sx={{ display: "grid", columnGap: 1.5, rowGap: 1.25, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" }, alignItems: "start", width: "100%" }}>
-          <TextField type="number" label={t("calendar_days", "Calendar Days")} value={dicForm.strCalendarDays} onChange={(objEvent) => updateField("strCalendarDays", objEvent.target.value)} disabled={blnAttendanceFieldsLocked} InputProps={{ readOnly: blnAttendanceFieldsLocked }} placeholder={t("enter_calendar_days", "Enter Calendar Days")} inputProps={{ min: 0, step: "0.5" } as InputHTMLAttributes<HTMLInputElement>} helperText={t("calendar_days_help", "Payroll-period calendar days.")} fullWidth sx={blnAttendanceFieldsLocked ? objReadOnlyFieldSx : objFieldSx} />
-          <TextField type="number" label={t("paid_days", "Paid Days")} value={dicForm.strPaidDays} onChange={(objEvent) => updateField("strPaidDays", objEvent.target.value)} disabled={blnAttendanceFieldsLocked} InputProps={{ readOnly: blnAttendanceFieldsLocked }} placeholder={t("enter_paid_days", "Enter Paid Days")} inputProps={{ min: 0, step: "0.5" } as InputHTMLAttributes<HTMLInputElement>} helperText={t("paid_days_help", "Actual paid days entered by HR.")} fullWidth sx={blnAttendanceFieldsLocked ? objReadOnlyFieldSx : objFieldSx} />
-          <TextField label={t("manual_lwp_source", "Manual Source")} value={dicForm.strManualLwpSource} InputProps={{ readOnly: true }} placeholder={t("manual_source_system", "System Captured")} fullWidth sx={objReadOnlyFieldSx} />
-          <TextField label={t("manual_lwp_captured_on", "Captured On")} value={dicForm.dtManualLwpCapturedOn ?? ""} InputProps={{ readOnly: true }} placeholder={t("captured_on_placeholder", "Captured On")} fullWidth sx={objReadOnlyFieldSx} />
+        <Box sx={{ mt: 1.75, background: "rgba(255,255,255,0.62)", border: "1px solid #e1eafb", borderRadius: "12px", p: { xs: 1.25, md: 1.75 } }}>
+          <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.75, px: 1.25, py: 0.5, borderRadius: "999px", background: "#e0ecff", color: "#1d4ed8", fontWeight: 800, fontSize: "0.78rem", mb: 1.5 }}>
+            <EventNoteOutlinedIcon sx={{ fontSize: 16 }} />
+            {t("attendance_summary", "Attendance Summary")}
+          </Box>
+          <Box sx={{ display: "grid", columnGap: 1.5, rowGap: 1.25, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" }, alignItems: "start", width: "100%" }}>
+            <TextField type="number" label={t("working_days", "Working Days")} value={dicForm.strWorkingDays} onChange={(objEvent) => updateField("strWorkingDays", objEvent.target.value)} disabled={blnAttendanceFieldsLocked} InputProps={{ readOnly: blnAttendanceFieldsLocked, startAdornment: objStartCalendarAdornment }} placeholder={t("enter_working_days", "Enter Working Days")} inputProps={{ min: 0, step: "0.5" } as InputHTMLAttributes<HTMLInputElement>} helperText={t("working_days_help", "HR-entered working days for the period.")} fullWidth sx={blnAttendanceFieldsLocked ? objReadOnlyFieldSx : objFieldSx} />
+            <TextField type="number" label={t("payable_days", "Payable Days")} value={dicForm.strPayableDays} onChange={(objEvent) => updateField("strPayableDays", objEvent.target.value)} disabled={blnAttendanceFieldsLocked} InputProps={{ readOnly: blnAttendanceFieldsLocked, startAdornment: objStartCalendarAdornment }} placeholder={t("enter_payable_days", "Enter Payable Days")} inputProps={{ min: 0, step: "0.5" } as InputHTMLAttributes<HTMLInputElement>} helperText={t("payable_days_help", "Applicable denominator used for LWP/LOP validation when entered.")} fullWidth sx={blnAttendanceFieldsLocked ? objReadOnlyFieldSx : objFieldSx} />
+            <TextField type="number" label={t("lwp_days", "LWP (Leave Without Pay)")} value={dicForm.strLwpDays} onChange={(objEvent) => updateField("strLwpDays", objEvent.target.value)} disabled={blnAttendanceFieldsLocked} InputProps={{ readOnly: blnAttendanceFieldsLocked, startAdornment: objStartCalendarAdornment }} placeholder={t("enter_lwp_days", "Enter LWP Days")} inputProps={{ min: 0, step: "0.5" } as InputHTMLAttributes<HTMLInputElement>} helperText={t("lwp_days_help", "Manual Leave Without Pay days for payroll processing.")} fullWidth sx={blnAttendanceFieldsLocked ? objReadOnlyFieldSx : objFieldSx} />
+            <TextField type="number" label={t("lop_days", "LOP (Loss of Pay)")} value={dicForm.strLopDays} onChange={(objEvent) => updateField("strLopDays", objEvent.target.value)} disabled={blnAttendanceFieldsLocked} InputProps={{ readOnly: blnAttendanceFieldsLocked, startAdornment: objStartCalendarAdornment }} placeholder={t("enter_lop_days", "Enter LOP Days")} inputProps={{ min: 0, step: "0.5" } as InputHTMLAttributes<HTMLInputElement>} helperText={t("lop_days_help", "Manual Loss of Pay days for payroll processing.")} fullWidth sx={blnAttendanceFieldsLocked ? objReadOnlyFieldSx : objFieldSx} />
+            <TextField type="number" label={t("calendar_days", "Calendar Days")} value={dicForm.strCalendarDays} onChange={(objEvent) => updateField("strCalendarDays", objEvent.target.value)} disabled={blnAttendanceFieldsLocked} InputProps={{ readOnly: blnAttendanceFieldsLocked, startAdornment: objStartCalendarAdornment }} placeholder={t("enter_calendar_days", "Enter Calendar Days")} inputProps={{ min: 0, step: "0.5" } as InputHTMLAttributes<HTMLInputElement>} helperText={t("calendar_days_help", "Payroll-period calendar days.")} fullWidth sx={blnAttendanceFieldsLocked ? objReadOnlyFieldSx : objFieldSx} />
+            <TextField type="number" label={t("paid_days", "Paid Days")} value={dicForm.strPaidDays} onChange={(objEvent) => updateField("strPaidDays", objEvent.target.value)} disabled={blnAttendanceFieldsLocked} InputProps={{ readOnly: blnAttendanceFieldsLocked, startAdornment: objStartCalendarAdornment }} placeholder={t("enter_paid_days", "Enter Paid Days")} inputProps={{ min: 0, step: "0.5" } as InputHTMLAttributes<HTMLInputElement>} helperText={t("paid_days_help", "Actual paid days entered by HR.")} fullWidth sx={blnAttendanceFieldsLocked ? objReadOnlyFieldSx : objFieldSx} />
+            <TextField label={t("manual_lwp_captured_on", "Captured On")} value={dicForm.dtManualLwpCapturedOn ?? ""} InputProps={{ readOnly: true, startAdornment: objStartCalendarAdornment }} placeholder={t("captured_on_placeholder", "Captured On")} helperText={t("captured_on_help", "Date and time when values were imported.")} fullWidth sx={objReadOnlyFieldSx} />
+            <TextField label={t("manual_lwp_reason", "Manual LWP/LOP Reason")} value={dicForm.strManualLwpReason} onChange={(objEvent) => updateField("strManualLwpReason", objEvent.target.value)} disabled={blnAttendanceFieldsLocked} InputProps={{ readOnly: blnAttendanceFieldsLocked, startAdornment: objStartDescriptionAdornment }} placeholder={t("enter_manual_lwp_reason", "Enter reason for LWP or LOP days (if applicable)")} error={Boolean(dicFieldErrors.strManualLwpReason)} helperText={dicFieldErrors.strManualLwpReason || t("manual_lwp_reason_help", "Reason is required when LWP or LOP days are entered.")} fullWidth sx={{ ...(blnAttendanceFieldsLocked ? objReadOnlyFieldSx : objFieldSx), gridColumn: "1 / -1" }} />
+          </Box>
         </Box>
       </Box>
 
@@ -820,7 +915,7 @@ export default function EmployeePayrollInputEditorPage({
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 1.25, mb: 1, flexWrap: "wrap" }}>
           <Box>
             <Typography sx={{ display: "flex", alignItems: "center", gap: 1, fontWeight: 800, color: "#0f172a", fontSize: "0.96rem" }}>
-              <PaymentsOutlinedIcon sx={{ color: "#2563eb", fontSize: 20 }} />
+              <StorageRoundedIcon sx={{ color: "#2563eb", fontSize: 20 }} />
               {t("section_lines", "Payroll Adjustments").replace(/^\d+\.\s*/, "")}
             </Typography>
             <Typography sx={{ color: "#64748b", mt: 0.35, fontSize: "0.83rem" }}>
@@ -847,7 +942,7 @@ export default function EmployeePayrollInputEditorPage({
         />
 
         <Box sx={{ mt: 0.5, display: "flex", justifyContent: "flex-end", gap: 1.25, alignItems: "center", flexWrap: "wrap", py: "10px", borderTop: "1px solid #e2e8f0" }}>
-          <Typography sx={{ color: "#475569", fontWeight: 700, fontSize: "0.9rem" }}>{t("total_lines", "Total Input Value:")}</Typography>
+          <Typography sx={{ color: "#475569", fontWeight: 700, fontSize: "0.9rem" }}>{t("total_lines", "Total Input Value")}</Typography>
           <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "1.1rem" }}>{formatAmount(decTotalLines)}</Typography>
         </Box>
       </Box>

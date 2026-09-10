@@ -5,7 +5,7 @@ import type { EmployeeSalaryDetailRecord, EmployeeSalaryListRecord } from "@/fea
 
 export type CtcDocument = {
   sheetName: string; widths: number[]; version: string; warnings: string[];
-  rows: Array<Array<{ text: string; span: number; bold: boolean; background: string; borders: boolean[]; align: "left" | "center" | "right" }>>;
+  rows: Array<Array<{ text: string; span: number; bold: boolean; background: string; color: string | null; borders: boolean[]; align: "left" | "center" | "right" }>>;
 };
 type CtcDownload = { strFileName: string; strContentType: string; strBase64Content: string };
 
