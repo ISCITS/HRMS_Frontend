@@ -1,0 +1,666 @@
+// DTOs for the Leave module, mirroring the backend serialization
+// (app/repositories/LeaveRepository.py and app/services/LeaveBalanceService.py).
+
+export type LeaveTypeDto = {
+  intID: number;
+  objRecordUUID?: string;
+  intCompanyID: number | null;
+  strTypeCode: string;
+  strTypeName: string;
+  strLeaveCategoryCode?: string | null;
+  blnIsPaid: boolean;
+  strUnit: string;
+  /** Ceiling on a single hour-based request; set only while strUnit === "hour". */
+  decMaxHourLimit?: number | null;
+  blnRequiresProof: boolean;
+  blnAllowHalfDay: boolean;
+  blnIsEncashable: boolean;
+  intDisplayOrder: number;
+  blnIsActive: boolean;
+  strDescription?: string | null;
+  strEmployeeHelpText?: string | null;
+  blnRequiresReason?: boolean;
+};
+
+export type RestrictedHolidayDto = {
+  intID: number;
+  dtHolidayDate: string;
+  strHolidayCode: string;
+  strHolidayName: string;
+};
+
+// Enterprise leave-type row (GET /leave/leave-types) — master + current-policy summary + localized name.
+export type LeaveTypeEnrichedDto = {
+  intID: number;
+  /** Public identifier used in URLs and API paths; the internal id stays server-side. */
+  strRecordUUID: string;
+  intCompanyID: number | null;
+  strTypeCode: string;
+  strTypeName: string;
+  strDisplayName: string;
+  strDescription: string | null;
+  strLeaveCategoryCode: string;
+  blnIsPaid: boolean;
+  strUnit: string;
+  decMaxHourLimit?: number | null;
+  blnRequiresProof: boolean;
+  blnAllowHalfDay: boolean;
+  blnIsEncashable: boolean;
+  blnBalanceTrackingRequired: boolean;
+  blnIsStatutory: boolean;
+  blnIsSpecialLeave: boolean;
+  strPayrollTreatmentCode: string;
+  strAttendanceStatusCode: string;
+  strApprovalRouteCode: string;
+  blnAllowEmployeeApply: boolean;
+  blnAllowHrApplyOnBehalf: boolean;
+  blnAllowMobileApply: boolean;
+  blnAllowNegativeBalance: boolean;
+  blnRequiresReason: boolean;
+  blnSystemDefined: boolean;
+  strColorCode: string | null;
+  strIconName: string | null;
+  dtEffectiveFrom: string | null;
+  dtEffectiveTo: string | null;
+  intDisplayOrder: number;
+  blnIsActive: boolean;
+  intCurrentPolicyID: number | null;
+  strAccrualFrequency: string | null;
+  decAccrualQty: number | null;
+  decEntitlementQty: number | null;
+  blnCarryForwardAllowed: boolean | null;
+  blnSandwichRuleEnabled: boolean | null;
+  blnEncashmentAllowed: boolean | null;
+  decMaxCarryForward: number | null;
+};
+
+// ---- Enterprise aggregate (full-page Add/View/Edit) ----
+export type LeavePolicyAggregate = {
+  intID?: number | null;
+  intCompanyID?: number | null;
+  strPolicyCode?: string | null;
+  strPolicyName?: string | null;
+  dtEffectiveFrom: string;
+  dtEffectiveTo?: string | null;
+  blnIsActive: boolean;
+  intLeaveYearStartMonth: number;
+  intLeaveYearStartDay: number;
+  decEntitlementQty: number;
+  strAccrualFrequency: string;
+  decAccrualQty: number;
+  strAccrualTimingCode: string;
+  strAccrualRoundingCode: string;
+  intAccrualWaitingDays: number;
+  blnAccrualAfterConfirmation: boolean;
+  blnCreditOnJoining: boolean;
+  blnCreditOnConfirmation: boolean;
+  strJoinProrationBasisCode: string;
+  blnExitProrationEnabled: boolean;
+  intMinServiceDays: number;
+  decMinPerApplication?: number | null;
+  decMaxPerApplication?: number | null;
+  decMaxConsecutiveDays?: number | null;
+  intMaxApplicationsPerMonth?: number | null;
+  decMaxDaysPerMonth?: number | null;
+  blnAccrualLapseUnused?: boolean;
+  intMaxApplicationsPerYear?: number | null;
+  intMinNoticeDays: number;
+  blnBackdatedApplicationAllowed: boolean;
+  intMaxBackdateDays: number;
+  blnFutureApplicationAllowed: boolean;
+  intMaxAdvanceDays?: number | null;
+  blnAllowDuringProbation: boolean;
+  blnAllowDuringNoticePeriod: boolean;
+  decMinBalanceAfterRequest?: number | null;
+  blnHalfDayAllowed: boolean;
+  blnHourlyLeaveAllowed: boolean;
+  decMinimumHourQty?: number | null;
+  strWeeklyOffTreatmentCode: string;
+  strHolidayTreatmentCode: string;
+  blnSandwichRuleEnabled: boolean;
+  strSandwichScopeCode: string;
+  strSandwichBoundaryCode: string;
+  blnSandwichApplyOnDifferentLeaveTypes: boolean;
+  blnCarryForwardAllowed: boolean;
+  strCarryForwardLimitTypeCode: string;
+  decMaxCarryForward?: number | null;
+  decCarryForwardPercent?: number | null;
+  intCarryForwardExpiryMonths?: number | null;
+  decMaxBalance?: number | null;
+  blnLapseExcessBalance: boolean;
+  blnEncashmentAllowed: boolean;
+  strEncashmentEventCode: string;
+  decMaxEncashableDays?: number | null;
+  decMinBalanceForEncashment?: number | null;
+  strProofRuleCode: string;
+  decProofRequiredAfterDays?: number | null;
+  strProofDocumentTypeCode?: string | null;
+  blnReasonMandatory: boolean;
+  strBackupResourceRuleCode: string;
+  strAutoActionCode: string;
+  intAutoActionAfterDays?: number | null;
+  strEscalationRoleCode?: string | null;
+  blnCancellationBeforeStartAllowed: boolean;
+  blnCancellationAfterStartAllowed: boolean;
+  blnManagerCancelApprovedAllowed: boolean;
+  intPolicySnapshotVersion?: number;
+  strRemarks?: string | null;
+};
+
+export type LeaveTypeTextRow = {
+  intLanguageID: number;
+  strTypeName: string;
+  strDescription?: string | null;
+  strEmployeeHelpText?: string | null;
+};
+
+export type LeaveApplicabilityRow = {
+  strApplicabilityTypeCode: string;
+  intApplicabilityEntityID?: number | null;
+  strApplicabilityValueCode?: string | null;
+  blnIncludeFlag: boolean;
+  intPriority: number;
+};
+
+export type LeaveApprovalStepRow = {
+  intStepNo: number;
+  strApproverSourceCode: string;
+  intFixedRoleID?: number | null;
+  intFixedEmployeeID?: number | null;
+  blnActionRequired: boolean;
+  blnSkipIfUnavailable: boolean;
+  intNoActionAfterDays?: number | null;
+  strNoActionRuleCode: string;
+  intEscalationStepNo?: number | null;
+};
+
+export type LeaveCombinationRow = {
+  intOtherLeaveTypeID: number;
+  strCombinationRuleCode: string;
+  intSequenceGapDays: number;
+};
+
+export type LeavePolicyRuleRow = {
+  intRuleGroupNo: number;
+  intRuleSequence: number;
+  strAttributeCode: string;
+  strOperatorCode: string;
+  strValueFrom?: string | null;
+  strValueTo?: string | null;
+  strResultCode?: string | null;
+  decResultNumeric?: number | null;
+  strFailureMessage?: string | null;
+};
+
+export type LeaveTypeAggregate = {
+  intID?: number;
+  intCompanyID?: number | null;
+  strTypeCode: string;
+  strTypeName: string;
+  strDescription?: string | null;
+  strLeaveCategoryCode: string;
+  strUnit: string;
+  /** Max Hour Limit — required when strUnit === "hour", cleared by the server for every other unit. */
+  decMaxHourLimit?: number | null;
+  blnIsPaid: boolean;
+  strPayrollTreatmentCode: string;
+  strAttendanceStatusCode: string;
+  blnBalanceTrackingRequired: boolean;
+  blnIsStatutory: boolean;
+  blnIsSpecialLeave: boolean;
+  strApprovalRouteCode: string;
+  intDisplayOrder: number;
+  strColorCode?: string | null;
+  strIconName?: string | null;
+  blnIsActive: boolean;
+  dtEffectiveFrom?: string | null;
+  dtEffectiveTo?: string | null;
+  blnAllowEmployeeApply: boolean;
+  blnAllowHrApplyOnBehalf: boolean;
+  blnAllowMobileApply: boolean;
+  blnAllowNegativeBalance: boolean;
+  blnRequiresReason: boolean;
+  blnRequiresProof: boolean;
+  blnAllowHalfDay: boolean;
+  blnIsEncashable: boolean;
+  objPolicy?: LeavePolicyAggregate | null;
+  lstText: LeaveTypeTextRow[];
+  lstApplicability: LeaveApplicabilityRow[];
+  lstApprovalSteps: LeaveApprovalStepRow[];
+  lstRules: LeavePolicyRuleRow[];
+  lstCombinationRules: LeaveCombinationRow[];
+  objUsage?: LeaveTypeUsageDto;
+};
+
+export type LeaveLookupOption = {
+  intID: number;
+  strValueCode: string;
+  strDisplayName: string;
+  strDescription: string | null;
+  intDisplayOrder: number;
+  blnIsActive: boolean;
+};
+
+export type LeaveLookups = Record<string, LeaveLookupOption[]>;
+
+export type LeaveTypeUsageDto = {
+  intPolicies: number;
+  intApplications: number;
+  intBalances: number;
+  intLedgerEntries: number;
+  intCombinationRules: number;
+  blnInUse: boolean;
+};
+
+export type LeaveTypeRequest = {
+  intCompanyID?: number | null;
+  strTypeCode: string;
+  strTypeName: string;
+  blnIsPaid: boolean;
+  strUnit: string;
+  blnRequiresProof: boolean;
+  blnAllowHalfDay: boolean;
+  blnIsEncashable: boolean;
+  intDisplayOrder: number;
+  blnIsActive: boolean;
+};
+
+export type LeavePolicyDto = {
+  intID: number;
+  intCompanyID: number | null;
+  intLeaveTypeID: number;
+  strAccrualFrequency: string;
+  decAccrualQty: number;
+  decMaxCarryForward: number | null;
+  decMaxBalance: number | null;
+  intMinNoticeDays: number;
+  decMinPerApplication: number | null;
+  decMaxPerApplication: number | null;
+  blnProRataOnJoin: boolean;
+  strAppliesToGrade: string | null;
+  dtEffectiveFrom: string | null;
+  dtEffectiveTo: string | null;
+  blnIsActive: boolean;
+};
+
+export type LeavePolicyRequest = {
+  intCompanyID?: number | null;
+  intLeaveTypeID: number;
+  strAccrualFrequency: string;
+  decAccrualQty: number;
+  decMaxCarryForward?: number | null;
+  decMaxBalance?: number | null;
+  intMinNoticeDays: number;
+  decMinPerApplication?: number | null;
+  decMaxPerApplication?: number | null;
+  blnProRataOnJoin: boolean;
+  strAppliesToGrade?: string | null;
+  dtEffectiveFrom: string;
+  dtEffectiveTo?: string | null;
+  blnIsActive: boolean;
+};
+
+export type LeaveBalanceDto = {
+  intLeaveTypeID: number;
+  strTypeCode: string;
+  strTypeName: string;
+  strUnit: string;
+  blnIsPaid: boolean;
+  decCredited: number;
+  decAvailed: number;
+  decHeld: number;
+  decAvailable: number;
+};
+
+export type LeaveLedgerDto = {
+  intID: number;
+  intLeaveTypeID: number;
+  strLeaveTypeCode: string | null;
+  strLeaveTypeName: string | null;
+  intLeaveYear: number;
+  dtTransactionDate: string | null;
+  strTransactionType: string;
+  decCreditDays: number;
+  decDebitDays: number;
+  decHoldDays: number;
+  decReleaseHoldDays: number;
+  decBalanceAfter: number;
+  decHoldAfter: number;
+  strSourceType: string;
+  intSourceReferenceID: number | null;
+  strTransactionRemarks: string | null;
+  dtTransactionOn: string | null;
+  // Enrichment for leave-application movements.
+  dtLeaveFromDate: string | null;
+  dtLeaveToDate: string | null;
+  strUserRemarks: string | null;
+  // Backup resource assigned to the source leave request, if any.
+  strBackupResourceName: string | null;
+};
+
+export type LedgerEmployeeDto = {
+  intEmployeeID: number;
+  strFullName: string;
+  strEmployeeCode: string | null;
+  blnIsSelf: boolean;
+};
+
+export type LeaveApplicationActionDto = {
+  intID: number;
+  strAction: string;
+  strComment: string | null;
+  intActorID: number | null;
+  dtActionOn: string | null;
+};
+
+export type LeaveApplicationAttachmentDto = {
+  intID: number;
+  strFileName: string;
+  strContentType: string;
+  intFileSizeBytes: number;
+  dtAddedOn: string | null;
+};
+
+export type LeaveValidationMessage = {
+  strCode: string;
+  strMessage: string;
+  strField: string | null;
+};
+
+export type LeaveDateBreakdownDto = {
+  dtDate: string;
+  blnHoliday: boolean;
+  strHolidayName: string | null;
+  blnWeeklyOff: boolean;
+  blnCounted: boolean;
+  strCalculationReason: string;
+  decDays: number;
+};
+
+export type LeavePreviewDto = {
+  blnValid: boolean;
+  lstErrors: LeaveValidationMessage[];
+  lstWarnings: LeaveValidationMessage[];
+  lstDateBreakdown: LeaveDateBreakdownDto[];
+  decCalculatedDays: number;
+  /** The unit decCalculatedDays is expressed in ("day" | "half_day" | "hour"). */
+  strUnit?: string | null;
+  blnHourBased?: boolean;
+  decRequestedHours?: number | null;
+  decMaxHourLimit?: number | null;
+  blnProofRequired: boolean;
+  strBackupResourceRuleCode: string | null;
+  blnManagerCancelApprovedAllowed: boolean | null;
+  intLeavePolicyID: number | null;
+  intLeavePlanAssignmentID: number | null;
+  intBalanceID: number | null;
+  decAvailableBefore: number | null;
+  decAvailableAfter: number | null;
+};
+
+export type LeaveApplicationDto = {
+  intID: number;
+  intEmployeeID: number;
+  intLeaveTypeID: number;
+  strTypeCode: string | null;
+  strTypeName: string | null;
+  dtFromDate: string | null;
+  dtToDate: string | null;
+  decDays: number;
+  blnFromHalf: boolean;
+  blnToHalf: boolean;
+  strFromHalfSession?: "first" | "second" | null;
+  strToHalfSession?: "first" | "second" | null;
+  /** Unit decDays is denominated in, plus the hour window on an hour-based application. */
+  strUnit?: string | null;
+  tmStartTime?: string | null;
+  tmEndTime?: string | null;
+  strReason: string | null;
+  intBackupEmployeeID?: number | null;
+  strStatus: string;
+  intCurrentApproverID: number | null;
+  dtAppliedOn: string | null;
+  dtDecidedOn: string | null;
+  intDecidedBy: number | null;
+  intLeavePolicyID?: number | null;
+  intLeavePlanAssignmentID?: number | null;
+  intVersionNo?: number;
+  objCalculation?: LeavePreviewDto | null;
+  strEmployeeCode?: string | null;
+  strEmployeeName?: string | null;
+  lstActions?: LeaveApplicationActionDto[];
+  lstAttachments?: LeaveApplicationAttachmentDto[];
+};
+
+export type LeaveApplyRequest = {
+  intLeaveTypeID: number;
+  dtFromDate: string;
+  dtToDate: string;
+  blnFromHalf: boolean;
+  blnToHalf: boolean;
+  strFromHalfSession?: "first" | "second" | null;
+  strToHalfSession?: "first" | "second" | null;
+  /** Hour-based leave window ("HH:MM"); sent only for a Leave Type whose unit is "hour". */
+  tmStartTime?: string | null;
+  tmEndTime?: string | null;
+  strReason?: string | null;
+  strContactDuringLeave?: string | null;
+  strBackupEmployee?: string | null;
+};
+
+export type LeaveDraftRequest = LeaveApplyRequest & {
+  intVersionNo?: number | null;
+};
+
+export type LeaveDecisionRequest = {
+  strComment?: string | null;
+  intVersionNo?: number | null;
+};
+
+export type LeaveReassignRequest = {
+  intReassignToUserID: number;
+  strComment: string;
+  intVersionNo?: number | null;
+};
+
+export type LeaveOverrideRequest = {
+  strAction: "approve" | "reject";
+  strComment: string;
+  intVersionNo?: number | null;
+};
+
+// ---- Approval-workflow DTOs (GET /leave/applications queue, timeline, route, team-calendar) ----
+export type LeaveWorkflowStepDto = {
+  intID: number;
+  intStepNo: number;
+  strApproverSourceCode: string;
+  strStepStatus: string;
+  strSkipReason?: string | null;
+  dtAssignedOn?: string | null;
+  dtActionOn?: string | null;
+};
+
+export type LeaveWorkflowDto = {
+  intID: number;
+  strWorkflowStatus: string;
+  intCurrentStepNo: number | null;
+  intVersionNo?: number;
+  dtStartedOn?: string | null;
+  dtCompletedOn?: string | null;
+  lstSteps?: LeaveWorkflowStepDto[];
+};
+
+// A row in the approver queue: the serialized application + workflow cursor + enterprise-UX tags.
+export type LeaveBackupCommitmentDto = {
+  intApplicationID: number;
+  intEmployeeID: number;
+  strEmployeeName: string | null;
+  strSessions: string;
+};
+
+export type LeaveQueueItemDto = LeaveApplicationDto & {
+  objWorkflow?: LeaveWorkflowDto | null;
+  intCurrentStepNo?: number | null;
+  blnIsDelegated?: boolean;
+  blnIsOverdue?: boolean;
+  // Leave of other employees that this applicant is the assigned backup for, on the very sessions
+  // they are requesting off. Non-empty means a replacement backup is required before approval.
+  lstBackupCommitments?: LeaveBackupCommitmentDto[];
+  blnIsConfidential?: boolean;
+  blnIsMasked?: boolean;
+  dtLastActionOn?: string | null;
+};
+
+export type LeaveTimelineEntryDto = {
+  intID?: number;
+  intStepNo?: number | null;
+  strActionCode?: string | null;
+  strStepStatus?: string | null;
+  strApproverSourceCode?: string | null;
+  intActorUserID?: number | null;
+  intOnBehalfOfUserID?: number | null;
+  strComment?: string | null;
+  dtActionOn?: string | null;
+  dtAssignedOn?: string | null;
+};
+
+export type LeaveTimelineDto = {
+  intApplicationID: number;
+  lstTimeline: LeaveTimelineEntryDto[];
+};
+
+export type LeaveRouteStepDto = {
+  intStepNo: number;
+  strApproverSourceCode: string;
+  strStepStatus?: string | null;
+  blnActionRequired?: boolean;
+  intNoActionAfterDays?: number | null;
+  strApproverName?: string | null;
+};
+
+export type LeaveWorkflowExceptionDto = {
+  intID: number;
+  intApplicationID: number;
+  intWorkflowInstanceID?: number | null;
+  intWorkflowStepID?: number | null;
+  strExceptionCode?: string | null;
+  strExceptionDetail?: string | null;
+  blnIsResolved?: boolean;
+  dtAddedOn?: string | null;
+};
+
+export type TeamCalendarEventDto = {
+  intApplicationID: number;
+  dtFromDate: string;
+  dtToDate: string;
+  strStatus: string;
+  strLabel: string | null;
+  blnIsConfidential: boolean;
+  blnIsMasked: boolean;
+};
+
+export type TeamCalendarMemberDto = {
+  intEmployeeID: number;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  lstLeaveEvents: TeamCalendarEventDto[];
+};
+
+export type TeamCalendarDto = {
+  intManagerEmployeeID: number;
+  dtFromDate: string;
+  dtToDate: string;
+  lstEmployees: TeamCalendarMemberDto[];
+};
+
+export const LEAVE_UNIT_OPTIONS = ["day", "half_day", "hour"] as const;
+export const ACCRUAL_FREQUENCY_OPTIONS = ["monthly", "yearly", "none"] as const;
+
+export const LEAVE_STATUS_COLORS: Record<string, { bg: string; fg: string }> = {
+  draft: { bg: "#f1f5f9", fg: "#475569" },
+  pending: { bg: "#fef3c7", fg: "#92400e" },
+  approved: { bg: "#dcfce7", fg: "#166534" },
+  rejected: { bg: "#fee2e2", fg: "#991b1b" },
+  sent_back: { bg: "#ffedd5", fg: "#9a3412" },
+  cancellation_pending: { bg: "#fef3c7", fg: "#92400e" },
+  cancelled: { bg: "#f1f5f9", fg: "#475569" },
+  withdrawn: { bg: "#f1f5f9", fg: "#475569" },
+};
+
+// Canonical status wording (guide §10). Screens render these through the i18n framework via
+// getLeaveStatusLabel so ESS and HR always show identical, consistent status text.
+export const LEAVE_STATUS_LABELS: Record<string, string> = {
+  draft: "Draft",
+  pending: "Pending Approval",
+  approved: "Approved",
+  rejected: "Rejected",
+  sent_back: "Sent Back",
+  cancellation_pending: "Cancellation Pending",
+  cancelled: "Cancelled",
+  withdrawn: "Withdrawn",
+};
+
+export function getLeaveStatusLabel(
+  strStatus: string,
+  fnLabel: (strKey: string, strFallback: string) => string,
+): string {
+  const strFallback = LEAVE_STATUS_LABELS[strStatus] ?? strStatus.replaceAll("_", " ");
+  return fnLabel(`leave_status_${strStatus}`, strFallback);
+}
+
+// Rotating palette for leave-type badges (the coloured "CL / OD / SV" circles).
+export const LEAVE_TYPE_PALETTE: { bg: string; fg: string }[] = [
+  { bg: "#dbeafe", fg: "#1e40af" }, // blue
+  { bg: "#dcfce7", fg: "#166534" }, // green
+  { bg: "#fef3c7", fg: "#92400e" }, // amber
+  { bg: "#fae8ff", fg: "#86198f" }, // purple
+  { bg: "#ffe4e6", fg: "#9f1239" }, // rose
+  { bg: "#ccfbf1", fg: "#115e59" }, // teal
+  { bg: "#e0e7ff", fg: "#3730a3" }, // indigo
+  { bg: "#ffedd5", fg: "#9a3412" }, // orange
+];
+
+// Deterministic badge (initials + colour) for a leave type, keyed off its code.
+export function getLeaveTypeBadge(
+  strTypeCode?: string | null,
+  strTypeName?: string | null,
+): { strLabel: string; bg: string; fg: string } {
+  const strSource = (strTypeCode || strTypeName || "?").trim();
+  const strLetters = strSource.replace(/[^A-Za-z]/g, "");
+  const strLabel = (strLetters || strSource).slice(0, 2).toUpperCase() || "?";
+  let intHash = 0;
+  for (let intIndex = 0; intIndex < strSource.length; intIndex += 1) {
+    intHash = (intHash * 31 + strSource.charCodeAt(intIndex)) >>> 0;
+  }
+  const objColor = LEAVE_TYPE_PALETTE[intHash % LEAVE_TYPE_PALETTE.length];
+  return { strLabel, bg: objColor.bg, fg: objColor.fg };
+}
+
+// "2026-06-16" -> "16-Jun-2026" (falls back to the raw value on parse failure).
+export function formatLeaveDate(strValue?: string | null): string {
+  if (!strValue) {
+    return "—";
+  }
+  const objDate = new Date(strValue);
+  if (Number.isNaN(objDate.getTime())) {
+    return strValue;
+  }
+  const lstMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const strDay = String(objDate.getDate()).padStart(2, "0");
+  return `${strDay}-${lstMonths[objDate.getMonth()]}-${objDate.getFullYear()}`;
+}
+
+// Server-decided capabilities that travel with a resource. The screen opens read-only and enables
+// controls from these flags, so the mode is never taken from the URL.
+export type ResourceCapabilities = {
+  blnCanView: boolean;
+  blnCanEdit: boolean;
+  blnCanDelete: boolean;
+  blnCanApprove: boolean;
+  blnCanExport: boolean;
+};
+
+export type LeaveTypeAggregateEnvelope = {
+  objData: LeaveTypeAggregate;
+  objCapabilities: ResourceCapabilities;
+};

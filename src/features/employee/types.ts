@@ -1,0 +1,431 @@
+export type EmployeeStatus = "Active" | "Inactive";
+
+export type EmployeeLookupOption = {
+  intID: number;
+  strLabel: string;
+  strCode?: string;
+};
+
+export type EmployeeListRecord = {
+  intID: number;
+  /** Public identifier used in URLs; the internal id stays server-side. */
+  strRecordUUID: string;
+  strEmployeeCode: string;
+  strFullName: string;
+  blnIsWorker: boolean;
+  strWorkEmail: string | null;
+  strMobileNumber: string | null;
+  strDepartmentName: string | null;
+  strDesignationName: string | null;
+  strEmploymentTypeName: string | null;
+  dtDateOfJoining: string;
+  strEmploymentStatus: EmployeeStatus;
+  blnIsEssEnabled: boolean;
+  blnIsPartialSave: boolean;
+  strLocationName: string | null;
+  strManagerName: string | null;
+};
+
+export type EmployeeDetailRecord = {
+  intID: number;
+  /** Public identifier used in URLs; the internal id stays server-side. */
+  strRecordUUID: string;
+  strEmployeeCode: string;
+  strTitle: string | null;
+  strFirstName: string;
+  strMiddleName: string | null;
+  blnIsWorker: boolean;
+  strLastName: string | null;
+  strFullName: string;
+  dtDateOfBirth: string | null;
+  dtDateOfJoining: string;
+  intEmploymentTypeID: number;
+  intDepartmentID: number | null;
+  intDesignationID: number | null;
+  intGradeID: number | null;
+  intCostCenterID: number | null;
+  intLocationID: number;
+  intPayrollGroupID: number | null;
+  intManagerEmployeeID: number | null;
+  intLineManagerEmployeeID: number | null;
+  strWorkEmail: string | null;
+  strPersonalEmail: string | null;
+  strMobileNumber: string | null;
+  strGender: string | null;
+  intPreferredLanguageID: number | null;
+  strEmploymentStatus: EmployeeStatus;
+  dtDateOfExit: string | null;
+  blnIsEssEnabled: boolean;
+  blnIsPartialSave: boolean;
+  strProfilePhotoUrl?: string | null;
+  strFatherOrHusbandName: string | null;
+  strMotherName: string | null;
+  strSpouseName: string | null;
+  strSpouseOccupation: string | null;
+  strBloodGroup: string | null;
+  intNationalityCountryID: number | null;
+  intMotherTongueLanguageID: number | null;
+  strReligion: string | null;
+  strMaritalStatus: string | null;
+  dtLocationJoiningDate: string | null;
+  strPassportNumber: string | null;
+  strPassportPlaceOfIssue: string | null;
+  dtPassportIssueDate: string | null;
+  dtPassportExpiryDate: string | null;
+  dtRetirementDate: string | null;
+  strAppointmentOrderNumber: string | null;
+  dtAppointmentDate: string | null;
+  strEntryMode: string | null;
+  strJobType: string | null;
+  strConfirmationType: string | null;
+  strConfirmationComments: string | null;
+  dtTentativeConfirmationDate: string | null;
+  dtConfirmationDate: string | null;
+  strRestDay: string | null;
+  strEmployeeFunction: string | null;
+  strFunctionalArea: string | null;
+  strEmployeeCategory: string | null;
+  blnHasDisability: boolean | null;
+  strPlaceOfBirth: string | null;
+  blnSuperannuationFlag: boolean | null;
+  strIdentificationMarks: string | null;
+  strDrivingLicenceNumber: string | null;
+  dtDrivingLicenceValidUpto: string | null;
+  blnIsRelatedEmployee: boolean | null;
+  intRelatedEmployeeID: number | null;
+  strPaymentType: string | null;
+  blnFlatGiven: boolean | null;
+  dtStatusEffectiveDate: string | null;
+  dtContractStartDate: string | null;
+  dtContractEndDate: string | null;
+  dtLastIncrementDate: string | null;
+  blnUgcAppraisalFlag: boolean | null;
+  strAgency: string | null;
+  strReferenceNumber: string | null;
+  strMobileCountryCode: string | null;
+  strWhatsappCountryCode: string | null;
+  strWhatsappNumber: string | null;
+  strReferredBy: string | null;
+  strAccommodationType: string | null;
+  decHousingAllowance: number | null;
+  intNoticePeriodDays: number | null;
+  strEmergencyContactPerson: string | null;
+  strEmergencyCountryCode: string | null;
+  strEmergencyMobileNumber: string | null;
+  strEmergencyEmail: string | null;
+  strEmployeeRemark: string | null;
+  strInitialPostingLocation: string | null;
+  dtProbationStartDate: string | null;
+  dtProbationEndDate: string | null;
+  strEmployeeWorkgroup: string | null;
+  strEmployeeReservation: string | null;
+  strSwon: string | null;
+  dtFromDate: string | null;
+  dtToDate: string | null;
+  strPrefixLogic: string | null;
+};
+
+export type EmployeeFormValues = {
+  strEmployeeCode: string;
+  strTitle: string;
+  strFirstName: string;
+  strMiddleName: string;
+  blnIsWorker: boolean;
+  strLastName: string;
+  dtDateOfBirth: string;
+  dtDateOfJoining: string;
+  intEmploymentTypeID: number | "";
+  intDepartmentID: number | "";
+  intDesignationID: number | "";
+  intGradeID: number | "";
+  intCostCenterID: number | "";
+  intLocationID: number | "";
+  intPayrollGroupID: number | "";
+  intManagerEmployeeID: number | "";
+  intLineManagerEmployeeID: number | "";
+  strWorkEmail: string;
+  strPersonalEmail: string;
+  strMobileNumber: string;
+  strGender: string;
+  intPreferredLanguageID: number | "";
+  strEmploymentStatus: EmployeeStatus;
+  dtDateOfExit: string;
+  blnIsEssEnabled: boolean;
+  blnIsPartialSave: boolean;
+  strFatherOrHusbandName: string;
+  strMotherName: string;
+  strSpouseName: string;
+  strSpouseOccupation: string;
+  strBloodGroup: string;
+  intNationalityCountryID: number | "";
+  intMotherTongueLanguageID: number | "";
+  strReligion: string;
+  strMaritalStatus: string;
+  dtLocationJoiningDate: string;
+  strPassportNumber: string;
+  strPassportPlaceOfIssue: string;
+  dtPassportIssueDate: string;
+  dtPassportExpiryDate: string;
+  dtRetirementDate: string;
+  strAppointmentOrderNumber: string;
+  dtAppointmentDate: string;
+  strEntryMode: string;
+  strJobType: string;
+  strConfirmationType: string;
+  strConfirmationComments: string;
+  dtTentativeConfirmationDate: string;
+  dtConfirmationDate: string;
+  strRestDay: string;
+  strEmployeeFunction: string;
+  strFunctionalArea: string;
+  strEmployeeCategory: string;
+  blnHasDisability: boolean;
+  strPlaceOfBirth: string;
+  blnSuperannuationFlag: boolean;
+  strIdentificationMarks: string;
+  strDrivingLicenceNumber: string;
+  dtDrivingLicenceValidUpto: string;
+  blnIsRelatedEmployee: boolean;
+  intRelatedEmployeeID: number | "";
+  strPaymentType: string;
+  blnFlatGiven: boolean;
+  dtStatusEffectiveDate: string;
+  dtContractStartDate: string;
+  dtContractEndDate: string;
+  dtLastIncrementDate: string;
+  blnUgcAppraisalFlag: boolean;
+  strAgency: string;
+  strReferenceNumber: string;
+  strMobileCountryCode: string;
+  strWhatsappCountryCode: string;
+  strWhatsappNumber: string;
+  strReferredBy: string;
+  strAccommodationType: string;
+  decHousingAllowance: string;
+  intNoticePeriodDays: string;
+  strEmergencyContactPerson: string;
+  strEmergencyCountryCode: string;
+  strEmergencyMobileNumber: string;
+  strEmergencyEmail: string;
+  strEmployeeRemark: string;
+  strInitialPostingLocation: string;
+  dtProbationStartDate: string;
+  dtProbationEndDate: string;
+  strEmployeeWorkgroup: string;
+  strEmployeeReservation: string;
+  strSwon: string;
+  dtFromDate: string;
+  dtToDate: string;
+  strPrefixLogic: string;
+};
+
+export type EmployeeFormOptions = {
+  lstEmploymentTypes: EmployeeLookupOption[];
+  lstDepartments: EmployeeLookupOption[];
+  lstDesignations: EmployeeLookupOption[];
+  lstGrades: EmployeeLookupOption[];
+  lstCostCenters: EmployeeLookupOption[];
+  lstLocations: EmployeeLookupOption[];
+  lstPayrollGroups: EmployeeLookupOption[];
+  lstLanguages: EmployeeLookupOption[];
+  lstCountries: EmployeeLookupOption[];
+  lstStates: EmployeeLookupOption[];
+  lstBanks: EmployeeLookupOption[];
+  lstManagers: EmployeeLookupOption[];
+  lstTitles: string[];
+  lstGenders: string[];
+  lstEmploymentStatuses: EmployeeStatus[];
+  lstAddressTypes: string[];
+  lstTaxRegimeCodes: string[];
+  lstMotherTongues: EmployeeLookupOption[];
+  lstNationalities: EmployeeLookupOption[];
+  lstBloodGroups: EmployeeLookupOption[];
+  lstReligions: EmployeeLookupOption[];
+  lstMaritalStatuses: EmployeeLookupOption[];
+  lstEntryModes: EmployeeLookupOption[];
+  lstJobTypes: EmployeeLookupOption[];
+  lstConfirmationTypes: EmployeeLookupOption[];
+  lstRestDays: EmployeeLookupOption[];
+  lstEmployeeFunctions: EmployeeLookupOption[];
+  lstEmployeeCategories: EmployeeLookupOption[];
+  lstPaymentTypes: EmployeeLookupOption[];
+  lstBankAccountTypes: EmployeeLookupOption[];
+};
+
+export type EmployeeAddressRecord = {
+  intID: number | null;
+  strAddressType: string;
+  strAddressLine1: string;
+  strAddressLine2: string | null;
+  strCityName: string | null;
+  intStateID: number | null;
+  strPostalCode: string | null;
+  intCountryID: number | null;
+};
+
+export type EmployeeAddressFormValues = {
+  strAddressType: string;
+  strAddressLine1: string;
+  strAddressLine2: string;
+  strCityName: string;
+  intStateID: number | "";
+  strPostalCode: string;
+  intCountryID: number | "";
+};
+
+export type EmployeeBankRecord = {
+  intID: number | null;
+  intBankID: number | null;
+  strAccountHolderName: string;
+  strAccountNumber: string | null;
+  strAccountNumberMasked?: string | null;
+  strIfscCode: string | null;
+  strSwiftCode: string | null;
+  strBranchName: string | null;
+  strAccountType: string | null;
+  strAccountHolderEmail: string | null;
+  intSecondaryBankID: number | null;
+  strSecondaryAccountHolderName: string | null;
+  strSecondaryAccountNumber: string | null;
+  strSecondaryAccountNumberMasked?: string | null;
+  strSecondaryIfscCode: string | null;
+  blnSecondaryIsActive: boolean;
+  blnIsPrimary: boolean;
+  blnIsActive: boolean;
+};
+
+export type EmployeeBankFormValues = {
+  intBankID: number | "";
+  strAccountHolderName: string;
+  strAccountNumber: string;
+  strIfscCode: string;
+  strSwiftCode: string;
+  strBranchName: string;
+  strAccountType: string;
+  strAccountHolderEmail: string;
+  intSecondaryBankID: number | "";
+  strSecondaryAccountHolderName: string;
+  strSecondaryAccountNumber: string;
+  strSecondaryIfscCode: string;
+  blnSecondaryIsActive: boolean;
+  blnIsPrimary: boolean;
+  blnIsActive: boolean;
+};
+
+export type EmployeeStatutoryRecord = {
+  intID: number | null;
+  strPanNumber: string | null;
+  strUanNumber: string | null;
+  strEsiNumber: string | null;
+  strPfNumber: string | null;
+  strTaxRegimeCode: string | null;
+  strGratuityNumber: string | null;
+  strEsiCode: string | null;
+  strSsnNumber: string | null;
+  strPranNumber: string | null;
+  blnPfApplicable: boolean;
+  blnEsiApplicable: boolean;
+  blnPtApplicable: boolean;
+};
+
+export type EmployeeStatutoryFormValues = {
+  strPanNumber: string;
+  strUanNumber: string;
+  strEsiNumber: string;
+  strPfNumber: string;
+  strTaxRegimeCode: string;
+  strGratuityNumber: string;
+  strEsiCode: string;
+  strSsnNumber: string;
+  strPranNumber: string;
+  blnPfApplicable: boolean;
+  blnEsiApplicable: boolean;
+  blnPtApplicable: boolean;
+};
+
+export type EmployeeExperienceRecord = {
+  intID: number;
+  strCompanyName: string;
+  strJobTitle: string;
+  dtFromDate: string;
+  dtToDate: string | null;
+  decTotalYears: number | null;
+  strResponsibilities: string | null;
+  decLastDrawnSalary: number | null;
+  strReasonForLeaving: string | null;
+  blnIsActive: boolean;
+};
+
+export type EmployeeExperienceFormValues = {
+  strCompanyName: string;
+  strJobTitle: string;
+  dtFromDate: string;
+  dtToDate: string;
+  decTotalYears: string;
+  strResponsibilities: string;
+  decLastDrawnSalary: string;
+  strReasonForLeaving: string;
+  blnIsActive: boolean;
+};
+
+export type EmployeeQualificationRecord = {
+  intID: number;
+  strDegreeName: string;
+  strSpecialization: string | null;
+  strInstitutionName: string;
+  strUniversityName: string | null;
+  intYearOfPassing: number;
+  strGradeOrPercentage: string | null;
+  strCertificationNumber: string | null;
+  blnIsHighestQualification: boolean;
+  blnIsActive: boolean;
+};
+
+export type EmployeeQualificationFormValues = {
+  strDegreeName: string;
+  strSpecialization: string;
+  strInstitutionName: string;
+  strUniversityName: string;
+  intYearOfPassing: string;
+  strGradeOrPercentage: string;
+  strCertificationNumber: string;
+  blnIsHighestQualification: boolean;
+  blnIsActive: boolean;
+};
+
+export type FamilyRelationship =
+  | "Father"
+  | "Mother"
+  | "Spouse"
+  | "Child"
+  | "Other";
+
+export type FamilyGender = "Male" | "Female" | "Other";
+
+export type EmployeeFamilyDetailRecord = {
+  intID: number;
+  intEmployeeID: number;
+  strName: string;
+  strRelationship: string | null;
+  dtDateOfBirth: string | null;
+  strGender: string | null;
+  strContactNumber: string | null;
+  strOccupation: string | null;
+  blnIsDependent: boolean;
+  blnIsNominee: boolean;
+  decNomineePercentage: number | null;
+  strAddress: string | null;
+};
+
+export type EmployeeFamilyDetailFormValues = {
+  strName: string;
+  strRelationship: FamilyRelationship | "";
+  dtDateOfBirth: string;
+  strGender: FamilyGender | "";
+  strContactNumber: string;
+  strOccupation: string;
+  blnIsDependent: boolean;
+  blnIsNominee: boolean;
+  decNomineePercentage: string;
+  strAddress: string;
+};

@@ -1,0 +1,686 @@
+"use client";
+
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import AttachFileRoundedIcon from "@mui/icons-material/AttachFileRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import EditRoundedIcon from "@mui/icons-material/EditRounded";
+import EventAvailableRoundedIcon from "@mui/icons-material/EventAvailableRounded";
+import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
+import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import SendRoundedIcon from "@mui/icons-material/SendRounded";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
+import { yupResolver } from "@hookform/resolvers/yup";
+import {
+  Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
+  Divider, FormHelperText, Grid, IconButton, InputAdornment, LinearProgress,
+  MenuItem, Paper, Skeleton, Snackbar, Stack, Table, TableBody, TableCell,
+  TableHead, TablePagination, TableRow, TextField, Tooltip, Typography,
+  useMediaQuery, useTheme,
+} from "@mui/material";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Controller, useForm, useWatch, type Control, type FieldErrors, type Resolver, type UseFormSetValue } from "react-hook-form";
+import * as yup from "yup";
+
+import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
+import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
+import FileRowActions from "@/components/shared/files/FileRowActions";
+import FileUploadButton from "@/components/shared/files/FileUploadButton";
+import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { useEssLeaveApplication } from "@/features/leave/hooks/useEssLeaveApplication";
+import {
+  formatLeaveDate, getLeaveStatusLabel, getLeaveTypeBadge, LEAVE_STATUS_COLORS,
+  type LeaveApplicationAttachmentDto, type LeaveApplicationDto,
+  type LeaveApplyRequest, type LeavePreviewDto,
+  type LeaveTypeAggregate, type LeaveTypeDto, type LeaveValidationMessage,
+  type RestrictedHolidayDto,
+} from "@/features/leave/types";
+import { useActionRights } from "@/features/security/hooks/useActionRights";
+
+type LeaveDuration = "full" | "half";
+type LeaveHalfSession = "first" | "second" | "";
+
+type LeaveFormValues = {
+  intLeaveTypeID: number;
+  intRestrictedHolidayID: number;
+  dtFromDate: string;
+  dtToDate: string;
+  // For a single-day leave only strFromDuration/strFromSession are used (the "Leave Duration").
+  // For a multi-day leave both boundary durations/sessions apply; middle days are always full.
+  strFromDuration: LeaveDuration;
+  strFromSession: LeaveHalfSession;
+  strToDuration: LeaveDuration;
+  strToSession: LeaveHalfSession;
+  // Hour-based leave only ("HH:MM"); empty for every day/half-day Leave Type.
+  tmStartTime: string;
+  tmEndTime: string;
+  strReason: string;
+  strContactDuringLeave: string;
+  strBackupEmployee: string;
+};
+
+function fnIsSingleDay(strFromDate: string, strToDate: string): boolean {
+  return Boolean(strFromDate) && strFromDate === strToDate;
+}
+
+// A Leave Type measured in hours switches the whole request to the hour flow: one date plus a
+// start/end window, no date range and no half-day.
+function fnIsHourUnit(objType: LeaveTypeDto | null | undefined): boolean {
+  return String(objType?.strUnit ?? "").toLowerCase() === "hour";
+}
+
+/** Total Hours = End Time - Start Time, or null while the window is incomplete or inverted. */
+function fnHourSpan(strStartTime: string, strEndTime: string): number | null {
+  if (!strStartTime || !strEndTime) return null;
+  const [intStartHour, intStartMinute] = strStartTime.split(":").map(Number);
+  const [intEndHour, intEndMinute] = strEndTime.split(":").map(Number);
+  if ([intStartHour, intStartMinute, intEndHour, intEndMinute].some((intPart) => !Number.isFinite(intPart))) return null;
+  const intMinutes = (intEndHour * 60 + intEndMinute) - (intStartHour * 60 + intStartMinute);
+  if (intMinutes <= 0) return null;
+  // Two decimals so a 3.5-hour window reads exactly, matching the NUMERIC(5,2) the server stores.
+  return Math.round((intMinutes / 60) * 100) / 100;
+}
+
+function fnFormatHours(decHours: number): string {
+  return `${decHours} ${decHours === 1 ? "Hour" : "Hours"}`;
+}
+
+// The yup tests below need the selected Leave Type, which lives outside the form. It is handed to
+// react-hook-form as validation context (re-read on every validation) rather than baked into a schema
+// that would have to be rebuilt whenever the type list loads.
+type LeaveFormContext = { lstTypes: LeaveTypeDto[] };
+
+function fnContextType(objContext: unknown, intLeaveTypeID: unknown): LeaveTypeDto | null {
+  const lstTypes = (objContext as LeaveFormContext | undefined)?.lstTypes ?? [];
+  return lstTypes.find((objType) => objType.intID === Number(intLeaveTypeID)) ?? null;
+}
+
+// decDays is the charged quantity: whole days for a day type, and a COUNT OF LEAVES for an hour type
+// (one short leave costs 1 regardless of its length), so the label must follow the unit.
+function fnQuantityLabel(objApplication: LeaveApplicationDto): string {
+  return String(objApplication.strUnit ?? "").toLowerCase() === "hour"
+    ? `${objApplication.decDays} leave(s)`
+    : `${objApplication.decDays} day(s)`;
+}
+
+function fnHalfSuffix(blnHalf: boolean, strSession?: "first" | "second" | null): string {
+  if (!blnHalf) return "";
+  if (strSession === "first") return " (½ First Half)";
+  if (strSession === "second") return " (½ Second Half)";
+  return " (½)";
+}
+
+type ToastState = { blnOpen: boolean; strMessage: string; strSeverity: "success" | "error" };
+type ConfirmState = { strKind: "submit" } | { strKind: "withdraw"; intApplicationID: number; blnApproved: boolean } | null;
+type LabelFunction = (strKey: string, strFallback?: string) => string;
+
+const objFormSchema: yup.ObjectSchema<LeaveFormValues> = yup.object({
+  intLeaveTypeID: yup.number().integer().positive("Select a Leave Type.").required("Select a Leave Type."),
+  intRestrictedHolidayID: yup.number().integer().min(0).required(),
+  dtFromDate: yup.string().required("From Date is required."),
+  dtToDate: yup.string().required("To Date is required.").test(
+    "date-order", "To Date cannot be earlier than From Date.",
+    function fnValidateDateOrder(strValue) {
+      return !strValue || !this.parent.dtFromDate || strValue >= this.parent.dtFromDate;
+    },
+  ),
+  strFromDuration: yup.mixed<LeaveDuration>().oneOf(["full", "half"]).required(),
+  // The From-side session drives both the single-day "Leave Duration" and the multi-day "From Date".
+  strFromSession: yup.mixed<LeaveHalfSession>().oneOf(["first", "second", ""]).defined().test(
+    "from-session-required", "Select the half-day session.",
+    function fnValidateFromSession(strValue) {
+      return this.parent.strFromDuration !== "half" || strValue === "first" || strValue === "second";
+    },
+  ),
+  strToDuration: yup.mixed<LeaveDuration>().oneOf(["full", "half"]).required(),
+  // The To-side session is only relevant on a multi-day leave.
+  strToSession: yup.mixed<LeaveHalfSession>().oneOf(["first", "second", ""]).defined().test(
+    "to-session-required", "Select the To Date half-day session.",
+    function fnValidateToSession(strValue) {
+      const blnSingleDay = fnIsSingleDay(this.parent.dtFromDate, this.parent.dtToDate);
+      return blnSingleDay || this.parent.strToDuration !== "half" || strValue === "first" || strValue === "second";
+    },
+  ),
+  // Hour-based Leave Types only. The cap is never hardcoded — it is read from the selected Leave
+  // Type's configuration, and the server re-checks it on preview and submit.
+  tmStartTime: yup.string().defined().default("").test(
+    "start-time-required", "Start Time is required.",
+    function fnValidateStartTime(strValue) {
+      return !fnIsHourUnit(fnContextType(this.options.context, this.parent.intLeaveTypeID)) || Boolean(strValue);
+    },
+  ),
+  tmEndTime: yup.string().defined().default("")
+    .test(
+      "end-time-required", "End Time is required.",
+      function fnValidateEndTimeRequired(strValue) {
+        return !fnIsHourUnit(fnContextType(this.options.context, this.parent.intLeaveTypeID)) || Boolean(strValue);
+      },
+    )
+    .test(
+      "end-after-start", "End Time must be later than Start Time.",
+      function fnValidateEndAfterStart(strValue) {
+        if (!fnIsHourUnit(fnContextType(this.options.context, this.parent.intLeaveTypeID))) return true;
+        if (!strValue || !this.parent.tmStartTime) return true;
+        return fnHourSpan(this.parent.tmStartTime, strValue) !== null;
+      },
+    )
+    .test(
+      "within-max-hour-limit", "The requested duration exceeds the limit for this leave type.",
+      function fnValidateMaxHourLimit(strValue) {
+        const objType = fnContextType(this.options.context, this.parent.intLeaveTypeID);
+        if (!fnIsHourUnit(objType) || !strValue || !this.parent.tmStartTime) return true;
+        const decHours = fnHourSpan(this.parent.tmStartTime, strValue);
+        const decLimit = objType?.decMaxHourLimit;
+        if (decHours === null || decLimit === null || decLimit === undefined) return true;
+        if (decHours <= Number(decLimit)) return true;
+        return this.createError({ message: `You can apply for a maximum of ${Number(decLimit)} hours for this leave type.` });
+      },
+    ),
+  strReason: yup.string().trim().max(1000, "Reason cannot exceed 1000 characters.").default(""),
+  strContactDuringLeave: yup.string().trim().max(250, "Contact details cannot exceed 250 characters.").default(""),
+  strBackupEmployee: yup.string().trim().max(250, "Backup employee cannot exceed 250 characters.").default(""),
+});
+
+const lstStatusOptions = ["all", "draft", "pending", "approved", "rejected", "withdrawn", "cancelled"];
+
+function fnTodayISO() { return new Date().toISOString().slice(0, 10); }
+
+// Approved leave can only be withdrawn while its start date is still in the future.
+function fnIsBeforeLeaveStart(strFromDate: string | null | undefined): boolean {
+  return Boolean(strFromDate) && fnTodayISO() < String(strFromDate).slice(0, 10);
+}
+
+function fnDefaultForm(intLeaveTypeID = 0): LeaveFormValues {
+  return {
+    intLeaveTypeID, intRestrictedHolidayID: 0, dtFromDate: fnTodayISO(), dtToDate: fnTodayISO(),
+    strFromDuration: "full", strFromSession: "", strToDuration: "full", strToSession: "",
+    tmStartTime: "", tmEndTime: "",
+    strReason: "", strContactDuringLeave: "", strBackupEmployee: "",
+  };
+}
+
+function fnBuildPayload(objValues: LeaveFormValues, lstTypes: LeaveTypeDto[]): LeaveApplyRequest {
+  const blnHourUnit = fnIsHourUnit(lstTypes.find((objType) => objType.intID === Number(objValues.intLeaveTypeID)));
+  const blnSingleDay = fnIsSingleDay(objValues.dtFromDate, objValues.dtToDate);
+  // Single-day leave carries its half-day on the "from" end only (the backend rejects a
+  // single day marked half on both ends); multi-day maps each boundary independently.
+  // An hour-based request is never half-day and never spans dates: To Date mirrors From Date.
+  const blnFromHalf = !blnHourUnit && objValues.strFromDuration === "half";
+  const blnToHalf = !blnHourUnit && !blnSingleDay && objValues.strToDuration === "half";
+  return {
+    intLeaveTypeID: objValues.intLeaveTypeID,
+    dtFromDate: objValues.dtFromDate,
+    dtToDate: blnHourUnit ? objValues.dtFromDate : objValues.dtToDate,
+    blnFromHalf,
+    blnToHalf,
+    tmStartTime: blnHourUnit && objValues.tmStartTime ? objValues.tmStartTime : null,
+    tmEndTime: blnHourUnit && objValues.tmEndTime ? objValues.tmEndTime : null,
+    strFromHalfSession: blnFromHalf && objValues.strFromSession ? objValues.strFromSession : null,
+    strToHalfSession: blnToHalf && objValues.strToSession ? objValues.strToSession : null,
+    strReason: objValues.strReason.trim() || null,
+    strContactDuringLeave: objValues.strContactDuringLeave.trim() || null,
+    strBackupEmployee: objValues.strBackupEmployee.trim() || null,
+  };
+}
+
+function fnIsPreviewData(objValue: unknown): objValue is LeavePreviewDto {
+  return Boolean(objValue && typeof objValue === "object" && "lstErrors" in objValue && Array.isArray((objValue as LeavePreviewDto).lstErrors));
+}
+
+function LeaveTypeBadge({ strTypeCode, strTypeName, intSize = 34 }: { strTypeCode?: string | null; strTypeName?: string | null; intSize?: number }) {
+  const objBadge = getLeaveTypeBadge(strTypeCode, strTypeName);
+  return <Box aria-hidden="true" sx={{ width: intSize, height: intSize, borderRadius: "50%", bgcolor: objBadge.bg, color: objBadge.fg, display: "grid", placeItems: "center", fontWeight: 800, fontSize: intSize <= 34 ? ".72rem" : ".9rem", flexShrink: 0 }}>{objBadge.strLabel}</Box>;
+}
+
+export default function EssLeaveApplicationPanel() {
+  const objTheme = useTheme();
+  const blnMobile = useMediaQuery(objTheme.breakpoints.down("sm"));
+  const { t, intLanguageID } = useModuleLabels("ess-leave", "Unable to load Leave Application labels.");
+  const { blnLoading: blnRightsLoading, canDo } = useActionRights();
+  const {
+    lstTypes, lstRestrictedHolidays, lstApplications, blnLoading, strLoadError,
+    fnLoadAll, fnPreview, fnGetPolicy, fnGetApplication,
+    fnPersistDraft: fnPersistDraftRequest, fnSubmitDraft,
+    fnWithdraw, fnRequestWithdrawApproved, fnDeleteAttachment: fnDeleteAttachmentRequest,
+    fnPreviewAttachment, fnReplaceAttachment,
+  } = useEssLeaveApplication();
+  const [blnFormOpen, setBlnFormOpen] = useState(false);
+  const [blnSaving, setBlnSaving] = useState(false);
+  const [blnPreviewLoading, setBlnPreviewLoading] = useState(false);
+  const [objPreview, setObjPreview] = useState<LeavePreviewDto | null>(null);
+  const [objEditing, setObjEditing] = useState<LeaveApplicationDto | null>(null);
+  const [objDetail, setObjDetail] = useState<LeaveApplicationDto | null>(null);
+  const [blnDetailLoading, setBlnDetailLoading] = useState(false);
+  const [lstQueuedFiles, setLstQueuedFiles] = useState<File[]>([]);
+  const [dicFileUploadProgress, setDicFileUploadProgress] = useState<Record<number, number>>({});
+  const [lstExistingAttachments, setLstExistingAttachments] = useState<LeaveApplicationAttachmentDto[]>([]);
+  const [intPreviewingAttachmentID, setIntPreviewingAttachmentID] = useState<number | null>(null);
+  const [intReplacingAttachmentID, setIntReplacingAttachmentID] = useState<number | null>(null);
+  const [intReplaceProgress, setIntReplaceProgress] = useState(0);
+  const [objPolicy, setObjPolicy] = useState<LeaveTypeAggregate | null>(null);
+  const [strSearch, setStrSearch] = useState("");
+  const [strStatus, setStrStatus] = useState("all");
+  const [intPage, setIntPage] = useState(0);
+  const [intRowsPerPage, setIntRowsPerPage] = useState(10);
+  const [objConfirm, setObjConfirm] = useState<ConfirmState>(null);
+  const [strWithdrawReason, setStrWithdrawReason] = useState("");
+  const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
+  // Validation errors and warnings stay hidden until the user actually attempts Save/Submit.
+  const [blnShowValidation, setBlnShowValidation] = useState(false);
+  // Server validation messages that do not map to a specific field (e.g. balance/policy) — shown
+  // below the form fields on Submit, not in the Live Preview.
+  const [lstServerFormErrors, setLstServerFormErrors] = useState<string[]>([]);
+  const blnInitialRouteHandledRef = useRef(false);
+
+  const { control, handleSubmit, reset, setValue, setError, formState: { errors: objFormErrors } } = useForm<LeaveFormValues>({
+    resolver: yupResolver(objFormSchema) as Resolver<LeaveFormValues>, defaultValues: fnDefaultForm(), mode: "onSubmit", reValidateMode: "onSubmit",
+    // Read afresh on every validation, so the hour rules see the Leave Type list once it has loaded.
+    context: { lstTypes } satisfies LeaveFormContext,
+  });
+  const objWatchedForm = useWatch({ control });
+  // ESS leave menus grant the generic action set (edit/add/submit); older setups use the
+  // compound LEAVE_MANAGE code. Accept either so the Apply/Save/Submit actions are enabled.
+  const blnCanManage = ["ESS_LEAVE", "ESS_MY_LEAVE_APPLICATIONS", "LEAVE", "LEAVE_MANAGEMENT"].some(
+    (strModuleCode) => ["LEAVE_MANAGE", "MANAGE", "EDIT", "ADD", "SUBMIT"].some((strAction) => canDo(strModuleCode, strAction)),
+  );
+  const objSelectedType = useMemo(() => lstTypes.find((objType) => objType.intID === Number(objWatchedForm.intLeaveTypeID)) ?? null, [lstTypes, objWatchedForm.intLeaveTypeID]);
+  const blnRestrictedHolidayType = String(objSelectedType?.strLeaveCategoryCode ?? "").toUpperCase() === "RESTRICTED_HOLIDAY";
+  const blnSingleDay = fnIsSingleDay(objWatchedForm.dtFromDate ?? "", objWatchedForm.dtToDate ?? "");
+  const blnHourUnit = fnIsHourUnit(objSelectedType);
+  const decRequestedHours = fnHourSpan(objWatchedForm.tmStartTime ?? "", objWatchedForm.tmEndTime ?? "");
+  const intOverallAttachmentUploadProgress = useMemo(() => {
+    const lstValues = Object.values(dicFileUploadProgress);
+    if (!lstValues.length) return 0;
+    return Math.round(lstValues.reduce((intSum, intValue) => intSum + intValue, 0) / lstValues.length);
+  }, [dicFileUploadProgress]);
+  const lstFilteredApplications = useMemo(() => {
+    const strNeedle = strSearch.trim().toLowerCase();
+    return lstApplications.filter((objApplication) => {
+      const blnStatusMatch = strStatus === "all" || objApplication.strStatus === strStatus;
+      const blnSearchMatch = !strNeedle || [objApplication.strTypeCode, objApplication.strTypeName, objApplication.strReason, objApplication.dtFromDate, objApplication.dtToDate, objApplication.strStatus].some((objValue) => String(objValue ?? "").toLowerCase().includes(strNeedle));
+      return blnStatusMatch && blnSearchMatch;
+    });
+  }, [lstApplications, strSearch, strStatus]);
+  const lstPagedApplications = useMemo(() => lstFilteredApplications.slice(intPage * intRowsPerPage, intPage * intRowsPerPage + intRowsPerPage), [lstFilteredApplications, intPage, intRowsPerPage]);
+  // Submit is enabled once the basic fields are present (Leave Type + valid date range). Deeper
+  // validation (reason, overlap, balance, policy, notice, etc.) runs when the user clicks Submit and
+  // is surfaced below the relevant field, so the user can click and see what needs fixing.
+  const blnDatesPresent = Boolean(objWatchedForm.dtFromDate) && Boolean(objWatchedForm.dtToDate) && (objWatchedForm.dtToDate ?? "") >= (objWatchedForm.dtFromDate ?? "");
+  const blnRestrictedHolidaySelected = !blnRestrictedHolidayType || Number(objWatchedForm.intRestrictedHolidayID) > 0;
+  const blnRestrictedPreviewMatchesSelection = !blnRestrictedHolidayType || Boolean(
+    objPreview?.lstDateBreakdown.length
+    && objPreview.lstDateBreakdown[0]?.dtDate === objWatchedForm.dtFromDate
+    && objPreview.lstDateBreakdown.at(-1)?.dtDate === objWatchedForm.dtToDate
+  );
+  const setBlockingBalanceErrors = new Set(["BALANCE_NOT_FOUND", "BALANCE_LOCKED", "INSUFFICIENT_BALANCE", "MINIMUM_BALANCE_NOT_MET"]);
+  const blnRestrictedBalanceAvailable = !blnRestrictedHolidayType || !objPreview?.lstErrors.some((objError) => setBlockingBalanceErrors.has(objError.strCode));
+  const blnHourWindowReady = !blnHourUnit || decRequestedHours !== null;
+  const blnCanSubmit = blnCanManage && !blnSaving && !blnPreviewLoading && Number(objWatchedForm.intLeaveTypeID) > 0 && blnDatesPresent && blnHourWindowReady && blnRestrictedHolidaySelected && blnRestrictedPreviewMatchesSelection && blnRestrictedBalanceAvailable;
+
+  function fnShowToast(strMessage: string, strSeverity: "success" | "error") { setObjToast({ blnOpen: true, strMessage, strSeverity }); }
+
+  useEffect(() => {
+    if (blnLoading || blnInitialRouteHandledRef.current) return;
+    blnInitialRouteHandledRef.current = true;
+    if (new URLSearchParams(window.location.search).get("view") === "apply") {
+      setObjEditing(null); setObjPreview(null); setLstQueuedFiles([]); setLstExistingAttachments([]);
+      setBlnShowValidation(false); setLstServerFormErrors([]); reset(fnDefaultForm(lstTypes[0]?.intID ?? 0)); setBlnFormOpen(true);
+    }
+  }, [blnLoading, lstTypes, reset]);
+  useEffect(() => { setIntPage(0); }, [strSearch, strStatus]);
+  // Half-day not allowed for the type (or Restricted Holiday) → force full day and drop sessions.
+  useEffect(() => {
+    if (!objSelectedType?.blnAllowHalfDay || blnRestrictedHolidayType) {
+      setValue("strFromDuration", "full"); setValue("strFromSession", "");
+      setValue("strToDuration", "full"); setValue("strToSession", "");
+    }
+  }, [blnRestrictedHolidayType, objSelectedType, setValue]);
+  // Hour-based leave is a single date: To Date follows From Date so the existing range plumbing
+  // (preview, payload, backend window check) keeps working with only one date field on screen.
+  // Switching back to a day-based type drops the window so no stale times are ever submitted.
+  useEffect(() => {
+    if (blnHourUnit) {
+      if (objWatchedForm.dtFromDate && objWatchedForm.dtToDate !== objWatchedForm.dtFromDate) setValue("dtToDate", objWatchedForm.dtFromDate, { shouldValidate: false });
+      if (objWatchedForm.strFromDuration !== "full") setValue("strFromDuration", "full");
+      if (objWatchedForm.strToDuration !== "full") setValue("strToDuration", "full");
+    } else {
+      if (objWatchedForm.tmStartTime) setValue("tmStartTime", "");
+      if (objWatchedForm.tmEndTime) setValue("tmEndTime", "");
+    }
+  }, [blnHourUnit, objWatchedForm.dtFromDate, objWatchedForm.dtToDate, objWatchedForm.strFromDuration, objWatchedForm.strToDuration, objWatchedForm.tmStartTime, objWatchedForm.tmEndTime, setValue]);
+
+  // A single-day leave uses only the "From" (Leave Duration) controls — reset the To side so
+  // stale multi-day values are never retained or submitted.
+  useEffect(() => {
+    if (blnSingleDay) {
+      if (objWatchedForm.strToDuration !== "full") setValue("strToDuration", "full");
+      if (objWatchedForm.strToSession !== "") setValue("strToSession", "");
+    }
+  }, [blnSingleDay, objWatchedForm.strToDuration, objWatchedForm.strToSession, setValue]);
+  // Whenever a boundary is Full Day, its session must not linger.
+  useEffect(() => {
+    if (objWatchedForm.strFromDuration !== "half" && objWatchedForm.strFromSession !== "") setValue("strFromSession", "");
+  }, [objWatchedForm.strFromDuration, objWatchedForm.strFromSession, setValue]);
+  useEffect(() => {
+    if (objWatchedForm.strToDuration !== "half" && objWatchedForm.strToSession !== "") setValue("strToSession", "");
+  }, [objWatchedForm.strToDuration, objWatchedForm.strToSession, setValue]);
+
+  useEffect(() => {
+    let blnActive = true;
+    if (!objSelectedType || !blnFormOpen) { setObjPolicy(null); return () => { blnActive = false; }; }
+    fnGetPolicy(objSelectedType.intID).then((objResult) => { if (blnActive) setObjPolicy(objResult); }).catch(() => { if (blnActive) setObjPolicy(null); });
+    return () => { blnActive = false; };
+  }, [blnFormOpen, fnGetPolicy, objSelectedType]);
+
+  useEffect(() => {
+    let blnActive = true;
+    if (!blnFormOpen || !objWatchedForm.intLeaveTypeID || (blnRestrictedHolidayType && !objWatchedForm.intRestrictedHolidayID) || !objWatchedForm.dtFromDate || !objWatchedForm.dtToDate || objWatchedForm.dtToDate < objWatchedForm.dtFromDate) {
+      setObjPreview(null); return () => { blnActive = false; };
+    }
+    const intTimer = window.setTimeout(async () => {
+      setBlnPreviewLoading(true);
+      try {
+        const objResult = await fnPreview(fnBuildPayload(objWatchedForm as LeaveFormValues, lstTypes), objEditing?.intID);
+        if (blnActive) setObjPreview(objResult);
+      } catch (objError) {
+        const objHandledError = await createApiRequestError(objError);
+        if (blnActive && fnIsPreviewData(objHandledError.objData)) setObjPreview(objHandledError.objData);
+      } finally { if (blnActive) setBlnPreviewLoading(false); }
+    }, 450);
+    return () => { blnActive = false; window.clearTimeout(intTimer); };
+  }, [blnFormOpen, blnRestrictedHolidayType, fnPreview, lstTypes, objEditing?.intID, objWatchedForm]);
+
+  function fnOpenNewForm(intLeaveTypeID?: number, lstAvailableTypes = lstTypes) {
+    setObjEditing(null); setObjPreview(null); setLstQueuedFiles([]); setLstExistingAttachments([]);
+    setBlnShowValidation(false); setLstServerFormErrors([]); reset(fnDefaultForm(intLeaveTypeID ?? lstAvailableTypes[0]?.intID ?? 0)); setBlnFormOpen(true);
+  }
+
+  async function fnOpenEditForm(objApplication: LeaveApplicationDto) {
+    setBlnDetailLoading(true);
+    try {
+      const objFullApplication = await fnGetApplication(objApplication.intID);
+      setObjEditing(objFullApplication); setObjPreview(objFullApplication.objCalculation ?? null);
+      setLstExistingAttachments(objFullApplication.lstAttachments ?? []); setLstQueuedFiles([]); setBlnShowValidation(false);
+      // Restore the persisted half-day session; legacy rows without one default to First Half.
+      const objEditType = lstTypes.find((objType) => objType.intID === objFullApplication.intLeaveTypeID);
+      const intRestrictedHolidayID = String(objEditType?.strLeaveCategoryCode ?? "").toUpperCase() === "RESTRICTED_HOLIDAY"
+        ? (lstRestrictedHolidays.find((objHoliday) => objHoliday.dtHolidayDate === objFullApplication.dtFromDate)?.intID ?? 0)
+        : 0;
+      reset({ intLeaveTypeID: objFullApplication.intLeaveTypeID, intRestrictedHolidayID, dtFromDate: objFullApplication.dtFromDate ?? fnTodayISO(), dtToDate: objFullApplication.dtToDate ?? fnTodayISO(), strFromDuration: objFullApplication.blnFromHalf ? "half" : "full", strFromSession: objFullApplication.blnFromHalf ? (objFullApplication.strFromHalfSession ?? "first") : "", strToDuration: objFullApplication.blnToHalf ? "half" : "full", strToSession: objFullApplication.blnToHalf ? (objFullApplication.strToHalfSession ?? "first") : "", tmStartTime: (objFullApplication.tmStartTime ?? "").slice(0, 5), tmEndTime: (objFullApplication.tmEndTime ?? "").slice(0, 5), strReason: objFullApplication.strReason ?? "", strContactDuringLeave: "", strBackupEmployee: "" });
+      setBlnFormOpen(true);
+    } catch (objError) { fnShowToast((await createApiRequestError(objError)).message, "error"); }
+    finally { setBlnDetailLoading(false); }
+  }
+
+  async function fnOpenDetail(intApplicationID: number) {
+    setBlnDetailLoading(true);
+    try { setObjDetail(await fnGetApplication(intApplicationID)); }
+    catch (objError) { fnShowToast((await createApiRequestError(objError)).message, "error"); }
+    finally { setBlnDetailLoading(false); }
+  }
+
+  function fnApplyServerErrors(lstErrors: LeaveValidationMessage[]) {
+    const dicFieldMap: Record<string, keyof LeaveFormValues> = { intLeaveTypeID: "intLeaveTypeID", dtFromDate: "dtFromDate", dtToDate: "dtToDate", strReason: "strReason", tmStartTime: "tmStartTime", tmEndTime: "tmEndTime" };
+    // Errors the backend does not tag with a field are routed to the most relevant field by code so
+    // they render beneath it (e.g. an overlap sits under the date range). Anything left over shows in
+    // a small error list below the fields.
+    const dicCodeToField: Record<string, keyof LeaveFormValues> = {
+      OVERLAPPING_APPLICATION: "dtToDate",
+      BACKDATE_NOT_ALLOWED: "dtFromDate", BACKDATE_LIMIT_EXCEEDED: "dtFromDate",
+      FUTURE_REQUEST_NOT_ALLOWED: "dtFromDate", ADVANCE_LIMIT_EXCEEDED: "dtFromDate", NOTICE_PERIOD_NOT_MET: "dtFromDate",
+      MAX_HOUR_LIMIT_EXCEEDED: "tmEndTime", MINIMUM_HOUR_QTY_NOT_MET: "tmEndTime", HOUR_WINDOW_REQUIRED: "tmStartTime",
+      HOUR_LEAVE_SINGLE_DATE_REQUIRED: "dtFromDate", HOUR_LEAVE_NON_WORKING_DAY: "dtFromDate",
+    };
+    const lstUnmapped: string[] = [];
+    lstErrors.forEach((objError) => {
+      const strField = (objError.strField ? dicFieldMap[objError.strField] : undefined) ?? dicCodeToField[objError.strCode];
+      if (strField) setError(strField, { type: "server", message: objError.strMessage });
+      else lstUnmapped.push(objError.strMessage);
+    });
+    setLstServerFormErrors(lstUnmapped);
+  }
+
+  async function fnPersistDraft(objValues: LeaveFormValues) {
+    const objPayload = { ...fnBuildPayload(objValues, lstTypes), intVersionNo: objEditing?.intVersionNo };
+    setDicFileUploadProgress({});
+    const objDraft = await fnPersistDraftRequest(objEditing, objPayload, lstQueuedFiles, (intFileIndex, intPercent) => {
+      setDicFileUploadProgress((dicPrevious) => ({ ...dicPrevious, [intFileIndex]: intPercent }));
+    });
+    setObjEditing(objDraft); setLstExistingAttachments(objDraft.lstAttachments ?? []); setLstQueuedFiles([]); setDicFileUploadProgress({});
+    return objDraft;
+  }
+
+  async function fnSaveDraft(objValues: LeaveFormValues) {
+    setBlnSaving(true);
+    try { await fnPersistDraft(objValues); fnShowToast(t("draft_saved", "Leave draft saved."), "success"); await fnLoadAll(); }
+    catch (objError) { fnShowToast((await createApiRequestError(objError)).message, "error"); }
+    finally { setBlnSaving(false); }
+  }
+
+  // Runs full validation (client schema + server preview) when the user clicks Submit. Field/overlap
+  // errors surface below their fields; the confirm dialog only opens when everything passes.
+  async function fnValidateAndConfirmSubmit() {
+    setBlnShowValidation(true);
+    setLstServerFormErrors([]);
+    await handleSubmit(async (objValues) => {
+      setBlnSaving(true);
+      try {
+        const objValidatedPreview = await fnPreview(fnBuildPayload(objValues, lstTypes), objEditing?.intID);
+        setObjPreview(objValidatedPreview);
+        if (!objValidatedPreview.blnValid) { fnApplyServerErrors(objValidatedPreview.lstErrors); return; }
+        setObjConfirm({ strKind: "submit" });
+      } catch (objError) {
+        const objHandledError = await createApiRequestError(objError);
+        if (fnIsPreviewData(objHandledError.objData)) { setObjPreview(objHandledError.objData); fnApplyServerErrors(objHandledError.objData.lstErrors); }
+        else fnShowToast(objHandledError.message, "error");
+      } finally { setBlnSaving(false); }
+    })();
+  }
+
+  async function fnSubmitConfirmed() {
+    setObjConfirm(null);
+    await handleSubmit(async (objValues) => {
+      setBlnSaving(true);
+      try {
+        const objValidatedPreview = await fnPreview(fnBuildPayload(objValues, lstTypes), objEditing?.intID);
+        setObjPreview(objValidatedPreview);
+        if (!objValidatedPreview.blnValid) { fnApplyServerErrors(objValidatedPreview.lstErrors); return; }
+        const objDraft = await fnPersistDraft(objValues);
+        const objSubmitted = await fnSubmitDraft(objDraft.intID, objDraft.intVersionNo);
+        setBlnFormOpen(false); setObjEditing(null); fnShowToast(t("submit_success", "Leave application submitted successfully."), "success");
+        await fnLoadAll(); setObjDetail(objSubmitted);
+      } catch (objError) {
+        const objHandledError = await createApiRequestError(objError);
+        if (fnIsPreviewData(objHandledError.objData)) { setObjPreview(objHandledError.objData); fnApplyServerErrors(objHandledError.objData.lstErrors); }
+        else fnShowToast(objHandledError.message, "error");
+      } finally { setBlnSaving(false); }
+    })();
+  }
+
+  async function fnWithdrawConfirmed() {
+    if (!objConfirm || objConfirm.strKind !== "withdraw" || !strWithdrawReason.trim()) return;
+    setBlnSaving(true);
+    try {
+      // Approved leave routes a withdrawal request back through the approval chain;
+      // a still-pending request is withdrawn outright.
+      if (objConfirm.blnApproved) {
+        await fnRequestWithdrawApproved(objConfirm.intApplicationID, strWithdrawReason.trim());
+        setObjConfirm(null); setObjDetail(null); setStrWithdrawReason(""); fnShowToast(t("withdrawal_requested", "Withdrawal request submitted for approval."), "success"); await fnLoadAll();
+      } else {
+        await fnWithdraw(objConfirm.intApplicationID, strWithdrawReason.trim());
+        setObjConfirm(null); setObjDetail(null); setStrWithdrawReason(""); fnShowToast(t("withdraw_success", "Leave application withdrawn."), "success"); await fnLoadAll();
+      }
+    } catch (objError) { fnShowToast((await createApiRequestError(objError)).message, "error"); }
+    finally { setBlnSaving(false); }
+  }
+
+  async function fnDeleteAttachment(intAttachmentID: number) {
+    if (!objEditing) return;
+    setBlnSaving(true);
+    try { await fnDeleteAttachmentRequest(objEditing.intID, intAttachmentID); setLstExistingAttachments((lstPrevious) => lstPrevious.filter((objAttachment) => objAttachment.intID !== intAttachmentID)); fnShowToast(t("attachment_deleted", "Attachment removed."), "success"); }
+    catch (objError) { fnShowToast((await createApiRequestError(objError)).message, "error"); }
+    finally { setBlnSaving(false); }
+  }
+
+  async function fnPreviewExistingAttachment(intAttachmentID: number) {
+    if (!objEditing) return;
+    setIntPreviewingAttachmentID(intAttachmentID);
+    try { await fnPreviewAttachment(objEditing.intID, intAttachmentID); }
+    catch (objError) { fnShowToast((await createApiRequestError(objError)).message, "error"); }
+    finally { setIntPreviewingAttachmentID(null); }
+  }
+
+  async function fnReplaceExistingAttachment(intAttachmentID: number, objNewFile: File) {
+    if (!objEditing) return;
+    setIntReplacingAttachmentID(intAttachmentID);
+    setIntReplaceProgress(0);
+    try {
+      const objUpdated = await fnReplaceAttachment(objEditing.intID, intAttachmentID, objNewFile, setIntReplaceProgress);
+      setObjEditing(objUpdated);
+      setLstExistingAttachments(objUpdated.lstAttachments ?? []);
+      fnShowToast(t("attachment_replaced", "Attachment replaced."), "success");
+    } catch (objError) {
+      fnShowToast((await createApiRequestError(objError)).message, "error");
+    } finally {
+      setIntReplacingAttachmentID(null);
+    }
+  }
+
+  function fnPreviewQueuedFile(objFile: File) {
+    const strUrl = URL.createObjectURL(objFile);
+    window.open(strUrl, "_blank", "noopener,noreferrer");
+    window.setTimeout(() => URL.revokeObjectURL(strUrl), 30000);
+  }
+
+  function fnReplaceQueuedFile(intIndex: number, objNewFile: File) {
+    setLstQueuedFiles((lstPrevious) => lstPrevious.map((objFile, intCurrentIndex) => (intCurrentIndex === intIndex ? objNewFile : objFile)));
+  }
+
+  async function fnPreviewDetailAttachment(intAttachmentID: number) {
+    if (!objDetail) return;
+    try { await fnPreviewAttachment(objDetail.intID, intAttachmentID); }
+    catch (objError) { fnShowToast((await createApiRequestError(objError)).message, "error"); }
+  }
+
+  const strPolicyHelp = useMemo(() => {
+    const objLocalizedText = objPolicy?.lstText.find((objText) => objText.intLanguageID === intLanguageID) ?? objPolicy?.lstText[0];
+    return objLocalizedText?.strEmployeeHelpText || objLocalizedText?.strDescription || objSelectedType?.strEmployeeHelpText || objSelectedType?.strDescription || "";
+  }, [intLanguageID, objPolicy, objSelectedType]);
+  const intPendingCount = lstApplications.filter((objApplication) => objApplication.strStatus === "pending").length;
+
+  return <Stack spacing={2}>
+    {/* Apply Leave sits with the list filters (next to Status) rather than in its own row above. */}
+    {blnLoading ? <LoadingSkeleton /> : strLoadError ? <Paper sx={{ p: 3, borderRadius: "18px", border: "1px solid #fecaca", textAlign: "center" }}><Alert severity="error" sx={{ mb: 2 }}>{strLoadError}</Alert><Button startIcon={<RefreshRoundedIcon />} variant="outlined" onClick={() => void fnLoadAll()}>{t("retry", "Retry")}</Button></Paper> : <>
+      <Paper id="leave-applications" sx={{ borderRadius: "18px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
+        <Stack direction={{ xs: "column", md: "row" }} spacing={1.25} justifyContent="space-between" sx={{ p: 2 }}><Box><Typography component="h2" sx={{ fontWeight: 800 }}>{t("applications_title", "My Leave Applications")}</Typography><Typography sx={{ fontSize: ".78rem", color: "#64748b" }}>{intPendingCount} {t("pending", "pending")}</Typography></Box><Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: { xs: "100%", md: "auto" } }}><TextField data-controlid="ess.leave.search" size="small" value={strSearch} onChange={(objEvent) => setStrSearch(objEvent.target.value)} placeholder={t("search_placeholder", "Search applications")} inputProps={{ "aria-label": t("search_placeholder", "Search applications") }} InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon fontSize="small" /></InputAdornment> }} /><TextField data-controlid="ess.leave.status.filter" select size="small" label={t("status", "Status")} value={strStatus} onChange={(objEvent) => setStrStatus(objEvent.target.value)} sx={{ minWidth: 150 }}>{lstStatusOptions.map((strOption) => <MenuItem key={strOption} value={strOption}>{strOption === "all" ? t("all_statuses", "All statuses") : strOption.replaceAll("_", " ")}</MenuItem>)}</TextField>{blnCanManage && !blnRightsLoading ? <Button data-controlid="ess.leave.apply.open" variant="contained" startIcon={<AddRoundedIcon />} onClick={() => fnOpenNewForm()} sx={{ fontWeight: 800, whiteSpace: "nowrap", flexShrink: 0, height: 40 }}>{t("apply_leave", "Apply Leave")}</Button> : null}</Stack></Stack>
+        <Divider />
+        {lstPagedApplications.length === 0 ? <EmptyState strMessage={t("applications_empty", "No leave applications match the selected filters.")} /> : blnMobile ? <Stack spacing={1} sx={{ p: 1.5 }}>{lstPagedApplications.map((objApplication) => <ApplicationCard key={objApplication.intID} objApplication={objApplication} blnCanManage={blnCanManage} fnOnView={() => void fnOpenDetail(objApplication.intID)} fnOnEdit={() => void fnOpenEditForm(objApplication)} fnOnWithdraw={() => { setStrWithdrawReason(""); setObjConfirm({ strKind: "withdraw", intApplicationID: objApplication.intID, blnApproved: objApplication.strStatus === "approved" }); }} />)}</Stack> : <ApplicationTable lstApplications={lstPagedApplications} blnCanManage={blnCanManage} fnOnView={(intApplicationID) => void fnOpenDetail(intApplicationID)} fnOnEdit={(objApplication) => void fnOpenEditForm(objApplication)} fnOnWithdraw={(objApplicationRow) => { setStrWithdrawReason(""); setObjConfirm({ strKind: "withdraw", intApplicationID: objApplicationRow.intID, blnApproved: objApplicationRow.strStatus === "approved" }); }} fnLabel={t} />}
+        <TablePagination component="div" count={lstFilteredApplications.length} page={intPage} onPageChange={(_objEvent, intNextPage) => setIntPage(intNextPage)} rowsPerPage={intRowsPerPage} onRowsPerPageChange={(objEvent) => { setIntRowsPerPage(Number(objEvent.target.value)); setIntPage(0); }} rowsPerPageOptions={[5, 10, 25]} />
+      </Paper>
+    </>}
+
+    <Dialog open={blnFormOpen} onClose={() => !blnSaving && setBlnFormOpen(false)} fullWidth maxWidth="lg" fullScreen={blnMobile} aria-labelledby="leave-form-title">
+      <DialogTitle id="leave-form-title" sx={{ fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "space-between" }}>{objEditing ? t("edit_application", "Edit Leave Application") : t("apply_leave", "Apply Leave")}<IconButton aria-label={t("close", "Close")} onClick={() => setBlnFormOpen(false)} disabled={blnSaving}><CloseRoundedIcon /></IconButton></DialogTitle>
+      {blnSaving ? <LinearProgress /> : null}
+      <DialogContent dividers sx={{ bgcolor: "#f8fafc", p: { xs: 1.5, md: 2.5 } }}><Grid container spacing={2}><Grid item xs={12} md={7}><Stack spacing={2}>
+        <RequestFields control={control} setValue={setValue} objErrors={objFormErrors} lstTypes={lstTypes} lstRestrictedHolidays={lstRestrictedHolidays} objSelectedType={objSelectedType} blnRestrictedHolidayType={blnRestrictedHolidayType} blnSingleDay={blnSingleDay} blnHourUnit={blnHourUnit} decRequestedHours={decRequestedHours} strPolicyHelp={strPolicyHelp} fnLabel={t} />
+        {blnShowValidation && lstServerFormErrors.length ? <Alert severity="error" icon={<WarningAmberRoundedIcon />}><Typography sx={{ fontWeight: 800, mb: .5 }}>{t("fix_errors", "Please correct the following")}</Typography>{Array.from(new Set(lstServerFormErrors)).map((strMessage) => <Typography key={strMessage} component="div" sx={{ fontSize: ".82rem" }}>• {strMessage}</Typography>)}</Alert> : null}
+        {blnShowValidation && objPreview?.lstWarnings.length ? <Alert severity="warning"><Typography sx={{ fontWeight: 800 }}>{t("warnings", "Warnings")}</Typography>{objPreview.lstWarnings.map((objWarning) => <Typography component="div" key={objWarning.strCode} sx={{ fontSize: ".82rem" }}>• {objWarning.strMessage}</Typography>)}</Alert> : null}
+        <Paper sx={{ p: 2, borderRadius: "16px", border: "1px solid #e2e8f0" }}><Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1} alignItems={{ xs: "stretch", sm: "center" }}><Box><Typography component="h3" sx={{ fontWeight: 800 }}>{t("attachments", "Attachments")}</Typography><Typography sx={{ fontSize: ".76rem", color: "#64748b" }}>{objPreview?.blnProofRequired ? t("proof_required", "Proof is required for this request.") : t("proof_optional", "Documents are optional for this request.")}</Typography></Box><FileUploadButton controlId="ess.leave.attachments.upload.button" label={t("add_files", "Add files")} startIcon={<AttachFileRoundedIcon />} multiple disabled={blnSaving} isUploading={blnSaving && lstQueuedFiles.length > 0} progress={blnSaving && lstQueuedFiles.length > 0 ? intOverallAttachmentUploadProgress : undefined} onFilesSelected={(lstSelected) => setLstQueuedFiles((lstPrevious) => [...lstPrevious, ...lstSelected])} onValidationError={(strMessage) => fnShowToast(strMessage, "error")} /></Stack><Box sx={{ display: "grid", gap: 0.75, gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, mt: 1.25 }}>{lstExistingAttachments.map((objAttachment) => <AttachmentRow key={objAttachment.intID} strName={objAttachment.strFileName} intBytes={objAttachment.intFileSizeBytes} blnBusy={intPreviewingAttachmentID === objAttachment.intID} blnReplacing={intReplacingAttachmentID === objAttachment.intID} intReplaceProgress={intReplaceProgress} fnOnPreview={() => void fnPreviewExistingAttachment(objAttachment.intID)} fnOnReplace={objEditing?.strStatus === "draft" ? (objNewFile) => void fnReplaceExistingAttachment(objAttachment.intID, objNewFile) : undefined} fnOnDelete={objEditing?.strStatus === "draft" ? () => void fnDeleteAttachment(objAttachment.intID) : undefined} />)}{lstQueuedFiles.map((objFile, intIndex) => <AttachmentRow key={`${objFile.name}-${intIndex}`} strName={objFile.name} intBytes={objFile.size} fnOnPreview={() => fnPreviewQueuedFile(objFile)} fnOnReplace={(objNewFile) => fnReplaceQueuedFile(intIndex, objNewFile)} fnOnDelete={() => setLstQueuedFiles((lstPrevious) => lstPrevious.filter((_objFile, intFileIndex) => intFileIndex !== intIndex))} />)}{!lstExistingAttachments.length && !lstQueuedFiles.length ? <FormHelperText>{t("attachments_empty", "No attachments added.")}</FormHelperText> : null}</Box></Paper>
+      </Stack></Grid><Grid item xs={12} md={5}><PreviewPanel objPreview={objPreview} blnLoading={blnPreviewLoading} blnHourUnit={blnHourUnit} fnLabel={t} /></Grid></Grid></DialogContent>
+      <DialogActions sx={{ p: 2, flexWrap: "wrap", gap: 1 }}><Button onClick={() => setBlnFormOpen(false)} disabled={blnSaving}>{t("cancel", "Cancel")}</Button><Button variant="outlined" startIcon={<SaveOutlinedIcon />} disabled={blnSaving || !blnCanManage} onClick={() => { setBlnShowValidation(true); void handleSubmit(fnSaveDraft)(); }}>{t("save_draft", "Save Draft")}</Button><Button variant="contained" startIcon={<SendRoundedIcon />} disabled={!blnCanSubmit} onClick={() => void fnValidateAndConfirmSubmit()}>{t("submit_application", "Submit Application")}</Button></DialogActions>
+    </Dialog>
+
+    <DetailDialog objApplication={objDetail} blnLoading={blnDetailLoading} blnCanManage={blnCanManage} fnOnClose={() => setObjDetail(null)} fnOnWithdraw={(objApplicationRow) => { setStrWithdrawReason(""); setObjConfirm({ strKind: "withdraw", intApplicationID: objApplicationRow.intID, blnApproved: objApplicationRow.strStatus === "approved" }); }} fnOnPreviewAttachment={(intAttachmentID) => void fnPreviewDetailAttachment(intAttachmentID)} fnLabel={t} />
+    <CommonConfirmDialog blnOpen={objConfirm?.strKind === "submit"} strTitle={t("confirm_submit_title", "Submit Leave Application?")} strMessage={(blnHourUnit ? t("confirm_submit_message_leaves", "{days} leave(s) will be placed on hold and the request will be sent for approval.") : t("confirm_submit_message", "{days} day(s) will be placed on hold and the request will be sent for approval.")).replace("{days}", String(objPreview?.decCalculatedDays ?? ""))} strCancelLabel={t("cancel", "Cancel")} strConfirmLabel={t("submit", "Submit")} blnConfirmDisabled={blnSaving} blnCancelDisabled={blnSaving} onClose={() => setObjConfirm(null)} onConfirm={() => void fnSubmitConfirmed()} />
+    <CommonConfirmDialog blnOpen={objConfirm?.strKind === "withdraw"} strTitle={objConfirm?.strKind === "withdraw" && objConfirm.blnApproved ? t("confirm_request_withdrawal_title", "Request Withdrawal of Approved Leave?") : t("confirm_withdraw_title", "Withdraw Leave Application?")} nodeMessage={<Stack spacing={1.25}>{objConfirm?.strKind === "withdraw" && objConfirm.blnApproved ? <Alert severity="info" sx={{ py: 0.5 }}>{t("request_withdrawal_hint", "This leave is already approved. Your withdrawal request will be sent back through the same approval chain.")}</Alert> : null}<TextField autoFocus fullWidth multiline minRows={2} label={t("withdraw_reason", "Withdrawal Reason")} value={strWithdrawReason} onChange={(objEvent) => setStrWithdrawReason(objEvent.target.value)} error={!strWithdrawReason.trim()} helperText={!strWithdrawReason.trim() ? t("withdraw_reason_required", "A reason is required.") : ""} /></Stack>} strCancelLabel={t("cancel", "Cancel")} strConfirmLabel={objConfirm?.strKind === "withdraw" && objConfirm.blnApproved ? t("request_withdrawal", "Request Withdrawal") : t("withdraw", "Withdraw")} blnConfirmDisabled={blnSaving || !strWithdrawReason.trim()} blnCancelDisabled={blnSaving} onClose={() => setObjConfirm(null)} onConfirm={() => void fnWithdrawConfirmed()} />
+    <Snackbar open={objToast.blnOpen} autoHideDuration={5000} onClose={() => setObjToast((objPrevious) => ({ ...objPrevious, blnOpen: false }))} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}><Alert severity={objToast.strSeverity} variant="filled" onClose={() => setObjToast((objPrevious) => ({ ...objPrevious, blnOpen: false }))}>{objToast.strMessage}</Alert></Snackbar>
+  </Stack>;
+}
+
+function DurationField({ control, strName, strLabel, blnDisabled = false }: { control: Control<LeaveFormValues>; strName: "strFromDuration" | "strToDuration"; strLabel: string; blnDisabled?: boolean }) {
+  return <Controller name={strName} control={control} render={({ field }) => <TextField {...field} select fullWidth disabled={blnDisabled} size="small" label={strLabel}><MenuItem value="full">Full Day</MenuItem><MenuItem value="half">Half Day</MenuItem></TextField>} />;
+}
+
+function SessionField({ control, strName, strLabel, objError }: { control: Control<LeaveFormValues>; strName: "strFromSession" | "strToSession"; strLabel: string; objError?: string }) {
+  return <Controller name={strName} control={control} render={({ field }) => <TextField {...field} select fullWidth size="small" label={strLabel} error={Boolean(objError)} helperText={objError}><MenuItem value="first">First Half</MenuItem><MenuItem value="second">Second Half</MenuItem></TextField>} />;
+}
+
+function RequestFields({ control, setValue, objErrors, lstTypes, lstRestrictedHolidays, objSelectedType, blnRestrictedHolidayType, blnSingleDay, blnHourUnit, decRequestedHours, strPolicyHelp, fnLabel }: { control: Control<LeaveFormValues>; setValue: UseFormSetValue<LeaveFormValues>; objErrors: FieldErrors<LeaveFormValues>; lstTypes: LeaveTypeDto[]; lstRestrictedHolidays: RestrictedHolidayDto[]; objSelectedType: LeaveTypeDto | null; blnRestrictedHolidayType: boolean; blnSingleDay: boolean; blnHourUnit: boolean; decRequestedHours: number | null; strPolicyHelp: string; fnLabel: LabelFunction }) {
+  const strFromDuration = useWatch({ control, name: "strFromDuration" });
+  const strToDuration = useWatch({ control, name: "strToDuration" });
+  const strFromDate = useWatch({ control, name: "dtFromDate" });
+  const strToDate = useWatch({ control, name: "dtToDate" });
+  // Half-day and hour are mutually exclusive ways of taking part of a day.
+  const blnAllowHalfDay = Boolean(objSelectedType?.blnAllowHalfDay) && !blnHourUnit;
+  return <Paper sx={{ p: 2, borderRadius: "16px", border: "1px solid #e2e8f0" }}><Typography component="h3" sx={{ fontWeight: 800, mb: 1.5 }}>{fnLabel("request_details", "Request Details")}</Typography><Grid container spacing={1.5}>
+    <Grid item xs={12} sm={6}><Controller name="intLeaveTypeID" control={control} render={({ field }) => <TextField {...field} data-controlid="ess.leave.type" select fullWidth size="small" label={fnLabel("leave_type", "Leave Type")} onChange={(objEvent) => { field.onChange(Number(objEvent.target.value)); setValue("intRestrictedHolidayID", 0); }} error={Boolean(objErrors.intLeaveTypeID)} helperText={objErrors.intLeaveTypeID?.message}>{lstTypes.map((objType) => <MenuItem key={objType.intID} value={objType.intID}>{objType.strTypeName} ({objType.strTypeCode})</MenuItem>)}</TextField>} /></Grid>
+    {blnRestrictedHolidayType ? <Grid item xs={12} sm={6}><Controller name="intRestrictedHolidayID" control={control} render={({ field }) => <TextField {...field} data-controlid="ess.leave.restricted-holiday" select fullWidth required size="small" label={fnLabel("restricted_holiday", "Restricted Holiday")} onChange={(objEvent) => { const intHolidayID = Number(objEvent.target.value); field.onChange(intHolidayID); const objHoliday = lstRestrictedHolidays.find((objItem) => objItem.intID === intHolidayID); if (objHoliday) { setValue("dtFromDate", objHoliday.dtHolidayDate, { shouldValidate: true }); setValue("dtToDate", objHoliday.dtHolidayDate, { shouldValidate: true }); } }}><MenuItem value={0} disabled>{fnLabel("select_restricted_holiday", "Select Restricted Holiday")}</MenuItem>{lstRestrictedHolidays.map((objHoliday) => <MenuItem key={objHoliday.intID} value={objHoliday.intID}>{objHoliday.strHolidayName} ({formatLeaveDate(objHoliday.dtHolidayDate)})</MenuItem>)}</TextField>} /></Grid> : null}
+    {strPolicyHelp ? <Grid item xs={12}><Alert severity="info">{strPolicyHelp}</Alert></Grid> : null}
+    {/* An hour-based Leave Type is applied for one date, so the range collapses to a single "Leave
+        Date" field; To Date is kept equal to it in the form state rather than shown twice. */}
+    <Grid item xs={12} sm={6}><Controller name="dtFromDate" control={control} render={({ field }) => <TextField {...field} type="date" fullWidth disabled={blnRestrictedHolidayType} size="small" label={blnHourUnit ? fnLabel("leave_date", "Leave Date") : fnLabel("from_date", "From Date")} InputLabelProps={{ shrink: true }} onChange={(objEvent) => { const strNew = objEvent.target.value; field.onChange(strNew); if (strNew && (blnHourUnit || !strToDate || strNew > strToDate)) setValue("dtToDate", strNew, { shouldValidate: true }); }} error={Boolean(objErrors.dtFromDate)} helperText={objErrors.dtFromDate?.message} />} /></Grid>
+    {!blnHourUnit ? <Grid item xs={12} sm={6}><Controller name="dtToDate" control={control} render={({ field }) => <TextField {...field} type="date" fullWidth disabled={blnRestrictedHolidayType} size="small" label={fnLabel("to_date", "To Date")} InputLabelProps={{ shrink: true }} inputProps={{ min: strFromDate || undefined }} error={Boolean(objErrors.dtToDate)} helperText={objErrors.dtToDate?.message} />} /></Grid> : null}
+    {blnHourUnit ? <>
+      <Grid item xs={12} sm={6}><Controller name="tmStartTime" control={control} render={({ field }) => <TextField {...field} type="time" fullWidth size="small" label={fnLabel("start_time", "Start Time")} InputLabelProps={{ shrink: true }} error={Boolean(objErrors.tmStartTime)} helperText={objErrors.tmStartTime?.message} />} /></Grid>
+      <Grid item xs={12} sm={6}><Controller name="tmEndTime" control={control} render={({ field }) => <TextField {...field} type="time" fullWidth size="small" label={fnLabel("end_time", "End Time")} InputLabelProps={{ shrink: true }} error={Boolean(objErrors.tmEndTime)} helperText={objErrors.tmEndTime?.message} />} /></Grid>
+      {/* Calculated, never entered: Total Hours = End Time - Start Time. */}
+      <Grid item xs={12} sm={6}><TextField value={decRequestedHours === null ? "" : fnFormatHours(decRequestedHours)} fullWidth size="small" disabled label={fnLabel("total_hours", "Total Hours")} InputLabelProps={{ shrink: true }} helperText={objSelectedType?.decMaxHourLimit ? fnLabel("max_hour_limit_hint", "Maximum {hours} hour(s) per request.").replace("{hours}", String(Number(objSelectedType.decMaxHourLimit))) : undefined} /></Grid>
+    </> : null}
+    {blnAllowHalfDay && blnSingleDay ? <>
+      <Grid item xs={12} sm={6}><DurationField control={control} strName="strFromDuration" strLabel={fnLabel("leave_duration", "Leave Duration")} blnDisabled={blnRestrictedHolidayType} /></Grid>
+      {strFromDuration === "half" ? <Grid item xs={12} sm={6}><SessionField control={control} strName="strFromSession" strLabel={fnLabel("half_day_session", "Half-Day Session")} objError={objErrors.strFromSession?.message} /></Grid> : null}
+    </> : null}
+    {blnAllowHalfDay && !blnSingleDay ? <>
+      <Grid item xs={12} sm={6}><DurationField control={control} strName="strFromDuration" strLabel={fnLabel("from_date_duration", "From Date Duration")} blnDisabled={blnRestrictedHolidayType} /></Grid>
+      {strFromDuration === "half" ? <Grid item xs={12} sm={6}><SessionField control={control} strName="strFromSession" strLabel={fnLabel("from_date_session", "From Date Session")} objError={objErrors.strFromSession?.message} /></Grid> : null}
+      <Grid item xs={12} sm={6}><DurationField control={control} strName="strToDuration" strLabel={fnLabel("to_date_duration", "To Date Duration")} blnDisabled={blnRestrictedHolidayType} /></Grid>
+      {strToDuration === "half" ? <Grid item xs={12} sm={6}><SessionField control={control} strName="strToSession" strLabel={fnLabel("to_date_session", "To Date Session")} objError={objErrors.strToSession?.message} /></Grid> : null}
+    </> : null}
+    <Grid item xs={12}><Controller name="strReason" control={control} render={({ field }) => <TextField {...field} fullWidth size="small" multiline minRows={3} label={`${fnLabel("reason", "Reason")}${objSelectedType?.blnRequiresReason ? " *" : ""}`} error={Boolean(objErrors.strReason)} helperText={objErrors.strReason?.message} />} /></Grid>
+  </Grid></Paper>;
+}
+
+function LoadingSkeleton() { return <Stack spacing={2} aria-label="Loading leave information"><Grid container spacing={1.25}>{[1, 2, 3, 4].map((intItem) => <Grid item xs={12} sm={6} md={3} key={intItem}><Skeleton variant="rounded" height={118} /></Grid>)}</Grid><Skeleton variant="rounded" height={320} /></Stack>; }
+function EmptyState({ strMessage }: { strMessage: string }) { return <Box sx={{ p: 4, textAlign: "center" }}><EventAvailableRoundedIcon sx={{ color: "#94a3b8", fontSize: 36, mb: .5 }} /><Typography sx={{ color: "#64748b", fontWeight: 600 }}>{strMessage}</Typography></Box>; }
+
+function StatusChip({ strStatus, fnLabel }: { strStatus: string; fnLabel?: LabelFunction }) { const objColor = LEAVE_STATUS_COLORS[strStatus] ?? { bg: "#f1f5f9", fg: "#475569" }; const strText = getLeaveStatusLabel(strStatus, fnLabel ?? ((_strKey, strFallback) => strFallback)); return <Chip size="small" label={strText} sx={{ fontWeight: 700, bgcolor: objColor.bg, color: objColor.fg }} />; }
+
+function ApplicationActions({ objApplication, blnCanManage, fnOnView, fnOnEdit, fnOnWithdraw }: { objApplication: LeaveApplicationDto; blnCanManage: boolean; fnOnView: () => void; fnOnEdit: () => void; fnOnWithdraw: () => void }) {
+  // Pending → withdraw outright; Approved & not yet started → request withdrawal (re-approval).
+  const blnCanWithdraw = blnCanManage && (
+    objApplication.strStatus === "pending" ||
+    (objApplication.strStatus === "approved" && fnIsBeforeLeaveStart(objApplication.dtFromDate))
+  );
+  const strWithdrawTip = objApplication.strStatus === "approved" ? "Request withdrawal" : "Withdraw application";
+  return <Stack direction="row" spacing={.25}><Tooltip title="View details"><IconButton size="small" aria-label="View details" onClick={fnOnView}><VisibilityOutlinedIcon fontSize="small" /></IconButton></Tooltip>{objApplication.strStatus === "draft" && blnCanManage ? <Tooltip title="Edit draft"><IconButton size="small" aria-label="Edit draft" color="primary" onClick={fnOnEdit}><EditRoundedIcon fontSize="small" /></IconButton></Tooltip> : null}{blnCanWithdraw ? <Tooltip title={strWithdrawTip}><IconButton size="small" aria-label={strWithdrawTip} color="error" onClick={fnOnWithdraw}><WarningAmberRoundedIcon fontSize="small" /></IconButton></Tooltip> : null}</Stack>;
+}
+
+function ApplicationCard({ objApplication, blnCanManage, fnOnView, fnOnEdit, fnOnWithdraw }: { objApplication: LeaveApplicationDto; blnCanManage: boolean; fnOnView: () => void; fnOnEdit: () => void; fnOnWithdraw: () => void }) {
+  return <Paper variant="outlined" sx={{ p: 1.5, borderRadius: "14px" }}><Stack direction="row" justifyContent="space-between" spacing={1}><Stack direction="row" spacing={1} alignItems="center"><LeaveTypeBadge strTypeCode={objApplication.strTypeCode} strTypeName={objApplication.strTypeName} /><Box><Typography sx={{ fontWeight: 800, fontSize: ".86rem" }}>{objApplication.strTypeName}</Typography><Typography sx={{ fontSize: ".75rem", color: "#64748b" }}>{formatLeaveDate(objApplication.dtFromDate)} – {formatLeaveDate(objApplication.dtToDate)} · {fnQuantityLabel(objApplication)}</Typography></Box></Stack><StatusChip strStatus={objApplication.strStatus} /></Stack><Stack direction="row" justifyContent="flex-end" sx={{ mt: .75 }}><ApplicationActions objApplication={objApplication} blnCanManage={blnCanManage} fnOnView={fnOnView} fnOnEdit={fnOnEdit} fnOnWithdraw={fnOnWithdraw} /></Stack></Paper>;
+}
+
+function ApplicationTable({ lstApplications, blnCanManage, fnOnView, fnOnEdit, fnOnWithdraw, fnLabel }: { lstApplications: LeaveApplicationDto[]; blnCanManage: boolean; fnOnView: (intApplicationID: number) => void; fnOnEdit: (objApplication: LeaveApplicationDto) => void; fnOnWithdraw: (objApplication: LeaveApplicationDto) => void; fnLabel: LabelFunction }) {
+  return <Box sx={{ overflowX: "auto" }}><Table size="small"><TableHead><TableRow sx={{ "& th": { fontWeight: 700, bgcolor: "#f8fafc", whiteSpace: "nowrap" } }}><TableCell>{fnLabel("actions", "Actions")}</TableCell><TableCell>{fnLabel("applied_on", "Applied On")}</TableCell><TableCell>{fnLabel("leave_type", "Leave Type")}</TableCell><TableCell>{fnLabel("from_date", "From Date")}</TableCell><TableCell>{fnLabel("to_date", "To Date")}</TableCell><TableCell>{fnLabel("quantity", "Quantity")}</TableCell><TableCell>{fnLabel("status", "Status")}</TableCell></TableRow></TableHead><TableBody>{lstApplications.map((objApplication) => <TableRow key={objApplication.intID} hover><TableCell><ApplicationActions objApplication={objApplication} blnCanManage={blnCanManage} fnOnView={() => fnOnView(objApplication.intID)} fnOnEdit={() => fnOnEdit(objApplication)} fnOnWithdraw={() => fnOnWithdraw(objApplication)} /></TableCell><TableCell>{formatLeaveDate(objApplication.dtAppliedOn)}</TableCell><TableCell><Stack direction="row" spacing={1} alignItems="center"><LeaveTypeBadge strTypeCode={objApplication.strTypeCode} strTypeName={objApplication.strTypeName} /><Typography sx={{ fontWeight: 700, fontSize: ".82rem" }}>{objApplication.strTypeName}</Typography></Stack></TableCell><TableCell>{formatLeaveDate(objApplication.dtFromDate)}{fnHalfSuffix(objApplication.blnFromHalf, objApplication.strFromHalfSession)}</TableCell><TableCell>{formatLeaveDate(objApplication.dtToDate)}{fnHalfSuffix(objApplication.blnToHalf, objApplication.strToHalfSession)}</TableCell><TableCell>{objApplication.decDays}</TableCell><TableCell><StatusChip strStatus={objApplication.strStatus} fnLabel={fnLabel} /></TableCell></TableRow>)}</TableBody></Table></Box>;
+}
+
+function AttachmentRow({ strName, intBytes, fnOnPreview, fnOnReplace, fnOnDelete, blnBusy, blnReplacing, intReplaceProgress }: { strName: string; intBytes: number; fnOnPreview?: () => void; fnOnReplace?: (objNewFile: File) => void; fnOnDelete?: () => void; blnBusy?: boolean; blnReplacing?: boolean; intReplaceProgress?: number }) { return <Stack direction="row" spacing={1} alignItems="center" sx={{ p: .75, borderRadius: "10px", bgcolor: "#f8fafc", border: "1px solid #e2e8f0" }}><AttachFileRoundedIcon fontSize="small" color="action" /><Box sx={{ minWidth: 0, flex: 1 }}><Typography noWrap sx={{ fontWeight: 700, fontSize: ".8rem" }}>{strName}</Typography><Typography sx={{ fontSize: ".68rem", color: "#64748b" }}>{Math.max(1, Math.round(intBytes / 1024))} KB</Typography></Box><FileRowActions strFileName={strName} controlIdPrefix="ess.leave.attachment" busy={blnBusy} onPreview={fnOnPreview} onReplace={fnOnReplace} onDelete={fnOnDelete} isReplacing={blnReplacing} replaceProgress={intReplaceProgress} /></Stack>; }
+
+function PreviewPanel({ objPreview, blnLoading, blnHourUnit, fnLabel }: { objPreview: LeavePreviewDto | null; blnLoading: boolean; blnHourUnit: boolean; fnLabel: LabelFunction }) {
+  // An hour type's entitlement counts short leaves, not hours, so the charge is labelled as leaves.
+  // The duration of this one is shown as Total Hours on the form beside the times.
+  const blnHours = blnHourUnit || objPreview?.blnHourBased === true;
+  const strChargeableLabel = blnHours ? fnLabel("chargeable_leaves", "Chargeable (Leaves)") : fnLabel("chargeable_quantity", "Chargeable");
+  const strRequestedLabel = blnHours ? fnLabel("requested_dates", "Requested (Dates)") : fnLabel("requested_quantity", "Requested");
+  return <Paper sx={{ p: 2, borderRadius: "16px", border: "1px solid #cbd5e1", position: { md: "sticky" }, top: { md: 16 } }}><Stack direction="row" justifyContent="space-between" alignItems="center"><Typography component="h3" sx={{ fontWeight: 800 }}>{fnLabel("live_preview", "Live Preview")}</Typography>{blnLoading ? <Chip size="small" label={fnLabel("calculating", "Calculating…")} color="info" /> : null}</Stack>{blnLoading ? <LinearProgress sx={{ mt: 1 }} /> : null}{!objPreview ? <Typography sx={{ color: "#64748b", fontSize: ".82rem", mt: 2 }}>{fnLabel("preview_hint", "Select a Leave Type and dates to calculate the request.")}</Typography> : <><Grid container spacing={1} sx={{ mt: 1 }}>{[[strRequestedLabel, objPreview.lstDateBreakdown.length], [strChargeableLabel, objPreview.decCalculatedDays], [fnLabel("balance_before", "Balance Before"), objPreview.decAvailableBefore ?? "—"], [fnLabel("balance_after", "Balance After"), objPreview.decAvailableAfter ?? "—"]].map(([objLabel, objValue]) => <Grid item xs={6} key={String(objLabel)}><Box sx={{ p: 1.25, borderRadius: "12px", bgcolor: "#f8fafc" }}><Typography sx={{ fontSize: ".68rem", color: "#64748b", fontWeight: 700 }}>{objLabel}</Typography><Typography sx={{ fontSize: "1.25rem", fontWeight: 800 }}>{objValue}</Typography></Box></Grid>)}</Grid><Divider sx={{ my: 1.5 }} /><Typography sx={{ fontWeight: 800, fontSize: ".82rem", mb: .75 }}>{fnLabel("date_explanation", "Date-wise Explanation")}</Typography><Stack spacing={.5} sx={{ maxHeight: 300, overflowY: "auto" }}>{objPreview.lstDateBreakdown.map((objDay) => <Stack key={objDay.dtDate} direction="row" justifyContent="space-between" spacing={1} sx={{ p: .75, borderRadius: "8px", bgcolor: objDay.blnCounted ? "#f0fdf4" : "#f8fafc" }}><Box><Typography sx={{ fontSize: ".76rem", fontWeight: 700 }}>{formatLeaveDate(objDay.dtDate)}</Typography><Typography sx={{ fontSize: ".68rem", color: "#64748b", textTransform: "capitalize" }}>{objDay.strHolidayName || objDay.strCalculationReason.replaceAll("_", " ")}</Typography></Box><Chip size="small" label={objDay.decDays} color={objDay.blnCounted ? "success" : "default"} /></Stack>)}</Stack></>}</Paper>;
+}
+
+function DetailDialog({ objApplication, blnLoading, blnCanManage, fnOnClose, fnOnWithdraw, fnOnPreviewAttachment, fnLabel }: { objApplication: LeaveApplicationDto | null; blnLoading: boolean; blnCanManage: boolean; fnOnClose: () => void; fnOnWithdraw: (objApplication: LeaveApplicationDto) => void; fnOnPreviewAttachment: (intAttachmentID: number) => void; fnLabel: LabelFunction }) {
+  const blnCanWithdraw = Boolean(objApplication) && blnCanManage && (
+    objApplication!.strStatus === "pending" ||
+    (objApplication!.strStatus === "approved" && fnIsBeforeLeaveStart(objApplication!.dtFromDate))
+  );
+  return <Dialog open={Boolean(objApplication) || blnLoading} onClose={fnOnClose} fullWidth maxWidth="md"><DialogTitle sx={{ fontWeight: 800, display: "flex", justifyContent: "space-between", alignItems: "center" }}>{fnLabel("application_details", "Leave Application Details")}<IconButton aria-label={fnLabel("close", "Close")} onClick={fnOnClose}><CloseRoundedIcon /></IconButton></DialogTitle><DialogContent dividers>{blnLoading ? <LoadingSkeleton /> : objApplication ? <Grid container spacing={2}><Grid item xs={12} sm={8}><Stack direction="row" spacing={1.25} alignItems="center"><LeaveTypeBadge strTypeCode={objApplication.strTypeCode} strTypeName={objApplication.strTypeName} intSize={42} /><Box><Typography sx={{ fontWeight: 800 }}>{objApplication.strTypeName}</Typography><Typography sx={{ color: "#64748b", fontSize: ".78rem" }}>{formatLeaveDate(objApplication.dtFromDate)}{fnHalfSuffix(objApplication.blnFromHalf, objApplication.strFromHalfSession)} – {formatLeaveDate(objApplication.dtToDate)}{fnHalfSuffix(objApplication.blnToHalf, objApplication.strToHalfSession)} · {fnQuantityLabel(objApplication)}{objApplication.tmStartTime && objApplication.tmEndTime ? ` · ${objApplication.tmStartTime.slice(0, 5)} – ${objApplication.tmEndTime.slice(0, 5)}` : ""}</Typography></Box></Stack></Grid><Grid item xs={12} sm={4}><StatusChip strStatus={objApplication.strStatus} fnLabel={fnLabel} /></Grid><Grid item xs={12}><Typography sx={{ fontSize: ".72rem", color: "#64748b" }}>{fnLabel("reason", "Reason")}</Typography><Typography sx={{ fontWeight: 600 }}>{objApplication.strReason || "—"}</Typography></Grid><Grid item xs={12} md={5}><Typography component="h3" sx={{ fontWeight: 800, mb: 1 }}>{fnLabel("attachments", "Attachments")}</Typography><Stack spacing={.75}>{objApplication.lstAttachments?.length ? objApplication.lstAttachments.map((objAttachment) => <AttachmentRow key={objAttachment.intID} strName={objAttachment.strFileName} intBytes={objAttachment.intFileSizeBytes} fnOnPreview={() => fnOnPreviewAttachment(objAttachment.intID)} />) : <Typography sx={{ color: "#64748b", fontSize: ".8rem" }}>{fnLabel("attachments_empty", "No attachments added.")}</Typography>}</Stack></Grid><Grid item xs={12} md={7}><Typography component="h3" sx={{ fontWeight: 800, mb: 1 }}>{fnLabel("timeline", "Action Timeline")}</Typography><Stack spacing={1}>{objApplication.lstActions?.length ? objApplication.lstActions.map((objAction, intIndex) => <Stack key={objAction.intID} direction="row" spacing={1.25}><Box sx={{ width: 10, height: 10, mt: .75, borderRadius: "50%", bgcolor: intIndex === 0 ? "#0a66a3" : "#94a3b8", flexShrink: 0 }} /><Box><Typography sx={{ fontWeight: 800, fontSize: ".8rem", textTransform: "capitalize" }}>{objAction.strAction}</Typography><Typography sx={{ fontSize: ".72rem", color: "#64748b" }}>{formatLeaveDate(objAction.dtActionOn)}{objAction.strComment ? ` — ${objAction.strComment}` : ""}</Typography></Box></Stack>) : <Typography sx={{ color: "#64748b", fontSize: ".8rem" }}>{fnLabel("timeline_empty", "No actions recorded.")}</Typography>}</Stack></Grid></Grid> : null}</DialogContent><DialogActions>{blnCanWithdraw && objApplication ? <Button color="error" onClick={() => fnOnWithdraw(objApplication)}>{objApplication.strStatus === "approved" ? fnLabel("request_withdrawal", "Request Withdrawal") : fnLabel("withdraw", "Withdraw")}</Button> : null}<Button onClick={fnOnClose}>{fnLabel("close", "Close")}</Button></DialogActions></Dialog>;
+}
