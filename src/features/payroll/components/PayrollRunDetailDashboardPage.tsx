@@ -976,7 +976,9 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
   const intWarningCount = lstValidationRows.filter((dicIssue) => !dicIssue.blnIsBlocking).length;
   const blnShowPayrollControls = ["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus);
   const strScopeLabel = objRun.strScopeType === "SelectedEmployee"
-    ? `${t("scope_selected_employee", "Selected Employees")} #${objRun.intScopedEmployeeID ?? "-"}`
+    ? (objRun.strScopedEmployeeName
+        ? `${objRun.strScopedEmployeeName}${objRun.strScopedEmployeeCode ? ` (${objRun.strScopedEmployeeCode})` : ""}`
+        : `${t("scope_selected_employee", "Selected Employees")} #${objRun.intScopedEmployeeID ?? "-"}`)
     : (objRun.strPayrollGroupName ?? t("scope_payroll_group", "Payroll Group"));
   const lstWorkflowSteps = getWorkflowSteps(objRun.strRunStatus, objRun.strRunTypeCode === "VARIABLE_PAY");
   const blnShowReviewResults = ["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus);

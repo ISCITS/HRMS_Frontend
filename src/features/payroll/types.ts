@@ -146,6 +146,8 @@ export type PayrollRunRecord = {
   strRunName: string;
   strScopeType: PayrollRunScopeType;
   intScopedEmployeeID: number | null;
+  strScopedEmployeeName?: string | null;
+  strScopedEmployeeCode?: string | null;
   dtPayrollMonth: string;
   strRunStatus: PayrollRunStatus;
   intRunTypeID: number | null;

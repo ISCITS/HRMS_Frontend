@@ -733,7 +733,9 @@ function PayrollRunDetailPageLegacy({
             strLabel={t("run_scope", "Process For")}
             strValue={
               objRun.strScopeType === "SelectedEmployee"
-                ? `${t("scope_selected_employee", "Selected Employees")} #${objRun.intScopedEmployeeID ?? "-"}`
+                ? (objRun.strScopedEmployeeName
+                    ? `${objRun.strScopedEmployeeName}${objRun.strScopedEmployeeCode ? ` (${objRun.strScopedEmployeeCode})` : ""}`
+                    : `${t("scope_selected_employee", "Selected Employees")} #${objRun.intScopedEmployeeID ?? "-"}`)
                 : t("scope_payroll_group", "Payroll Group")
             }
           />
@@ -820,7 +822,9 @@ function PayrollRunDetailPageLegacy({
                 strLabel={t("run_scope", "Process For")}
                 strValue={
                   objRun.strScopeType === "SelectedEmployee"
-                    ? `${t("scope_selected_employee", "Selected Employees")} #${objRun.intScopedEmployeeID ?? "-"}`
+                    ? (objRun.strScopedEmployeeName
+                        ? `${objRun.strScopedEmployeeName}${objRun.strScopedEmployeeCode ? ` (${objRun.strScopedEmployeeCode})` : ""}`
+                        : `${t("scope_selected_employee", "Selected Employees")} #${objRun.intScopedEmployeeID ?? "-"}`)
                     : t("scope_payroll_group", "Payroll Group")
                 }
               />
