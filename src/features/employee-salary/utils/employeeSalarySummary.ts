@@ -1,5 +1,7 @@
 "use client";
 
+import { isCtcProvisionCategory } from "@/lib/salaryCategories";
+
 type EmployeeSalarySummaryComponentLine = {
   strComponentCode?: string | null;
   strComponentName?: string | null;
@@ -130,7 +132,8 @@ function isNonCtcReimbursementLine(dicLine: Pick<EmployeeSalarySummaryComponentL
 }
 
 function isCtcIncludedEarning(dicLine: EmployeeSalarySummaryComponentLine) {
-  return !isFlexiBucketLine(dicLine) &&
+  return !isCtcProvisionCategory(dicLine.strComponentCategory) &&
+    !isFlexiBucketLine(dicLine) &&
     !isFlexiAllocationLine(dicLine) &&
     !isResidualTaxableComponentName(dicLine.strComponentName ?? dicLine.strComponentCode ?? "") &&
     !isEmployerContributionCategory(dicLine.strComponentCategory) &&
@@ -193,6 +196,10 @@ export function calculateEmployeeSalaryBaseSummaryMetrics(objSource: EmployeeSal
   const decCtcIncludedEarningsAnnual = lstComponentLines.reduce((decTotal, dicLine) => (
     isCtcIncludedEarning(dicLine) ? decTotal + getNumberValue(dicLine.decAmountAnnual) : decTotal
   ), 0);
+  const decCtcProvisionAnnual = lstComponentLines.reduce((total, line) => (
+    isCtcProvisionCategory(line.strComponentCategory) && line.blnIncludedInCtc !== false
+      ? total + getNumberValue(line.decAmountAnnual) : total
+  ), 0);
   const decPayableEarningsMonthly = lstComponentLines.reduce((decTotal, dicLine) => {
     if (!isCtcIncludedEarning(dicLine)) {
       return decTotal;
@@ -212,7 +219,7 @@ export function calculateEmployeeSalaryBaseSummaryMetrics(objSource: EmployeeSal
 
   return {
     blnHasFlexiBucket: decFlexiBucketAnnual > 0,
-    decAnnualCtc: decCtcIncludedEarningsAnnual + decEmployerContributionAnnual + decFlexiBucketAnnual,
+    decAnnualCtc: decCtcIncludedEarningsAnnual + decEmployerContributionAnnual + decFlexiBucketAnnual + decCtcProvisionAnnual,
     decGrossMonthly: decPayableEarningsMonthly + decFlexiBucketMonthly,
     decBasicAnnual,
     decHraAnnual,
@@ -254,6 +261,8 @@ export function buildEmployeeSalaryCalculationRows(objSource: EmployeeSalarySumm
     ctcAnnual: [
       ...earnings.map(line => ({ strName: name(line), decAmount: getNumberValue(line.decAmountAnnual) })),
       ...flexiRow(flexi.decAnnualAmount),
+      ...lines.filter(line => isCtcProvisionCategory(line.strComponentCategory) && line.blnIncludedInCtc !== false)
+        .map(line => ({ strName: name(line), decAmount: getNumberValue(line.decAmountAnnual) })),
       ...lines.filter(line => (isEmployerContributionCategory(line.strComponentCategory) || isEmployerPfComponent(line)) && line.blnIncludedInCtc !== false)
         .map(line => ({ strName: name(line), decAmount: getNumberValue(line.decAmountAnnual) })),
     ],

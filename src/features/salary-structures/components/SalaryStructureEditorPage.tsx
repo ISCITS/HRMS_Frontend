@@ -1,5 +1,7 @@
 "use client";
 
+import { isCtcProvisionCategory } from "@/lib/salaryCategories";
+
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
@@ -603,7 +605,7 @@ export default function SalaryStructureEditorPage({
           fltAnnualAmount: fltYearlyAmount,
         };
 
-        if (blnIsActiveLine && blnIncludedInCtc && (blnIsFlexiBasket || blnIsEmployerContributionLike || (blnIsEarning && !blnIsDeductionLike && !blnIsInformationLike))) {
+        if (blnIsActiveLine && blnIncludedInCtc && (isCtcProvisionCategory(strCategory) || blnIsFlexiBasket || blnIsEmployerContributionLike || (blnIsEarning && !blnIsDeductionLike && !blnIsInformationLike))) {
           dicTotals.fltTotalCtc += fltYearlyAmount;
           dicTotals.lstCtcComponents.push(dicSummaryComponent);
         }
@@ -1064,6 +1066,7 @@ export default function SalaryStructureEditorPage({
           }
           if (
             dicComponent
+            && !isCtcProvisionCategory(dicComponent.strComponentCategory)
             && !dicComponent.blnIsEmployerContribution
             && normalizeSelectToken(dicComponent.strComponentCategory ?? "") !== "deduction"
             && normalizeSelectToken(dicComponent.strComponentCategory ?? "") !== "information"

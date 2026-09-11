@@ -1,5 +1,7 @@
 "use client";
 
+import { isCtcProvisionCategory } from "@/lib/salaryCategories";
+
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import AccountBalanceWalletRoundedIcon from "@mui/icons-material/AccountBalanceWalletRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
@@ -60,7 +62,7 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
   const lstFixedCalculationRows = objSalaryDetail?.objSalarySummary?.decNetFixedMonthly != null
     ? (objSalaryDetail.lstComponentLines ?? []).filter(line => {
         const category = (line.strComponentCategory || "").trim().toLowerCase();
-        return category !== "deduction" && category !== "recovery" && !(category.includes("employer") && category.includes("contribution")) && !line.blnIsFlexiBenefit && !line.blnIsFlexiBasket;
+        return !isCtcProvisionCategory(category) && category !== "deduction" && category !== "recovery" && !(category.includes("employer") && category.includes("contribution")) && !line.blnIsFlexiBenefit && !line.blnIsFlexiBasket;
       }).map(line => ({ strName: line.strComponentName || line.strComponentCode || "Component", decAmount: Number(line.decAmountMonthly || 0) * 12 }))
     : dicCalculationRows.grossAnnual;
   const dicCompactValueSx = {

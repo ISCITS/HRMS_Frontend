@@ -1,3 +1,4 @@
+import { isCtcProvisionCategory } from "@/lib/salaryCategories";
 import type { EmployeeSalaryOverrideFormValue, EmployeeSalaryStructureComponentOption } from "@/features/employee-salary/types";
 
 type PreviewComponentLine = {
@@ -290,6 +291,7 @@ function recalculateDerivedOverrideRows(
         }
         if (
           dicResolvedStructureComponent &&
+          !isCtcProvisionCategory(dicResolvedStructureComponent.strComponentCategory) &&
           normalizeSelectToken(dicResolvedStructureComponent.strComponentCategory) !== "deduction" &&
           normalizeSelectToken(dicResolvedStructureComponent.strComponentCategory) !== "information"
         ) {
