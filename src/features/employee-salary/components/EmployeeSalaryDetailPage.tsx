@@ -2740,7 +2740,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
           sx={{
             display: "grid",
             gap: { xs: 1.5, md: 1 },
-            gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" },
+            gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: `repeat(${blnHasStructureFlexi ? 5 : 4}, minmax(0, 1fr))` },
           }}
         >
           <Stack spacing={1.2} sx={{ order: 4 }}>
@@ -2807,6 +2807,29 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
               </Box>
             </Stack>
           </Stack>
+
+          {blnHasStructureFlexi ? (
+            <Stack spacing={1.2} sx={{ order: 5 }}>
+              <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
+                <Box sx={{ width: 28, height: 28, borderRadius: "50%", bgcolor: "#e7f5ec", color: "#15803d", display: "grid", flexShrink: 0, placeItems: "center" }}>
+                  <AccountBalanceWalletOutlinedIcon sx={{ fontSize: 15 }} />
+                </Box>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography sx={{ color: "#61738b", fontSize: "0.73rem", fontWeight: 700 }}>{t("employee_salary_flexi_annual", "Flexi Annual")}</Typography>
+                  <Typography sx={{ color: "#155eef", fontSize: "1.02rem", fontWeight: 900, whiteSpace: "nowrap" }}>{formatCurrency(dicSalarySummaryMetrics.decFlexiBucketAnnual, strCurrencyCode)}</Typography>
+                </Box>
+              </Stack>
+              <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
+                <Box sx={{ width: 28, height: 28, borderRadius: "50%", bgcolor: "#e7f5ec", color: "#15803d", display: "grid", flexShrink: 0, placeItems: "center" }}>
+                  <AccountBalanceWalletOutlinedIcon sx={{ fontSize: 15 }} />
+                </Box>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography sx={{ color: "#61738b", fontSize: "0.73rem", fontWeight: 700 }}>{t("employee_salary_flexi_monthly", "Flexi Monthly")}</Typography>
+                  <Typography sx={{ color: "#172b4d", fontSize: "0.9rem", fontWeight: 700, whiteSpace: "nowrap" }}>{formatCurrency(dicSalarySummaryMetrics.decFlexiBucketAnnual / 12, strCurrencyCode)}</Typography>
+                </Box>
+              </Stack>
+            </Stack>
+          ) : null}
 
           <Stack spacing={1.2} sx={{ order: 1 }}>
             <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
@@ -3246,6 +3269,30 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
           </Box> */}
 
           <Stack spacing={1.25}>
+            {blnHasStructureFlexi ? (
+              <>
+                <Box sx={{ background: "#e5f7ed", borderRadius: "6px", px: 1.25, py: 1 }}>
+                  <Typography sx={{ color: "#07163b", fontSize: "0.82rem", fontWeight: 800 }}>
+                    {t("employee_salary_flexi_pay_declaration", "Flexi Pay Declaration")}
+                  </Typography>
+                </Box>
+                {[
+                  { strKey: "employee_salary_flexi_bucket_available", strLabel: "Flexi Bucket Available", decAmount: dicSalarySummaryMetrics.decFlexiBucketAnnual, strColor: "#07163b" },
+                  { strKey: "employee_salary_approved_declared_flexi", strLabel: "Approved / Declared Flexi", decAmount: dicSalarySummaryMetrics.decApprovedFlexiAnnual, strColor: "#ef2424" },
+                  { strKey: "employee_salary_residual_taxable", strLabel: "Residual Taxable", decAmount: dicSalarySummaryMetrics.decResidualTaxableAnnual, strColor: "#059669" },
+                  { strKey: "employee_salary_estimated_monthly_payroll_impact", strLabel: "Estimated Monthly Payroll Impact", decAmount: dicSalarySummaryMetrics.decResidualTaxableMonthly, strColor: "#059669" }
+                ].map((dicMetric) => (
+                  <Stack key={dicMetric.strKey} direction="row" justifyContent="space-between" alignItems="center" spacing={1.25}>
+                    <Typography sx={{ color: "#172554", fontSize: "0.82rem", fontWeight: 700 }}>
+                      {t(dicMetric.strKey, dicMetric.strLabel)}
+                    </Typography>
+                    <Typography sx={{ color: dicMetric.strColor, fontSize: "0.84rem", fontWeight: 800, whiteSpace: "nowrap" }}>
+                      {formatCurrency(dicMetric.decAmount, strCurrencyCode)}
+                    </Typography>
+                  </Stack>
+                ))}
+              </>
+            ) : null}
             {blnCanViewWageBreakdownPreview ? (
               <>
                 <Box sx={{ background: "#fff7ed", borderRadius: "6px", px: 1.25, py: 1, mt: 1 }}>
