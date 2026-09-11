@@ -18,6 +18,7 @@ export type EmployeeSalaryListRecord = {
 };
 
 export type EmployeeSalaryOption = {
+  strOverrideMode?: "annual" | "monthly" | "both";
   intID: number;
   strLabel: string;
   strCode?: string;

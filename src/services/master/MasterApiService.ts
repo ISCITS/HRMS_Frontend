@@ -1279,6 +1279,7 @@ export type EmployeeSalaryListApiRecord = {
 };
 
 export type EmployeeSalaryFormOptionApiRecord = {
+  strOverrideMode?: "annual" | "monthly" | "both";
   intID: number;
   strLabel: string;
   strCode?: string;

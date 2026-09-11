@@ -235,3 +235,27 @@ export function buildEmployeeSalaryFixedRows(
     { strLabel: "Residual Taxable Preview", decAnnual: decResidualTaxableAnnual },
   ].filter((dicRow): dicRow is EmployeeSalaryFixedRow => dicRow.decAnnual > 0);
 }
+
+// Use the same eligibility and flexi source as the displayed summary totals.
+export function buildEmployeeSalaryCalculationRows(objSource: EmployeeSalarySummarySource | null) {
+  const lines = objSource?.lstComponentLines ?? [];
+  const name = (line: EmployeeSalarySummaryComponentLine) => line.strComponentName || line.strComponentCode || "Component";
+  const earnings = lines.filter(isCtcIncludedEarning);
+  const flexi = getEmployeeFlexiBucketAmounts(objSource);
+  const flexiName = lines.find(isFlexiBucketLine);
+  const flexiRow = (amount: number) => amount ? [{ strName: flexiName ? name(flexiName) : "Flexi Bucket", decAmount: amount }] : [];
+  const grossMonthly = [
+    ...earnings.map(line => ({ strName: name(line), decAmount: getNumberValue(line.decAmountMonthly) })),
+    ...flexiRow(flexi.decMonthlyAmount),
+  ];
+  return {
+    grossMonthly,
+    grossAnnual: grossMonthly.map(row => ({ ...row, decAmount: row.decAmount * 12 })),
+    ctcAnnual: [
+      ...earnings.map(line => ({ strName: name(line), decAmount: getNumberValue(line.decAmountAnnual) })),
+      ...flexiRow(flexi.decAnnualAmount),
+      ...lines.filter(line => (isEmployerContributionCategory(line.strComponentCategory) || isEmployerPfComponent(line)) && line.blnIncludedInCtc !== false)
+        .map(line => ({ strName: name(line), decAmount: getNumberValue(line.decAmountAnnual) })),
+    ],
+  };
+}
