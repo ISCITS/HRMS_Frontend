@@ -334,6 +334,7 @@ export type EmployeeSalaryFlexiAllocationFormValue = {
 export type EmployeeSalaryRevisionFormValues = {
   intSalaryStructureID: number | "";
   dtEffectiveFrom: string;
+  dtEffectiveTo?: string;
   strRevisionReason: string;
   lstOverrides: EmployeeSalaryOverrideFormValue[];
   lstFlexiAllocations: EmployeeSalaryFlexiAllocationFormValue[];

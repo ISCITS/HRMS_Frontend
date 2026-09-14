@@ -30,7 +30,7 @@ import {
   Tooltip,
   Typography
 } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
@@ -42,7 +42,6 @@ import {
   createEmptyLineRow,
   createEmptyTextRow,
   createInitialSalaryStructureForm,
-  normalizeSalaryStructureLineOrders,
   normalizeSalaryStructureFlexiRole,
   salaryStructureService,
   toSalaryStructureFormValues
@@ -95,12 +94,6 @@ function isFlexiBucketToken(strValue: string) {
 function normalizeLineOrder(objValue: number | string, intFallbackValue = 10) {
   const intValue = Number(objValue);
   return Number.isInteger(intValue) && intValue >= 1 ? intValue : intFallbackValue;
-}
-
-function compareLineOrder(dicLeft: SalaryStructureLineFormValue, dicRight: SalaryStructureLineFormValue) {
-  return Number(dicLeft.intLineOrder || 0) - Number(dicRight.intLineOrder || 0)
-    || Number(dicLeft.intSalaryComponentID || 0) - Number(dicRight.intSalaryComponentID || 0)
-    || dicLeft.strRowID.localeCompare(dicRight.strRowID);
 }
 
 function parseOptionalSelectNumber(strValue: string) {
@@ -421,6 +414,10 @@ export default function SalaryStructureEditorPage({
   const [objFormOptions, setObjFormOptions] = useState<SalaryStructureFormOptions | null>(null);
   const [dicForm, setDicForm] = useState<SalaryStructureFormValues>(createInitialSalaryStructureForm());
   const [blnLoading, setBlnLoading] = useState(true);
+  const objTopScrollRef = useRef<HTMLDivElement>(null);
+  const objTableScrollRef = useRef<HTMLDivElement>(null);
+  const objComponentTableRef = useRef<HTMLTableElement>(null);
+  const [intTableScrollWidth, setIntTableScrollWidth] = useState(0);
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
@@ -434,6 +431,17 @@ export default function SalaryStructureEditorPage({
   const blnReadOnly = strMode === "edit" && blnCanView && !blnCanEdit;
   const blnCanLoadWorkspace = strMode === "add" ? blnCanAdd : blnCanView;
   const blnCanSave = strMode === "add" ? blnCanAdd : blnCanEdit;
+  useEffect(() => {
+    const objContainer = objTableScrollRef.current;
+    const objTable = objComponentTableRef.current;
+    if (!objContainer || !objTable) return;
+    const updateScrollWidth = () => setIntTableScrollWidth(objContainer.scrollWidth);
+    const objObserver = new ResizeObserver(updateScrollWidth);
+    objObserver.observe(objContainer);
+    objObserver.observe(objTable);
+    updateScrollWidth();
+    return () => objObserver.disconnect();
+  }, [blnLoading, blnRightsLoading, blnCanLoadWorkspace]);
   const blnFieldDisabled = blnSaving || blnReadOnly || !blnCanSave;
   const strPageHeading = strMode === "add"
     ? t("add_salary_structure", "Add Salary Structure")
@@ -523,9 +531,9 @@ export default function SalaryStructureEditorPage({
     return Array.from(setCodes).sort((strLeft, strRight) => strLeft.localeCompare(strRight));
   }, [dicComponentByID, dicForm.lstComponents]);
   const lstValueSourceOptions = objFormOptions?.lstValueSourceLookups ?? [];
-  const lstSortedComponentLines = useMemo(() => {
-    return [...dicForm.lstComponents].sort(compareLineOrder);
-  }, [dicForm.lstComponents]);
+  const lstActiveSalaryComponents = useMemo(() => {
+    return (objFormOptions?.lstSalaryComponents ?? []).filter((dicOption) => dicOption.blnIsActive === true);
+  }, [objFormOptions]);
   const lstFlexiEligibleComponents = useMemo(() => {
     return (objFormOptions?.lstSalaryComponents ?? []).filter(isFlexiEligibleComponent);
   }, [objFormOptions]);
@@ -1510,12 +1518,12 @@ export default function SalaryStructureEditorPage({
 
   function handleAddLineRow() {
     setDicForm((dicPrevious) => {
-      const lstNormalizedComponents = normalizeSalaryStructureLineOrders(dicPrevious.lstComponents);
+      const intNextLineOrder = dicPrevious.lstComponents.reduce((intMax, dicLine) => Math.max(intMax, Number(dicLine.intLineOrder) || 0), 0) + 10;
       return {
         ...dicPrevious,
         lstComponents: [
-          ...lstNormalizedComponents,
-          createEmptyLineRow((lstNormalizedComponents.length + 1) * 10)
+          ...dicPrevious.lstComponents,
+          createEmptyLineRow(intNextLineOrder)
         ]
       };
     });
@@ -1528,9 +1536,7 @@ export default function SalaryStructureEditorPage({
       }
       return {
         ...dicPrevious,
-        lstComponents: normalizeSalaryStructureLineOrders(
-          dicPrevious.lstComponents.filter((dicLine) => dicLine.strRowID !== strRowID)
-        )
+        lstComponents: dicPrevious.lstComponents.filter((dicLine) => dicLine.strRowID !== strRowID)
       };
     });
   }
@@ -1932,13 +1938,8 @@ export default function SalaryStructureEditorPage({
         <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) 300px" } }}>
           <Paper variant="outlined" sx={{ borderColor: "#d9e6ef", borderRadius: "8px", boxShadow: "0 1px 5px rgba(15, 23, 42, 0.08)", overflow: "hidden" }}>
             <Box sx={{ borderBottom: "1px solid #d9e6ef", backgroundColor: "#f8fafc", px: 2, py: 1.2 }}>
-              <Stack
-                direction={{ xs: "column", lg: "row" }}
-                spacing={2}
-                alignItems={{ xs: "stretch", lg: "center" }}
-                justifyContent="space-between"
-              >
-                <Box sx={{ minWidth: 0 }}>
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 6fr) minmax(0, 3fr) minmax(0, 1fr)" }, rowGap: 2, alignItems: "center" }}>
+                <Box sx={{ minWidth: 0, pr: { lg: 2 } }}>
                   <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
                     {t("component_line_configuration", "Salary Component Lines")}
                   </Typography>
@@ -1949,13 +1950,7 @@ export default function SalaryStructureEditorPage({
                     )}
                   </Typography>
                 </Box>
-                <Stack
-                  direction={{ xs: "column", sm: "row" }}
-                  spacing={1.5}
-                  alignItems={{ xs: "stretch", sm: "flex-end" }}
-                  sx={{ flexShrink: 0 }}
-                >
-                <Box>
+                <Box sx={{ minWidth: 0, pr: { lg: 1 } }}>
                   <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0.45 }}>
                     <Typography sx={{ color: "#334155", fontSize: "0.72rem", fontWeight: 700 }}>
                       {t("override_mode", "Override Mode")}
@@ -1974,7 +1969,7 @@ export default function SalaryStructureEditorPage({
                     aria-label={t("override_mode", "Override Mode")}
                     controlId="salary-structures.editor.override-mode.toggle-group"
                     sx={{
-                      flexWrap: "nowrap",
+                      flexWrap: "wrap",
                       gap: 1.25,
                       minHeight: 34,
                       "& .MuiFormControlLabel-root": {
@@ -1997,29 +1992,35 @@ export default function SalaryStructureEditorPage({
                       value="annual"
                       disabled={blnFieldDisabled}
                       control={<Radio size="small" inputProps={buildInputTestIdProps("salary-structures.editor.override-mode.annual.radio")} />}
-                      label={t("annual", "Annual")}
+                      label={
+                        <Tooltip arrow title={t("override_mode_annual_help", "Allow overriding component values in Annual.")}>
+                          <span>{t("annual", "Annual")}</span>
+                        </Tooltip>
+                      }
                     />
                     <FormControlLabel
                       value="monthly"
                       disabled={blnFieldDisabled}
                       control={<Radio size="small" inputProps={buildInputTestIdProps("salary-structures.editor.override-mode.monthly.radio")} />}
-                      label={t("monthly", "Monthly")}
+                      label={
+                        <Tooltip arrow title={t("override_mode_monthly_help", "Allow overriding component values in Monthly.")}>
+                          <span>{t("monthly", "Monthly")}</span>
+                        </Tooltip>
+                      }
                     />
                     <FormControlLabel
                       value="both"
                       disabled={blnFieldDisabled}
                       control={<Radio size="small" inputProps={buildInputTestIdProps("salary-structures.editor.override-mode.both.radio")} />}
-                      label={t("both", "Both")}
+                      label={
+                        <Tooltip arrow title={t("override_mode_both_help", "Allow overriding component values in both Annual and Monthly.")}>
+                          <span>{t("both", "Both")}</span>
+                        </Tooltip>
+                      }
                     />
                   </RadioGroup>
-                  <Typography sx={{ color: "#64748b", fontSize: "0.68rem", mt: 0.45, whiteSpace: "nowrap" }}>
-                    {dicForm.strOverrideMode === "annual"
-                      ? t("override_mode_annual_help", "Allow overriding component values in Annual.")
-                      : dicForm.strOverrideMode === "monthly"
-                        ? t("override_mode_monthly_help", "Allow overriding component values in Monthly.")
-                        : t("override_mode_both_help", "Allow overriding component values in both Annual and Monthly.")}
-                  </Typography>
                 </Box>
+                <Box sx={{ display: "flex", justifyContent: { xs: "flex-start", lg: "flex-end" }, minWidth: 0 }}>
                 <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />}
                   controlId="salary-structures.editor.add-line.button"
                   onClick={handleAddLineRow} disabled={blnFieldDisabled}
@@ -2042,10 +2043,26 @@ export default function SalaryStructureEditorPage({
                   }}>
                   {t("add_line", "Add Line")}
                 </Button>
-                </Stack>
-              </Stack>
+                </Box>
+              </Box>
             </Box>
           <Box
+            ref={objTopScrollRef}
+            onScroll={(objEvent) => {
+              if (objTableScrollRef.current) objTableScrollRef.current.scrollLeft = objEvent.currentTarget.scrollLeft;
+            }}
+            sx={{ overflowX: "auto", overflowY: "hidden" }}
+            tabIndex={0}
+            role="region"
+            aria-label={t("component_lines_horizontal_scroll", "Scroll salary component lines horizontally")}
+          >
+            <Box sx={{ width: intTableScrollWidth, height: 1 }} />
+          </Box>
+          <Box
+            ref={objTableScrollRef}
+            onScroll={(objEvent) => {
+              if (objTopScrollRef.current) objTopScrollRef.current.scrollLeft = objEvent.currentTarget.scrollLeft;
+            }}
             sx={{
               overflowX: "auto",
               "& .MuiInputBase-root.MuiInputBase-sizeSmall": {
@@ -2064,7 +2081,7 @@ export default function SalaryStructureEditorPage({
               }
             }}
           >
-            <table className={styles.table}>
+            <table ref={objComponentTableRef} className={styles.table}>
               <thead>
                 <tr>
                   <th style={{ left: 0, minWidth: 106, position: "sticky", zIndex: 4 }}>{t("line_order", "Line Order")}</th>
@@ -2083,7 +2100,7 @@ export default function SalaryStructureEditorPage({
                 </tr>
               </thead>
               <tbody>
-                {lstSortedComponentLines.map((dicLine) => {
+                {dicForm.lstComponents.map((dicLine) => {
                   const strMonthlyAmountInputID = `${dicLine.strRowID}:monthly`;
                   const strYearlyAmountInputID = `${dicLine.strRowID}:yearly`;
                   const dicComponent = dicComponentByID.get(Number(dicLine.intSalaryComponentID));
@@ -2160,10 +2177,16 @@ export default function SalaryStructureEditorPage({
                             disabled={blnFieldDisabled}
                             controlId="salary-structures.editor.line.salary-component.select"
                             inputProps={buildInputTestIdProps("salary-structures.editor.line.salary-component.select", { "data-row-key": dicLine.strRowID })}
-                            SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.line.salary-component.select", { "data-row-key": dicLine.strRowID }) }}
+                            SelectProps={{
+                              SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.line.salary-component.select", { "data-row-key": dicLine.strRowID }),
+                              renderValue: () => dicComponent?.strLabel || dicLine.strComponentName
+                            }}
                             sx={{ flex: 1 }}
                           >
-                            {(objFormOptions?.lstSalaryComponents ?? []).map((dicOption) => (
+                            {dicComponent && dicComponent.blnIsActive !== true ? (
+                              <MenuItem value={dicComponent.intID} disabled sx={{ display: "none" }}>{dicComponent.strLabel}</MenuItem>
+                            ) : null}
+                            {lstActiveSalaryComponents.map((dicOption) => (
                               <MenuItem key={dicOption.intID} value={dicOption.intID} controlId={`salary-structures.editor.line.salary-component.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
                                 {dicOption.strLabel}
                               </MenuItem>

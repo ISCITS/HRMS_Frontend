@@ -1370,6 +1370,7 @@ function buildRevisionForm(
   return {
     intSalaryStructureID,
     dtEffectiveFrom: getRevisionMinEffectiveDate(objDetail) || getTodayDateString(),
+    dtEffectiveTo: "",
     strRevisionReason: "",
     lstOverrides: buildOverrideRows(
       lstStructureComponents.length > 0 ? lstStructureComponents : objDetail?.lstComponentLines ?? [],
@@ -1931,7 +1932,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
     { field: "strAnnual", headerName: t("employee_salary_annual", "Annual"), width: 130, align: "right", sortAccessor: (dicRow) => dicRow.decAnnualSort },
     { field: "strMonthly", headerName: t("employee_salary_monthly", "Monthly"), width: 130, align: "right", sortAccessor: (dicRow) => dicRow.decMonthlySort },
     { field: "strOverride", headerName: t("employee_salary_source", "Source"), width: 130, sortable: false },
-    { field: "strRemarks", headerName: t("employee_salary_remarks", "Remarks"), width: 180 }
+    { field: "strRemarks", headerName: t("employee_salary_remarks", "Remarks"), width: 320 }
   ], [t]);
   const lstFlexiColumns = useMemo<DataGridColumn<FlexiGridRow>[]>(() => [
     { field: "strComponentName", headerName: t("employee_salary_flexi_component", "Component"), width: 170, sortable: false },
@@ -2148,6 +2149,10 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
     }
     if (!dicRevisionForm.dtEffectiveFrom) {
       setStrError(t("employee_salary_effective_from_required", "Effective from date is required."));
+      return;
+    }
+    if (dicRevisionForm.dtEffectiveTo && dicRevisionForm.dtEffectiveTo < dicRevisionForm.dtEffectiveFrom) {
+      setStrError(t("employee_salary_effective_to_invalid", "Effective To must be on or after Effective From."));
       return;
     }
     if (strMinRevisionEffectiveDate && dicRevisionForm.dtEffectiveFrom < strMinRevisionEffectiveDate) {
@@ -2367,7 +2372,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
         {strSuccess ? <Alert severity="success" onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
 
         <Box className={`${styles.tableCard} ${styles.revisionCard}`} sx={{ px: 2.25, py: 3 }}>
-          <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" } }}>
+          <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr" } }}>
             <TextField
               data-controlid="employee-salary.revision.salary-structure.select"
               inputProps={{ "data-controlid": "employee-salary.revision.salary-structure.select" }}
@@ -2390,6 +2395,15 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
               label={t("employee_salary_effective_from_field", "Effective from")}
               value={dicRevisionForm.dtEffectiveFrom}
               onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({ ...dicPrev, dtEffectiveFrom: objEvent.target.value }))}
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              data-controlid="employee-salary.revision.effective-to.input"
+              inputProps={{ "data-controlid": "employee-salary.revision.effective-to.input", min: dicRevisionForm.dtEffectiveFrom }}
+              type="date"
+              label={t("employee_salary_effective_to_field", "Effective To")}
+              value={dicRevisionForm.dtEffectiveTo}
+              onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({ ...dicPrev, dtEffectiveTo: objEvent.target.value }))}
               InputLabelProps={{ shrink: true }}
             />
           </Box>
@@ -2432,7 +2446,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
                   <th>{t("employee_salary_default_monthly", "Default Monthly")}</th>
                   <th>{t("employee_salary_monthly", "Monthly")}</th>
                   <th>{t("employee_salary_percentage_value", "% Value")}</th>
-                  <th>{t("employee_salary_remarks", "Remarks")}</th>
+                  <th style={{ minWidth: 320 }}>{t("employee_salary_remarks", "Remarks")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -2507,7 +2521,10 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
                         inputProps={{ "data-controlid": "employee-salary.revision.override.remarks.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
                         value={dicOverride.strRemarks}
                         size="small"
-                        sx={objOverrideValueFieldSx}
+                        multiline
+                        minRows={2}
+                        fullWidth
+                        sx={{ minWidth: 300 }}
                         disabled={!dicOverride.blnAllowManualOverride}
                         onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
                           ...dicPrev,
@@ -2740,7 +2757,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
           sx={{
             display: "grid",
             gap: { xs: 1.5, md: 1 },
-            gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: `repeat(${blnHasStructureFlexi ? 5 : 4}, minmax(0, 1fr))` },
+            gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" },
           }}
         >
           <Stack spacing={1.2} sx={{ order: 4 }}>
@@ -2808,29 +2825,6 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
             </Stack>
           </Stack>
 
-          {blnHasStructureFlexi ? (
-            <Stack spacing={1.2} sx={{ order: 5 }}>
-              <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
-                <Box sx={{ width: 28, height: 28, borderRadius: "50%", bgcolor: "#e7f5ec", color: "#15803d", display: "grid", flexShrink: 0, placeItems: "center" }}>
-                  <AccountBalanceWalletOutlinedIcon sx={{ fontSize: 15 }} />
-                </Box>
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography sx={{ color: "#61738b", fontSize: "0.73rem", fontWeight: 700 }}>{t("employee_salary_flexi_annual", "Flexi Annual")}</Typography>
-                  <Typography sx={{ color: "#155eef", fontSize: "1.02rem", fontWeight: 900, whiteSpace: "nowrap" }}>{formatCurrency(dicSalarySummaryMetrics.decFlexiBucketAnnual, strCurrencyCode)}</Typography>
-                </Box>
-              </Stack>
-              <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
-                <Box sx={{ width: 28, height: 28, borderRadius: "50%", bgcolor: "#e7f5ec", color: "#15803d", display: "grid", flexShrink: 0, placeItems: "center" }}>
-                  <AccountBalanceWalletOutlinedIcon sx={{ fontSize: 15 }} />
-                </Box>
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography sx={{ color: "#61738b", fontSize: "0.73rem", fontWeight: 700 }}>{t("employee_salary_flexi_monthly", "Flexi Monthly")}</Typography>
-                  <Typography sx={{ color: "#172b4d", fontSize: "0.9rem", fontWeight: 700, whiteSpace: "nowrap" }}>{formatCurrency(dicSalarySummaryMetrics.decFlexiBucketAnnual / 12, strCurrencyCode)}</Typography>
-                </Box>
-              </Stack>
-            </Stack>
-          ) : null}
-
           <Stack spacing={1.2} sx={{ order: 1 }}>
             <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
               <Box sx={{ width: 28, height: 28, borderRadius: "50%", bgcolor: "#eaf3ff", color: "#1677ff", display: "grid", flexShrink: 0, placeItems: "center" }}>
@@ -2862,7 +2856,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
 
     {blnIsRevisionMode ? (
         <Box className={`${styles.tableCard} ${styles.revisionCard}`} sx={{ px: 2.25, py: 3 }}>
-          <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" } }}>
+          <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr" } }}>
             <TextField
               data-controlid="employee-salary.revision.salary-structure.select"
               inputProps={{ "data-controlid": "employee-salary.revision.salary-structure.select" }}
@@ -2886,6 +2880,15 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
               label={t("employee_salary_effective_from_field", "Effective from")}
               value={dicRevisionForm.dtEffectiveFrom}
               onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({ ...dicPrev, dtEffectiveFrom: objEvent.target.value }))}
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              data-controlid="employee-salary.revision.effective-to.input"
+              inputProps={{ "data-controlid": "employee-salary.revision.effective-to.input", min: dicRevisionForm.dtEffectiveFrom }}
+              type="date"
+              label={t("employee_salary_effective_to_field", "Effective To")}
+              value={dicRevisionForm.dtEffectiveTo}
+              onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({ ...dicPrev, dtEffectiveTo: objEvent.target.value }))}
               InputLabelProps={{ shrink: true }}
             />
           </Box>
@@ -2966,7 +2969,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
                     <th>{t("employee_salary_revised_annual", "Revised Annual")}</th>
                     <th>{t("employee_salary_percentage_value", "% Value")}</th>
                     <th>{t("employee_salary_basis_component", "Basis Component")}</th>
-                    <th>{t("employee_salary_remarks", "Remarks")}</th>
+                    <th style={{ minWidth: 320 }}>{t("employee_salary_remarks", "Remarks")}</th>
                   </tr>
                 </thead>
               <tbody>
@@ -3079,7 +3082,10 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
                           inputProps={{ "data-controlid": "employee-salary.revision.override.remarks.input", "data-row-key": String(dicOverride.intSalaryComponentID) }}
                           value={dicOverride.strRemarks}
                           size="small"
-                          sx={objOverrideValueFieldSx}
+                          multiline
+                          minRows={2}
+                          fullWidth
+                          sx={{ minWidth: 300 }}
                           disabled={!dicOverride.blnAllowManualOverride}
                           onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({
                             ...dicPrev,

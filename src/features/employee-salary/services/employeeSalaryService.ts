@@ -150,6 +150,7 @@ export const employeeSalaryService = {
     const objResult = await masterApiService.previewEmployeeSalaryRevision(intEmployeeID, {
       intSalaryStructureID: dicValues.intSalaryStructureID,
       dtEffectiveFrom: dicValues.dtEffectiveFrom,
+      dtEffectiveTo: dicValues.dtEffectiveTo || null,
       strRevisionReason: dicValues.strRevisionReason.trim() || null,
       lstOverrides: dicValues.lstOverrides
         .filter((dicOverride) => dicOverride.blnAllowManualOverride)
@@ -176,6 +177,7 @@ export const employeeSalaryService = {
     const objResult = await masterApiService.createEmployeeSalaryRevision(intEmployeeID, {
       intSalaryStructureID: dicValues.intSalaryStructureID,
       dtEffectiveFrom: dicValues.dtEffectiveFrom,
+      dtEffectiveTo: dicValues.dtEffectiveTo || null,
       strRevisionReason: dicValues.strRevisionReason.trim() || null,
       lstOverrides: dicValues.lstOverrides
         .filter((dicOverride) => dicOverride.blnAllowManualOverride)
