@@ -5,8 +5,10 @@ import CloudUploadRoundedIcon from "@mui/icons-material/CloudUploadRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Checkbox,
@@ -17,7 +19,6 @@ import {
   DialogContentText,
   DialogTitle,
   IconButton,
-  MenuItem,
   Stack,
   Table,
   TableBody,
@@ -384,22 +385,19 @@ export default function LoanFinalizationPage() {
 
       <Box className={styles.controlsCard}>
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.2, alignItems: "flex-end" }}>
-          <TextField
-            select
-            label={t("field_payroll_run", "Payroll Run")}
-            value={strSelectedRunUUID}
-            onChange={(e) => selectRun(e.target.value)}
+          <Autocomplete
             size="small"
+            options={lstPayrollRuns}
+            value={lstPayrollRuns.find((objOption) => objOption.strRecordUUID === strSelectedRunUUID) ?? null}
+            getOptionLabel={(objOption) => `${objOption.strRunName} (${objOption.dtPayrollMonth.slice(0, 7)})`}
+            isOptionEqualToValue={(objA, objB) => objA.strRecordUUID === objB.strRecordUUID}
+            onChange={(_e, objOption) => selectRun(objOption ? objOption.strRecordUUID : "")}
             sx={{ minWidth: 320, flex: "1 1 320px" }}
-            controlId="loan-recovery.select.payroll-run"
-          >
-            <MenuItem value="">{t("select_run_prompt", "Select an open payroll run")}</MenuItem>
-            {lstPayrollRuns.map((objOption) => (
-              <MenuItem key={objOption.strRecordUUID} value={objOption.strRecordUUID}>
-                {objOption.strRunName} ({objOption.dtPayrollMonth.slice(0, 7)})
-              </MenuItem>
-            ))}
-          </TextField>
+            renderInput={(params) => (
+              <TextField {...params} label={t("field_payroll_run", "Payroll Run")} placeholder={t("select_run_prompt", "Search an open payroll run")} controlId="loan-recovery.select.payroll-run"
+                InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />
+            )}
+          />
           {blnCanPost ? (
             <Button
               className={styles.primaryButton}

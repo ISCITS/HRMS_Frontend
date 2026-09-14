@@ -133,13 +133,19 @@ function ReportMultiSelect(objProps: {
         <TextField
           {...objParams}
           label={objProps.strLabel}
-          placeholder={objProps.strLabel}
+          placeholder={`Search ${objProps.strLabel}...`}
           error={Boolean(strError)}
           helperText={strError || undefined}
           InputLabelProps={{ shrink: true }}
           inputProps={{ ...objParams.inputProps, "aria-label": objProps.strLabel, "data-controlid": objProps.strControlId }}
           InputProps={{
             ...objParams.InputProps,
+            startAdornment: (
+              <>
+                <SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />
+                {objParams.InputProps.startAdornment}
+              </>
+            ),
             endAdornment: (
               <>
                 {blnLoading ? <CircularProgress color="inherit" size={16} /> : null}
@@ -297,20 +303,33 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
                   strControlId={`reports.${objProps.strCsvFileName}.${objFilter.strKey}.multiselect`}
                 />
               ) : objFilter.strType === "select" ? (
-                <TextField
-                  select
-                  label={objFilter.strLabel}
-                  value={dicFilters[objFilter.strKey] ?? ""}
-                  onChange={(objEvent) => setFilterValue(objFilter.strKey, objEvent.target.value)}
+                <Autocomplete
+                  size="small"
+                  options={objFilter.lstOptions ?? []}
+                  value={(objFilter.lstOptions ?? []).find((objOption) => objOption.strValue === (dicFilters[objFilter.strKey] ?? "")) ?? null}
+                  getOptionLabel={(objOption) => objOption.strLabel}
+                  isOptionEqualToValue={(objA, objB) => objA.strValue === objB.strValue}
+                  onChange={(_objEvent, objSelected) => setFilterValue(objFilter.strKey, objSelected?.strValue ?? "")}
                   fullWidth
-                  InputLabelProps={{ shrink: true }}
-                  data-controlid={`reports.${objProps.strCsvFileName}.${objFilter.strKey}.select`}
-                >
-                  <MenuItem value="">All {objFilter.strLabel}</MenuItem>
-                  {(objFilter.lstOptions ?? []).map((objOption) => (
-                    <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>
-                  ))}
-                </TextField>
+                  renderInput={(objParams) => (
+                    <TextField
+                      {...objParams}
+                      label={objFilter.strLabel}
+                      placeholder={`Search ${objFilter.strLabel}...`}
+                      InputLabelProps={{ shrink: true }}
+                      inputProps={{ ...objParams.inputProps, "data-controlid": `reports.${objProps.strCsvFileName}.${objFilter.strKey}.select` }}
+                      InputProps={{
+                        ...objParams.InputProps,
+                        startAdornment: (
+                          <>
+                            <SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />
+                            {objParams.InputProps.startAdornment}
+                          </>
+                        ),
+                      }}
+                    />
+                  )}
+                />
               ) : (
                 <TextField
                   type={objFilter.strType === "month" ? "month" : objFilter.strType === "date" ? "date" : "text"}

@@ -5,7 +5,7 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Autocomplete, Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -381,15 +381,29 @@ export default function ReimbursementReviewListPage() {
               <MenuItem value="">All statuses</MenuItem>
               {lstClaimStatuses.map((strStatus) => <MenuItem key={strStatus} value={strStatus}>{strStatus.replaceAll("_", " ")}</MenuItem>)}
             </TextField>
-            <TextField select size="small" label="Employee" value={dicFilters.intEmployeeID} onChange={(objEvent) => setDicFilters({ ...dicFilters, intEmployeeID: objEvent.target.value })} sx={{ minWidth: 210 }}>
-              <MenuItem value="">All employees</MenuItem>
-              {lstEmployeeOptions.map((objOption) => <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>)}
-            </TextField>
+            <Autocomplete
+              size="small"
+              options={lstEmployeeOptions}
+              value={lstEmployeeOptions.find((objOption) => objOption.strValue === dicFilters.intEmployeeID) ?? null}
+              getOptionLabel={(objOption) => objOption.strLabel}
+              isOptionEqualToValue={(objA, objB) => objA.strValue === objB.strValue}
+              onChange={(_e, objOption) => setDicFilters({ ...dicFilters, intEmployeeID: objOption?.strValue ?? "" })}
+              sx={{ minWidth: 210 }}
+              renderInput={(params) => <TextField {...params} label="Employee" placeholder="Search employee..."
+                InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />}
+            />
             <TextField size="small" type="month" label="Claim month" InputLabelProps={{ shrink: true }} value={dicFilters.strClaimMonth} onChange={(objEvent) => setDicFilters({ ...dicFilters, strClaimMonth: objEvent.target.value })} sx={{ minWidth: 150 }} />
-            <TextField select size="small" label="Claim search" value={dicFilters.strSearchText} onChange={(objEvent) => setDicFilters({ ...dicFilters, strSearchText: objEvent.target.value })} sx={{ minWidth: 240 }}>
-              <MenuItem value="">All claims</MenuItem>
-              {lstClaimOptions.map((objOption) => <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>)}
-            </TextField>
+            <Autocomplete
+              size="small"
+              options={lstClaimOptions}
+              value={lstClaimOptions.find((objOption) => objOption.strValue === dicFilters.strSearchText) ?? null}
+              getOptionLabel={(objOption) => objOption.strLabel}
+              isOptionEqualToValue={(objA, objB) => objA.strValue === objB.strValue}
+              onChange={(_e, objOption) => setDicFilters({ ...dicFilters, strSearchText: objOption?.strValue ?? "" })}
+              sx={{ minWidth: 240 }}
+              renderInput={(params) => <TextField {...params} label="Claim search" placeholder="Search claims..."
+                InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />}
+            />
             <TextField select size="small" label="Proof pending" value={dicFilters.strProofPending} onChange={(objEvent) => setDicFilters({ ...dicFilters, strProofPending: objEvent.target.value })} sx={{ minWidth: 150 }}>
               <MenuItem value="">Any</MenuItem>
               <MenuItem value="yes">Yes</MenuItem>
@@ -400,14 +414,28 @@ export default function ReimbursementReviewListPage() {
               <MenuItem value="in_payroll">In payroll</MenuItem>
               <MenuItem value="not_in_payroll">Not in payroll</MenuItem>
             </TextField>
-            <TextField select size="small" label="Department" value={dicFilters.strDepartment} onChange={(objEvent) => setDicFilters({ ...dicFilters, strDepartment: objEvent.target.value })} sx={{ minWidth: 170 }}>
-              <MenuItem value="">All departments</MenuItem>
-              {lstDepartmentOptions.map((objOption) => <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>)}
-            </TextField>
-            <TextField select size="small" label="Location" value={dicFilters.strLocation} onChange={(objEvent) => setDicFilters({ ...dicFilters, strLocation: objEvent.target.value })} sx={{ minWidth: 170 }}>
-              <MenuItem value="">All locations</MenuItem>
-              {lstLocationOptions.map((objOption) => <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>)}
-            </TextField>
+            <Autocomplete
+              size="small"
+              options={lstDepartmentOptions}
+              value={lstDepartmentOptions.find((objOption) => objOption.strValue === dicFilters.strDepartment) ?? null}
+              getOptionLabel={(objOption) => objOption.strLabel}
+              isOptionEqualToValue={(objA, objB) => objA.strValue === objB.strValue}
+              onChange={(_e, objOption) => setDicFilters({ ...dicFilters, strDepartment: objOption?.strValue ?? "" })}
+              sx={{ minWidth: 170 }}
+              renderInput={(params) => <TextField {...params} label="Department" placeholder="Search department..."
+                InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />}
+            />
+            <Autocomplete
+              size="small"
+              options={lstLocationOptions}
+              value={lstLocationOptions.find((objOption) => objOption.strValue === dicFilters.strLocation) ?? null}
+              getOptionLabel={(objOption) => objOption.strLabel}
+              isOptionEqualToValue={(objA, objB) => objA.strValue === objB.strValue}
+              onChange={(_e, objOption) => setDicFilters({ ...dicFilters, strLocation: objOption?.strValue ?? "" })}
+              sx={{ minWidth: 170 }}
+              renderInput={(params) => <TextField {...params} label="Location" placeholder="Search location..."
+                InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />}
+            />
             <Box className={styles.searchActions} sx={{ flexShrink: 0, ml: "auto" }}>
               <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => void loadClaims()} controlId="reimbursements.review-list.search.button">Search</Button>
               <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} controlId="reimbursements.review-list.clear.button">Clear</Button>
@@ -453,10 +481,17 @@ export default function ReimbursementReviewListPage() {
         <DialogTitle>Add Reimbursement</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ mb: 1.4 }}>Select an employee to create the reimbursement for.</DialogContentText>
-          <TextField select fullWidth size="small" label="Employee" value={strCreateEmployeeID} onChange={(objEvent) => { setStrCreateEmployeeID(objEvent.target.value); setStrCreateError(""); }} error={Boolean(strCreateError)} helperText={strCreateError || " "} controlId="reimbursements.review-list.create.employee.select">
-            <MenuItem value="">Select employee</MenuItem>
-            {lstEmployeeOptions.map((objOption) => <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>)}
-          </TextField>
+          <Autocomplete
+            fullWidth
+            size="small"
+            options={lstEmployeeOptions}
+            value={lstEmployeeOptions.find((objOption) => objOption.strValue === strCreateEmployeeID) ?? null}
+            getOptionLabel={(objOption) => objOption.strLabel}
+            isOptionEqualToValue={(objA, objB) => objA.strValue === objB.strValue}
+            onChange={(_e, objOption) => { setStrCreateEmployeeID(objOption?.strValue ?? ""); setStrCreateError(""); }}
+            renderInput={(params) => <TextField {...params} label="Employee" placeholder="Search employee..." error={Boolean(strCreateError)} helperText={strCreateError || " "} controlId="reimbursements.review-list.create.employee.select"
+              InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />}
+          />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
           <Button size="small" className={styles.secondaryButton} onClick={() => setBlnCreateDialogOpen(false)} controlId="reimbursements.review-list.create.cancel.button">Cancel</Button>

@@ -103,7 +103,7 @@ function buildExportHtml(
   // spreadsheet columns anyway, but only a single table lets us size them deliberately via one
   // <colgroup> instead of Excel falling back to a default width that clips long labels.
   const lstColumnLabels = [
-    "Sl No", "Employee No", "Employee Name", "Total Present Days",
+    "Sl No", "Employee No", "Employee Name", "Status", "Total Present Days",
     ...lstPaymentColumns, "Gross Earning",
     ...lstRecoveryColumns, "Gross Deduction", "Net Earning",
   ];
@@ -117,17 +117,18 @@ function buildExportHtml(
 
   const strBodyRows = lstRows.map((dicRow, intIndex) => `<tr>
       <td>${intIndex + 1}</td><td>${escapeHtml(dicRow.strEmployeeCode)}</td><td class="text">${escapeHtml(dicRow.strEmployeeName)}</td>
+      <td class="text">${dicRow.strDataSource === "Processed" ? "Processed" : "Projected"}</td>
       <td>${formatBodyAmount(dicRow.decTotalPresentDays)}</td>
       ${lstPaymentColumns.map((strColumn) => `<td>${formatBodyAmount(dicRow.dicPayments[strColumn])}</td>`).join("")}
       <td>${formatBodyAmount(dicRow.decGrossEarning)}</td>
       ${lstRecoveryColumns.map((strColumn) => `<td>${formatBodyAmount(dicRow.dicRecoveries[strColumn])}</td>`).join("")}
-      <td>${formatBodyAmount(dicRow.decGrossDeduction)}</td>
-      <td>${formatBodyAmount(dicRow.decNetEarning)}</td>
+      <td class="text">${dicRow.blnStatutoryPending ? "Not yet computed" : formatBodyAmount(dicRow.decGrossDeduction)}</td>
+      <td class="text">${dicRow.blnStatutoryPending ? "Not yet computed" : formatBodyAmount(dicRow.decNetEarning)}</td>
     </tr>`).join("");
 
   const fnSum = (fnValue: (dicRow: SalaryRegisterRow) => number | null) => lstRows.reduce((decTotal, dicRow) => decTotal + (fnValue(dicRow) || 0), 0);
   const strTotalRow = `<tr class="total">
-    <td colspan="3" style="text-align:center">Grand Total</td>
+    <td colspan="4" style="text-align:center">Grand Total</td>
     <td>${formatTotalAmount(fnSum((dicRow) => dicRow.decTotalPresentDays))}</td>
     ${lstPaymentColumns.map((strColumn) => `<td>${formatTotalAmount(fnSum((dicRow) => dicRow.dicPayments[strColumn] || 0))}</td>`).join("")}
     <td>${formatTotalAmount(fnSum((dicRow) => dicRow.decGrossEarning))}</td>
@@ -391,8 +392,8 @@ export default function SalaryRegisterReportPage() {
       ),
       decTotalPresentDays: formatBodyAmount(dicRow.decTotalPresentDays),
       decGrossEarning: formatBodyAmount(dicRow.decGrossEarning),
-      decGrossDeduction: formatBodyAmount(dicRow.decGrossDeduction),
-      decNetEarning: formatBodyAmount(dicRow.decNetEarning),
+      decGrossDeduction: dicRow.blnStatutoryPending ? "Not yet computed" : formatBodyAmount(dicRow.decGrossDeduction),
+      decNetEarning: dicRow.blnStatutoryPending ? "Not yet computed" : formatBodyAmount(dicRow.decNetEarning),
     };
     lstPaymentColumns.forEach((strColumn) => { dicMapped[strColumn] = formatBodyAmount(dicRow.dicPayments[strColumn]); });
     lstRecoveryColumns.forEach((strColumn) => { dicMapped[strColumn] = formatBodyAmount(dicRow.dicRecoveries[strColumn]); });

@@ -287,16 +287,19 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
         isOptionEqualToValue={(objOption, objValue) => objOption.strEmployeeCode === objValue.strEmployeeCode}
         onChange={(_, objValue) => setDicFilters((d) => ({ ...d, employee_code: objValue?.strEmployeeCode || "" }))}
         slotProps={{ popper: { sx: { zIndex: 1802 } } }}
-        renderInput={(params) => <TextField {...params} label={t("filter_employee", "Employee")} />}
+        renderInput={(params) => <TextField {...params} label={t("filter_employee", "Employee")} placeholder={t("search_employee", "Search employee...")}
+          InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />}
       />
-      <TextField fullWidth select size="small" label={t("filter_department", "Department")} value={dicFilters.department} onChange={(e) => setDicFilters((d) => ({ ...d, department: e.target.value }))} SelectProps={{ MenuProps: objSelectMenuProps }}>
-        <MenuItem value="">{t("all", "All")}</MenuItem>
-        {lstDepartmentOptions.map((strDepartment) => (
-          <MenuItem key={strDepartment} value={strDepartment}>
-            {strDepartment}
-          </MenuItem>
-        ))}
-      </TextField>
+      <Autocomplete
+        fullWidth
+        size="small"
+        options={lstDepartmentOptions}
+        value={dicFilters.department || null}
+        onChange={(_, strValue) => setDicFilters((d) => ({ ...d, department: strValue || "" }))}
+        slotProps={{ popper: { sx: { zIndex: 1802 } } }}
+        renderInput={(params) => <TextField {...params} label={t("filter_department", "Department")} placeholder="Search department..."
+          InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />}
+      />
       <TextField fullWidth select size="small" label={t("filter_request_type", "Request Type")} value={dicFilters.request_type} onChange={(e) => setDicFilters((d) => ({ ...d, request_type: e.target.value }))} SelectProps={{ MenuProps: objSelectMenuProps }}>
         {["All", "loan", "advance"].map((strValue) => <MenuItem key={strValue} value={strValue}>{strValue === "All" ? t("all", "All") : t(`type_${strValue}`, strValue)}</MenuItem>)}
       </TextField>

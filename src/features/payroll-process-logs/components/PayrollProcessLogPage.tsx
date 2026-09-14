@@ -5,6 +5,7 @@ import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   MenuItem,
@@ -231,26 +232,24 @@ export default function PayrollProcessLogPage({ strInitialPayrollRunRecordUUID }
             gap: 1,
           }}
         >
-          <TextField
-            select
-            label={t("employee", "Employee")}
-            value={dicFiltersDraft.intEmployeeID}
-            onChange={(objEvent) =>
+          <Autocomplete
+            size="small"
+            options={dicOptions.lstEmployees}
+            value={dicOptions.lstEmployees.find((dicOption) => dicOption.intID === dicFiltersDraft.intEmployeeID) ?? null}
+            getOptionLabel={(dicOption) => dicOption.strLabel}
+            isOptionEqualToValue={(dicA, dicB) => dicA.intID === dicB.intID}
+            onChange={(_objEvent, dicOption) =>
               setDicFiltersDraft((dicPrevious) => ({
                 ...dicPrevious,
-                intEmployeeID: objEvent.target.value === "" ? "" : Number(objEvent.target.value)
+                intEmployeeID: dicOption ? dicOption.intID : ""
               }))
             }
-            size="small"
             sx={{ flex: { xs: "1 1 100%", md: "1 1 220px" }, minWidth: { md: 220 }, maxWidth: { md: 320 } }}
-          >
-            <MenuItem value="">{t("all_employees", "All Employees")}</MenuItem>
-            {dicOptions.lstEmployees.map((dicOption) => (
-              <MenuItem key={dicOption.intID} value={String(dicOption.intID)}>
-                {dicOption.strLabel}
-              </MenuItem>
-            ))}
-          </TextField>
+            renderInput={(params) => (
+              <TextField {...params} label={t("employee", "Employee")} placeholder={t("search_employee", "Search employee...")}
+                InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />
+            )}
+          />
           <TextField
             select
             label={t("process_stage", "Process Stage")}

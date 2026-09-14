@@ -2,6 +2,7 @@
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import { Alert, Autocomplete, Box, Button, MenuItem, Stack, Step, StepLabel, Stepper, TextField, Tooltip, Typography } from "@mui/material";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -207,7 +208,8 @@ export default function FNFSettlementCreatePage() {
                   getOptionLabel={(objOption) => objOption?.strLabel || ""}
                   isOptionEqualToValue={(objOption, objValue) => objOption.strEmployeeCode === objValue.strEmployeeCode}
                   onChange={(_, objValue) => handleEmployeeChange(objValue).catch(() => undefined)}
-                  renderInput={(params) => <TextField {...params} label="Employee" required error={Boolean(dicErrors.strEmployeeCode)} helperText={dicErrors.strEmployeeCode} fullWidth controlId="payroll.fnf-settlement-create.employee-code.input" />}
+                  renderInput={(params) => <TextField {...params} label="Employee" placeholder="Search employee..." required error={Boolean(dicErrors.strEmployeeCode)} helperText={dicErrors.strEmployeeCode} fullWidth controlId="payroll.fnf-settlement-create.employee-code.input"
+                    InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />}
                 />
               </Box>
             ) : null}

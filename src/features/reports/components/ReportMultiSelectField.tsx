@@ -1,5 +1,6 @@
 "use client";
 
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { Autocomplete, TextField } from "@mui/material";
 
 type ReportMultiSelectFieldProps = {
@@ -48,9 +49,18 @@ export default function ReportMultiSelectField({
         <TextField
           {...objParams}
           label={label}
-          placeholder={splitValue(value).length ? undefined : placeholder}
+          placeholder={splitValue(value).length ? "Search..." : placeholder || "Search..."}
           fullWidth
           inputProps={{ ...objParams.inputProps, "data-controlid": controlId }}
+          InputProps={{
+            ...objParams.InputProps,
+            startAdornment: (
+              <>
+                <SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />
+                {objParams.InputProps.startAdornment}
+              </>
+            ),
+          }}
         />
       )}
     />

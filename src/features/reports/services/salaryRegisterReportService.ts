@@ -21,6 +21,7 @@ export type SalaryRegisterRow = {
   decGrossEarning: number;
   decGrossDeduction: number;
   decNetEarning: number;
+  blnStatutoryPending: boolean;
 };
 
 export type SalaryRegisterEnvelope = {

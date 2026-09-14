@@ -2,8 +2,10 @@
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   MenuItem,
@@ -359,27 +361,34 @@ export default function PayrollRunEditorPage() {
                 helperText={t("resolved_payroll_group_help", "Derived from the selected payroll schedule.")}
               />
             ) : null}
-            {dicForm.strProcessFor === "SelectedEmployees" ? <TextField
-              select
-              label={t("scope_employee", "Employee")}
-              value={dicForm.intScopedEmployeeID}
-              controlId="payroll.run-editor.employee.select"
-              onChange={(objEvent) =>
-                updateField(
-                  "intScopedEmployeeID",
-                  objEvent.target.value ? Number(objEvent.target.value) : ""
-                )
-              }
-              disabled={blnFieldDisabled || dicForm.strScopeType !== "SelectedEmployee"}
-              fullWidth
-            >
-              <MenuItem value="">{t("select_employee", "Select employee")}</MenuItem>
-              {(objOptions?.lstEmployees ?? []).map((dicEmployee) => (
-                <MenuItem key={dicEmployee.intID} value={dicEmployee.intID}>
-                  {dicEmployee.strCode} - {dicEmployee.strLabel}
-                </MenuItem>
-              ))}
-            </TextField> : null}
+            {dicForm.strProcessFor === "SelectedEmployees" ? (
+              <Autocomplete
+                options={objOptions?.lstEmployees ?? []}
+                value={(objOptions?.lstEmployees ?? []).find((dicEmployee) => dicEmployee.intID === dicForm.intScopedEmployeeID) ?? null}
+                getOptionLabel={(dicEmployee) => `${dicEmployee.strCode} - ${dicEmployee.strLabel}`}
+                isOptionEqualToValue={(dicA, dicB) => dicA.intID === dicB.intID}
+                onChange={(_objEvent, dicSelected) => updateField("intScopedEmployeeID", dicSelected ? dicSelected.intID : "")}
+                disabled={blnFieldDisabled || dicForm.strScopeType !== "SelectedEmployee"}
+                fullWidth
+                renderInput={(objParams) => (
+                  <TextField
+                    {...objParams}
+                    label={t("scope_employee", "Employee")}
+                    placeholder={t("search_employee", "Search employee...")}
+                    controlId="payroll.run-editor.employee.select"
+                    InputProps={{
+                      ...objParams.InputProps,
+                      startAdornment: (
+                        <>
+                          <SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />
+                          {objParams.InputProps.startAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
+              />
+            ) : null}
             <TextField
               type="date"
               label={t("payroll_month", "Payroll Month")}

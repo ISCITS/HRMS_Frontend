@@ -4,12 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Chip,
-  MenuItem,
   Paper,
   Stack,
   Table,
@@ -194,23 +195,25 @@ export default function VariablePayGridPage() {
 
       <Paper sx={{ p: 2 }}>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "flex-start" }} gap={2}>
-          <TextField
-            select
-            required
-            label={t("select_run", "Variable Pay Run")}
-            value={intSelectedRunID}
-            onChange={(objEvent) => handleSelectRun(objEvent.target.value ? Number(objEvent.target.value) : "")}
+          <Autocomplete
+            options={lstRuns}
+            value={lstRuns.find((objRun) => objRun.intID === intSelectedRunID) ?? null}
+            getOptionLabel={(objRun) => `${objRun.strRunCode} - ${objRun.strRunName}`}
+            isOptionEqualToValue={(objA, objB) => objA.intID === objB.intID}
+            onChange={(_e, objRun) => handleSelectRun(objRun ? objRun.intID : "")}
             fullWidth
             sx={{ maxWidth: { xs: "100%", md: 480 } }}
-            data-controlid="variable-pay.grid.run-select"
-          >
-            <MenuItem value="">{t("select_run_placeholder", "Select a Variable Pay run")}</MenuItem>
-            {lstRuns.map((objRun) => (
-              <MenuItem key={objRun.intID} value={objRun.intID}>
-                {objRun.strRunCode} - {objRun.strRunName}
-              </MenuItem>
-            ))}
-          </TextField>
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                required
+                label={t("select_run", "Variable Pay Run")}
+                placeholder={t("select_run_placeholder", "Search Variable Pay run...")}
+                data-controlid="variable-pay.grid.run-select"
+                InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }}
+              />
+            )}
+          />
           {objContext && blnCanEdit ? (
             <Box sx={{ minWidth: { xs: "100%", md: "auto" } }}>
               <VariablePayImportPanel

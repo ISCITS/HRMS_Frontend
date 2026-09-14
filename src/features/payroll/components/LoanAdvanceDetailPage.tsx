@@ -2,6 +2,7 @@
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import DoneAllRoundedIcon from "@mui/icons-material/DoneAllRounded";
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
@@ -9,7 +10,7 @@ import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import UndoRoundedIcon from "@mui/icons-material/UndoRounded";
-import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Step, StepLabel, Stepper, Tab, Tabs, TextField, Typography } from "@mui/material";
+import { Alert, Autocomplete, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Step, StepLabel, Stepper, Tab, Tabs, TextField, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { MenuItem as AuthMenuItem } from "@/models/AuthModels";
@@ -656,14 +657,24 @@ export default function LoanAdvanceDetailPage({ strLoanAdvanceID, strMode = "pay
                 ].map(([strStepKey, strStepLabel]) => <Step key={strStepKey}><StepLabel>{strStepLabel}</StepLabel></Step>)}
               </Stepper>
               <Box className={styles.fnfEditDetailsGrid}>
-                {!blnIsEssMode ? <TextField required select size="small" label={t("field_employee", "Employee")} value={dicValues.intEmployeeID} error={Boolean(getFieldError("intEmployeeID"))} helperText={getFieldError("intEmployeeID") || " "} disabled={blnReadonly} onChange={(e) => {
-                  const objEmployee = lstEmployees.find((objRow) => objRow.intID === Number(e.target.value));
-                  updateValue("intEmployeeID", e.target.value ? Number(e.target.value) : "");
-                  updateValue("strEmployeeCode", objEmployee?.strEmployeeCode || "");
-                }}>
-                  <MenuItem value="">{t("select_employee", "Select employee")}</MenuItem>
-                  {lstEmployees.filter((objEmployee) => !objEmployee.blnIsPartialSave).map((objEmployee) => <MenuItem key={objEmployee.intID} value={objEmployee.intID}>{getEmployeeLabel(objEmployee)}</MenuItem>)}
-                </TextField> : null}
+                {!blnIsEssMode ? (
+                  <Autocomplete
+                    size="small"
+                    options={lstEmployees.filter((objEmployee) => !objEmployee.blnIsPartialSave)}
+                    value={lstEmployees.find((objEmployee) => objEmployee.intID === dicValues.intEmployeeID) ?? null}
+                    getOptionLabel={(objEmployee) => getEmployeeLabel(objEmployee)}
+                    isOptionEqualToValue={(objA, objB) => objA.intID === objB.intID}
+                    disabled={blnReadonly}
+                    onChange={(_e, objEmployee) => {
+                      updateValue("intEmployeeID", objEmployee ? objEmployee.intID : "");
+                      updateValue("strEmployeeCode", objEmployee?.strEmployeeCode || "");
+                    }}
+                    renderInput={(params) => (
+                      <TextField {...params} required label={t("field_employee", "Employee")} placeholder={t("search_employee", "Search employee...")} error={Boolean(getFieldError("intEmployeeID"))} helperText={getFieldError("intEmployeeID") || " "}
+                        InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />
+                    )}
+                  />
+                ) : null}
                 <TextField size="small" label={blnIsEssMode ? t("field_employee", "Employee") : t("field_department", "Department")} value={blnIsEssMode ? (objRecord?.objEmployee?.strEmployeeName || t("current_employee", "Current employee")) : (objSelectedEmployee?.strDepartmentName || objRecord?.objEmployee?.strDepartmentName || "")} disabled />
                 <TextField required select size="small" label={t("field_request_type", "Request Type")} value={dicValues.strRequestType} disabled={blnReadonly} onChange={(e) => { updateValue("strRequestType", e.target.value as LoanAdvanceFormValues["strRequestType"]); updateValue("intCategoryID", ""); }}>
                   <MenuItem value="loan">{t("type_loan", "Loan")}</MenuItem>

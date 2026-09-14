@@ -3,6 +3,7 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import CurrencyRupeeIcon from "@mui/icons-material/CurrencyRupee";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
@@ -16,6 +17,7 @@ import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import StorageRoundedIcon from "@mui/icons-material/StorageRounded";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Dialog,
@@ -775,42 +777,62 @@ export default function EmployeePayrollInputEditorPage({
           </Stack>
         </Box>
         <Box sx={{ display: "grid", columnGap: 1.5, rowGap: 1.25, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" }, alignItems: "start" }}>
-          <TextField
-            select
-            label={`${t("employee", "Employee")} *`}
-            value={dicForm.intEmployeeID}
-            onChange={(objEvent) => updateField("intEmployeeID", parseSelectNumber(objEvent.target.value))}
+          <Autocomplete
+            options={objOptions?.lstEmployees ?? []}
+            value={(objOptions?.lstEmployees ?? []).find((dicEmployee) => dicEmployee.intID === dicForm.intEmployeeID) ?? null}
+            getOptionLabel={(dicEmployee) => `${dicEmployee.strCode} - ${dicEmployee.strLabel}`}
+            isOptionEqualToValue={(dicA, dicB) => dicA.intID === dicB.intID}
+            onChange={(_objEvent, dicSelected) => updateField("intEmployeeID", dicSelected ? dicSelected.intID : "")}
             disabled={blnFormLocked || strMode !== "add"}
-            error={Boolean(dicFieldErrors.intEmployeeID)}
-            helperText={dicFieldErrors.intEmployeeID || " "}
             fullWidth
             sx={objFieldSx}
-          >
-            <MenuItem value="">{t("select_employee", "Select Employee")}</MenuItem>
-            {(objOptions?.lstEmployees ?? []).map((dicEmployee) => (
-              <MenuItem key={dicEmployee.intID} value={dicEmployee.intID}>
-                {dicEmployee.strCode} - {dicEmployee.strLabel}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            select
-            label={`${t("payroll_run", "Payroll Run")} *`}
-            value={dicForm.intPayrollRunID}
-            onChange={(objEvent) => updateField("intPayrollRunID", parseSelectNumber(objEvent.target.value))}
+            renderInput={(objParams) => (
+              <TextField
+                {...objParams}
+                label={`${t("employee", "Employee")} *`}
+                placeholder={t("search_employee", "Search employee...")}
+                error={Boolean(dicFieldErrors.intEmployeeID)}
+                helperText={dicFieldErrors.intEmployeeID || " "}
+                InputProps={{
+                  ...objParams.InputProps,
+                  startAdornment: (
+                    <>
+                      <SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />
+                      {objParams.InputProps.startAdornment}
+                    </>
+                  ),
+                }}
+              />
+            )}
+          />
+          <Autocomplete
+            options={objOptions?.lstPayrollRuns ?? []}
+            value={(objOptions?.lstPayrollRuns ?? []).find((dicRun) => dicRun.intID === dicForm.intPayrollRunID) ?? null}
+            getOptionLabel={(dicRun) => `${dicRun.strCode} - ${dicRun.strLabel}`}
+            isOptionEqualToValue={(dicA, dicB) => dicA.intID === dicB.intID}
+            onChange={(_objEvent, dicRun) => updateField("intPayrollRunID", dicRun ? dicRun.intID : "")}
             disabled={blnFormLocked || strMode !== "add"}
-            error={Boolean(dicFieldErrors.intPayrollRunID)}
-            helperText={dicFieldErrors.intPayrollRunID || " "}
             fullWidth
             sx={objFieldSx}
-          >
-            <MenuItem value="">{t("select_payroll_run", "Select Payroll Run")}</MenuItem>
-            {(objOptions?.lstPayrollRuns ?? []).map((dicRun) => (
-              <MenuItem key={dicRun.intID} value={dicRun.intID}>
-                {dicRun.strCode} - {dicRun.strLabel}
-              </MenuItem>
-            ))}
-          </TextField>
+            renderInput={(objParams) => (
+              <TextField
+                {...objParams}
+                label={`${t("payroll_run", "Payroll Run")} *`}
+                placeholder={t("search_payroll_run", "Search payroll run...")}
+                error={Boolean(dicFieldErrors.intPayrollRunID)}
+                helperText={dicFieldErrors.intPayrollRunID || " "}
+                InputProps={{
+                  ...objParams.InputProps,
+                  startAdornment: (
+                    <>
+                      <SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />
+                      {objParams.InputProps.startAdornment}
+                    </>
+                  ),
+                }}
+              />
+            )}
+          />
           <TextField label={t("employee_code", "Employee Code")} value={dicSelectedEmployee?.strCode ?? ""} InputProps={{ readOnly: true }} placeholder="Enter Employee Code" fullWidth sx={objReadOnlyFieldSx} />
           <TextField label={`${t("payroll_month", "Payroll Month")} *`} value={dicSelectedRun?.dtPayrollMonth ?? ""} InputProps={{ readOnly: true, endAdornment: <InputAdornment position="end"><CalendarMonthOutlinedIcon sx={{ color: "#405789" }} /></InputAdornment> }} placeholder="Select Month" fullWidth sx={objReadOnlyFieldSx} />
         </Box>

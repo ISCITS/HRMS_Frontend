@@ -1,7 +1,8 @@
 "use client";
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
-import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import { Alert, Autocomplete, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Paper, Stack, TextField, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { type InputHTMLAttributes, useEffect, useMemo, useState } from "react";
 
@@ -348,23 +349,25 @@ export default function ReimbursementReviewDetailPage({ strClaimRecordUUID }: { 
             {strDialogError ? <Alert severity="error" sx={{ borderRadius: "8px" }}>{strDialogError}</Alert> : null}
             {strDialogAction === "push_payroll" ? (
               <>
-                <TextField
-                  select
+                <Autocomplete
                   size="small"
-                  label="Target payroll run"
-                  value={strPayrollRunID}
-                  onChange={(objEvent) => setStrPayrollRunID(objEvent.target.value)}
+                  options={lstEditablePayrollRuns}
+                  value={lstEditablePayrollRuns.find((objRun) => String(objRun.intID) === strPayrollRunID) ?? null}
+                  getOptionLabel={(objRun) => `${objRun.strCode} (${objRun.strStatus})`}
+                  isOptionEqualToValue={(objA, objB) => objA.intID === objB.intID}
+                  onChange={(_e, objRun) => setStrPayrollRunID(objRun ? String(objRun.intID) : "")}
                   disabled={blnPayrollRunsLoading || lstEditablePayrollRuns.length === 0}
-                  helperText={blnPayrollRunsLoading ? "Loading payroll runs..." : "Only Draft, Open, or Submitted unlocked runs for this claim employee are listed."}
-                  controlId="reimbursements.review-detail.target-payroll-run.select"
-                >
-                  <MenuItem value="" disabled>Select payroll run</MenuItem>
-                  {lstEditablePayrollRuns.map((objRun) => (
-                    <MenuItem key={objRun.intID} value={String(objRun.intID)}>
-                      {objRun.strCode} ({objRun.strStatus})
-                    </MenuItem>
-                  ))}
-                </TextField>
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Target payroll run"
+                      placeholder="Search payroll run..."
+                      helperText={blnPayrollRunsLoading ? "Loading payroll runs..." : "Only Draft, Open, or Submitted unlocked runs for this claim employee are listed."}
+                      controlId="reimbursements.review-detail.target-payroll-run.select"
+                      InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }}
+                    />
+                  )}
+                />
                 <FormControlLabel control={<Checkbox checked={blnConfirmed} onChange={(objEvent) => setBlnConfirmed(objEvent.target.checked)} inputProps={{ "controlId": "reimbursements.review-detail.confirm-payroll.checkbox" } as InputHTMLAttributes<HTMLInputElement>} />} label="I confirm this reimbursement should be pushed to payroll input." />
               </>
             ) : null}

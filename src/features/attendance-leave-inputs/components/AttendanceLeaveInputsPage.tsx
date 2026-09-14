@@ -3,9 +3,11 @@
 import ImportExportRoundedIcon from "@mui/icons-material/ImportExportRounded";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Chip,
@@ -13,7 +15,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  MenuItem,
   Stack,
   TextField,
   Typography,
@@ -340,21 +341,23 @@ export default function AttendanceLeaveInputsPage() {
 
       <Box className={masterStyles.controlsCard}>
         <Box className={masterStyles.searchRow}>
-          <TextField
-            select
-            label={t("payroll_run", "Payroll Run")}
-            value={objSelectedRun?.strRecordUUID ?? ""}
-            onChange={(objEvent) => selectRun(objEvent.target.value)}
-            controlId="attendance-leave-inputs.run-select.select"
+          <Autocomplete
+            options={lstRuns}
+            value={lstRuns.find((dicRunOption) => dicRunOption.strRecordUUID === (objSelectedRun?.strRecordUUID ?? "")) ?? null}
+            getOptionLabel={(dicRunOption) => dicRunOption.strRunName}
+            isOptionEqualToValue={(dicA, dicB) => dicA.strRecordUUID === dicB.strRecordUUID}
+            onChange={(_objEvent, dicRunOption) => selectRun(dicRunOption ? dicRunOption.strRecordUUID : "")}
             fullWidth
-          >
-            <MenuItem value="">{t("select_run", "Select a payroll run")}</MenuItem>
-            {lstRuns.map((dicRunOption) => (
-              <MenuItem key={dicRunOption.intID} value={dicRunOption.strRecordUUID}>
-                {dicRunOption.strRunName}
-              </MenuItem>
-            ))}
-          </TextField>
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label={t("payroll_run", "Payroll Run")}
+                placeholder={t("search_run", "Search payroll run...")}
+                controlId="attendance-leave-inputs.run-select.select"
+                InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }}
+              />
+            )}
+          />
           <TextField label={t("payroll_period", "Payroll Period")} value={objRun ? formatMonth(objRun.dtPayrollMonth) : "-"} disabled fullWidth />
           <TextField label={t("payroll_group", "Payroll Group")} value={objRun?.strPayrollGroupName ?? "-"} disabled fullWidth />
           <TextField label={t("integration_status", "Integration Status")} value={strSelectedRunUUID ? `${strIntegrationStatus}${strIntegrationVersionSuffix}` : "-"} disabled fullWidth />

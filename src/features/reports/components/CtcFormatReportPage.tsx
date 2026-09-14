@@ -87,7 +87,8 @@ export default function CtcFormatReportPage() {
             getOptionLabel={row => `${row.strEmployeeCode} - ${row.strFullName}`}
             onChange={(_, value) => { setSelected(value); setStatement(null); }}
             noOptionsText={employees.length === 0 ? "No employees available for your access scope." : "No matching employees."}
-            renderInput={params => <TextField {...params} label="Employee Name" required placeholder={loading ? "Loading employees..." : "Select employee"} data-testid="ctc.filter.employee" />} />
+            renderInput={params => <TextField {...params} label="Employee Name" required placeholder={loading ? "Loading employees..." : "Search employee..."} data-testid="ctc.filter.employee"
+              InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />} />
         </Box>
         <Box className={screen.searchActions} sx={{ ml: "auto" }}>
           <Button type="submit" className={screen.primaryButton} startIcon={generating ? <CircularProgress size={16} color="inherit" /> : <SearchRoundedIcon />} disabled={!selected || loading || busy} data-testid="ctc.generate">Search</Button>

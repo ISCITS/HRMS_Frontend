@@ -3,9 +3,11 @@
 import AutorenewRoundedIcon from "@mui/icons-material/AutorenewRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Checkbox,
@@ -352,19 +354,18 @@ export default function Form16ListPage({ blnAdminMode = false }: Form16ListPageP
               <MenuItem value="single">{t("scope_single", "Single employee")}</MenuItem>
             </TextField>
             {strGenerateScope === "single" ? (
-              <TextField
-                select
+              <Autocomplete
                 size="small"
-                label={t("employee", "Employee")}
-                value={intGenerateEmployeeID}
-                onChange={(e) => setIntGenerateEmployeeID(e.target.value ? Number(e.target.value) : "")}
-              >
-                {lstEmployees.map((objEmployee) => (
-                  <MenuItem key={objEmployee.intID} value={objEmployee.intID}>
-                    {objEmployee.strFullName} ({objEmployee.strEmployeeCode})
-                  </MenuItem>
-                ))}
-              </TextField>
+                options={lstEmployees}
+                value={lstEmployees.find((objEmployee) => objEmployee.intID === intGenerateEmployeeID) ?? null}
+                getOptionLabel={(objEmployee) => `${objEmployee.strFullName} (${objEmployee.strEmployeeCode})`}
+                isOptionEqualToValue={(objA, objB) => objA.intID === objB.intID}
+                onChange={(_e, objEmployee) => setIntGenerateEmployeeID(objEmployee ? objEmployee.intID : "")}
+                renderInput={(params) => (
+                  <TextField {...params} label={t("employee", "Employee")} placeholder={t("search_employee", "Search employee...")}
+                    InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />
+                )}
+              />
             ) : null}
             <FormControlLabel
               control={<Checkbox checked={blnGenerateReissue} onChange={(e) => setBlnGenerateReissue(e.target.checked)} />}

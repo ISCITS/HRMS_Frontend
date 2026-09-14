@@ -333,7 +333,8 @@ export default function SalaryStatementReportPage() {
               value={dicSelectedEmployee ?? null}
               getOptionLabel={(dicEmployee) => `${dicEmployee.strEmployeeCode} - ${dicEmployee.strFullName}`}
               onChange={(_, dicEmployee) => setDicSearch((dicPrevious) => ({ ...dicPrevious, intEmployeeID: dicEmployee?.intID ?? "" }))}
-              renderInput={(objParams) => <TextField {...objParams} label="Employee Name" placeholder="Select employee" />}
+              renderInput={(objParams) => <TextField {...objParams} label="Employee Name" placeholder="Search employee..."
+                InputProps={{ ...objParams.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{objParams.InputProps.startAdornment}</>) }} />}
             />
           </Box>
           <Box className={styles.reportSearchField} sx={{ flex: "0 1 230px", minWidth: 190 }}>
