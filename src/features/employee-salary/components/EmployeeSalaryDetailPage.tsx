@@ -2055,7 +2055,6 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
     { field: "strMonthlyImpact", headerName: t("employee_salary_monthly_impact", "Monthly Impact"), width: 170, sortable: false },
     { field: "strTaxTreatment", headerName: t("employee_salary_tax_treatment", "Tax Treatment"), width: 150, sortable: false }
   ], [t]);
-  const strMinRevisionEffectiveDate = getRevisionMinEffectiveDate(objDetail);
 
   async function handleSalaryStructureChange(strSalaryStructureID: string) {
     const intSalaryStructureID = strSalaryStructureID ? Number(strSalaryStructureID) : "";
@@ -2153,15 +2152,6 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
     }
     if (dicRevisionForm.dtEffectiveTo && dicRevisionForm.dtEffectiveTo < dicRevisionForm.dtEffectiveFrom) {
       setStrError(t("employee_salary_effective_to_invalid", "Effective To must be on or after Effective From."));
-      return;
-    }
-    if (strMinRevisionEffectiveDate && dicRevisionForm.dtEffectiveFrom < strMinRevisionEffectiveDate) {
-      setStrError(
-        t(
-          "employee_salary_effective_from_after_current_required",
-          `Effective from date must be on or after ${formatDate(strMinRevisionEffectiveDate)}.`
-        )
-      );
       return;
     }
     const dicInvalidOverride = dicRevisionForm.lstOverrides.find((dicOverride) => getOverrideRangeError(dicOverride));
