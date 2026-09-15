@@ -812,22 +812,34 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
               <Typography variant="caption" color="text.secondary">
                 {objMonth.toLocaleDateString([], { month: "long", year: "numeric" })}
               </Typography>
-              {objHistory?.objSummary.objLateArrivalLop ? (
-                <Typography
-                  variant="caption"
-                  data-control-id="ess.my-attendance.late-arrival-lop-note"
-                  sx={{ textAlign: "right" }}
-                  color={objHistory.objSummary.objLateArrivalLop.decLopDaysMtd > 0 ? "warning.dark" : "text.secondary"}
-                  fontWeight={objHistory.objSummary.objLateArrivalLop.decLopDaysMtd > 0 ? 700 : 400}
-                >
-                  {objHistory.objSummary.objLateArrivalLop.decLopDaysMtd > 0
-                    ? `${objHistory.objSummary.objLateArrivalLop.decLopDaysMtd} ${t("late_arrival_lop_applied_suffix", "day LOP applied this month from late arrivals")}`
-                    : `${objHistory.objSummary.objLateArrivalLop.intOccurrencesUntilNextDeduction} ${t(
-                        "late_arrival_lop_progress_suffix",
-                        `more late arrival(s) triggers ${objHistory.objSummary.objLateArrivalLop.decUnitDeductionDays} day LOP`,
-                      )}`}
-                </Typography>
-              ) : null}
+              <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+                {objOtBalance?.blnOtCompOffConversionEnabled ? (
+                  <Typography
+                    variant="caption"
+                    data-control-id="ess.my-attendance.ot-balance.note"
+                    color="text.secondary"
+                    sx={{ textAlign: "right" }}
+                  >
+                    {t("ot_balance_towards_compoff", "OT Balance toward Comp-Off")}: {formatDuration(objOtBalance.decAccumulatedOtHours)} / {formatDuration(objOtBalance.decOtMinHours)}
+                  </Typography>
+                ) : null}
+                {objHistory?.objSummary.objLateArrivalLop ? (
+                  <Typography
+                    variant="caption"
+                    data-control-id="ess.my-attendance.late-arrival-lop-note"
+                    sx={{ textAlign: "right" }}
+                    color={objHistory.objSummary.objLateArrivalLop.decLopDaysMtd > 0 ? "warning.dark" : "text.secondary"}
+                    fontWeight={objHistory.objSummary.objLateArrivalLop.decLopDaysMtd > 0 ? 700 : 400}
+                  >
+                    {objHistory.objSummary.objLateArrivalLop.decLopDaysMtd > 0
+                      ? `${objHistory.objSummary.objLateArrivalLop.decLopDaysMtd} ${t("late_arrival_lop_applied_suffix", "day LOP applied this month from late arrivals")}`
+                      : `${objHistory.objSummary.objLateArrivalLop.intOccurrencesUntilNextDeduction} ${t(
+                          "late_arrival_lop_progress_suffix",
+                          `more late arrival(s) triggers ${objHistory.objSummary.objLateArrivalLop.decUnitDeductionDays} day LOP`,
+                        )}`}
+                  </Typography>
+                ) : null}
+              </Box>
             </Box>
             <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", columnGap: 0.5, mt: 1, alignItems: "start" }}>
               {[
@@ -853,16 +865,6 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
                 </Box>
               ))}
             </Box>
-            {objOtBalance?.blnOtCompOffConversionEnabled ? (
-              <Typography
-                variant="caption"
-                data-control-id="ess.my-attendance.ot-balance.note"
-                color="text.secondary"
-                sx={{ display: "block", mt: 0.75 }}
-              >
-                {t("ot_balance_towards_compoff", "OT Balance toward Comp-Off")}: {formatDuration(objOtBalance.decAccumulatedOtHours)} / {formatDuration(objOtBalance.decOtMinHours)}
-              </Typography>
-            ) : null}
           </Paper>
         </Grid>
       </Grid>
