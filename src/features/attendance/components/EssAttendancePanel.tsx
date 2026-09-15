@@ -762,9 +762,6 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
                 ...((objSelectedDay?.intLateMinutes ?? 0) > 0 ? [[t("late_by", "Late By"), `${objSelectedDay?.intLateMinutes} min`]] : []),
                 ...((objSelectedDay?.intEarlyMinutes ?? 0) > 0 ? [[t("early_by", "Early By"), `${objSelectedDay?.intEarlyMinutes} min`]] : []),
                 [t("paid_day", "Paid Day"), objSelectedDay ? (objSelectedDay.blnIsPaid ? t("yes", "Yes") : t("no", "No")) : "—"],
-                ...(objOtBalance?.blnOtCompOffConversionEnabled
-                  ? [[t("ot_balance_towards_compoff", "OT Balance (Comp-Off)"), `${formatDuration(objOtBalance.decAccumulatedOtHours)} / ${formatDuration(objOtBalance.decOtMinHours)}`]]
-                  : []),
               ].map(([strLabel, strValue]) => (
                 <Box key={strLabel} sx={{ px: 1, py: 0.6, minHeight: 52, minWidth: 86, bgcolor: "action.hover", borderRadius: "10px", flex: "1 1 86px", overflow: "hidden" }}>
                   <Typography variant="caption" lineHeight={1.1} color="text.secondary" noWrap>{strLabel}</Typography>
@@ -856,6 +853,16 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
                 </Box>
               ))}
             </Box>
+            {objOtBalance?.blnOtCompOffConversionEnabled ? (
+              <Typography
+                variant="caption"
+                data-control-id="ess.my-attendance.ot-balance.note"
+                color="text.secondary"
+                sx={{ display: "block", mt: 0.75 }}
+              >
+                {t("ot_balance_towards_compoff", "OT Balance toward Comp-Off")}: {formatDuration(objOtBalance.decAccumulatedOtHours)} / {formatDuration(objOtBalance.decOtMinHours)}
+              </Typography>
+            ) : null}
           </Paper>
         </Grid>
       </Grid>
