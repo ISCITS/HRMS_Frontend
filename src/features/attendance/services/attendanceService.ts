@@ -5,6 +5,7 @@ import { createApiRequestError, requestEncryptedApi } from "@/Common/utils/apiEr
 import type {
   AttendanceDayDto,
   MyShiftDto,
+  OtBalanceDto,
   PunchRequest,
   RosterRequest,
   ShiftDto,
@@ -294,6 +295,16 @@ export const attendanceService = {
     return objResult.Data ?? null;
   },
 
+  async getMyOtBalance(intEmployeeID?: number): Promise<OtBalanceDto> {
+    const strPath = intEmployeeID ? `/ess/attendance/ot-balance?employee_id=${intEmployeeID}` : "/ess/attendance/ot-balance";
+    const objResult = await requestApi<OtBalanceDto>({
+      strPath,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: ATTENDANCE_VIEW,
+    });
+    return objResult.Data;
+  },
+
   // Employees selectable in the "My Attendance" Employee dropdown: the caller, plus anyone who
   // reports to them as line/reporting manager. Empty-list-of-one (self only) means the caller
   // manages nobody, so the panel hides the dropdown entirely.
@@ -332,6 +343,15 @@ export const attendanceService = {
       strMenuAction: ATTENDANCE_VIEW,
     });
     return objResult.Data ?? null;
+  },
+
+  async getAttendanceReviewOtBalance(intEmployeeID: number): Promise<OtBalanceDto> {
+    const objResult = await requestApi<OtBalanceDto>({
+      strPath: `/attendance/review/ot-balance?employee_id=${intEmployeeID}`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: ATTENDANCE_VIEW,
+    });
+    return objResult.Data;
   },
 
   // ---- HR / Admin ----

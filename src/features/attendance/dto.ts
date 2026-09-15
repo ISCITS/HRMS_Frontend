@@ -70,6 +70,13 @@ export type MyShiftDto = {
   blnIsActive: boolean;
 };
 
+export type OtBalanceDto = {
+  decAccumulatedOtHours: number;
+  decOtMinHours: number;
+  blnOtCompOffConversionEnabled: boolean;
+  dtLastAccrualDate: string | null;
+};
+
 export type PunchRequest = {
   strDirection?: string | null;
   strSource: string;
