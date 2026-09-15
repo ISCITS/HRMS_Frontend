@@ -27,6 +27,8 @@ import { LATE_ARRIVAL_BADGE_COLOR } from "@/features/attendance/dto";
 import { useAttendancePoc } from "@/features/attendance/hooks/useAttendancePoc";
 import type { AttendancePolicyAssignmentEmployee, AttendancePolicyAssignmentHistory, AttendancePolicyFormValues, DailyAttendanceFinalizeResult, DailyAttendanceRow, DailyAttendanceSaveRow } from "@/features/attendance/types";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { leaveService } from "@/features/leave/services/leaveService";
+import type { LeaveTypeDto } from "@/features/leave/types";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { authHelpers } from "@/lib/auth";
 import { masterApiService } from "@/services/master/MasterApiService";
@@ -49,6 +51,7 @@ const objPolicySchema: yup.ObjectSchema<AttendancePolicyFormValues> = yup.object
   decAbsentThresholdHours: yup.number().min(0).max(24).required(), blnInPunchRequired: yup.boolean().required(), blnOutPunchRequired: yup.boolean().required(),
   strMissingPunchTreatmentCode: yup.mixed<AttendancePolicyFormValues["strMissingPunchTreatmentCode"]>().oneOf(["EXCEPTION", "ABSENT", "HALF_DAY", "IGNORE"]).required(),
   intWorkHoursRoundingMinutes: yup.number().min(0).max(60).required(), blnOtEnabled: yup.boolean().required(), decOtMinHours: yup.number().min(0).max(24).required(),
+  blnOtCompOffConversionEnabled: yup.boolean().required(), intCompOffLeaveTypeID: yup.number().nullable().defined(),
   blnLateDeductionEnabled: yup.boolean().required(), intLateArrivalDays: yup.number().nullable().defined().min(1),
   strLateArrivalDeductionType: yup.mixed<"HALF_DAY" | "FULL_DAY">().oneOf(["HALF_DAY", "FULL_DAY"]).nullable().defined(),
   strWeeklyOffPattern: yup.string().matches(/^[01]{7}$/).required(),
@@ -70,13 +73,17 @@ const objPolicySchema: yup.ObjectSchema<AttendancePolicyFormValues> = yup.object
   .test("late-deduction", "Number of late arrival days and deduction type are required when late deduction is enabled.", function (objValue) {
     if (!objValue?.blnLateDeductionEnabled || (!!objValue.intLateArrivalDays && !!objValue.strLateArrivalDeductionType)) return true;
     return this.createError({ path: "intLateArrivalDays" });
+  })
+  .test("ot-compoff-conversion", "Minimum OT Hours and a Comp-Off Leave Type are required when OT-to-Comp-Off conversion is enabled.", function (objValue) {
+    if (!objValue?.blnOtCompOffConversionEnabled || (!!objValue.decOtMinHours && !!objValue.intCompOffLeaveTypeID)) return true;
+    return this.createError({ path: "intCompOffLeaveTypeID" });
   });
 
 function getEmptyPolicy(): AttendancePolicyFormValues {
   return { intCompanyID: authHelpers.getCompanyID(), strPolicyCode: "", strPolicyName: "", strDescription: null, intLocationID: null, intGradeID: null, intEmploymentTypeID: null,
     intLateGraceMinutes: 0, intEarlyDepartureGraceMinutes: 0, strInTime: null, strOutTime: null, decFullDayThresholdHours: 8, decHalfDayThresholdHours: 4, decAbsentThresholdHours: 0,
     blnInPunchRequired: true, blnOutPunchRequired: true, strMissingPunchTreatmentCode: "EXCEPTION", intWorkHoursRoundingMinutes: 0,
-    blnOtEnabled: false, decOtMinHours: 0, blnLateDeductionEnabled: false, intLateArrivalDays: 3, strLateArrivalDeductionType: "HALF_DAY", strWeeklyOffPattern: "0000011", blnIsDefault: false,
+    blnOtEnabled: false, decOtMinHours: 0, blnOtCompOffConversionEnabled: false, intCompOffLeaveTypeID: null, blnLateDeductionEnabled: false, intLateArrivalDays: 3, strLateArrivalDeductionType: "HALF_DAY", strWeeklyOffPattern: "0000011", blnIsDefault: false,
     dtEffectiveFrom: strToday, dtEffectiveTo: null, blnIsActive: true, strRemarks: null, lstTexts: [] };
 }
 
@@ -125,6 +132,7 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
   const [blnAssignmentHistoryOpen, setBlnAssignmentHistoryOpen] = useState(false);
   const [lstDepartmentOptions, setLstDepartmentOptions] = useState<Array<[number, string]>>([]);
   const [lstLanguageOptions, setLstLanguageOptions] = useState<Array<{ intID: number; strLabel: string; strCode?: string | null }>>([]);
+  const [lstLeaveTypeOptions, setLstLeaveTypeOptions] = useState<LeaveTypeDto[]>([]);
   const [blnPolicyTranslating, setBlnPolicyTranslating] = useState(false);
   const [strDate, setStrDate] = useState(strToday); const [strEmployeeSearch, setStrEmployeeSearch] = useState("");
   const [strDepartment, setStrDepartment] = useState(""); const [strLocation, setStrLocation] = useState("");
@@ -144,6 +152,7 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
   const blnActionWorking = blnSaving || blnDetailLoading || blnOverrideSubmitting || blnFinalizeSubmitting || blnFillSubmitting;
   const { control, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<AttendancePolicyFormValues>({ resolver: yupResolver(objPolicySchema) as Resolver<AttendancePolicyFormValues>, defaultValues: getEmptyPolicy() });
   const strPattern = watch("strWeeklyOffPattern"); const blnOtEnabled = watch("blnOtEnabled"); const blnLateDeductionEnabled = watch("blnLateDeductionEnabled");
+  const blnOtCompOffConversionEnabled = watch("blnOtCompOffConversionEnabled");
 
   const lstDepartmentsFromDailyRows = useMemo(() => Array.from(new Map(lstDailyRows.filter((objRow) => objRow.intDepartmentID).map((objRow) => [objRow.intDepartmentID, objRow.strDepartmentName])).entries()), [lstDailyRows]);
   const lstDepartments = lstDepartmentOptions.length > 0 ? lstDepartmentOptions : lstDepartmentsFromDailyRows;
@@ -153,11 +162,12 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
   useEffect(() => {
     if (strView !== "policy") return;
     let blnMounted = true;
-    void Promise.allSettled([masterApiService.getDepartments(), masterApiService.getDepartmentFormOptions()])
-      .then(([objDepartmentResult, objOptionResult]) => {
+    void Promise.allSettled([masterApiService.getDepartments(), masterApiService.getDepartmentFormOptions(), leaveService.listLeaveTypes()])
+      .then(([objDepartmentResult, objOptionResult, objLeaveTypeResult]) => {
         if (!blnMounted) return;
         setLstDepartmentOptions(objDepartmentResult.status === "fulfilled" ? objDepartmentResult.value.Data.filter((objDepartment) => objDepartment.blnIsActive).map((objDepartment) => [objDepartment.intID, objDepartment.strDepartmentName]) : []);
         setLstLanguageOptions(objOptionResult.status === "fulfilled" ? objOptionResult.value.Data.lstLanguages : []);
+        setLstLeaveTypeOptions(objLeaveTypeResult.status === "fulfilled" ? objLeaveTypeResult.value.filter((objLeaveType) => objLeaveType.blnIsActive) : []);
       });
     return () => { blnMounted = false; };
   }, [strView]);
@@ -507,6 +517,32 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
       <Grid item xs={12} md={4}><Controller name="blnOtEnabled" control={control} render={({ field }) => <Box sx={{ border: "1px solid #d9e6ef", borderRadius: "9px", px: 1.25, height: 48, display: "flex", alignItems: "center" }}><FormControlLabel control={<Switch data-control-id="attendance.policy.ot.switch" checked={field.value} onChange={field.onChange} />} label={t("overtime_enabled", "Overtime")} sx={{ m: 0 }} /></Box>} /></Grid>
       <Grid item xs={12} md={4}><Controller name="decOtMinHours" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance.policy.ot-min.input" disabled={!blnOtEnabled} label={t("minimum_overtime", "Minimum OT Hours")} type="number" fullWidth />} /></Grid>
       <Grid item xs={12} md={4}><Box sx={{ border: "1px solid #d9e6ef", borderRadius: "9px", px: 1.25, height: 48, display: "flex", alignItems: "center", overflow: "hidden" }}><Typography variant="caption" color="text.secondary" noWrap>{t("weekly_off_preview", "Weekly off")}: {lstWeekdays.filter((_,intIndex) => strPattern[intIndex] === "1").join(", ") || t("none", "None")}</Typography></Box></Grid>
+      <Grid item xs={12} md={4}><Controller name="blnOtCompOffConversionEnabled" control={control} render={({ field }) => <Box sx={{ border: "1px solid #d9e6ef", borderRadius: "9px", px: 1.25, height: 48, display: "flex", alignItems: "center" }}><FormControlLabel control={<Switch data-control-id="attendance.policy.ot-compoff.switch" checked={field.value} disabled={!blnOtEnabled} onChange={(objEvent) => { field.onChange(objEvent); if (!objEvent.target.checked) setValue("intCompOffLeaveTypeID", null, { shouldDirty: true }); }} />} label={t("ot_compoff_conversion_enabled", "Auto Comp-Off from OT")} sx={{ m: 0 }} /></Box>} /></Grid>
+      <Grid item xs={12} md={4}>
+        <Controller
+          name="intCompOffLeaveTypeID"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              value={field.value ?? ""}
+              onChange={(objEvent) => field.onChange(objEvent.target.value ? Number(objEvent.target.value) : null)}
+              select
+              data-control-id="attendance.policy.ot-compoff.leave-type.select"
+              disabled={!blnOtCompOffConversionEnabled}
+              label={t("compoff_leave_type", "Comp-Off Leave Type")}
+              error={!!errors.intCompOffLeaveTypeID}
+              helperText={errors.intCompOffLeaveTypeID?.message}
+              fullWidth
+            >
+              <MenuItem value="">{t("select", "Select")}</MenuItem>
+              {lstLeaveTypeOptions.map((objLeaveType) => (
+                <MenuItem key={objLeaveType.intID} value={objLeaveType.intID}>{objLeaveType.strTypeName}</MenuItem>
+              ))}
+            </TextField>
+          )}
+        />
+      </Grid>
       <Grid item xs={12}><Box sx={{ border: "1px solid #d9e6ef", borderRadius: "9px", px: 1.25, py: 0.75, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 0.5 }}>{lstWeekdays.map((strDay,intIndex) => <FormControlLabel sx={{ mr: 1 }} key={strDay} control={<Checkbox size="small" data-control-id={`attendance.policy.weekly-off.${intIndex}.checkbox`} checked={strPattern[intIndex] === "1"} onChange={(objEvent) => { const lstPattern = strPattern.split(""); lstPattern[intIndex] = objEvent.target.checked ? "1" : "0"; setValue("strWeeklyOffPattern", lstPattern.join(""), { shouldDirty: true }); }} />} label={t(`weekday_${strDay.toLowerCase()}`,strDay)} />)}</Box></Grid>
     </Grid></Paper></Grid>
     <Grid item xs={12} lg={6}><Paper variant="outlined" sx={{ p: 1.5, height: "100%" }}><Typography fontWeight={800} sx={{ mb: 1 }}>{t("effective_dates_status", "Effective Dates and Status")}</Typography><Grid container spacing={1} alignItems="center"><Grid item xs={12} md={6}><Controller name="dtEffectiveFrom" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance.policy.effective-from.input" type="date" label={t("effective_from", "Effective From")} InputLabelProps={{ shrink: true }} fullWidth />} /></Grid><Grid item xs={12} md={6}><Controller name="dtEffectiveTo" control={control} render={({ field }) => <TextField {...field} value={field.value ?? ""} data-control-id="attendance.policy.effective-to.input" type="date" label={t("effective_to", "Effective To")} InputLabelProps={{ shrink: true }} fullWidth error={!!errors.dtEffectiveTo} helperText={errors.dtEffectiveTo?.message} />} /></Grid><Grid item xs={12} md={6}><Controller name="blnIsDefault" control={control} render={({ field }) => <Box sx={{ border: "1px solid #d9e6ef", borderRadius: "9px", px: 1.25, height: 48, display: "flex", alignItems: "center" }}><FormControlLabel control={<Switch data-control-id="attendance.policy.default.switch" checked={field.value} onChange={field.onChange} />} label={t("default_policy", "Default")} sx={{ m: 0 }} /></Box>} /></Grid><Grid item xs={12} md={6}><Controller name="blnIsActive" control={control} render={({ field }) => <Box sx={{ border: "1px solid #d9e6ef", borderRadius: "9px", px: 1.25, height: 48, display: "flex", alignItems: "center" }}><FormControlLabel control={<Switch data-control-id="attendance.policy.active.switch" checked={field.value} onChange={field.onChange} />} label={t("active", "Active")} sx={{ m: 0 }} /></Box>} /></Grid><Grid item xs={12}><Controller name="strRemarks" control={control} render={({ field }) => <TextField {...field} value={field.value ?? ""} data-control-id="attendance.policy.remarks.input" label={t("remarks", "Remarks")} fullWidth />} /></Grid></Grid></Paper></Grid>

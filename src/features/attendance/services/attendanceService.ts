@@ -81,6 +81,8 @@ function toAttendancePolicyFormValues(objPolicy: AttendancePolicyFormValues): At
     intWorkHoursRoundingMinutes: objPolicy.intWorkHoursRoundingMinutes,
     blnOtEnabled: objPolicy.blnOtEnabled,
     decOtMinHours: objPolicy.decOtMinHours,
+    blnOtCompOffConversionEnabled: objPolicy.blnOtCompOffConversionEnabled,
+    intCompOffLeaveTypeID: objPolicy.intCompOffLeaveTypeID,
     blnLateDeductionEnabled: objPolicy.blnLateDeductionEnabled,
     intLateArrivalDays: objPolicy.intLateArrivalDays,
     strLateArrivalDeductionType: objPolicy.strLateArrivalDeductionType,
