@@ -2,12 +2,10 @@ import { redirect } from "next/navigation";
 
 type MastersEditTaxRegimePageProps = {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ mode?: string }>;
 };
 
-export default async function MastersEditTaxRegimePage({ params, searchParams }: MastersEditTaxRegimePageProps) {
+export default async function MastersEditTaxRegimePage({ params }: MastersEditTaxRegimePageProps) {
   const { id } = await params;
-  const objSearchParams = searchParams ? await searchParams : undefined;
-  const strQuery = objSearchParams?.mode ? `?mode=${encodeURIComponent(objSearchParams.mode)}` : "";
+  const strQuery = "";
   redirect(`/payroll/tax-regimes/edit/${id}${strQuery}`);
 }

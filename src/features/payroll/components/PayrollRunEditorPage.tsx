@@ -2,8 +2,10 @@
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   MenuItem,
@@ -25,12 +27,10 @@ import {
 import type {
   PayrollRunFormOptions,
   PayrollRunFormValues,
-  PayrollRunStatus,
 } from "@/features/payroll/types";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 const lstPayrollRunModuleCodes = ["PAYROLL_RUN", "PAYROLL_RUNS", "PAYROLL_PROCESS", "PAYROLL_PROCESSES"];
-const lstEditableRunStatuses: PayrollRunStatus[] = ["Open", "Submitted", "Approved"];
 
 function formatPayrollMonthLabel(strDate: string) {
   if (!strDate) {
@@ -86,6 +86,11 @@ export default function PayrollRunEditorPage() {
     return blnUseCycleLabel ? `${strMonthLabel} ${strCycleLabel}` : `${strMonthLabel} Payroll`;
   }
 
+  const strSelectedRunTypeCode = (
+    objOptions?.lstPayrollRunTypeLookups ?? []
+  ).find((dicOption) => dicOption.intID === dicForm.intRunTypeID)?.strValueCode;
+  const blnIsVariablePayRun = strSelectedRunTypeCode === "VARIABLE_PAY";
+
   function validateForm() {
     if (!dicForm.intPayrollCycleID) {
       return t("payroll_cycle_required", "Payroll cycle is required.");
@@ -98,6 +103,12 @@ export default function PayrollRunEditorPage() {
     }
     if (dicForm.strScopeType === "SelectedEmployee" && !dicForm.intScopedEmployeeID) {
       return t("scoped_employee_required", "Employee is required for selected employee payroll run.");
+    }
+    if (blnIsVariablePayRun && !dicForm.intVariablePayTypeID) {
+      return t("variable_pay_type_required", "Variable Pay Type is required for a Variable Pay run.");
+    }
+    if (blnIsVariablePayRun && !dicForm.dtPaymentDate) {
+      return t("payment_date_required", "Payment Date is required for a Variable Pay run.");
     }
     return "";
   }
@@ -162,6 +173,10 @@ export default function PayrollRunEditorPage() {
     });
   }, [dicForm.dtPayrollMonth, dicForm.intPayrollCycleID, dicForm.strProcessFor, objOptions]);
 
+  const strResolvedPayrollGroupLabel =
+    objOptions?.lstPayrollCycles.find((dicItem) => dicItem.intID === dicForm.intPayrollCycleID)
+      ?.strPayrollGroupName ?? t("not_selected", "Select a payroll schedule first");
+
   async function saveRun() {
     if (!blnCanAdd) {
       return;
@@ -180,7 +195,7 @@ export default function PayrollRunEditorPage() {
       const dicRun = await payrollRunService.createPayrollRun(dicForm);
       setStrSuccess(t("save_success", "Payroll run saved successfully."));
       window.setTimeout(() => {
-        objRouter.push(`/payroll/runs/${dicRun.intID}`);
+        objRouter.push(`/payroll/runs/${dicRun.strRecordUUID}`);
       }, 500);
     } catch (objError) {
       setStrError(
@@ -193,25 +208,25 @@ export default function PayrollRunEditorPage() {
 
   return (
     <Stack
-      spacing={2.5}
+      spacing={1.5}
       className={payrollStyles.page}
       sx={{
         minHeight: "100%",
         height: "auto",
         overflowX: "hidden",
         overflowY: "visible",
-        pb: 3,
+        pb: 2,
       }}
     >
       <Paper
         sx={{
-          borderRadius: "28px",
-          p: { xs: 2, md: 3 },
+          borderRadius: "var(--app-card-radius)",
+          p: "10px",
           border: "1px solid rgba(148,163,184,0.18)",
           background: "linear-gradient(135deg, #f8fbff 0%, #eef7f4 45%, #f8fafc 100%)",
         }}
       >
-        <Stack spacing={2}>
+        <Stack spacing={1.25}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
             <Box>
               <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
@@ -259,13 +274,13 @@ export default function PayrollRunEditorPage() {
 
       <Paper
         sx={{
-          borderRadius: "24px",
-          p: { xs: 2, md: 3 },
+          borderRadius: "var(--app-card-radius)",
+          p: "10px",
           border: "1px solid rgba(187, 213, 232, 0.7)",
           boxShadow: "var(--app-shadow-soft)",
         }}
       >
-        <Stack spacing={2.5}>
+        <Stack spacing={1.5}>
           <Box>
             <Typography sx={{ color: "#0f172a", fontWeight: 800, fontSize: "1.05rem" }}>
               {t("basic_information", "Basic Information")}
@@ -278,7 +293,7 @@ export default function PayrollRunEditorPage() {
           <Box
             sx={{
               display: "grid",
-              gap: 2,
+              gap: 1.25,
               gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
             }}
           >
@@ -313,25 +328,9 @@ export default function PayrollRunEditorPage() {
               onChange={(objEvent) => updateField("strRunName", objEvent.target.value)}
               disabled={blnFieldDisabled}
               controlId="payroll.run-editor.run-name.input"
+              helperText={t("run_name_help", "Leave blank to auto-generate from the payroll month and schedule.")}
               fullWidth
             />
-            <TextField
-              select
-              label={t("status", "Status")}
-              value={dicForm.strRunStatus}
-              onChange={(objEvent) =>
-                updateField("strRunStatus", objEvent.target.value as PayrollRunStatus)
-              }
-              disabled={blnFieldDisabled}
-              controlId="payroll.run-editor.status.select"
-              fullWidth
-            >
-              {lstEditableRunStatuses.map((strStatus) => (
-                <MenuItem key={strStatus} value={strStatus}>
-                  {strStatus}
-                </MenuItem>
-              ))}
-            </TextField>
             <TextField
               select
               label={t("run_scope", "Process For")}
@@ -349,31 +348,47 @@ export default function PayrollRunEditorPage() {
               disabled={blnFieldDisabled}
               fullWidth
             >
+              <MenuItem value="PayrollGroup">{t("scope_payroll_group", "Payroll Group")}</MenuItem>
               <MenuItem value="AllEmployees">{t("scope_all", "All Employees")}</MenuItem>
               <MenuItem value="SelectedEmployees">{t("scope_selected_employee", "Selected Employees")}</MenuItem>
-              <MenuItem value="PayrollGroup">{t("scope_payroll_group", "Payroll Group")}</MenuItem>
             </TextField>
-            {dicForm.strProcessFor === "SelectedEmployees" ? <TextField
-              select
-              label={t("scope_employee", "Employee")}
-              value={dicForm.intScopedEmployeeID}
-              controlId="payroll.run-editor.employee.select"
-              onChange={(objEvent) =>
-                updateField(
-                  "intScopedEmployeeID",
-                  objEvent.target.value ? Number(objEvent.target.value) : ""
-                )
-              }
-              disabled={blnFieldDisabled || dicForm.strScopeType !== "SelectedEmployee"}
-              fullWidth
-            >
-              <MenuItem value="">{t("select_employee", "Select employee")}</MenuItem>
-              {(objOptions?.lstEmployees ?? []).map((dicEmployee) => (
-                <MenuItem key={dicEmployee.intID} value={dicEmployee.intID}>
-                  {dicEmployee.strCode} - {dicEmployee.strLabel}
-                </MenuItem>
-              ))}
-            </TextField> : null}
+            {dicForm.strProcessFor === "PayrollGroup" ? (
+              <TextField
+                label={t("resolved_payroll_group", "Payroll Group")}
+                value={strResolvedPayrollGroupLabel}
+                disabled
+                fullWidth
+                helperText={t("resolved_payroll_group_help", "Derived from the selected payroll schedule.")}
+              />
+            ) : null}
+            {dicForm.strProcessFor === "SelectedEmployees" ? (
+              <Autocomplete
+                options={objOptions?.lstEmployees ?? []}
+                value={(objOptions?.lstEmployees ?? []).find((dicEmployee) => dicEmployee.intID === dicForm.intScopedEmployeeID) ?? null}
+                getOptionLabel={(dicEmployee) => `${dicEmployee.strCode} - ${dicEmployee.strLabel}`}
+                isOptionEqualToValue={(dicA, dicB) => dicA.intID === dicB.intID}
+                onChange={(_objEvent, dicSelected) => updateField("intScopedEmployeeID", dicSelected ? dicSelected.intID : "")}
+                disabled={blnFieldDisabled || dicForm.strScopeType !== "SelectedEmployee"}
+                fullWidth
+                renderInput={(objParams) => (
+                  <TextField
+                    {...objParams}
+                    label={t("scope_employee", "Employee")}
+                    placeholder={t("search_employee", "Search employee...")}
+                    controlId="payroll.run-editor.employee.select"
+                    InputProps={{
+                      ...objParams.InputProps,
+                      startAdornment: (
+                        <>
+                          <SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />
+                          {objParams.InputProps.startAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
+              />
+            ) : null}
             <TextField
               type="date"
               label={t("payroll_month", "Payroll Month")}
@@ -383,6 +398,76 @@ export default function PayrollRunEditorPage() {
               disabled={blnFieldDisabled}
               controlId="payroll.run-editor.payroll-month.input"
               fullWidth
+            />
+            <TextField
+              select
+              label={t("run_type", "Run Type")}
+              value={dicForm.intRunTypeID}
+              controlId="payroll.run-editor.run-type.select"
+              onChange={(objEvent) =>
+                setDicForm((dicPrevious) => ({
+                  ...dicPrevious,
+                  intRunTypeID: objEvent.target.value ? Number(objEvent.target.value) : "",
+                }))
+              }
+              disabled={blnFieldDisabled}
+              fullWidth
+              helperText={t("run_type_help", "Regular Payroll runs normal salary; Variable Pay processes Monthly Variable Pay amounts only.")}
+            >
+              <MenuItem value="">{t("select_run_type", "Select run type")}</MenuItem>
+              {(objOptions?.lstPayrollRunTypeLookups ?? []).map((dicOption) => (
+                <MenuItem key={dicOption.intID} value={dicOption.intID}>
+                  {dicOption.strDisplayName}
+                </MenuItem>
+              ))}
+            </TextField>
+            {blnIsVariablePayRun ? (
+              <TextField
+                select
+                required
+                label={t("variable_pay_type", "Variable Pay Type")}
+                value={dicForm.intVariablePayTypeID}
+                controlId="payroll.run-editor.variable-pay-type.select"
+                onChange={(objEvent) =>
+                  updateField(
+                    "intVariablePayTypeID",
+                    objEvent.target.value ? Number(objEvent.target.value) : ""
+                  )
+                }
+                disabled={blnFieldDisabled}
+                fullWidth
+              >
+                <MenuItem value="">{t("select_variable_pay_type", "Select Variable Pay Type")}</MenuItem>
+                {(objOptions?.lstVariablePayTypes ?? []).map((dicOption) => (
+                  <MenuItem key={dicOption.intID} value={dicOption.intID}>
+                    {dicOption.strDisplayName}
+                  </MenuItem>
+                ))}
+              </TextField>
+            ) : null}
+            {blnIsVariablePayRun ? (
+              <TextField
+                type="date"
+                required
+                label={t("payment_date", "Payment Date")}
+                value={dicForm.dtPaymentDate}
+                onChange={(objEvent) => updateField("dtPaymentDate", objEvent.target.value)}
+                InputLabelProps={{ shrink: true }}
+                disabled={blnFieldDisabled}
+                controlId="payroll.run-editor.payment-date.input"
+                fullWidth
+              />
+            ) : null}
+            <TextField
+              label={t("remarks", "Remarks")}
+              value={dicForm.strRemarks}
+              onChange={(objEvent) => updateField("strRemarks", objEvent.target.value)}
+              disabled={blnFieldDisabled}
+              controlId="payroll.run-editor.remarks.input"
+              multiline
+              minRows={2}
+              fullWidth
+              sx={{ gridColumn: { xs: "auto", md: "1 / -1" } }}
             />
           </Box>
         </Stack>

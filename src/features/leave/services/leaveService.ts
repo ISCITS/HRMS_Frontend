@@ -3,11 +3,15 @@
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { createApiRequestError, requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
 import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
+import type { FileUploadProgressHandler } from "@/lib/fileUploadService";
+import { openBlobUrlInNewTab } from "@/lib/openBlobUrlInNewTab";
 import type {
   LeaveApplicationDto,
   LeaveApplyRequest,
   LeaveApplicationAttachmentDto,
   LeaveBalanceDto,
+  LeaveLedgerDto,
+  LedgerEmployeeDto,
   LeaveDecisionRequest,
   LeaveDraftRequest,
   LeaveLookups,
@@ -20,7 +24,9 @@ import type {
   LeaveRouteStepDto,
   LeaveTimelineDto,
   LeaveTypeAggregate,
+  LeaveTypeAggregateEnvelope,
   LeaveTypeDto,
+  RestrictedHolidayDto,
   LeaveTypeEnrichedDto,
   LeaveTypeRequest,
   LeaveTypeUsageDto,
@@ -76,9 +82,9 @@ export const leaveService = {
     return objResult.Data ?? {};
   },
 
-  async getLeaveTypeAggregate(intLeaveTypeID: number): Promise<LeaveTypeAggregate> {
-    const objResult = await requestApi<LeaveTypeAggregate>({
-      strPath: `/leave/leave-types/${intLeaveTypeID}`,
+  async getLeaveTypeAggregate(strLeaveTypeID: string): Promise<LeaveTypeAggregateEnvelope> {
+    const objResult = await requestApi<LeaveTypeAggregateEnvelope>({
+      strPath: `/leave/leave-types/${strLeaveTypeID}`,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: LEAVE_VIEW,
     });
@@ -95,9 +101,9 @@ export const leaveService = {
     return objResult.Data;
   },
 
-  async updateLeaveTypeAggregate(intLeaveTypeID: number, objPayload: LeaveTypeAggregate): Promise<LeaveTypeAggregate> {
+  async updateLeaveTypeAggregate(strLeaveTypeID: string, objPayload: LeaveTypeAggregate): Promise<LeaveTypeAggregate> {
     const objResult = await requestApi<LeaveTypeAggregate>({
-      strPath: `/leave/leave-types/${intLeaveTypeID}`,
+      strPath: `/leave/leave-types/${strLeaveTypeID}`,
       strMethod: ApiRequestMethod.Put,
       objBody: objPayload,
       strMenuAction: LEAVE_MANAGE,
@@ -222,10 +228,49 @@ export const leaveService = {
     return objResult.Data ?? [];
   },
 
+  async getRestrictedHolidays(): Promise<RestrictedHolidayDto[]> {
+    const objResult = await requestApi<RestrictedHolidayDto[]>({
+      strPath: "/ess/leave/restricted-holidays",
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: LEAVE_VIEW,
+    });
+    return objResult.Data ?? [];
+  },
+
   // ---- ESS: my balance ----
   async getMyBalances(): Promise<LeaveBalanceDto[]> {
     const objResult = await requestApi<LeaveBalanceDto[]>({
       strPath: "/ess/leave/balance",
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: LEAVE_VIEW,
+    });
+    return objResult.Data ?? [];
+  },
+
+  async getMyLedger(intLeaveYear: number, intEmployeeID?: number | null): Promise<LeaveLedgerDto[]> {
+    const strEmployee = intEmployeeID ? `&employee_id=${intEmployeeID}` : "";
+    const objResult = await requestApi<LeaveLedgerDto[]>({
+      strPath: `/ess/leave/ledger?leave_year=${intLeaveYear}${strEmployee}`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: LEAVE_VIEW,
+    });
+    return objResult.Data ?? [];
+  },
+
+  // HR: view any employee's ledger (gated by the Leave view right on the backend).
+  async getHrLedger(intLeaveYear: number, intEmployeeID: number): Promise<LeaveLedgerDto[]> {
+    const objResult = await requestApi<LeaveLedgerDto[]>({
+      strPath: `/leave/ledger?leave_year=${intLeaveYear}&employee_id=${intEmployeeID}`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: LEAVE_VIEW,
+    });
+    return objResult.Data ?? [];
+  },
+
+  // Employees whose ledger the logged-in user may view: themselves + their direct reports (line/reporting manager).
+  async getLedgerEmployees(): Promise<LedgerEmployeeDto[]> {
+    const objResult = await requestApi<LedgerEmployeeDto[]>({
+      strPath: "/ess/leave/ledger/employees",
       strMethod: ApiRequestMethod.Get,
       strMenuAction: LEAVE_VIEW,
     });
@@ -323,7 +368,18 @@ export const leaveService = {
     return objResult.Data;
   },
 
-  async uploadMyLeaveAttachment(intApplicationID: number, objFile: File): Promise<LeaveApplicationAttachmentDto> {
+  // Approved future-dated leave: routes a withdrawal request back through the approval chain.
+  async requestWithdrawApprovedLeave(intApplicationID: number, strReason: string): Promise<LeaveApplicationDto> {
+    const objResult = await requestApi<LeaveApplicationDto>({
+      strPath: `/ess/leave/applications/${intApplicationID}/request-withdrawal`,
+      strMethod: ApiRequestMethod.Post,
+      objBody: { strReason },
+      strMenuAction: LEAVE_MANAGE,
+    });
+    return objResult.Data;
+  },
+
+  async uploadMyLeaveAttachment(intApplicationID: number, objFile: File, fnOnProgress?: FileUploadProgressHandler): Promise<LeaveApplicationAttachmentDto> {
     const objFormData = new FormData();
     objFormData.append("objFile", objFile);
     try {
@@ -332,6 +388,13 @@ export const leaveService = {
         url: `${ApiRoutePrefix.ApiV1}/ess/leave/applications/${intApplicationID}/attachments`,
         data: objFormData,
         csrfMenuAction: LEAVE_MANAGE,
+        onUploadProgress: fnOnProgress
+          ? (objProgressEvent) => {
+              if (objProgressEvent.total) {
+                fnOnProgress(Math.min(100, Math.round((objProgressEvent.loaded * 100) / objProgressEvent.total)));
+              }
+            }
+          : undefined,
       } as ApiRequestConfig);
       return "Data" in objResponse.data ? objResponse.data.Data : objResponse.data;
     } catch (objError) {
@@ -345,6 +408,25 @@ export const leaveService = {
       strMethod: ApiRequestMethod.Delete,
       strMenuAction: LEAVE_MANAGE,
     });
+  },
+
+  // The GET attachment endpoint already exists on the backend (returns the raw file inline, used
+  // for download); this just fetches it as a blob and opens it in a new tab instead of forcing a
+  // save-as prompt, matching ReimbursementProofViewer's fetch-then-window.open preview pattern.
+  async previewMyLeaveAttachment(intApplicationID: number, intAttachmentID: number): Promise<void> {
+    try {
+      const objResponse = await axiosInstance.request<Blob>({
+        method: ApiRequestMethod.Get,
+        url: `${ApiRoutePrefix.ApiV1}/ess/leave/applications/${intApplicationID}/attachments/${intAttachmentID}`,
+        responseType: "blob",
+        csrfMenuAction: LEAVE_VIEW,
+      } as ApiRequestConfig);
+      const strUrl = URL.createObjectURL(objResponse.data);
+      openBlobUrlInNewTab(strUrl);
+      window.setTimeout(() => URL.revokeObjectURL(strUrl), 30000);
+    } catch (objError) {
+      throw await createApiRequestError(objError);
+    }
   },
 
   // ---- HR / Manager: approval queue + workflow ----
@@ -418,6 +500,26 @@ export const leaveService = {
     return objResult.Data;
   },
 
+  async cancelApprovedLeave(intApplicationID: number, objPayload: LeaveDecisionRequest): Promise<LeaveApplicationDto> {
+    const objResult = await requestApi<LeaveApplicationDto>({
+      strPath: `/leave/applications/${intApplicationID}/cancel-approved`,
+      strMethod: ApiRequestMethod.Post,
+      objBody: objPayload,
+      strMenuAction: LEAVE_MANAGE,
+    });
+    return objResult.Data;
+  },
+
+  async assignBackupResource(intApplicationID: number, objPayload: { intBackupEmployeeID: number; strReason?: string | null }): Promise<LeaveApplicationDto> {
+    const objResult = await requestApi<LeaveApplicationDto>({
+      strPath: `/leave/applications/${intApplicationID}/backup-resource`,
+      strMethod: ApiRequestMethod.Post,
+      objBody: objPayload,
+      strMenuAction: LEAVE_MANAGE,
+    });
+    return objResult.Data;
+  },
+
   async reassignApplication(intApplicationID: number, objPayload: LeaveReassignRequest): Promise<LeaveApplicationDto> {
     const objResult = await requestApi<LeaveApplicationDto>({
       strPath: `/leave/applications/${intApplicationID}/reassign`,
@@ -448,13 +550,18 @@ export const leaveService = {
   },
 
   async getApplicationRouteSnapshot(intApplicationID: number): Promise<LeaveRouteStepDto[]> {
-    const objResult = await requestApi<LeaveRouteStepDto[] | { lstRoute: LeaveRouteStepDto[] }>({
+    const objResult = await requestApi<
+      LeaveRouteStepDto[] | { lstRoute?: LeaveRouteStepDto[]; objWorkflow?: { lstSteps?: LeaveRouteStepDto[]; lstRouteSnapshot?: LeaveRouteStepDto[] } }
+    >({
       strPath: `/leave/applications/${intApplicationID}/route-snapshot`,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: LEAVE_VIEW,
     });
     const objData = objResult.Data;
-    return Array.isArray(objData) ? objData : objData?.lstRoute ?? [];
+    if (Array.isArray(objData)) return objData;
+    // The backend returns { objApplication, objWorkflow: { lstSteps, lstRouteSnapshot } }; the live
+    // workflow steps carry status, so prefer them and fall back to the immutable submission snapshot.
+    return objData?.objWorkflow?.lstSteps ?? objData?.objWorkflow?.lstRouteSnapshot ?? objData?.lstRoute ?? [];
   },
 
   async listWorkflowExceptions(blnOpenOnly = true): Promise<LeaveWorkflowExceptionDto[]> {

@@ -9,8 +9,14 @@ export type AttendanceDayDto = {
   strLastOut: string | null;
   decWorkedHours: number;
   intLateMinutes: number;
+  intEarlyMinutes: number;
   decOtHours: number;
   blnIsPaid: boolean;
+  blnIsFinalized?: boolean;
+  // True only when strStatus is "holiday" AND this employee has their own approved
+  // Restricted Holiday leave application on this date - lets the ESS calendar show
+  // "Restricted Holiday" instead of a plain "Holiday" chip for that specific day/employee.
+  blnIsMyRestrictedHoliday?: boolean;
   strRemark: string | null;
   strEmployeeCode?: string | null;
   strEmployeeName?: string | null;
@@ -64,6 +70,13 @@ export type MyShiftDto = {
   blnIsActive: boolean;
 };
 
+export type OtBalanceDto = {
+  decAccumulatedOtHours: number;
+  decOtMinHours: number;
+  blnOtCompOffConversionEnabled: boolean;
+  dtLastAccrualDate: string | null;
+};
+
 export type PunchRequest = {
   strDirection?: string | null;
   strSource: string;
@@ -72,74 +85,20 @@ export type PunchRequest = {
   decGeoLng?: number | null;
 };
 
-export type HolidayDto = {
-  intID: number;
-  objRecordUUID?: string | null;
-  intCompanyID?: number | null;
-  intHolidayYear: number;
-  dtHolidayDate: string;
-  strHolidayCode: string;
-  strHolidayName: string;
-  strDisplayName: string;
-  strHolidayTypeCode: string;
-  strHolidayTypeName?: string | null;
-  blnIsPaid: boolean;
-  blnIsOptional: boolean;
-  blnWorkOnHolidayAllowed: boolean;
-  blnCompOffEligible: boolean;
-  blnIsActive: boolean;
-  lstTexts?: HolidayTextDto[];
-  dtAddedOn?: string | null;
-  intAddedBy?: number | null;
-  dtLastModifiedOn?: string | null;
-  intLastModifiedBy?: number | null;
-};
-
-export type HolidayTextDto = {
-  intLanguageID: number;
-  strHolidayName: string;
-};
-
-export type HolidayRequest = {
-  intCompanyID?: number | null;
-  intHolidayYear: number;
-  dtHolidayDate: string;
-  strHolidayCode: string;
-  strHolidayName: string;
-  strHolidayTypeCode: string;
-  blnIsPaid: boolean;
-  blnIsOptional: boolean;
-  blnWorkOnHolidayAllowed: boolean;
-  blnCompOffEligible: boolean;
-  blnIsActive: boolean;
-  intLanguageID?: number | null;
-  lstTexts: HolidayTextDto[];
-};
-
-export type HolidayListFilters = {
-  intYear: number;
-  strSearch?: string;
-  strHolidayTypeCode?: string;
-  blnIsPaid?: boolean;
-  blnIsOptional?: boolean;
-  blnIsActive?: boolean;
-};
-
-export type HolidayFormOptions = {
-  lstLanguages: Array<{ intID: number; strLabel: string; strCode?: string }>;
-  lstHolidayTypes: Array<{ intID: number; strValueCode: string; strDisplayName: string }>;
-  intDefaultLanguageID: number | null;
-  intSecondaryLanguageID: number | null;
-  lstYears: number[];
-};
-
 export const ATTENDANCE_STATUS_COLORS: Record<string, { bg: string; fg: string; short: string }> = {
   present: { bg: "#dcfce7", fg: "#166534", short: "P" },
   half_day: { bg: "#fef9c3", fg: "#854d0e", short: "½" },
   on_leave: { bg: "#dbeafe", fg: "#1e40af", short: "L" },
   lwp: { bg: "#fae8ff", fg: "#86198f", short: "LWP" },
   holiday: { bg: "#ccfbf1", fg: "#115e59", short: "H" },
+  // Frontend-only display key (see attendanceDisplayStatus in EssAttendancePanel) - the
+  // backend always reports strStatus "holiday" for this day; never sent by the API itself.
+  restricted_holiday: { bg: "#ffedd5", fg: "#9a3412", short: "RH" },
   weekly_off: { bg: "#e0e7ff", fg: "#3730a3", short: "WO" },
   absent: { bg: "#fee2e2", fg: "#991b1b", short: "A" },
   on_duty: { bg: "#f1f5f9", fg: "#475569", short: "OD" },
 };
+
+// Overlay badge for a late arrival, shown on top of a day's status color rather than
+// replacing it - kept visually distinct from ATTENDANCE_STATUS_COLORS above.
+export const LATE_ARRIVAL_BADGE_COLOR = { bg: "#f1e4c8", fg: "#7c5a17" };

@@ -6,5 +6,5 @@ type EssLoanAdvanceDetailRouteProps = {
 
 export default async function EssLoanAdvanceDetailRoute({ params }: EssLoanAdvanceDetailRouteProps) {
   const { loanAdvanceId } = await params;
-  return <LoanAdvanceDetailPage intLoanAdvanceID={Number(loanAdvanceId)} strMode="ess" />;
+  return <LoanAdvanceDetailPage strLoanAdvanceID={loanAdvanceId} strMode="ess" />;
 }

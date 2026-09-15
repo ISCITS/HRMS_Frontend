@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { leaveService } from "@/features/leave/services/leaveService";
-import type { LeaveQueueItemDto, TeamCalendarDto } from "@/features/leave/types";
+import type { LeaveApplicationDto, LeaveQueueItemDto, TeamCalendarDto } from "@/features/leave/types";
 
 function fnToISODate(objDate: Date): string {
   return objDate.toISOString().slice(0, 10);
@@ -16,6 +16,7 @@ function fnToISODate(objDate: Date): string {
 export function useLeaveApprovals(blnEnabled: boolean) {
   const [lstQueue, setLstQueue] = useState<LeaveQueueItemDto[]>([]);
   const [lstActioned, setLstActioned] = useState<LeaveQueueItemDto[]>([]);
+  const [lstMyApplications, setLstMyApplications] = useState<LeaveApplicationDto[]>([]);
   const [objTeamCalendar, setObjTeamCalendar] = useState<TeamCalendarDto | null>(null);
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState<string | null>(null);
@@ -31,13 +32,15 @@ export function useLeaveApprovals(blnEnabled: boolean) {
     const dtHorizon = new Date();
     dtHorizon.setDate(dtHorizon.getDate() + 45);
     try {
-      const [lstQueueResult, lstActionedResult, objCalendarResult] = await Promise.all([
+      const [lstQueueResult, lstActionedResult, lstMyApplicationsResult, objCalendarResult] = await Promise.all([
         leaveService.listApplicationQueue("pending"),
         leaveService.listActionedApplications().catch(() => [] as LeaveQueueItemDto[]),
+        leaveService.listMyApplications().catch(() => [] as LeaveApplicationDto[]),
         leaveService.getTeamCalendar(fnToISODate(dtToday), fnToISODate(dtHorizon)).catch(() => null),
       ]);
       setLstQueue(lstQueueResult);
       setLstActioned(lstActionedResult);
+      setLstMyApplications(lstMyApplicationsResult);
       setObjTeamCalendar(objCalendarResult);
     } catch (objError) {
       setStrError((await createApiRequestError(objError)).message);
@@ -50,5 +53,5 @@ export function useLeaveApprovals(blnEnabled: boolean) {
     void fnLoadAll();
   }, [fnLoadAll]);
 
-  return { lstQueue, lstActioned, objTeamCalendar, blnLoading, strError, fnLoadAll };
+  return { lstQueue, lstActioned, lstMyApplications, objTeamCalendar, blnLoading, strError, fnLoadAll };
 }

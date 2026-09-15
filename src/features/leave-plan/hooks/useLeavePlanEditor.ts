@@ -10,7 +10,8 @@ import type {
 
 const objEmptyLanguages: LeavePlanLanguages = { lstLanguages: [], intDefaultLanguageID: 0, intSecondaryLanguageID: null };
 
-export function useLeavePlanEditor(intPlanID?: number) {
+// Accepts the plan's public identifier from the URL; the endpoints dual-accept.
+export function useLeavePlanEditor(intPlanID?: string | number) {
   const [objPlan, setObjPlan] = useState<LeavePlan | null>(null);
   const [lstLeaveTypes, setLstLeaveTypes] = useState<LeaveTypeOption[]>([]);
   const [objLanguages, setObjLanguages] = useState<LeavePlanLanguages>(objEmptyLanguages);

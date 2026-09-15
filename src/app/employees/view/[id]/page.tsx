@@ -8,5 +8,6 @@ type ViewEmployeePageProps = {
 
 export default async function ViewEmployeePage({ params }: ViewEmployeePageProps) {
   const { id } = await params;
-  return <EmployeeEditorScreen strMode="view" intEmployeeID={Number(id)} />;
+  // The segment is the record's public identifier (record_uuid), not the internal row id.
+  return <EmployeeEditorScreen strMode="view" strEmployeeID={id} />;
 }

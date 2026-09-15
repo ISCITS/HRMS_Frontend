@@ -17,6 +17,12 @@ import type {
   EmployeeStatutoryRecord
 } from "@/features/employee/types";
 import { masterApiService, type EmployeeDetailApiRecord } from "@/services/master/MasterApiService";
+import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
+import { createApiRequestError, requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
+import { authHelpers } from "@/lib/auth";
+import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
+import type { FileMetadataDto, ListFilesFilter, UploadFileRequest } from "@/lib/fileUploadService";
+import { openBlobUrlInNewTab } from "@/lib/openBlobUrlInNewTab";
 
 type EmployeeServiceRequestOptions = {
   strMenuAction?: string;
@@ -26,8 +32,39 @@ function normalizeOptionalNumber(intValue: number | ""): number | null {
   return intValue === "" ? null : intValue;
 }
 
+const lstExtendedEmployeeFields: Array<keyof EmployeeFormValues> = [
+  "strFatherOrHusbandName", "strMotherName", "strSpouseName", "strSpouseOccupation",
+  "strBloodGroup", "intNationalityCountryID",
+  "intMotherTongueLanguageID", "strReligion", "strMaritalStatus", "dtLocationJoiningDate",
+  "strPassportNumber", "strPassportPlaceOfIssue", "dtPassportIssueDate", "dtPassportExpiryDate",
+  "dtRetirementDate", "strAppointmentOrderNumber", "dtAppointmentDate", "strEntryMode", "strJobType",
+  "strConfirmationType", "strConfirmationComments", "dtTentativeConfirmationDate", "dtConfirmationDate",
+  "strRestDay", "strEmployeeFunction", "strFunctionalArea", "strEmployeeCategory", "blnHasDisability",
+  "strPlaceOfBirth", "blnSuperannuationFlag", "strIdentificationMarks", "strDrivingLicenceNumber",
+  "dtDrivingLicenceValidUpto", "blnIsRelatedEmployee", "intRelatedEmployeeID", "strPaymentType", "blnFlatGiven",
+  "dtStatusEffectiveDate", "dtContractStartDate", "dtContractEndDate", "dtLastIncrementDate",
+  "blnUgcAppraisalFlag", "strAgency", "strReferenceNumber", "strMobileCountryCode",
+  "strWhatsappCountryCode", "strWhatsappNumber", "strReferredBy", "strAccommodationType",
+  "decHousingAllowance", "intNoticePeriodDays", "strEmergencyContactPerson", "strEmergencyCountryCode",
+  "strEmergencyMobileNumber", "strEmergencyEmail", "strEmployeeRemark", "strInitialPostingLocation",
+  "dtProbationStartDate", "dtProbationEndDate", "strEmployeeWorkgroup", "strEmployeeReservation",
+  "strSwon", "dtFromDate", "dtToDate", "strPrefixLogic"
+];
+
+function mapExtendedEmployeePayload(dicValues: EmployeeFormValues): Record<string, unknown> {
+  return Object.fromEntries(lstExtendedEmployeeFields.map((strField) => {
+    const objValue = dicValues[strField];
+    if (typeof objValue === "boolean") return [strField, objValue];
+    if (strField.startsWith("int") || strField.startsWith("dec")) {
+      return [strField, objValue === "" ? null : Number(objValue)];
+    }
+    return [strField, typeof objValue === "string" ? objValue.trim() || null : objValue ?? null];
+  }));
+}
+
 function mapEmployeePayload(dicValues: EmployeeFormValues): Record<string, unknown> {
   return {
+    ...mapExtendedEmployeePayload(dicValues),
     strEmployeeCode: dicValues.strEmployeeCode.trim().toUpperCase(),
     strTitle: dicValues.strTitle || null,
     strFirstName: dicValues.strFirstName.trim(),
@@ -44,7 +81,7 @@ function mapEmployeePayload(dicValues: EmployeeFormValues): Record<string, unkno
     intLocationID: dicValues.intLocationID,
     intPayrollGroupID: normalizeOptionalNumber(dicValues.intPayrollGroupID),
     intManagerEmployeeID: normalizeOptionalNumber(dicValues.intManagerEmployeeID),
-    intLineManagerEmployeeID: normalizeOptionalNumber(dicValues.intLineManagerEmployeeID),
+    intLineManagerEmployeeID: normalizeOptionalNumber(dicValues.intLineManagerEmployeeID || dicValues.intManagerEmployeeID),
     strWorkEmail: dicValues.strWorkEmail.trim() || null,
     strPersonalEmail: dicValues.strPersonalEmail.trim() || null,
     strMobileNumber: dicValues.strMobileNumber.trim() || null,
@@ -59,7 +96,9 @@ function mapEmployeePayload(dicValues: EmployeeFormValues): Record<string, unkno
 
 function mapEmployeeDetailRecord(dicRecord: EmployeeDetailApiRecord): EmployeeDetailRecord {
   return {
+    ...dicRecord,
     intID: dicRecord.intID,
+    strRecordUUID: String(dicRecord.strRecordUUID ?? ""),
     strEmployeeCode: dicRecord.strEmployeeCode,
     strTitle: dicRecord.strTitle,
     strFirstName: dicRecord.strFirstName,
@@ -86,18 +125,63 @@ function mapEmployeeDetailRecord(dicRecord: EmployeeDetailApiRecord): EmployeeDe
     strEmploymentStatus: dicRecord.strEmploymentStatus,
     dtDateOfExit: dicRecord.dtDateOfExit,
     blnIsEssEnabled: dicRecord.blnIsEssEnabled,
-    blnIsPartialSave: dicRecord.blnIsPartialSave
-  };
+    blnIsPartialSave: dicRecord.blnIsPartialSave,
+    strProfilePhotoUrl: dicRecord.strProfilePhotoUrl ?? null
+  } as EmployeeDetailRecord;
 }
 
 export const employeeService = {
+  // Employee Master -> Create User Account. Server derives the identity from the employee record and
+  // links the two in one transaction.
+  async createUserAccount(intEmployeeID: number, intEssUserGroupID?: number | null) {
+    const objResult = await masterApiService.createEmployeeUserAccount(intEmployeeID, { intEssUserGroupID });
+    return objResult.Data;
+  },
+
   async getEmployees(): Promise<EmployeeListRecord[]> {
     const objResult = await masterApiService.getEmployees();
     return objResult.Data;
   },
 
-  async getEmployeeById(intEmployeeID: number, objOptions?: EmployeeServiceRequestOptions): Promise<EmployeeDetailRecord> {
-    const objResult = await masterApiService.getEmployeeById(intEmployeeID, objOptions?.strMenuAction);
+  async uploadEmployeeAvatar(intEmployeeID: number, objFile: File): Promise<{
+    intEmployeeID: number;
+    strEmployeeCode?: string | null;
+    strFullName?: string | null;
+    strProfilePhotoUrl?: string | null;
+  }> {
+    const strAccessToken = authHelpers.getAccessToken().trim();
+    const intTenantID = authHelpers.getTenantID();
+    const intCompanyID = authHelpers.getCompanyID();
+    const objFormData = new FormData();
+    objFormData.append("objFile", objFile);
+    const objHeaders: Record<string, string> = {};
+
+    if (strAccessToken) {
+      objHeaders.Authorization = `Bearer ${strAccessToken}`;
+      objHeaders["X-Access-Token"] = strAccessToken;
+    }
+    if (intTenantID) {
+      objHeaders["X-Tenant-Id"] = String(intTenantID);
+    }
+    if (intCompanyID) {
+      objHeaders["X-Company-Id"] = String(intCompanyID);
+    }
+
+    const objResponse = await fetch(`/api/employees/avatar/${intEmployeeID}`, {
+      method: "PUT",
+      headers: Object.keys(objHeaders).length ? objHeaders : undefined,
+      body: objFormData,
+      credentials: "include",
+    });
+    const objResult = await objResponse.json();
+    if (!objResponse.ok || objResult?.ResultCode === 0) {
+      throw new Error(objResult?.Msg || "Unable to upload profile photo.");
+    }
+    return objResult.Data;
+  },
+
+  async getEmployeeById(objEmployeeID: string | number, objOptions?: EmployeeServiceRequestOptions): Promise<EmployeeDetailRecord> {
+    const objResult = await masterApiService.getEmployeeById(objEmployeeID, objOptions?.strMenuAction);
     return mapEmployeeDetailRecord(objResult.Data);
   },
 
@@ -153,6 +237,15 @@ export const employeeService = {
       strAccountHolderName: dicValues.strAccountHolderName.trim(),
       strAccountNumber: dicValues.strAccountNumber.trim(),
       strIfscCode: dicValues.strIfscCode.trim() || null,
+      strSwiftCode: dicValues.strSwiftCode.trim().toUpperCase() || null,
+      strBranchName: dicValues.strBranchName.trim() || null,
+      strAccountType: dicValues.strAccountType.trim() || null,
+      strAccountHolderEmail: dicValues.strAccountHolderEmail.trim() || null,
+      intSecondaryBankID: dicValues.blnSecondaryIsActive ? dicValues.intSecondaryBankID || null : null,
+      strSecondaryAccountHolderName: dicValues.blnSecondaryIsActive ? dicValues.strSecondaryAccountHolderName.trim() || null : null,
+      strSecondaryAccountNumber: dicValues.blnSecondaryIsActive ? dicValues.strSecondaryAccountNumber.trim() || null : null,
+      strSecondaryIfscCode: dicValues.blnSecondaryIsActive ? dicValues.strSecondaryIfscCode.trim() || null : null,
+      blnSecondaryIsActive: dicValues.blnSecondaryIsActive,
       blnIsPrimary: dicValues.blnIsPrimary,
       blnIsActive: dicValues.blnIsActive
     }, objOptions?.strMenuAction);
@@ -168,9 +261,13 @@ export const employeeService = {
     const objResult = await masterApiService.saveEmployeeStatutory(intEmployeeID, {
       strPanNumber: dicValues.strPanNumber.trim() || null,
       strUanNumber: dicValues.strUanNumber.trim() || null,
-      strEsiNumber: dicValues.strEsiNumber.trim() || null,
+      strEsiNumber: dicValues.blnEsiApplicable ? dicValues.strEsiNumber.trim() || null : null,
       strPfNumber: dicValues.blnPfApplicable ? dicValues.strPfNumber.trim() || null : null,
       strTaxRegimeCode: dicValues.strTaxRegimeCode.trim() || null,
+      strGratuityNumber: dicValues.strGratuityNumber.trim() || null,
+      strEsiCode: dicValues.strEsiCode.trim() || null,
+      strSsnNumber: dicValues.strSsnNumber.trim() || null,
+      strPranNumber: dicValues.strPranNumber.trim() || null,
       blnPfApplicable: dicValues.blnPfApplicable,
       blnEsiApplicable: dicValues.blnEsiApplicable,
       blnPtApplicable: dicValues.blnPtApplicable
@@ -299,4 +396,97 @@ export const employeeService = {
     return masterApiService.deleteEmployeeFamilyDetail(intFamilyID);
   }
 };
+
+// HR-authorized equivalent of fileUploadService.ts's generic /api/v1/files/* self-service API —
+// used by FileUploadPanel (via its objFileService override) when HR manages bank proof documents
+// on an employee's record, since the self-service endpoints derive the employee strictly from the
+// caller's own session and would silently target the wrong person.
+// NOTE: return type inferred — the former FileUploadPanelService type was removed when FileUploadPanel
+// dropped its service-override prop; this helper is currently unused but kept for a future re-wire.
+export function createHrBankFileService(intEmployeeID: number) {
+  const strBase = `${ApiRoutePrefix.ApiV1}/master/employee/${intEmployeeID}/bank/files`;
+
+  return {
+    async listFiles(_objFilter?: ListFilesFilter): Promise<FileMetadataDto[]> {
+      const objResult = await requestEncryptedApi<FileMetadataDto[]>({
+        strPath: strBase,
+        strMethod: ApiRequestMethod.Get,
+        strMenuAction: "EmployeeBankView",
+        blnUseAuthHeader: true,
+      });
+      return objResult.Data ?? [];
+    },
+
+    async uploadFile(objRequest: UploadFileRequest): Promise<FileMetadataDto> {
+      const objFormData = new FormData();
+      objFormData.append("objFile", objRequest.objFile);
+      try {
+        const objResponse = await axiosInstance.request<{ Data: FileMetadataDto }>({
+          method: ApiRequestMethod.Post,
+          url: strBase,
+          data: objFormData,
+          csrfMenuAction: "EmployeeBankSave",
+          onUploadProgress: objRequest.fnOnProgress
+            ? (objProgressEvent) => {
+                if (objProgressEvent.total) {
+                  objRequest.fnOnProgress?.(Math.min(100, Math.round((objProgressEvent.loaded * 100) / objProgressEvent.total)));
+                }
+              }
+            : undefined,
+        } as ApiRequestConfig);
+        return objResponse.data.Data;
+      } catch (objError) {
+        throw await createApiRequestError(objError);
+      }
+    },
+
+    async replaceFile(intFileID: number, objFile: File, fnOnProgress?: (intPercentComplete: number) => void): Promise<FileMetadataDto> {
+      const objFormData = new FormData();
+      objFormData.append("objFile", objFile);
+      try {
+        const objResponse = await axiosInstance.request<{ Data: FileMetadataDto }>({
+          method: ApiRequestMethod.Put,
+          url: `${strBase}/${intFileID}`,
+          data: objFormData,
+          csrfMenuAction: "EmployeeBankSave",
+          onUploadProgress: fnOnProgress
+            ? (objProgressEvent) => {
+                if (objProgressEvent.total) {
+                  fnOnProgress(Math.min(100, Math.round((objProgressEvent.loaded * 100) / objProgressEvent.total)));
+                }
+              }
+            : undefined,
+        } as ApiRequestConfig);
+        return objResponse.data.Data;
+      } catch (objError) {
+        throw await createApiRequestError(objError);
+      }
+    },
+
+    async deleteFile(intFileID: number): Promise<void> {
+      await requestEncryptedApi<null>({
+        strPath: `${strBase}/${intFileID}`,
+        strMethod: ApiRequestMethod.Delete,
+        strMenuAction: "EmployeeBankSave",
+        blnUseAuthHeader: true,
+      });
+    },
+
+    async previewFile(intFileID: number): Promise<void> {
+      try {
+        const objResponse = await axiosInstance.request<Blob>({
+          method: ApiRequestMethod.Get,
+          url: `${strBase}/${intFileID}/content`,
+          responseType: "blob",
+          csrfMenuAction: "EmployeeBankView",
+        } as ApiRequestConfig);
+        const strUrl = URL.createObjectURL(objResponse.data);
+        openBlobUrlInNewTab(strUrl);
+        window.setTimeout(() => URL.revokeObjectURL(strUrl), 30000);
+      } catch (objError) {
+        throw await createApiRequestError(objError);
+      }
+    },
+  };
+}
 

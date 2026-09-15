@@ -4,6 +4,7 @@ import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
 import { authHelpers } from "@/lib/auth";
 import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
+import { openBlobUrlInNewTab } from "@/lib/openBlobUrlInNewTab";
 import type {
   AssignableUser,
   BulkActionResult,
@@ -140,6 +141,24 @@ export const attendanceRegularizationService = {
     objLink.click();
     URL.revokeObjectURL(strUrl);
   },
+  // Reuses the same GET attachment endpoint as downloadAttachment above, but opens the blob in a
+  // new tab instead of forcing a file-save prompt — matches ReimbursementProofViewer's
+  // fetch-then-window.open preview pattern so this module's eye icon behaves like every other
+  // attachment row in the app.
+  async previewAttachment(intRequestID: number, intAttachmentID: number) {
+    const objConfig: ApiRequestConfig = {
+      responseType: "blob",
+      headers: { Authorization: `Bearer ${authHelpers.getAccessToken() ?? ""}` },
+      csrfMenuAction: objAction.ess,
+    };
+    const objResponse = await axiosInstance.get(
+      `${ApiRoutePrefix.ApiV1}/ess/attendance/regularization/requests/${intRequestID}/attachments/${intAttachmentID}`,
+      objConfig,
+    );
+    const strUrl = URL.createObjectURL(objResponse.data as Blob);
+    openBlobUrlInNewTab(strUrl);
+    window.setTimeout(() => URL.revokeObjectURL(strUrl), 30000);
+  },
   listHrRequests(objFilters: { intPage: number; intPageSize: number; intEmployeeID?: number; strStatus?: string; strFromDate?: string; strToDate?: string }) {
     const objQuery = new URLSearchParams({ page: String(objFilters.intPage), page_size: String(objFilters.intPageSize) });
     if (objFilters.intEmployeeID) objQuery.set("employee_id", String(objFilters.intEmployeeID));
@@ -150,6 +169,10 @@ export const attendanceRegularizationService = {
   },
   getHrDetail(intRequestID: number) {
     return requestApi<RegularizationDetail>(`/attendance/regularization/requests/${intRequestID}`, ApiRequestMethod.Get, objAction.view);
+  },
+  getHrContext(intEmployeeID: number, strWorkDate: string) {
+    const objQuery = new URLSearchParams({ employee_id: String(intEmployeeID), work_date: strWorkDate });
+    return requestApi<DateContext>(`/attendance/regularization/context?${objQuery}`, ApiRequestMethod.Get, objAction.onBehalf);
   },
   createOnBehalf(objPayload: RegularizationFormValues & { intEmployeeID: number; strOnBehalfReason: string }) {
     return requestApi<RegularizationRequest>("/attendance/regularization/requests/on-behalf", ApiRequestMethod.Post, objAction.onBehalf, objPayload);

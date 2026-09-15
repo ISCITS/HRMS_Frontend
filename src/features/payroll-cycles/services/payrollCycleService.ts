@@ -28,7 +28,6 @@ function toPayload(dicValues: PayrollCycleFormValues) {
   const strTrimmedCutoffDay = dicValues.intCutoffDay.trim();
   return {
     intPayrollGroupID: Number(dicValues.intPayrollGroupID),
-    strCycleCode: dicValues.strCycleCode.trim(),
     strCycleName: dicValues.strCycleName.trim(),
     strPeriodType: dicValues.strPeriodType.trim(),
     intCutoffDay: strTrimmedCutoffDay ? Number(strTrimmedCutoffDay) : null,
@@ -39,7 +38,6 @@ function toPayload(dicValues: PayrollCycleFormValues) {
 export function createInitialPayrollCycleForm(): PayrollCycleFormValues {
   return {
     intPayrollGroupID: "",
-    strCycleCode: "",
     strCycleName: "",
     strPeriodType: "Monthly",
     intCutoffDay: "",
@@ -52,7 +50,6 @@ export function toPayrollCycleFormValues(
 ): PayrollCycleFormValues {
   return {
     intPayrollGroupID: dicRecord.intPayrollGroupID,
-    strCycleCode: dicRecord.strCycleCode,
     strCycleName: dicRecord.strCycleName,
     strPeriodType: dicRecord.strPeriodType,
     intCutoffDay: dicRecord.intCutoffDay?.toString() ?? "",

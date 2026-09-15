@@ -5,7 +5,6 @@ type EmployeeSalaryDetailRouteProps = {
     id: string;
   }>;
   searchParams?: Promise<{
-    mode?: string;
     returnTo?: string | string[];
   }>;
 };
@@ -18,13 +17,13 @@ function resolveReturnTo(strRoute?: string | string[]) {
   return strCandidate;
 }
 
+// The segment is the employee's public identifier (record_uuid), not the internal row id.
 export default async function EmployeeSalaryDetailRoute({ params, searchParams }: EmployeeSalaryDetailRouteProps) {
   const { id } = await params;
   const objSearchParams = searchParams ? await searchParams : undefined;
   return (
     <EmployeeSalaryDetailPage
-      intEmployeeID={Number(id)}
-      blnViewMode={objSearchParams?.mode === "view"}
+      strEmployeeID={id}
       strReturnTo={resolveReturnTo(objSearchParams?.returnTo)}
     />
   );

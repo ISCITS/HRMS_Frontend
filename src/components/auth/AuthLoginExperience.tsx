@@ -9,8 +9,8 @@ import SecurityRoundedIcon from "@mui/icons-material/SecurityRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VpnKeyRoundedIcon from "@mui/icons-material/VpnKeyRounded";
-import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, IconButton, InputAdornment, Paper, Stack, TextField, Typography } from "@mui/material";
-import { type FormEvent, useEffect, useState } from "react";
+import { Alert, Box, Button, ButtonBase, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, IconButton, InputAdornment, Paper, Stack, TextField, Typography } from "@mui/material";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import styles from "@/components/auth/AuthLoginExperience.module.css";
@@ -31,6 +31,7 @@ import type {
 import { getPostLoginRoute } from "@/lib/RouteGuard";
 import { authApiService } from "@/services";
 import { clsApiRequestError, isGoogleMfaChallengeData, isOtpChallengeData, resolveErrorMessage } from "@/services/auth/AuthApiService";
+import type { AuthSuccessData, PortalCode } from "@/models/AuthModels";
  
 type AuthLoginExperienceProps = {
   strMode: "generic" | "tenant";
@@ -53,6 +54,41 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
   const [objTenantAuthDetails, setObjTenantAuthDetails] = useState<TenantAuthDetails | null>(null);
   const [objOtpChallenge, setObjOtpChallenge] = useState<AuthOtpChallengeData | null>(null);
   const [objGoogleMfaChallenge, setObjGoogleMfaChallenge] = useState<GoogleMfaChallengeData | null>(null);
+  // Dual-access identity: the server authenticates but activates no portal, so the user chooses.
+  const [lstPortalChoices, setLstPortalChoices] = useState<PortalCode[]>([]);
+  const [blnPortalSwitching, setBlnPortalSwitching] = useState(false);
+  // HRMS leads the Continue To row; any portal the server adds later falls in after the known two.
+  const lstPortalDisplayOrder = useMemo(
+    () => [...lstPortalChoices].sort((strLeft, strRight) => getPortalDisplayRank(strLeft) - getPortalDisplayRank(strRight)),
+    [lstPortalChoices],
+  );
+
+  function completeAuthentication(objAuthData: AuthSuccessData) {
+    if (objAuthData.blnRequiresPortalSelection && (objAuthData.lstAvailablePortals?.length ?? 0) > 1) {
+      setLstPortalChoices(objAuthData.lstAvailablePortals ?? []);
+      return;
+    }
+    objRouter.replace(getPostLoginRoute(objAuthData.strHomeRoute));
+  }
+
+  async function selectPortal(strPortal: PortalCode) {
+    setBlnPortalSwitching(true);
+    try {
+      const objResult = await authApiService.selectPortalContext(strPortal);
+      // Full navigation, not a client-side replace: the app shell caches the menu it loaded for the
+      // previous context, so only a fresh bootstrap re-reads menus AND action rights with the token
+      // that now carries the chosen portal.
+      const strHomeRoute = getPostLoginRoute(objResult.Data.strHomeRoute);
+      if (typeof window !== "undefined") {
+        window.location.assign(strHomeRoute);
+        return;
+      }
+      objRouter.replace(strHomeRoute);
+    } catch (objError) {
+      setStrError(resolveErrorMessage(objError));
+      setBlnPortalSwitching(false);
+    }
+  }
   const [blnUseBackupCode, setBlnUseBackupCode] = useState(false);
   const [lstBackupCodes, setLstBackupCodes] = useState<string[]>([]);
   const [blnTenantLoading, setBlnTenantLoading] = useState(strMode === "tenant");
@@ -215,6 +251,9 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         } else {
           showErrorDialog(strMessage);
         }
+        if (typeof document !== "undefined") {
+          document.cookie = `${authHelpers.tenantCookieName}=; Path=/; Max-Age=0; SameSite=Lax`;
+        }
         authHelpers.clearStoredSessionState();
         setObjTenantAuthDetails(null);
         setIntSelectedLanguageID(null);
@@ -307,7 +346,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
           setBlnUseBackupCode(false);
           return;
         }
-        objRouter.push(getPostLoginRoute(objResult.Data.strHomeRoute));
+        completeAuthentication(objResult.Data);
         return;
       }
  
@@ -330,7 +369,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
           setBlnUseBackupCode(false);
           return;
         }
-        objRouter.push(getPostLoginRoute(objResult.Data.strHomeRoute));
+        completeAuthentication(objResult.Data);
         return;
       }
  
@@ -351,7 +390,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         setBlnUseBackupCode(false);
         return;
       }
-      objRouter.push(getPostLoginRoute(objResult.Data.strHomeRoute));
+      completeAuthentication(objResult.Data);
     } catch (objError) {
       if (objError instanceof clsApiRequestError) {
         const intRemainingSeconds = extractRemainingSeconds(objError.objData);
@@ -381,7 +420,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         strPreAuthToken: objGoogleMfaChallenge.strPreAuthToken,
         strBackupCode: strBackupCode
       });
-      objRouter.push(getPostLoginRoute(objResult.Data.objAuth.strHomeRoute));
+      objRouter.replace(getPostLoginRoute(objResult.Data.objAuth.strHomeRoute));
       return;
     }
  
@@ -392,7 +431,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
       });
       setLstBackupCodes(objResult.Data.lstBackupCodes);
       setObjGoogleMfaChallenge(null);
-      objRouter.push(getPostLoginRoute(objResult.Data.objAuth.strHomeRoute));
+      objRouter.replace(getPostLoginRoute(objResult.Data.objAuth.strHomeRoute));
       return;
     }
  
@@ -401,7 +440,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
       strCode: strGoogleCode
     });
     setObjGoogleMfaChallenge(null);
-    objRouter.push(getPostLoginRoute(objResult.Data.objAuth.strHomeRoute));
+    objRouter.replace(getPostLoginRoute(objResult.Data.objAuth.strHomeRoute));
   }
  
   async function resendOtp() {
@@ -593,7 +632,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
     !strIdentityValidationError &&
     !blnSubmitting &&
     intLockRemainingSeconds <= 0 &&
-    !(strMode === "tenant" && blnTenantLoading);
+    !(strMode === "tenant" && (blnTenantLoading || !objTenantAuthDetails));
   const blnCanSubmitOtpStep = Boolean(strOtp.trim()) && !blnSubmitting;
   const blnCanSubmitCurrentStep = blnOtpStep ? blnCanSubmitOtpStep : blnCanSubmitLoginStep;
  
@@ -660,8 +699,58 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
               <Typography className={styles.welcomeTitle}>{getLoginLabel("welcomeTitle")}</Typography>
               <Typography className={styles.welcomeSubtitle}>{getLoginLabel("welcomeSubtitle")}</Typography>
             </Box>
-            <Typography className={styles.title}>{blnOtpStep ? getLoginLabel("verifyOtpTitle") : getLoginLabel("signInButton")}</Typography>
+            <Typography className={lstPortalChoices.length > 1 ? styles.portalChoiceTitle : styles.title}>
+              {lstPortalChoices.length > 1
+                ? getLoginLabel("continueToTitle")
+                : blnOtpStep
+                  ? getLoginLabel("verifyOtpTitle")
+                  : getLoginLabel("signInButton")}
+            </Typography>
  
+            {lstPortalChoices.length > 1 ? (
+              <Stack spacing={2} sx={{ mt: 3 }}>
+                <Typography className={styles.portalChoiceIntro} sx={{ color: "#64748b" }}>
+                  {getLoginLabel("continueToSubtitle")}
+                </Typography>
+                {/* Each portal is a card rather than a bare button: the two names alone do not tell
+                    a dual-access user which side of the product they are choosing, so each carries
+                    a line describing what it lets them do. HRMS is shown first, independent of the
+                    order the server returns. */}
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
+                    gap: 1.5,
+                    alignItems: "stretch",
+                  }}
+                >
+                  {lstPortalDisplayOrder.map((strPortal) => (
+                    <ButtonBase
+                      key={strPortal}
+                      className={styles.portalCard}
+                      disabled={blnPortalSwitching}
+                      onClick={() => void selectPortal(strPortal)}
+                      data-controlid={`auth.login.portal.${strPortal.toLowerCase()}.button`}
+                    >
+                      <Typography component="span" className={styles.portalCardTitle}>
+                        {strPortal === "HRMS" ? getLoginLabel("portalHrms") : getLoginLabel("portalEss")}
+                      </Typography>
+                      <Box component="ul" className={styles.portalCardPoints}>
+                        {(strPortal === "HRMS"
+                          ? (["portalHrmsPoint1", "portalHrmsPoint2", "portalHrmsPoint3"] as const)
+                          : (["portalEssPoint1", "portalEssPoint2", "portalEssPoint3"] as const)
+                        ).map((strPointKey) => (
+                          <Typography key={strPointKey} component="li" className={styles.portalCardPoint}>
+                            {getLoginLabel(strPointKey)}
+                          </Typography>
+                        ))}
+                      </Box>
+                    </ButtonBase>
+                  ))}
+                </Box>
+                {strError ? <Alert severity="error">{strError}</Alert> : null}
+              </Stack>
+            ) : (
             <Stack component="form" onSubmit={handleLoginSubmit} spacing={2.25} sx={{ mt: 3 }}>
               <Box>
                 <Typography className={styles.fieldLabel}>
@@ -780,6 +869,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                 </Typography>
               </Box>
             </Stack>
+            )}
           </Box>
         </Box>
       </Box>
@@ -813,6 +903,14 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
   }
 }
  
+// Presentation order for the Continue To row. Lower ranks are shown first; anything unrecognised
+// sorts last so a future portal never displaces HRMS or ESS.
+const dicPortalDisplayRank: Record<string, number> = { HRMS: 0, ESS: 1 };
+
+function getPortalDisplayRank(strPortal: PortalCode) {
+  return dicPortalDisplayRank[String(strPortal).trim().toUpperCase()] ?? Number.MAX_SAFE_INTEGER;
+}
+
 function buildLanguageOptions(...lstLanguageIDs: Array<number | null | undefined>) {
   return lstLanguageIDs.reduce<number[]>((lstResolvedLanguageIDs, intLanguageID) => {
     if (!intLanguageID || lstResolvedLanguageIDs.includes(intLanguageID)) {
@@ -958,6 +1056,16 @@ function formatDuration(intSeconds: number): string {
 }
  
 type LoginLabelKey =
+  | "continueToTitle"
+  | "continueToSubtitle"
+  | "portalHrms"
+  | "portalHrmsPoint1"
+  | "portalHrmsPoint2"
+  | "portalHrmsPoint3"
+  | "portalEss"
+  | "portalEssPoint1"
+  | "portalEssPoint2"
+  | "portalEssPoint3"
   | "forgotPassword"
   | "heroImageAlt"
   | "loginIdLabel"
@@ -1001,6 +1109,16 @@ const dicLoginFallbacks: Record<LoginLabelKey, string> = {
   resolvedWorkspaceLabel: "Resolved workspace",
   resolvingTenantStatus: "Resolving tenant...",
   signInButton: "Sign In",
+  continueToTitle: "Continue To",
+  continueToSubtitle: "This account can access both portals. Click on the card to continue.",
+  portalHrms: "Go to HRMS",
+  portalEss: "Go to Employee Self Service",
+  portalHrmsPoint1: "Manage employees and organisation setup",
+  portalHrmsPoint2: "Run payroll and publish payslips",
+  portalHrmsPoint3: "Review leave, attendance and approvals",
+  portalEssPoint1: "View your payslips and tax documents",
+  portalEssPoint2: "Apply for leave and track approvals",
+  portalEssPoint3: "Update your own profile details",
   ssoCallbackTitle: enMessages.auth.ssoCallbackTitle,
   ssoRedirectStatus: "Workspace verified. Redirecting to Microsoft sign-in.",
   tenantSubtitle: enMessages.auth.tenantSubtitle,
@@ -1025,6 +1143,16 @@ const dicLoginServerKeyMap: Record<LoginLabelKey, string> = {
   passwordPlaceholder: "password_placeholder",
   resendOtpButton: "resend_otp_button",
   resendOtpCountdown: "resend_otp_countdown",
+  continueToTitle: "continue_to_title",
+  continueToSubtitle: "continue_to_subtitle",
+  portalHrms: "portal_hrms",
+  portalEss: "portal_ess",
+  portalHrmsPoint1: "portal_hrms_point_1",
+  portalHrmsPoint2: "portal_hrms_point_2",
+  portalHrmsPoint3: "portal_hrms_point_3",
+  portalEssPoint1: "portal_ess_point_1",
+  portalEssPoint2: "portal_ess_point_2",
+  portalEssPoint3: "portal_ess_point_3",
   resendingOtpButton: "resending_otp_button",
   resolvedWorkspaceLabel: "resolved_workspace_label",
   resolvingTenantStatus: "resolving_tenant_status",

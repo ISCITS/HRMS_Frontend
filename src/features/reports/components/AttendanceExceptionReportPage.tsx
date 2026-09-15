@@ -4,12 +4,14 @@ import { useMemo } from "react";
 
 import type { CommonTableColumn } from "@/Common/components/CommonTable";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { useReportFilterOptions } from "../hooks/useReportFilterOptions";
 
 import { leaveAttendanceReportService, type AttendanceExceptionRow } from "../services/leaveAttendanceReportService";
 import ReportGridPage, { type ReportDisplayRow, type ReportFilterField } from "./ReportGridPage";
 
 export default function AttendanceExceptionReportPage() {
   const { t } = useModuleLabels("reports");
+  const { lstEmployees, lstDepartments, lstExceptionTypes } = useReportFilterOptions();
 
   const lstColumns = useMemo<CommonTableColumn<ReportDisplayRow>[]>(() => [
     { field: "dtWorkDate", headerName: t("date", "Date"), width: 120 },
@@ -27,8 +29,8 @@ export default function AttendanceExceptionReportPage() {
   ], [t]);
 
   const lstFilters: ReportFilterField[] = [
-    { strKey: "from_date", strLabel: t("from_date", "From Date"), strType: "date" },
-    { strKey: "to_date", strLabel: t("to_date", "To Date"), strType: "date" },
+    { strKey: "from_date", strLabel: t("from_date", "From Date"), strType: "date", intWidth: 170 },
+    { strKey: "to_date", strLabel: t("to_date", "To Date"), strType: "date", intWidth: 170 },
     {
       strKey: "status", strLabel: t("status", "Status"), strType: "select",
       lstOptions: [
@@ -47,9 +49,9 @@ export default function AttendanceExceptionReportPage() {
         { strValue: "WARNING", strLabel: t("severity_warning", "Warning") },
       ],
     },
-    { strKey: "exception_type", strLabel: t("exception_type", "Type Code"), strType: "text" },
-    { strKey: "employee_id", strLabel: t("employee_id", "Employee ID"), strType: "text" },
-    { strKey: "department_id", strLabel: t("department_id", "Department ID"), strType: "text" },
+    { strKey: "exception_type", strLabel: t("exception_type", "Exception Type"), strType: "select", lstOptions: lstExceptionTypes },
+    { strKey: "employee_id", strLabel: t("employee", "Employee"), strType: "select", lstOptions: lstEmployees, intWidth: 160 },
+    { strKey: "department_id", strLabel: t("department", "Department"), strType: "select", lstOptions: lstDepartments, intWidth: 160 },
   ];
 
   function mapRow(dicRow: AttendanceExceptionRow): ReportDisplayRow {

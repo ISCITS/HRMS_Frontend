@@ -1,5 +1,5 @@
 import axios, { AxiosHeaders, AxiosRequestConfig, InternalAxiosRequestConfig } from "axios";
-import { AuthStorageKey, DefaultContextValue } from "@/Common/enums/AppEnums";
+import { AuthStorageKey } from "@/Common/enums/AppEnums";
 import { apiConstants } from "@/config/constants";
 import { authHelpers } from "@/lib/auth";
 import { generateCSRFToken } from "@/lib/csrfToken";
@@ -72,13 +72,17 @@ axiosInstance.interceptors.request.use(async (config) => {
   headers.set(apiConstants.csrfHeaderName, csrfToken);
     if (typeof window !== "undefined") {
       const strSessionToken = authHelpers.getAccessToken();
-      const strTenantID = window.localStorage.getItem(AuthStorageKey.TenantId) ?? DefaultContextValue.PrimaryId;
-      const strCompanyID = window.localStorage.getItem(AuthStorageKey.CompanyId) ?? DefaultContextValue.PrimaryId;
+      const strTenantID = window.localStorage.getItem(AuthStorageKey.TenantId);
+      const strCompanyID = window.localStorage.getItem(AuthStorageKey.CompanyId);
       if (strSessionToken) {
         headers.set("Authorization", `Bearer ${strSessionToken}`);
       }
-    headers.set("X-Tenant-Id", strTenantID);
-    headers.set("X-Company-Id", strCompanyID);
+    // Send these ONLY when the context is actually known. They used to default to "1", which the
+    // server accepts ahead of the signed-in identity — so a user with no company of their own was
+    // silently scoped to company 1 (another tenant's company) and every company-scoped list came
+    // back empty. Omitting the header lets the server resolve the right company from the identity.
+    if (strTenantID) headers.set("X-Tenant-Id", strTenantID);
+    if (strCompanyID) headers.set("X-Company-Id", strCompanyID);
   }
 
   if (typeof FormData !== "undefined" && dicConfig.data instanceof FormData) {

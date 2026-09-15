@@ -185,20 +185,12 @@ export default function UserGroupMasterDialog({
     fieldGroupName: t("field_group_name", "Group Name"),
     fieldGroupDescription: t("field_group_description", "Group Description"),
     fieldGroupType: t("field_group_type", "Group Type"),
-    fieldGroupTypeHelp: t(
-      "field_group_type_help",
-      "Controls which menus this group can be granted rights to, and which menu set loads for its users.",
-    ),
     groupTypeHR: t("group_type_hr", "HR"),
     groupTypeESS: t("group_type_ess", "ESS (Employee Self Service)"),
     fieldGroupScope: t("field_group_scope", "Group Scope"),
-    scopeNoCompany: t("scope_no_company", "No company context is available in the current session."),
-    scopeTenantWide: t("scope_tenant_wide", "This group is available tenant-wide."),
-    scopeCompanyScoped: t("scope_company_scoped", "This group is scoped to company {companyId}."),
     scopeTenantOption: t("scope_tenant_option", "Tenant-wide"),
     scopeCompanyOption: t("scope_company_option", "Current company only"),
     fieldIsActive: t("field_is_active", "Is Active"),
-    fieldIsActiveHelp: t("field_is_active_help", "Inactive groups are excluded from permission resolution."),
     ownGroupInactiveWarning: t(
       "own_group_inactive_warning",
       "You cannot update your own last active user group because it would remove your User Group access.",
@@ -306,13 +298,6 @@ export default function UserGroupMasterDialog({
               SelectProps={{
                 SelectDisplayProps: { "data-control-id": "security.user-group.dialog.group-scope.select" } as HTMLAttributes<HTMLDivElement>,
               }}
-              helperText={
-                intCurrentCompanyID == null
-                  ? dicLabels.scopeNoCompany
-                  : objForm.intCompanyID == null
-                    ? dicLabels.scopeTenantWide
-                    : dicLabels.scopeCompanyScoped.replace("{companyId}", String(objForm.intCompanyID))
-              }
             >
               <MenuItem value="tenant" data-control-id="security.user-group.dialog.group-scope.tenant.option">{dicLabels.scopeTenantOption}</MenuItem>
               <MenuItem value="company" data-control-id="security.user-group.dialog.group-scope.company.option">{dicLabels.scopeCompanyOption}</MenuItem>
@@ -333,7 +318,6 @@ export default function UserGroupMasterDialog({
                 onChange={(objEvent) => updateField("strGroupType", objEvent.target.value as UserGroupFormPayload["strGroupType"])}
                 disabled={blnReadOnly}
                 required
-                helperText={dicLabels.fieldGroupTypeHelp}
                 SelectProps={{
                   SelectDisplayProps: { "data-control-id": "security.user-group.dialog.group-type.select" } as HTMLAttributes<HTMLDivElement>,
                 }}
@@ -347,19 +331,11 @@ export default function UserGroupMasterDialog({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  px: 2,
-                  py: 1.8,
-                  borderRadius: 0,
-                  border: "1px solid #d7e2ee",
-                  backgroundColor: "#ffffff",
+                  px: 0,
+                  py: 1,
                 }}
               >
-                <Box>
-                  <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicLabels.fieldIsActive}</Typography>
-                  <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
-                    {blnProtectCurrentUserGroup ? strOwnGroupInactiveWarning : dicLabels.fieldIsActiveHelp}
-                  </Typography>
-                </Box>
+                <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicLabels.fieldIsActive}</Typography>
                 <Tooltip
                   title={blnProtectCurrentUserGroup && !blnReadOnly ? strOwnGroupInactiveWarning : ""}
                   arrow
@@ -391,17 +367,17 @@ export default function UserGroupMasterDialog({
                   gap: 1.25,
                 }}
               >
-                <Box sx={{ borderRadius: 0, border: "1px solid #d7e2ee", backgroundColor: "#ffffff", p: 1.6 }}>
+                <Box sx={{ p: 1.6 }}>
                   <Typography sx={{ color: "#64748b", fontSize: "0.78rem", fontWeight: 800, textTransform: "uppercase" }}>{dicLabels.summaryVisibleMenus}</Typography>
-                  <Typography sx={{ mt: 0.9, color: "#0f172a", fontWeight: 800, fontSize: "1.5rem", lineHeight: 1 }}>{objMetadata.objSummary.intVisibleMenuCount}</Typography>
+                  <Typography sx={{ mt: 0.9, color: "#0f172a", fontWeight: 400, fontSize: "1.5rem", lineHeight: 1 }}>{objMetadata.objSummary.intVisibleMenuCount}</Typography>
                 </Box>
-                <Box sx={{ borderRadius: 0, border: "1px solid #d7e2ee", backgroundColor: "#ffffff", p: 1.6 }}>
+                <Box sx={{ p: 1.6 }}>
                   <Typography sx={{ color: "#64748b", fontSize: "0.78rem", fontWeight: 800, textTransform: "uppercase" }}>{dicLabels.summaryAllowedActions}</Typography>
-                  <Typography sx={{ mt: 0.9, color: "#0f172a", fontWeight: 800, fontSize: "1.5rem", lineHeight: 1 }}>{objMetadata.objSummary.intAllowedActionCount}</Typography>
+                  <Typography sx={{ mt: 0.9, color: "#0f172a", fontWeight: 400, fontSize: "1.5rem", lineHeight: 1 }}>{objMetadata.objSummary.intAllowedActionCount}</Typography>
                 </Box>
-                <Box sx={{ borderRadius: 0, border: "1px solid #d7e2ee", backgroundColor: "#ffffff", p: 1.6 }}>
+                <Box sx={{ p: 1.6 }}>
                   <Typography sx={{ color: "#64748b", fontSize: "0.78rem", fontWeight: 800, textTransform: "uppercase" }}>{dicLabels.summaryAssignedUsers}</Typography>
-                  <Typography sx={{ mt: 0.9, color: "#0f172a", fontWeight: 800, fontSize: "1.5rem", lineHeight: 1 }}>{objMetadata.objSummary.intAssignedUserCount}</Typography>
+                  <Typography sx={{ mt: 0.9, color: "#0f172a", fontWeight: 400, fontSize: "1.5rem", lineHeight: 1 }}>{objMetadata.objSummary.intAssignedUserCount}</Typography>
                 </Box>
               </Box>
             ) : null}

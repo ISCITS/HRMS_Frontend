@@ -2,9 +2,8 @@
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import RequestQuoteRoundedIcon from "@mui/icons-material/RequestQuoteRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, MenuItem, TextField, Typography } from "@mui/material";
+import { Alert, Autocomplete, Box, Button, MenuItem, TextField, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { MenuItem as AuthMenuItem } from "@/models/AuthModels";
@@ -84,7 +83,6 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
     status: "All",
     date_from: "",
     date_to: "",
-    payroll_month: "",
   });
   const blnIsEssMode = strMode === "ess";
   const canLoanAction = (strAction: "view" | "create" | "edit") =>
@@ -130,8 +128,7 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
     setBlnLoading(true);
     setStrError("");
     try {
-      const dicApiFilters = { ...dicNextFilters, payroll_month: dicNextFilters.payroll_month ? `${dicNextFilters.payroll_month}-01` : "" };
-      setLstRows(await (blnIsEssMode ? loanAdvanceService.listEssLoans(dicApiFilters) : loanAdvanceService.listLoans(dicApiFilters)));
+      setLstRows(await (blnIsEssMode ? loanAdvanceService.listEssLoans(dicNextFilters) : loanAdvanceService.listLoans(dicNextFilters)));
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : t("error_load_list", "Unable to load loans and advances."));
     } finally {
@@ -201,23 +198,23 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
             rowKey={objRow.intID}
             blnCanView
             blnCanEdit={blnCanEdit}
-            onView={() => objRouter.push(blnIsEssMode ? `/ess/loans-advances/${objRow.intID}?mode=view` : `/payroll/loans-advances/${objRow.intID}?mode=view`)}
-            onEdit={() => objRouter.push(blnIsEssMode ? `/ess/loans-advances/${objRow.intID}?mode=edit` : `/payroll/loans-advances/${objRow.intID}?mode=edit`)}
+            onView={() => objRouter.push(blnIsEssMode ? `/ess/loans-advances/${objRow.strRecordUUID}` : `/payroll/loans-advances/${objRow.strRecordUUID}`)}
+            onEdit={() => objRouter.push(blnIsEssMode ? `/ess/loans-advances/${objRow.strRecordUUID}` : `/payroll/loans-advances/${objRow.strRecordUUID}`)}
           />
         ),
-        employee: (
-          <>
-            <Typography sx={{ fontWeight: 900, fontSize: "0.86rem" }}>{getEmployeeName(objRow)}</Typography>
-            <Typography sx={{ color: "#64748b", fontSize: "0.76rem" }}>{objRow.objEmployee?.strEmployeeCode || "-"}</Typography>
-          </>
-        ),
+        employeeName: <Typography sx={{ fontWeight: 900, fontSize: "0.86rem" }}>{getEmployeeName(objRow)}</Typography>,
+        employeeCode: <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{objRow.objEmployee?.strEmployeeCode || "-"}</Typography>,
         department: objRow.objEmployee?.strDepartmentName || "-",
         requestType: t(`type_${objRow.strRequestType}`, objRow.strRequestType),
         category: objRow.objCategory?.strCategoryName ? t(toLabelKey(objRow.objCategory.strCategoryName), objRow.objCategory.strCategoryName) : "-",
         requestedAmount: formatCurrency(objRow.decRequestedAmount),
+        requestedAmountSortValue: Number(objRow.decRequestedAmount ?? 0),
         approvedAmount: formatCurrency(objRow.decApprovedAmount),
+        approvedAmountSortValue: Number(objRow.decApprovedAmount ?? 0),
         outstandingAmount: formatCurrency(objRow.decTotalOutstandingAmount),
+        outstandingAmountSortValue: Number(objRow.decTotalOutstandingAmount ?? 0),
         installmentAmount: formatCurrency(objRow.decInstallmentAmount),
+        installmentAmountSortValue: Number(objRow.decInstallmentAmount ?? 0),
         recoveryStartMonth: formatMonth(objRow.dtRecoveryStartMonth),
         perquisiteTax: objRow.blnPerquisiteTaxApplicable ? t("yes", "Yes") : t("no", "No"),
         status: <LoanAdvanceStatusBadge strStatus={objRow.strWorkflowStatus} t={t} />,
@@ -228,14 +225,15 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
       { field: "action", headerName: t("table_actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 110 },
-      { field: "employee", headerName: t("table_employee", "Employee"), width: 220, sortable: false },
+      { field: "employeeName", headerName: t("table_employee_name", "Employee Name"), width: 170, sortable: false },
+      { field: "employeeCode", headerName: t("table_employee_code", "Employee Code"), width: 130, sortable: false },
       { field: "department", headerName: t("table_department", "Department"), width: 180 },
       { field: "requestType", headerName: t("table_request_type", "Request Type"), width: 150 },
       { field: "category", headerName: t("table_category", "Category"), width: 180 },
-      { field: "requestedAmount", headerName: t("table_requested_amount", "Requested Amount"), align: "right", width: 160 },
-      { field: "approvedAmount", headerName: t("table_approved_amount", "Approved Amount"), align: "right", width: 160 },
-      { field: "outstandingAmount", headerName: t("table_outstanding_amount", "Outstanding Amount"), align: "right", width: 170 },
-      { field: "installmentAmount", headerName: t("table_installment", "Installment"), align: "right", width: 140 },
+      { field: "requestedAmount", headerName: t("table_requested_amount", "Requested Amount"), align: "right", width: 160, sortAccessor: (dicRow) => dicRow.requestedAmountSortValue },
+      { field: "approvedAmount", headerName: t("table_approved_amount", "Approved Amount"), align: "right", width: 160, sortAccessor: (dicRow) => dicRow.approvedAmountSortValue },
+      { field: "outstandingAmount", headerName: t("table_outstanding_amount", "Outstanding Amount"), align: "right", width: 170, sortAccessor: (dicRow) => dicRow.outstandingAmountSortValue },
+      { field: "installmentAmount", headerName: t("table_installment", "Installment"), align: "right", width: 140, sortAccessor: (dicRow) => dicRow.installmentAmountSortValue },
       { field: "recoveryStartMonth", headerName: t("table_recovery_start_month", "Recovery Start Month"), width: 170 },
       { field: "perquisiteTax", headerName: t("table_perquisite_tax", "Perquisite Tax"), width: 140 },
       { field: "status", headerName: t("table_status", "Status"), sortable: false, filterable: false, width: 150 },
@@ -244,20 +242,22 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
   );
 
   function clearFilters() {
-    const dicReset = { employee_code: "", department: "", request_type: "All", category_id: "", status: "All", date_from: "", date_to: "", payroll_month: "" };
+    const dicReset = { employee_code: "", department: "", request_type: "All", category_id: "", status: "All", date_from: "", date_to: "" };
     setDicFilters(dicReset);
     void loadRows(dicReset);
   }
 
   const objFilterGridSx = {
-    display: "grid",
-    gap: 1,
-    gridTemplateColumns: "repeat(auto-fit, minmax(145px, 1fr))",
-    mt: 1
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 1.2,
+    mt: 1,
+    "& > .MuiTextField-root, & > .MuiAutocomplete-root": { flex: "1 1 180px", minWidth: 180 }
   } as const;
 
   const objFilterActions = (
-    <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+    <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexShrink: 0, ml: "auto" }}>
       <Button className={styles.primaryButton} size="small" startIcon={<SearchRoundedIcon />} onClick={() => void loadRows()}>{t("search", "Search")}</Button>
       <Button className={styles.secondaryButton} size="small" startIcon={<ClearRoundedIcon />} onClick={clearFilters}>{t("clear", "Clear")}</Button>
     </Box>
@@ -278,22 +278,28 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
 
   const objFilters = (
     <Box sx={objFilterGridSx}>
-      <TextField fullWidth select size="small" label={t("filter_employee", "Employee")} value={dicFilters.employee_code} onChange={(e) => setDicFilters((d) => ({ ...d, employee_code: e.target.value }))} SelectProps={{ MenuProps: objSelectMenuProps }}>
-        <MenuItem value="">{t("all", "All")}</MenuItem>
-        {lstEmployeeOptions.map((objEmployee) => (
-          <MenuItem key={objEmployee.intID} value={objEmployee.strEmployeeCode}>
-            {getEmployeeLabel(objEmployee)}
-          </MenuItem>
-        ))}
-      </TextField>
-      <TextField fullWidth select size="small" label={t("filter_department", "Department")} value={dicFilters.department} onChange={(e) => setDicFilters((d) => ({ ...d, department: e.target.value }))} SelectProps={{ MenuProps: objSelectMenuProps }}>
-        <MenuItem value="">{t("all", "All")}</MenuItem>
-        {lstDepartmentOptions.map((strDepartment) => (
-          <MenuItem key={strDepartment} value={strDepartment}>
-            {strDepartment}
-          </MenuItem>
-        ))}
-      </TextField>
+      <Autocomplete
+        fullWidth
+        size="small"
+        options={lstEmployeeOptions}
+        value={lstEmployeeOptions.find((objEmployee) => objEmployee.strEmployeeCode === dicFilters.employee_code) || null}
+        getOptionLabel={(objOption) => getEmployeeLabel(objOption)}
+        isOptionEqualToValue={(objOption, objValue) => objOption.strEmployeeCode === objValue.strEmployeeCode}
+        onChange={(_, objValue) => setDicFilters((d) => ({ ...d, employee_code: objValue?.strEmployeeCode || "" }))}
+        slotProps={{ popper: { sx: { zIndex: 1802 } } }}
+        renderInput={(params) => <TextField {...params} label={t("filter_employee", "Employee")} placeholder={t("search_employee", "Search employee...")}
+          InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />}
+      />
+      <Autocomplete
+        fullWidth
+        size="small"
+        options={lstDepartmentOptions}
+        value={dicFilters.department || null}
+        onChange={(_, strValue) => setDicFilters((d) => ({ ...d, department: strValue || "" }))}
+        slotProps={{ popper: { sx: { zIndex: 1802 } } }}
+        renderInput={(params) => <TextField {...params} label={t("filter_department", "Department")} placeholder="Search department..."
+          InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />}
+      />
       <TextField fullWidth select size="small" label={t("filter_request_type", "Request Type")} value={dicFilters.request_type} onChange={(e) => setDicFilters((d) => ({ ...d, request_type: e.target.value }))} SelectProps={{ MenuProps: objSelectMenuProps }}>
         {["All", "loan", "advance"].map((strValue) => <MenuItem key={strValue} value={strValue}>{strValue === "All" ? t("all", "All") : t(`type_${strValue}`, strValue)}</MenuItem>)}
       </TextField>
@@ -306,39 +312,15 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
       </TextField>
       <TextField fullWidth size="small" type="date" label={t("filter_date_from", "Date From")} InputLabelProps={{ shrink: true }} value={dicFilters.date_from} onChange={(e) => setDicFilters((d) => ({ ...d, date_from: e.target.value }))} />
       <TextField fullWidth size="small" type="date" label={t("filter_date_to", "Date To")} InputLabelProps={{ shrink: true }} value={dicFilters.date_to} onChange={(e) => setDicFilters((d) => ({ ...d, date_to: e.target.value }))} />
-      <TextField fullWidth size="small" type="month" label={t("filter_payroll_month", "Payroll Month")} InputLabelProps={{ shrink: true }} value={dicFilters.payroll_month} onChange={(e) => setDicFilters((d) => ({ ...d, payroll_month: e.target.value }))} />
       {objFilterActions}
     </Box>
   );
 
   return (
     <Box className={styles.page}>
-      {blnIsEssMode ? (
-        <Box className="pageBanner" sx={{ display: "block", borderRadius: "18px", p: { xs: 2, md: 2.5 } }}>
-          <Box className="bannerDots" />
-          <Box sx={{ display: "flex", gap: 2, alignItems: { xs: "flex-start", md: "center" }, flexDirection: { xs: "column", md: "row" }, position: "relative", zIndex: 1 }}>
-            <Box sx={{ display: "flex", gap: 2, alignItems: "center", minWidth: 0 }}>
-              <Box className="bannerIcon">
-                <RequestQuoteRoundedIcon sx={{ fontSize: 34 }} />
-              </Box>
-              <Box className="bannerDivider" sx={{ display: { xs: "none", md: "block" } }} />
-              <Box sx={{ minWidth: 0 }}>
-                <Typography component="h1" className="bannerTitle">
-                  {t("page_title", "Loans and Advances")}
-                </Typography>
-                <Typography component="p" className="bannerSubTitle">
-                  {t("subtitle", "Track requests, check statuses, and search your loan and advance records.")}
-                </Typography>
-              </Box>
-            </Box>
-          </Box>
-        </Box>
-      ) : (
-        <Box className={styles.controlsCard}>
-          {objFilters}
-        </Box>
-      )}
-      {blnIsEssMode ? <Box className={styles.controlsCard}>{objFilters}</Box> : null}
+      <Box className={styles.controlsCard}>
+        {objFilters}
+      </Box>
       {strRightsError || strLabelError ? <Alert severity="warning">{strRightsError || strLabelError}</Alert> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {!blnCanView && !blnRightsLoading ? <Alert severity="warning">{blnIsEssMode ? t("ess_no_access", "ESS loans and advances access is not available for your user group.") : t("no_access", "Loans and advances access is not available for your user group.")}</Alert> : null}
@@ -348,8 +330,6 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
             columns={lstTableColumns}
             rows={lstTableRows}
             rowIdField="id"
-            defaultPageSize={10}
-            pageSizeOptions={[10, 20, 50]}
             exportFileName={blnIsEssMode ? "ess-loans-advances" : "payroll-loans-advances"}
             showPaginationSummary
             emptyMessage={t("empty_message", "No loans or advances found.")}
@@ -358,7 +338,7 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
               <Button
                 className={styles.primaryButton}
                 startIcon={<AddRoundedIcon />}
-                onClick={() => objRouter.push(blnIsEssMode ? "/ess/loans-advances/new?mode=add" : "/payroll/loans-advances/new?mode=add")}
+                onClick={() => objRouter.push(blnIsEssMode ? "/ess/loans-advances/new" : "/payroll/loans-advances/new")}
               >
                 {t("add_button", "New Request")}
               </Button>

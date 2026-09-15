@@ -1,6 +1,5 @@
 "use client";
 
-import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, Grid, InputLabel, MenuItem, Paper, Select, Stack, Typography } from "@mui/material";
@@ -86,17 +85,8 @@ export default function EmployeeCalendarPage() {
 
   return (
     <Stack spacing={1.5}>
-      <Box className="pageBanner" data-control-id="employee-calendar.header.banner" sx={{ flexWrap: { xs: "wrap", lg: "nowrap" } }}>
-        <Box className="bannerDots" />
-        <Box className="bannerIcon">
-          <CalendarMonthRoundedIcon sx={{ fontSize: 30 }} />
-        </Box>
-        <Box className="bannerDivider" />
-        <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
-          <Typography component="h1" className="bannerTitle">{t("holiday_calendar_title", "Holiday Calendar")}</Typography>
-          <Typography component="p" className="bannerSubTitle">{t("holiday_calendar_subtitle", "View your holidays and calendar day details.")}</Typography>
-        </Box>
-        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap sx={{ position: "relative", zIndex: 1, ml: { lg: "auto" } }}>
+      <Box data-control-id="employee-calendar.header.banner" sx={{ display: "flex", flexWrap: { xs: "wrap", lg: "nowrap" } }}>
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap sx={{ ml: { lg: "auto" } }}>
           <Button data-control-id="employee-calendar.previous-month.button" variant="outlined" aria-label={t("previous_month", "Previous month")} onClick={() => changeMonth(-1)} sx={{ minWidth: 40, bgcolor: "#fff", borderColor: "var(--app-primary-color)", color: "var(--app-primary-color)", "&:hover": { bgcolor: "rgba(255,255,255,.92)", borderColor: "var(--app-primary-color)" } }}><ChevronLeftRoundedIcon /></Button>
           <FormControl size="small" sx={objBannerSelectSx}><InputLabel>{t("month", "Month")}</InputLabel><Select data-control-id="employee-calendar.month.select" label={t("month", "Month")} value={objMonth.getMonth()} onChange={(objEvent) => selectMonth(Number(objEvent.target.value))}>{Array.from({ length: 12 }, (_, intMonth) => <MenuItem data-control-id={`employee-calendar.month.option.${intMonth + 1}`} key={intMonth} value={intMonth}>{new Intl.DateTimeFormat(strLocale, { month: "long" }).format(new Date(2026, intMonth, 1))}</MenuItem>)}</Select></FormControl>
           <FormControl size="small" sx={{ ...objBannerSelectSx, minWidth: 105 }}><InputLabel>{t("year", "Year")}</InputLabel><Select data-control-id="employee-calendar.year.select" label={t("year", "Year")} value={objMonth.getFullYear()} onChange={(objEvent) => selectYear(Number(objEvent.target.value))}>{lstYears.map((intYear) => <MenuItem data-control-id={`employee-calendar.year.option.${intYear}`} key={intYear} value={intYear}>{intYear}</MenuItem>)}</Select></FormControl>

@@ -5,7 +5,6 @@ type PayrollInputEditPageProps = {
     intInputID: string;
   }>;
   searchParams?: Promise<{
-    mode?: string;
     backRoute?: string;
   }>;
 };
@@ -16,12 +15,12 @@ export default async function PayrollInputEditPage({
 }: PayrollInputEditPageProps) {
   const { intInputID } = await params;
   const objSearchParams = searchParams ? await searchParams : undefined;
-  const strMode = objSearchParams?.mode === "view" ? "view" : "edit";
+  const strMode = "edit" as const;
 
   return (
     <EmployeePayrollInputEditorPage
       strMode={strMode}
-      intInputID={Number(intInputID)}
+      strInputID={intInputID}
       strBackRoute={objSearchParams?.backRoute}
     />
   );

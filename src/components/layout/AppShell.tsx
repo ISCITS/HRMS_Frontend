@@ -5,6 +5,7 @@ import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
 import SpaceDashboardRoundedIcon from "@mui/icons-material/SpaceDashboardRounded";
+import SwapHorizRoundedIcon from "@mui/icons-material/SwapHorizRounded";
 import {
   AppBar,
   Avatar,
@@ -29,6 +30,7 @@ import {
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+import { DashboardHeaderModeContext } from "@/components/layout/DashboardHeaderModeContext";
 import DynamicMenu from "@/components/navigation/DynamicMenu";
 import BlockingLoader, { BlockingLoaderViewportProvider } from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -36,9 +38,16 @@ import { labelService } from "@/features/labels/services/labelService";
 import { resolveRouteModuleName } from "@/features/labels/utils/resolveRouteModuleName";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { employeeService } from "@/features/employee/services/employeeService";
+import { useAuthenticatedAvatar } from "@/hooks/useAuthenticatedAvatar";
 import { authHelpers } from "@/lib/auth";
 import { normalizeMenuResponse } from "@/lib/menu";
-import type { CurrentUserContext, MenuItem as AuthMenuItem, MenuResponse, TenantAuthDetails } from "@/models/AuthModels";
+import { getPostLoginRoute } from "@/lib/RouteGuard";
+import {
+  isAuthenticatedAppRoute,
+  readAuthenticatedRouteHistory,
+  writeAuthenticatedRouteHistory
+} from "@/lib/routeAccess";
+import type { CurrentUserContext, MenuItem as AuthMenuItem, MenuResponse, PortalCode, TenantAuthDetails } from "@/models/AuthModels";
 import { ApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { authApiService } from "@/services";
 
@@ -53,11 +62,18 @@ const strModuleLabelsLoadStartEventName = "hrms:module-label-load-start";
 const strModuleLabelsLoadEndEventName = "hrms:module-label-load-end";
 const strAvatarRefreshEventName = "hrms:avatar-refresh";
 const intLanguageSwitchSettledDelayMs = 900;
-const strSharedHeaderGradient = "linear-gradient(90deg, #F7FAFF 0%, #E6F0FC 45%, #D5E7F8 100%)";
-const strSidebarGradient = "linear-gradient(180deg, #FCFDFF 0%, #F5F9FE 45%, #EEF5FC 100%)";
+const strSharedHeaderGradient = "var(--app-banner-background)";
+const strSidebarGradient = "var(--app-menu-background)";
+// Product and current-page headings share one responsive scale across the app bar.
+const objAppBarHeadingFontSize = { xs: "1.02rem", md: "1.28rem", lg: "1.42rem" } as const;
 
 function getAutomationProps(strControlId?: string) {
   return strControlId ? ({ "data-controlid": strControlId } as const) : {};
+}
+
+function getRouteWithSearch(strPathname: string, objSearchParams: ReturnType<typeof useSearchParams>) {
+  const strQuery = objSearchParams?.toString();
+  return strQuery ? `${strPathname}?${strQuery}` : strPathname;
 }
 
 function getPageTitle(strPathname: string) {
@@ -103,30 +119,43 @@ function getPageTitle(strPathname: string) {
   if (strPathname === "/leave/approvals" || strPathname === "/hr/leave/requests-approvals") {
     return "Leave Requests & Approvals";
   }
+  // Work on Holiday keeps its own identity in the breadcrumb even though its routes are
+  // nested under legacy /leave and /ess paths (see DynamicMenu.tsx route resolution).
+  if (strPathname === "/leave/work-on-holiday/requests" || strPathname === "/ess/work-on-holiday/approvals") {
+    return "Work on Holiday Requests";
+  }
+  if (strPathname === "/ess/work-on-holiday" || strPathname === "/ess/work-on-holiday-request") {
+    return "Work on Holiday";
+  }
 
+  // The shell header names the screen; it is not a breadcrumb of the address bar. Joining the path
+  // segments exposed the route structure and, once records were addressed by record_uuid, the
+  // identifier itself ("Leave / Leave Types / De4449e0 2f92..."). Only the most specific
+  // human-meaningful segment is kept, and record identifiers never appear.
   const lstSegments = strPathname
     .split("/")
     .filter(Boolean)
-    .map((strSegment) => {
-      if (strSegment === "add") {
-        return "Add";
-      }
-
-      if (strSegment === "edit") {
-        return "Edit";
-      }
-
-      if (/^\d+$/.test(strSegment)) {
-        return "";
-      }
-
-      return strSegment
+    .filter((strSegment) => !isRecordIdentifierSegment(strSegment))
+    .map((strSegment) =>
+      strSegment
         .replace(/[-_]/g, " ")
-        .replace(/\b\w/g, (strCharacter) => strCharacter.toUpperCase());
-    })
-    .filter(Boolean);
+        .replace(/\b\w/g, (strCharacter) => strCharacter.toUpperCase())
+    );
 
-  return lstSegments.join(" / ") || "Dashboard";
+  return lstSegments.at(-1) || "Dashboard";
+}
+
+// A path segment that identifies one record or the action being taken on it, rather than naming a
+// screen: a legacy numeric id, a record_uuid, or the add/edit/view verbs.
+function isRecordIdentifierSegment(strSegment: string) {
+  const strValue = strSegment.trim().toLowerCase();
+  if (strValue === "add" || strValue === "edit" || strValue === "view" || strValue === "new") {
+    return true;
+  }
+  if (/^\d+$/.test(strValue)) {
+    return true;
+  }
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(strValue);
 }
 
 function getCommonPageTitle(strPathname: string, tCommon: (strKey: string, strFallback?: string) => string) {
@@ -207,6 +236,33 @@ function getLocalizedHeaderTitle(
     return stripMasterTitle(tHeader("schedule_page_title", "Payroll Schedules"));
   }
 
+  if (strHeaderModuleName === "payroll-groups") {
+    if (strLowerPath.endsWith("/add")) {
+      return tHeader("group_add_title", "Add Payroll Group");
+    }
+    if (strLowerPath.includes("/edit")) {
+      return tHeader("group_edit_title", "Edit Payroll Group");
+    }
+    if (strLowerPath.includes("/view")) {
+      return tHeader("group_view_title", "View Payroll Group");
+    }
+    return stripMasterTitle(tHeader("group_page_title", "Payroll Groups"));
+  }
+
+  if (strHeaderModuleName === "attendance-leave-inputs") {
+    return stripMasterTitle(tHeader("header_title", "Attendance & Leave Inputs"));
+  }
+
+  if (strHeaderModuleName === "salary-register") {
+    const strTitle = tHeader("header_title", "Salary Register");
+    return stripMasterTitle(strTitle.split("/").pop()?.trim() || "Salary Register");
+  }
+  if (strHeaderModuleName === "salary-statement") {
+    const strTitle = tHeader("header_title", "Salary Statement");
+    return stripMasterTitle(strTitle.split("/").pop()?.trim() || "Salary Statement");
+  }
+  if (strHeaderModuleName === "ctc-format") return "CTC Format";
+
   if (strHeaderModuleName === "payslips") {
     const blnEssPayslipContext =
       strLowerPath.startsWith("/ess/my-payslips") ||
@@ -226,6 +282,10 @@ function getLocalizedHeaderTitle(
     return blnEssPayslipContext
       ? tHeader("ess_header_title", "My Payslips")
       : tHeader("header_title", "Payslips");
+  }
+
+  if (strHeaderModuleName === "my-compensation") {
+    return tHeader("page_title", "My Compensation");
   }
 
   if (strHeaderModuleName === "payroll-results") {
@@ -314,15 +374,15 @@ function getLocalizedHeaderTitle(
   if (strHeaderModuleName === "reimbursements") {
     const blnEmployeeReimbursementSource = strSource.trim().toLowerCase() === "employee-reimbursement";
     if (strLowerPath === "/ess/reimbursements/new") {
-      return blnEmployeeReimbursementSource ? tHeader("page_title_new", "Ess / Reimbursements / New") : tHeader("review_reimbursements", "Review Reimbursements");
+      return blnEmployeeReimbursementSource ? tHeader("page_title_new", "Reimbursements / New") : tHeader("review_reimbursements", "Review Reimbursements");
     }
     if (strLowerPath.match(/^\/ess\/reimbursements\/\d+\/edit$/)) {
-      return blnEmployeeReimbursementSource ? tHeader("page_title_edit", "Ess / Reimbursements / Edit") : tHeader("review_reimbursements", "Review Reimbursements");
+      return blnEmployeeReimbursementSource ? tHeader("page_title_edit", "Reimbursements / Edit") : tHeader("review_reimbursements", "Review Reimbursements");
     }
     if (strLowerPath.match(/^\/ess\/reimbursements\/\d+$/)) {
-      return blnEmployeeReimbursementSource ? tHeader("page_title_view", "Ess / Reimbursements / View") : tHeader("review_reimbursements", "Review Reimbursements");
+      return blnEmployeeReimbursementSource ? tHeader("page_title_view", "Reimbursements / View") : tHeader("review_reimbursements", "Review Reimbursements");
     }
-    return tHeader("page_title", "Ess / Reimbursements");
+    return tHeader("page_title", "Reimbursements");
   }
   if (strHeaderModuleName === "loans-advances") {
     const blnViewMode = strViewMode === "view";
@@ -366,6 +426,9 @@ function getLocalizedHeaderTitle(
   }
 
   if (strHeaderModuleName === "my-profile") {
+    if (strLowerPath === "/profile/change-password") {
+      return tHeader("change_password", "Change Password");
+    }
     if (strLowerPath.includes("/edit")) {
       return tHeader("edit_header_title", "Ess / My Profile / Edit");
     }
@@ -507,9 +570,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [blnDesktopSidebarOpen, setBlnDesktopSidebarOpen] = useState(false);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnLoggingOut, setBlnLoggingOut] = useState(false);
+  const [blnPortalSwitching, setBlnPortalSwitching] = useState(false);
+  const [strPortalSwitchError, setStrPortalSwitchError] = useState("");
   const [blnLogoutDialogOpen, setBlnLogoutDialogOpen] = useState(false);
   const [objProfileAnchorEl, setObjProfileAnchorEl] = useState<HTMLElement | null>(null);
   const [objUserContext, setObjUserContext] = useState<CurrentUserContext | null>(null);
+  const [blnEssDashboardActive, setBlnEssDashboardActive] = useState(false);
   const [objMenu, setObjMenu] = useState<MenuResponse>({ lstMenuItems: [], strHomeRoute: "/dashboard" });
   const [blnMenuLoaded, setBlnMenuLoaded] = useState(false);
   const [blnMenuLoading, setBlnMenuLoading] = useState(false);
@@ -547,6 +613,22 @@ export default function AppShell({ children }: { children: ReactNode }) {
   function redirectToSessionExpired() {
     authHelpers.redirectToSessionExpired();
   }
+
+  useEffect(() => {
+    if (!isAuthenticatedAppRoute(strPathname)) {
+      return;
+    }
+
+    const strCurrentRoute = getRouteWithSearch(strPathname, objSearchParams);
+    const lstStoredRoutes = readAuthenticatedRouteHistory();
+    const intExistingIndex = lstStoredRoutes.lastIndexOf(strCurrentRoute);
+    const lstNextRoutes =
+      intExistingIndex >= 0
+        ? lstStoredRoutes.slice(0, intExistingIndex + 1)
+        : [...lstStoredRoutes, strCurrentRoute];
+
+    writeAuthenticatedRouteHistory(lstNextRoutes);
+  }, [objSearchParams, strPathname]);
 
   useEffect(() => {
     function handleModuleLabelLoadStart(objEvent: Event) {
@@ -798,6 +880,29 @@ export default function AppShell({ children }: { children: ReactNode }) {
     window.location.replace(strLogoutUrl);
   }
 
+  async function switchPortal(strPortal: PortalCode) {
+    if (blnPortalSwitching) {
+      return;
+    }
+
+    closeProfileMenu();
+    setStrPortalSwitchError("");
+    setBlnPortalSwitching(true);
+    try {
+      const objResult = await authApiService.selectPortalContext(strPortal);
+      // A full navigation guarantees menus, permissions, dashboard data and shell branding all
+      // bootstrap from the newly issued portal-scoped token.
+      window.location.assign(getPostLoginRoute(objResult.Data.strHomeRoute));
+    } catch (objError) {
+      setBlnPortalSwitching(false);
+      if (isSessionExpiredError(objError)) {
+        redirectToSessionExpired();
+        return;
+      }
+      setStrPortalSwitchError(objError instanceof Error ? objError.message : "Unable to switch portal.");
+    }
+  }
+
   async function switchWorkspaceLanguage(intRequestedLanguageID: number) {
     if (
       blnLanguageSwitching ||
@@ -862,18 +967,47 @@ export default function AppShell({ children }: { children: ReactNode }) {
     ["admin", "human resource", "hr", "payroll", "manager", "approver", "supervisor", "finance"]
       .some((strKeyword) => strRole === strKeyword || strRole.includes(strKeyword)),
   );
-  // A linked employee without an HR/manager role must receive only self-service
-  // navigation even when stale group-menu rights still exist in tenant data.
-  const blnEssOnlyNavigation = Boolean(intLinkedEmployeeID) && !blnHasPrivilegedRole;
+  // When the session carries an active portal the server has already scoped menus and rights to
+  // that portal's primary group, so the client must follow it rather than inferring a portal from
+  // the employee link — an HR employee is legitimately employee-linked while working in HRMS.
+  // The legacy heuristic (linked employee without an HR/manager role gets self-service navigation
+  // even when stale group-menu rights exist) still applies to sessions with no portal context.
+  const strActivePortalContext = String(objUserContext?.strActiveContext ?? "").trim().toUpperCase();
+  const lstAvailablePortals = objUserContext?.lstAvailablePortals ?? [];
+  const strSwitchTargetPortal: PortalCode | null = strActivePortalContext === "ESS" && lstAvailablePortals.includes("HRMS")
+    ? "HRMS"
+    : strActivePortalContext === "HRMS" && lstAvailablePortals.includes("ESS")
+      ? "ESS"
+      : null;
+  const blnEssOnlyNavigation = strActivePortalContext
+    ? strActivePortalContext === "ESS"
+    : Boolean(intLinkedEmployeeID) && !blnHasPrivilegedRole;
+  // Shell branding must follow the selected portal. Dashboard type is only a legacy fallback
+  // because an employee-linked HRMS user can still receive employee-oriented dashboard content.
+  const blnEssShellBrand = strActivePortalContext
+    ? strActivePortalContext === "ESS"
+    : blnEssOnlyNavigation || blnEssDashboardActive;
   const strLinkedEmployeeName = strResolvedEmployeeName || extractLinkedEmployeeName(objUserContext);
   const { strEmployeeCode, strDesignation } = extractEmployeeMeta(objUserContext);
   const strProfileDisplayName = strLinkedEmployeeName || strUserName;
   const strAvatarText = strProfileDisplayName.trim().charAt(0).toUpperCase() || "U";
   const strAvatarUrl = objUserContext?.strAvatarUrl || objUserContext?.objEmployee?.strProfilePhotoUrl || "";
+  const strAuthenticatedAvatarUrl = useAuthenticatedAvatar(strAvatarUrl);
   const blnEmployeeReimbursementContext =
     strPathname?.toLowerCase() === "/payroll/employee-reimbursement" ||
     objSearchParams.get("source") === "employee-reimbursement";
   const strLowerPathname = strPathname?.toLowerCase() || "";
+  const blnEmployeeSalaryEditorRoute = /^\/employee-salary\/\d+(?:\/revise)?$/.test(strLowerPathname);
+  // The id segment is a record_uuid now, not a number; a legacy numeric URL still matches.
+  const blnSalaryComponentEditorRoute = /^\/salary-components\/(?:add|(?:edit|view)\/[\w-]+)$/.test(strLowerPathname);
+  // The id segment is a record_uuid now, not a number; a legacy numeric URL still matches.
+  const blnSalaryStructureEditorRoute = /^\/salary-structures\/(?:add|edit\/[\w-]+)$/.test(strLowerPathname);
+  // The Leave Type / Leave Plan editors carry their own title in the Back/Save toolbar, like the
+  // salary editors.
+  const blnLeaveTypeEditorRoute = /^\/leave\/leave-types\/(?:new|\d+)$/.test(strLowerPathname);
+  const blnLeavePlanEditorRoute = /^\/leave\/plans\/(?:new|\d+)$/.test(strLowerPathname);
+  const blnLeaveAssignmentEditorRoute = /^\/leave\/plan-assignments\/\d+$/.test(strLowerPathname);
+  const blnLeaveApprovalsRoute = strLowerPathname === "/leave/approvals" || strLowerPathname === "/hr/leave/requests-approvals";
   const blnEmployeeReimbursementFormContext =
     Boolean(strLowerPathname.match(/^\/ess\/reimbursements(\/new|\/\d+(\/edit)?)?$/)) &&
     Boolean(objSearchParams.get("employee_id"));
@@ -900,6 +1034,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const blnDashboardRoute = (strPathname || "").toLowerCase() === "/dashboard";
   const strTenantName = objUserContext?.objTenant.strTenantName || "Workspace";
   const blnProfileMenuOpen = Boolean(objProfileAnchorEl);
+
+  useEffect(() => {
+    if (!blnDashboardRoute) {
+      setBlnEssDashboardActive(false);
+    }
+  }, [blnDashboardRoute]);
 
   function handleMenuToggle() {
     void ensureMenuLoaded();
@@ -953,7 +1093,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           minHeight: 0,
           borderRadius: "24px",
           overflow: "hidden",
-          backgroundColor: "rgba(255,255,255,0.86)",
+          backgroundColor: "var(--app-menu-surface)",
           backdropFilter: "blur(22px)",
           border: "1px solid rgba(148, 163, 184, 0.16)",
           boxShadow: "0 18px 40px rgba(15, 23, 42, 0.08)"
@@ -965,7 +1105,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             height: `${intTopBarHeight}px`,
             flexShrink: 0,
             background: strSharedHeaderGradient,
-            color: "#0f172a",
+            color: "var(--app-banner-text-color)",
             display: "flex",
             alignItems: "center",
             boxSizing: "border-box"
@@ -981,14 +1121,16 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 placeItems: "center",
                 backgroundColor: "rgba(37, 99, 235, 0.12)",
                 border: "1px solid rgba(37, 99, 235, 0.18)",
-                color: "#2563eb"
+                color: "var(--app-icon-active-color)"
               }}
             >
               <SpaceDashboardRoundedIcon />
             </Box>
             <Box sx={{ minWidth: 0 }}>
               <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
-                HRMS
+                {blnEssShellBrand
+                  ? tCommon("brand_short_name", "ESS")
+                  : tCommon("brand_short_name_hrms", "HRMS")}
               </Typography>
             </Box>
           </Stack>
@@ -1121,8 +1263,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
       ref={objShellContentRef}
       sx={{
         display: "flex",
-        height: "100vh",
-        minHeight: "100vh",
+        height: "100dvh",
+        minHeight: "100dvh",
         overflow: "hidden",
         background:
           "radial-gradient(circle at top left, rgba(14,116,144,0.12), transparent 28%), linear-gradient(180deg, #f8fbff 0%, #eef4f8 100%)"
@@ -1134,13 +1276,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
           zIndex: intMenuZIndex,
           width: intCollapsedMenuRailWidth,
           flex: `0 0 ${intCollapsedMenuRailWidth}px`,
-          height: "100vh",
+          height: "100dvh",
           minHeight: 0,
           display: { xs: "none", lg: "flex" },
           flexDirection: "column",
           alignItems: "center",
           background: strSidebarGradient,
-          borderRight: "1px solid #D7E4F2",
+          borderRight: "1px solid var(--app-menu-border-color)",
           boxShadow: "8px 0 24px rgba(15, 23, 42, 0.08)",
           overflow: "hidden",
           cursor: "pointer",
@@ -1166,18 +1308,18 @@ export default function AppShell({ children }: { children: ReactNode }) {
               sx={{
                 width: 40,
                 height: 40,
-                border: "1px solid #D7E4F2",
+                border: "1px solid var(--app-menu-border-color)",
                 backgroundColor: "#ffffff",
-                color: "#5E7FA5",
+                color: "var(--app-menu-icon-color)",
                 boxShadow: "0 8px 20px rgba(15, 23, 42, 0.08)",
                 "&:hover": {
-                  backgroundColor: "#EAF3FC",
-                  color: "#1D5D96",
+                  backgroundColor: "var(--app-menu-hover-background)",
+                  color: "var(--app-menu-active-color)",
                 }
               }}
               {...getAutomationProps("app-shell.desktop-menu-toggle.button")}
             >
-              <MenuRoundedIcon />
+              <MenuRoundedIcon sx={{ fontSize: { xs: 21, xl: 24 } }} />
           </IconButton>
         </Box>
         <Box
@@ -1210,10 +1352,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
             display: "grid",
             placeItems: "center",
             flexShrink: 0,
-            color: "#1D5D96",
+            color: "var(--app-menu-active-color)",
           }}
         >
-          <LogoutRoundedIcon />
+          <LogoutRoundedIcon sx={{ fontSize: { xs: 20, xl: 24 } }} />
         </Box>
       </Box>
       <Box
@@ -1223,7 +1365,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           top: 0,
           zIndex: intMenuZIndex + 1,
           width: intDrawerWidth + 28,
-          height: "100vh",
+          height: "100dvh",
           minHeight: 0,
           display: { xs: "none", lg: "block" },
           p: { xs: 1, md: 1.5 },
@@ -1246,8 +1388,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
           display: { xs: "block", lg: "none" },
           zIndex: intMenuZIndex,
           "& .MuiDrawer-paper": {
-            width: intDrawerWidth,
-            height: "100vh",
+            // Leave a visible edge on narrow phones so the temporary drawer never exceeds the viewport.
+            width: `min(${intDrawerWidth}px, calc(100vw - 24px))`,
+            height: "100dvh",
             border: "none",
             borderRadius: "0 32px 32px 0",
             backgroundColor: "transparent",
@@ -1264,11 +1407,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
         <Box
           sx={{
             position: "relative",
+            display: "flex",
+            flexDirection: "column",
             flex: 1,
             minWidth: 0,
             minHeight: 0,
             overflow: "hidden",
-            p: blnDashboardRoute ? { xs: 0.75, md: 1 } : { xs: 1, md: 1.5 }
+              p: blnDashboardRoute ? { xs: 0.75, xl: 1 } : { xs: 1, xl: 1.5 }
           }}
         >
           <AppBar
@@ -1280,16 +1425,16 @@ export default function AppShell({ children }: { children: ReactNode }) {
             }}
             sx={{
               position: "relative",
+              flexShrink: 0,
               borderRadius: "24px",
-              mb: 1.5,
+              mb: { xs: 1, xl: 1.5 },
               px: { xs: 0.25, sm: 0.75 },
               background: strSharedHeaderGradient,
-              border: "1px solid rgba(255, 255, 255, 0.6)",
-              boxShadow:
-                "0 10px 30px rgba(59, 130, 246, 0.08), 0 6px 18px rgba(168, 85, 247, 0.08)"
+              border: "1px solid var(--app-banner-border-color)",
+              boxShadow: "var(--app-banner-shadow)"
             }}
           >
-            <Toolbar sx={{ gap: 1.5, height: `${intTopBarHeight}px`, minHeight: `${intTopBarHeight}px !important`, boxSizing: "border-box", alignItems: "center" }}>
+            <Toolbar sx={{ gap: { xs: 0.5, sm: 1, xl: 1.5 }, height: { xs: "56px", xl: `${intTopBarHeight}px` }, minHeight: { xs: "56px !important", xl: `${intTopBarHeight}px !important` }, boxSizing: "border-box", alignItems: "center", px: { xs: 1, sm: 2 } }}>
               <IconButton
                 onClick={handleMenuToggle}
                 sx={{
@@ -1304,11 +1449,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 <MenuRoundedIcon />
               </IconButton>
 
-              <Box sx={{ minWidth: 0, flexShrink: 0 }}>
+              <Box sx={{ minWidth: 0, flexShrink: 0, display: { xs: "none", md: "block" } }}>
                 <Typography
                   sx={{
-                    fontSize: { xs: "1.02rem", md: "1.28rem", lg: "1.42rem" },
-                    color: "#0f172a",
+                    fontSize: objAppBarHeadingFontSize,
+                    color: "var(--app-banner-text-color)",
                     textTransform: "none",
                     letterSpacing: "normal",
                     fontWeight: 700,
@@ -1316,7 +1461,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
                     whiteSpace: "nowrap"
                   }}
                 >
-                  {tCommon("app_title", "Human Resource Management System")}
+                  {blnEssShellBrand
+                    ? tCommon("ess_app_title", "Employee Self Service")
+                    : tCommon("app_title", "Human Resource Management System")}
                 </Typography>
               </Box>
 
@@ -1400,31 +1547,33 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
               <Box sx={{ flex: 1, minWidth: 0 }} />
 
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "flex-end",
-                  minWidth: 0,
-                  pr: { xs: 0.25, md: 0.75 }
-                }}
-              >
-                <Typography
+              {(blnDashboardRoute && blnEssDashboardActive) || blnEmployeeSalaryEditorRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute ? null : (
+                <Box
                   sx={{
-                    fontSize: { xs: "1.02rem", md: "1.28rem", lg: "1.42rem" },
-                    fontWeight: 700,
-                    color: "#0f172a",
-                    letterSpacing: "-0.03em",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    maxWidth: { xs: "120px", sm: "220px", md: "320px" },
-                    textAlign: "right"
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "flex-end",
+                    minWidth: 0,
+                    pr: { xs: 0.25, md: 0.75 }
                   }}
                 >
-                  {strPageTitle}
-                </Typography>
-              </Box>
+                  <Typography
+                    sx={{
+                      fontSize: objAppBarHeadingFontSize,
+                      fontWeight: 700,
+                      color: "#0f172a",
+                      letterSpacing: "-0.03em",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      maxWidth: { xs: "42vw", sm: "240px", md: "320px" },
+                      textAlign: "right"
+                    }}
+                  >
+                    {strPageTitle}
+                  </Typography>
+                </Box>
+              )}
 
               <Box
                 sx={{
@@ -1455,17 +1604,17 @@ export default function AppShell({ children }: { children: ReactNode }) {
                     }}
                     {...getAutomationProps("app-shell.profile-menu.button")}
                   >
-                    <Avatar src={strAvatarUrl || undefined} sx={{ bgcolor: "rgba(14,116,144,0.12)", color: "#0e7490", fontWeight: 700, width: 42, height: 42 }}>
+                    <Avatar src={strAuthenticatedAvatarUrl || undefined} sx={{ bgcolor: "rgba(14,116,144,0.12)", color: "#0e7490", fontWeight: 700, width: { xs: 36, sm: 42 }, height: { xs: 36, sm: 42 } }}>
                       {strAvatarText}
                     </Avatar>
                   </IconButton>
                   <Box
                     sx={{
-                      display: "flex",
+                      display: { xs: "none", sm: "flex" },
                       flexDirection: "column",
                       alignItems: "flex-start",
                       minWidth: 0,
-                      maxWidth: { xs: "112px", sm: "152px", md: "180px" }
+                      maxWidth: { sm: "152px", md: "180px" }
                     }}
                   >
                     <Typography
@@ -1504,7 +1653,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
                     sx={{
                       p: 0.2,
                       color: "#1f3b73",
-                      flexShrink: 0
+                      flexShrink: 0,
+                      display: { xs: "none", sm: "inline-flex" }
                     }}
                     {...getAutomationProps("app-shell.profile-menu.button")}
                   >
@@ -1521,14 +1671,16 @@ export default function AppShell({ children }: { children: ReactNode }) {
             onClickCapture={handleMainContentClick}
             sx={{
               position: "relative",
+              flex: 1,
               minHeight: 0,
-              height: `calc(100% - ${intTopBarHeight + 16}px)`,
               overflowY: "auto",
               overflowX: "hidden",
               pr: blnDashboardRoute ? 0 : 0.5
             }}
           >
-            {children}
+            <DashboardHeaderModeContext.Provider value={setBlnEssDashboardActive}>
+              {children}
+            </DashboardHeaderModeContext.Provider>
             <BlockingLoader
               blnOpen={blnLoggingOut}
               strLabel="Logging out..."
@@ -1538,6 +1690,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <BlockingLoader
               blnOpen={blnLanguageSwitching}
               strLabel={tCommon("switching_language", "Switching language...")}
+              intZIndex={intContentLoaderZIndex}
+              blnLocal
+            />
+            <BlockingLoader
+              blnOpen={blnPortalSwitching}
+              strLabel={tCommon("switching_portal", "Switching portal...")}
               intZIndex={intContentLoaderZIndex}
               blnLocal
             />
@@ -1568,6 +1726,24 @@ export default function AppShell({ children }: { children: ReactNode }) {
           ) : null}
         </Box>
         <Divider />
+        {strSwitchTargetPortal ? (
+          <>
+            <MenuItem
+              onClick={() => void switchPortal(strSwitchTargetPortal)}
+              disabled={blnLoggingOut || blnPortalSwitching}
+              sx={{ gap: 1.25, py: 1.25, justifyContent: "flex-start", textAlign: "left" }}
+              {...getAutomationProps(`app-shell.switch-to-${strSwitchTargetPortal.toLowerCase()}.menu-item`)}
+            >
+              <SwapHorizRoundedIcon fontSize="small" />
+              <Typography sx={{ fontWeight: 600 }}>
+                {strSwitchTargetPortal === "HRMS"
+                  ? tCommon("switch_to_hrms", "Switch to HRMS")
+                  : tCommon("switch_to_ess", "Switch to Employee Self Service")}
+              </Typography>
+            </MenuItem>
+            <Divider />
+          </>
+        ) : null}
         <MenuItem
           onClick={() => {
             closeProfileMenu();
@@ -1582,7 +1758,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </MenuItem>
       </Menu>
 
-      <Dialog open={blnLogoutDialogOpen} onClose={() => setBlnLogoutDialogOpen(false)} fullWidth maxWidth="xs" {...getAutomationProps("app-shell.logout.dialog")}>
+      <Dialog
+        open={blnLogoutDialogOpen}
+        onClose={() => setBlnLogoutDialogOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{ sx: { maxWidth: "400px" } }}
+        {...getAutomationProps("app-shell.logout.dialog")}
+      >
         <DialogTitle>{tCommon("logout", "Logout")}</DialogTitle>
         <DialogContent>
           <Typography>{tCommon("confirm_logout", "Are you sure you want to logout?")}</Typography>
@@ -1591,6 +1774,18 @@ export default function AppShell({ children }: { children: ReactNode }) {
           <Button onClick={() => setBlnLogoutDialogOpen(false)} disabled={blnLoggingOut} {...getAutomationProps("app-shell.logout.cancel.button")}>{tCommon("cancel", "Cancel")}</Button>
           <Button onClick={confirmLogout} variant="contained" color="error" disabled={blnLoggingOut} {...getAutomationProps("app-shell.logout.confirm.button")}>
             {tCommon("logout", "Logout")}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(strPortalSwitchError)} onClose={() => setStrPortalSwitchError("")} fullWidth maxWidth="xs" {...getAutomationProps("app-shell.portal-switch-error.dialog")}>
+        <DialogTitle>{tCommon("portal_switch_failed", "Unable to switch portal")}</DialogTitle>
+        <DialogContent>
+          <Typography>{strPortalSwitchError}</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setStrPortalSwitchError("")} {...getAutomationProps("app-shell.portal-switch-error.close.button")}>
+            {tCommon("close", "Close")}
           </Button>
         </DialogActions>
       </Dialog>

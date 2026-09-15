@@ -10,7 +10,7 @@ export default async function EmployeeSalaryRevisionRoute({ params }: EmployeeSa
   const { id } = await params;
   return (
     <EmployeeSalaryDetailPage
-      intEmployeeID={Number(id)}
+      strEmployeeID={id}
       blnRevisionMode
       strReturnTo={`/employee-salary/${id}`}
     />

@@ -77,8 +77,15 @@ export default function BlockingLoader({
         inset: 0,
         display: "grid",
         placeItems: "center",
-        background: "transparent",
-        zIndex: (objTheme) => intZIndex ?? (objTheme.zIndex.modal + 1),
+        // A faint scrim, never fully transparent: this element captures pointer events, and an
+        // invisible blocker makes controls silently stop responding with nothing to explain why.
+        background: "rgba(15, 23, 42, 0.08)",
+        // This overlay is portalled INSIDE the content viewport, so it covers the page - never a
+        // dialog. Callers pass values above MUI's modal layer (1400 vs 1300) meaning to sit above
+        // page content; taken literally that also paints it over any open dialog and swallows
+        // every click on it. Clamp below the modal layer so a modal always stays reachable.
+        zIndex: (objTheme) =>
+          Math.min(intZIndex ?? objTheme.zIndex.modal - 1, objTheme.zIndex.modal - 1),
         pointerEvents: "auto",
       }}
     >
@@ -105,9 +112,16 @@ export default function BlockingLoader({
   return (
     <Backdrop
       open={blnOpen}
+      // A faint scrim rather than a transparent one. Callers place this above the modal layer
+      // (z-index 1400 vs MUI's 1300 for Dialog), so a fully transparent backdrop reads as a normal
+      // interactive screen while silently swallowing every click - controls simply stop responding
+      // with nothing on screen to explain why. Blocking must always be visible.
       sx={{
-        background: "transparent",
-        zIndex: (objTheme) => intZIndex ?? (objTheme.zIndex.modal + 1),
+        background: "rgba(15, 23, 42, 0.08)",
+        // Same reasoning as the portalled overlay: never above the modal layer, so an open dialog
+        // is always reachable.
+        zIndex: (objTheme) =>
+          Math.min(intZIndex ?? objTheme.zIndex.modal - 1, objTheme.zIndex.modal - 1),
       }}
     >
       {objSpinnerContent}

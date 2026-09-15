@@ -96,7 +96,14 @@ function toPayload(dicValues: EmployeePayrollInputFormValues) {
     decPayableDays: parseOptionalNumber(dicValues.strPayableDays),
     decLwpDays: parseOptionalNumber(dicValues.strLwpDays),
     decLopDays: parseOptionalNumber(dicValues.strLopDays),
-    strManualLwpSource: dicValues.strManualLwpSource.trim() || null,
+    // Always stamp MANUAL_HR on save from this screen, rather than echoing back whatever
+    // strManualLwpSource was loaded with (e.g. "SYSTEM_ATTENDANCE" on a row previously
+    // auto-synced from attendance). This is the manual payroll-input editor - saving here
+    // is the human taking explicit ownership of this record, and it must be recognized as
+    // such so the next automatic "Check Leave & Attendance" sync preserves it instead of
+    // silently overwriting it (AttendancePayrollIntegrationService.upsertPayrollInputForEmployee
+    // only preserves a manual value when strManualLwpSource != "SYSTEM_ATTENDANCE").
+    strManualLwpSource: "MANUAL_HR",
     strManualLwpReason: dicValues.strManualLwpReason.trim() || null,
     strRemarks: dicValues.strRemarks.trim() || null,
     strStatus: dicValues.strStatus,
@@ -170,6 +177,7 @@ export const employeePayrollInputService = {
   async getEmployeePayrollInputs(objFilters?: {
     strSearchEmployee?: string;
     strSearchRun?: string;
+    intPayrollRunID?: number | null;
     strStatus?: string;
   }): Promise<EmployeePayrollInputListRecord[]> {
     const objParams = new URLSearchParams();
@@ -178,6 +186,9 @@ export const employeePayrollInputService = {
     }
     if (objFilters?.strSearchRun?.trim()) {
       objParams.set("strSearchRun", objFilters.strSearchRun.trim());
+    }
+    if (objFilters?.intPayrollRunID) {
+      objParams.set("intPayrollRunID", String(objFilters.intPayrollRunID));
     }
     if (objFilters?.strStatus?.trim() && objFilters.strStatus !== "All") {
       objParams.set("strStatus", objFilters.strStatus.trim());
@@ -206,10 +217,10 @@ export const employeePayrollInputService = {
   },
 
   async getEmployeePayrollInputById(
-    intInputID: number
+    strRecordUUID: string
   ): Promise<EmployeePayrollInputDetailRecord> {
     const objResult = await requestApi<EmployeePayrollInputApiRecord>({
-      strPath: `${strEmployeePayrollInputApiPath}/${intInputID}`,
+      strPath: `${strEmployeePayrollInputApiPath}/${strRecordUUID}`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_EMPLOYEE_PAYROLL_INPUT_VIEW",
     });
@@ -229,11 +240,11 @@ export const employeePayrollInputService = {
   },
 
   async updateEmployeePayrollInput(
-    intInputID: number,
+    strRecordUUID: string,
     dicValues: EmployeePayrollInputFormValues
   ): Promise<EmployeePayrollInputDetailRecord> {
     const objResult = await requestApi<EmployeePayrollInputApiRecord>({
-      strPath: `${strEmployeePayrollInputApiPath}/${intInputID}`,
+      strPath: `${strEmployeePayrollInputApiPath}/${strRecordUUID}`,
       strMethod: "PUT",
       objBody: toPayload(dicValues),
       strMenuAction: "PAYROLL_EMPLOYEE_PAYROLL_INPUT_UPDATE",
@@ -242,10 +253,10 @@ export const employeePayrollInputService = {
   },
 
   async unlockEmployeePayrollInput(
-    intInputID: number
+    strRecordUUID: string
   ): Promise<EmployeePayrollInputDetailRecord> {
     const objResult = await requestApi<EmployeePayrollInputApiRecord>({
-      strPath: `${strEmployeePayrollInputApiPath}/${intInputID}/unlock`,
+      strPath: `${strEmployeePayrollInputApiPath}/${strRecordUUID}/unlock`,
       strMethod: "POST",
       strMenuAction: "PAYROLL_EMPLOYEE_PAYROLL_INPUT_UPDATE",
     });

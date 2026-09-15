@@ -8,5 +8,5 @@ type ReimbursementClaimEditRouteProps = {
 
 export default async function EssReimbursementClaimEditRoute({ params }: ReimbursementClaimEditRouteProps) {
   const { claimId } = await params;
-  return <ReimbursementClaimEditorPage intClaimID={Number(claimId)} strMode="edit" />;
+  return <ReimbursementClaimEditorPage strClaimID={claimId} strMode="edit" />;
 }

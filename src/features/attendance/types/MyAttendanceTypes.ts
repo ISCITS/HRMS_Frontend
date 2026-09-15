@@ -9,6 +9,7 @@ export type MyAttendancePunch = {
 
 export type MyAttendancePolicy = {
   strPolicyName: string;
+  strPolicySource?: "EMPLOYEE_ASSIGNMENT" | "COMPANY_DEFAULT" | null;
   decFullDayThresholdHours: number;
   decHalfDayThresholdHours: number;
   blnInPunchRequired: boolean;
@@ -16,7 +17,10 @@ export type MyAttendancePolicy = {
   strMissingPunchTreatmentCode: string;
   intLateGraceMinutes: number;
   intEarlyDepartureGraceMinutes: number;
+  strInTime?: string | null;
+  strOutTime?: string | null;
   intWorkHoursRoundingMinutes: number;
+  strWeeklyOffPattern?: string | null;
   blnOtEnabled: boolean;
   dtEffectiveFrom: string;
   dtEffectiveTo?: string | null;
@@ -34,6 +38,16 @@ export type MyAttendanceOverview = {
   objPolicy?: MyAttendancePolicy | null;
 };
 
+export type MyAttendanceLateArrivalLop = {
+  intOccurrences: number;
+  intThreshold: number;
+  strDeductionType: "HALF_DAY" | "FULL_DAY";
+  decUnitDeductionDays: number;
+  intUnitsIncurredMtd: number;
+  decLopDaysMtd: number;
+  intOccurrencesUntilNextDeduction: number;
+};
+
 export type MyAttendanceHistory = {
   dtFromDate: string;
   dtToDate: string;
@@ -41,6 +55,8 @@ export type MyAttendanceHistory = {
     dicStatusCounts: Record<string, number>;
     decWorkedHours: number;
     intLateOccurrences: number;
+    intEarlyOccurrences: number;
+    objLateArrivalLop?: MyAttendanceLateArrivalLop | null;
   };
   lstDays: AttendanceDayDto[];
 };

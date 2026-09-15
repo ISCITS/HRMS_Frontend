@@ -180,7 +180,7 @@ export default function PayslipPreviewContent({
       decValue: (dicTax?.decSurchargeAmount ?? 0) - (dicTax?.decMarginalSurchargeReliefAmount ?? 0),
     },
     { strLabel: t("cess", "Cess"), decValue: dicTax?.decCessAmount },
-    { strLabel: t("annual_tax", "Annual Tax Amount"), decValue: dicTax?.decAnnualTaxAmount },
+    { strLabel: t("annual_tax", "Annual Tax Amount"), decValue: dicTax?.decTotalTaxLiability },
     { strLabel: t("monthly_tds", "TDS This Month"), decValue: dicTax?.decCurrentMonthTds ?? dicTotals.decTaxTotal },
     { strLabel: t("tax_total", "Tax Total"), decValue: dicTotals.decTaxTotal },
   ];

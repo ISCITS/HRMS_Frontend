@@ -6,7 +6,9 @@ export type PayrollProcessLogOption = {
 
 export type PayrollProcessLogListRecord = {
   intID: number;
+  strRecordUUID: string;
   intPayrollRunID: number;
+  strPayrollRunRecordUUID: string;
   intEmployeeID: number | null;
   strEmployeeCode: string | null;
   strEmployeeName: string | null;
@@ -25,7 +27,7 @@ export type PayrollProcessLogFormOptions = {
 };
 
 export type PayrollProcessLogFilters = {
-  intPayrollRunID: string;
+  strPayrollRunRecordUUID: string;
   intEmployeeID: number | "";
   strProcessStage: string;
   strProcessStatus: string;

@@ -1,7 +1,6 @@
 "use client";
 
 import AddCircleOutlineRoundedIcon from "@mui/icons-material/AddCircleOutlineRounded";
-import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
@@ -44,6 +43,12 @@ function getCurrentFinancialYearCode() {
   const intMonth = objNow.getMonth();
   const intFyStartYear = intMonth >= 3 ? intYear : intYear - 1;
   return `${intFyStartYear}-${String(intFyStartYear + 1).slice(-2)}`;
+}
+
+function getNextFinancialYearCode() {
+  const strCurrentFy = getCurrentFinancialYearCode();
+  const intStartYear = Number(strCurrentFy.split("-")[0] || new Date().getFullYear());
+  return `${intStartYear + 1}-${String(intStartYear + 2).slice(-2)}`;
 }
 
 function canEditDeclarationByStatus(strStatus?: string | null) {
@@ -220,17 +225,12 @@ export default function SalaryEssDeclarationsPage() {
     });
   }, [lstRows, dicAppliedFilters]);
   const lstFyOptions = useMemo(() => {
-    const setCodes = new Set<string>();
-    if (strCurrentFy) setCodes.add(normalizeFinancialYearCode(strCurrentFy));
-    const intNow = new Date().getFullYear();
-    const intMonth = new Date().getMonth();
-    const intStart = intMonth >= 3 ? intNow : intNow - 1;
-    setCodes.add(`${intStart}-${String(intStart + 1).slice(-2)}`);
-    setCodes.add(`${intStart - 1}-${String(intStart).slice(-2)}`);
-    setCodes.add(`${intStart - 2}-${String(intStart - 1).slice(-2)}`);
-    for (const objRow of lstRows) setCodes.add(normalizeFinancialYearCode(objRow.strFinancialYearCode));
-    return Array.from(setCodes).filter(Boolean).sort((a, b) => b.localeCompare(a));
-  }, [strCurrentFy, lstRows]);
+    const strResolvedCurrentFy = normalizeFinancialYearCode(strCurrentFy || getCurrentFinancialYearCode());
+    return [
+      strResolvedCurrentFy,
+      normalizeFinancialYearCode(getNextFinancialYearCode()),
+    ].filter(Boolean);
+  }, [strCurrentFy]);
 
   const setDeclaredFy = useMemo(() => {
     const setData = new Set<string>();
@@ -298,13 +298,22 @@ export default function SalaryEssDeclarationsPage() {
       declared: formatCurrency(objRow.decDeclaredAmount),
       approved: formatCurrency(objRow.decApprovedAmount),
       lastUpdated: formatDateLabel(objRow.strLastUpdated),
-      action: (
-        <Stack direction="row" spacing={0.6} flexWrap="wrap" useFlexGap justifyContent="center">
-          <Button controlId="salary.ess-declarations.row.open.button" data-row-key={objRow.intDeclarationID} size="small" variant="outlined" onClick={() => void openDeclaration(objRow.strFinancialYearCode, objRow.strTaxRegime)}>
-            {blnCanEdit && canEditDeclarationByStatus(objRow.strStatus) ? t("continue", "Continue") : t("view", "View")}
-          </Button>
-        </Stack>
-      ),
+      action: (() => {
+        const blnRowGoesToEdit = blnCanEdit && canEditDeclarationByStatus(objRow.strStatus);
+        return (
+          <Stack direction="row" spacing={0.6} flexWrap="wrap" useFlexGap justifyContent="center">
+            <Button
+              controlId={`salary.ess-declarations.row.${blnRowGoesToEdit ? "edit" : "view"}.button`}
+              data-row-key={objRow.intDeclarationID}
+              size="small"
+              variant="outlined"
+              onClick={() => void openDeclaration(objRow.strFinancialYearCode, objRow.strTaxRegime)}
+            >
+              {blnRowGoesToEdit ? t("continue", "Continue") : t("view", "View")}
+            </Button>
+          </Stack>
+        );
+      })(),
     }));
   }, [blnCanEdit, lstFilteredRows, strBusyKey, t]);
 
@@ -338,21 +347,6 @@ export default function SalaryEssDeclarationsPage() {
 
   return (
     <Box className={styles.page}>
-      <Box className="pageBanner">
-        <Box className="bannerDots" />
-        <Box className="bannerIcon">
-          <CalendarMonthRoundedIcon sx={{ fontSize: 30 }} />
-        </Box>
-        <Box className="bannerDivider" />
-        <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
-          <Typography component="h1" className="bannerTitle">
-            {t("dashboard_title", "IT Declaration")}
-          </Typography>
-          <Typography component="p" className="bannerSubTitle">
-            {t("financial_year_dashboard", "Financial Year Dashboard")}
-          </Typography>
-        </Box>
-      </Box>
       {strRightsError ? <Alert severity="warning">{strRightsError}</Alert> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
 

@@ -8,10 +8,13 @@ import type {
   MyAttendanceHistory,
   MyAttendanceOverview,
 } from "@/features/attendance/types/MyAttendanceTypes";
+import type { MyShiftDto, OtBalanceDto } from "@/features/attendance/dto";
 
 export function useMyAttendance() {
   const [objOverview, setObjOverview] = useState<MyAttendanceOverview | null>(null);
   const [objHistory, setObjHistory] = useState<MyAttendanceHistory | null>(null);
+  const [objShift, setObjShift] = useState<MyShiftDto | null>(null);
+  const [objOtBalance, setObjOtBalance] = useState<OtBalanceDto | null>(null);
   const [blnLoading, setBlnLoading] = useState(false);
   const [blnPunching, setBlnPunching] = useState(false);
   const [strError, setStrError] = useState("");
@@ -20,16 +23,29 @@ export function useMyAttendance() {
     strDate: string,
     strFromDate: string,
     strToDate: string,
+    intEmployeeID?: number,
+    blnHrMode?: boolean,
   ) => {
     setBlnLoading(true);
     setStrError("");
     try {
-      const [objOverviewResult, objHistoryResult] = await Promise.all([
-        attendanceService.getMyAttendanceOverview(strDate),
-        attendanceService.getMyAttendanceHistory(strFromDate, strToDate),
-      ]);
+      const [objOverviewResult, objHistoryResult, objShiftResult, objOtBalanceResult] = blnHrMode
+        ? await Promise.all([
+          attendanceService.getAttendanceReviewOverview(strDate, intEmployeeID as number),
+          attendanceService.getAttendanceReviewHistory(strFromDate, strToDate, intEmployeeID as number),
+          attendanceService.getAttendanceReviewShift(intEmployeeID as number),
+          attendanceService.getAttendanceReviewOtBalance(intEmployeeID as number),
+        ])
+        : await Promise.all([
+          attendanceService.getMyAttendanceOverview(strDate, intEmployeeID),
+          attendanceService.getMyAttendanceHistory(strFromDate, strToDate, intEmployeeID),
+          attendanceService.getMyShift(intEmployeeID),
+          attendanceService.getMyOtBalance(intEmployeeID),
+        ]);
       setObjOverview(objOverviewResult);
       setObjHistory(objHistoryResult);
+      setObjShift(objShiftResult);
+      setObjOtBalance(objOtBalanceResult);
     } catch (objError) {
       const objHandledError = await createApiRequestError(objError);
       setStrError(objHandledError.message);
@@ -60,6 +76,8 @@ export function useMyAttendance() {
   return {
     objOverview,
     objHistory,
+    objShift,
+    objOtBalance,
     blnLoading,
     blnPunching,
     strError,

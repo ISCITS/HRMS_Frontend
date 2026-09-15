@@ -425,8 +425,6 @@ export default function UserGroupMasterScreen() {
               emptyMessage={dicLabels.emptyMessage}
               exportFileName={dicLabels.exportFileName}
               showExportOptions={blnCanExport}
-              defaultPageSize={10}
-              pageSizeOptions={[10, 20, 50]}
               showPaginationSummary
               testIdPrefix="security.user-group.list"
               sx={{ p: 0, boxShadow: "none", background: "transparent" }}

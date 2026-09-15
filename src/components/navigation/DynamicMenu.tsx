@@ -8,6 +8,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { useActionRights } from "@/features/security/hooks/useActionRights";
+import { hasCtcAction } from "@/features/reports/utils/ctcAccess";
 import { authHelpers } from "@/lib/auth";
 import type { MenuItem } from "@/models/AuthModels";
 
@@ -22,13 +24,14 @@ type DynamicMenuProps = {
   onForcedExpandedHandled?: () => void;
 };
 
-const objMenuIconSx = { color: "inherit" };
+// Keep navigation icons compact on laptop-sized viewports while preserving the full desktop scale.
+const objMenuIconSx = { color: "inherit", fontSize: { xs: 20, xl: 24 } };
 const objSidebarPalette = {
-  menuIcon: "#5E7FA5",
-  menuText: "#2F4E6F",
-  hoverBackground: "#EAF3FC",
-  activeBackground: "#DCEBFA",
-  activeAccent: "#1D5D96",
+  menuIcon: "var(--app-menu-icon-color)",
+  menuText: "var(--app-menu-text-color)",
+  hoverBackground: "var(--app-menu-hover-background)",
+  activeBackground: "var(--app-menu-active-background)",
+  activeAccent: "var(--app-menu-active-color)",
 };
 
 function getAutomationProps(strControlId?: string) {
@@ -53,6 +56,17 @@ function toMaterialIconName(strValue: string) {
 function resolveMenuIconName(objItem: MenuItem, strFallbackIconName = "workspaces"): string {
   if (objItem.blnIsHome) {
     return "dashboard";
+  }
+
+  const strRoute = resolveMenuRoute(objItem)?.trim().toLowerCase() ?? "";
+  if (strRoute === "/attendance/daily") {
+    return "event_available";
+  }
+  if (strRoute === "/attendance/review") {
+    return "badge";
+  }
+  if (strRoute === "/attendance/import") {
+    return "upload_file";
   }
 
   const strResolvedIconName = toMaterialIconName(objItem.strIconName ?? "");
@@ -89,6 +103,14 @@ function matchesRoute(strCandidateRoute: string | null, strPathname: string) {
   ) {
     return false;
   }
+  // My Work on Holiday and Work on Holiday Requests are sibling ESS screens for the same
+  // reason as attendance regularization above.
+  if (
+    strCandidatePath === "/ess/work-on-holiday" &&
+    strPathname.startsWith("/ess/work-on-holiday/approvals")
+  ) {
+    return false;
+  }
   return strPathname === strCandidatePath || strPathname.startsWith(`${strCandidatePath}/`);
 }
 
@@ -101,6 +123,18 @@ function resolveMenuRoute(objItem: MenuItem): string | null {
   // stable contract, so cached menu data must always resolve to the live route.
   if (strModuleCode === "ess_work_on_holiday" || strModuleName === "work on holiday") {
     return "/ess/work-on-holiday";
+  }
+
+  // The ESS manager-approval leaf (ESS_WORK_ON_HOLIDAY_APPROVALS) is deliberately seeded
+  // with the same display name as the HR workbench ("Work on Holiday Requests") so both
+  // read consistently, but it must keep routing to the line/reporting-manager-scoped ESS
+  // screen -- not get rewritten to the RBAC-gated HR route below, which a manager who isn't
+  // also HR staff has no rights to.
+  if (
+    strModuleCode === "ess_work_on_holiday_approvals" ||
+    strRoute.toLowerCase().startsWith("/ess/work-on-holiday/approvals")
+  ) {
+    return "/ess/work-on-holiday/approvals";
   }
 
   if (
@@ -225,17 +259,11 @@ function promoteDashboardMenu(lstItems: MenuItem[]): MenuItem[] {
   }
 
   const lstWithoutNestedDashboard = stripNestedDashboard(lstItems);
-  const objResolvedDashboard = objDashboardItem ?? {
-    strModuleCode: "DASHBOARD",
-    strModuleName: "Dashboard",
-    strRoute: "/dashboard",
-    strIconName: "Dashboard",
-    lstPermissionCodes: [],
-    blnIsHome: true,
-    lstChildren: [],
-  };
+  if (!objDashboardItem) {
+    return lstWithoutNestedDashboard;
+  }
 
-  return [objResolvedDashboard, ...lstWithoutNestedDashboard];
+  return [objDashboardItem, ...lstWithoutNestedDashboard];
 }
 
 function hasRouteInReportsBranch(lstItems: MenuItem[], strRoute: string, blnInsideReports = false): boolean {
@@ -270,6 +298,15 @@ function isPayrollContainerMenu(objItem: MenuItem): boolean {
     strRoute === "/payroll" ||
     strModuleCode === "payroll" ||
     strModuleName === "payroll"
+  );
+}
+
+function isAttendanceManagementMenu(objItem: MenuItem): boolean {
+  const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
+  const strModuleName = objItem.strModuleName.trim().toLowerCase();
+  return (
+    strModuleCode === "attendance_management" ||
+    strModuleName === "attendance management"
   );
 }
 
@@ -642,7 +679,13 @@ function collapseDuplicateMenuBranches(lstItems: MenuItem[]): MenuItem[] {
 function promoteEssWorkOnHolidayMenu(lstItems: MenuItem[]): MenuItem[] {
   let objWorkOnHolidayItem: MenuItem | null = null;
 
-  function removeNestedWorkOnHoliday(lstCurrentItems: MenuItem[], intDepth = 0): MenuItem[] {
+  // Only a Work on Holiday item nested directly under an Employee Services
+  // wrapper is promoted -- that was an accidental grouping. Work on Holiday
+  // intentionally nested elsewhere (e.g. under an Attendance group) is left in place.
+  function removeAccidentallyNestedWorkOnHoliday(
+    lstCurrentItems: MenuItem[],
+    blnParentIsEmployeeServices: boolean,
+  ): MenuItem[] {
     return lstCurrentItems.reduce<MenuItem[]>((lstUpdatedItems, objItem) => {
       const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
       const strModuleName = objItem.strModuleName.trim().toLowerCase();
@@ -650,14 +693,17 @@ function promoteEssWorkOnHolidayMenu(lstItems: MenuItem[]): MenuItem[] {
         strModuleCode === "ess_work_on_holiday" ||
         strModuleName === "work on holiday";
 
-      if (blnIsEssWorkOnHoliday && intDepth > 0) {
+      if (blnIsEssWorkOnHoliday && blnParentIsEmployeeServices) {
         objWorkOnHolidayItem ??= { ...objItem, strRoute: "/ess/work-on-holiday" };
         return lstUpdatedItems;
       }
 
       const objUpdatedItem = {
         ...objItem,
-        lstChildren: removeNestedWorkOnHoliday(objItem.lstChildren, intDepth + 1),
+        lstChildren: removeAccidentallyNestedWorkOnHoliday(
+          objItem.lstChildren,
+          isEmployeeServicesContainerMenu(objItem),
+        ),
       };
       // Employee Services was only acting as an accidental wrapper for the
       // Work on Holiday link. Do not leave an empty, non-navigable group behind.
@@ -670,7 +716,7 @@ function promoteEssWorkOnHolidayMenu(lstItems: MenuItem[]): MenuItem[] {
     }, []);
   }
 
-  const lstUpdatedItems = removeNestedWorkOnHoliday(lstItems);
+  const lstUpdatedItems = removeAccidentallyNestedWorkOnHoliday(lstItems, false);
   if (!objWorkOnHolidayItem || hasRoute(lstUpdatedItems, "/ess/work-on-holiday")) {
     return lstUpdatedItems;
   }
@@ -716,7 +762,187 @@ function removeHrOnlyMenusFromEss(lstItems: MenuItem[]): MenuItem[] {
   }, []);
 }
 
-function prepareMenuItems(lstItems: MenuItem[], blnEssOnly: boolean): MenuItem[] {
+// ESS grouping ("My Profile", "Attendance", "Leave", "Compensation & Benefits") now comes
+// straight from the backend tree via tblmenu.parent_menu_id (see db_scripts/
+// 20260826_ess_menu_grouping.sql), the same mechanism the HR/Administrator side already
+// relies on -- so a new ESS menu row only needs the right module_type/parent_menu_id/rights
+// in the DB and it shows up automatically, with no change needed here. The only thing this
+// path still needs to do is keep the handful of HR-only leaves that can structurally reach an
+// ESS context out of the ESS sidebar.
+function buildEssOnlyMenu(lstItems: MenuItem[]): MenuItem[] {
+  return removeHrOnlyMenusFromEss(lstItems);
+}
+
+function groupHrEmployeeServicesMenus(lstItems: MenuItem[]): MenuItem[] {
+  const lstEmployeeServiceRoutes = [
+    "/hr/it-declaration",
+    "/payroll/it-declaration-review",
+    "/payroll/employee-reimbursement",
+    "/payroll/reimbursements",
+    "/payroll/fnf-settlements",
+  ];
+  const setEmployeeServiceRoutes = new Set(lstEmployeeServiceRoutes);
+  const setEmployeeServiceModuleCodes = new Set([
+    "employee_it_declaration",
+    "hr_it_declaration",
+    "it_declaration_review",
+    "payroll_it_declaration_review",
+    "employee_reimbursement",
+    "payroll_reimbursement_claims",
+    "payroll_reimbursements",
+    "employee_reimbursements",
+    "reimbursement_review",
+    "reimbursements_review",
+    "payroll_reimbursement",
+    "payroll_fnf_settlements",
+    "fnf_settlements",
+    "payroll_fnf",
+    // Loan Management (payroll_loan_management_group) is deliberately NOT listed here -- it's
+    // its own top-level sidebar group (parent_menu_id NULL in the DB), not part of Employee
+    // Services, so it must not be swept in by this whitelist.
+  ]);
+  const dicRouteOrder = new Map(
+    lstEmployeeServiceRoutes.map((strRoute, intIndex) => [strRoute, intIndex]),
+  );
+  const dicModuleCodeOrder = new Map<string, number>([
+    ["employee_it_declaration", 0],
+    ["hr_it_declaration", 0],
+    ["it_declaration_review", 1],
+    ["payroll_it_declaration_review", 1],
+    ["employee_reimbursement", 2],
+    ["payroll_reimbursement_claims", 2],
+    ["payroll_reimbursements", 3],
+    ["employee_reimbursements", 3],
+    ["reimbursement_review", 3],
+    ["reimbursements_review", 3],
+    ["payroll_reimbursement", 3],
+    ["payroll_fnf_settlements", 4],
+    ["fnf_settlements", 4],
+    ["payroll_fnf", 4],
+  ]);
+
+  function isHrEmployeeServiceItem(objItem: MenuItem): boolean {
+    const strResolvedRoute = resolveMenuRoute(objItem)?.trim().toLowerCase() ?? "";
+    const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
+    return setEmployeeServiceRoutes.has(strResolvedRoute) || setEmployeeServiceModuleCodes.has(strModuleCode);
+  }
+
+  function isObsoleteEssFnfItem(objItem: MenuItem): boolean {
+    const strResolvedRoute = resolveMenuRoute(objItem)?.trim().toLowerCase() ?? "";
+    const strModuleCode = objItem.strModuleCode.trim().toLowerCase();
+    return strResolvedRoute === "/ess/fnf-settlements" || strModuleCode === "ess_fnf_settlements";
+  }
+
+  let objEmployeeServicesContainer: MenuItem | null = null;
+  const lstDeferredChildren: MenuItem[] = [];
+
+  function stripEmployeeServiceItems(lstCurrentItems: MenuItem[]): MenuItem[] {
+    return lstCurrentItems.reduce<MenuItem[]>((lstNextItems, objItem) => {
+      const lstStrippedChildren = stripEmployeeServiceItems(objItem.lstChildren);
+
+      if (isObsoleteEssFnfItem(objItem)) {
+        return lstNextItems;
+      }
+
+      if (isEmployeeServicesContainerMenu(objItem)) {
+        objEmployeeServicesContainer = {
+          ...objItem,
+          strModuleName: objItem.strModuleName || "Employee Services",
+          lstChildren: mergeUniqueMenuChildren(objItem.lstChildren, lstStrippedChildren),
+        };
+        return lstNextItems;
+      }
+
+      if (isHrEmployeeServiceItem(objItem)) {
+        lstDeferredChildren.push({
+          ...objItem,
+          lstChildren: lstStrippedChildren,
+        });
+        return lstNextItems;
+      }
+
+      lstNextItems.push(
+        lstStrippedChildren === objItem.lstChildren
+          ? objItem
+          : {
+              ...objItem,
+              lstChildren: lstStrippedChildren,
+            },
+      );
+      return lstNextItems;
+    }, []);
+  }
+
+  const lstRemainingItems = stripEmployeeServiceItems(lstItems);
+
+  if (!objEmployeeServicesContainer && lstDeferredChildren.length === 0) {
+    return lstItems;
+  }
+
+  const objResolvedContainer: MenuItem = objEmployeeServicesContainer ?? {
+    strModuleCode: "EMPLOYEE_SERVICES",
+    strModuleName: "Employee Services",
+    strRoute: "/employee-services",
+    strIconName: "SupportAgent",
+    lstPermissionCodes: [],
+    blnIsHome: false,
+    lstChildren: [],
+  };
+
+  const lstMergedChildren = mergeUniqueMenuChildren(
+    objResolvedContainer.lstChildren,
+    lstDeferredChildren,
+  ).filter((objChild, intIndex, lstAllChildren) => {
+    const strResolvedRoute = resolveMenuRoute(objChild)?.trim().toLowerCase() ?? "";
+    const strModuleCode = objChild.strModuleCode.trim().toLowerCase();
+    return strResolvedRoute
+      ? lstAllChildren.findIndex((objCandidate) => (resolveMenuRoute(objCandidate)?.trim().toLowerCase() ?? "") === strResolvedRoute) === intIndex
+      : lstAllChildren.findIndex((objCandidate) => objCandidate.strModuleCode.trim().toLowerCase() === strModuleCode) === intIndex;
+  }).sort((objLeft, objRight) => {
+    const strLeftRoute = resolveMenuRoute(objLeft)?.trim().toLowerCase() ?? "";
+    const strRightRoute = resolveMenuRoute(objRight)?.trim().toLowerCase() ?? "";
+    const strLeftModuleCode = objLeft.strModuleCode.trim().toLowerCase();
+    const strRightModuleCode = objRight.strModuleCode.trim().toLowerCase();
+    const intLeftOrder = dicRouteOrder.get(strLeftRoute) ?? Number.MAX_SAFE_INTEGER;
+    const intRightOrder = dicRouteOrder.get(strRightRoute) ?? Number.MAX_SAFE_INTEGER;
+    if (intLeftOrder !== intRightOrder) {
+      return intLeftOrder - intRightOrder;
+    }
+
+    const intLeftCodeOrder = dicModuleCodeOrder.get(strLeftModuleCode) ?? Number.MAX_SAFE_INTEGER;
+    const intRightCodeOrder = dicModuleCodeOrder.get(strRightModuleCode) ?? Number.MAX_SAFE_INTEGER;
+    if (intLeftCodeOrder !== intRightCodeOrder) {
+      return intLeftCodeOrder - intRightCodeOrder;
+    }
+
+    return objLeft.strModuleName.localeCompare(objRight.strModuleName);
+  });
+
+  const objGroupedContainer: MenuItem = {
+    ...objResolvedContainer,
+    lstChildren: lstMergedChildren,
+  };
+
+  // Employee Services sits directly after Attendance Management (and therefore
+  // before Reports, which always follows it) regardless of each tenant's raw
+  // display_order -- this anchor is what actually controls its rendered
+  // position in the HR/admin sidebar, so display_order alone cannot move it.
+  const intAttendanceManagementIndex = lstRemainingItems.findIndex(isAttendanceManagementMenu);
+  const intPayrollIndex = lstRemainingItems.findIndex(isPayrollContainerMenu);
+  const intInsertIndex = intAttendanceManagementIndex >= 0
+    ? intAttendanceManagementIndex + 1
+    : intPayrollIndex >= 0
+      ? intPayrollIndex
+      : lstRemainingItems.length;
+
+  return [
+    ...lstRemainingItems.slice(0, intInsertIndex),
+    objGroupedContainer,
+    ...lstRemainingItems.slice(intInsertIndex),
+  ];
+}
+
+function prepareMenuItems(lstItems: MenuItem[], blnEssOnly: boolean, canViewCtc: boolean): MenuItem[] {
   const lstPreparedItems = promoteEssWorkOnHolidayMenu(
     collapseDuplicateMenuBranches(
       appendGeneratedReportsMenu(
@@ -730,7 +956,26 @@ function prepareMenuItems(lstItems: MenuItem[], blnEssOnly: boolean): MenuItem[]
       ),
     ),
   );
-  return blnEssOnly ? removeHrOnlyMenusFromEss(lstPreparedItems) : lstPreparedItems;
+  return blnEssOnly ? buildEssOnlyMenu(lstPreparedItems) : groupHrEmployeeServicesMenus(canViewCtc ? appendCtcReportMenu(lstPreparedItems) : lstPreparedItems);
+}
+
+function appendCtcReportMenu(items: MenuItem[]): MenuItem[] {
+  if (hasRoute(items, "/reports/ctc-format") || !hasRoute(items, "/employee-salary")) return items;
+  const report: MenuItem = {
+    strModuleCode: "REPORT_CTC_FORMAT", strModuleName: "CTC Format",
+    strRoute: "/reports/ctc-format", strIconName: "ReceiptLong",
+    lstPermissionCodes: [], blnIsHome: false, lstChildren: [],
+  };
+  let inserted = false;
+  const append = (nodes: MenuItem[]): MenuItem[] => nodes.map(node => {
+    if (!inserted && (node.strRoute === "/reports" || node.strModuleName.toLowerCase() === "reports")) {
+      inserted = true;
+      return { ...node, lstChildren: [...node.lstChildren, report] };
+    }
+    return { ...node, lstChildren: append(node.lstChildren) };
+  });
+  const updated = append(items);
+  return inserted ? updated : [...updated, { strModuleCode: "CTC_REPORTS", strModuleName: "Reports", strRoute: "", strIconName: "Source", lstPermissionCodes: [], blnIsHome: false, lstChildren: [report] }];
 }
 
 function getMenuNodeKey(objItem: MenuItem, intDepth: number) {
@@ -786,6 +1031,26 @@ const objGeneratedStatutoryReportMenu: MenuItem = {
   lstChildren: [],
 };
 
+const objGeneratedSalaryRegisterMenu: MenuItem = {
+  strModuleCode: "SALARY_REGISTER",
+  strModuleName: "Salary Register",
+  strRoute: "/reports/salary-register",
+  strIconName: "ReceiptLong",
+  lstPermissionCodes: ["REPORT_PAYROLL_REGISTER", "PAYROLL_RESULT_VIEW", "export"],
+  blnIsHome: false,
+  lstChildren: [],
+};
+
+const objGeneratedSalaryStatementMenu: MenuItem = {
+  strModuleCode: "SALARY_STATEMENT",
+  strModuleName: "Salary Statement",
+  strRoute: "/reports/salary-statement",
+  strIconName: "ReceiptLong",
+  lstPermissionCodes: ["REPORT_PAYROLL_REGISTER", "PAYROLL_RESULT_VIEW", "export"],
+  blnIsHome: false,
+  lstChildren: [],
+};
+
 function isReportsMenuBranch(objItem: MenuItem): boolean {
   const strRoute = resolveMenuRoute(objItem)?.toLowerCase() ?? "";
   const strModuleCode = objItem.strModuleCode.toLowerCase();
@@ -800,7 +1065,7 @@ function isReportsMenuBranch(objItem: MenuItem): boolean {
 }
 
 function appendGeneratedReportsMenu(lstItems: MenuItem[]): MenuItem[] {
-  if (hasRoute(lstItems, "/reports/statutory")) {
+  if (hasRoute(lstItems, "/reports/statutory") && hasRoute(lstItems, "/reports/salary-register") && hasRoute(lstItems, "/reports/salary-statement")) {
     return lstItems;
   }
 
@@ -816,20 +1081,30 @@ function appendGeneratedReportsMenu(lstItems: MenuItem[]): MenuItem[] {
       objItem.lstChildren.length > 0 &&
       isReportsMenuBranch(objItem) &&
       (hasRoute(lstChildren, "/reports/payroll-register") || hasRoute(lstChildren, "/reports/bank-file")) &&
-      !hasRoute(lstChildren, "/reports/statutory");
+      (!hasRoute(lstChildren, "/reports/statutory") || !hasRoute(lstChildren, "/reports/salary-register") || !hasRoute(lstChildren, "/reports/salary-statement"));
 
     if (!blnShouldAppendHere) {
       return lstChildren === objItem.lstChildren ? objItem : { ...objItem, lstChildren };
     }
 
     blnInserted = true;
+    const lstGeneratedChildren = [...lstChildren];
+    if (!hasRoute(lstGeneratedChildren, "/reports/salary-register")) {
+      lstGeneratedChildren.push(objGeneratedSalaryRegisterMenu);
+    }
+    if (!hasRoute(lstGeneratedChildren, "/reports/salary-statement")) {
+      lstGeneratedChildren.push(objGeneratedSalaryStatementMenu);
+    }
+    if (!hasRoute(lstGeneratedChildren, "/reports/statutory")) {
+      lstGeneratedChildren.push(objGeneratedStatutoryReportMenu);
+    }
     return {
       ...objItem,
-      lstChildren: [...lstChildren, objGeneratedStatutoryReportMenu],
+      lstChildren: lstGeneratedChildren,
     };
   });
 
-  if (blnInserted || hasRoute(lstUpdatedItems, "/reports/statutory")) {
+  if (blnInserted || (hasRoute(lstUpdatedItems, "/reports/statutory") && hasRoute(lstUpdatedItems, "/reports/salary-register") && hasRoute(lstUpdatedItems, "/reports/salary-statement"))) {
     return lstUpdatedItems;
   }
 
@@ -1119,6 +1394,14 @@ export default function DynamicMenu({
       return resolveKnownMenuLabel(strModuleName, "Payroll Register", "पेरोल रजिस्टर");
     }
 
+    if (strRoute.includes("/reports/salary-register") || strModuleCode.includes("salary_register")) {
+      return resolveKnownMenuLabel(strModuleName, "Salary Register", "Salary Register");
+    }
+
+    if (strRoute.includes("/reports/salary-statement") || strModuleCode.includes("salary_statement")) {
+      return resolveKnownMenuLabel(strModuleName, "Salary Statement", "Salary Statement");
+    }
+
     if (strRoute.includes("/reports/bank-file") || strModuleCode.includes("bank_file")) {
       return resolveKnownMenuLabel(strModuleName, "Bank File", "बैंक फ़ाइल");
     }
@@ -1185,14 +1468,17 @@ export default function DynamicMenu({
     );
   }
 
+  const ctcRights = useActionRights();
+  const canViewCtc = hasCtcAction(ctcRights.objRights, "view") || hasCtcAction(ctcRights.objRights, "list");
   const lstRenderedMenuItems = useMemo(
     // The same user may be both an employee and a manager. Route context keeps
     // HR-only links out of the ESS workspace without removing their HR access.
     () => prepareMenuItems(
       lstMenuItems,
       blnEssOnly || strPathname === "/ess" || strPathname.startsWith("/ess/"),
+      canViewCtc,
     ),
-    [blnEssOnly, lstMenuItems, strPathname],
+    [blnEssOnly, lstMenuItems, strPathname, canViewCtc],
   );
   const dicDefaultExpanded = useMemo(
     () => collectExpandableDefaults(lstRenderedMenuItems),
@@ -1289,9 +1575,9 @@ export default function DynamicMenu({
 
   function getCollapsedButtonStyles(blnIsActive: boolean) {
     return {
-      width: 44,
-      height: 44,
-      minWidth: 44,
+      width: { xs: 40, xl: 44 },
+      height: { xs: 40, xl: 44 },
+      minWidth: { xs: 40, xl: 44 },
       borderRadius: "12px",
       mb: 0.75,
       display: "grid",
@@ -1308,7 +1594,7 @@ export default function DynamicMenu({
         minWidth: 0,
       },
       "& .material-icons": {
-        fontSize: 24,
+        fontSize: { xs: 20, xl: 24 },
       },
     };
   }
@@ -1386,7 +1672,7 @@ export default function DynamicMenu({
                 fontSize: intDepth === 0 ? "0.96rem" : "0.9rem",
               }}
             />
-            {blnExpanded ? <ExpandLessRoundedIcon sx={{ color: objSidebarPalette.activeAccent }} /> : <ExpandMoreRoundedIcon sx={{ color: objSidebarPalette.activeAccent }} />}
+            {blnExpanded ? <ExpandLessRoundedIcon sx={{ color: objSidebarPalette.activeAccent, fontSize: { xs: 20, xl: 24 } }} /> : <ExpandMoreRoundedIcon sx={{ color: objSidebarPalette.activeAccent, fontSize: { xs: 20, xl: 24 } }} />}
           </ListItemButton>
 
           <Collapse in={blnExpanded} timeout="auto" unmountOnExit>

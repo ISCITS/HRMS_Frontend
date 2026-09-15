@@ -30,6 +30,7 @@ import type {
   PayrollCycleFormValues
 } from "@/features/payroll-cycles/types";
 import { setPayrollScheduleSelectedID } from "@/features/payroll-cycles/utils/payrollScheduleRouteState";
+import CommonEditModeBanner from "@/Common/components/CommonEditModeBanner";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 type PayrollCycleEditorPageProps = {
@@ -56,10 +57,12 @@ export default function PayrollCycleEditorPage({
   const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
-  const blnForcedView = strMode === "view";
-  const blnReadOnly = blnForcedView || (strMode === "edit" && blnCanView && !blnCanEdit);
+  // Rights decide the mode: a caller holding the edit right lands straight in an editable form,
+  // a caller holding only view gets the same screen read-only. Nothing about the mode travels in
+  // the URL, so there is no mode for a user to flip and no extra Edit click on the way in.
+  const blnReadOnly = strMode === "add" ? !blnCanAdd : !blnCanEdit;
   const blnCanLoadWorkspace = strMode === "add" ? blnCanAdd : blnCanView;
-  const blnCanSave = !blnForcedView && (strMode === "add" ? blnCanAdd : blnCanEdit);
+  const blnCanSave = strMode === "add" ? blnCanAdd : blnCanEdit;
   const blnFieldDisabled = blnSaving || blnReadOnly || !blnCanSave;
 
   useEffect(() => {
@@ -124,7 +127,7 @@ export default function PayrollCycleEditorPage({
     if (!blnCanSave) {
       return;
     }
-    if (!dicForm.strCycleCode.trim() || !dicForm.strCycleName.trim() || !dicForm.strPeriodType.trim() || dicForm.intPayrollGroupID === "") {
+    if (!dicForm.strCycleName.trim() || !dicForm.strPeriodType.trim() || dicForm.intPayrollGroupID === "") {
       setStrError(t("schedule_validation_required_fields"));
       return;
     }
@@ -180,24 +183,24 @@ export default function PayrollCycleEditorPage({
   }
 
   return (
-    <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
+    <Stack spacing={1.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
       <Paper
         sx={{
-          borderRadius: "28px",
-          p: { xs: 2, md: 3 },
+          borderRadius: "var(--app-card-radius)",
+          p: "10px",
           border: "1px solid rgba(148,163,184,0.18)",
           background: "linear-gradient(135deg, #f8fbff 0%, #eef7f4 48%, #f8fafc 100%)"
         }}
       >
-        <Stack spacing={2}>
+        <Stack spacing={1.25}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
             <Box>
               <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
-                {strMode === "view"
-                  ? t("schedule_view_title")
-                  : strMode === "edit"
-                    ? t("schedule_edit_title")
-                    : t("schedule_add_title")}
+                {strMode === "add"
+                  ? t("schedule_add_title")
+                  : blnReadOnly
+                    ? t("schedule_view_title")
+                    : t("schedule_edit_title")}
               </Typography>
               <Typography sx={{ color: "#64748b", mt: 0.75 }}>
                 {t("schedule_subtitle")}
@@ -256,23 +259,17 @@ export default function PayrollCycleEditorPage({
             </Stack>
           </Stack>
 
-          <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
-            <Paper sx={{ p: 2, borderRadius: "22px", flex: 1, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(148,163,184,0.14)" }}>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1.25}>
+            <Paper sx={{ p: "10px", borderRadius: "var(--app-card-radius)", flex: 1, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(148,163,184,0.14)" }}>
               <Typography sx={{ color: "#64748b", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("summary_group")}</Typography>
               <Typography sx={{ mt: 0.75, fontWeight: 800, color: "#0f172a" }}>
                 {dicPayrollGroupByID.get(Number(dicForm.intPayrollGroupID))?.strLabel ?? t("not_selected")}
               </Typography>
             </Paper>
-            <Paper sx={{ p: 2, borderRadius: "22px", flex: 1, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(148,163,184,0.14)" }}>
+            <Paper sx={{ p: "10px", borderRadius: "var(--app-card-radius)", flex: 1, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(148,163,184,0.14)" }}>
               <Typography sx={{ color: "#64748b", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("summary_period")}</Typography>
               <Typography sx={{ mt: 0.75, fontWeight: 800, color: "#0f172a" }}>
                 {dicForm.strPeriodType || t("not_selected")}
-              </Typography>
-            </Paper>
-            <Paper sx={{ p: 2, borderRadius: "22px", flex: 1, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(148,163,184,0.14)" }}>
-              <Typography sx={{ color: "#64748b", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("summary_cutoff")}</Typography>
-              <Typography sx={{ mt: 0.75, fontWeight: 800, color: "#0f172a" }}>
-                {dicForm.intCutoffDay.trim() ? `Day ${dicForm.intCutoffDay.trim()}` : t("cutoff_open")}
               </Typography>
             </Paper>
           </Stack>
@@ -281,17 +278,20 @@ export default function PayrollCycleEditorPage({
 
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
-      {blnReadOnly ? <Alert severity="info">{t("schedule_read_only_mode")}</Alert> : null}
+      <CommonEditModeBanner
+        blnReadOnly={blnReadOnly}
+        strReadOnlyMessage={t("schedule_read_only_mode")}
+      />
 
       <Paper
         sx={{
-          borderRadius: "24px",
-          p: { xs: 2, md: 3 },
+          borderRadius: "var(--app-card-radius)",
+          p: "10px",
           border: "1px solid rgba(187, 213, 232, 0.7)",
           boxShadow: "var(--app-shadow-soft)"
         }}
       >
-        <Stack spacing={2.5}>
+        <Stack spacing={1.5}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "flex-start" }} spacing={1.5}>
             <Box>
               <Typography sx={{ color: "#0f172a", fontWeight: 800, fontSize: "1.05rem" }}>{t("basic_information")}</Typography>
@@ -304,7 +304,6 @@ export default function PayrollCycleEditorPage({
               <FormControlLabel
                 control={<ActiveStatusSwitch testId="payroll-cycles.editor.active.switch" blnIsActive={dicForm.blnIsActive} onChange={(blnChecked) => updateField("blnIsActive", blnChecked)} disabled={blnFieldDisabled} />}
                 label={dicForm.blnIsActive ? t("active") : t("inactive")}
-                labelPlacement="start"
                 sx={{
                   m: 0,
                   gap: 1,
@@ -324,26 +323,19 @@ export default function PayrollCycleEditorPage({
             sx={{
               display: "grid",
               gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" },
-              gap: 2
+              gap: 1.25
             }}
           >
             <TextField
-              label={t("payroll_group")}
-              inputProps={{ "controlId": "payroll-cycles.editor.payroll-group.select" }}
+              label={t("schedule_name", "Payroll Schedule Name")}
+              inputProps={{ "controlId": "payroll-cycles.editor.cycle-name.input" }}
               required
-              select
-              value={dicForm.intPayrollGroupID}
-              onChange={(objEvent) => updateField("intPayrollGroupID", objEvent.target.value ? Number(objEvent.target.value) : "")}
+              value={dicForm.strCycleName}
+              onChange={(objEvent) => updateField("strCycleName", objEvent.target.value)}
               disabled={blnFieldDisabled}
-              helperText={t("payroll_group_help")}
+              helperText={t("cycle_name_help")}
               fullWidth
-            >
-              {(objFormOptions?.lstPayrollGroups ?? []).map((dicOption) => (
-                <MenuItem key={dicOption.intID} value={dicOption.intID}>
-                  {dicOption.strLabel}{dicOption.strCode ? ` (${dicOption.strCode})` : ""}
-                </MenuItem>
-              ))}
-            </TextField>
+            />
 
             <TextField
               label={t("period_type")}
@@ -362,35 +354,22 @@ export default function PayrollCycleEditorPage({
             </TextField>
 
             <TextField
-              label={t("cycle_code")}
-              inputProps={{ "controlId": "payroll-cycles.editor.cycle-code.input" }}
+              label={t("payroll_group")}
+              inputProps={{ "controlId": "payroll-cycles.editor.payroll-group.select" }}
               required
-              value={dicForm.strCycleCode}
-              onChange={(objEvent) => updateField("strCycleCode", objEvent.target.value.toUpperCase())}
+              select
+              value={dicForm.intPayrollGroupID}
+              onChange={(objEvent) => updateField("intPayrollGroupID", objEvent.target.value ? Number(objEvent.target.value) : "")}
               disabled={blnFieldDisabled}
+              helperText={t("payroll_group_help")}
               fullWidth
-            />
-
-            <TextField
-              label={t("cycle_name")}
-              inputProps={{ "controlId": "payroll-cycles.editor.cycle-name.input" }}
-              required
-              value={dicForm.strCycleName}
-              onChange={(objEvent) => updateField("strCycleName", objEvent.target.value)}
-              disabled={blnFieldDisabled}
-              helperText={t("cycle_name_help")}
-              fullWidth
-            />
-
-            <TextField
-              label={t("cutoff_day")}
-              inputProps={{ "controlId": "payroll-cycles.editor.cutoff-day.input" }}
-              value={dicForm.intCutoffDay}
-              onChange={(objEvent) => updateField("intCutoffDay", objEvent.target.value.replace(/[^\d]/g, ""))}
-              disabled={blnFieldDisabled}
-              helperText={t("cutoff_day_help")}
-              fullWidth
-            />
+            >
+              {(objFormOptions?.lstPayrollGroups ?? []).map((dicOption) => (
+                <MenuItem key={dicOption.intID} value={dicOption.intID}>
+                  {dicOption.strLabel}{dicOption.strCode ? ` (${dicOption.strCode})` : ""}
+                </MenuItem>
+              ))}
+            </TextField>
           </Box>
         </Stack>
       </Paper>

@@ -2,7 +2,23 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { attendanceService } from "@/features/attendance/services/attendanceService";
-import type { AttendancePolicy, AttendancePolicyFormValues, AttendancePolicyList, DailyAttendanceBulkResult, DailyAttendanceRow, DailyAttendanceSaveRow } from "@/features/attendance/types";
+import type {
+  AttendancePolicy,
+  AttendancePolicyAssignmentEmployee,
+  AttendancePolicyAssignmentHistory,
+  AttendancePolicyAssignmentRequest,
+  AttendancePolicyAssignmentResult,
+  AttendancePolicyFormValues,
+  AttendancePolicyList,
+  DailyAttendanceBulkFillRangeRequest,
+  DailyAttendanceBulkFillRangeResult,
+  DailyAttendanceBulkResult,
+  DailyAttendanceFinalizeRequest,
+  DailyAttendanceFinalizeResult,
+  DailyAttendanceOverrideRequest,
+  DailyAttendanceRow,
+  DailyAttendanceSaveRow,
+} from "@/features/attendance/types";
 
 export function useAttendancePoc(blnLoadPolicies = true) {
   const [objPolicyList, setObjPolicyList] = useState<AttendancePolicyList>({ lstItems: [], intTotal: 0, intPage: 1, intPageSize: 10 });
@@ -29,6 +45,9 @@ export function useAttendancePoc(blnLoadPolicies = true) {
   async function setPolicyStatus(intPolicyID: number, blnIsActive: boolean) {
     setBlnSaving(true); try { return await attendanceService.setPolicyStatus(intPolicyID, blnIsActive); } finally { setBlnSaving(false); }
   }
+  async function deletePolicy(intPolicyID: number) {
+    setBlnSaving(true); try { return await attendanceService.deletePolicy(intPolicyID); } finally { setBlnSaving(false); }
+  }
   const loadDaily = useCallback(async (objFilters: { strDate: string; intDepartmentID?: number; intLocationID?: number; strSearch?: string }) => {
     setBlnLoading(true); setStrError("");
     try { const lstRows = await attendanceService.loadDaily(objFilters); setLstDailyRows(lstRows); return lstRows; }
@@ -38,5 +57,29 @@ export function useAttendancePoc(blnLoadPolicies = true) {
   async function saveDaily(strDate: string, lstRows: DailyAttendanceSaveRow[]): Promise<DailyAttendanceBulkResult> {
     setBlnSaving(true); try { return await attendanceService.bulkSaveDaily(strDate, lstRows); } finally { setBlnSaving(false); }
   }
-  return { objPolicyList, lstDailyRows, blnLoading, blnSaving, strError, loadPolicies, getPolicy, savePolicy, setPolicyStatus, loadDaily, saveDaily };
+  async function bulkFillRange(objPayload: DailyAttendanceBulkFillRangeRequest): Promise<DailyAttendanceBulkFillRangeResult> {
+    setBlnSaving(true); try { return await attendanceService.bulkFillRange(objPayload); } finally { setBlnSaving(false); }
+  }
+  async function saveOverride(objPayload: DailyAttendanceOverrideRequest): Promise<DailyAttendanceRow> {
+    setBlnSaving(true); try { return await attendanceService.saveDailyOverride(objPayload); } finally { setBlnSaving(false); }
+  }
+  async function finalizeAttendance(objPayload: DailyAttendanceFinalizeRequest): Promise<DailyAttendanceFinalizeResult> {
+    setBlnSaving(true); try { return await attendanceService.finalizeAttendance(objPayload); } finally { setBlnSaving(false); }
+  }
+  async function listPolicyAssignmentEmployees(objFilters: {
+    strSearch?: string;
+    intDepartmentID?: number;
+    intCurrentPolicyID?: number;
+    strEmployeeStatus?: string;
+    strEffectiveOn?: string;
+  }): Promise<AttendancePolicyAssignmentEmployee[]> {
+    setBlnLoading(true); try { return await attendanceService.listPolicyAssignmentEmployees(objFilters); } finally { setBlnLoading(false); }
+  }
+  async function listPolicyAssignmentHistory(objFilters: { intEmployeeID?: number; intPolicyID?: number }): Promise<AttendancePolicyAssignmentHistory[]> {
+    return attendanceService.listPolicyAssignmentHistory(objFilters);
+  }
+  async function assignAttendancePolicy(objPayload: AttendancePolicyAssignmentRequest): Promise<AttendancePolicyAssignmentResult> {
+    setBlnSaving(true); try { return await attendanceService.assignAttendancePolicy(objPayload); } finally { setBlnSaving(false); }
+  }
+  return { objPolicyList, lstDailyRows, blnLoading, blnSaving, strError, loadPolicies, getPolicy, savePolicy, setPolicyStatus, deletePolicy, loadDaily, saveDaily, bulkFillRange, saveOverride, finalizeAttendance, listPolicyAssignmentEmployees, listPolicyAssignmentHistory, assignAttendancePolicy };
 }

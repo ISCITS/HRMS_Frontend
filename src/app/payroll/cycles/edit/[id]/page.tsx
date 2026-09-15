@@ -2,15 +2,13 @@ import PayrollCycleEditorPage from "@/features/payroll-cycles/components/Payroll
 
 type EditPayrollCyclePageProps = {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ mode?: string }>;
 };
 
-export default async function EditPayrollCyclePage({ params, searchParams }: EditPayrollCyclePageProps) {
+export default async function EditPayrollCyclePage({ params }: EditPayrollCyclePageProps) {
   const { id } = await params;
-  const objSearchParams = searchParams ? await searchParams : undefined;
   return (
     <PayrollCycleEditorPage
-      strMode={objSearchParams?.mode === "view" ? "view" : "edit"}
+      strMode={"edit"}
       intPayrollCycleID={Number(id)}
     />
   );

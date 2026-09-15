@@ -160,11 +160,7 @@ export default function CountryMasterPanel() {
     objFormOptions.lstLanguages[0]?.intID ??
     1;
 
-  const intSecondaryLanguageID =
-    authHelpers.getSecondaryLanguageID() ??
-    objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.strCode?.toLowerCase() === "hi")?.intID ??
-    objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID !== intDefaultLanguageID)?.intID ??
-    intDefaultLanguageID;
+  const intSecondaryLanguageID = authHelpers.getSecondaryLanguageID();
 
   function buildFixedLanguageRow(
     intLanguageID: number,
@@ -186,6 +182,9 @@ export default function CountryMasterPanel() {
 
   function ensureTenantLanguageRows(dicValues: CountryFormValues) {
     const dicDefaultRow = buildFixedLanguageRow(intDefaultLanguageID, dicValues.name, dicValues.code, dicValues.lstTexts);
+    if (!intSecondaryLanguageID) {
+      return { ...dicValues, lstTexts: [dicDefaultRow] };
+    }
     const dicSecondaryExistingText = dicValues.lstTexts.find((dicText) => Number(dicText.intLanguageID) === intSecondaryLanguageID);
     const dicSecondaryRow = buildFixedLanguageRow(intSecondaryLanguageID, dicSecondaryExistingText?.strCountryName ?? "", dicValues.code, dicValues.lstTexts);
     return { ...dicValues, lstTexts: [dicDefaultRow, dicSecondaryRow] };
@@ -364,9 +363,6 @@ export default function CountryMasterPanel() {
     return blnCodeMatch && blnNameMatch && blnStatusMatch;
   }), [dicSearchApplied, lstCountries]);
 
-  const blnAllFilteredSelected = lstFiltered.length > 0 && lstFiltered.every((dicCountry) => lstSelectedIds.includes(dicCountry.id));
-  const blnSomeFilteredSelected = !blnAllFilteredSelected && lstSelectedIds.some((strId) => lstFiltered.some((dicCountry) => dicCountry.id === strId));
-
   function toggleSelection(strId: string) {
     setLstSelectedIds((lstPrevious) => lstPrevious.includes(strId)
       ? lstPrevious.filter((strValue) => strValue !== strId)
@@ -405,15 +401,7 @@ export default function CountryMasterPanel() {
   const lstTableColumns = useMemo<CommonTableColumn<CountryTableRow>[]>(() => [
     {
       field: "select",
-      headerName: (
-        <Checkbox
-          checked={blnAllFilteredSelected}
-          indeterminate={blnSomeFilteredSelected}
-          onChange={toggleSelectAll}
-          disabled={lstFiltered.length === 0}
-          inputProps={{ "controlId": "country-master.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>}
-        />
-      ),
+      headerName: "",
       width: 64,
       sortable: false,
       filterable: false,
@@ -425,7 +413,7 @@ export default function CountryMasterPanel() {
     { field: "currencyCode", headerName: dicModuleLabels.tableCurrency },
     { field: "phoneCode", headerName: dicModuleLabels.tablePhoneCode },
     { field: "status", headerName: dicModuleLabels.tableStatus, sortable: false, filterable: false },
-  ], [blnAllFilteredSelected, blnSomeFilteredSelected, dicModuleLabels.tableActions, dicModuleLabels.tableCode, dicModuleLabels.tableCurrency, dicModuleLabels.tableName, dicModuleLabels.tablePhoneCode, dicModuleLabels.tableStatus, lstFiltered.length]);
+  ], [dicModuleLabels.tableActions, dicModuleLabels.tableCode, dicModuleLabels.tableCurrency, dicModuleLabels.tableName, dicModuleLabels.tablePhoneCode, dicModuleLabels.tableStatus]);
 
   async function ensureCountryFormOptionsLoaded() {
     if (objFormOptions.lstLanguages.length > 0) {
@@ -437,20 +425,44 @@ export default function CountryMasterPanel() {
   }
 
   async function openDialog(strNextMode: Mode, dicCountry?: CountryRecord) {
-    const dicOptions = await ensureCountryFormOptionsLoaded();
     setStrMode(strNextMode);
     setStrEditingId(dicCountry?.id ?? "");
     setDicErrors({});
     setDicLastTranslatedSourceByRow({});
     setDicTextTranslationLoading({});
+
     if (!dicCountry) {
       setDicForm(ensureTenantLanguageRows(createInitialCountryForm()));
       setBlnDialogOpen(true);
+      try {
+        await ensureCountryFormOptionsLoaded();
+      } catch (objError) {
+        showToast(objError instanceof Error ? objError.message : dicModuleLabels.requestFailed, "error");
+      }
       return;
     }
-    const dicCountryDetail = await countryService.getCountry(Number(dicCountry.id), intDefaultLanguageID);
-    setDicForm(ensureTenantLanguageRows(toCountryFormValues(dicCountryDetail, dicOptions)));
+
+    // Open from the list row immediately so a slow or failed detail request never
+    // blocks View, Edit, or the grid's double-click action.
+    setDicForm(ensureTenantLanguageRows({
+      ...createInitialCountryForm(),
+      code: dicCountry.code,
+      name: dicCountry.name,
+      currencyCode: dicCountry.currencyCode,
+      phoneCode: dicCountry.phoneCode,
+      status: dicCountry.status,
+    }));
     setBlnDialogOpen(true);
+
+    try {
+      const [dicOptions, dicCountryDetail] = await Promise.all([
+        ensureCountryFormOptionsLoaded(),
+        countryService.getCountry(Number(dicCountry.id), intDefaultLanguageID),
+      ]);
+      setDicForm(ensureTenantLanguageRows(toCountryFormValues(dicCountryDetail, dicOptions)));
+    } catch (objError) {
+      showToast(objError instanceof Error ? objError.message : dicModuleLabels.requestFailed, "error");
+    }
   }
 
   function closeDialog() {
@@ -537,14 +549,6 @@ export default function CountryMasterPanel() {
       fnFinally: () => setBlnSubmitting(false),
       strFallbackMessage: dicModuleLabels.requestFailed,
     });
-  }
-
-  function toggleSelectAll() {
-    if (blnAllFilteredSelected) {
-      setLstSelectedIds((lstPrevious) => lstPrevious.filter((strId) => !lstFiltered.some((dicCountry) => dicCountry.id === strId)));
-      return;
-    }
-    setLstSelectedIds((lstPrevious) => [...new Set([...lstPrevious, ...lstFiltered.map((dicCountry) => dicCountry.id)])]);
   }
 
   function bulkUpdateStatus(strStatus: Status) {
@@ -645,8 +649,6 @@ export default function CountryMasterPanel() {
             columns={lstTableColumns}
             rows={lstTableRows}
             rowIdField="id"
-            defaultPageSize={10}
-            pageSizeOptions={[10, 20, 50]}
             emptyMessage={dicModuleLabels.emptyMessage}
             exportFileName="country-master"
             showExportOptions={blnCanExport}
@@ -655,7 +657,6 @@ export default function CountryMasterPanel() {
             toolbarLeft={(
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
                 {blnCanAdd ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => void openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading} controlId="country-master.add.button">{dicModuleLabels.addButton}</Button> : null}
-                <Checkbox checked={blnAllFilteredSelected} indeterminate={blnSomeFilteredSelected} onChange={toggleSelectAll} disabled={lstFiltered.length === 0} sx={{ alignSelf: "center" }} inputProps={{ "controlId": "country-master.toolbar.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>} />
               </Box>
             )}
             getRowSx={(dicRow) => lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : undefined}
@@ -751,6 +752,8 @@ export default function CountryMasterPanel() {
               />
             </Box>
 
+            {intSecondaryLanguageID ? (
+            <>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1.25, flexWrap: "wrap" }}>
               <Box>
                 <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("multilingual_text", "Multilingual Text")}</Typography>
@@ -843,6 +846,8 @@ export default function CountryMasterPanel() {
                 </Box>
               ))}
             </Box>
+            </>
+            ) : null}
           </Box>
         )}
       />
@@ -861,7 +866,7 @@ export default function CountryMasterPanel() {
         onConfirm={executeConfirmedAction}
       />
 
-      <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnSubmitting} strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
+      <BlockingLoader blnOpen={blnSubmitting || ((blnLoading || blnRightsLoading) && !blnDialogOpen)} strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert severity={objToast.strSeverity} onClose={closeToast} variant="filled" sx={{ width: "100%" }}>

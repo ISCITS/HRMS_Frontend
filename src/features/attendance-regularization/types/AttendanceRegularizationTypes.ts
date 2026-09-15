@@ -9,6 +9,8 @@ export type RegularizationLookups = Record<string, LookupOption[]>;
 export type AttendanceSnapshot = {
   intAttendanceDayID?: number;
   strStatus?: string;
+  strFirstIn?: string | null;
+  strLastOut?: string | null;
   tmFirstIn?: string | null;
   tmLastOut?: string | null;
   decWorkedHours?: number;

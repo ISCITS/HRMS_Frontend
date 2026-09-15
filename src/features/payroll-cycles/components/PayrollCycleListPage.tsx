@@ -31,7 +31,6 @@ import { useModuleActionAccess } from "@/features/security/hooks/useModuleAction
 type Status = "Active" | "Inactive";
 type SearchForm = {
   strName: string;
-  strCode: string;
   strStatus: "All" | Status;
 };
 type ToastState = {
@@ -41,11 +40,7 @@ type ToastState = {
 };
 
 const lstPayrollCycleModuleCodes = ["PAYROLL_CYCLE", "PAYROLL_CYCLES", "MASTER_PAYROLL_CYCLE"];
-const dicEmptySearch: SearchForm = { strName: "", strCode: "", strStatus: "All" };
-
-function formatCutoffDay(intCutoffDay: number | null) {
-  return intCutoffDay ? `Day ${intCutoffDay}` : "-";
-}
+const dicEmptySearch: SearchForm = { strName: "", strStatus: "All" };
 
 export default function PayrollCycleListPage() {
   const objRouter = useRouter();
@@ -60,7 +55,7 @@ export default function PayrollCycleListPage() {
 
   function openScheduleEditor(intPayrollCycleID: number, strMode: "edit" | "view" = "edit") {
     setPayrollScheduleSelectedID(intPayrollCycleID);
-    objRouter.push(strMode === "view" ? "/payroll/schedules/edit?mode=view" : "/payroll/schedules/edit");
+    objRouter.push("/payroll/schedules/edit");
   }
 
   async function loadPayrollCycles() {
@@ -95,11 +90,10 @@ export default function PayrollCycleListPage() {
   const lstFilteredRows = useMemo(() => {
     return lstCycles.filter((dicRow) => {
       const blnNameMatch = !dicSearchApplied.strName || dicRow.strCycleName.toLowerCase().includes(dicSearchApplied.strName.toLowerCase());
-      const blnCodeMatch = !dicSearchApplied.strCode || dicRow.strCycleCode.toLowerCase().includes(dicSearchApplied.strCode.toLowerCase());
       const blnStatusMatch =
         dicSearchApplied.strStatus === "All" ||
         (dicSearchApplied.strStatus === "Active" ? dicRow.blnIsActive : !dicRow.blnIsActive);
-      return blnNameMatch && blnCodeMatch && blnStatusMatch;
+      return blnNameMatch && blnStatusMatch;
     });
   }, [dicSearchApplied, lstCycles]);
 
@@ -117,7 +111,6 @@ export default function PayrollCycleListPage() {
             onEdit={blnCanEdit ? () => openScheduleEditor(dicRow.intID, "edit") : undefined}
           />
         ),
-        strCycleCode: dicRow.strCycleCode,
         strCycleName: dicRow.strCycleName,
         strPayrollGroup: (
           <Box>
@@ -126,7 +119,6 @@ export default function PayrollCycleListPage() {
           </Box>
         ),
         strPeriodType: dicRow.strPeriodType,
-        strCutoffDay: formatCutoffDay(dicRow.intCutoffDay),
         blnIsActive: (
           <span className={`${styles.statusPill} ${dicRow.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
             {dicRow.blnIsActive ? t("active") : t("inactive")}
@@ -139,11 +131,9 @@ export default function PayrollCycleListPage() {
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
       { field: "action", headerName: t("actions"), sortable: false, filterable: false, exportable: false, width: 110 },
-      { field: "strCycleCode", headerName: t("cycle_code") },
-      { field: "strCycleName", headerName: t("cycle_name") },
+      { field: "strCycleName", headerName: t("schedule_name", "Payroll Schedule") },
       { field: "strPayrollGroup", headerName: t("payroll_group"), sortable: false, filterable: false, width: 220 },
       { field: "strPeriodType", headerName: t("period_type") },
-      { field: "strCutoffDay", headerName: t("cutoff_day") },
       { field: "blnIsActive", headerName: t("status"), sortable: false, filterable: false, width: 130 },
     ],
     [t]
@@ -191,20 +181,17 @@ export default function PayrollCycleListPage() {
       </Box>
 
       <Box className={styles.controlsCard}>
-        <Box className={styles.searchRow}>
-          <TextField controlId="payroll-cycles.list.cycle-code.input" inputProps={{ "controlId": "payroll-cycles.list.cycle-code.input" }} label={t("cycle_code")} value={dicSearchDraft.strCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strCode: objEvent.target.value }))} size="small" />
-          <TextField inputProps={{ "controlId": "payroll-cycles.list.cycle-name.input" }} label={t("cycle_name")} value={dicSearchDraft.strName} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strName: objEvent.target.value }))} size="small" />
+        <Box className={styles.searchRow} sx={{ display: "flex", gridTemplateColumns: "none", flexWrap: "nowrap", alignItems: "center", gap: 1.25, overflowX: "auto", pb: 0.5, "& > .MuiTextField-root": { flex: "1 1 240px", minWidth: 200 } }}>
+          <TextField controlId="payroll-cycles.list.cycle-name.input" inputProps={{ "controlId": "payroll-cycles.list.cycle-name.input" }} label={t("schedule_name", "Payroll Schedule")} value={dicSearchDraft.strName} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strName: objEvent.target.value }))} size="small" />
           <TextField controlId="payroll-cycles.list.search-status.select" inputProps={{ "controlId": "payroll-cycles.list.search-status.select" }} select label={t("status")} value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} size="small">
             <MenuItem controlId="payroll-cycles.list.search-status.all.option" value="All">{t("all")}</MenuItem>
             <MenuItem controlId="payroll-cycles.list.search-status.active.option" value="Active">{t("active")}</MenuItem>
             <MenuItem controlId="payroll-cycles.list.search-status.inactive.option" value="Inactive">{t("inactive")}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions}>
+          <Box className={styles.searchActions} sx={{ flexShrink: 0, ml: "auto" }}>
             <Button controlId="payroll-cycles.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }}>
               {t("search")}
             </Button>
-          </Box>
-          <Box className={styles.searchActions}>
             <Button
               className={styles.secondaryButton}
               startIcon={<ClearRoundedIcon />}
@@ -227,8 +214,6 @@ export default function PayrollCycleListPage() {
           columns={lstTableColumns}
           rows={lstTableRows}
           rowIdField="id"
-          defaultPageSize={10}
-          pageSizeOptions={[10, 20, 50]}
           exportFileName="payroll_cycles"
           showExportOptions={blnCanExport}
           testIdPrefix="payroll-cycles.list"

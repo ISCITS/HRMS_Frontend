@@ -1,5 +1,7 @@
 "use client";
 
+import { isCtcProvisionCategory } from "@/lib/salaryCategories";
+
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
@@ -20,13 +22,15 @@ import {
   IconButton,
   MenuItem,
   Paper,
+  Radio,
+  RadioGroup,
   Stack,
   Switch,
   TextField,
   Tooltip,
   Typography
 } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
@@ -38,7 +42,6 @@ import {
   createEmptyLineRow,
   createEmptyTextRow,
   createInitialSalaryStructureForm,
-  normalizeSalaryStructureLineOrders,
   normalizeSalaryStructureFlexiRole,
   salaryStructureService,
   toSalaryStructureFormValues
@@ -49,12 +52,14 @@ import type {
   SalaryStructureFormValues,
   SalaryStructureFlexiMappingFormValue,
   SalaryStructureLineFormValue,
+  SalaryStructureOverrideMode,
   SalaryStructureTextFormValue
 } from "@/features/salary-structures/types";
 
 type SalaryStructureEditorPageProps = {
   strMode: "add" | "edit";
-  intSalaryStructureID?: number;
+  /** record_uuid from the URL; the internal id is never routed on. */
+  strSalaryStructureID?: string;
 };
 
 const lstSalaryStructureModuleCodes = ["SALARY_STRUCTURE", "SALARY_STRUCTURES", "MASTER_SALARY_STRUCTURE"];
@@ -91,12 +96,6 @@ function normalizeLineOrder(objValue: number | string, intFallbackValue = 10) {
   return Number.isInteger(intValue) && intValue >= 1 ? intValue : intFallbackValue;
 }
 
-function compareLineOrder(dicLeft: SalaryStructureLineFormValue, dicRight: SalaryStructureLineFormValue) {
-  return Number(dicLeft.intLineOrder || 0) - Number(dicRight.intLineOrder || 0)
-    || Number(dicLeft.intSalaryComponentID || 0) - Number(dicRight.intSalaryComponentID || 0)
-    || dicLeft.strRowID.localeCompare(dicRight.strRowID);
-}
-
 function parseOptionalSelectNumber(strValue: string) {
   if (!strValue) {
     return "";
@@ -107,6 +106,15 @@ function parseOptionalSelectNumber(strValue: string) {
 
 function formatSummaryAmount(fltValue: number) {
   return fltValue.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatEditableAmount(objValue: string | number | boolean) {
+  const strValue = String(objValue ?? "").trim();
+  if (!strValue) {
+    return "";
+  }
+  const fltValue = parseCommaAmount(strValue);
+  return Number.isFinite(fltValue) ? fltValue.toFixed(2) : strValue;
 }
 
 function formatFlexiAmount(fltValue: number | null | undefined) {
@@ -398,7 +406,7 @@ function normalizeFormulaExpressionInput(strValue: string) {
 
 export default function SalaryStructureEditorPage({
   strMode,
-  intSalaryStructureID
+  strSalaryStructureID
 }: SalaryStructureEditorPageProps) {
   const objRouter = useRouter();
   const { t } = useSalaryStructureLabels();
@@ -406,20 +414,38 @@ export default function SalaryStructureEditorPage({
   const [objFormOptions, setObjFormOptions] = useState<SalaryStructureFormOptions | null>(null);
   const [dicForm, setDicForm] = useState<SalaryStructureFormValues>(createInitialSalaryStructureForm());
   const [blnLoading, setBlnLoading] = useState(true);
+  const objTopScrollRef = useRef<HTMLDivElement>(null);
+  const objTableScrollRef = useRef<HTMLDivElement>(null);
+  const objComponentTableRef = useRef<HTMLTableElement>(null);
+  const [intTableScrollWidth, setIntTableScrollWidth] = useState(0);
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
   const [dicTextTranslationLoading, setDicTextTranslationLoading] = useState<Record<string, boolean>>({});
   const [dicLastTranslatedSourceByRow, setDicLastTranslatedSourceByRow] = useState<Record<string, string>>({});
   const [strAddModeFlexiHostRowID, setStrAddModeFlexiHostRowID] = useState("");
-
+  const [dicActiveAmountInput, setDicActiveAmountInput] = useState<{ strInputID: string; strValue: string } | null>(null);
   const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
   const blnReadOnly = strMode === "edit" && blnCanView && !blnCanEdit;
   const blnCanLoadWorkspace = strMode === "add" ? blnCanAdd : blnCanView;
   const blnCanSave = strMode === "add" ? blnCanAdd : blnCanEdit;
+  useEffect(() => {
+    const objContainer = objTableScrollRef.current;
+    const objTable = objComponentTableRef.current;
+    if (!objContainer || !objTable) return;
+    const updateScrollWidth = () => setIntTableScrollWidth(objContainer.scrollWidth);
+    const objObserver = new ResizeObserver(updateScrollWidth);
+    objObserver.observe(objContainer);
+    objObserver.observe(objTable);
+    updateScrollWidth();
+    return () => objObserver.disconnect();
+  }, [blnLoading, blnRightsLoading, blnCanLoadWorkspace]);
   const blnFieldDisabled = blnSaving || blnReadOnly || !blnCanSave;
+  const strPageHeading = strMode === "add"
+    ? t("add_salary_structure", "Add Salary Structure")
+    : t("edit_salary_structure", "Edit Salary Structure");
 
   useEffect(() => {
     let blnMounted = true;
@@ -438,8 +464,8 @@ export default function SalaryStructureEditorPage({
       setStrError("");
       try {
         const objOptionsPromise = salaryStructureService.getFormOptions();
-        const dicDetailPromise = strMode === "edit" && intSalaryStructureID
-          ? salaryStructureService.getSalaryStructureById(intSalaryStructureID)
+        const dicDetailPromise = strMode === "edit" && strSalaryStructureID
+          ? salaryStructureService.getSalaryStructureById(strSalaryStructureID)
           : Promise.resolve(null);
         const [objOptions, dicDetail] = await Promise.all([objOptionsPromise, dicDetailPromise]);
         if (!blnMounted) {
@@ -448,7 +474,13 @@ export default function SalaryStructureEditorPage({
         setObjFormOptions(objOptions);
 
         if (dicDetail) {
-          setDicForm(applyFlexiEligibilityToForm(toSalaryStructureFormValues(dicDetail), objOptions));
+          const dicLoadedForm = applyFlexiEligibilityToForm(toSalaryStructureFormValues(dicDetail), objOptions);
+          const dicLoadedComponentByID = new Map(objOptions.lstSalaryComponents.map((dicOption) => [dicOption.intID, dicOption]));
+          // Reapply derived amounts on initial detail load so persisted percentage and formula values respect annual limits immediately.
+          setDicForm({
+            ...dicLoadedForm,
+            lstComponents: recalculateDerivedLineAmounts(dicLoadedForm.lstComponents, dicLoadedComponentByID)
+          });
         } else {
           const intEnglishID = objOptions.lstLanguages.find((dicLanguage) => dicLanguage.strCode?.toLowerCase() === "en")?.intID ?? objOptions.lstLanguages[0]?.intID ?? "";
           setDicForm((dicPrevious) => ({
@@ -477,7 +509,7 @@ export default function SalaryStructureEditorPage({
     return () => {
       blnMounted = false;
     };
-  }, [blnCanLoadWorkspace, blnRightsLoading, intSalaryStructureID, strMode]);
+  }, [blnCanLoadWorkspace, blnRightsLoading, strSalaryStructureID, strMode]);
 
   const dicComponentByID = useMemo(() => {
     return new Map((objFormOptions?.lstSalaryComponents ?? []).map((dicOption) => [dicOption.intID, dicOption]));
@@ -499,9 +531,9 @@ export default function SalaryStructureEditorPage({
     return Array.from(setCodes).sort((strLeft, strRight) => strLeft.localeCompare(strRight));
   }, [dicComponentByID, dicForm.lstComponents]);
   const lstValueSourceOptions = objFormOptions?.lstValueSourceLookups ?? [];
-  const lstSortedComponentLines = useMemo(() => {
-    return [...dicForm.lstComponents].sort(compareLineOrder);
-  }, [dicForm.lstComponents]);
+  const lstActiveSalaryComponents = useMemo(() => {
+    return (objFormOptions?.lstSalaryComponents ?? []).filter((dicOption) => dicOption.blnIsActive === true);
+  }, [objFormOptions]);
   const lstFlexiEligibleComponents = useMemo(() => {
     return (objFormOptions?.lstSalaryComponents ?? []).filter(isFlexiEligibleComponent);
   }, [objFormOptions]);
@@ -523,6 +555,17 @@ export default function SalaryStructureEditorPage({
     return lstFlexiBasketLines.map((dicLine) => dicLine.strRowID).join("|");
   }, [lstFlexiBasketLines]);
   const dicStructureSummary = useMemo(() => {
+    function getSummaryComponentName(
+      dicLine: SalaryStructureLineFormValue,
+      dicComponent: SalaryStructureFormOptions["lstSalaryComponents"][number] | undefined,
+    ) {
+      return dicLine.strComponentName.trim()
+        || dicComponent?.strLabel?.trim()
+        || dicLine.strComponentCode.trim()
+        || dicComponent?.strCode?.trim()
+        || t("salary_component", "Salary Component");
+    }
+
     const dicTotals = dicForm.lstComponents.reduce(
       (dicTotals, dicLine) => {
         if (dicLine.intSalaryComponentID === "") {
@@ -565,25 +608,46 @@ export default function SalaryStructureEditorPage({
           blnIsFlexiBasket
           || (blnIsEarning && !blnIsDeductionLike && !blnIsEmployerContributionLike && !blnIsInformationLike)
         );
+        const dicSummaryComponent = {
+          strName: getSummaryComponentName(dicLine, dicComponent),
+          fltAnnualAmount: fltYearlyAmount,
+        };
 
-        if (blnIsActiveLine && blnIncludedInCtc && (blnIsFlexiBasket || blnIsEmployerContributionLike || (blnIsEarning && !blnIsDeductionLike && !blnIsInformationLike))) {
+        if (blnIsActiveLine && blnIncludedInCtc && (isCtcProvisionCategory(strCategory) || blnIsFlexiBasket || blnIsEmployerContributionLike || (blnIsEarning && !blnIsDeductionLike && !blnIsInformationLike))) {
           dicTotals.fltTotalCtc += fltYearlyAmount;
+          dicTotals.lstCtcComponents.push(dicSummaryComponent);
         }
         if (blnIsActiveLine && (blnIsFlexiBasket || strFlexiType === "basket")) {
           dicTotals.fltFlexiBasket += fltYearlyAmount;
+          dicTotals.lstFlexiBasketComponents.push(dicSummaryComponent);
         } else if (blnIsActiveLine && blnIsEmployerContributionLike) {
           dicTotals.fltEmployerContribution += fltYearlyAmount;
+          dicTotals.lstEmployerContributionComponents.push(dicSummaryComponent);
         } else if (blnIsActiveLine && strGroup === "variablepay" && blnIsEarning) {
           dicTotals.fltVariablePay += fltYearlyAmount;
+          dicTotals.lstVariablePayComponents.push(dicSummaryComponent);
         } else if (blnIsActiveLine && blnIsFixedPayEarning) {
           dicTotals.fltFixedPay += fltYearlyAmount;
         }
         if (blnIsPayableGrossComponent) {
           dicTotals.fltGrossAnnual += fltYearlyAmount;
+          dicTotals.lstGrossComponents.push(dicSummaryComponent);
         }
         return dicTotals;
       },
-      { fltTotalCtc: 0, fltGrossAnnual: 0, fltFixedPay: 0, fltVariablePay: 0, fltFlexiBasket: 0, fltEmployerContribution: 0 }
+      {
+        fltTotalCtc: 0,
+        fltGrossAnnual: 0,
+        fltFixedPay: 0,
+        fltVariablePay: 0,
+        fltFlexiBasket: 0,
+        fltEmployerContribution: 0,
+        lstCtcComponents: [] as Array<{ strName: string; fltAnnualAmount: number }>,
+        lstGrossComponents: [] as Array<{ strName: string; fltAnnualAmount: number }>,
+        lstVariablePayComponents: [] as Array<{ strName: string; fltAnnualAmount: number }>,
+        lstEmployerContributionComponents: [] as Array<{ strName: string; fltAnnualAmount: number }>,
+        lstFlexiBasketComponents: [] as Array<{ strName: string; fltAnnualAmount: number }>,
+      }
     );
     const fltGrossAnnual = dicTotals.fltGrossAnnual;
     return {
@@ -594,8 +658,13 @@ export default function SalaryStructureEditorPage({
       fltVariablePay: dicTotals.fltVariablePay,
       fltFlexiBasket: dicTotals.fltFlexiBasket,
       fltEmployerContribution: dicTotals.fltEmployerContribution,
+      lstCtcComponents: dicTotals.lstCtcComponents,
+      lstGrossComponents: dicTotals.lstGrossComponents,
+      lstVariablePayComponents: dicTotals.lstVariablePayComponents,
+      lstEmployerContributionComponents: dicTotals.lstEmployerContributionComponents,
+      lstFlexiBasketComponents: dicTotals.lstFlexiBasketComponents,
     };
-  }, [dicComponentByID, dicForm.lstComponents]);
+  }, [dicComponentByID, dicForm.lstComponents, t]);
   const dicFlexiSummary = useMemo(() => {
     const dicBucketLine = lstFlexiBasketLines[0];
     const fltBucketAnnual = dicBucketLine ? (parseLineAmount(dicBucketLine.fltFixedAmount) ?? 0) * 12 : 0;
@@ -614,14 +683,22 @@ export default function SalaryStructureEditorPage({
     }, 0);
     const dicBucketComponent = dicComponentByID.get(Number(dicBucketLine?.intSalaryComponentID));
     const dicResidualComponent = dicComponentByID.get(Number(dicBucketComponent?.intResidualComponentID));
+    const lstEntitlementComponents = dicForm.lstComponents.flatMap((dicLine) => dicLine.lstFlexiMappings)
+      .filter((dicMapping) => dicMapping.blnIsActive && dicMapping.intFlexiComponentID !== "")
+      .map((dicMapping) => ({
+        strName: dicMapping.strFlexiComponentName.trim() || dicMapping.strFlexiComponentCode.trim() || t("flexi_component", "Flexi Component"),
+        fltAnnualAmount: Math.max(parseLineAmount(dicMapping.fltMaxAmount) ?? 0, 0),
+      }))
+      .filter((dicComponent) => dicComponent.fltAnnualAmount > 0);
     return {
       fltDefaultAllocatedAnnual,
       fltDefaultBalanceAnnual: Math.max(0, fltBucketAnnual - fltDefaultAllocatedAnnual),
       fltEntitlementAnnual,
       fltResidualTaxableProjection: Math.max(0, fltBucketAnnual - fltEntitlementAnnual),
       strResidualComponentName: dicResidualComponent?.strLabel ?? "",
+      lstEntitlementComponents,
     };
-  }, [dicComponentByID, dicForm.lstComponents, lstFlexiBasketLines]);
+  }, [dicComponentByID, dicForm.lstComponents, lstFlexiBasketLines, t]);
   const lstCompensationWarnings = useMemo(() => {
     const lstWarnings: Array<{ strSeverity: "error" | "warning" | "info"; strMessage: string }> = [];
     const blnHasActiveFlexiOption = dicForm.lstComponents.some((dicLine) =>
@@ -652,10 +729,7 @@ export default function SalaryStructureEditorPage({
     return lstWarnings;
   }, [dicFlexiSummary.fltEntitlementAnnual, dicForm.lstComponents, dicStructureSummary.fltFlexiBasket, dicStructureSummary.fltTotalCtc, lstFlexiBasketLines.length, t]);
   const intDefaultLanguageID = authHelpers.getLanguageID() ?? objFormOptions?.lstLanguages[0]?.intID ?? 1;
-  const intSecondaryLanguageID =
-    authHelpers.getSecondaryLanguageID()
-    ?? objFormOptions?.lstLanguages.find((dicLanguage) => dicLanguage.intID !== intDefaultLanguageID)?.intID
-    ?? intDefaultLanguageID;
+  const intSecondaryLanguageID = authHelpers.getSecondaryLanguageID();
 
   function buildFixedLanguageRow(
     intLanguageID: number,
@@ -703,6 +777,12 @@ export default function SalaryStructureEditorPage({
       dicDefaultExistingText?.strStructureDescription ?? dicValues.lstTexts[0]?.strStructureDescription ?? "",
       dicValues.lstTexts,
     );
+    if (!intSecondaryLanguageID || intSecondaryLanguageID === intDefaultLanguageID) {
+      return {
+        ...dicValues,
+        lstTexts: ensureUniqueTextRowIDs([dicDefaultRow]),
+      };
+    }
     const dicSecondaryExistingText = dicValues.lstTexts.find(
       (dicText) => Number(dicText.intLanguageID) === intSecondaryLanguageID
     );
@@ -712,12 +792,9 @@ export default function SalaryStructureEditorPage({
       dicSecondaryExistingText?.strStructureDescription ?? "",
       dicValues.lstTexts,
     );
-    const lstRows = intSecondaryLanguageID === intDefaultLanguageID
-      ? [dicDefaultRow]
-      : [dicDefaultRow, dicSecondaryRow];
     return {
       ...dicValues,
-      lstTexts: ensureUniqueTextRowIDs(lstRows),
+      lstTexts: ensureUniqueTextRowIDs([dicDefaultRow, dicSecondaryRow]),
     };
   }
 
@@ -882,7 +959,10 @@ export default function SalaryStructureEditorPage({
     }
   }
 
-  function recalculateDerivedLineAmounts(lstComponents: SalaryStructureLineFormValue[]) {
+  function recalculateDerivedLineAmounts(
+    lstComponents: SalaryStructureLineFormValue[],
+    dicCalculationComponentByID = dicComponentByID
+  ) {
     const dicComputedMonthlyByComponentID = new Map<number, number>();
     const dicFormulaVariables: Record<string, number> = {};
     const dicFormulaAggregates = {
@@ -920,6 +1000,7 @@ export default function SalaryStructureEditorPage({
       )
       .reduce((lstCalculated, dicLine) => {
         let fltCalculatedAmount = parseLineAmount(dicLine.fltFixedAmount);
+        let blnDerivedAmountConstrained = false;
         const strValueSource = normalizeSelectToken(dicLine.strValueSource);
 
         if (strValueSource === "percentage") {
@@ -928,17 +1009,48 @@ export default function SalaryStructureEditorPage({
           fltCalculatedAmount = fltPercentage !== null && fltBasisAmount !== undefined
             ? (fltBasisAmount * fltPercentage) / 100
             : null;
+
         } else if (strValueSource === "formula") {
           fltCalculatedAmount = dicLine.strFormulaExpression.trim()
             ? evaluateFormulaExpression(dicLine.strFormulaExpression, dicFormulaVariables)
             : null;
         }
 
+        if ((strValueSource === "percentage" || strValueSource === "formula") && fltCalculatedAmount !== null) {
+          // Line min/max values are annual, while calculated line amounts are stored monthly.
+          const fltAnnualMinimum = parseLineAmount(dicLine.fltMinAmount);
+          const fltAnnualMaximum = parseLineAmount(dicLine.fltMaxAmount);
+          if (
+            fltAnnualMinimum !== null
+            && fltAnnualMinimum >= 0
+            && fltCalculatedAmount * 12 < fltAnnualMinimum
+          ) {
+            fltCalculatedAmount = fltAnnualMinimum / 12;
+            blnDerivedAmountConstrained = true;
+          }
+          if (
+            fltAnnualMaximum !== null
+            && fltAnnualMaximum >= 0
+            && fltCalculatedAmount * 12 > fltAnnualMaximum
+          ) {
+            fltCalculatedAmount = fltAnnualMaximum / 12;
+            blnDerivedAmountConstrained = true;
+          }
+        }
+
         const dicCalculatedLine = strValueSource === "percentage" || strValueSource === "formula"
-          ? { ...dicLine, fltFixedAmount: fltCalculatedAmount !== null ? formatCalculatedLineAmount(fltCalculatedAmount) : "" }
+          ? {
+            ...dicLine,
+            fltFixedAmount: fltCalculatedAmount !== null
+              // Preserve enough monthly precision for the derived yearly value to equal the annual boundary.
+              ? (blnDerivedAmountConstrained
+                ? Number(fltCalculatedAmount.toFixed(6)).toString()
+                : formatCalculatedLineAmount(fltCalculatedAmount))
+              : ""
+          }
           : dicLine;
         const fltResolvedAmount = parseLineAmount(dicCalculatedLine.fltFixedAmount);
-        const dicComponent = dicComponentByID.get(Number(dicCalculatedLine.intSalaryComponentID));
+        const dicComponent = dicCalculationComponentByID.get(Number(dicCalculatedLine.intSalaryComponentID));
         if (dicCalculatedLine.intSalaryComponentID !== "" && fltResolvedAmount !== null) {
           const intSalaryComponentID = Number(dicCalculatedLine.intSalaryComponentID);
           dicComputedMonthlyByComponentID.set(intSalaryComponentID, fltResolvedAmount);
@@ -954,7 +1066,7 @@ export default function SalaryStructureEditorPage({
           }
           if (dicComponent?.blnIncludedInCtc !== false) {
             dicFormulaAggregates.ctcAnnual += fltResolvedAmount * 12;
-            if (isWageComponent({ intSalaryComponentID }, dicComponentByID)) {
+            if (isWageComponent({ intSalaryComponentID }, dicCalculationComponentByID)) {
               dicFormulaAggregates.wageMonthly += fltResolvedAmount;
             } else {
               dicFormulaAggregates.nonWageMonthly += fltResolvedAmount;
@@ -962,6 +1074,7 @@ export default function SalaryStructureEditorPage({
           }
           if (
             dicComponent
+            && !isCtcProvisionCategory(dicComponent.strComponentCategory)
             && !dicComponent.blnIsEmployerContribution
             && normalizeSelectToken(dicComponent.strComponentCategory ?? "") !== "deduction"
             && normalizeSelectToken(dicComponent.strComponentCategory ?? "") !== "information"
@@ -1028,12 +1141,27 @@ export default function SalaryStructureEditorPage({
     return formatNormalizedAmount(fltAnnualAmount / 12, 6);
   }
 
-  function getAnnualAmountFromMonthly(strMonthlyAmount: string | number | boolean) {
+  function getAnnualAmountFromMonthly(
+    strMonthlyAmount: string | number | boolean,
+    strAnnualMinimum: string | number | boolean = "",
+    strAnnualMaximum: string | number | boolean = ""
+  ) {
     const fltMonthlyAmount = parseLineAmount(strMonthlyAmount);
     if (fltMonthlyAmount === null) {
       return "";
     }
-    return formatCalculatedLineAmount(fltMonthlyAmount * 12);
+    const fltAnnualAmount = fltMonthlyAmount * 12;
+    const fltAnnualMinimum = parseLineAmount(strAnnualMinimum);
+    const fltAnnualMaximum = parseLineAmount(strAnnualMaximum);
+
+    // A constrained monthly amount is stored with finite precision; display its exact annual boundary.
+    if (fltAnnualMinimum !== null && Math.abs(fltAnnualAmount - fltAnnualMinimum) < 0.0001) {
+      return Number(fltAnnualMinimum.toFixed(2)).toString();
+    }
+    if (fltAnnualMaximum !== null && Math.abs(fltAnnualAmount - fltAnnualMaximum) < 0.0001) {
+      return Number(fltAnnualMaximum.toFixed(2)).toString();
+    }
+    return formatCalculatedLineAmount(fltAnnualAmount);
   }
 
   function updateLineRow(strRowID: string, strField: keyof SalaryStructureLineFormValue, objValue: string | number | boolean) {
@@ -1117,10 +1245,6 @@ export default function SalaryStructureEditorPage({
             fltMaxAmount: dicComponent?.fltMaxAmount?.toString() ?? dicLine.fltMaxAmount,
             blnIsMandatory: dicComponent?.blnIsMandatory ?? dicLine.blnIsMandatory,
             blnIsActive: dicLine.blnIsActive ?? true,
-            intLineOrder: normalizeLineOrder(
-              dicComponent?.intDefaultLineOrder ?? dicComponent?.intDisplayOrder ?? dicLine.intLineOrder,
-              dicLine.intLineOrder || 10
-            ),
             lstFlexiMappings: blnIsFlexiBasket ? [...dicLine.lstFlexiMappings, ...lstMissingFlexiMappings] : []
           };
         }
@@ -1266,7 +1390,7 @@ export default function SalaryStructureEditorPage({
     if (!dicSecondaryRow) {
       return;
     }
-    await translateTextRow(dicSecondaryRow.strRowID, Number(dicSecondaryRow.intLanguageID) || intSecondaryLanguageID);
+    await translateTextRow(dicSecondaryRow.strRowID, Number(dicSecondaryRow.intLanguageID));
   }
 
   useEffect(() => {
@@ -1394,12 +1518,12 @@ export default function SalaryStructureEditorPage({
 
   function handleAddLineRow() {
     setDicForm((dicPrevious) => {
-      const lstNormalizedComponents = normalizeSalaryStructureLineOrders(dicPrevious.lstComponents);
+      const intNextLineOrder = dicPrevious.lstComponents.reduce((intMax, dicLine) => Math.max(intMax, Number(dicLine.intLineOrder) || 0), 0) + 10;
       return {
         ...dicPrevious,
         lstComponents: [
-          ...lstNormalizedComponents,
-          createEmptyLineRow((lstNormalizedComponents.length + 1) * 10)
+          ...dicPrevious.lstComponents,
+          createEmptyLineRow(intNextLineOrder)
         ]
       };
     });
@@ -1412,9 +1536,7 @@ export default function SalaryStructureEditorPage({
       }
       return {
         ...dicPrevious,
-        lstComponents: normalizeSalaryStructureLineOrders(
-          dicPrevious.lstComponents.filter((dicLine) => dicLine.strRowID !== strRowID)
-        )
+        lstComponents: dicPrevious.lstComponents.filter((dicLine) => dicLine.strRowID !== strRowID)
       };
     });
   }
@@ -1535,8 +1657,8 @@ export default function SalaryStructureEditorPage({
     setBlnSaving(true);
     setStrError("");
     try {
-      const dicSavedRecord = strMode === "edit" && intSalaryStructureID
-        ? await salaryStructureService.updateSalaryStructure(intSalaryStructureID, dicForm)
+      const dicSavedRecord = strMode === "edit" && strSalaryStructureID
+        ? await salaryStructureService.updateSalaryStructure(strSalaryStructureID, dicForm)
         : await salaryStructureService.createSalaryStructure(dicForm);
       const objLatestOptions = await salaryStructureService.getFormOptions();
       setObjFormOptions(objLatestOptions);
@@ -1559,6 +1681,46 @@ export default function SalaryStructureEditorPage({
     } finally {
       setBlnSaving(false);
     }
+  }
+
+  function renderCompensationCalculationTooltip(
+    strLogic: string,
+    lstComponents: Array<{ strName: string; fltAnnualAmount: number }>,
+    fltResult: number,
+    intAnnualDivisor = 1,
+  ) {
+    return (
+      <Box sx={{ maxHeight: 420, minWidth: 260, overflowY: "auto", p: 0.5 }}>
+        <Typography sx={{ fontSize: "0.8rem", fontWeight: 800, mb: 0.5 }}>
+          {t("calculation_details", "Calculation details")}
+        </Typography>
+        <Typography sx={{ fontSize: "0.72rem", lineHeight: 1.4, mb: 1, opacity: 0.9 }}>
+          {strLogic}
+        </Typography>
+        {lstComponents.length > 0 ? (
+          <Stack spacing={0.45}>
+            {lstComponents.map((dicComponent, intIndex) => (
+              <Stack key={`${dicComponent.strName}-${intIndex}`} direction="row" justifyContent="space-between" spacing={2}>
+                <Typography sx={{ fontSize: "0.72rem", overflowWrap: "anywhere" }}>{dicComponent.strName}</Typography>
+                <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, whiteSpace: "nowrap" }}>
+                  ₹ {formatSummaryAmount(dicComponent.fltAnnualAmount / intAnnualDivisor)}
+                </Typography>
+              </Stack>
+            ))}
+          </Stack>
+        ) : (
+          <Typography sx={{ fontSize: "0.72rem", fontStyle: "italic", opacity: 0.85 }}>
+            {t("no_contributing_components", "No contributing components")}
+          </Typography>
+        )}
+        <Stack direction="row" justifyContent="space-between" spacing={2} sx={{ borderTop: "1px solid rgba(255,255,255,0.35)", mt: 1, pt: 0.75 }}>
+          <Typography sx={{ fontSize: "0.74rem", fontWeight: 800 }}>{t("calculated_total", "Calculated total")}</Typography>
+          <Typography sx={{ fontSize: "0.74rem", fontWeight: 800, whiteSpace: "nowrap" }}>
+            ₹ {formatSummaryAmount(fltResult)}
+          </Typography>
+        </Stack>
+      </Box>
+    );
   }
 
   if (blnLoading || blnRightsLoading) {
@@ -1601,6 +1763,18 @@ export default function SalaryStructureEditorPage({
         <Stack spacing={1.25}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.25}>
             <Box>
+              <Typography
+                component="h1"
+                sx={{
+                  color: "#0f172a",
+                  fontSize: { xs: "1.35rem", md: "1.65rem" },
+                  fontWeight: 800,
+                  letterSpacing: "-0.025em",
+                  lineHeight: 1.2
+                }}
+              >
+                {strPageHeading}
+              </Typography>
               <Typography sx={{ color: "#64748b", mt: 0.35, fontSize: "0.9rem", lineHeight: 1.35 }}>
                 {t(
                   "editor_description",
@@ -1763,42 +1937,132 @@ export default function SalaryStructureEditorPage({
       <Box>
         <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) 300px" } }}>
           <Paper variant="outlined" sx={{ borderColor: "#d9e6ef", borderRadius: "8px", boxShadow: "0 1px 5px rgba(15, 23, 42, 0.08)", overflow: "hidden" }}>
-            <Stack direction={{ xs: "column", md: "row" }} alignItems={{ xs: "stretch", md: "center" }} justifyContent="space-between" spacing={1.5} sx={{ borderBottom: "1px solid #d9e6ef", px: 2, py: 1.2 }}>
-              <Box>
-                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
-                  {t("component_line_configuration", "Salary Component Lines")}
-                </Typography>
-                <Typography sx={{ color: "#64748b", fontSize: "0.9rem", mt: 0.4 }}>
-                  {t(
-                    "component_line_configuration_help",
-                    "Configure line order, value source, fixed or percentage rules, basis components, formula logic, range controls, and active flags in the same master-grid style."
-                  )}
-                </Typography>
-              </Box>
-              <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />}
-                controlId="salary-structures.editor.add-line.button"
-                onClick={handleAddLineRow} disabled={blnFieldDisabled}
-                sx={{
-                  borderRadius: "14px",
-                  height: 38,
-                  minHeight: 38,
-                  py: 0,
-                  px: 2.25,
-                  minWidth: 100,
-                  fontSize: "0.9rem",
-                  whiteSpace: "nowrap",
-                  flexShrink: 0,
-                  "& .MuiButton-startIcon": {
-                    mr: 0.75,
-                    "& svg": {
-                      fontSize: "1rem"
+            <Box sx={{ borderBottom: "1px solid #d9e6ef", backgroundColor: "#f8fafc", px: 2, py: 1.2 }}>
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 6fr) minmax(0, 3fr) minmax(0, 1fr)" }, rowGap: 2, alignItems: "center" }}>
+                <Box sx={{ minWidth: 0, pr: { lg: 2 } }}>
+                  <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
+                    {t("component_line_configuration", "Salary Component Lines")}
+                  </Typography>
+                  <Typography sx={{ color: "#64748b", fontSize: "0.9rem", mt: 0.4 }}>
+                    {t(
+                      "component_line_configuration_help",
+                      "Configure line order, value source, fixed or percentage rules, basis components, formula logic, range controls, and active flags in the same master-grid style."
+                    )}
+                  </Typography>
+                </Box>
+                <Box sx={{ minWidth: 0, pr: { lg: 1 } }}>
+                  <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0.45 }}>
+                    <Typography sx={{ color: "#334155", fontSize: "0.72rem", fontWeight: 700 }}>
+                      {t("override_mode", "Override Mode")}
+                    </Typography>
+                    <Tooltip
+                      arrow
+                      title={t("override_mode_help", "Choose whether annual, monthly, or both amount fields can be edited.")}
+                    >
+                      <InfoOutlinedIcon sx={{ color: "#64748b", fontSize: "0.9rem" }} />
+                    </Tooltip>
+                  </Stack>
+                  <RadioGroup
+                    row
+                    value={dicForm.strOverrideMode}
+                    onChange={(objEvent) => updateRootField("strOverrideMode", objEvent.target.value as SalaryStructureOverrideMode)}
+                    aria-label={t("override_mode", "Override Mode")}
+                    controlId="salary-structures.editor.override-mode.toggle-group"
+                    sx={{
+                      flexWrap: "wrap",
+                      gap: 1.25,
+                      minHeight: 34,
+                      "& .MuiFormControlLabel-root": {
+                        m: 0
+                      },
+                      "& .MuiFormControlLabel-label": {
+                        color: "#334155",
+                        fontSize: "0.75rem",
+                        fontWeight: 700
+                      },
+                      "& .MuiRadio-root": {
+                        color: "#94a3b8",
+                        p: 0.4,
+                        mr: 0.25,
+                        "&.Mui-checked": { color: "#1267e5" }
+                      }
+                    }}
+                  >
+                    <FormControlLabel
+                      value="annual"
+                      disabled={blnFieldDisabled}
+                      control={<Radio size="small" inputProps={buildInputTestIdProps("salary-structures.editor.override-mode.annual.radio")} />}
+                      label={
+                        <Tooltip arrow title={t("override_mode_annual_help", "Allow overriding component values in Annual.")}>
+                          <span>{t("annual", "Annual")}</span>
+                        </Tooltip>
+                      }
+                    />
+                    <FormControlLabel
+                      value="monthly"
+                      disabled={blnFieldDisabled}
+                      control={<Radio size="small" inputProps={buildInputTestIdProps("salary-structures.editor.override-mode.monthly.radio")} />}
+                      label={
+                        <Tooltip arrow title={t("override_mode_monthly_help", "Allow overriding component values in Monthly.")}>
+                          <span>{t("monthly", "Monthly")}</span>
+                        </Tooltip>
+                      }
+                    />
+                    <FormControlLabel
+                      value="both"
+                      disabled={blnFieldDisabled}
+                      control={<Radio size="small" inputProps={buildInputTestIdProps("salary-structures.editor.override-mode.both.radio")} />}
+                      label={
+                        <Tooltip arrow title={t("override_mode_both_help", "Allow overriding component values in both Annual and Monthly.")}>
+                          <span>{t("both", "Both")}</span>
+                        </Tooltip>
+                      }
+                    />
+                  </RadioGroup>
+                </Box>
+                <Box sx={{ display: "flex", justifyContent: { xs: "flex-start", lg: "flex-end" }, minWidth: 0 }}>
+                <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />}
+                  controlId="salary-structures.editor.add-line.button"
+                  onClick={handleAddLineRow} disabled={blnFieldDisabled}
+                  sx={{
+                    borderRadius: "14px",
+                    height: 38,
+                    minHeight: 38,
+                    py: 0,
+                    px: 2.25,
+                    minWidth: 100,
+                    fontSize: "0.9rem",
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                    "& .MuiButton-startIcon": {
+                      mr: 0.75,
+                      "& svg": {
+                        fontSize: "1rem"
+                      }
                     }
-                  }
-                }}>
-                {t("add_line", "Add Line")}
-              </Button>
-            </Stack>
+                  }}>
+                  {t("add_line", "Add Line")}
+                </Button>
+                </Box>
+              </Box>
+            </Box>
           <Box
+            ref={objTopScrollRef}
+            onScroll={(objEvent) => {
+              if (objTableScrollRef.current) objTableScrollRef.current.scrollLeft = objEvent.currentTarget.scrollLeft;
+            }}
+            sx={{ overflowX: "auto", overflowY: "hidden" }}
+            tabIndex={0}
+            role="region"
+            aria-label={t("component_lines_horizontal_scroll", "Scroll salary component lines horizontally")}
+          >
+            <Box sx={{ width: intTableScrollWidth, height: 1 }} />
+          </Box>
+          <Box
+            ref={objTableScrollRef}
+            onScroll={(objEvent) => {
+              if (objTopScrollRef.current) objTopScrollRef.current.scrollLeft = objEvent.currentTarget.scrollLeft;
+            }}
             sx={{
               overflowX: "auto",
               "& .MuiInputBase-root.MuiInputBase-sizeSmall": {
@@ -1817,14 +2081,14 @@ export default function SalaryStructureEditorPage({
               }
             }}
           >
-            <table className={styles.table}>
+            <table ref={objComponentTableRef} className={styles.table}>
               <thead>
                 <tr>
                   <th style={{ left: 0, minWidth: 106, position: "sticky", zIndex: 4 }}>{t("line_order", "Line Order")}</th>
                   <th style={{ left: 106, minWidth: 320, position: "sticky", zIndex: 4 }}>{t("salary_component", "Salary Component")}</th>
                   <th>{t("value_source", "Value Source")}</th>
-                  <th>{t("yearly_amount", "Yearly Amount")}</th>
                   <th>{t("monthly_amount", "Monthly Amount")}</th>
+                  <th>{t("yearly_amount", "Yearly Amount")}</th>
                   <th>{t("percentage_value", "% Value")}</th>
                   <th>{t("basis_component", "Basis Component")}</th>
                   <th>{t("formula", "Formula")}</th>
@@ -1836,9 +2100,17 @@ export default function SalaryStructureEditorPage({
                 </tr>
               </thead>
               <tbody>
-                {lstSortedComponentLines.map((dicLine) => {
+                {dicForm.lstComponents.map((dicLine) => {
+                  const strMonthlyAmountInputID = `${dicLine.strRowID}:monthly`;
+                  const strYearlyAmountInputID = `${dicLine.strRowID}:yearly`;
                   const dicComponent = dicComponentByID.get(Number(dicLine.intSalaryComponentID));
-                  const strLineYearlyAmount = getAnnualAmountFromMonthly(dicLine.fltFixedAmount);
+                  const strNormalizedLineValueSource = normalizeSelectToken(dicLine.strValueSource);
+                  const blnIsDerivedValueSource = strNormalizedLineValueSource === "percentage" || strNormalizedLineValueSource === "formula";
+                  const strLineYearlyAmount = getAnnualAmountFromMonthly(
+                    dicLine.fltFixedAmount,
+                    blnIsDerivedValueSource ? dicLine.fltMinAmount : "",
+                    blnIsDerivedValueSource ? dicLine.fltMaxAmount : ""
+                  );
                   const strFlexiRoleBadge = getFlexiRoleForLine(dicLine, dicComponent);
                   const lstLineBadges = dicComponent ? [
                     dicComponent.blnIncludedInCtc === false ? t("non_ctc", "Non-CTC") : t("ctc", "CTC"),
@@ -1905,10 +2177,16 @@ export default function SalaryStructureEditorPage({
                             disabled={blnFieldDisabled}
                             controlId="salary-structures.editor.line.salary-component.select"
                             inputProps={buildInputTestIdProps("salary-structures.editor.line.salary-component.select", { "data-row-key": dicLine.strRowID })}
-                            SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.line.salary-component.select", { "data-row-key": dicLine.strRowID }) }}
+                            SelectProps={{
+                              SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.line.salary-component.select", { "data-row-key": dicLine.strRowID }),
+                              renderValue: () => dicComponent?.strLabel || dicLine.strComponentName
+                            }}
                             sx={{ flex: 1 }}
                           >
-                            {(objFormOptions?.lstSalaryComponents ?? []).map((dicOption) => (
+                            {dicComponent && dicComponent.blnIsActive !== true ? (
+                              <MenuItem value={dicComponent.intID} disabled sx={{ display: "none" }}>{dicComponent.strLabel}</MenuItem>
+                            ) : null}
+                            {lstActiveSalaryComponents.map((dicOption) => (
                               <MenuItem key={dicOption.intID} value={dicOption.intID} controlId={`salary-structures.editor.line.salary-component.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
                                 {dicOption.strLabel}
                               </MenuItem>
@@ -1994,9 +2272,50 @@ export default function SalaryStructureEditorPage({
                     <td style={{ paddingBottom: 4, paddingTop: 4, verticalAlign: "top" }}>
                       <TextField
                         size="small"
-                        value={strLineYearlyAmount}
-                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "fltFixedAmount", getMonthlyAmountFromAnnual(objEvent.target.value))}
-                        disabled={blnFieldDisabled || normalizeSelectToken(dicLine.strValueSource) !== "fixed"}
+                        value={dicActiveAmountInput?.strInputID === strMonthlyAmountInputID
+                          ? dicActiveAmountInput.strValue
+                          : formatEditableAmount(dicLine.fltFixedAmount)}
+                        onFocus={(objEvent) => setDicActiveAmountInput({
+                          strInputID: strMonthlyAmountInputID,
+                          strValue: objEvent.target.value
+                        })}
+                        onChange={(objEvent) => {
+                          const strValue = sanitizeDecimalInput(objEvent.target.value);
+                          setDicActiveAmountInput({ strInputID: strMonthlyAmountInputID, strValue });
+                          updateLineRow(dicLine.strRowID, "fltFixedAmount", strValue);
+                        }}
+                        onBlur={() => setDicActiveAmountInput((dicPrevious) => (
+                          dicPrevious?.strInputID === strMonthlyAmountInputID ? null : dicPrevious
+                        ))}
+                        disabled={blnFieldDisabled || normalizeSelectToken(dicLine.strValueSource) !== "fixed" || dicForm.strOverrideMode === "annual"}
+                        controlId="salary-structures.editor.line.fixed-amount.input"
+                        inputProps={buildInputTestIdProps("salary-structures.editor.line.fixed-amount.input", {
+                          "data-row-key": dicLine.strRowID,
+                          inputMode: "decimal",
+                          pattern: "[0-9]*[.]?[0-9]*"
+                        })}
+                        sx={{ minWidth: 118 }}
+                      />
+                    </td>
+                    <td style={{ paddingBottom: 4, paddingTop: 4, verticalAlign: "top" }}>
+                      <TextField
+                        size="small"
+                        value={dicActiveAmountInput?.strInputID === strYearlyAmountInputID
+                          ? dicActiveAmountInput.strValue
+                          : formatEditableAmount(strLineYearlyAmount)}
+                        onFocus={(objEvent) => setDicActiveAmountInput({
+                          strInputID: strYearlyAmountInputID,
+                          strValue: objEvent.target.value
+                        })}
+                        onChange={(objEvent) => {
+                          const strValue = sanitizeDecimalInput(objEvent.target.value);
+                          setDicActiveAmountInput({ strInputID: strYearlyAmountInputID, strValue });
+                          updateLineRow(dicLine.strRowID, "fltFixedAmount", getMonthlyAmountFromAnnual(strValue));
+                        }}
+                        onBlur={() => setDicActiveAmountInput((dicPrevious) => (
+                          dicPrevious?.strInputID === strYearlyAmountInputID ? null : dicPrevious
+                        ))}
+                        disabled={blnFieldDisabled || normalizeSelectToken(dicLine.strValueSource) !== "fixed" || dicForm.strOverrideMode === "monthly"}
                         controlId="salary-structures.editor.line.yearly-amount.input"
                         inputProps={buildInputTestIdProps("salary-structures.editor.line.yearly-amount.input", {
                           "data-row-key": dicLine.strRowID,
@@ -2004,16 +2323,6 @@ export default function SalaryStructureEditorPage({
                           pattern: "[0-9]*[.]?[0-9]*"
                         })}
                         sx={{ minWidth: 128 }}
-                      />
-                    </td>
-                    <td style={{ paddingBottom: 4, paddingTop: 4, verticalAlign: "top" }}>
-                      <TextField
-                        size="small"
-                        value={dicLine.fltFixedAmount}
-                        disabled
-                        controlId="salary-structures.editor.line.fixed-amount.input"
-                        inputProps={buildInputTestIdProps("salary-structures.editor.line.fixed-amount.input", { "data-row-key": dicLine.strRowID })}
-                        sx={{ minWidth: 118 }}
                       />
                     </td>
                     <td style={{ paddingBottom: 4, paddingTop: 4, verticalAlign: "top" }}>
@@ -2186,23 +2495,77 @@ export default function SalaryStructureEditorPage({
             </Typography>
             <Stack spacing={1.6}>
               {[
-                [t("annual_ctc", "Annual CTC"), formatFlexiAmount(dicStructureSummary.fltTotalCtc), "#0757b8"],
-                [t("monthly_ctc", "Monthly CTC"), formatFlexiAmount(dicStructureSummary.fltTotalCtc / 12), "#0757b8"],
-                [t("gross_annual", "Gross Annual"), formatFlexiAmount(dicStructureSummary.fltGrossAnnual), "#0f172a"],
-                [t("gross_monthly", "Gross Monthly"), formatFlexiAmount(dicStructureSummary.fltGrossMonthly), "#0f172a"],
-                [t("fixed_pay", "Fixed Pay"), formatFlexiAmount(dicStructureSummary.fltFixedPay), "#0f172a"],
-                [t("variable_pay", "Variable Pay"), formatFlexiAmount(dicStructureSummary.fltVariablePay), "#0f172a"],
-                [t("employer_contributions", "Employer Contributions"), formatFlexiAmount(dicStructureSummary.fltEmployerContribution), "#0f172a"],
-                [t("flexi_basket_amount", "Flexi Basket Amount"), formatFlexiAmount(dicStructureSummary.fltFlexiBasket), "#067647"],
-                [t("flexi_entitlement_total", "Flexi Entitlement Total"), formatFlexiAmount(dicFlexiSummary.fltEntitlementAnnual), "#0f766e"],
-                [t("residual_flexi_capacity", "Residual Flexi Capacity"), formatFlexiAmount(dicFlexiSummary.fltResidualTaxableProjection), "#b45309"],
-              ].map(([strLabel, strValue, strColor], intSummaryIndex) => {
-                const blnCurrencyValue = strLabel !== t("residual_component", "Residual Component");
+                {
+                  strLabel: t("annual_ctc", "Annual CTC"), fltValue: dicStructureSummary.fltTotalCtc, strColor: "#0757b8",
+                  strLogic: t("annual_ctc_calculation_logic", "Sum of annual amounts (monthly amount × 12) for active earnings, Flexi Basket, and employer contributions marked as Included in CTC."),
+                  lstComponents: dicStructureSummary.lstCtcComponents, intAnnualDivisor: 1,
+                },
+                {
+                  strLabel: t("monthly_ctc", "Monthly CTC"), fltValue: dicStructureSummary.fltTotalCtc / 12, strColor: "#0757b8",
+                  strLogic: t("monthly_ctc_calculation_logic", "Annual CTC ÷ 12. Each amount below is the component's monthly contribution."),
+                  lstComponents: dicStructureSummary.lstCtcComponents, intAnnualDivisor: 12,
+                },
+                {
+                  strLabel: t("gross_annual", "Gross Annual"), fltValue: dicStructureSummary.fltGrossAnnual, strColor: "#0f172a",
+                  strLogic: t("gross_annual_calculation_logic", "Sum of annual amounts for active payable earnings and Flexi Basket. Deductions, employer contributions, and information-only components are excluded."),
+                  lstComponents: dicStructureSummary.lstGrossComponents, intAnnualDivisor: 1,
+                },
+                {
+                  strLabel: t("gross_monthly", "Gross Monthly"), fltValue: dicStructureSummary.fltGrossMonthly, strColor: "#0f172a",
+                  strLogic: t("gross_monthly_calculation_logic", "Gross Annual ÷ 12. Each amount below is the component's monthly contribution."),
+                  lstComponents: dicStructureSummary.lstGrossComponents, intAnnualDivisor: 12,
+                },
+                {
+                  strLabel: t("variable_pay", "Variable Pay"), fltValue: dicStructureSummary.fltVariablePay, strColor: "#0f172a",
+                  strLogic: t("variable_pay_calculation_logic", "Sum of annual amounts for active earning components in the Variable Pay group."),
+                  lstComponents: dicStructureSummary.lstVariablePayComponents, intAnnualDivisor: 1,
+                },
+                {
+                  strLabel: t("employer_contributions", "Employer Contributions"), fltValue: dicStructureSummary.fltEmployerContribution, strColor: "#0f172a",
+                  strLogic: t("employer_contributions_calculation_logic", "Sum of annual amounts for active components classified as employer contributions."),
+                  lstComponents: dicStructureSummary.lstEmployerContributionComponents, intAnnualDivisor: 1,
+                },
+                {
+                  strLabel: t("flexi_basket_amount", "Flexi Basket Amount"), fltValue: dicStructureSummary.fltFlexiBasket, strColor: "#067647",
+                  strLogic: t("flexi_basket_calculation_logic", "Sum of annual amounts for active components classified as a Flexi Basket."),
+                  lstComponents: dicStructureSummary.lstFlexiBasketComponents, intAnnualDivisor: 1,
+                },
+                {
+                  strLabel: t("flexi_entitlement_total", "Flexi Entitlement Total"), fltValue: dicFlexiSummary.fltEntitlementAnnual, strColor: "#0f766e",
+                  strLogic: t("flexi_entitlement_calculation_logic", "Sum of the annual entitlement limits for active Flexi component mappings."),
+                  lstComponents: dicFlexiSummary.lstEntitlementComponents, intAnnualDivisor: 1,
+                },
+                {
+                  strLabel: t("residual_flexi_capacity", "Residual Flexi Capacity"), fltValue: dicFlexiSummary.fltResidualTaxableProjection, strColor: "#b45309",
+                  strLogic: t("residual_flexi_calculation_logic", "Flexi Basket Amount − Flexi Entitlement Total, with a minimum result of zero."),
+                  lstComponents: [
+                    { strName: t("flexi_basket_amount", "Flexi Basket Amount"), fltAnnualAmount: dicStructureSummary.fltFlexiBasket },
+                    { strName: t("less_flexi_entitlement_total", "Less: Flexi Entitlement Total"), fltAnnualAmount: -dicFlexiSummary.fltEntitlementAnnual },
+                  ],
+                  intAnnualDivisor: 1,
+                },
+              ].map((dicSummaryItem, intSummaryIndex) => {
                 return (
-                <Stack key={`summary-${intSummaryIndex}-${String(strLabel)}`} direction="row" justifyContent="space-between" alignItems="center">
-                  <Typography sx={{ color: "#172554", fontSize: "0.84rem", whiteSpace: "nowrap" }}>{strLabel}</Typography>
-                  <Typography sx={{ color: strColor, fontSize: blnCurrencyValue ? "0.84rem" : "0.76rem", fontWeight: 800, ml: 1.5, textAlign: "right", whiteSpace: "nowrap" }}>{blnCurrencyValue ? "₹ " : ""}{strValue}</Typography>
-                </Stack>
+                  <Stack key={`summary-${intSummaryIndex}-${dicSummaryItem.strLabel}`} direction="row" justifyContent="space-between" alignItems="center">
+                    <Typography sx={{ color: "#172554", fontSize: "0.84rem", whiteSpace: "nowrap" }}>{dicSummaryItem.strLabel}</Typography>
+                    <Tooltip
+                      arrow
+                      placement="left"
+                      enterTouchDelay={0}
+                      slotProps={{ tooltip: { sx: { maxWidth: 420 } } }}
+                      title={renderCompensationCalculationTooltip(dicSummaryItem.strLogic, dicSummaryItem.lstComponents, dicSummaryItem.fltValue, dicSummaryItem.intAnnualDivisor)}
+                    >
+                      <Typography
+                        component="span"
+                        tabIndex={0}
+                        aria-label={`${dicSummaryItem.strLabel}: ₹ ${formatSummaryAmount(dicSummaryItem.fltValue)}. ${t("hover_for_calculation", "Hover for calculation details.")}`}
+                        data-controlid={`salary-structures.editor.compensation-summary.${normalizeSelectToken(dicSummaryItem.strLabel)}.amount`}
+                        sx={{ borderBottom: "1px dotted currentColor", color: dicSummaryItem.strColor, cursor: "help", fontSize: "0.84rem", fontWeight: 800, ml: 1.5, textAlign: "right", whiteSpace: "nowrap" }}
+                      >
+                        ₹ {formatFlexiAmount(dicSummaryItem.fltValue)}
+                      </Typography>
+                    </Tooltip>
+                  </Stack>
                 );
               })}
               {lstCompensationWarnings.map((dicWarning) => (
@@ -2407,6 +2770,7 @@ export default function SalaryStructureEditorPage({
         ) : null}
       </Box>
 
+      {intSecondaryLanguageID ? (
       <Paper variant="outlined" sx={{ borderColor: "#d9e6ef", borderRadius: "8px", boxShadow: "0 1px 5px rgba(15, 23, 42, 0.08)", p: 2 }}>
         <Stack direction={{ xs: "column", md: "row" }} alignItems={{ xs: "stretch", md: "center" }} justifyContent="space-between" spacing={1.5} sx={{ mb: 1.5 }}>
           <Box>
@@ -2501,6 +2865,7 @@ export default function SalaryStructureEditorPage({
           ))}
         </Stack>
       </Paper>
+      ) : null}
     </Stack>
   );
 }

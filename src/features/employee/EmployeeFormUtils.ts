@@ -42,7 +42,25 @@ export const dicEmptyEmployeeForm: EmployeeFormValues = {
   strEmploymentStatus: "Active",
   dtDateOfExit: "",
   blnIsEssEnabled: true,
-  blnIsPartialSave: false
+  blnIsPartialSave: false,
+  strFatherOrHusbandName: "", strMotherName: "", strSpouseName: "", strSpouseOccupation: "", strBloodGroup: "",
+  intNationalityCountryID: "", intMotherTongueLanguageID: "", strReligion: "", strMaritalStatus: "",
+  dtLocationJoiningDate: "", strPassportNumber: "", strPassportPlaceOfIssue: "",
+  dtPassportIssueDate: "", dtPassportExpiryDate: "", dtRetirementDate: "",
+  strAppointmentOrderNumber: "", dtAppointmentDate: "", strEntryMode: "", strJobType: "",
+  strConfirmationType: "", strConfirmationComments: "", dtTentativeConfirmationDate: "", dtConfirmationDate: "",
+  strRestDay: "", strEmployeeFunction: "", strFunctionalArea: "", strEmployeeCategory: "",
+  blnHasDisability: false, strPlaceOfBirth: "", blnSuperannuationFlag: false, strIdentificationMarks: "",
+  strDrivingLicenceNumber: "", dtDrivingLicenceValidUpto: "", blnIsRelatedEmployee: false,
+  intRelatedEmployeeID: "", strPaymentType: "", blnFlatGiven: false, dtStatusEffectiveDate: "",
+  dtContractStartDate: "", dtContractEndDate: "", dtLastIncrementDate: "", blnUgcAppraisalFlag: false,
+  strAgency: "", strReferenceNumber: "", strMobileCountryCode: "", strWhatsappCountryCode: "",
+  strWhatsappNumber: "", strReferredBy: "", strAccommodationType: "", decHousingAllowance: "",
+  intNoticePeriodDays: "", strEmergencyContactPerson: "", strEmergencyCountryCode: "",
+  strEmergencyMobileNumber: "", strEmergencyEmail: "", strEmployeeRemark: "",
+  strInitialPostingLocation: "", dtProbationStartDate: "", dtProbationEndDate: "",
+  strEmployeeWorkgroup: "", strEmployeeReservation: "", strSwon: "",
+  dtFromDate: "", dtToDate: "", strPrefixLogic: ""
 };
 
 export const dicEmptyEmployeeAddressForm: EmployeeAddressFormValues = {
@@ -60,6 +78,15 @@ export const dicEmptyEmployeeBankForm: EmployeeBankFormValues = {
   strAccountHolderName: "",
   strAccountNumber: "",
   strIfscCode: "",
+  strSwiftCode: "",
+  strBranchName: "",
+  strAccountType: "",
+  strAccountHolderEmail: "",
+  intSecondaryBankID: "",
+  strSecondaryAccountHolderName: "",
+  strSecondaryAccountNumber: "",
+  strSecondaryIfscCode: "",
+  blnSecondaryIsActive: false,
   blnIsPrimary: true,
   blnIsActive: true
 };
@@ -70,6 +97,10 @@ export const dicEmptyEmployeeStatutoryForm: EmployeeStatutoryFormValues = {
   strEsiNumber: "",
   strPfNumber: "",
   strTaxRegimeCode: "",
+  strGratuityNumber: "",
+  strEsiCode: "",
+  strSsnNumber: "",
+  strPranNumber: "",
   blnPfApplicable: false,
   blnEsiApplicable: false,
   blnPtApplicable: false
@@ -130,7 +161,7 @@ export function toEmployeeFormValues(dicRecord: EmployeeDetailRecord): EmployeeF
     intLocationID: dicRecord.intLocationID ?? "",
     intPayrollGroupID: dicRecord.intPayrollGroupID ?? "",
     intManagerEmployeeID: dicRecord.intManagerEmployeeID ?? "",
-    intLineManagerEmployeeID: dicRecord.intLineManagerEmployeeID ?? "",
+    intLineManagerEmployeeID: dicRecord.intLineManagerEmployeeID ?? dicRecord.intManagerEmployeeID ?? "",
     strWorkEmail: dicRecord.strWorkEmail ?? "",
     strPersonalEmail: dicRecord.strPersonalEmail ?? "",
     strMobileNumber: dicRecord.strMobileNumber ?? "",
@@ -139,7 +170,42 @@ export function toEmployeeFormValues(dicRecord: EmployeeDetailRecord): EmployeeF
     strEmploymentStatus: dicRecord.strEmploymentStatus,
     dtDateOfExit: dicRecord.dtDateOfExit ?? "",
     blnIsEssEnabled: dicRecord.blnIsEssEnabled,
-    blnIsPartialSave: dicRecord.blnIsPartialSave ?? false
+    blnIsPartialSave: dicRecord.blnIsPartialSave ?? false,
+    strFatherOrHusbandName: dicRecord.strFatherOrHusbandName ?? "",
+    strMotherName: dicRecord.strMotherName ?? "", strSpouseName: dicRecord.strSpouseName ?? "",
+    strSpouseOccupation: dicRecord.strSpouseOccupation ?? "", strBloodGroup: dicRecord.strBloodGroup ?? "",
+    intNationalityCountryID: dicRecord.intNationalityCountryID ?? "",
+    intMotherTongueLanguageID: dicRecord.intMotherTongueLanguageID ?? "",
+    strReligion: dicRecord.strReligion ?? "", strMaritalStatus: dicRecord.strMaritalStatus ?? "",
+    dtLocationJoiningDate: dicRecord.dtLocationJoiningDate ?? "", strPassportNumber: dicRecord.strPassportNumber ?? "",
+    strPassportPlaceOfIssue: dicRecord.strPassportPlaceOfIssue ?? "", dtPassportIssueDate: dicRecord.dtPassportIssueDate ?? "",
+    dtPassportExpiryDate: dicRecord.dtPassportExpiryDate ?? "", dtRetirementDate: dicRecord.dtRetirementDate ?? "",
+    strAppointmentOrderNumber: dicRecord.strAppointmentOrderNumber ?? "", dtAppointmentDate: dicRecord.dtAppointmentDate ?? "",
+    strEntryMode: dicRecord.strEntryMode ?? "", strJobType: dicRecord.strJobType ?? "",
+    strConfirmationType: dicRecord.strConfirmationType ?? "", strConfirmationComments: dicRecord.strConfirmationComments ?? "",
+    dtTentativeConfirmationDate: dicRecord.dtTentativeConfirmationDate ?? "", dtConfirmationDate: dicRecord.dtConfirmationDate ?? "",
+    strRestDay: dicRecord.strRestDay ?? "", strEmployeeFunction: dicRecord.strEmployeeFunction ?? "",
+    strFunctionalArea: dicRecord.strFunctionalArea ?? "", strEmployeeCategory: dicRecord.strEmployeeCategory ?? "",
+    blnHasDisability: dicRecord.blnHasDisability ?? false, strPlaceOfBirth: dicRecord.strPlaceOfBirth ?? "",
+    blnSuperannuationFlag: dicRecord.blnSuperannuationFlag ?? false, strIdentificationMarks: dicRecord.strIdentificationMarks ?? "",
+    strDrivingLicenceNumber: dicRecord.strDrivingLicenceNumber ?? "", dtDrivingLicenceValidUpto: dicRecord.dtDrivingLicenceValidUpto ?? "",
+    blnIsRelatedEmployee: dicRecord.blnIsRelatedEmployee ?? false, intRelatedEmployeeID: dicRecord.intRelatedEmployeeID ?? "",
+    strPaymentType: dicRecord.strPaymentType ?? "", blnFlatGiven: dicRecord.blnFlatGiven ?? false,
+    dtStatusEffectiveDate: dicRecord.dtStatusEffectiveDate ?? "", dtContractStartDate: dicRecord.dtContractStartDate ?? "",
+    dtContractEndDate: dicRecord.dtContractEndDate ?? "", dtLastIncrementDate: dicRecord.dtLastIncrementDate ?? "",
+    blnUgcAppraisalFlag: dicRecord.blnUgcAppraisalFlag ?? false, strAgency: dicRecord.strAgency ?? "",
+    strReferenceNumber: dicRecord.strReferenceNumber ?? "", strMobileCountryCode: dicRecord.strMobileCountryCode ?? "",
+    strWhatsappCountryCode: dicRecord.strWhatsappCountryCode ?? "", strWhatsappNumber: dicRecord.strWhatsappNumber ?? "",
+    strReferredBy: dicRecord.strReferredBy ?? "", strAccommodationType: dicRecord.strAccommodationType ?? "",
+    decHousingAllowance: dicRecord.decHousingAllowance != null ? String(dicRecord.decHousingAllowance) : "",
+    intNoticePeriodDays: dicRecord.intNoticePeriodDays != null ? String(dicRecord.intNoticePeriodDays) : "",
+    strEmergencyContactPerson: dicRecord.strEmergencyContactPerson ?? "", strEmergencyCountryCode: dicRecord.strEmergencyCountryCode ?? "",
+    strEmergencyMobileNumber: dicRecord.strEmergencyMobileNumber ?? "", strEmergencyEmail: dicRecord.strEmergencyEmail ?? "",
+    strEmployeeRemark: dicRecord.strEmployeeRemark ?? "", strInitialPostingLocation: dicRecord.strInitialPostingLocation ?? "",
+    dtProbationStartDate: dicRecord.dtProbationStartDate ?? "", dtProbationEndDate: dicRecord.dtProbationEndDate ?? "",
+    strEmployeeWorkgroup: dicRecord.strEmployeeWorkgroup ?? "", strEmployeeReservation: dicRecord.strEmployeeReservation ?? "",
+    strSwon: dicRecord.strSwon ?? "", dtFromDate: dicRecord.dtFromDate ?? "",
+    dtToDate: dicRecord.dtToDate ?? "", strPrefixLogic: dicRecord.strPrefixLogic ?? ""
   };
 }
 
@@ -161,6 +227,15 @@ export function toEmployeeBankFormValues(dicRecord: EmployeeBankRecord): Employe
     strAccountHolderName: dicRecord.strAccountHolderName ?? "",
     strAccountNumber: dicRecord.strAccountNumber ?? "",
     strIfscCode: dicRecord.strIfscCode ?? "",
+    strSwiftCode: dicRecord.strSwiftCode ?? "",
+    strBranchName: dicRecord.strBranchName ?? "",
+    strAccountType: dicRecord.strAccountType ?? "",
+    strAccountHolderEmail: dicRecord.strAccountHolderEmail ?? "",
+    intSecondaryBankID: dicRecord.intSecondaryBankID ?? "",
+    strSecondaryAccountHolderName: dicRecord.strSecondaryAccountHolderName ?? "",
+    strSecondaryAccountNumber: dicRecord.strSecondaryAccountNumber ?? "",
+    strSecondaryIfscCode: dicRecord.strSecondaryIfscCode ?? "",
+    blnSecondaryIsActive: dicRecord.blnSecondaryIsActive ?? false,
     blnIsPrimary: dicRecord.blnIsPrimary,
     blnIsActive: dicRecord.blnIsActive
   };
@@ -173,6 +248,10 @@ export function toEmployeeStatutoryFormValues(dicRecord: EmployeeStatutoryRecord
     strEsiNumber: dicRecord.strEsiNumber ?? "",
     strPfNumber: dicRecord.strPfNumber ?? "",
     strTaxRegimeCode: dicRecord.strTaxRegimeCode ?? "",
+    strGratuityNumber: dicRecord.strGratuityNumber ?? "",
+    strEsiCode: dicRecord.strEsiCode ?? "",
+    strSsnNumber: dicRecord.strSsnNumber ?? "",
+    strPranNumber: dicRecord.strPranNumber ?? "",
     blnPfApplicable: dicRecord.blnPfApplicable,
     blnEsiApplicable: dicRecord.blnEsiApplicable,
     blnPtApplicable: dicRecord.blnPtApplicable
@@ -238,6 +317,8 @@ export function validateEmployeeForm(
     joiningDateRequired: dicConstant.employeeMaster.validation.joiningDateRequired,
     employmentTypeRequired: dicConstant.employeeMaster.validation.employmentTypeRequired,
     locationRequired: dicConstant.employeeMaster.validation.locationRequired,
+    reportingManagerRequired: dicConstant.employeeMaster.validation.reportingManagerRequired,
+    lineManagerRequired: dicConstant.employeeMaster.validation.lineManagerRequired,
     workEmailInvalid: dicConstant.employeeMaster.validation.workEmailInvalid,
     personalEmailInvalid: dicConstant.employeeMaster.validation.personalEmailInvalid,
     mobileNumberInvalid: dicConstant.employeeMaster.validation.mobileNumberInvalid,
@@ -252,6 +333,8 @@ export function validateEmployeeForm(
   const dtBirthDate = dicForm.dtDateOfBirth ? new Date(dicForm.dtDateOfBirth) : null;
   const dtJoiningDate = dicForm.dtDateOfJoining ? new Date(dicForm.dtDateOfJoining) : null;
   const dtExitDate = dicForm.dtDateOfExit ? new Date(dicForm.dtDateOfExit) : null;
+  const dtFromDate = dicForm.dtFromDate ? new Date(dicForm.dtFromDate) : null;
+  const dtToDate = dicForm.dtToDate ? new Date(dicForm.dtToDate) : null;
 
   if (!strEmployeeCode) {
     dicNextErrors.strEmployeeCode = dicValidationLabels.employeeCodeRequired;
@@ -277,6 +360,15 @@ export function validateEmployeeForm(
     dicNextErrors.intLocationID = dicValidationLabels.locationRequired;
   }
 
+  // Reporting Manager is required for a complete employee record.
+  if (dicForm.intManagerEmployeeID === "") {
+    dicNextErrors.intManagerEmployeeID = dicValidationLabels.reportingManagerRequired;
+  }
+
+  if (dicForm.intLineManagerEmployeeID === "") {
+    dicNextErrors.intLineManagerEmployeeID = dicValidationLabels.lineManagerRequired;
+  }
+
   if (strWorkEmail && !isEmailValid(strWorkEmail)) {
     dicNextErrors.strWorkEmail = dicValidationLabels.workEmailInvalid;
   }
@@ -295,6 +387,10 @@ export function validateEmployeeForm(
 
   if (dtExitDate && dtJoiningDate && dtExitDate < dtJoiningDate) {
     dicNextErrors.dtDateOfExit = dicValidationLabels.exitDateInvalid;
+  }
+
+  if (dtFromDate && dtToDate && dtToDate < dtFromDate) {
+    dicNextErrors.dtToDate = "To date cannot be earlier than from date.";
   }
 
   return dicNextErrors;

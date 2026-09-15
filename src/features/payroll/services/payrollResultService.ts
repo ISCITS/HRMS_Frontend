@@ -3,6 +3,11 @@ import { requestEncryptedApi, type ApiEnvelope } from "@/Common/utils/apiErrorHa
 import type {
   PayrollResultDetailRecord,
   PayrollResultListRecord,
+  StatutoryReportCode,
+  StatutoryReportRow,
+  TaxCalculationDetailRecord,
+  TdsReportRow,
+  VariablePayRegisterRow,
 } from "@/features/payroll/types";
 
 async function requestApi<TData>(objOptions: {
@@ -60,10 +65,129 @@ export const payrollResultService = {
   },
 
   async getPayrollResultById(
-    intResultID: number
+    strResultID: string
   ): Promise<PayrollResultDetailRecord> {
     const objResult = await requestApi<PayrollResultDetailRecord>({
-      strPath: `/payroll/results/${intResultID}`,
+      strPath: `/payroll/results/${strResultID}`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_RESULT_VIEW",
+    });
+    return objResult.Data;
+  },
+
+  async getStatutoryReportRows(objFilters?: {
+    strSearchEmployee?: string;
+    strSearchRun?: string;
+    strStatus?: string;
+    strDepartment?: string;
+    strLocation?: string;
+    strPayrollMonth?: string;
+    strStatutoryCode?: StatutoryReportCode;
+  }): Promise<StatutoryReportRow[]> {
+    const objParams = new URLSearchParams();
+    if (objFilters?.strSearchEmployee?.trim()) {
+      objParams.set("strSearchEmployee", objFilters.strSearchEmployee.trim());
+    }
+    if (objFilters?.strSearchRun?.trim()) {
+      objParams.set("strSearchRun", objFilters.strSearchRun.trim());
+    }
+    if (objFilters?.strStatus?.trim() && objFilters.strStatus !== "All") {
+      objParams.set("strStatus", objFilters.strStatus.trim());
+    }
+    if (objFilters?.strDepartment?.trim()) {
+      objParams.set("strDepartment", objFilters.strDepartment.trim());
+    }
+    if (objFilters?.strLocation?.trim()) {
+      objParams.set("strLocation", objFilters.strLocation.trim());
+    }
+    if (objFilters?.strPayrollMonth?.trim()) {
+      objParams.set("strPayrollMonth", objFilters.strPayrollMonth.trim());
+    }
+    if (objFilters?.strStatutoryCode && objFilters.strStatutoryCode !== "ALL") {
+      objParams.set("strStatutoryCode", objFilters.strStatutoryCode);
+    }
+    const strQuery = objParams.toString();
+    const objResult = await requestApi<StatutoryReportRow[]>({
+      strPath: `/payroll/results/statutory-report${strQuery ? `?${strQuery}` : ""}`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_RESULT_LIST",
+    });
+    return objResult.Data;
+  },
+
+  async getTdsReportRows(objFilters?: {
+    strSearchEmployee?: string;
+    strSearchRun?: string;
+    strStatus?: string;
+    strDepartment?: string;
+    strLocation?: string;
+    strPayrollMonth?: string;
+  }): Promise<TdsReportRow[]> {
+    const objParams = new URLSearchParams();
+    if (objFilters?.strSearchEmployee?.trim()) {
+      objParams.set("strSearchEmployee", objFilters.strSearchEmployee.trim());
+    }
+    if (objFilters?.strSearchRun?.trim()) {
+      objParams.set("strSearchRun", objFilters.strSearchRun.trim());
+    }
+    if (objFilters?.strStatus?.trim() && objFilters.strStatus !== "All") {
+      objParams.set("strStatus", objFilters.strStatus.trim());
+    }
+    if (objFilters?.strDepartment?.trim()) {
+      objParams.set("strDepartment", objFilters.strDepartment.trim());
+    }
+    if (objFilters?.strLocation?.trim()) {
+      objParams.set("strLocation", objFilters.strLocation.trim());
+    }
+    if (objFilters?.strPayrollMonth?.trim()) {
+      objParams.set("strPayrollMonth", objFilters.strPayrollMonth.trim());
+    }
+    const strQuery = objParams.toString();
+    const objResult = await requestApi<TdsReportRow[]>({
+      strPath: `/payroll/results/tds-report${strQuery ? `?${strQuery}` : ""}`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_RESULT_LIST",
+    });
+    return objResult.Data;
+  },
+
+  async getVariablePayRegisterRows(objFilters?: {
+    strSearchEmployee?: string;
+    strSearchRun?: string;
+    strStatus?: string;
+    strPayrollMonth?: string;
+    strVariablePayType?: string;
+  }): Promise<VariablePayRegisterRow[]> {
+    const objParams = new URLSearchParams();
+    if (objFilters?.strSearchEmployee?.trim()) {
+      objParams.set("strSearchEmployee", objFilters.strSearchEmployee.trim());
+    }
+    if (objFilters?.strSearchRun?.trim()) {
+      objParams.set("strSearchRun", objFilters.strSearchRun.trim());
+    }
+    if (objFilters?.strStatus?.trim() && objFilters.strStatus !== "All") {
+      objParams.set("strStatus", objFilters.strStatus.trim());
+    }
+    if (objFilters?.strPayrollMonth?.trim()) {
+      objParams.set("strPayrollMonth", objFilters.strPayrollMonth.trim());
+    }
+    if (objFilters?.strVariablePayType?.trim()) {
+      objParams.set("strVariablePayType", objFilters.strVariablePayType.trim());
+    }
+    const strQuery = objParams.toString();
+    const objResult = await requestApi<VariablePayRegisterRow[]>({
+      strPath: `/payroll/results/variable-pay-register${strQuery ? `?${strQuery}` : ""}`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_RESULT_LIST",
+    });
+    return objResult.Data;
+  },
+
+  async getTaxCalculationDetails(
+    strResultID: string
+  ): Promise<TaxCalculationDetailRecord> {
+    const objResult = await requestApi<TaxCalculationDetailRecord>({
+      strPath: `/payroll/results/${strResultID}/tax-information`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_RESULT_VIEW",
     });

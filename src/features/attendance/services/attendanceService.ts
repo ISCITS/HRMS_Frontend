@@ -1,20 +1,37 @@
 "use client";
 
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
-import { requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
+import { createApiRequestError, requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
 import type {
   AttendanceDayDto,
-  HolidayDto,
-  HolidayFormOptions,
-  HolidayListFilters,
-  HolidayRequest,
   MyShiftDto,
+  OtBalanceDto,
   PunchRequest,
   RosterRequest,
   ShiftDto,
   ShiftRequest,
 } from "@/features/attendance/dto";
-import type { AttendancePolicy, AttendancePolicyFormValues, AttendancePolicyList, DailyAttendanceBulkResult, DailyAttendanceRow, DailyAttendanceSaveRow } from "@/features/attendance/types";
+import type {
+  AttendanceImportCommitResult,
+  AttendanceImportCommitRow,
+  AttendanceImportPreviewResult,
+  AttendancePolicy,
+  AttendancePolicyAssignmentEmployee,
+  AttendancePolicyAssignmentHistory,
+  AttendancePolicyAssignmentRequest,
+  AttendancePolicyAssignmentResult,
+  AttendancePolicyFormValues,
+  AttendancePolicyList,
+  DailyAttendanceBulkFillRangeRequest,
+  DailyAttendanceBulkFillRangeResult,
+  DailyAttendanceBulkResult,
+  DailyAttendanceFinalizeRequest,
+  DailyAttendanceFinalizeResult,
+  DailyAttendanceOverrideRequest,
+  DailyAttendanceRow,
+  DailyAttendanceSaveRow,
+} from "@/features/attendance/types";
+import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
 import type {
   MyAttendanceHistory,
   MyAttendanceOverview,
@@ -22,9 +39,7 @@ import type {
 
 const ATTENDANCE_VIEW = "ATTENDANCE_VIEW";
 const ATTENDANCE_MANAGE = "ATTENDANCE_MANAGE";
-const HOLIDAY_MASTER_VIEW = "HOLIDAY_MASTER_VIEW";
-const HOLIDAY_MASTER_CREATE = "HOLIDAY_MASTER_CREATE";
-const HOLIDAY_MASTER_EDIT = "HOLIDAY_MASTER_EDIT";
+const ATTENDANCE_CORRECTION = "ATTENDANCE_CORRECTION";
 
 async function requestApi<TData>(objOptions: {
   strPath: string;
@@ -41,32 +56,136 @@ async function requestApi<TData>(objOptions: {
   });
 }
 
+function toAttendancePolicyFormValues(objPolicy: AttendancePolicyFormValues): AttendancePolicyFormValues {
+  // The read API also returns audit metadata (added/modified fields). Keep the
+  // frontend model restricted to fields accepted by the create/update schema,
+  // otherwise React Hook Form retains those unregistered keys and sends them
+  // back during Edit.
+  return {
+    intCompanyID: objPolicy.intCompanyID,
+    strPolicyCode: objPolicy.strPolicyCode,
+    strPolicyName: objPolicy.strPolicyName,
+    strDescription: objPolicy.strDescription,
+    intLocationID: objPolicy.intLocationID,
+    intGradeID: objPolicy.intGradeID,
+    intEmploymentTypeID: objPolicy.intEmploymentTypeID,
+    intLateGraceMinutes: objPolicy.intLateGraceMinutes,
+    intEarlyDepartureGraceMinutes: objPolicy.intEarlyDepartureGraceMinutes,
+    strInTime: objPolicy.strInTime,
+    strOutTime: objPolicy.strOutTime,
+    decFullDayThresholdHours: objPolicy.decFullDayThresholdHours,
+    decHalfDayThresholdHours: objPolicy.decHalfDayThresholdHours,
+    decAbsentThresholdHours: objPolicy.decAbsentThresholdHours,
+    blnInPunchRequired: objPolicy.blnInPunchRequired,
+    blnOutPunchRequired: objPolicy.blnOutPunchRequired,
+    strMissingPunchTreatmentCode: objPolicy.strMissingPunchTreatmentCode,
+    intWorkHoursRoundingMinutes: objPolicy.intWorkHoursRoundingMinutes,
+    blnOtEnabled: objPolicy.blnOtEnabled,
+    decOtMinHours: objPolicy.decOtMinHours,
+    blnOtCompOffConversionEnabled: objPolicy.blnOtCompOffConversionEnabled,
+    intCompOffLeaveTypeID: objPolicy.intCompOffLeaveTypeID,
+    blnLateDeductionEnabled: objPolicy.blnLateDeductionEnabled,
+    intLateArrivalDays: objPolicy.intLateArrivalDays,
+    strLateArrivalDeductionType: objPolicy.strLateArrivalDeductionType,
+    strWeeklyOffPattern: objPolicy.strWeeklyOffPattern,
+    blnIsDefault: objPolicy.blnIsDefault,
+    dtEffectiveFrom: objPolicy.dtEffectiveFrom,
+    dtEffectiveTo: objPolicy.dtEffectiveTo,
+    blnIsActive: objPolicy.blnIsActive,
+    strRemarks: objPolicy.strRemarks,
+    lstTexts: objPolicy.lstTexts ?? [],
+  };
+}
+
+function toAttendancePolicy(objPolicy: AttendancePolicy): AttendancePolicy {
+  return {
+    intID: objPolicy.intID,
+    ...toAttendancePolicyFormValues(objPolicy),
+    blnHasAssignmentsOrUsage: objPolicy.blnHasAssignmentsOrUsage,
+  };
+}
+
 export const attendanceService = {
   async listPolicies(objFilters: { strSearch?: string; blnIsActive?: boolean; intPage: number; intPageSize: number }): Promise<AttendancePolicyList> {
     const objQuery = new URLSearchParams({ page: String(objFilters.intPage), page_size: String(objFilters.intPageSize) });
     if (objFilters.strSearch) objQuery.set("search", objFilters.strSearch);
     if (objFilters.blnIsActive !== undefined) objQuery.set("is_active", String(objFilters.blnIsActive));
     const objResult = await requestApi<AttendancePolicyList>({ strPath: `/attendance/policies?${objQuery}`, strMethod: ApiRequestMethod.Get, strMenuAction: ATTENDANCE_VIEW });
-    return objResult.Data;
+    return {
+      ...objResult.Data,
+      lstItems: objResult.Data.lstItems.map(toAttendancePolicy),
+    };
   },
 
   async getPolicy(intPolicyID: number): Promise<AttendancePolicy> {
     const objResult = await requestApi<AttendancePolicy>({ strPath: `/attendance/policies/${intPolicyID}`, strMethod: ApiRequestMethod.Get, strMenuAction: ATTENDANCE_VIEW });
-    return objResult.Data;
+    return toAttendancePolicy(objResult.Data);
   },
 
   async savePolicy(intPolicyID: number | null, objPayload: AttendancePolicyFormValues): Promise<AttendancePolicy> {
     const objResult = await requestApi<AttendancePolicy>({
       strPath: intPolicyID ? `/attendance/policies/${intPolicyID}` : "/attendance/policies",
       strMethod: intPolicyID ? ApiRequestMethod.Put : ApiRequestMethod.Post,
-      objBody: objPayload,
+      objBody: toAttendancePolicyFormValues(objPayload),
       strMenuAction: ATTENDANCE_MANAGE,
     });
-    return objResult.Data;
+    return toAttendancePolicy(objResult.Data);
   },
 
   async setPolicyStatus(intPolicyID: number, blnIsActive: boolean): Promise<AttendancePolicy> {
     const objResult = await requestApi<AttendancePolicy>({ strPath: `/attendance/policies/${intPolicyID}/status`, strMethod: ApiRequestMethod.Patch, objBody: { blnIsActive }, strMenuAction: ATTENDANCE_MANAGE });
+    return toAttendancePolicy(objResult.Data);
+  },
+
+  async deletePolicy(intPolicyID: number): Promise<AttendancePolicy> {
+    const objResult = await requestApi<AttendancePolicy>({
+      strPath: `/attendance/policies/${intPolicyID}`,
+      strMethod: ApiRequestMethod.Delete,
+      strMenuAction: ATTENDANCE_MANAGE,
+    });
+    return toAttendancePolicy(objResult.Data);
+  },
+
+  async listPolicyAssignmentEmployees(objFilters: {
+    strSearch?: string;
+    intDepartmentID?: number;
+    intCurrentPolicyID?: number;
+    strEmployeeStatus?: string;
+    strEffectiveOn?: string;
+  }): Promise<AttendancePolicyAssignmentEmployee[]> {
+    const objQuery = new URLSearchParams();
+    if (objFilters.strSearch) objQuery.set("search", objFilters.strSearch);
+    if (objFilters.intDepartmentID) objQuery.set("department_id", String(objFilters.intDepartmentID));
+    if (objFilters.intCurrentPolicyID) objQuery.set("current_policy_id", String(objFilters.intCurrentPolicyID));
+    if (objFilters.strEmployeeStatus) objQuery.set("employee_status", objFilters.strEmployeeStatus);
+    if (objFilters.strEffectiveOn) objQuery.set("effective_on", objFilters.strEffectiveOn);
+    const objResult = await requestApi<AttendancePolicyAssignmentEmployee[]>({
+      strPath: `/attendance/policies/assignments/employees?${objQuery.toString()}`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: ATTENDANCE_VIEW,
+    });
+    return objResult.Data ?? [];
+  },
+
+  async listPolicyAssignmentHistory(objFilters: { intEmployeeID?: number; intPolicyID?: number }): Promise<AttendancePolicyAssignmentHistory[]> {
+    const objQuery = new URLSearchParams();
+    if (objFilters.intEmployeeID) objQuery.set("employee_id", String(objFilters.intEmployeeID));
+    if (objFilters.intPolicyID) objQuery.set("policy_id", String(objFilters.intPolicyID));
+    const objResult = await requestApi<AttendancePolicyAssignmentHistory[]>({
+      strPath: `/attendance/policies/assignments/history?${objQuery.toString()}`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: ATTENDANCE_VIEW,
+    });
+    return objResult.Data ?? [];
+  },
+
+  async assignAttendancePolicy(objPayload: AttendancePolicyAssignmentRequest): Promise<AttendancePolicyAssignmentResult> {
+    const objResult = await requestApi<AttendancePolicyAssignmentResult>({
+      strPath: "/attendance/policies/assignments",
+      strMethod: ApiRequestMethod.Post,
+      objBody: objPayload,
+      strMenuAction: ATTENDANCE_MANAGE,
+    });
     return objResult.Data;
   },
 
@@ -84,6 +203,38 @@ export const attendanceService = {
     return objResult.Data;
   },
 
+  async bulkFillRange(objPayload: DailyAttendanceBulkFillRangeRequest): Promise<DailyAttendanceBulkFillRangeResult> {
+    const objResult = await requestApi<DailyAttendanceBulkFillRangeResult>({
+      strPath: "/attendance/daily/bulk-fill-range",
+      strMethod: ApiRequestMethod.Put,
+      objBody: objPayload,
+      strMenuAction: ATTENDANCE_MANAGE,
+    });
+    return objResult.Data;
+  },
+
+  // Row-level HR Edit/Override (Developer Guide Section E) - gated by the dedicated
+  // ATTENDANCE_CORRECTION permission, distinct from general ATTENDANCE_MANAGE.
+  async saveDailyOverride(objPayload: DailyAttendanceOverrideRequest): Promise<DailyAttendanceRow> {
+    const objResult = await requestApi<DailyAttendanceRow>({
+      strPath: "/attendance/daily",
+      strMethod: ApiRequestMethod.Put,
+      objBody: objPayload,
+      strMenuAction: ATTENDANCE_CORRECTION,
+    });
+    return objResult.Data;
+  },
+
+  async finalizeAttendance(objPayload: DailyAttendanceFinalizeRequest): Promise<DailyAttendanceFinalizeResult> {
+    const objResult = await requestApi<DailyAttendanceFinalizeResult>({
+      strPath: "/attendance/daily/finalize",
+      strMethod: ApiRequestMethod.Post,
+      objBody: objPayload,
+      strMenuAction: ATTENDANCE_MANAGE,
+    });
+    return objResult.Data;
+  },
+
   // ---- ESS ----
   async punch(objPayload: PunchRequest): Promise<MyAttendanceOverview> {
     const objResult = await requestApi<MyAttendanceOverview>({
@@ -95,9 +246,15 @@ export const attendanceService = {
     return objResult.Data;
   },
 
-  async getMyAttendanceOverview(strDate: string): Promise<MyAttendanceOverview> {
+  // employee_id is optional and defaults server-side to the caller; when supplied it must be
+  // the caller themselves or one of their direct reports (line/reporting manager), enforced by
+  // GET /ess/attendance/employees below - lets a manager view a report's attendance without HR
+  // access, distinct from the HR "Employee Attendance" review endpoints further down.
+  async getMyAttendanceOverview(strDate: string, intEmployeeID?: number): Promise<MyAttendanceOverview> {
+    const objQuery = new URLSearchParams({ date: strDate });
+    if (intEmployeeID) objQuery.set("employee_id", String(intEmployeeID));
     const objResult = await requestApi<MyAttendanceOverview>({
-      strPath: `/ess/attendance/overview?date=${encodeURIComponent(strDate)}`,
+      strPath: `/ess/attendance/overview?${objQuery}`,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: ATTENDANCE_VIEW,
     });
@@ -107,9 +264,12 @@ export const attendanceService = {
   async getMyAttendanceHistory(
     strFromDate: string,
     strToDate: string,
+    intEmployeeID?: number,
   ): Promise<MyAttendanceHistory> {
+    const objQuery = new URLSearchParams({ fromDate: strFromDate, toDate: strToDate });
+    if (intEmployeeID) objQuery.set("employee_id", String(intEmployeeID));
     const objResult = await requestApi<MyAttendanceHistory>({
-      strPath: `/ess/attendance/history?fromDate=${encodeURIComponent(strFromDate)}&toDate=${encodeURIComponent(strToDate)}`,
+      strPath: `/ess/attendance/history?${objQuery}`,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: ATTENDANCE_VIEW,
     });
@@ -125,13 +285,73 @@ export const attendanceService = {
     return objResult.Data ?? [];
   },
 
-  async getMyShift(): Promise<MyShiftDto | null> {
+  async getMyShift(intEmployeeID?: number): Promise<MyShiftDto | null> {
+    const strPath = intEmployeeID ? `/ess/attendance/shift?employee_id=${intEmployeeID}` : "/ess/attendance/shift";
     const objResult = await requestApi<MyShiftDto | null>({
-      strPath: "/ess/attendance/shift",
+      strPath,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: ATTENDANCE_VIEW,
     });
     return objResult.Data ?? null;
+  },
+
+  async getMyOtBalance(intEmployeeID?: number): Promise<OtBalanceDto> {
+    const strPath = intEmployeeID ? `/ess/attendance/ot-balance?employee_id=${intEmployeeID}` : "/ess/attendance/ot-balance";
+    const objResult = await requestApi<OtBalanceDto>({
+      strPath,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: ATTENDANCE_VIEW,
+    });
+    return objResult.Data;
+  },
+
+  // Employees selectable in the "My Attendance" Employee dropdown: the caller, plus anyone who
+  // reports to them as line/reporting manager. Empty-list-of-one (self only) means the caller
+  // manages nobody, so the panel hides the dropdown entirely.
+  async getMyAttendanceEmployees(): Promise<{ intEmployeeID: number; strFullName: string; strEmployeeCode: string | null; blnIsSelf: boolean }[]> {
+    const objResult = await requestApi<{ intEmployeeID: number; strFullName: string; strEmployeeCode: string | null; blnIsSelf: boolean }[]>({
+      strPath: "/ess/attendance/employees",
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: ATTENDANCE_VIEW,
+    });
+    return objResult.Data ?? [];
+  },
+
+  // ---- HR: Employee Attendance review (any employee in the tenant/company) ----
+  async getAttendanceReviewOverview(strDate: string, intEmployeeID: number): Promise<MyAttendanceOverview> {
+    const objResult = await requestApi<MyAttendanceOverview>({
+      strPath: `/attendance/review/overview?date=${encodeURIComponent(strDate)}&employee_id=${intEmployeeID}`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: ATTENDANCE_VIEW,
+    });
+    return objResult.Data;
+  },
+
+  async getAttendanceReviewHistory(strFromDate: string, strToDate: string, intEmployeeID: number): Promise<MyAttendanceHistory> {
+    const objResult = await requestApi<MyAttendanceHistory>({
+      strPath: `/attendance/review/history?fromDate=${encodeURIComponent(strFromDate)}&toDate=${encodeURIComponent(strToDate)}&employee_id=${intEmployeeID}`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: ATTENDANCE_VIEW,
+    });
+    return objResult.Data;
+  },
+
+  async getAttendanceReviewShift(intEmployeeID: number): Promise<MyShiftDto | null> {
+    const objResult = await requestApi<MyShiftDto | null>({
+      strPath: `/attendance/review/shift?employee_id=${intEmployeeID}`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: ATTENDANCE_VIEW,
+    });
+    return objResult.Data ?? null;
+  },
+
+  async getAttendanceReviewOtBalance(intEmployeeID: number): Promise<OtBalanceDto> {
+    const objResult = await requestApi<OtBalanceDto>({
+      strPath: `/attendance/review/ot-balance?employee_id=${intEmployeeID}`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: ATTENDANCE_VIEW,
+    });
+    return objResult.Data;
   },
 
   // ---- HR / Admin ----
@@ -173,75 +393,62 @@ export const attendanceService = {
     return objResult.Data ?? [];
   },
 
-  async listHolidays(objFilters: HolidayListFilters | number): Promise<HolidayDto[]> {
-    const objResolvedFilters: HolidayListFilters = typeof objFilters === "number" ? { intYear: objFilters } : objFilters;
-    const objQuery = new URLSearchParams({ year: String(objResolvedFilters.intYear) });
-    if (objResolvedFilters.strSearch) objQuery.set("search", objResolvedFilters.strSearch);
-    if (objResolvedFilters.strHolidayTypeCode) objQuery.set("holiday_type_code", objResolvedFilters.strHolidayTypeCode);
-    if (objResolvedFilters.blnIsPaid !== undefined) objQuery.set("is_paid", String(objResolvedFilters.blnIsPaid));
-    if (objResolvedFilters.blnIsOptional !== undefined) objQuery.set("is_optional", String(objResolvedFilters.blnIsOptional));
-    if (objResolvedFilters.blnIsActive !== undefined) objQuery.set("is_active", String(objResolvedFilters.blnIsActive));
-    const objResult = await requestApi<HolidayDto[]>({
-      strPath: `/attendance/holidays?${objQuery.toString()}`,
-      strMethod: ApiRequestMethod.Get,
-      strMenuAction: HOLIDAY_MASTER_VIEW,
-    });
-    return objResult.Data ?? [];
-  },
-
-  async getHolidayFormOptions(): Promise<HolidayFormOptions> {
-    const objResult = await requestApi<HolidayFormOptions>({
-      strPath: "/attendance/holidays/form-options",
-      strMethod: ApiRequestMethod.Get,
-      strMenuAction: HOLIDAY_MASTER_VIEW,
-    });
-    return objResult.Data;
-  },
-
-  async getHoliday(intHolidayID: number): Promise<HolidayDto> {
-    const objResult = await requestApi<HolidayDto>({
-      strPath: `/attendance/holidays/${intHolidayID}`,
-      strMethod: ApiRequestMethod.Get,
-      strMenuAction: HOLIDAY_MASTER_VIEW,
-    });
-    return objResult.Data;
-  },
-
-  async createHoliday(objPayload: HolidayRequest): Promise<HolidayDto> {
-    const objResult = await requestApi<HolidayDto>({
-      strPath: "/attendance/holidays",
-      strMethod: ApiRequestMethod.Post,
-      objBody: objPayload,
-      strMenuAction: HOLIDAY_MASTER_CREATE,
-    });
-    return objResult.Data;
-  },
-
-  async updateHoliday(intHolidayID: number, objPayload: HolidayRequest): Promise<HolidayDto> {
-    const objResult = await requestApi<HolidayDto>({
-      strPath: `/attendance/holidays/${intHolidayID}`,
-      strMethod: ApiRequestMethod.Put,
-      objBody: objPayload,
-      strMenuAction: HOLIDAY_MASTER_EDIT,
-    });
-    return objResult.Data;
-  },
-
-  async translateHolidayText(strText: string, intSourceLanguageID: number, intTargetLanguageID: number): Promise<string> {
-    const objResult = await requestApi<{ strTranslatedText: string }>({
-      strPath: "/attendance/holidays/translate",
-      strMethod: ApiRequestMethod.Post,
-      objBody: { strText, intSourceLanguageID, intTargetLanguageID },
-      strMenuAction: HOLIDAY_MASTER_EDIT,
-    });
-    return objResult.Data.strTranslatedText;
-  },
-
   async reconcile(intEmployeeID: number, strPeriod: string): Promise<{ intDaysReconciled: number; strPeriod: string }> {
     const objResult = await requestApi<{ intDaysReconciled: number; strPeriod: string }>({
       strPath: `/attendance/reconcile?employee_id=${intEmployeeID}&period=${encodeURIComponent(strPeriod)}`,
       strMethod: ApiRequestMethod.Post,
       objBody: {},
+      strMenuAction: ATTENDANCE_MANAGE,
+    });
+    return objResult.Data;
+  },
+
+  // ---- Import (bulk Excel upload for employees who don't punch through the app) ----
+  async downloadImportTemplate(): Promise<void> {
+    try {
+      const objResponse = await axiosInstance.request<Blob>({
+        method: ApiRequestMethod.Get,
+        url: `${ApiRoutePrefix.ApiV1}/attendance/import/template`,
+        responseType: "blob",
+        csrfMenuAction: ATTENDANCE_VIEW,
+      } as ApiRequestConfig);
+      const strObjectUrl = URL.createObjectURL(objResponse.data);
+      const objAnchor = document.createElement("a");
+      objAnchor.href = strObjectUrl;
+      objAnchor.download = "attendance_import_template.xlsx";
+      document.body.appendChild(objAnchor);
+      objAnchor.click();
+      document.body.removeChild(objAnchor);
+      URL.revokeObjectURL(strObjectUrl);
+    } catch (objError) {
+      throw await createApiRequestError<void>(objError);
+    }
+  },
+
+  // FormData bodies skip JSON payload-encryption automatically (see axiosInstance.ts),
+  // so this bypasses requestEncryptedApi and calls axiosInstance directly - same pattern
+  // as fileUploadService.uploadFile/reimbursementService.
+  async previewImport(objFile: File): Promise<AttendanceImportPreviewResult> {
+    const objFormData = new FormData();
+    objFormData.append("objFile", objFile);
+    try {
+      const objResponse = await axiosInstance.request<{ Data: AttendanceImportPreviewResult }>({
+        method: ApiRequestMethod.Post,
+        url: `${ApiRoutePrefix.ApiV1}/attendance/import/preview`,
+        data: objFormData,
+        csrfMenuAction: ATTENDANCE_MANAGE,
+      } as ApiRequestConfig);
+      return objResponse.data.Data;
+    } catch (objError) {
+      throw await createApiRequestError<AttendanceImportPreviewResult>(objError);
+    }
+  },
+
+  async commitImport(lstRows: AttendanceImportCommitRow[]): Promise<AttendanceImportCommitResult> {
+    const objResult = await requestApi<AttendanceImportCommitResult>({
+      strPath: "/attendance/import/commit",
+      strMethod: ApiRequestMethod.Post,
+      objBody: { lstRows },
       strMenuAction: ATTENDANCE_MANAGE,
     });
     return objResult.Data;

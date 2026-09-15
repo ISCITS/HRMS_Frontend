@@ -8,6 +8,7 @@ import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Checkbox,
@@ -43,6 +44,12 @@ type EmployeeOption = {
   intID: number;
   strLabel: string;
   strCode?: string;
+  // Identity prefill sourced from Employee Master.
+  strEmail?: string | null;
+  strMobile?: string | null;
+  intPreferredLanguageID?: number | null;
+  // Set when the employee already belongs to another user; such options are excluded.
+  intLinkedUserID?: number | null;
 };
 
 type UserRecord = {
@@ -61,6 +68,10 @@ type UserRecord = {
   employeeName: string;
   userGroupID: number | null;
   userGroupName: string;
+  essAccessEnabled: boolean;
+  hrmsAccessEnabled: boolean;
+  essUserGroupID: number | null;
+  hrmsUserGroupID: number | null;
   status: UserStatus;
   locked: boolean;
 };
@@ -70,8 +81,10 @@ type UserTableRow = {
   select: ReactNode;
   rowActions: ReactNode;
   loginName: string;
+  loginId: string;
   email: string;
   mobile: string;
+  employeeName: string;
   userGroupName: string;
   status: ReactNode;
 };
@@ -89,13 +102,17 @@ type UserForm = {
   ssoLoginMapping: string;
   preferredLanguageID: number | "";
   employeeID: number | "";
-  userGroupID: number | "";
+  essAccessEnabled: boolean;
+  hrmsAccessEnabled: boolean;
+  essUserGroupID: number | "";
+  hrmsUserGroupID: number | "";
   status: UserStatus;
 };
 
 type SearchForm = {
   code: string;
   name: string;
+  employeeName: string;
   status: "All" | UserStatus;
 };
 
@@ -125,35 +142,28 @@ const dicEmptyForm: UserForm = {
   ssoLoginMapping: "",
   preferredLanguageID: "",
   employeeID: "",
-  userGroupID: "",
+  essAccessEnabled: false,
+  hrmsAccessEnabled: false,
+  essUserGroupID: "",
+  hrmsUserGroupID: "",
   status: "Active"
 };
-const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
+const dicEmptySearch: SearchForm = { code: "", name: "", employeeName: "", status: "All" };
 const objSelectAllCheckboxInputProps = { "data-controlid": "user-master.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>;
 const lstDefaultUsers: UserRecord[] = [];
 function normalizeSelectToken(strValue: string) {
   return strValue.trim().toLowerCase().replace(/[\s_-]+/g, "");
 }
 
-function isEssUserGroupOption(objGroup?: { strCode?: string; strLabel?: string } | null) {
-  if (!objGroup) {
-    return false;
-  }
-  const strCode = objGroup.strCode ?? "";
-  const strLabel = objGroup.strLabel ?? "";
-  const lstTokens = `${strCode} ${strLabel}`.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
-  const strCompact = `${strCode}${strLabel}`.toLowerCase().replace(/[^a-z0-9]/g, "");
-  return lstTokens.includes("ess") || strCompact.startsWith("ess") || strCompact.includes("employeeselfservice");
+// Portal classification comes from tbluser_group.group_type (HR | ESS | BOTH), never from matching
+// "ESS" in a group's code or name. Server-side validation repeats these checks.
+function groupTypeOf(objGroup?: { strGroupType?: string | null } | null) {
+  return String(objGroup?.strGroupType ?? "").trim().toUpperCase();
 }
 
-function isEssUserGroupID(
-  lstUserGroups: UserFormOptionsApiRecord["lstUserGroups"],
-  intUserGroupID: number | "" | null,
-) {
-  if (!intUserGroupID) {
-    return false;
-  }
-  return isEssUserGroupOption(lstUserGroups.find((objGroup) => objGroup.intID === Number(intUserGroupID)));
+function isPortalGroup(objGroup: { strGroupType?: string | null }, strPortal: "ESS" | "HRMS") {
+  const strType = groupTypeOf(objGroup);
+  return strType === "BOTH" || strType === (strPortal === "ESS" ? "ESS" : "HR");
 }
 
 function getUserLoginId(dicRecord: UserApiRecord) {
@@ -181,6 +191,10 @@ function mapUserRecord(dicRecord: UserApiRecord): UserRecord {
     employeeID: dicRecord.intEmployeeID ?? null,
     employeeName: dicRecord.strEmployeeName ?? "",
     userGroupID: dicRecord.intUserGroupID,
+    essAccessEnabled: Boolean(dicRecord.blnIsEssAccessEnabled),
+    hrmsAccessEnabled: Boolean(dicRecord.blnIsHrmsAccessEnabled),
+    essUserGroupID: dicRecord.intEssUserGroupID ?? null,
+    hrmsUserGroupID: dicRecord.intHrmsUserGroupID ?? null,
     userGroupName: dicRecord.strUserGroupName ?? "",
     status: dicRecord.blnIsActive ? "Active" : "Inactive",
     locked: dicRecord.blnIsLocked
@@ -198,7 +212,7 @@ export default function UserMasterPanel() {
   const [blnDialogOpen, setBlnDialogOpen] = useState(false);
   const [strEditingUserId, setStrEditingUserId] = useState("");
   const [dicForm, setDicForm] = useState<UserForm>(dicEmptyForm);
-  const [dicErrors, setDicErrors] = useState<Partial<Record<keyof UserForm, string>>>({});
+  const [dicErrors, setDicErrors] = useState<Partial<Record<keyof UserForm | "portalAccess", string>>>({});
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
   const [lstSelectedIds, setLstSelectedIds] = useState<string[]>([]);
@@ -236,10 +250,13 @@ export default function UserMasterPanel() {
     dialogViewTitle: t("dialog_view_title", "View User"),
     searchCodePlaceholder: t("search_code_placeholder"),
     searchNamePlaceholder: t("search_name_placeholder"),
+    searchEmployeePlaceholder: t("search_employee_placeholder", "Search Linked Employee"),
     searchStatusPlaceholder: t("search_status_placeholder"),
     tableLoginName: t("table_login_name"),
+    tableLoginId: t("table_login_id", "Login ID"),
     tableEmail: t("table_email"),
     tableMobile: t("table_mobile"),
+    tableLinkedEmployee: t("table_linked_employee", "Linked Employee"),
     tableUserGroup: t("table_user_group", "User Group"),
     tableStatus: t("table_status"),
     tableActions: t("table_actions"),
@@ -253,10 +270,15 @@ export default function UserMasterPanel() {
     fieldSsoLoginMapping: t("field_sso_login_mapping"),
     fieldPreferredLanguage: t("field_preferred_language", "Preferred Language"),
     fieldUserGroup: t("field_user_group", "User Group"),
-    fieldEnableOtpOnly: t("field_enable_otp_only", "Enable OTP Only"),
-    helperEnableOtpOnly: t("helper_enable_otp_only", "Require OTP-based login for this user when tenant OTP mode is enabled."),
-    fieldLoginAsEmployee: t("field_login_as_employee", "Login as Employee"),
-    helperLoginAsEmployee: t("helper_login_as_employee", "Link this user account to an employee profile."),
+    sectionAccountAssociation: t("section_account_association", "Account Association"),
+    optionSelect: t("option_select", "Select"),
+    sectionApplicationAccess: t("section_application_access", "Application Access"),
+    fieldEssAccess: t("field_ess_access", "ESS Access"),
+    fieldEssUserGroup: t("field_ess_user_group", "ESS User Group"),
+    fieldHrmsAccess: t("field_hrms_access", "HRMS Access"),
+    fieldHrmsUserGroup: t("field_hrms_user_group", "HRMS User Group"),
+    fieldEnableOtpOnly: t("field_enable_otp_only", "Enable 2FA with E-mail OTP"),
+    fieldLoginAsEmployee: t("field_link_to_employee_profile", "Link to Employee Profile"),
     fieldEmployee: t("field_employee", "Employee"),
     fieldStatus: t("field_status"),
     helperPasswordOptional: t("helper_password_optional"),
@@ -285,7 +307,10 @@ export default function UserMasterPanel() {
     validationMobileInvalid: t("validation_mobile_invalid"),
     validationEmployeeRequired: t("validation_employee_required", "Employee is required."),
     validationUserGroupRequired: t("validation_user_group_required", "User group is required."),
-    validationEssUserGroupRequired: t("validation_ess_user_group_required", "Login as Employee is available only for ESS user groups."),
+    validationEssUserGroupRequired: t("validation_ess_user_group_required", "ESS User Group is required when ESS Access is enabled."),
+    validationHrmsUserGroupRequired: t("validation_hrms_user_group_required", "HRMS User Group is required when HRMS Access is enabled."),
+    validationEssRequiresEmployee: t("validation_ess_requires_employee", "ESS Access requires a linked employee profile."),
+    validationPortalAccessRequired: t("validation_portal_access_required", "Enable ESS Access, HRMS Access, or both for an active user."),
     bulkRowsSelected: t("bulk_rows_selected"),
     bulkActivate: t("bulk_activate"),
     bulkDeactivate: t("bulk_deactivate"),
@@ -323,11 +348,22 @@ export default function UserMasterPanel() {
       const intResolvedTenantLanguageID = authHelpers.getLanguageID();
       setLstUsers(objUsers.Data.map(mapUserRecord));
       setObjFormOptions(objOptions.Data);
-      setLstEmployeeOptions(objEmployees.Data.map((dicEmployee) => ({
-        intID: dicEmployee.intID,
-        strLabel: dicEmployee.strFullName,
-        strCode: dicEmployee.strEmployeeCode,
-      })));
+      const dicLinkedUserByEmployeeID = new Map<number, number | null>(
+        (objOptions.Data.lstEmployees ?? []).map((dicOption) => [dicOption.intID, dicOption.intLinkedUserID ?? null]),
+      );
+      setLstEmployeeOptions(
+        objEmployees.Data
+          .filter((dicEmployee) => String(dicEmployee.strEmploymentStatus ?? "").toLowerCase() === "active")
+          .map((dicEmployee) => ({
+            intID: dicEmployee.intID,
+            strLabel: dicEmployee.strFullName,
+            strCode: dicEmployee.strEmployeeCode,
+            strEmail: dicEmployee.strWorkEmail,
+            strMobile: dicEmployee.strMobileNumber,
+            intPreferredLanguageID: null,
+            intLinkedUserID: dicLinkedUserByEmployeeID.get(dicEmployee.intID) ?? null,
+          })),
+      );
       setIntTenantLanguageID(intResolvedTenantLanguageID);
       setLstSelectedIds([]);
     } finally {
@@ -345,8 +381,9 @@ export default function UserMasterPanel() {
   const lstFilteredUsers = useMemo(() => lstUsers.filter((dicUser) => {
     const blnCodeMatch = !dicSearchApplied.code || dicUser.loginName.toLowerCase().includes(dicSearchApplied.code.toLowerCase());
     const blnNameMatch = !dicSearchApplied.name || dicUser.email.toLowerCase().includes(dicSearchApplied.name.toLowerCase());
+    const blnEmployeeMatch = !dicSearchApplied.employeeName || dicUser.employeeName.toLowerCase().includes(dicSearchApplied.employeeName.toLowerCase());
     const blnStatusMatch = dicSearchApplied.status === "All" || dicUser.status === dicSearchApplied.status;
-    return blnCodeMatch && blnNameMatch && blnStatusMatch;
+    return blnCodeMatch && blnNameMatch && blnEmployeeMatch && blnStatusMatch;
   }), [dicSearchApplied, lstUsers]);
 
   const blnAllVisibleSelected = lstFilteredUsers.length > 0 && lstFilteredUsers.every((dicUser) => lstSelectedIds.includes(dicUser.id));
@@ -357,17 +394,20 @@ export default function UserMasterPanel() {
   const blnCanDelete = canDoAny("delete");
   const blnCanExport = canDoAny("export");
   const blnReadOnly = isReadOnly();
-  const objTenantLanguageOption = objFormOptions.lstLanguages.find((objLanguage) => objLanguage.intID === intTenantLanguageID) ?? null;
   const blnShowOtpOnlyOption =
     (objFormOptions.objMfaPolicy?.blnUserMfaToggleVisible ?? false)
     && !(objFormOptions.objMfaPolicy?.blnUserMfaToggleDisabled ?? false);
   const blnDisableOtpOnlyOption = objFormOptions.objMfaPolicy?.blnUserMfaToggleDisabled ?? false;
-  const blnSelectedUserGroupAllowsEmployeeLogin = isEssUserGroupID(
-    objFormOptions.lstUserGroups,
-    dicForm.userGroupID,
-  );
-  const blnLoginAsEmployeeDisabled =
-    strMode === "view" || !blnSelectedUserGroupAllowsEmployeeLogin;
+  // Each portal offers only the groups its group_type allows; the server repeats the check.
+  const lstEssGroupOptions = objFormOptions.lstUserGroups.filter((objGroup) => isPortalGroup(objGroup, "ESS"));
+  const lstHrmsGroupOptions = objFormOptions.lstUserGroups.filter((objGroup) => isPortalGroup(objGroup, "HRMS"));
+  // The Employee link is independent of portal access, so the toggle is only disabled in view mode.
+  const blnLoginAsEmployeeDisabled = strMode === "view";
+  const blnEmployeeLinked = dicForm.loginAsEmployee && Boolean(dicForm.employeeID);
+  // ESS is an employee-only portal: without a linked employee the toggle cannot be turned on.
+  const blnEssAccessDisabled = strMode === "view" || !blnEmployeeLinked;
+  // Identity fields sourced from Employee Master are shown read-only in User Master.
+  const blnEmployeeDerivedReadOnly = strMode === "view" || blnEmployeeLinked;
   const lstTableRows = useMemo<UserTableRow[]>(() => lstFilteredUsers.map((dicUser) => ({
     id: dicUser.id,
     select: (
@@ -390,8 +430,10 @@ export default function UserMasterPanel() {
       />
     ),
     loginName: dicUser.loginName,
+    loginId: dicUser.loginId || "-",
     email: dicUser.email,
     mobile: dicUser.mobile || "-",
+    employeeName: dicUser.employeeName || "-",
     userGroupName: dicUser.userGroupName || "-",
     status: (
       <span className={`${styles.statusPill} ${dicUser.status === "Active" ? styles.statusActive : styles.statusInactive}`}>
@@ -410,11 +452,13 @@ export default function UserMasterPanel() {
     },
     { field: "rowActions", headerName: dicModuleLabels.tableActions, width: 140, sortable: false, filterable: false, exportable: false },
     { field: "loginName", headerName: dicModuleLabels.tableLoginName },
+    { field: "loginId", headerName: dicModuleLabels.tableLoginId },
     { field: "email", headerName: dicModuleLabels.tableEmail },
     { field: "mobile", headerName: dicModuleLabels.tableMobile },
+    { field: "employeeName", headerName: dicModuleLabels.tableLinkedEmployee },
     { field: "userGroupName", headerName: dicModuleLabels.tableUserGroup },
     { field: "status", headerName: dicModuleLabels.tableStatus, sortable: false, filterable: false },
-  ], [blnAllVisibleSelected, blnSomeVisibleSelected, dicModuleLabels.tableActions, dicModuleLabels.tableEmail, dicModuleLabels.tableLoginName, dicModuleLabels.tableMobile, dicModuleLabels.tableStatus, dicModuleLabels.tableUserGroup]);
+  ], [blnAllVisibleSelected, blnSomeVisibleSelected, dicModuleLabels.tableActions, dicModuleLabels.tableEmail, dicModuleLabels.tableLinkedEmployee, dicModuleLabels.tableLoginId, dicModuleLabels.tableLoginName, dicModuleLabels.tableMobile, dicModuleLabels.tableStatus, dicModuleLabels.tableUserGroup]);
 
   async function openDialog(strNextMode: UserMode, dicUser?: UserRecord) {
     let objResolvedFormOptions = objFormOptions;
@@ -442,10 +486,6 @@ export default function UserMasterPanel() {
     setDicErrors({});
     setBlnPasswordVisible(false);
     setBlnConfirmPasswordVisible(false);
-    const blnUserGroupAllowsEmployeeLogin = isEssUserGroupID(
-      objResolvedFormOptions.lstUserGroups,
-      dicUser?.userGroupID ?? "",
-    );
     setDicForm(dicUser ? {
       loginName: dicUser.loginName,
       loginId: dicUser.loginId,
@@ -455,11 +495,14 @@ export default function UserMasterPanel() {
       confirmPassword: "",
       ssoEnabled: dicUser.ssoEnabled,
       mfaEnabled: dicUser.mfaEnabled,
-      loginAsEmployee: Boolean(dicUser.employeeID) && blnUserGroupAllowsEmployeeLogin,
+      loginAsEmployee: Boolean(dicUser.employeeID),
       ssoLoginMapping: dicUser.ssoLoginMapping,
       preferredLanguageID: intTenantLanguageID ?? dicUser.preferredLanguageID ?? "",
-      employeeID: blnUserGroupAllowsEmployeeLogin ? dicUser.employeeID ?? "" : "",
-      userGroupID: dicUser.userGroupID ?? "",
+      employeeID: dicUser.employeeID ?? "",
+      essAccessEnabled: dicUser.essAccessEnabled,
+      hrmsAccessEnabled: dicUser.hrmsAccessEnabled,
+      essUserGroupID: dicUser.essUserGroupID ?? "",
+      hrmsUserGroupID: dicUser.hrmsUserGroupID ?? "",
       status: dicUser.status
     } : {
       ...dicEmptyForm,
@@ -485,14 +528,33 @@ export default function UserMasterPanel() {
     setDicForm((objPrevious) => {
       const dicNextForm = { ...objPrevious, [strField]: objValue } as UserForm;
       if (strField === "loginAsEmployee" && !Boolean(objValue)) {
+        // Unlinking removes the employee and, with it, ESS access (ESS requires an employee).
         dicNextForm.employeeID = "";
+        dicNextForm.essAccessEnabled = false;
+        dicNextForm.essUserGroupID = "";
       }
-      if (
-        strField === "userGroupID" &&
-        !isEssUserGroupID(objFormOptions.lstUserGroups, objValue as number | "")
-      ) {
-        dicNextForm.loginAsEmployee = false;
-        dicNextForm.employeeID = "";
+      if (strField === "employeeID") {
+        if (!objValue) {
+          dicNextForm.essAccessEnabled = false;
+          dicNextForm.essUserGroupID = "";
+        } else {
+          // Prefill employee-maintained profile details; Login ID remains an independent credential.
+          const objEmployee = lstEmployeeOptions.find((objOption) => objOption.intID === Number(objValue));
+          if (objEmployee) {
+            dicNextForm.loginName = objEmployee.strLabel ?? dicNextForm.loginName;
+            if (objEmployee.strEmail) dicNextForm.email = objEmployee.strEmail;
+            if (objEmployee.strMobile) dicNextForm.mobile = objEmployee.strMobile;
+            if (objEmployee.intPreferredLanguageID) {
+              dicNextForm.preferredLanguageID = objEmployee.intPreferredLanguageID;
+            }
+          }
+        }
+      }
+      if (strField === "essAccessEnabled" && !Boolean(objValue)) {
+        dicNextForm.essUserGroupID = "";
+      }
+      if (strField === "hrmsAccessEnabled" && !Boolean(objValue)) {
+        dicNextForm.hrmsUserGroupID = "";
       }
       return dicNextForm;
     });
@@ -505,7 +567,11 @@ export default function UserMasterPanel() {
       return {
         ...objPrevious,
         [strField]: undefined,
-        ...(strField === "loginAsEmployee" || strField === "userGroupID" ? { employeeID: undefined } : {}),
+        ...(strField === "loginAsEmployee" || strField === "employeeID"
+          ? { employeeID: undefined, essAccessEnabled: undefined, essUserGroupID: undefined }
+          : {}),
+        ...(strField === "essAccessEnabled" ? { essUserGroupID: undefined, portalAccess: undefined } : {}),
+        ...(strField === "hrmsAccessEnabled" ? { hrmsUserGroupID: undefined, portalAccess: undefined } : {}),
       };
     });
   }
@@ -534,7 +600,7 @@ export default function UserMasterPanel() {
   }
 
   function validateForm() {
-    const dicNextErrors: Partial<Record<keyof UserForm, string>> = {};
+    const dicNextErrors: Partial<Record<keyof UserForm | "portalAccess", string>> = {};
     const strLoginName = dicForm.loginName.trim();
     const strLoginId = dicForm.loginId.trim();
     const strEmail = dicForm.email.trim();
@@ -580,16 +646,23 @@ export default function UserMasterPanel() {
       dicNextErrors.mobile = dicModuleLabels.validationMobileInvalid;
     }
 
-    if (!dicForm.userGroupID) {
-      dicNextErrors.userGroupID = dicModuleLabels.validationUserGroupRequired;
-    }
-
-    if (dicForm.loginAsEmployee && !blnSelectedUserGroupAllowsEmployeeLogin) {
-      dicNextErrors.userGroupID = dicModuleLabels.validationEssUserGroupRequired;
-    }
-
     if (dicForm.loginAsEmployee && !dicForm.employeeID) {
       dicNextErrors.employeeID = dicModuleLabels.validationEmployeeRequired;
+    }
+
+    // ESS access requires a linked employee; each enabled portal requires its own primary group.
+    if (dicForm.essAccessEnabled && !blnEmployeeLinked) {
+      dicNextErrors.essAccessEnabled = dicModuleLabels.validationEssRequiresEmployee;
+    }
+    if (dicForm.essAccessEnabled && !dicForm.essUserGroupID) {
+      dicNextErrors.essUserGroupID = dicModuleLabels.validationEssUserGroupRequired;
+    }
+    if (dicForm.hrmsAccessEnabled && !dicForm.hrmsUserGroupID) {
+      dicNextErrors.hrmsUserGroupID = dicModuleLabels.validationHrmsUserGroupRequired;
+    }
+    // An active interactive user must be able to reach at least one portal.
+    if (dicForm.status === "Active" && !dicForm.essAccessEnabled && !dicForm.hrmsAccessEnabled) {
+      dicNextErrors.portalAccess = dicModuleLabels.validationPortalAccessRequired;
     }
 
     setDicErrors(dicNextErrors);
@@ -613,7 +686,10 @@ export default function UserMasterPanel() {
       strSsoLoginMapping: dicForm.ssoEnabled ? dicForm.ssoLoginMapping.trim() || null : null,
       intPreferredLanguageID: (intTenantLanguageID ?? dicForm.preferredLanguageID) || null,
       intEmployeeID: dicForm.loginAsEmployee ? Number(dicForm.employeeID) : null,
-      intUserGroupID: Number(dicForm.userGroupID),
+      blnIsEssAccessEnabled: dicForm.essAccessEnabled,
+      blnIsHrmsAccessEnabled: dicForm.hrmsAccessEnabled,
+      intEssUserGroupID: dicForm.essAccessEnabled ? Number(dicForm.essUserGroupID) : null,
+      intHrmsUserGroupID: dicForm.hrmsAccessEnabled ? Number(dicForm.hrmsUserGroupID) : null,
       blnIsActive: dicForm.status === "Active"
     } as const;
 
@@ -698,7 +774,7 @@ export default function UserMasterPanel() {
       <Box className={styles.controlsCard}>
         {strRightsError ? <Alert severity="warning" sx={{ mb: 2 }}>{strRightsError}</Alert> : null}
         {blnReadOnly ? <Alert severity="info" sx={{ mb: 2 }}>You have read-only access to this screen.</Alert> : null}
-        <Box className={styles.searchRow}>
+        <Box className={styles.userSearchRow}>
           <TextField
             inputProps={{ "data-controlid": "user-master.list.search.login-id.input" }}
             value={dicSearchDraft.code}
@@ -712,6 +788,13 @@ export default function UserMasterPanel() {
             placeholder={dicModuleLabels.searchNamePlaceholder}
             fullWidth
             onChange={(objEvent) => setDicSearchDraft((objPrevious) => ({ ...objPrevious, name: objEvent.target.value }))}
+          />
+          <TextField
+            inputProps={{ "data-controlid": "user-master.list.search.employee.input" }}
+            value={dicSearchDraft.employeeName}
+            placeholder={dicModuleLabels.searchEmployeePlaceholder}
+            fullWidth
+            onChange={(objEvent) => setDicSearchDraft((objPrevious) => ({ ...objPrevious, employeeName: objEvent.target.value }))}
           />
           <TextField
             select
@@ -762,8 +845,6 @@ export default function UserMasterPanel() {
               emptyMessage={dicModuleLabels.emptyMessage}
               exportFileName="user-master"
               showExportOptions={blnCanExport}
-              defaultPageSize={10}
-              pageSizeOptions={[10, 20, 50]}
               showPaginationSummary
               testIdPrefix="user-master.list"
               withPaper={false}
@@ -804,6 +885,50 @@ export default function UserMasterPanel() {
         }
         titleSx={{ px: 2.25, py: 1.25, fontSize: "1rem", maxHeight: 50 }}
         nodeContent={<Box sx={{ display: "grid", gap: 2.25, pt: 1 }}>
+          <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{dicModuleLabels.sectionAccountAssociation}</Typography>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+              gap: 2,
+              alignItems: "center",
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography sx={{ fontWeight: 400, color: "#0f172a" }}>{dicModuleLabels.fieldLoginAsEmployee}</Typography>
+              <Switch inputProps={{ "data-controlid": "user-master.dialog.login-as-employee.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.loginAsEmployee} onChange={(_, blnChecked) => setFormField("loginAsEmployee", blnChecked)} disabled={blnLoginAsEmployeeDisabled} />
+            </Box>
+
+            {dicForm.loginAsEmployee ? (
+              <Autocomplete
+                options={lstEmployeeOptions.filter((objEmployee) =>
+                  !objEmployee.intLinkedUserID
+                  || String(objEmployee.intLinkedUserID) === strEditingUserId)}
+                value={lstEmployeeOptions.find((objEmployee) => objEmployee.intID === Number(dicForm.employeeID)) ?? null}
+                getOptionLabel={(objEmployee) => objEmployee.strCode ? `${objEmployee.strCode} - ${objEmployee.strLabel}` : objEmployee.strLabel}
+                isOptionEqualToValue={(objOption, objValue) => objOption.intID === objValue.intID}
+                onChange={(_, objEmployee) => setFormField("employeeID", objEmployee?.intID ?? "")}
+                disabled={strMode === "view"}
+                fullWidth
+                renderInput={(objParams) => (
+                  <TextField
+                    {...objParams}
+                    label={dicModuleLabels.fieldEmployee}
+                    inputProps={{
+                      ...objParams.inputProps,
+                      "data-controlid": "user-master.dialog.employee.select",
+                    }}
+                    error={Boolean(dicErrors.employeeID)}
+                    helperText={dicErrors.employeeID}
+                    required
+                  />
+                )}
+              />
+            ) : (
+              <Box />
+            )}
+          </Box>
+
           <Box
             sx={{
               display: "grid",
@@ -822,7 +947,7 @@ export default function UserMasterPanel() {
               fullWidth
               required
             />
-            <TextField label={dicModuleLabels.fieldLoginName} inputProps={{ "data-controlid": "user-master.dialog.login-name.input" }} value={dicForm.loginName} onChange={(objEvent) => setFormField("loginName", objEvent.target.value)} error={Boolean(dicErrors.loginName)} helperText={dicErrors.loginName} disabled={strMode === "view"} fullWidth required />
+            <TextField label={dicModuleLabels.fieldLoginName} inputProps={{ "data-controlid": "user-master.dialog.login-name.input" }} value={dicForm.loginName} onChange={(objEvent) => setFormField("loginName", objEvent.target.value)} error={Boolean(dicErrors.loginName)} helperText={dicErrors.loginName} disabled={blnEmployeeDerivedReadOnly} fullWidth required />
           </Box>
 
           <Box
@@ -832,8 +957,8 @@ export default function UserMasterPanel() {
               gap: 2,
             }}
           >
-            <TextField label={dicModuleLabels.fieldEmail} inputProps={{ "data-controlid": "user-master.dialog.email.input" }} value={dicForm.email} onChange={(objEvent) => setFormField("email", objEvent.target.value)} error={Boolean(dicErrors.email)} helperText={dicErrors.email} disabled={strMode === "view"} fullWidth required />
-            <TextField label={dicModuleLabels.fieldMobile} inputProps={{ "data-controlid": "user-master.dialog.mobile.input" }} value={dicForm.mobile} onChange={(objEvent) => setFormField("mobile", objEvent.target.value)} error={Boolean(dicErrors.mobile)} helperText={dicErrors.mobile} disabled={strMode === "view"} fullWidth required />
+            <TextField label={dicModuleLabels.fieldEmail} inputProps={{ "data-controlid": "user-master.dialog.email.input" }} value={dicForm.email} onChange={(objEvent) => setFormField("email", objEvent.target.value)} error={Boolean(dicErrors.email)} helperText={dicErrors.email} disabled={blnEmployeeDerivedReadOnly} fullWidth required />
+            <TextField label={dicModuleLabels.fieldMobile} inputProps={{ "data-controlid": "user-master.dialog.mobile.input" }} value={dicForm.mobile} onChange={(objEvent) => setFormField("mobile", objEvent.target.value)} error={Boolean(dicErrors.mobile)} helperText={dicErrors.mobile} disabled={blnEmployeeDerivedReadOnly} fullWidth required />
           </Box>
 
           {strMode === "add" ? (
@@ -898,32 +1023,11 @@ export default function UserMasterPanel() {
           >
             <TextField
               select
-              label={dicModuleLabels.fieldUserGroup}
-              inputProps={{ "data-controlid": "user-master.dialog.user-group.select" }}
-              value={String(dicForm.userGroupID)}
-              onChange={(objEvent) => setFormField("userGroupID", objEvent.target.value ? Number(objEvent.target.value) : "")}
-              error={Boolean(dicErrors.userGroupID)}
-              helperText={dicErrors.userGroupID}
-              disabled={strMode === "view"}
-              fullWidth
-              required
-              SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.user-group.select" } as HTMLAttributes<HTMLDivElement> }}
-            >
-              <MenuItem value="" data-controlid="user-master.dialog.user-group.select.option">Select</MenuItem>
-              {objFormOptions.lstUserGroups.map((objGroup) => (
-                <MenuItem key={objGroup.intID} value={String(objGroup.intID)} data-controlid={`user-master.dialog.user-group.${normalizeSelectToken(objGroup.strCode || objGroup.strLabel)}.option`}>
-                  {objGroup.strCode ? `${objGroup.strCode} - ${objGroup.strLabel}` : objGroup.strLabel}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              select
               label={dicModuleLabels.fieldPreferredLanguage}
               inputProps={{ "data-controlid": "user-master.dialog.preferred-language.select" }}
               value={String(intTenantLanguageID ?? dicForm.preferredLanguageID)}
               disabled
               fullWidth
-              helperText={objTenantLanguageOption ? objTenantLanguageOption.strLabel : ""}
               SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.preferred-language.select" } as HTMLAttributes<HTMLDivElement> }}
             >
               {objFormOptions.lstLanguages.map((objLanguage) => (
@@ -932,124 +1036,96 @@ export default function UserMasterPanel() {
                 </MenuItem>
               ))}
             </TextField>
+            {blnShowOtpOnlyOption ? (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Typography sx={{ fontWeight: 400, color: "#0f172a" }}>{dicModuleLabels.fieldEnableOtpOnly}</Typography>
+                <Switch inputProps={{ "data-controlid": "user-master.dialog.otp-only.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.mfaEnabled} onChange={(_, blnChecked) => setFormField("mfaEnabled", blnChecked)} disabled={strMode === "view" || blnDisableOtpOnlyOption} />
+              </Box>
+            ) : null}
           </Box>
 
           {dicForm.ssoEnabled ? (
             <TextField label={dicModuleLabels.fieldSsoLoginMapping} inputProps={{ "data-controlid": "user-master.dialog.sso-login-mapping.input" }} value={dicForm.ssoLoginMapping} onChange={(objEvent) => setFormField("ssoLoginMapping", objEvent.target.value)} disabled={strMode === "view"} fullWidth />
           ) : null}
 
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-              gap: 2,
-            }}
-          >
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                px: 1.5,
-                py: 1.25,
-                borderRadius: 0,
-                border: "1px solid #dbe7f0",
-                background: "rgba(248,250,252,0.9)",
-              }}
+
+          {/* Application Access: one identity, an explicit primary group per portal. HRMS is listed
+              first; each toggle sits inline beside the group it governs. */}
+          <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{dicModuleLabels.sectionApplicationAccess}</Typography>
+          {dicErrors.portalAccess ? (
+            <Typography sx={{ color: "#d32f2f", fontSize: "0.8rem" }} data-controlid="user-master.dialog.portal-access.error">
+              {dicErrors.portalAccess}
+            </Typography>
+          ) : null}
+
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2, alignItems: "center" }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography sx={{ fontWeight: 400, color: "#0f172a" }}>{dicModuleLabels.fieldHrmsAccess}</Typography>
+              <Switch
+                inputProps={{ "data-controlid": "user-master.dialog.hrms-access.switch" } as InputHTMLAttributes<HTMLInputElement>}
+                checked={dicForm.hrmsAccessEnabled}
+                onChange={(_, blnChecked) => setFormField("hrmsAccessEnabled", blnChecked)}
+                disabled={strMode === "view"}
+              />
+            </Box>
+
+            <TextField
+              select
+              label={dicModuleLabels.fieldHrmsUserGroup}
+              inputProps={{ "data-controlid": "user-master.dialog.hrms-user-group.select" }}
+              value={String(dicForm.hrmsUserGroupID)}
+              onChange={(objEvent) => setFormField("hrmsUserGroupID", objEvent.target.value ? Number(objEvent.target.value) : "")}
+              error={Boolean(dicErrors.hrmsUserGroupID)}
+              helperText={dicErrors.hrmsUserGroupID}
+              disabled={strMode === "view" || !dicForm.hrmsAccessEnabled}
+              fullWidth
+              required={dicForm.hrmsAccessEnabled}
+              SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.hrms-user-group.select" } as HTMLAttributes<HTMLDivElement> }}
             >
-              <Box>
-                <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicModuleLabels.fieldLoginAsEmployee}</Typography>
-                <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
-                  {blnSelectedUserGroupAllowsEmployeeLogin
-                    ? dicModuleLabels.helperLoginAsEmployee
-                    : dicModuleLabels.validationEssUserGroupRequired}
-                </Typography>
-              </Box>
-              <Tooltip
-                title={
-                  blnLoginAsEmployeeDisabled && strMode !== "view"
-                    ? dicModuleLabels.validationEssUserGroupRequired
-                    : ""
-                }
-                arrow
-              >
+              <MenuItem value="" data-controlid="user-master.dialog.hrms-user-group.select.option">{dicModuleLabels.optionSelect}</MenuItem>
+              {lstHrmsGroupOptions.map((objGroup) => (
+                <MenuItem key={objGroup.intID} value={String(objGroup.intID)} data-controlid={`user-master.dialog.hrms-user-group.${normalizeSelectToken(objGroup.strCode || objGroup.strLabel)}.option`}>
+                  {objGroup.strCode ? `${objGroup.strCode} - ${objGroup.strLabel}` : objGroup.strLabel}
+                </MenuItem>
+              ))}
+            </TextField>
+
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography sx={{ fontWeight: 400, color: "#0f172a" }}>{dicModuleLabels.fieldEssAccess}</Typography>
+              <Tooltip title={blnEssAccessDisabled && strMode !== "view" ? dicModuleLabels.validationEssRequiresEmployee : ""} arrow>
                 <span>
-                  <Switch inputProps={{ "data-controlid": "user-master.dialog.login-as-employee.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.loginAsEmployee && blnSelectedUserGroupAllowsEmployeeLogin} onChange={(_, blnChecked) => setFormField("loginAsEmployee", blnChecked)} disabled={blnLoginAsEmployeeDisabled} />
+                  <Switch
+                    inputProps={{ "data-controlid": "user-master.dialog.ess-access.switch" } as InputHTMLAttributes<HTMLInputElement>}
+                    checked={dicForm.essAccessEnabled}
+                    onChange={(_, blnChecked) => setFormField("essAccessEnabled", blnChecked)}
+                    disabled={blnEssAccessDisabled}
+                  />
                 </span>
               </Tooltip>
             </Box>
 
-            {dicForm.loginAsEmployee ? (
-              <TextField
-                select
-                label={dicModuleLabels.fieldEmployee}
-                inputProps={{ "data-controlid": "user-master.dialog.employee.select" }}
-                value={String(dicForm.employeeID)}
-                onChange={(objEvent) => setFormField("employeeID", objEvent.target.value ? Number(objEvent.target.value) : "")}
-                error={Boolean(dicErrors.employeeID)}
-                helperText={dicErrors.employeeID}
-                disabled={strMode === "view"}
-                fullWidth
-                required
-                SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.employee.select" } as HTMLAttributes<HTMLDivElement> }}
-              >
-                <MenuItem value="" data-controlid="user-master.dialog.employee.select.option">Select</MenuItem>
-                {lstEmployeeOptions.map((objEmployee) => (
-                  <MenuItem key={objEmployee.intID} value={String(objEmployee.intID)} data-controlid={`user-master.dialog.employee.${normalizeSelectToken(objEmployee.strCode || objEmployee.strLabel)}.option`}>
-                    {objEmployee.strCode ? `${objEmployee.strCode} - ${objEmployee.strLabel}` : objEmployee.strLabel}
-                  </MenuItem>
-                ))}
-              </TextField>
-            ) : blnShowOtpOnlyOption ? (
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  px: 1.5,
-                  py: 1.25,
-                  borderRadius: 0,
-                  border: "1px solid #dbe7f0",
-                  background: "rgba(248,250,252,0.9)",
-                }}
-              >
-                <Box>
-                  <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicModuleLabels.fieldEnableOtpOnly}</Typography>
-                  <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
-                    {dicModuleLabels.helperEnableOtpOnly}
-                  </Typography>
-                </Box>
-                <Switch inputProps={{ "data-controlid": "user-master.dialog.otp-only.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.mfaEnabled} onChange={(_, blnChecked) => setFormField("mfaEnabled", blnChecked)} disabled={strMode === "view" || blnDisableOtpOnlyOption} />
-              </Box>
-            ) : (
-              <Box />
-            )}
-          </Box>
+            <TextField
+              select
+              label={dicModuleLabels.fieldEssUserGroup}
+              inputProps={{ "data-controlid": "user-master.dialog.ess-user-group.select" }}
+              value={String(dicForm.essUserGroupID)}
+              onChange={(objEvent) => setFormField("essUserGroupID", objEvent.target.value ? Number(objEvent.target.value) : "")}
+              error={Boolean(dicErrors.essUserGroupID)}
+              helperText={dicErrors.essUserGroupID}
+              disabled={strMode === "view" || !dicForm.essAccessEnabled}
+              fullWidth
+              required={dicForm.essAccessEnabled}
+              SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.ess-user-group.select" } as HTMLAttributes<HTMLDivElement> }}
+            >
+              <MenuItem value="" data-controlid="user-master.dialog.ess-user-group.select.option">{dicModuleLabels.optionSelect}</MenuItem>
+              {lstEssGroupOptions.map((objGroup) => (
+                <MenuItem key={objGroup.intID} value={String(objGroup.intID)} data-controlid={`user-master.dialog.ess-user-group.${normalizeSelectToken(objGroup.strCode || objGroup.strLabel)}.option`}>
+                  {objGroup.strCode ? `${objGroup.strCode} - ${objGroup.strLabel}` : objGroup.strLabel}
+                </MenuItem>
+              ))}
+            </TextField>
 
-          {dicForm.loginAsEmployee && blnShowOtpOnlyOption ? (
-            <Box sx={{ width: { xs: "100%", md: "calc(50% - 8px)" } }}>
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  px: 1.5,
-                  py: 1.25,
-                  borderRadius: 0,
-                  border: "1px solid #dbe7f0",
-                  background: "rgba(248,250,252,0.9)",
-                }}
-              >
-                <Box>
-                  <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicModuleLabels.fieldEnableOtpOnly}</Typography>
-                  <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
-                    {dicModuleLabels.helperEnableOtpOnly}
-                  </Typography>
-                </Box>
-                <Switch inputProps={{ "data-controlid": "user-master.dialog.otp-only.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.mfaEnabled} onChange={(_, blnChecked) => setFormField("mfaEnabled", blnChecked)} disabled={strMode === "view" || blnDisableOtpOnlyOption} />
-              </Box>
-            </Box>
-          ) : null}
+          </Box>
         </Box>}
       />
 
@@ -1067,7 +1143,15 @@ export default function UserMasterPanel() {
         onConfirm={executeConfirmedAction}
       />
 
-      <BlockingLoader blnOpen={blnLoading || blnSubmitting || blnRightsLoading} strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
+      {/* The page-level loader sits above the modal layer, so it must never be raised while the
+          dialog is open - a background list refresh would otherwise cover the dialog and swallow
+          every click on it. Submitting still blocks, because that is user-initiated and the dialog
+          shows a disabled primary button while it runs. */}
+      <BlockingLoader
+        blnOpen={blnSubmitting || ((blnLoading || blnRightsLoading) && !blnDialogOpen)}
+        strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing}
+        intZIndex={1400}
+      />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert severity={objToast.strSeverity} onClose={closeToast} variant="filled" sx={{ width: "100%" }}>{objToast.strMessage}</Alert>

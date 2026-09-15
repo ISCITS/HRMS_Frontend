@@ -171,9 +171,9 @@ export default function SalaryStructureListPage() {
             blnCanView={!blnCanEdit && blnCanView}
             blnCanEdit={blnCanEdit}
             blnCanDelete={blnCanDelete}
-            onView={() => objRouter.push(`/salary-structures/edit/${dicRow.intID}`)}
-            onEdit={() => objRouter.push(`/salary-structures/edit/${dicRow.intID}`)}
-            onDelete={() => deleteStructure(dicRow.intID)}
+            onView={() => objRouter.push(`/salary-structures/edit/${dicRow.strRecordUUID}`)}
+            onEdit={() => objRouter.push(`/salary-structures/edit/${dicRow.strRecordUUID}`)}
+            onDelete={() => deleteStructure(dicRow.strRecordUUID)}
           />
           {blnCanClone ? (
             <button
@@ -182,7 +182,7 @@ export default function SalaryStructureListPage() {
               className={`${styles.iconButton} ${styles.editIcon}`}
               style={{ color: "#6D6D6D" }}
               type="button"
-              onClick={() => handleCloneOpen(dicRow.intID)}
+              onClick={() => handleCloneOpen(dicRow.strRecordUUID)}
               title={t("clone_button", "Clone")}
             >
               <ContentCopyRoundedIcon data-testid={undefined} data-controlid="salary-structures.list.row.clone.button.icon" fontSize="small" />
@@ -196,6 +196,8 @@ export default function SalaryStructureListPage() {
       strCurrencyCode: dicRow.strCurrencyCode,
       dtEffectiveFrom: formatDate(dicRow.dtEffectiveFrom),
       dtEffectiveTo: formatDate(dicRow.dtEffectiveTo),
+      strEffectiveFromSort: dicRow.dtEffectiveFrom,
+      strEffectiveToSort: dicRow.dtEffectiveTo ?? "",
       intComponentCount: dicRow.intComponentCount,
       strStatus: (
         <span className={`${styles.statusPill} ${dicRow.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
@@ -209,12 +211,12 @@ export default function SalaryStructureListPage() {
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
       { field: "action", headerName: t("action", "Action"), sortable: false, filterable: false, exportable: false, width: 120 },
-      { field: "strStructureCode", headerName: t("code", "Code") },
       { field: "strStructureName", headerName: t("structure_name", "Structure Name") },
+      { field: "strStructureCode", headerName: t("structure_code", "Structure Code") },
       { field: "strScopeLabel", headerName: t("scope", "Scope") },
       { field: "strCurrencyCode", headerName: t("currency", "Currency") },
-      { field: "dtEffectiveFrom", headerName: t("effective_from", "Effective From") },
-      { field: "dtEffectiveTo", headerName: t("effective_to", "Effective To") },
+      { field: "dtEffectiveFrom", headerName: t("effective_from", "Effective From"), sortAccessor: (dicRow) => dicRow.strEffectiveFromSort },
+      { field: "dtEffectiveTo", headerName: t("effective_to", "Effective To"), sortAccessor: (dicRow) => dicRow.strEffectiveToSort },
       { field: "intComponentCount", headerName: t("components", "Components"), align: "right" },
       { field: "strStatus", headerName: t("status", "Status"), sortable: false, filterable: false, width: 140 }
     ],
@@ -252,22 +254,22 @@ export default function SalaryStructureListPage() {
     }
   }
 
-  function deleteStructure(intSalaryStructureID: number) {
+  function deleteStructure(strRecordUUID: string) {
     openConfirmDialog({
       strTitle: t("confirm_delete_title", "Delete Salary Structure"),
       strMessage: t("confirm_delete_message", "Are you sure you want to delete this salary structure record?"),
       strConfirmLabel: t("delete_button", "Delete"),
       fnOnConfirm: async () => {
-        await salaryStructureService.deleteSalaryStructure(intSalaryStructureID);
+        await salaryStructureService.deleteSalaryStructure(strRecordUUID);
         await loadStructures();
         showToast(t("delete_success", "Salary structure deleted successfully."));
       }
     });
   }
 
-  async function handleCloneOpen(intSalaryStructureID: number) {
+  async function handleCloneOpen(strRecordUUID: string) {
     try {
-      const dicDetail = await salaryStructureService.getSalaryStructureById(intSalaryStructureID);
+      const dicDetail = await salaryStructureService.getSalaryStructureById(strRecordUUID);
       setObjCloneSource(dicDetail);
       setDicCloneForm(createCloneForm(dicDetail));
       setStrCloneError("");
@@ -288,7 +290,7 @@ export default function SalaryStructureListPage() {
     setStrCloneError("");
     setBlnCloneSaving(true);
     try {
-      const dicRecord = await salaryStructureService.cloneSalaryStructure(objCloneSource.intID, dicCloneForm);
+      const dicRecord = await salaryStructureService.cloneSalaryStructure(objCloneSource.strRecordUUID, dicCloneForm);
       setBlnCloneOpen(false);
       setStrCloneError("");
       showToast("Salary structure cloned successfully.");
@@ -318,20 +320,20 @@ export default function SalaryStructureListPage() {
 
         <Box className={styles.searchRow}>
           <TextField
-            controlId="salary-structures.list.search-code.input"
-            inputProps={{ "controlId": "salary-structures.list.search-code.input" }}
-            value={dicSearchDraft.strCode}
-            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, strCode: objEvent.target.value.toUpperCase() }))}
-            placeholder={t("search_structure_code", "Search structure code")}
-            fullWidth
-          />
-          
-          <TextField
             controlId="salary-structures.list.search-name.input"
             inputProps={{ "controlId": "salary-structures.list.search-name.input" }}
             value={dicSearchDraft.strName}
             onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, strName: objEvent.target.value }))}
             placeholder={t("search_structure_name", "Search structure name")}
+            fullWidth
+          />
+
+          <TextField
+            controlId="salary-structures.list.search-code.input"
+            inputProps={{ "controlId": "salary-structures.list.search-code.input" }}
+            value={dicSearchDraft.strCode}
+            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, strCode: objEvent.target.value.toUpperCase() }))}
+            placeholder={t("search_structure_code", "Search structure code")}
             fullWidth
           />
 
@@ -391,8 +393,6 @@ export default function SalaryStructureListPage() {
             columns={lstTableColumns}
             rows={lstTableRows}
             rowIdField="id"
-            defaultPageSize={10}
-            pageSizeOptions={[10, 20, 50]}
             exportFileName="salary_structures"
             showExportOptions={blnCanExport}
             showPaginationSummary

@@ -21,7 +21,6 @@ export type PayrollCycleDetailRecord = PayrollCycleListRecord;
 
 export type PayrollCycleFormValues = {
   intPayrollGroupID: number | "";
-  strCycleCode: string;
   strCycleName: string;
   strPeriodType: string;
   intCutoffDay: string;

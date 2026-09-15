@@ -160,24 +160,34 @@ export default function EmployeePayrollInputListPage() {
             blnCanView={blnCanView}
             blnCanEdit={blnCanEdit && !dicRow.blnIsLocked}
             onView={() =>
-              navigateToFullScreen(`/payroll/employee-payroll-inputs/${dicRow.intID}/edit?mode=view`)
+              navigateToFullScreen(`/payroll/employee-payroll-inputs/${dicRow.strRecordUUID}/edit`)
             }
-            onEdit={blnCanEdit ? () => navigateToFullScreen(`/payroll/employee-payroll-inputs/${dicRow.intID}/edit`) : undefined}
+            onEdit={blnCanEdit ? () => navigateToFullScreen(`/payroll/employee-payroll-inputs/${dicRow.strRecordUUID}/edit`) : undefined}
           />
         ),
         strEmployeeName: dicRow.strEmployeeName,
         strEmployeeCode: dicRow.strEmployeeCode,
         strRunName: dicRow.strRunName,
         dtPayrollMonth: formatDate(dicRow.dtPayrollMonth),
+        dtPayrollMonthSortValue: dicRow.dtPayrollMonth ? new Date(dicRow.dtPayrollMonth).getTime() : 0,
+        strAttendanceSource:
+          dicRow.strManualLwpSource === "SYSTEM_ATTENDANCE"
+            ? t("source_attendance", "Attendance & Leave Inputs")
+            : dicRow.strManualLwpSource
+              ? t("source_manual", "Manual")
+              : t("source_not_set", "Not Set"),
         decLwpDays: formatNumber(dicRow.decLwpDays),
+        decLwpDaysSortValue: Number(dicRow.decLwpDays ?? 0),
         decLopDays: formatNumber(dicRow.decLopDays),
+        decLopDaysSortValue: Number(dicRow.decLopDays ?? 0),
+        intAdjustmentLineCount: dicRow.intAdjustmentLineCount ?? 0,
         strStatus: (
           <span className={`${styles.statusPill} ${dicRow.strStatus === "Locked" ? styles.statusInactive : styles.statusActive}`}>
             {dicRow.strStatus}
           </span>
         ),
       })),
-    [blnCanEdit, blnCanView, lstFilteredRows]
+    [blnCanEdit, blnCanView, lstFilteredRows, t]
   );
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
@@ -186,9 +196,11 @@ export default function EmployeePayrollInputListPage() {
       { field: "strEmployeeName", headerName: t("employee_name", "Employee Name") },
       { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code") },
       { field: "strRunName", headerName: t("payroll_run", "Payroll Run") },
-      { field: "dtPayrollMonth", headerName: t("payroll_month", "Payroll Month") },
-      { field: "decLwpDays", headerName: t("lwp_days", "LWP"), align: "right" },
-      { field: "decLopDays", headerName: t("lop_days", "LOP"), align: "right" },
+      { field: "dtPayrollMonth", headerName: t("payroll_month", "Payroll Period"), sortAccessor: (dicRow) => dicRow.dtPayrollMonthSortValue },
+      { field: "strAttendanceSource", headerName: t("attendance_source", "Attendance Source") },
+      { field: "decLwpDays", headerName: t("lwp_days", "LWP"), align: "right", sortAccessor: (dicRow) => dicRow.decLwpDaysSortValue },
+      { field: "decLopDays", headerName: t("lop_days", "LOP"), align: "right", sortAccessor: (dicRow) => dicRow.decLopDaysSortValue },
+      { field: "intAdjustmentLineCount", headerName: t("adjustments", "Adjustments"), align: "right" },
       { field: "strStatus", headerName: t("status", "Status"), sortable: false, filterable: false, width: 130 },
     ],
     [t]
@@ -308,8 +320,6 @@ export default function EmployeePayrollInputListPage() {
             columns={lstTableColumns}
             rows={lstTableRows}
             rowIdField="id"
-            defaultPageSize={10}
-            pageSizeOptions={[10, 20, 50]}
             exportFileName="employee-payroll-inputs"
             showExportOptions={blnCanExport}
             showPaginationSummary

@@ -94,3 +94,31 @@
     background-size:12px 12px;
     opacity:.6;
 }
+
+@media (max-width: 600px) {
+    .pageBanner {
+        gap: 12px;
+        padding: 12px;
+    }
+
+    .bannerIcon {
+        width: 42px;
+        height: 42px;
+        flex: 0 0 42px;
+    }
+
+    .bannerDivider,
+    .bannerDots {
+        display: none;
+    }
+
+    .bannerTitle {
+        font-size: clamp(1.15rem, 6vw, 1.4rem);
+        overflow-wrap: anywhere;
+    }
+
+    .bannerSubTitle {
+        font-size: 0.82rem;
+        line-height: 1.4;
+    }
+}

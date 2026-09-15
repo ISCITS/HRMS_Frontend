@@ -17,7 +17,7 @@ export default async function ReportPayslipDetailRoute({
   const objSearchParams = searchParams ? await searchParams : undefined;
   return (
     <PayrollResultDetailPage
-      intResultID={Number(intResultID)}
+      strResultID={intResultID}
       blnPayslipScreen
       strBackRoute={objSearchParams?.backRoute}
     />

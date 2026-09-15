@@ -73,3 +73,18 @@
     transform: translateY(0);
   }
 }
+
+@media (max-width: 600px) {
+  .card:global(.MuiCard-root) {
+    border-radius: 16px;
+  }
+
+  .cardContent:global(.MuiCardContent-root),
+  .cardContent:global(.MuiCardContent-root:last-child) {
+    padding: 16px;
+  }
+
+  .value {
+    font-size: clamp(1.5rem, 8vw, 2rem);
+  }
+}

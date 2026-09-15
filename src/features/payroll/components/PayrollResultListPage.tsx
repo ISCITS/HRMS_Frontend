@@ -8,6 +8,7 @@ import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
 import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import {
   Alert,
   Box,
@@ -19,7 +20,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import CommonRowActions from "@/components/master/CommonRowActions";
@@ -28,6 +29,7 @@ import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
+import ReportMultiSelectField, { getUniqueOptions } from "@/features/reports/components/ReportMultiSelectField";
 import { payrollResultService } from "@/features/payroll/services/payrollResultService";
 import { payslipService } from "@/features/payroll/services/payslipService";
 import { authApiService } from "@/services";
@@ -50,7 +52,7 @@ type PayrollResultListPageProps = {
 type SearchForm = {
   strSearchEmployee: string;
   strSearchRun: string;
-  strStatus: "All" | "Calculated" | "Approved" | "Published" | "Paid" | "Generated";
+  strStatus: string;
   strDepartment: string;
   strLocation: string;
   strPayrollMonth: string;
@@ -66,6 +68,48 @@ const dicEmptySearch: SearchForm = {
   strPayrollMonth: "",
   strMonthScope: "Latest",
 };
+
+function normalizeQueryMonth(strValue: string | null) {
+  const strTrimmed = String(strValue ?? "").trim();
+  return /^\d{4}-\d{2}/.test(strTrimmed) ? strTrimmed.slice(0, 7) : "";
+}
+
+function buildInitialSearchFromQuery(objSearchParams: { get: (strKey: string) => string | null }): SearchForm {
+  const strPayrollMonth = normalizeQueryMonth(objSearchParams.get("month"));
+  return strPayrollMonth
+    ? { ...dicEmptySearch, strPayrollMonth, strMonthScope: "Custom" }
+    : dicEmptySearch;
+}
+
+// Keep these aliases aligned with tplPayrollResultFallbackModuleCodes in
+// HRMS_Backend/app/api/v1/PayrollRoutes.py so the UI warning matches API access.
+const lstPayrollResultAccessModuleHints = [
+  "EMPLOYEE_PAYROLL_RESULT",
+  "EMPLOYEE_PAYROLL_RESULTS",
+  "PAYROLL_RESULT",
+  "PAYROLL_RESULTS",
+  "PAYROLL_PAYROLL_RESULT",
+  "PAYROLL_PAYSLIP",
+  "PAYROLL_PAYSLIPS",
+  "REPORT_PAYROLL_RESULT",
+  "REPORT_PAYROLL_RESULTS",
+  "PAYSLIP",
+  "PAYSLIPS",
+  "MY_PAYSLIP",
+  "MY_PAYSLIPS",
+  "PAYROLL_RUN",
+  "PAYROLL_RUNS",
+  "PAYROLL_PAYROLL_RUN",
+  "REPORTS",
+  "PAYROLL_REGISTER",
+  "REPORT_PAYROLL_REGISTER",
+  "BANK_FILE",
+  "REPORT_BANK_FILE",
+  "STATUTORY_REPORT",
+  "REPORT_STATUTORY",
+  "PAYROLL",
+  "PAYROLLS",
+];
 
 function formatMonth(strDate: string | null) {
   if (!strDate) {
@@ -111,6 +155,25 @@ function normalizeMonthValue(strDate: string | null) {
 
   const intMonth = objDate.getMonth() + 1;
   return `${objDate.getFullYear()}-${String(intMonth).padStart(2, "0")}`;
+}
+
+function splitFilterValue(strValue: string) {
+  return strValue
+    .split(",")
+    .map((strItem) => strItem.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function matchesAnyFilter(lstNeedles: string[], ...lstHaystacks: Array<string | null | undefined>) {
+  if (lstNeedles.length === 0) {
+    return true;
+  }
+
+  const strHaystack = lstHaystacks
+    .map((strValue) => String(strValue ?? "").toLowerCase())
+    .join(" ");
+
+  return lstNeedles.some((strNeedle) => strHaystack.includes(strNeedle));
 }
 
 function getLatestPayrollMonth(lstRows: PayrollResultListRecord[]) {
@@ -181,12 +244,14 @@ export default function PayrollResultListPage({
   blnEssMode = false,
 }: PayrollResultListPageProps) {
   const objRouter = useRouter();
+  const objSearchParams = useSearchParams();
+  const dicInitialSearch = useMemo(() => buildInitialSearchFromQuery(objSearchParams), [objSearchParams]);
   const { t } = useModuleLabels("payslips");
   const lstAccessModuleHints = blnPayslipScreen
     ? (blnEssMode
         ? ["PAYSLIP", "PAYSLIPS", "MY_PAYSLIPS"]
         : ["REPORT_PAYROLL_RESULTS", "PAYSLIPS", "PAYSLIP", "PAYROLL_PAYSLIPS", "PAYROLL_PAYSLIP"])
-    : ["PAYROLL_RESULT", "PAYROLL_RESULTS"];
+    : lstPayrollResultAccessModuleHints;
   const { blnLoading: blnRightsLoading, canDoAny, canViewAny } =
     useModuleActionAccess(lstAccessModuleHints);
   const [lstResults, setLstResults] = useState<PayrollResultListRecord[]>([]);
@@ -195,21 +260,38 @@ export default function PayrollResultListPage({
   const [blnPageInitializing, setBlnPageInitializing] = useState(true);
   const [blnHasLoadedRows, setBlnHasLoadedRows] = useState(false);
   const [strError, setStrError] = useState("");
-  const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
+  const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicInitialSearch);
   const [dicSearchApplied, setDicSearchApplied] =
-    useState<SearchForm>(dicEmptySearch);
+    useState<SearchForm>(dicInitialSearch);
   const [objPreviewRecord, setObjPreviewRecord] =
     useState<PayrollResultDetailRecord | null>(null);
   const [intPayslipActionID, setIntPayslipActionID] = useState<number | null>(null);
   const [intSelfEmployeeID, setIntSelfEmployeeID] = useState<number | null>(null);
   const blnCanAccessResults =
-    canViewAny() || canDoAny("view") || canDoAny("list") || canDoAny("get");
-  const blnCanDownloadPayslips = canDoAny("download");
-  const blnCanPrintPayslips = canDoAny("print");
+    canViewAny() ||
+    canDoAny("view") ||
+    canDoAny("list") ||
+    canDoAny("get") ||
+    canDoAny("PAYROLL_RESULT_VIEW") ||
+    canDoAny("PAYROLL_RESULT_LIST");
   const blnCanExportPayslips = canDoAny("export");
-  const blnCanUsePayslipRowActions = blnCanDownloadPayslips || blnCanPrintPayslips;
+  const blnCanDownloadPayslips = canDoAny("download") || blnCanExportPayslips;
+  const blnCanPrintPayslips = canDoAny("print");
+  const blnCanUsePayslipRowActions = blnCanAccessResults || blnCanDownloadPayslips || blnCanPrintPayslips;
   const strEssBackRoute = encodeURIComponent("/ess/my-payslips");
   const strLatestPayrollMonth = useMemo(() => getLatestPayrollMonth(lstResults), [lstResults]);
+  const dicPayslipFilterOptions = useMemo(() => ({
+    lstEmployees: getUniqueOptions(lstResults.flatMap((dicRow) => [
+      dicRow.strEmployeeCode,
+      dicRow.strEmployeeName,
+      `${dicRow.strEmployeeCode} - ${dicRow.strEmployeeName}`,
+    ])),
+    lstRuns: getUniqueOptions(lstResults.flatMap((dicRow) => [dicRow.strRunCode, dicRow.strRunName])),
+    lstMonths: getUniqueOptions(lstResults.map((dicRow) => dicRow.dtPayrollMonth?.slice(0, 7))),
+    lstDepartments: getUniqueOptions(lstResults.map((dicRow) => dicRow.strDepartmentName)),
+    lstLocations: getUniqueOptions(lstResults.map((dicRow) => dicRow.strLocationName)),
+    lstStatuses: getUniqueOptions(lstResults.map((dicRow) => dicRow.strPayslipStatus || "Generated")),
+  }), [lstResults]);
 
   async function loadResults(objFilters: SearchForm = dicSearchApplied) {
     setBlnLoading(true);
@@ -277,8 +359,10 @@ export default function PayrollResultListPage({
   }, [blnRightsLoading, blnSelfOnly, blnUseOpeningFilterDialog]);
 
   const lstFilteredRows = useMemo(() => {
-    const strEmployeeSearch = dicSearchApplied.strSearchEmployee.trim().toLowerCase();
-    const strRunSearch = dicSearchApplied.strSearchRun.trim().toLowerCase();
+    const lstEmployeeSearches = splitFilterValue(dicSearchApplied.strSearchEmployee);
+    const lstRunSearches = splitFilterValue(dicSearchApplied.strSearchRun);
+    const lstStatusFilters =
+      dicSearchApplied.strStatus === "All" ? [] : splitFilterValue(dicSearchApplied.strStatus);
     const strEffectivePayrollMonth =
       blnPayslipScreen
         ? dicSearchApplied.strPayrollMonth
@@ -287,28 +371,25 @@ export default function PayrollResultListPage({
           : dicSearchApplied.strMonthScope === "Custom" && dicSearchApplied.strPayrollMonth
             ? dicSearchApplied.strPayrollMonth
             : strLatestPayrollMonth;
-    const [strPayrollYear, strPayrollMonth] = strEffectivePayrollMonth.split("-");
-    const intPayrollMonth = strPayrollMonth ? Number(strPayrollMonth) : null;
-    const intPayrollYear = strPayrollYear ? Number(strPayrollYear) : null;
+    const lstPayrollMonthFilters = splitFilterValue(strEffectivePayrollMonth);
     return lstResults.filter((dicRow) => {
-      const objPayrollMonth = dicRow.dtPayrollMonth ? new Date(dicRow.dtPayrollMonth) : null;
+      const strRowPayrollMonth = normalizeMonthValue(dicRow.dtPayrollMonth);
       const blnSelfMatch = !blnSelfOnly || (intSelfEmployeeID !== null && dicRow.intEmployeeID === intSelfEmployeeID);
-      const blnEmployeeMatch =
-        !strEmployeeSearch ||
-        dicRow.strEmployeeCode.toLowerCase().includes(strEmployeeSearch) ||
-        dicRow.strEmployeeName.toLowerCase().includes(strEmployeeSearch);
-      const blnRunMatch =
-        !strRunSearch ||
-        dicRow.strRunCode.toLowerCase().includes(strRunSearch) ||
-        dicRow.strRunName.toLowerCase().includes(strRunSearch);
-      const blnStatusMatch =
-        dicSearchApplied.strStatus === "All" ||
-        (blnPayslipScreen
-          ? dicRow.strPayslipStatus === dicSearchApplied.strStatus
-          : dicRow.strStatus === dicSearchApplied.strStatus);
-      const blnMonthMatch = !intPayrollMonth || (objPayrollMonth ? objPayrollMonth.getMonth() + 1 === intPayrollMonth : false);
-      const blnYearMatch = !intPayrollYear || (objPayrollMonth ? objPayrollMonth.getFullYear() === intPayrollYear : false);
-      return blnSelfMatch && blnEmployeeMatch && blnRunMatch && blnStatusMatch && blnMonthMatch && blnYearMatch;
+      const blnEmployeeMatch = matchesAnyFilter(
+        lstEmployeeSearches,
+        dicRow.strEmployeeCode,
+        dicRow.strEmployeeName,
+        `${dicRow.strEmployeeCode} - ${dicRow.strEmployeeName}`
+      );
+      const blnRunMatch = matchesAnyFilter(lstRunSearches, dicRow.strRunCode, dicRow.strRunName);
+      const blnStatusMatch = matchesAnyFilter(
+        lstStatusFilters,
+        blnPayslipScreen ? dicRow.strPayslipStatus || "Generated" : dicRow.strStatus
+      );
+      const blnMonthMatch =
+        lstPayrollMonthFilters.length === 0 ||
+        lstPayrollMonthFilters.some((strMonth) => strRowPayrollMonth === strMonth);
+      return blnSelfMatch && blnEmployeeMatch && blnRunMatch && blnStatusMatch && blnMonthMatch;
     });
   }, [blnPayslipScreen, blnSelfOnly, dicSearchApplied, intSelfEmployeeID, lstResults, strLatestPayrollMonth]);
   const lstPreviewLines = useMemo(
@@ -321,7 +402,7 @@ export default function PayrollResultListPage({
     setStrError("");
     try {
       const dicPayslip = await payslipService.getPayslipPreview(
-        dicRow.intPayrollRunID,
+        dicRow.strPayrollRunRecordUUID ?? String(dicRow.intPayrollRunID),
         dicRow.intEmployeeID
       );
       const intPayslipID =
@@ -331,7 +412,7 @@ export default function PayrollResultListPage({
           ? null
           : (
               await payslipService.generatePayslip(
-                dicRow.intPayrollRunID,
+                dicRow.strPayrollRunRecordUUID ?? String(dicRow.intPayrollRunID),
                 dicRow.intEmployeeID
               )
             ).intPayslipID);
@@ -339,7 +420,7 @@ export default function PayrollResultListPage({
         setStrError(t("payslip_not_generated", "Payslip could not be generated for this employee."));
         return;
       }
-      const strHtml = await payslipService.getDownloadHtml(intPayslipID);
+      const strHtml = await payslipService.getDownloadHtml(String(intPayslipID));
       if (blnPrint) {
         printPayslipHtml(strHtml);
       } else {
@@ -381,11 +462,28 @@ export default function PayrollResultListPage({
                 rowKey={dicRow.intID}
                 blnCanView={blnCanAccessResults}
                 blnCanEdit={false}
-                onView={() => objRouter.push(`/payroll/results/${dicRow.intID}`)}
+                onView={() => objRouter.push(`/payroll/results/${dicRow.strRecordUUID}`)}
               />
             )}
             {blnPayslipScreen ? (
               <>
+                {blnCanAccessResults ? (
+                  <Button
+                    data-controlid="payroll-results.list.row.view.button"
+                    data-row-key={dicRow.intID}
+                    className={`${styles.secondaryButton} ${styles.compactButton}`}
+                    startIcon={<VisibilityRoundedIcon />}
+                    onClick={() => {
+                      if (!dicRow.intPayslipID) {
+                        setStrError(t("payslip_not_generated", "Payslip could not be generated for this employee."));
+                        return;
+                      }
+                      window.open(blnEssMode ? `/ess/my-payslips/document/${dicRow.intPayslipID}` : `/reports/payslips/document/${dicRow.intPayslipID}`, "_blank", "noopener,noreferrer");
+                    }}
+                  >
+                    {t("view_payslip", "View")}
+                  </Button>
+                ) : null}
                 {blnCanDownloadPayslips ? (
                   <Button
                     className={`${styles.secondaryButton} ${styles.compactButton}`}
@@ -415,12 +513,19 @@ export default function PayrollResultListPage({
         strPayslipNumber: dicRow.strPayslipNumber || "-",
         strRunName: dicRow.strRunName,
         dtPayrollMonth: formatMonth(dicRow.dtPayrollMonth),
+        dtPayrollMonthSortValue: dicRow.dtPayrollMonth ? new Date(dicRow.dtPayrollMonth).getTime() : 0,
         decGrossEarningsAmount: formatCurrency(dicRow.decGrossEarningsAmount),
+        decGrossEarningsAmountSortValue: Number(dicRow.decGrossEarningsAmount ?? 0),
         decEmployeeDeductionTotal: formatCurrency(dicRow.decEmployeeDeductionTotal),
+        decEmployeeDeductionTotalSortValue: Number(dicRow.decEmployeeDeductionTotal ?? 0),
         decTaxTotal: formatCurrency(dicRow.decTaxTotal),
+        decTaxTotalSortValue: Number(dicRow.decTaxTotal ?? 0),
         decNetPayAmount: formatCurrency(dicRow.decNetPayAmount),
+        decNetPayAmountSortValue: Number(dicRow.decNetPayAmount ?? 0),
         decEmployerContributionTotal: formatCurrency(dicRow.decEmployerContributionTotal),
+        decEmployerContributionTotalSortValue: Number(dicRow.decEmployerContributionTotal ?? 0),
         decTotalEmployerCost: formatCurrency(dicRow.decTotalEmployerCost),
+        decTotalEmployerCostSortValue: Number(dicRow.decTotalEmployerCost ?? 0),
         strStatus: (
           <span
             className={styles.statusPill}
@@ -436,8 +541,9 @@ export default function PayrollResultListPage({
           </span>
         ),
         dtPayslipGeneratedOn: formatDateTime(dicRow.dtPayslipGeneratedOn),
+        dtPayslipGeneratedOnSortValue: dicRow.dtPayslipGeneratedOn ? new Date(dicRow.dtPayslipGeneratedOn).getTime() : 0,
       })),
-    [blnCanAccessResults, blnCanDownloadPayslips, blnCanPrintPayslips, blnPayslipScreen, intPayslipActionID, lstFilteredRows, objRouter, t]
+    [blnCanAccessResults, blnCanDownloadPayslips, blnCanPrintPayslips, blnEssMode, blnPayslipScreen, intPayslipActionID, lstFilteredRows, objRouter, t]
   );
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(() => {
@@ -445,13 +551,13 @@ export default function PayrollResultListPage({
       { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code") },
       { field: "strEmployeeName", headerName: t("employee_name", "Employee Name"), width: 220 },
       { field: "strRunName", headerName: t("payroll_run", "Payroll Run"), width: 220 },
-      { field: "dtPayrollMonth", headerName: t("payroll_month", "Payroll Month"), width: 140 },
-      { field: "decGrossEarningsAmount", headerName: t("gross_earnings", "Gross Earnings"), align: "right", width: 160 },
-      { field: "decEmployeeDeductionTotal", headerName: t("employee_deductions", "Employee Deductions"), align: "right", width: 180 },
-      { field: "decTaxTotal", headerName: t("tax", "Tax"), align: "right", width: 140 },
-      { field: "decNetPayAmount", headerName: t("net_pay", "Net Pay"), align: "right", width: 150 },
-      { field: "decEmployerContributionTotal", headerName: t("employer_contribution", "Employer Contributions"), align: "right", width: 190 },
-      { field: "decTotalEmployerCost", headerName: t("total_employer_cost", "Total Employer Cost"), align: "right", width: 190 },
+      { field: "dtPayrollMonth", headerName: t("payroll_month", "Payroll Month"), width: 140, sortAccessor: (dicRow) => dicRow.dtPayrollMonthSortValue },
+      { field: "decGrossEarningsAmount", headerName: t("gross_earnings", "Gross Earnings"), align: "right", width: 160, sortAccessor: (dicRow) => dicRow.decGrossEarningsAmountSortValue },
+      { field: "decEmployeeDeductionTotal", headerName: t("employee_deductions", "Employee Deductions"), align: "right", width: 180, sortAccessor: (dicRow) => dicRow.decEmployeeDeductionTotalSortValue },
+      { field: "decTaxTotal", headerName: t("tax", "Tax"), align: "right", width: 140, sortAccessor: (dicRow) => dicRow.decTaxTotalSortValue },
+      { field: "decNetPayAmount", headerName: t("net_pay", "Net Pay"), align: "right", width: 150, sortAccessor: (dicRow) => dicRow.decNetPayAmountSortValue },
+      { field: "decEmployerContributionTotal", headerName: t("employer_contribution", "Employer Contributions"), align: "right", width: 190, sortAccessor: (dicRow) => dicRow.decEmployerContributionTotalSortValue },
+      { field: "decTotalEmployerCost", headerName: t("total_employer_cost", "Total Employer Cost"), align: "right", width: 190, sortAccessor: (dicRow) => dicRow.decTotalEmployerCostSortValue },
       { field: "strStatus", headerName: t("status", "Status"), sortable: false, filterable: false, width: 140 },
     ];
 
@@ -462,7 +568,7 @@ export default function PayrollResultListPage({
         sortable: false,
         filterable: false,
         exportable: false,
-        width: blnPayslipScreen ? 260 : 110,
+        width: blnPayslipScreen ? 340 : 110,
       });
     }
 
@@ -476,6 +582,7 @@ export default function PayrollResultListPage({
         field: "dtPayslipGeneratedOn",
         headerName: t("generated_on", "Generated On"),
         width: 180,
+        sortAccessor: (dicRow) => dicRow.dtPayslipGeneratedOnSortValue,
       });
     }
 
@@ -522,79 +629,12 @@ export default function PayrollResultListPage({
 
         {blnPayslipScreen ? (
           <Box className={`${styles.payslipSearchPanel} ${styles.payslipSearchLinePrimary}`}>
-              <TextField
-                controlId="payroll-results.list.employee-search.input"
-                value={dicSearchDraft.strSearchEmployee}
-                onChange={(objEvent) =>
-                  setDicSearchDraft((dicPrevious) => ({
-                    ...dicPrevious,
-                    strSearchEmployee: objEvent.target.value,
-                  }))
-                }
-                placeholder={t("employee_search_placeholder", "Search by employee code or name")}
-                fullWidth
-              />
-              <TextField
-                value={dicSearchDraft.strSearchRun}
-                onChange={(objEvent) =>
-                  setDicSearchDraft((dicPrevious) => ({
-                    ...dicPrevious,
-                    strSearchRun: objEvent.target.value,
-                  }))
-                }
-                placeholder={t("run_search_placeholder", "Search by payroll run")}
-                fullWidth
-              />
-              <TextField
-                type="month"
-                value={dicSearchDraft.strPayrollMonth}
-                onChange={(objEvent) =>
-                  setDicSearchDraft((dicPrevious) => ({
-                    ...dicPrevious,
-                    strPayrollMonth: objEvent.target.value,
-                  }))
-                }
-                label={t("payroll_month", "Payroll Month")}
-                fullWidth
-                InputLabelProps={{ shrink: true }}
-              />
-              <TextField
-                value={dicSearchDraft.strDepartment}
-                onChange={(objEvent) =>
-                  setDicSearchDraft((dicPrevious) => ({
-                    ...dicPrevious,
-                    strDepartment: objEvent.target.value,
-                  }))
-                }
-                placeholder={t("department", "Department")}
-                fullWidth
-              />
-              <TextField
-                value={dicSearchDraft.strLocation}
-                onChange={(objEvent) =>
-                  setDicSearchDraft((dicPrevious) => ({
-                    ...dicPrevious,
-                    strLocation: objEvent.target.value,
-                  }))
-                }
-                placeholder={t("location", "Location")}
-                fullWidth
-              />
-              <TextField
-                select
-                label={t("status", "Status")}
-                value={dicSearchDraft.strStatus}
-                onChange={(objEvent) =>
-                  setDicSearchDraft((dicPrevious) => ({
-                    ...dicPrevious,
-                    strStatus: objEvent.target.value as SearchForm["strStatus"],
-                  }))
-                }
-                fullWidth
-              >
-                <MenuItem value="All">{t("status_all", "All")}</MenuItem>
-                <MenuItem value="Generated">{t("status_generated", "Generated")}</MenuItem>
-              </TextField>
+              <ReportMultiSelectField value={dicSearchDraft.strSearchEmployee} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: strValue }))} options={dicPayslipFilterOptions.lstEmployees} placeholder={t("employee_search_placeholder", "Search by employee code or name")} controlId="payroll-results.list.employee-search.input" />
+              <ReportMultiSelectField value={dicSearchDraft.strSearchRun} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: strValue }))} options={dicPayslipFilterOptions.lstRuns} placeholder={t("run_search_placeholder", "Search by payroll run")} />
+              <ReportMultiSelectField value={dicSearchDraft.strPayrollMonth} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: strValue }))} options={dicPayslipFilterOptions.lstMonths} label={t("payroll_month", "Payroll Month")} placeholder={t("payroll_month", "Payroll Month")} />
+              <ReportMultiSelectField value={dicSearchDraft.strDepartment} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: strValue }))} options={dicPayslipFilterOptions.lstDepartments} placeholder={t("department", "Department")} />
+              <ReportMultiSelectField value={dicSearchDraft.strLocation} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: strValue }))} options={dicPayslipFilterOptions.lstLocations} placeholder={t("location", "Location")} />
+              <ReportMultiSelectField label={t("status", "Status")} value={dicSearchDraft.strStatus === "All" ? "" : dicSearchDraft.strStatus} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: strValue || "All" }))} options={dicPayslipFilterOptions.lstStatuses.length ? dicPayslipFilterOptions.lstStatuses : ["Generated"]} placeholder={t("status_all", "All")} />
               <Box className={styles.searchActions}>
                 <Button
                   controlId="payroll-results.list.search.button"
@@ -619,23 +659,15 @@ export default function PayrollResultListPage({
         {!blnPayslipScreen && (
           <Box
             sx={{
-              width: "100%",
-              border: "1px solid rgba(191,219,254,0.7)",
-              borderRadius: "28px",
-              px: { xs: 1.5, md: 2.5 },
-              py: { xs: 1.5, md: 1.8 },
-              background: "radial-gradient(circle at top center, rgba(226,241,255,0.72) 0%, #ffffff 45%, #f8fbff 100%)",
-              boxShadow: "0 18px 40px rgba(15, 23, 42, 0.05)",
+              display: "flex",
+              flexWrap: "nowrap",
+              gap: 1.2,
+              alignItems: "center",
+              overflowX: "auto",
+              pb: 0.5,
+              "& > .MuiTextField-root, & > .MuiFormControl-root": { flex: "1 1 180px", minWidth: 170 },
             }}
           >
-            <Box
-              sx={{
-                display: "grid",
-                gap: 1.2,
-                gridTemplateColumns: { xs: "1fr", xl: "1.35fr 1.05fr 0.8fr 0.68fr 0.68fr auto auto" },
-                alignItems: "end",
-              }}
-            >
               <TextField
                 controlId="payroll-results.list.employee-search.input"
                 value={dicSearchDraft.strSearchEmployee}
@@ -722,25 +754,26 @@ export default function PayrollResultListPage({
                 <MenuItem value="Published">{t("status_published", "Published")}</MenuItem>
                 <MenuItem value="Paid">{t("status_paid", "Paid")}</MenuItem>
               </TextField>
-              <Button
-                controlId="payroll-results.list.search.button"
-                className={styles.primaryButton}
-                startIcon={<SearchRoundedIcon />}
-                onClick={() => applyFilters(dicSearchDraft)}
-                sx={{ minWidth: 104, minHeight: 34, height: 34, borderRadius: "10px" }}
-              >
-                {t("search", "Search")}
-              </Button>
-              <Button
-                controlId="payroll-results.list.clear.button"
-                className={styles.secondaryButton}
-                startIcon={<ClearRoundedIcon />}
-                onClick={clearFilters}
-                sx={{ minWidth: 96, minHeight: 34, height: 34, borderRadius: "10px" }}
-              >
-                {t("clear", "Clear")}
-              </Button>
-            </Box>
+              <Box sx={{ display: "flex", gap: 1, flexShrink: 0, ml: "auto" }}>
+                <Button
+                  controlId="payroll-results.list.search.button"
+                  className={styles.primaryButton}
+                  startIcon={<SearchRoundedIcon />}
+                  onClick={() => applyFilters(dicSearchDraft)}
+                  sx={{ minWidth: 104, minHeight: 34, height: 34, borderRadius: "10px" }}
+                >
+                  {t("search", "Search")}
+                </Button>
+                <Button
+                  controlId="payroll-results.list.clear.button"
+                  className={styles.secondaryButton}
+                  startIcon={<ClearRoundedIcon />}
+                  onClick={clearFilters}
+                  sx={{ minWidth: 96, minHeight: 34, height: 34, borderRadius: "10px" }}
+                >
+                  {t("clear", "Clear")}
+                </Button>
+              </Box>
           </Box>
         )}
       </Box>
@@ -808,8 +841,6 @@ export default function PayrollResultListPage({
           columns={lstTableColumns}
           rows={lstTableRows}
           rowIdField="id"
-          defaultPageSize={10}
-          pageSizeOptions={[10, 20, 50]}
           exportFileName={blnPayslipScreen ? "payslips" : "payroll-results"}
           showExportOptions={canDoAny("export")}
           showPaginationSummary
@@ -871,7 +902,7 @@ export default function PayrollResultListPage({
               >
                 <Box>
                   <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>
-                    {t("gross", "Gross")}
+                    {t("gross_earnings", "Gross Earnings")}
                   </Typography>
                   <Typography sx={{ fontWeight: 700 }}>
                     {formatCurrency(objPreviewRecord.decGrossEarningsAmount)}

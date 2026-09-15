@@ -3,9 +3,10 @@
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
 import type {
-  BalanceMovementRequest, BalanceMutationResult, EmployeeLeaveBalance, EmployeeLeaveLedger,
+  BalanceMovementRequest, BalanceMutationResult, EmployeeCurrentPlan, EmployeeLeaveBalance, EmployeeLeaveLedger,
   EmployeeLeavePlanOverview, EmployeePlanAssignRequest, EmployeePlanAssignmentUpdateRequest, LeavePlan, LeavePlanFilters, LeavePlanLanguages,
   LeavePlanSaveRequest, LeavePolicyOption, LeaveTypeOption, OpeningBalanceRequest,
+  ReplacementImpact, ReplacementPreviewRequest,
 } from "@/features/leave-plan/types/LeavePlanTypes";
 
 const strLeaveViewAction = "LEAVE_VIEW";
@@ -36,7 +37,7 @@ export const leavePlanService = {
     });
     return objResult.Data ?? [];
   },
-  async getPlan(intPlanID: number): Promise<LeavePlan> {
+  async getPlan(intPlanID: string | number): Promise<LeavePlan> {
     const objResult = await requestApi<LeavePlan>({ strPath: `/leave/plans/${intPlanID}`, strMethod: ApiRequestMethod.Get, strMenuAction: strLeaveViewAction });
     return objResult.Data;
   },
@@ -44,15 +45,15 @@ export const leavePlanService = {
     const objResult = await requestApi<LeavePlan>({ strPath: "/leave/plans", strMethod: ApiRequestMethod.Post, strMenuAction: strLeaveManageAction, objBody: objPayload });
     return objResult.Data;
   },
-  async updatePlan(intPlanID: number, objPayload: LeavePlanSaveRequest): Promise<LeavePlan> {
+  async updatePlan(intPlanID: string | number, objPayload: LeavePlanSaveRequest): Promise<LeavePlan> {
     const objResult = await requestApi<LeavePlan>({ strPath: `/leave/plans/${intPlanID}`, strMethod: ApiRequestMethod.Put, strMenuAction: strLeaveManageAction, objBody: objPayload });
     return objResult.Data;
   },
-  async setPlanStatus(intPlanID: number, blnIsActive: boolean): Promise<LeavePlan> {
+  async setPlanStatus(intPlanID: string | number, blnIsActive: boolean): Promise<LeavePlan> {
     const objResult = await requestApi<LeavePlan>({ strPath: `/leave/plans/${intPlanID}/status`, strMethod: ApiRequestMethod.Post, strMenuAction: strLeaveManageAction, objQueryParams: { is_active: blnIsActive }, objBody: {} });
     return objResult.Data;
   },
-  async deletePlan(intPlanID: number): Promise<void> {
+  async deletePlan(intPlanID: string | number): Promise<void> {
     await requestApi<LeavePlan>({ strPath: `/leave/plans/${intPlanID}`, strMethod: ApiRequestMethod.Delete, strMenuAction: strLeaveManageAction });
   },
   async getActiveLeaveTypes(): Promise<LeaveTypeOption[]> {
@@ -67,31 +68,39 @@ export const leavePlanService = {
     const objResult = await requestApi<LeavePlanLanguages>({ strPath: "/leave/plans/languages", strMethod: ApiRequestMethod.Get, strMenuAction: strLeaveViewAction });
     return objResult.Data;
   },
-  async getEmployeeOverview(intEmployeeID: number, intLeaveYear: number): Promise<EmployeeLeavePlanOverview> {
+  async listCurrentPlans(): Promise<EmployeeCurrentPlan[]> {
+    const objResult = await requestApi<EmployeeCurrentPlan[]>({ strPath: "/leave/plan-assignments/current-plans", strMethod: ApiRequestMethod.Get, strMenuAction: strLeaveViewAction });
+    return objResult.Data ?? [];
+  },
+  async getEmployeeOverview(intEmployeeID: string | number, intLeaveYear: number): Promise<EmployeeLeavePlanOverview> {
     const objResult = await requestApi<EmployeeLeavePlanOverview>({ strPath: `/leave/plan-assignments/${intEmployeeID}`, strMethod: ApiRequestMethod.Get, strMenuAction: strLeaveViewAction, objQueryParams: { leave_year: intLeaveYear } });
     return objResult.Data;
   },
-  async assignPlan(intEmployeeID: number, objPayload: EmployeePlanAssignRequest, blnReplace: boolean): Promise<EmployeeLeavePlanOverview> {
+  async assignPlan(intEmployeeID: string | number, objPayload: EmployeePlanAssignRequest, blnReplace: boolean): Promise<EmployeeLeavePlanOverview> {
     const objResult = await requestApi<EmployeeLeavePlanOverview>({ strPath: `/leave/plan-assignments/${intEmployeeID}/${blnReplace ? "replace" : "assign"}`, strMethod: ApiRequestMethod.Post, strMenuAction: strLeaveManageAction, objBody: objPayload });
     return objResult.Data;
   },
-  async updateAssignment(intEmployeeID: number, objPayload: EmployeePlanAssignmentUpdateRequest): Promise<EmployeeLeavePlanOverview> {
+  async previewReplacement(intEmployeeID: string | number, objPayload: ReplacementPreviewRequest): Promise<ReplacementImpact> {
+    const objResult = await requestApi<ReplacementImpact>({ strPath: `/leave/plan-assignments/${intEmployeeID}/replace/preview`, strMethod: ApiRequestMethod.Post, strMenuAction: strLeaveViewAction, objBody: objPayload });
+    return objResult.Data;
+  },
+  async updateAssignment(intEmployeeID: string | number, objPayload: EmployeePlanAssignmentUpdateRequest): Promise<EmployeeLeavePlanOverview> {
     const objResult = await requestApi<EmployeeLeavePlanOverview>({ strPath: `/leave/plan-assignments/${intEmployeeID}/update`, strMethod: ApiRequestMethod.Post, strMenuAction: strLeaveManageAction, objBody: objPayload });
     return objResult.Data;
   },
-  async initializeBalances(intEmployeeID: number, intLeaveYear: number): Promise<EmployeeLeaveBalance[]> {
+  async initializeBalances(intEmployeeID: string | number, intLeaveYear: number): Promise<EmployeeLeaveBalance[]> {
     const objResult = await requestApi<EmployeeLeaveBalance[]>({ strPath: `/leave/plan-assignments/${intEmployeeID}/balances/initialize`, strMethod: ApiRequestMethod.Post, strMenuAction: strLeaveManageAction, objBody: { intLeaveYear } });
     return objResult.Data ?? [];
   },
-  async setOpeningBalance(intEmployeeID: number, intBalanceID: number, objPayload: OpeningBalanceRequest): Promise<BalanceMutationResult> {
+  async setOpeningBalance(intEmployeeID: string | number, intBalanceID: number, objPayload: OpeningBalanceRequest): Promise<BalanceMutationResult> {
     const objResult = await requestApi<BalanceMutationResult>({ strPath: `/leave/plan-assignments/${intEmployeeID}/balances/${intBalanceID}/opening`, strMethod: ApiRequestMethod.Post, strMenuAction: strLeaveManageAction, objBody: objPayload });
     return objResult.Data;
   },
-  async adjustBalance(intEmployeeID: number, intBalanceID: number, strDirection: "credit" | "debit", objPayload: BalanceMovementRequest): Promise<BalanceMutationResult> {
+  async adjustBalance(intEmployeeID: string | number, intBalanceID: number, strDirection: "credit" | "debit", objPayload: BalanceMovementRequest): Promise<BalanceMutationResult> {
     const objResult = await requestApi<BalanceMutationResult>({ strPath: `/leave/plan-assignments/${intEmployeeID}/balances/${intBalanceID}/${strDirection}`, strMethod: ApiRequestMethod.Post, strMenuAction: strLeaveManageAction, objBody: objPayload });
     return objResult.Data;
   },
-  async getLedger(intEmployeeID: number, intLeaveYear: number, intBalanceID?: number): Promise<EmployeeLeaveLedger[]> {
+  async getLedger(intEmployeeID: string | number, intLeaveYear: number, intBalanceID?: number): Promise<EmployeeLeaveLedger[]> {
     const objResult = await requestApi<EmployeeLeaveLedger[]>({ strPath: `/leave/plan-assignments/${intEmployeeID}/ledger`, strMethod: ApiRequestMethod.Get, strMenuAction: strLeaveViewAction, objQueryParams: { leave_year: intLeaveYear, balance_id: intBalanceID } });
     return objResult.Data ?? [];
   },

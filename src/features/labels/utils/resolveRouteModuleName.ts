@@ -53,6 +53,19 @@ export function resolveRouteModuleName(strPathname: string) {
   ) {
     return "payroll-cycles";
   }
+  if (strLowerPath.startsWith("/masters/payroll-groups")) {
+    return "payroll-groups";
+  }
+  if (strLowerPath.startsWith("/payroll/attendance-leave-inputs")) {
+    return "attendance-leave-inputs";
+  }
+  if (strLowerPath.startsWith("/reports/salary-register")) {
+    return "salary-register";
+  }
+  if (strLowerPath.startsWith("/reports/salary-statement")) {
+    return "salary-statement";
+  }
+  if (strLowerPath.startsWith("/reports/ctc-format")) return "ctc-format";
   if (
     strLowerPath.startsWith("/payroll/employee-payroll-inputs") ||
     strLowerPath.startsWith("/payroll/employee-payroll-input") ||
@@ -68,6 +81,9 @@ export function resolveRouteModuleName(strPathname: string) {
   }
   if (strLowerPath.startsWith("/ess/my-bank-details")) {
     return "my-bank-details";
+  }
+  if (strLowerPath.startsWith("/ess/my-compensation")) {
+    return "my-compensation";
   }
   if (strLowerPath.startsWith("/payroll/results")) {
     return "payroll-results";

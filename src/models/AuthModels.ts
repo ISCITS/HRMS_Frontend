@@ -49,6 +49,27 @@ export type GenericLoginRequest = {
   strPassword: string;
 };
 
+export type ChangePasswordRequest = {
+  strCurrentPassword?: string;
+  strNewPassword: string;
+  strConfirmPassword: string;
+  intEmployeeID?: number;
+};
+
+export type ChangePasswordResponse = {
+  blnPasswordChanged: boolean;
+  blnEmployeePasswordReset?: boolean;
+  intEmployeeID?: number | null;
+  intRevokedSessionCount: number;
+};
+
+export type PasswordResetEmployeeOption = {
+  intEmployeeID: number;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  blnIsCurrentUser?: boolean;
+};
+
 export type TokenPayload = {
   strAccessToken: string;
   strTokenType: string;
@@ -79,12 +100,26 @@ export type EmployeeAvatarSummary = {
   strProfilePhotoUrl?: string | null;
 };
 
+export type PortalCode = "ESS" | "HRMS";
+
 export type AuthSuccessData = {
   objToken: TokenPayload;
   objTenant: TenantSummary;
   objUser: UserSummary;
   strHomeRoute: string;
   blnPasswordResetRequired: boolean;
+  // Portal context. A dual-access user arrives with no active context and must pick one
+  // ("Continue To"); single-portal users are activated directly by the server.
+  strActiveContext?: PortalCode | null;
+  lstAvailablePortals?: PortalCode[];
+  blnRequiresPortalSelection?: boolean;
+};
+
+export type PortalContextData = {
+  strActiveContext: PortalCode;
+  lstAvailablePortals: PortalCode[];
+  objToken: TokenPayload;
+  strHomeRoute: string;
 };
 
 export type AuthOtpChallengeData = {
@@ -154,9 +189,13 @@ export type CurrentUserContext = {
   strAuthSource: string;
   strLoginMethod: string;
   strAvatarUrl?: string | null;
+  // Active portal for this session, decided and revalidated server-side.
+  strActiveContext?: PortalCode | null;
+  // Server-derived portal entitlements; switching is offered only when both portals are present.
+  lstAvailablePortals?: PortalCode[];
 };
 
-export type DashboardType = "PAYROLL" | "ESS" | "MANAGEMENT";
+export type DashboardType = "PAYROLL" | "ESS" | "MANAGEMENT" | "WELCOME";
 
 export type DashboardWidget = {
   strWidgetCode: string;

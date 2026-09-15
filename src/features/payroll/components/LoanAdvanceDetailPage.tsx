@@ -2,6 +2,7 @@
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import DoneAllRoundedIcon from "@mui/icons-material/DoneAllRounded";
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
@@ -9,12 +10,13 @@ import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import UndoRoundedIcon from "@mui/icons-material/UndoRounded";
-import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Step, StepLabel, Stepper, Tab, Tabs, TextField, Typography } from "@mui/material";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Alert, Autocomplete, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Step, StepLabel, Stepper, Tab, Tabs, TextField, Typography } from "@mui/material";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { MenuItem as AuthMenuItem } from "@/models/AuthModels";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
+import FileUploadPanel from "@/components/shared/files/FileUploadPanel";
 import LoanAdvanceStatusBadge from "@/features/payroll/components/LoanAdvanceStatusBadge";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { employeeService } from "@/features/employee/services/employeeService";
@@ -166,9 +168,8 @@ function hasMenuRoute(lstItems: AuthMenuItem[], strRoute: string): boolean {
   return lstItems.some((objItem) => objItem.strRoute === strRoute || hasMenuRoute(objItem.lstChildren, strRoute));
 }
 
-export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "payroll" }: { intLoanAdvanceID?: number; strMode?: "payroll" | "ess" }) {
+export default function LoanAdvanceDetailPage({ strLoanAdvanceID, strMode = "payroll" }: { /** record_uuid from the URL; the internal id is never routed on. */ strLoanAdvanceID?: string; strMode?: "payroll" | "ess" }) {
   const objRouter = useRouter();
-  const objSearchParams = useSearchParams();
   const { t, blnLoadingLabels, strLabelError } = useModuleLabels("loans-advances");
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(strMode === "ess" ? lstEssModuleCodes : lstModuleCodes);
   const [objRecord, setObjRecord] = useState<LoanAdvanceRecord | null>(null);
@@ -178,7 +179,7 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
   const [lstExistingLoans, setLstExistingLoans] = useState<LoanAdvanceRecord[]>([]);
   const [objPolicy, setObjPolicy] = useState<LoanAdvanceCategoryRecord | null>(null);
   const [intTab, setIntTab] = useState(0);
-  const [blnLoading, setBlnLoading] = useState(Boolean(intLoanAdvanceID));
+  const [blnLoading, setBlnLoading] = useState(Boolean(strLoanAdvanceID));
   const [blnHasMenuFallbackAccess, setBlnHasMenuFallbackAccess] = useState(false);
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
@@ -203,8 +204,6 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
   });
 
   const blnIsEssMode = strMode === "ess";
-  const strPageMode = (objSearchParams.get("mode") || (intLoanAdvanceID ? "view" : "add")).toLowerCase();
-  const blnExplicitEditMode = strPageMode === "edit";
   const canLoanAction = (strAction: keyof typeof dicPayrollActionAliases) =>
     (blnIsEssMode ? dicEssActionAliases[strAction] : dicPayrollActionAliases[strAction])?.some((strAlias) => canDoAny(strAlias)) ?? false;
   const blnCanView = blnHasMenuFallbackAccess || canViewAny() || canLoanAction("view");
@@ -221,11 +220,12 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
   const blnCanClose = canLoanAction("close");
   const blnCanCancel = canLoanAction("cancel");
   const strStatus = objRecord?.strWorkflowStatus || "draft";
+  // Rights decide the mode, not the URL: someone holding the edit right opens an editable form,
+  // someone holding only view opens the same screen read-only. A workflow status that locks the
+  // record still wins over both - that is record state, not a permission.
   const blnReadonly =
-    strPageMode === "view" ||
     Boolean(objRecord && lstReadonlyStatuses.includes(strStatus)) ||
-    (!intLoanAdvanceID && !blnCanAdd) ||
-    (Boolean(intLoanAdvanceID) && (!blnCanEdit || !blnExplicitEditMode));
+    (strLoanAdvanceID ? !blnCanEdit : !blnCanAdd);
   const objSelectedEmployee = useMemo(() => lstEmployees.find((objEmployee) => objEmployee.intID === Number(dicValues.intEmployeeID)) || null, [lstEmployees, dicValues.intEmployeeID]);
   const lstFilteredCategories = useMemo(() => lstCategories.filter((objCategory) => objCategory.strRequestType === dicValues.strRequestType), [lstCategories, dicValues.strRequestType]);
   const lstSchedulePreview = useMemo(() => buildSchedulePreview(dicValues, objPolicy), [dicValues, objPolicy]);
@@ -272,11 +272,11 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
   const intWorkflowStep = Math.max(0, lstWorkflow.indexOf(strStatus === "sent_back" ? "draft" : strStatus));
 
   async function loadRecord() {
-    if (!intLoanAdvanceID) return;
+    if (!strLoanAdvanceID) return;
     setBlnLoading(true);
     setStrError("");
     try {
-      const objNextRecord = await (blnIsEssMode ? loanAdvanceService.getEssLoan(intLoanAdvanceID) : loanAdvanceService.getLoan(intLoanAdvanceID));
+      const objNextRecord = await (blnIsEssMode ? loanAdvanceService.getEssLoan(strLoanAdvanceID) : loanAdvanceService.getLoan(strLoanAdvanceID));
       setObjRecord(objNextRecord);
       setDicValues(toLoanAdvanceForm(objNextRecord));
       setObjPolicy(objNextRecord.objCategory || null);
@@ -299,7 +299,7 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
       setLstCategories(lstCategoryRows);
       setLstExistingLoans(lstLoanRows);
     });
-  }, [blnRightsLoading, blnCanView, intLoanAdvanceID, blnIsEssMode]);
+  }, [blnRightsLoading, blnCanView, strLoanAdvanceID, blnIsEssMode]);
 
   useEffect(() => {
     if (!dicValues.intCategoryID) {
@@ -380,15 +380,15 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
     setStrSuccess("");
     try {
       const objSnapshot = { lstPreviewSchedule: lstSchedulePreview, objPolicy };
-      const objSaved = intLoanAdvanceID
-        ? await (blnIsEssMode ? loanAdvanceService.updateEssLoan(intLoanAdvanceID, dicValues, objSnapshot) : loanAdvanceService.updateLoan(intLoanAdvanceID, dicValues, objSnapshot))
+      const objSaved = strLoanAdvanceID
+        ? await (blnIsEssMode ? loanAdvanceService.updateEssLoan(strLoanAdvanceID, dicValues, objSnapshot) : loanAdvanceService.updateLoan(strLoanAdvanceID, dicValues, objSnapshot))
         : await (blnIsEssMode ? loanAdvanceService.createEssLoan(dicValues, objSnapshot) : loanAdvanceService.createLoan(dicValues, objSnapshot));
-      const objFinal = blnSubmit ? await (blnIsEssMode ? loanAdvanceService.essAction(objSaved.intID, "submit") : loanAdvanceService.action(objSaved.intID, "submit")) : objSaved;
+      const objFinal = blnSubmit ? await (blnIsEssMode ? loanAdvanceService.essAction(objSaved.strRecordUUID, "submit") : loanAdvanceService.action(objSaved.strRecordUUID, "submit")) : objSaved;
       setObjRecord(objFinal);
       setDicValues(toLoanAdvanceForm(objFinal));
       setBlnShowFieldErrors(false);
       setStrSuccess(blnSubmit ? t("message_submitted", "Request submitted for approval.") : t("message_saved", "Request saved."));
-      if (!intLoanAdvanceID) objRouter.replace(blnIsEssMode ? `/ess/loans-advances/${objFinal.intID}` : `/payroll/loans-advances/${objFinal.intID}`);
+      if (!strLoanAdvanceID) objRouter.replace(blnIsEssMode ? `/ess/loans-advances/${objFinal.strRecordUUID}` : `/payroll/loans-advances/${objFinal.strRecordUUID}`);
       return objFinal;
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : t("error_save", "Unable to save loan or advance."));
@@ -457,8 +457,8 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
         strReason: dicActionValues.strReason || undefined,
       };
       const objNextRecord = blnIsEssMode && ["submit", "cancel"].includes(objActionDialog.strAction)
-        ? await loanAdvanceService.essAction(objRecord.intID, objActionDialog.strAction as "submit" | "cancel", objPayload)
-        : await loanAdvanceService.action(objRecord.intID, objActionDialog.strAction, objPayload);
+        ? await loanAdvanceService.essAction(objRecord.strRecordUUID, objActionDialog.strAction as "submit" | "cancel", objPayload)
+        : await loanAdvanceService.action(objRecord.strRecordUUID, objActionDialog.strAction, objPayload);
       setObjRecord(objNextRecord);
       setDicValues(toLoanAdvanceForm(objNextRecord));
       setObjActionDialog(null);
@@ -618,8 +618,8 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
 
   return (
     <Box className={`${styles.page} ${styles.detailPage}`}>
-      <Box className={styles.controlsCard}>
-        <Box className={`${styles.controlsHeader} ${styles.detailHeader}`}>
+      <Box className={styles.controlsCard} sx={{ py: 1, minHeight: 0 }}>
+        <Box className={`${styles.controlsHeader} ${styles.detailHeader}`} sx={{ alignItems: "center", minHeight: 0 }}>
           <Box>
             <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push(blnIsEssMode ? "/ess/loans-advances" : "/payroll/loans-advances")}>{t("back_button", "Back")}</Button>
           </Box>
@@ -657,14 +657,24 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
                 ].map(([strStepKey, strStepLabel]) => <Step key={strStepKey}><StepLabel>{strStepLabel}</StepLabel></Step>)}
               </Stepper>
               <Box className={styles.fnfEditDetailsGrid}>
-                {!blnIsEssMode ? <TextField required select size="small" label={t("field_employee", "Employee")} value={dicValues.intEmployeeID} error={Boolean(getFieldError("intEmployeeID"))} helperText={getFieldError("intEmployeeID") || " "} disabled={blnReadonly} onChange={(e) => {
-                  const objEmployee = lstEmployees.find((objRow) => objRow.intID === Number(e.target.value));
-                  updateValue("intEmployeeID", e.target.value ? Number(e.target.value) : "");
-                  updateValue("strEmployeeCode", objEmployee?.strEmployeeCode || "");
-                }}>
-                  <MenuItem value="">{t("select_employee", "Select employee")}</MenuItem>
-                  {lstEmployees.filter((objEmployee) => !objEmployee.blnIsPartialSave).map((objEmployee) => <MenuItem key={objEmployee.intID} value={objEmployee.intID}>{getEmployeeLabel(objEmployee)}</MenuItem>)}
-                </TextField> : null}
+                {!blnIsEssMode ? (
+                  <Autocomplete
+                    size="small"
+                    options={lstEmployees.filter((objEmployee) => !objEmployee.blnIsPartialSave)}
+                    value={lstEmployees.find((objEmployee) => objEmployee.intID === dicValues.intEmployeeID) ?? null}
+                    getOptionLabel={(objEmployee) => getEmployeeLabel(objEmployee)}
+                    isOptionEqualToValue={(objA, objB) => objA.intID === objB.intID}
+                    disabled={blnReadonly}
+                    onChange={(_e, objEmployee) => {
+                      updateValue("intEmployeeID", objEmployee ? objEmployee.intID : "");
+                      updateValue("strEmployeeCode", objEmployee?.strEmployeeCode || "");
+                    }}
+                    renderInput={(params) => (
+                      <TextField {...params} required label={t("field_employee", "Employee")} placeholder={t("search_employee", "Search employee...")} error={Boolean(getFieldError("intEmployeeID"))} helperText={getFieldError("intEmployeeID") || " "}
+                        InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />
+                    )}
+                  />
+                ) : null}
                 <TextField size="small" label={blnIsEssMode ? t("field_employee", "Employee") : t("field_department", "Department")} value={blnIsEssMode ? (objRecord?.objEmployee?.strEmployeeName || t("current_employee", "Current employee")) : (objSelectedEmployee?.strDepartmentName || objRecord?.objEmployee?.strDepartmentName || "")} disabled />
                 <TextField required select size="small" label={t("field_request_type", "Request Type")} value={dicValues.strRequestType} disabled={blnReadonly} onChange={(e) => { updateValue("strRequestType", e.target.value as LoanAdvanceFormValues["strRequestType"]); updateValue("intCategoryID", ""); }}>
                   <MenuItem value="loan">{t("type_loan", "Loan")}</MenuItem>
@@ -690,6 +700,20 @@ export default function LoanAdvanceDetailPage({ intLoanAdvanceID, strMode = "pay
               {objPolicy?.blnPerquisiteTaxApplicable ? <Alert severity="warning" sx={{ borderRadius: "8px" }}>{t("notional_tax_note", "Notional tax applies because the benchmark interest rate is higher than the company recovery rate. Taxable perquisite preview is shown in the schedule.")}</Alert> : null}
               <Typography sx={{ color: "#0f172a", fontWeight: 900 }}>{t("preview_title", "Reducing-balance Schedule Preview")}</Typography>
               {renderScheduleTable(lstSchedulePreview)}
+              {blnIsEssMode ? (
+                <FileUploadPanel
+                  module="LOAN"
+                  relatedEntityId={objRecord?.intID ?? null}
+                  relatedEntityType="LOAN_ADVANCE"
+                  readOnly={blnReadonly}
+                  controlIdPrefix="ess.loans-advances.documents"
+                  title={t("documents_title", "Supporting Documents")}
+                  description={t("documents_description", "Attach any supporting document for this loan or advance request (e.g. quotation, estimate).")}
+                  disabledMessage={t("documents_disabled_message", "Save this request as a draft before attaching documents.")}
+                  emptyMessage={t("documents_empty", "No documents uploaded yet.")}
+                  uploadLabel={t("documents_upload", "Upload Document")}
+                />
+              ) : null}
             </Box>
           ) : null}
           {intTab === 1 ? (

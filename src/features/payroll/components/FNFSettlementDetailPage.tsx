@@ -48,7 +48,7 @@ function toSettlementFormValues(objSettlement: FNFSettlementRecord): FNFSettleme
   };
 }
 
-export default function FNFSettlementDetailPage({ intSettlementID }: { intSettlementID: number }) {
+export default function FNFSettlementDetailPage({ strSettlementID }: { /** record_uuid from the URL; the internal id is never routed on. */ strSettlementID: string }) {
   const objRouter = useRouter();
   const { canDoAny } = useModuleActionAccess(lstModuleCodes);
   const [objSettlement, setObjSettlement] = useState<FNFSettlementRecord | null>(null);
@@ -73,7 +73,7 @@ export default function FNFSettlementDetailPage({ intSettlementID }: { intSettle
     if (blnShowLoader) setBlnLoading(true);
     setStrError("");
     try {
-      setObjSettlement(await fnfSettlementService.getSettlement(intSettlementID));
+      setObjSettlement(await fnfSettlementService.getSettlement(strSettlementID));
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to load FNF settlement.");
     } finally {
@@ -81,7 +81,7 @@ export default function FNFSettlementDetailPage({ intSettlementID }: { intSettle
     }
   }
 
-  useEffect(() => { loadSettlement().catch(() => undefined); }, [intSettlementID]);
+  useEffect(() => { loadSettlement().catch(() => undefined); }, [strSettlementID]);
 
   function openAction(strAction: string) {
     if (["release", "cancel", "mark-paid", "mark-recovered"].includes(strAction)) {
@@ -101,10 +101,10 @@ export default function FNFSettlementDetailPage({ intSettlementID }: { intSettle
     setStrSuccess("");
     try {
       if (strAction === "statement") {
-        setObjStatement(await fnfSettlementService.getStatement(intSettlementID));
+        setObjStatement(await fnfSettlementService.getStatement(strSettlementID));
         setStrSuccess("Statement generated.");
       } else {
-        setObjSettlement(await fnfSettlementService.action(intSettlementID, strAction, objBody));
+        setObjSettlement(await fnfSettlementService.action(strSettlementID, strAction, objBody));
         setStrSuccess("Action completed.");
       }
     } catch (objError) {
@@ -117,9 +117,9 @@ export default function FNFSettlementDetailPage({ intSettlementID }: { intSettle
 
   async function saveLine(dicValues: FNFLineFormValues) {
     if (objEditingLine) {
-      await fnfSettlementService.updateLine(intSettlementID, objEditingLine.intID, dicValues);
+      await fnfSettlementService.updateLine(strSettlementID, objEditingLine.intID, dicValues);
     } else {
-      await fnfSettlementService.addLine(intSettlementID, dicValues);
+      await fnfSettlementService.addLine(strSettlementID, dicValues);
     }
     await loadSettlement(false);
   }
@@ -134,7 +134,7 @@ export default function FNFSettlementDetailPage({ intSettlementID }: { intSettle
     setStrError("");
     setStrSuccess("");
     try {
-      setObjSettlement(await fnfSettlementService.updateSettlement(objSettlement.intID, dicEditingSettlement));
+      setObjSettlement(await fnfSettlementService.updateSettlement(objSettlement.strRecordUUID, dicEditingSettlement));
       setDicEditingSettlement(null);
       setStrSuccess("Settlement details updated.");
     } catch (objError) {
@@ -152,7 +152,7 @@ export default function FNFSettlementDetailPage({ intSettlementID }: { intSettle
     if (!objLineToDelete) return;
     setBlnSaving(true);
     try {
-      await fnfSettlementService.deleteLine(intSettlementID, objLineToDelete.intID);
+      await fnfSettlementService.deleteLine(strSettlementID, objLineToDelete.intID);
       await loadSettlement(false);
       setObjLineToDelete(null);
       setStrSuccess("Settlement line deleted.");

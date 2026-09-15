@@ -52,7 +52,8 @@ import type {
 
 type SalaryComponentEditorPageProps = {
   strMode: "add" | "edit" | "view";
-  intSalaryComponentID?: number;
+  /** record_uuid from the URL. The internal id is never routed on; it arrives with the loaded record. */
+  strSalaryComponentID?: string;
   strBackRoute?: string;
 };
 
@@ -132,6 +133,7 @@ function syncLookupBackedFields(
   type LookupIDField =
     | "intComponentCategoryID"
     | "intComponentGroupID"
+    | "intPayrollProcessingModeID"
     | "intCalcMethodID"
     | "intRoundingRuleID"
     | "intDefaultPeriodicityID"
@@ -145,6 +147,7 @@ function syncLookupBackedFields(
   type LookupTextField =
     | "strComponentCategory"
     | "strComponentGroup"
+    | "strPayrollProcessingMode"
     | "strCalcMethod"
     | "strRoundingRule"
     | "strDefaultPeriodicity"
@@ -170,6 +173,11 @@ function syncLookupBackedFields(
       strIDField: "intComponentGroupID",
       strLegacyField: "strComponentGroup",
       lstOptions: objOptions.lstComponentGroupLookups,
+    },
+    {
+      strIDField: "intPayrollProcessingModeID",
+      strLegacyField: "strPayrollProcessingMode",
+      lstOptions: objOptions.lstPayrollProcessingModeLookups,
     },
     {
       strIDField: "intCalcMethodID",
@@ -260,6 +268,8 @@ function haveLookupBackedFieldsChanged(
     || dicPrevious.strComponentCategory !== dicNext.strComponentCategory
     || dicPrevious.intComponentGroupID !== dicNext.intComponentGroupID
     || dicPrevious.strComponentGroup !== dicNext.strComponentGroup
+    || dicPrevious.intPayrollProcessingModeID !== dicNext.intPayrollProcessingModeID
+    || dicPrevious.strPayrollProcessingMode !== dicNext.strPayrollProcessingMode
     || dicPrevious.intCalcMethodID !== dicNext.intCalcMethodID
     || dicPrevious.strCalcMethod !== dicNext.strCalcMethod
     || dicPrevious.intRoundingRuleID !== dicNext.intRoundingRuleID
@@ -433,7 +443,7 @@ function deriveCtcTreatment(dicValues: SalaryComponentFormValues) {
 
 export default function SalaryComponentEditorPage({
   strMode,
-  intSalaryComponentID,
+  strSalaryComponentID,
   strBackRoute
 }: SalaryComponentEditorPageProps) {
   const objRouter = useRouter();
@@ -460,6 +470,11 @@ export default function SalaryComponentEditorPage({
   const blnCanSave = strMode === "add" ? blnCanAdd : strMode === "edit" && blnCanEdit;
   const blnFieldDisabled = blnSaving || blnReadOnly || !blnCanSave;
   const strResolvedBackRoute = strBackRoute?.startsWith("/") ? strBackRoute : "/salary-components";
+  const strPageHeading = strMode === "add"
+    ? t("add_salary_component", "Add Salary Component")
+    : strMode === "edit"
+      ? t("edit_salary_component", "Edit Salary Component")
+      : t("view_salary_component", "View Salary Component");
 
   useEffect(() => {
     function syncLanguage() {
@@ -494,8 +509,8 @@ export default function SalaryComponentEditorPage({
           return;
         }
         setObjFormOptions(objOptions);
-        if ((strMode === "edit" || strMode === "view") && intSalaryComponentID) {
-          const dicDetail = await salaryComponentService.getSalaryComponentById(intSalaryComponentID);
+        if ((strMode === "edit" || strMode === "view") && strSalaryComponentID) {
+          const dicDetail = await salaryComponentService.getSalaryComponentById(strSalaryComponentID);
           if (!blnMounted) {
             return;
           }
@@ -535,7 +550,7 @@ export default function SalaryComponentEditorPage({
     return () => {
       blnMounted = false;
     };
-  }, [blnCanLoadWorkspace, blnRightsLoading, intCurrentLanguageID, intSalaryComponentID, strMode]);
+  }, [blnCanLoadWorkspace, blnRightsLoading, intCurrentLanguageID, strSalaryComponentID, strMode]);
 
   const dicDependencyOptionByID = useMemo(() => {
     return new Map((objFormOptions?.lstDependencyComponents ?? []).map((dicOption) => [dicOption.intID, dicOption]));
@@ -546,6 +561,7 @@ export default function SalaryComponentEditorPage({
   }, [lstFlexiEligibilityQuestions]);
   const lstCategoryOptions = objFormOptions?.lstComponentCategoryLookups ?? [];
   const lstGroupOptions = objFormOptions?.lstComponentGroupLookups ?? [];
+  const lstPayrollProcessingModeOptions = objFormOptions?.lstPayrollProcessingModeLookups ?? [];
   const lstCalcMethodOptions = objFormOptions?.lstCalcMethodLookups ?? [];
   const lstRoundingRuleOptions = objFormOptions?.lstRoundingRuleLookups ?? [];
   const lstDefaultPeriodicityOptions = objFormOptions?.lstDefaultPeriodicityLookups ?? [];
@@ -587,7 +603,7 @@ export default function SalaryComponentEditorPage({
   const lstActiveFormulaCodes = useMemo(() => {
     const setCodes = new Set<string>();
     (objFormOptions?.lstDependencyComponents ?? [])
-      .filter((dicOption) => dicOption.intID !== intSalaryComponentID)
+      .filter((dicOption) => dicOption.intID !== objDetail?.intID)
       .forEach((dicOption) => {
         const strCode = sanitizeFormulaCode(String(dicOption.strCode ?? dicOption.strLabel ?? ""));
         if (strCode) {
@@ -595,7 +611,7 @@ export default function SalaryComponentEditorPage({
         }
       });
     return Array.from(setCodes).sort((strLeft, strRight) => strLeft.localeCompare(strRight));
-  }, [intSalaryComponentID, objFormOptions]);
+  }, [objDetail?.intID, objFormOptions]);
   const lstAllowedFormulaTokens = useMemo(
     () => ["DEEMED_WAGE_BASE", ...lstActiveFormulaCodes],
     [lstActiveFormulaCodes]
@@ -613,7 +629,7 @@ export default function SalaryComponentEditorPage({
   const blnShowContributionTypeGroup = blnIsEarningCategory || blnIsEmployerContributionCategory;
   const blnShowFlagsSection = blnShowStatutoryFlags || blnShowPayrollProcessingGroup || blnShowContributionTypeGroup;
   const blnShowLwpTreatmentSection = !blnIsFlexiBucketCategory && (blnIsEarningCategory || blnIsReimbursementCategory);
-  const blnShowLwpReducedAmountHandling = blnShowLwpTreatmentSection && blnIsFlexiReimbursement && !isCategory(strLwpTreatmentCode, "none");
+  const blnShowLwpReducedAmountHandling = blnShowLwpTreatmentSection && !isCategory(strLwpTreatmentCode, "none");
   const blnShowLwpCustomFormula = strLwpTreatmentCode === "CUSTOM_FORMULA";
   const blnShowLwpCustomProrationFormula = blnShowLwpCustomFormula;
   const blnLwpReturnToResidualSelected = blnShowLwpReducedAmountHandling && (
@@ -626,19 +642,12 @@ export default function SalaryComponentEditorPage({
   const intEnglishLanguageID =
     objFormOptions?.lstLanguages.find((dicLanguage) => dicLanguage.strCode?.toLowerCase() === "en")?.intID
     ?? null;
-  const intHindiLanguageID =
-    objFormOptions?.lstLanguages.find((dicLanguage) => dicLanguage.strCode?.toLowerCase() === "hi")?.intID
-    ?? null;
   const intDefaultLanguageID =
     intEnglishLanguageID
     ?? authHelpers.getLanguageID()
     ?? objFormOptions?.lstLanguages[0]?.intID
     ?? 1;
-  const intSecondaryLanguageID =
-    intHindiLanguageID
-    ?? authHelpers.getSecondaryLanguageID()
-    ?? objFormOptions?.lstLanguages.find((dicLanguage) => dicLanguage.intID !== intDefaultLanguageID)?.intID
-    ?? intDefaultLanguageID;
+  const intSecondaryLanguageID = authHelpers.getSecondaryLanguageID();
 
   function buildFixedLanguageRow(
     intLanguageID: number,
@@ -683,6 +692,12 @@ export default function SalaryComponentEditorPage({
       dicValues.strComponentDescription,
       dicValues.lstTexts,
     );
+    if (!intSecondaryLanguageID || intSecondaryLanguageID === intDefaultLanguageID) {
+      return {
+        ...dicValues,
+        lstTexts: ensureUniqueTextRowIDs([dicDefaultRow]),
+      };
+    }
     const dicSecondaryExistingText = dicValues.lstTexts.find(
       (dicText) => Number(dicText.intLanguageID) === intSecondaryLanguageID
     );
@@ -692,12 +707,9 @@ export default function SalaryComponentEditorPage({
       dicSecondaryExistingText?.strComponentDescription ?? "",
       dicValues.lstTexts,
     );
-    const lstRows = intSecondaryLanguageID === intDefaultLanguageID
-      ? [dicDefaultRow]
-      : [dicDefaultRow, dicSecondaryRow];
     return {
       ...dicValues,
-      lstTexts: ensureUniqueTextRowIDs(lstRows),
+      lstTexts: ensureUniqueTextRowIDs([dicDefaultRow, dicSecondaryRow]),
     };
   }
 
@@ -985,7 +997,7 @@ export default function SalaryComponentEditorPage({
     if (!dicSecondaryRow) {
       return;
     }
-    await translateTextRow(dicSecondaryRow.strRowID, Number(dicSecondaryRow.intLanguageID) || intSecondaryLanguageID);
+    await translateTextRow(dicSecondaryRow.strRowID, Number(dicSecondaryRow.intLanguageID));
   }
 
   useEffect(() => {
@@ -1017,6 +1029,7 @@ export default function SalaryComponentEditorPage({
       const blnEmployerContributionCategory = isCategory(strCategoryValue, "employer contribution") || isCategory(strCategoryValue, "contribution");
       const blnEarningCategory = isCategory(strCategoryValue, "earning");
       const blnInformationCategory = isCategory(strCategoryValue, "information");
+      const blnCtcProvisionCategory = isCategory(strCategoryValue, "ctc provision");
       const blnAllowCategoryPayslipSectionDefault = strMode === "add" && !strPayslipSectionValue;
       const dicNext = {
         ...dicPrevious,
@@ -1105,12 +1118,20 @@ export default function SalaryComponentEditorPage({
       if (blnDeductionCategory) {
         dicNext.blnIncludedInCtc = false;
         dicNext.blnIncludeInRemuneration = false;
-        dicNext.blnIncludeInPayslip = true;
+        // Default Show on Payslip to On only at the moment of switching into this category
+        // (add mode), so a later manual toggle by the user isn't fought on the next effect run.
+        if (strMode === "add" && !isCategory(dicPrevious.strComponentCategory, "deduction")) {
+          dicNext.blnIncludeInPayslip = true;
+        }
         applyPayslipSectionDefault("deductions");
       }
       if (blnEarningCategory) {
         dicNext.blnIncludedInCtc = true;
-        dicNext.blnIncludeInPayslip = true;
+        // Default Show on Payslip to On only at the moment of switching into this category
+        // (add mode), so a later manual toggle by the user isn't fought on the next effect run.
+        if (strMode === "add" && !isCategory(dicPrevious.strComponentCategory, "earning")) {
+          dicNext.blnIncludeInPayslip = true;
+        }
         applyPayslipSectionDefault("earnings");
       }
       if (blnEmployerContributionCategory) {
@@ -1125,6 +1146,20 @@ export default function SalaryComponentEditorPage({
         dicNext.blnIncludeInRemuneration = false;
         if (dicNext.blnIncludeInPayslip) {
           applyPayslipSectionDefault("information");
+        }
+      }
+      if (blnCtcProvisionCategory) {
+        dicNext.blnIncludedInCtc = true;
+        dicNext.blnIsWages = false;
+        dicNext.blnIncludeInPF = false;
+        dicNext.blnIncludeInESIC = false;
+        dicNext.blnIncludeInGratuity = false;
+        dicNext.blnIncludeInRemuneration = false;
+        // Default Show on Payslip to Off only at the moment of switching into this category
+        // (add mode), so a later manual toggle by the user isn't fought on the next effect run.
+        if (strMode === "add" && !isCategory(dicPrevious.strComponentCategory, "ctc provision")) {
+          dicNext.blnIncludeInPayslip = false;
+          applyLookupValue("intPayslipSectionID", "strPayslipSection", lstPayslipSections, "");
         }
       }
       if (!dicNext.blnIncludeInPayslip) {
@@ -1284,8 +1319,8 @@ export default function SalaryComponentEditorPage({
     setBlnSaving(true);
     setStrError("");
     try {
-      const dicSavedRecord = strMode === "edit" && intSalaryComponentID
-        ? await salaryComponentService.updateSalaryComponent(intSalaryComponentID, dicForm)
+      const dicSavedRecord = strMode === "edit" && strSalaryComponentID
+        ? await salaryComponentService.updateSalaryComponent(strSalaryComponentID, dicForm, objDetail?.intID)
         : await salaryComponentService.createSalaryComponent(dicForm);
       setObjDetail(dicSavedRecord);
       setDicForm((dicPrevious) => {
@@ -1303,7 +1338,7 @@ export default function SalaryComponentEditorPage({
           : t("salary_component_created", "Salary component created successfully.")
       );
       if (strMode === "add") {
-        objRouter.push(`/salary-components/edit/${dicSavedRecord.intID}?backRoute=${encodeURIComponent(strResolvedBackRoute)}`);
+        objRouter.push(`/salary-components/edit/${dicSavedRecord.strRecordUUID}?backRoute=${encodeURIComponent(strResolvedBackRoute)}`);
       }
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to save salary component.");
@@ -1353,6 +1388,18 @@ export default function SalaryComponentEditorPage({
         <Stack spacing={2}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
             <Box>
+              <Typography
+                component="h1"
+                sx={{
+                  color: "#0f172a",
+                  fontSize: { xs: "1.35rem", md: "1.65rem" },
+                  fontWeight: 800,
+                  letterSpacing: "-0.025em",
+                  lineHeight: 1.2
+                }}
+              >
+                {strPageHeading}
+              </Typography>
               <Typography sx={{ color: "#64748b", mt: 0.75 }}>
                 {t(
                   "editor_description",
@@ -1440,7 +1487,7 @@ export default function SalaryComponentEditorPage({
             label={t("active_component", "Active Component")}
           />
         </Stack>
-        <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" } }}>
+        <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))" } }}>
           <TextField
             required
             label={t("component_name", "Component Name")}
@@ -1457,53 +1504,34 @@ export default function SalaryComponentEditorPage({
               <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.component-category.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{getCategoryLabel(dicOption.strDisplayName)}</MenuItem>
             ))}
           </TextField>
-          <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 0.75, minHeight: 56 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
-              <Typography sx={{ fontSize: "0.875rem", color: "rgba(15, 23, 42, 0.6)", whiteSpace: "nowrap" }}>
+          <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "flex-start", minWidth: 0, pt: 0 }}>
+            <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1, minWidth: 0 }}>
+              <Typography sx={{ fontSize: "0.75rem", lineHeight: "18px", color: "rgba(15, 23, 42, 0.6)", whiteSpace: "nowrap" }}>
                 {t("ctc_treatment", "CTC Treatment")}:
               </Typography>
               <Chip
                 size="small"
                 color={blnDerivedIncludedInCtc ? "success" : "default"}
                 label={blnDerivedIncludedInCtc ? t("included_in_ctc", "Included in CTC") : t("not_included_in_ctc", "Not Included in CTC")}
-                sx={{ flexShrink: 0, fontWeight: 700 }}
+                sx={{ flexShrink: 0, height: 22, fontWeight: 700, "& .MuiChip-label": { px: 1, fontSize: "0.72rem" } }}
                 data-controlid="salary-components.editor.ctc-treatment.chip"
               />
             </Box>
-            <Typography sx={{ color: "#64748b", fontSize: "0.78rem", lineHeight: 1.35 }}>
-              {t("ctc_treatment_help", "CTC Treatment is derived from component category and reimbursement configuration.")}
+            <Typography sx={{ color: "#64748b", fontSize: "0.68rem", lineHeight: 1.3, mt: 0.5, whiteSpace: "nowrap" }}>
+              {t("ctc_treatment_help_single_line", "Derived from component category and reimbursement configuration.")}
             </Typography>
           </Box>
-          <TextField select label={t("component_group", "Component Group")} value={dicForm.intComponentGroupID} onChange={(objEvent) => handleLookupSelection(setDicForm, "intComponentGroupID", "strComponentGroup", lstGroupOptions, objEvent.target.value === "" ? "" : Number(objEvent.target.value))} disabled={blnFieldDisabled || blnIsFlexiBucketCategory} fullWidth {...buildSelectTestIdProps("salary-components.editor.component-group.select")}>
-            <MenuItem value="" data-controlid="salary-components.editor.component-group.none.option">{t("none", "None")}</MenuItem>
-            {lstGroupOptions.map((dicOption) => (
-              <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.component-group.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{dicOption.strDisplayName}</MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            required
-            label={t("component_code", "Component Code")}
-            value={dicForm.strComponentCode}
-            onChange={(objEvent) => updateRootField("strComponentCode", objEvent.target.value.toUpperCase())}
-            disabled={blnFieldDisabled || strMode === "edit"}
-            helperText={strMode === "edit"
-              ? t("component_code_read_only_help", "Component code can be entered during creation and is read-only after save.")
-              : t("component_code_create_help", "Set the internal component code used for system references.")}
-            fullWidth
-            data-controlid="salary-components.editor.component-code.input"
-            inputProps={buildInputTestIdProps("salary-components.editor.component-code.input")}
-          />
           {!blnHideWageType ? (
-            <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 0.5, minHeight: 56 }}>
-              <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 1.5 }}>
-                <Typography sx={{ fontSize: "0.875rem", color: "rgba(15, 23, 42, 0.6)", whiteSpace: "nowrap" }}>
+            <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "flex-start", minWidth: 0, pt: 0 }}>
+              <Box sx={{ display: "flex", alignItems: "flex-start", flexWrap: "nowrap", gap: 1.5, minWidth: 0 }}>
+                <Typography sx={{ fontSize: "0.75rem", lineHeight: "18px", color: "rgba(15, 23, 42, 0.6)", whiteSpace: "nowrap" }}>
                   {t("wage_type", "Wage Type")}
                 </Typography>
                 <RadioGroup
                   row
                   value={dicForm.blnIsWages ? "wages" : "nonWages"}
                   onChange={(objEvent) => updateRootField("blnIsWages", objEvent.target.value === "wages")}
-                  sx={{ flexWrap: "nowrap" }}
+                  sx={{ flexWrap: "nowrap", alignItems: "flex-start", mt: -0.5, "& .MuiFormControlLabel-root": { mr: 1.25, ml: 0 }, "& .MuiFormControlLabel-label": { fontSize: "0.875rem" }, "& .MuiRadio-root": { p: 0.5 } }}
                 >
                   <FormControlLabel
                     value="wages"
@@ -1519,11 +1547,38 @@ export default function SalaryComponentEditorPage({
                   />
                 </RadioGroup>
               </Box>
-              <Typography sx={{ color: "#64748b", fontSize: "0.75rem", lineHeight: 1.66 }}>
-                {t("wage_type_help", "Determines whether the component is considered part of wages for statutory calculations.")}
+              <Typography sx={{ color: "#64748b", fontSize: "0.68rem", lineHeight: 1.3, mt: 0.5, whiteSpace: "nowrap" }}>
+                {t("wage_type_help_single_line", "Is component considered part of wages for statutory calculations.")}
               </Typography>
             </Box>
           ) : null}
+          <TextField select label={t("component_group", "Component Group")} value={dicForm.intComponentGroupID} onChange={(objEvent) => handleLookupSelection(setDicForm, "intComponentGroupID", "strComponentGroup", lstGroupOptions, objEvent.target.value === "" ? "" : Number(objEvent.target.value))} disabled={blnFieldDisabled || blnIsFlexiBucketCategory} fullWidth {...buildSelectTestIdProps("salary-components.editor.component-group.select")}>
+            <MenuItem value="" data-controlid="salary-components.editor.component-group.none.option">{t("none", "None")}</MenuItem>
+            {lstGroupOptions.map((dicOption) => (
+              <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.component-group.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{dicOption.strDisplayName}</MenuItem>
+            ))}
+          </TextField>
+          <TextField required select label={t("payroll_processing_mode", "Payroll Processing Mode")} value={dicForm.intPayrollProcessingModeID} onChange={(objEvent) => handleLookupSelection(setDicForm, "intPayrollProcessingModeID", "strPayrollProcessingMode", lstPayrollProcessingModeOptions, Number(objEvent.target.value))} disabled={blnFieldDisabled} fullWidth {...buildSelectTestIdProps("salary-components.editor.payroll-processing-mode.select")}>
+            {lstPayrollProcessingModeOptions.map((dicOption) => (
+              <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.payroll-processing-mode.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{dicOption.strDisplayName}</MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            required
+            label={t("component_code", "Component Code")}
+            value={dicForm.strComponentCode}
+            onChange={(objEvent) => updateRootField("strComponentCode", objEvent.target.value.toUpperCase())}
+            disabled={blnFieldDisabled || strMode === "edit"}
+            helperText={strMode === "edit"
+              ? t("component_code_read_only_help_single_line", "Code can be entered during creation and is read-only after save.")
+              : t("component_code_create_help", "Set the internal component code used for system references.")}
+            fullWidth
+            FormHelperTextProps={{
+              sx: { fontSize: "0.68rem", whiteSpace: "nowrap" },
+            }}
+            data-controlid="salary-components.editor.component-code.input"
+            inputProps={buildInputTestIdProps("salary-components.editor.component-code.input")}
+          />
           <TextField
             label={t("description", "Description")}
             value={dicForm.strComponentDescription}
@@ -1532,7 +1587,6 @@ export default function SalaryComponentEditorPage({
             fullWidth
             data-controlid="salary-components.editor.description.input"
             inputProps={buildInputTestIdProps("salary-components.editor.description.input")}
-            sx={{ gridColumn: { xs: "1 / -1", md: "1 / -1" } }}
           />
         </Box>
       </Paper>
@@ -1574,7 +1628,7 @@ export default function SalaryComponentEditorPage({
             >
               <MenuItem value="" data-controlid="salary-components.editor.default-basis-component.select.option">{t("select", "Select")}</MenuItem>
               {(objFormOptions?.lstDependencyComponents ?? [])
-                .filter((dicOption) => dicOption.intID !== intSalaryComponentID)
+                .filter((dicOption) => dicOption.intID !== objDetail?.intID)
                 .map((dicOption) => (
                   <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.default-basis-component.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
                     {dicOption.strCode ? `${dicOption.strCode} - ${dicOption.strLabel}` : dicOption.strLabel}
@@ -1699,7 +1753,7 @@ export default function SalaryComponentEditorPage({
               {...buildSelectTestIdProps("salary-components.editor.residual-component.select")}
             >
               <MenuItem value="" data-controlid="salary-components.editor.residual-component.none.option">{t("none", "None")}</MenuItem>
-              {(objFormOptions?.lstResidualComponents ?? []).filter((dicOption) => dicOption.intID !== intSalaryComponentID).map((dicOption) => (
+              {(objFormOptions?.lstResidualComponents ?? []).filter((dicOption) => dicOption.intID !== objDetail?.intID).map((dicOption) => (
                 <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.residual-component.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>{dicOption.strCode ? `${dicOption.strCode} - ${dicOption.strLabel}` : dicOption.strLabel}</MenuItem>
               ))}
             </TextField>
@@ -2063,7 +2117,7 @@ export default function SalaryComponentEditorPage({
           }}
         >
           <FormControlLabel
-            sx={{ m: 0, pt: { xs: 0, md: 1.25 }, minHeight: 56, alignItems: "center" }}
+            sx={{ m: 0, minHeight: 40, alignSelf: "center", alignItems: "center" }}
             control={<Switch checked={dicForm.blnIncludeInPayslip} onChange={(objEvent) => updateRootField("blnIncludeInPayslip", objEvent.target.checked)} disabled={blnFieldDisabled || blnIsFlexiBucketCategory} inputProps={buildInputTestIdProps("salary-components.editor.include-in-payslip.switch")} />}
             label={t("show_on_payslip", "Show on Payslip")}
           />
@@ -2085,6 +2139,7 @@ export default function SalaryComponentEditorPage({
         </Stack>
       </Paper>
 
+      {intSecondaryLanguageID ? (
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5} sx={{ mb: 1.5 }}>
           <Box>
@@ -2155,6 +2210,7 @@ export default function SalaryComponentEditorPage({
           ))}
         </Stack>
       </Paper>
+      ) : null}
 
       {blnShowCalculationDependencies ? (
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
@@ -2183,7 +2239,7 @@ export default function SalaryComponentEditorPage({
             fullWidth
           >
             {(objFormOptions?.lstDependencyComponents ?? [])
-              .filter((dicOption) => dicOption.intID !== intSalaryComponentID)
+              .filter((dicOption) => dicOption.intID !== objDetail?.intID)
               .map((dicOption) => (
                 <MenuItem
                   key={dicOption.intID}

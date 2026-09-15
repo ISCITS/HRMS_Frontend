@@ -19,6 +19,7 @@ import { useRouter } from "next/navigation";
 
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/components/master/MasterScreen.module.css";
+import CommonEditModeBanner from "@/Common/components/CommonEditModeBanner";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useVersionLogLabels } from "@/features/version-logs/hooks/useVersionLogLabels";
 import {
@@ -70,10 +71,12 @@ export default function VersionLogEditorPage({
   const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
-  const blnForcedView = strMode === "view";
-  const blnReadOnly = blnForcedView || (strMode === "edit" && blnCanView && !blnCanEdit);
+  // Rights decide the mode: a caller holding the edit right lands straight in an editable form,
+  // a caller holding only view gets the same screen read-only. Nothing about the mode travels in
+  // the URL, so there is no mode for a user to flip and no extra Edit click on the way in.
+  const blnReadOnly = strMode === "add" ? !blnCanAdd : !blnCanEdit;
   const blnCanLoadWorkspace = strMode === "add" ? blnCanAdd : blnCanView;
-  const blnCanSave = !blnForcedView && (strMode === "add" ? blnCanAdd : blnCanEdit);
+  const blnCanSave = strMode === "add" ? blnCanAdd : blnCanEdit;
   const blnFieldDisabled = blnSaving || blnReadOnly || !blnCanSave;
 
   useEffect(() => {
@@ -93,7 +96,7 @@ export default function VersionLogEditorPage({
       setStrError("");
       setStrSuccess("");
       try {
-        if ((strMode === "edit" || strMode === "view") && intVersionLogID) {
+        if (strMode === "edit" && intVersionLogID) {
           const dicDetail = await versionLogService.getVersionLogById(intVersionLogID);
           if (!blnMounted) {
             return;
@@ -152,7 +155,7 @@ export default function VersionLogEditorPage({
       );
       if (strMode === "add") {
         const strNextMode = blnCanEdit ? "edit" : "view";
-        objRouter.push(`/version-logs/edit/${dicSavedRecord.intID}${strNextMode === "view" ? "?mode=view" : ""}`);
+        objRouter.push(`/version-logs/edit/${dicSavedRecord.intID}`);
       }
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : t("save_failed", "Unable to save version log."));
@@ -202,11 +205,11 @@ export default function VersionLogEditorPage({
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
             <Box>
               <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
-                {strMode === "view"
-                  ? t("view_title", "View Version Log")
-                  : strMode === "edit"
-                    ? t("edit_title", "Edit Version Log")
-                    : t("add_title", "Add Version Log")}
+                {strMode === "add"
+                  ? t("add_title", "Add Version Log")
+                  : blnReadOnly
+                    ? t("view_title", "View Version Log")
+                    : t("edit_title", "Edit Version Log")}
               </Typography>
               <Typography sx={{ color: "#64748b", mt: 0.75 }}>
                 {t("subtitle", "Track release identity, launch date, and rollout notes in one audited master record.")}
@@ -276,7 +279,10 @@ export default function VersionLogEditorPage({
 
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
-      {blnReadOnly ? <Alert severity="info">{t("read_only_mode", "You have view-only access for Version Logs.")}</Alert> : null}
+      <CommonEditModeBanner
+        blnReadOnly={blnReadOnly}
+        strReadOnlyMessage={t("read_only_mode", "You have view-only access for Version Logs.")}
+      />
 
       <Paper
         sx={{

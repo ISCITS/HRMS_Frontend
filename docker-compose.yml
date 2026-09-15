@@ -1,20 +1,15 @@
 services:
   frontend:
-    image: iscuser1/hrms_frontend_deps:latest
+    build:
+      context: .
+      target: dev
+    image: hrms_frontend_dev:local
     container_name: hrms-frontend
-    working_dir: /workspace
-    command: sh -c "npm ci && npm run dev -- --hostname 0.0.0.0"
     ports:
       - "3000:3000"
-    volumes:
-      - .:/workspace
-      - hrms_frontend_node_modules:/workspace/node_modules
-      - hrms_frontend_next:/workspace/.next
+    env_file:
+      - .env.local
     environment:
       NODE_ENV: development
       CHOKIDAR_USEPOLLING: "true"
       WATCHPACK_POLLING: "true"
-
-volumes:
-  hrms_frontend_node_modules:
-  hrms_frontend_next:

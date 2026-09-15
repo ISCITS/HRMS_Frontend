@@ -2,26 +2,18 @@
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
   Box,
   Button,
-  Checkbox,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   MenuItem,
   Snackbar,
-  Stack,
   TextField,
-  Typography,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
@@ -30,6 +22,7 @@ import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import { leaveService } from "@/features/leave/services/leaveService";
 import { type LeaveLookups, type LeaveTypeEnrichedDto } from "@/features/leave/types";
+import { useActionRights } from "@/features/security/hooks/useActionRights";
 
 type ToastState = { blnOpen: boolean; strMessage: string; strSeverity: "success" | "error" };
 type SearchForm = {
@@ -65,19 +58,26 @@ function StatusPill({ blnActive }: { blnActive: boolean }) {
 
 export default function LeaveTypesPanel() {
   const objRouter = useRouter();
+  const { canDo, blnLoading: blnRightsLoading } = useActionRights();
+  // Gate every action against the Leave Types menu's own granular rights so the UI matches what
+  // the backend now enforces (edit OFF -> no edit, etc.).
+  const blnCanAdd = canDo("leave_types", "ADD");
+  const blnCanEdit = canDo("leave_types", "EDIT");
+  const blnCanDelete = canDo("leave_types", "DELETE");
+  const blnCanExport = canDo("leave_types", "EXPORT");
+  const blnCanView = canDo("leave_types", "VIEW");
+  // A VIEW-only user can still open a record — read-only. Edit/delete rights imply the record can
+  // be opened too, so any of the three enables the row-open (eye) action and the row double-click.
+  const blnCanOpenDetail = blnCanView || blnCanEdit || blnCanDelete;
   const [lstTypes, setLstTypes] = useState<LeaveTypeEnrichedDto[]>([]);
   const [objLookups, setObjLookups] = useState<LeaveLookups>({});
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSaving, setBlnSaving] = useState(false);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
   const [objConfirm, setObjConfirm] = useState<ConfirmState>(null);
-  const [lstSelectedIds, setLstSelectedIds] = useState<number[]>([]);
 
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
-
-  const [blnAccrualDialogOpen, setBlnAccrualDialogOpen] = useState(false);
-  const [strAccrualPeriod, setStrAccrualPeriod] = useState<string>(String(new Date().getFullYear()));
 
   const lstCategoryOptions = objLookups.LEAVE_CATEGORY ?? [];
 
@@ -132,57 +132,20 @@ export default function LeaveTypesPanel() {
     setDicSearchApplied(dicNext);
   }
 
-  // ---- Multi/single row selection + bulk actions (mirrors Salary Components) ----
-  const blnAllFilteredSelected = lstFilteredTypes.length > 0 && lstFilteredTypes.every((objType) => lstSelectedIds.includes(objType.intID));
-  const blnSomeFilteredSelected = !blnAllFilteredSelected && lstFilteredTypes.some((objType) => lstSelectedIds.includes(objType.intID));
-
-  function toggleSelection(intID: number) {
-    setLstSelectedIds((lstPrev) => (lstPrev.includes(intID) ? lstPrev.filter((intValue) => intValue !== intID) : [...lstPrev, intID]));
-  }
-
-  function toggleSelectAll() {
-    if (blnAllFilteredSelected) {
-      setLstSelectedIds((lstPrev) => lstPrev.filter((intID) => !lstFilteredTypes.some((objType) => objType.intID === intID)));
-      return;
-    }
-    setLstSelectedIds((lstPrev) => [...new Set([...lstPrev, ...lstFilteredTypes.map((objType) => objType.intID)])]);
-  }
-
-  function bulkStatus(blnActive: boolean) {
-    setObjConfirm({
-      strTitle: blnActive ? "Activate Leave Types" : "Deactivate Leave Types",
-      strMessage: `${blnActive ? "Activate" : "Deactivate"} ${lstSelectedIds.length} leave type(s)?`,
-      strConfirmLabel: blnActive ? "Activate" : "Deactivate",
-      fnOnConfirm: async () => {
-        await Promise.all(lstSelectedIds.map((intID) => leaveService.setLeaveTypeStatus(intID, blnActive)));
-        showToast(`Leave types ${blnActive ? "activated" : "deactivated"} successfully.`, "success");
-        setLstSelectedIds([]);
-        await loadAll();
-      },
-    });
-  }
-
-  function bulkDelete() {
-    setObjConfirm({
-      strTitle: "Delete Leave Types",
-      strMessage: `Delete ${lstSelectedIds.length} leave type(s)? Any that are in use will be deactivated instead.`,
-      strConfirmLabel: "Delete",
-      fnOnConfirm: async () => {
-        await Promise.all(lstSelectedIds.map((intID) => leaveService.deleteEnterpriseLeaveType(intID)));
-        showToast("Leave types removed successfully.", "success");
-        setLstSelectedIds([]);
-        await loadAll();
-      },
-    });
-  }
-
   // ---- Leave type: full-page enterprise editor (create / edit / view) ----
   function openNewType() {
     objRouter.push("/leave/leave-types/new");
   }
 
   function openTypeDialog(objType: LeaveTypeEnrichedDto, blnView: boolean) {
-    objRouter.push(`/leave/leave-types/${objType.intID}${blnView ? "?mode=view" : ""}`);
+    objRouter.push(`/leave/leave-types/${objType.strRecordUUID}`);
+  }
+
+  // Double-clicking a row opens the record: edit mode when the user can edit, otherwise read-only
+  // view mode. Users with neither right never reach the editor.
+  function openTypeByRowId(strRecordUUID: string) {
+    if (!blnCanOpenDetail) return;
+    objRouter.push(`/leave/leave-types/${strRecordUUID}`);
   }
 
   function confirmDeleteType(objType: LeaveTypeEnrichedDto) {
@@ -212,42 +175,18 @@ export default function LeaveTypesPanel() {
     }
   }
 
-  async function runAccrual() {
-    if (!/^\d{4}(-\d{2})?$/.test(strAccrualPeriod.trim())) {
-      showToast("Period must be a year (YYYY) or month (YYYY-MM).", "error");
-      return;
-    }
-    setBlnSaving(true);
-    try {
-      const objResult = await leaveService.runAccrual(strAccrualPeriod.trim());
-      showToast(`Accrual done: ${objResult.intEntriesPosted} credit(s) for ${objResult.intEmployees} employee(s).`, "success");
-      setBlnAccrualDialogOpen(false);
-    } catch (objError) {
-      const objHandled = await createApiRequestError(objError);
-      showToast(objHandled.message, "error");
-    } finally {
-      setBlnSaving(false);
-    }
-  }
-
   const lstTypeRows = useMemo(
     () =>
       lstFilteredTypes.map((objType) => ({
         id: objType.intID,
-        select: (
-          <Checkbox
-            checked={lstSelectedIds.includes(objType.intID)}
-            onChange={() => toggleSelection(objType.intID)}
-            inputProps={{ "data-control-id": "leave-types.list.row.select.checkbox", "data-row-key": String(objType.intID) } as InputHTMLAttributes<HTMLInputElement>}
-          />
-        ),
+        strRecordUUID: objType.strRecordUUID,
         action: (
           <CommonRowActions
             testIdPrefix="leave-types.list.row"
             rowKey={objType.intID}
-            blnCanView
-            blnCanEdit
-            blnCanDelete
+            blnCanView={blnCanOpenDetail}
+            blnCanEdit={blnCanEdit}
+            blnCanDelete={blnCanDelete}
             onView={() => openTypeDialog(objType, true)}
             onEdit={() => openTypeDialog(objType, false)}
             onDelete={() => confirmDeleteType(objType)}
@@ -261,32 +200,17 @@ export default function LeaveTypesPanel() {
         strEntitlement: objType.decEntitlementQty != null ? String(objType.decEntitlementQty) : "-",
         strCarryFwd: objType.blnCarryForwardAllowed == null ? "-" : objType.blnCarryForwardAllowed ? "Yes" : "No",
         strSandwich: objType.blnSandwichRuleEnabled == null ? "-" : objType.blnSandwichRuleEnabled ? "Yes" : "No",
-        strApproval: labelOf("LEAVE_APPROVAL_ROUTE", objType.strApprovalRouteCode),
         strEncashable: objType.blnIsEncashable ? "Yes" : "No",
         blnStatus: <StatusPill blnActive={objType.blnIsActive} />,
       })),
+    // Rights flags MUST be deps: useActionRights loads async, so without them the action cells
+    // memoize while rights are still false (icons hidden) and never recompute once rights arrive.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [lstFilteredTypes, objLookups, lstSelectedIds],
+    [lstFilteredTypes, objLookups, blnCanOpenDetail, blnCanEdit, blnCanDelete],
   );
 
   const lstTypeColumns = useMemo<CommonTableColumn<(typeof lstTypeRows)[number]>[]>(
     () => [
-      {
-        field: "select",
-        headerName: (
-          <Checkbox
-            checked={blnAllFilteredSelected}
-            indeterminate={blnSomeFilteredSelected}
-            onChange={toggleSelectAll}
-            disabled={lstFilteredTypes.length === 0}
-            inputProps={{ "data-control-id": "leave-types.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>}
-          />
-        ),
-        sortable: false,
-        filterable: false,
-        exportable: false,
-        width: 56,
-      },
       { field: "action", headerName: "Actions", sortable: false, filterable: false, exportable: false, width: 120 },
       { field: "strTypeCode", headerName: "Code", width: 90 },
       { field: "strName", headerName: "Name", width: 180 },
@@ -296,12 +220,10 @@ export default function LeaveTypesPanel() {
       { field: "strEntitlement", headerName: "Entitlement", width: 120 },
       { field: "strCarryFwd", headerName: "Carry Fwd", width: 110 },
       { field: "strSandwich", headerName: "Sandwich", width: 110 },
-      { field: "strApproval", headerName: "Approval Route", width: 150 },
       { field: "strEncashable", headerName: "Encashable", width: 120 },
       { field: "blnStatus", headerName: "Status", sortable: false, width: 110 },
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [blnAllFilteredSelected, blnSomeFilteredSelected, lstFilteredTypes.length],
+    [],
   );
 
   const objTransparentTableSx = { p: 0, boxShadow: "none", background: "transparent" } as const;
@@ -312,11 +234,18 @@ export default function LeaveTypesPanel() {
       <Box className={styles.controlsCard}>
         <Box
           sx={{
-            display: "grid",
+            display: "flex",
+            flexWrap: "nowrap",
             gap: 1.25,
-            gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" },
             alignItems: "center",
-            mt: 1,
+            overflowX: "auto",
+            // overflow-x: auto makes overflow-y compute to auto as well, so this row is a scroll box
+            // in both axes. A shrunk outlined label is translated 9px ABOVE its field, so without room
+            // inside the box it is clipped. The top gap is padding (inside the scroll box) rather than
+            // the previous margin (outside it), which is what leaves the label somewhere to render.
+            pt: 1.25,
+            pb: 0.5,
+            "& > .MuiTextField-root, & > .MuiFormControl-root": { flex: "1 1 170px", minWidth: 160 },
           }}
         >
           <TextField
@@ -392,7 +321,7 @@ export default function LeaveTypesPanel() {
             <MenuItem value="Active">Active</MenuItem>
             <MenuItem value="Inactive">Inactive</MenuItem>
           </TextField>
-          <Box sx={{ display: "flex", gap: 1, gridColumn: { xs: "auto", lg: "span 3" }, justifyContent: { lg: "flex-end" } }}>
+          <Box sx={{ display: "flex", gap: 1, flexShrink: 0, ml: "auto" }}>
             <Button controlId="leave.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applySearch(dicSearchDraft)} disabled={blnLoading}>
               Search
             </Button>
@@ -410,17 +339,9 @@ export default function LeaveTypesPanel() {
             </Button>
           </Box>
         </Box>
-        {lstSelectedIds.length > 0 ? (
-          <Box className={styles.bulkBar} data-control-id="leave-types.list.bulk-actions.bar">
-            <Typography className={styles.bulkCount}>{`${lstSelectedIds.length} rows selected`}</Typography>
-            <Button className={styles.bulkActivate} onClick={() => bulkStatus(true)} disabled={blnSaving} data-control-id="leave-types.list.bulk-activate.button">Activate</Button>
-            <Button className={styles.bulkDeactivate} onClick={() => bulkStatus(false)} disabled={blnSaving} data-control-id="leave-types.list.bulk-deactivate.button">Deactivate</Button>
-            <Button className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSaving} data-control-id="leave-types.list.bulk-delete.button">Delete</Button>
-          </Box>
-        ) : null}
       </Box>
 
-      {blnLoading ? (
+      {blnLoading || blnRightsLoading ? (
         <Box sx={{ display: "grid", placeItems: "center", py: 6 }}>
           <CircularProgress />
         </Box>
@@ -430,54 +351,24 @@ export default function LeaveTypesPanel() {
             columns={lstTypeColumns}
             rows={lstTypeRows}
             rowIdField="id"
-            defaultPageSize={10}
-            pageSizeOptions={[10, 20, 50]}
             exportFileName="leave_types"
-            showExportOptions
+            showExportOptions={blnCanExport}
             showPaginationSummary
-            minTableWidth={1376}
-            getRowSx={(dicRow) => (lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : {})}
+            minTableWidth={1226}
             emptyMessage="No leave types found."
+            onRowDoubleClick={(dicRow) => openTypeByRowId(dicRow.strRecordUUID)}
             toolbarLeft={
-              <Stack direction="row" spacing={1}>
-                <Button controlId="leave.accrual.run.button" className={styles.secondaryButton} startIcon={<PlayArrowRoundedIcon />} onClick={() => setBlnAccrualDialogOpen(true)} disabled={lstTypes.length === 0}>
-                  Run Accrual
-                </Button>
+              blnCanAdd ? (
                 <Button controlId="leave.type.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={openNewType}>
                   Add Leave Type
                 </Button>
-              </Stack>
+              ) : null
             }
             testIdPrefix="leave-types.list"
             sx={objTransparentTableSx}
           />
         </Box>
       )}
-
-      {/* Run accrual dialog (tenant-wide crediting from active policies) */}
-      <Dialog open={blnAccrualDialogOpen} onClose={() => setBlnAccrualDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 800 }}>Run Leave Accrual</DialogTitle>
-        <DialogContent dividers>
-          <Typography sx={{ fontSize: "0.85rem", color: "#475569", mb: 1.5 }}>
-            Credits every active employee from the active leave-type policies for the chosen period. Safe to re-run — the same period never double-credits.
-          </Typography>
-          <TextField
-            controlId="leave.accrual.period.input"
-            label="Period (YYYY or YYYY-MM)"
-            fullWidth
-            size="small"
-            value={strAccrualPeriod}
-            onChange={(objEvent) => setStrAccrualPeriod(objEvent.target.value)}
-            helperText="Year run annualises monthly policies (x12). Month run credits monthly policies only."
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button controlId="leave.accrual.cancel.button" onClick={() => setBlnAccrualDialogOpen(false)} disabled={blnSaving}>Cancel</Button>
-          <Button controlId="leave.accrual.confirm.button" variant="contained" startIcon={<PlayArrowRoundedIcon />} onClick={runAccrual} disabled={blnSaving}>
-            {blnSaving ? "Running..." : "Run Accrual"}
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       <CommonConfirmDialog
         blnOpen={Boolean(objConfirm)}

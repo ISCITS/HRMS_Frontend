@@ -6,5 +6,5 @@ type PayrollProcessLogRunPageProps = {
 
 export default async function PayrollProcessLogRunPage({ params }: PayrollProcessLogRunPageProps) {
   const { runId } = await params;
-  return <PayrollProcessLogPage intInitialPayrollRunID={Number(runId)} />;
+  return <PayrollProcessLogPage strInitialPayrollRunRecordUUID={runId} />;
 }

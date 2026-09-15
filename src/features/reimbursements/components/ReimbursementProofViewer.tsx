@@ -9,9 +9,10 @@ import { useState } from "react";
 import ReimbursementStatusBadge from "@/features/reimbursements/components/ReimbursementStatusBadge";
 import { payrollReimbursementService } from "@/features/reimbursements/services/payrollReimbursementService";
 import type { ReimbursementProofDto } from "@/features/reimbursements/types";
+import { openBlobUrlInNewTab } from "@/lib/openBlobUrlInNewTab";
 
 type ProofViewerProps = {
-  intClaimID: number;
+  strClaimRecordUUID: string;
   lstProofs: ReimbursementProofDto[];
   blnActionsDisabled: boolean;
   onVerify: (intProofID: number) => void;
@@ -20,17 +21,17 @@ type ProofViewerProps = {
 
 function openBlobInNewTab(objBlob: Blob) {
   const strUrl = URL.createObjectURL(objBlob);
-  window.open(strUrl, "_blank", "noopener,noreferrer");
+  openBlobUrlInNewTab(strUrl);
   window.setTimeout(() => URL.revokeObjectURL(strUrl), 30000);
 }
 
-export default function ReimbursementProofViewer({ intClaimID, lstProofs, blnActionsDisabled, onVerify, onReject }: ProofViewerProps) {
+export default function ReimbursementProofViewer({ strClaimRecordUUID, lstProofs, blnActionsDisabled, onVerify, onReject }: ProofViewerProps) {
   const [intPreviewingProofID, setIntPreviewingProofID] = useState<number | null>(null);
 
   async function previewProof(intProofID: number) {
     setIntPreviewingProofID(intProofID);
     try {
-      const objBlob = await payrollReimbursementService.previewProof(intClaimID, intProofID);
+      const objBlob = await payrollReimbursementService.previewProof(strClaimRecordUUID, intProofID);
       openBlobInNewTab(objBlob);
     } finally {
       setIntPreviewingProofID(null);

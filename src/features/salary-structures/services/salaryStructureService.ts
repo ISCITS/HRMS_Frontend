@@ -221,9 +221,11 @@ function mapLineToFormValue(dicLine: SalaryStructureComponentApiRecord): SalaryS
 function mapApiRecord(dicRecord: SalaryStructureApiRecord): SalaryStructureDetailRecord {
   return {
     intID: dicRecord.intID,
+    strRecordUUID: dicRecord.strRecordUUID,
     strStructureCode: dicRecord.strStructureCode,
     strStructureName: dicRecord.strStructureName,
     strCurrencyCode: dicRecord.strCurrencyCode,
+    strOverrideMode: dicRecord.strOverrideMode ?? "both",
     dtEffectiveFrom: dicRecord.dtEffectiveFrom,
     dtEffectiveTo: dicRecord.dtEffectiveTo,
     blnIsDefault: dicRecord.blnIsDefault,
@@ -312,6 +314,7 @@ function toFormPayload(dicValues: SalaryStructureFormValues) {
     strStructureCode: dicValues.strStructureCode.trim(),
     strStructureName: dicValues.strStructureName.trim(),
     strCurrencyCode: dicValues.strCurrencyCode.trim(),
+    strOverrideMode: dicValues.strOverrideMode,
     dtEffectiveFrom: dicValues.dtEffectiveFrom,
     dtEffectiveTo: dicValues.dtEffectiveTo || null,
     blnIsDefault: dicValues.blnIsDefault,
@@ -629,6 +632,7 @@ export function createInitialSalaryStructureForm(): SalaryStructureFormValues {
     strStructureCode: "",
     strStructureName: "",
     strCurrencyCode: "INR",
+    strOverrideMode: "both",
     dtEffectiveFrom: new Date().toISOString().slice(0, 10),
     dtEffectiveTo: "",
     blnIsDefault: false,
@@ -660,6 +664,7 @@ export function toSalaryStructureFormValues(dicRecord: SalaryStructureDetailReco
     strStructureCode: dicRecord.strStructureCode,
     strStructureName: dicRecord.strStructureName,
     strCurrencyCode: dicRecord.strCurrencyCode,
+    strOverrideMode: dicRecord.strOverrideMode,
     dtEffectiveFrom: dicRecord.dtEffectiveFrom,
     dtEffectiveTo: dicRecord.dtEffectiveTo ?? "",
     blnIsDefault: dicRecord.blnIsDefault,
@@ -678,9 +683,11 @@ export const salaryStructureService = {
       const dicDetail = mapApiRecord(dicRecord);
       return {
         intID: dicDetail.intID,
+        strRecordUUID: dicDetail.strRecordUUID,
         strStructureCode: dicDetail.strStructureCode,
         strStructureName: dicDetail.strStructureName,
         strCurrencyCode: dicDetail.strCurrencyCode,
+        strOverrideMode: dicDetail.strOverrideMode,
         dtEffectiveFrom: dicDetail.dtEffectiveFrom,
         dtEffectiveTo: dicDetail.dtEffectiveTo,
         blnIsDefault: dicDetail.blnIsDefault,
@@ -691,8 +698,8 @@ export const salaryStructureService = {
     });
   },
 
-  async getSalaryStructureById(intSalaryStructureID: number): Promise<SalaryStructureDetailRecord> {
-    const objResult = await masterApiService.getSalaryStructure(intSalaryStructureID);
+  async getSalaryStructureById(strRecordUUID: string): Promise<SalaryStructureDetailRecord> {
+    const objResult = await masterApiService.getSalaryStructure(strRecordUUID);
     return mapApiRecord(objResult.Data);
   },
 
@@ -734,8 +741,8 @@ export const salaryStructureService = {
     return mapApiRecord(objResult.Data);
   },
 
-  async updateSalaryStructure(intSalaryStructureID: number, dicValues: SalaryStructureFormValues): Promise<SalaryStructureDetailRecord> {
-    const objResult = await masterApiService.updateSalaryStructure(intSalaryStructureID, toFormPayload(dicValues));
+  async updateSalaryStructure(strRecordUUID: string, dicValues: SalaryStructureFormValues): Promise<SalaryStructureDetailRecord> {
+    const objResult = await masterApiService.updateSalaryStructure(strRecordUUID, toFormPayload(dicValues));
     return mapApiRecord(objResult.Data);
   },
 
@@ -748,17 +755,17 @@ export const salaryStructureService = {
     return objResult.Data.strTranslatedText;
   },
 
-  async cloneSalaryStructure(intSalaryStructureID: number, dicValues: SalaryStructureCloneValues): Promise<SalaryStructureDetailRecord> {
-    const objResult = await masterApiService.cloneSalaryStructure(intSalaryStructureID, toClonePayload(dicValues));
+  async cloneSalaryStructure(strRecordUUID: string, dicValues: SalaryStructureCloneValues): Promise<SalaryStructureDetailRecord> {
+    const objResult = await masterApiService.cloneSalaryStructure(strRecordUUID, toClonePayload(dicValues));
     return mapApiRecord(objResult.Data);
   },
 
-  async setSalaryStructureStatus(intSalaryStructureID: number, blnIsActive: boolean): Promise<SalaryStructureDetailRecord> {
-    const objResult = await masterApiService.setSalaryStructureStatus(intSalaryStructureID, blnIsActive);
+  async setSalaryStructureStatus(strRecordUUID: string, blnIsActive: boolean): Promise<SalaryStructureDetailRecord> {
+    const objResult = await masterApiService.setSalaryStructureStatus(strRecordUUID, blnIsActive);
     return mapApiRecord(objResult.Data);
   },
 
-  async deleteSalaryStructure(intSalaryStructureID: number): Promise<void> {
-    await masterApiService.deleteSalaryStructure(intSalaryStructureID);
+  async deleteSalaryStructure(strRecordUUID: string): Promise<void> {
+    await masterApiService.deleteSalaryStructure(strRecordUUID);
   }
 };

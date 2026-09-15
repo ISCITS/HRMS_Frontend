@@ -139,9 +139,9 @@ export const loanAdvanceService = {
     });
     return objResult.Data;
   },
-  async getLoan(intID: number): Promise<LoanAdvanceRecord> {
+  async getLoan(strRecordUUID: string): Promise<LoanAdvanceRecord> {
     const objResult = await requestApi<LoanAdvanceRecord>({
-      strPath: `/payroll/loans-advances/${intID}`,
+      strPath: `/payroll/loans-advances/${strRecordUUID}`,
       strMethod: "GET",
       strMenuAction: "LOAN_ADV_VIEW",
     });
@@ -156,16 +156,16 @@ export const loanAdvanceService = {
     });
     return objResult.Data;
   },
-  async updateLoan(intID: number, dicValues: LoanAdvanceFormValues, objCalculationSnapshot?: unknown): Promise<LoanAdvanceRecord> {
+  async updateLoan(strRecordUUID: string, dicValues: LoanAdvanceFormValues, objCalculationSnapshot?: unknown): Promise<LoanAdvanceRecord> {
     const objResult = await requestApi<LoanAdvanceRecord>({
-      strPath: `/payroll/loans-advances/${intID}`,
+      strPath: `/payroll/loans-advances/${strRecordUUID}`,
       strMethod: "PUT",
       objBody: toPayload(dicValues, objCalculationSnapshot),
       strMenuAction: "LOAN_ADV_EDIT",
     });
     return objResult.Data;
   },
-  async action(intID: number, strAction: string, objBody?: unknown): Promise<LoanAdvanceRecord> {
+  async action(strRecordUUID: string, strAction: string, objBody?: unknown): Promise<LoanAdvanceRecord> {
     const dicActionCodeByAction: Record<string, string> = {
       "save-draft": "LOAN_ADV_EDIT",
       submit: "LOAN_ADV_SUBMIT",
@@ -179,12 +179,31 @@ export const loanAdvanceService = {
       "manual-recovery": "LOAN_ADV_MANUAL_RECOVERY",
       "skip-installment": "LOAN_ADV_SKIP_INSTALLMENT",
       "adjust-schedule": "LOAN_ADV_ADJUST_SCHEDULE",
+      finalize: "LOAN_ADV_FINALIZE",
+      "reopen-finalization": "LOAN_ADV_REOPEN_FINALIZATION",
     };
     const objResult = await requestApi<LoanAdvanceRecord>({
-      strPath: `/payroll/loans-advances/${intID}/${strAction}`,
+      strPath: `/payroll/loans-advances/${strRecordUUID}/${strAction}`,
       strMethod: "POST",
       objBody,
       strMenuAction: dicActionCodeByAction[strAction] || "LOAN_ADV_VIEW",
+    });
+    return objResult.Data;
+  },
+  async finalizeSchedule(strRecordUUID: string, intScheduleID: number): Promise<LoanAdvanceRecord> {
+    const objResult = await requestApi<LoanAdvanceRecord>({
+      strPath: `/payroll/loans-advances/${strRecordUUID}/schedule/${intScheduleID}/finalize`,
+      strMethod: "POST",
+      strMenuAction: "LOAN_ADV_FINALIZE",
+    });
+    return objResult.Data;
+  },
+  async reopenScheduleFinalization(strRecordUUID: string, intScheduleID: number, strReason: string): Promise<LoanAdvanceRecord> {
+    const objResult = await requestApi<LoanAdvanceRecord>({
+      strPath: `/payroll/loans-advances/${strRecordUUID}/schedule/${intScheduleID}/reopen-finalization`,
+      strMethod: "POST",
+      objBody: { strReason },
+      strMenuAction: "LOAN_ADV_REOPEN_FINALIZATION",
     });
     return objResult.Data;
   },
@@ -213,9 +232,9 @@ export const loanAdvanceService = {
     });
     return objResult.Data;
   },
-  async getEssLoan(intID: number): Promise<LoanAdvanceRecord> {
+  async getEssLoan(strRecordUUID: string): Promise<LoanAdvanceRecord> {
     const objResult = await requestApi<LoanAdvanceRecord>({
-      strPath: `/ess/loans-advances/${intID}`,
+      strPath: `/ess/loans-advances/${strRecordUUID}`,
       strMethod: "GET",
       strMenuAction: "ESS_LOAN_ADV_VIEW",
     });
@@ -233,21 +252,21 @@ export const loanAdvanceService = {
     });
     return objResult.Data;
   },
-  async updateEssLoan(intID: number, dicValues: LoanAdvanceFormValues, objCalculationSnapshot?: unknown): Promise<LoanAdvanceRecord> {
+  async updateEssLoan(strRecordUUID: string, dicValues: LoanAdvanceFormValues, objCalculationSnapshot?: unknown): Promise<LoanAdvanceRecord> {
     const objPayload = toPayload(dicValues, objCalculationSnapshot);
     delete (objPayload as { intEmployeeID?: number }).intEmployeeID;
     delete (objPayload as { strEmployeeCode?: string }).strEmployeeCode;
     const objResult = await requestApi<LoanAdvanceRecord>({
-      strPath: `/ess/loans-advances/${intID}`,
+      strPath: `/ess/loans-advances/${strRecordUUID}`,
       strMethod: "PUT",
       objBody: objPayload,
       strMenuAction: "ESS_LOAN_ADV_EDIT",
     });
     return objResult.Data;
   },
-  async essAction(intID: number, strAction: "submit" | "cancel", objBody?: unknown): Promise<LoanAdvanceRecord> {
+  async essAction(strRecordUUID: string, strAction: "submit" | "cancel", objBody?: unknown): Promise<LoanAdvanceRecord> {
     const objResult = await requestApi<LoanAdvanceRecord>({
-      strPath: `/ess/loans-advances/${intID}/${strAction}`,
+      strPath: `/ess/loans-advances/${strRecordUUID}/${strAction}`,
       strMethod: "POST",
       objBody,
       strMenuAction: strAction === "submit" ? "ESS_LOAN_ADV_SUBMIT" : "ESS_LOAN_ADV_CANCEL",

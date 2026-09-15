@@ -1,7 +1,6 @@
 "use client";
 
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
-import AccountBalanceWalletOutlinedIcon from "@mui/icons-material/AccountBalanceWalletOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import {
   Alert,
@@ -14,8 +13,9 @@ import {
   Typography,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import styles from "@/components/master/MasterScreen.module.css";
 import { useFlexiPayDeclarationLabels } from "@/features/flexi-pay-declaration/hooks/useFlexiPayDeclarationLabels";
 import {
@@ -62,6 +62,30 @@ function getStatusColor(strStatus?: string | null): "default" | "warning" | "suc
   return "default";
 }
 
+const objChipBaseSx = {
+  height: 30,
+  border: "1px solid",
+  fontWeight: 700,
+  "& .MuiChip-label": {
+    px: 1.5,
+    py: 0.5,
+  },
+};
+
+function getStatusChipSx(strStatus?: string | null) {
+  const strValue = String(strStatus || "draft").toLowerCase();
+  if (["approved", "locked"].includes(strValue)) {
+    return { ...objChipBaseSx, color: "#067647", backgroundColor: "#ecfdf3", borderColor: "#abefc6" };
+  }
+  if (strValue === "submitted") {
+    return { ...objChipBaseSx, color: "#175cd3", backgroundColor: "#eff8ff", borderColor: "#b2ddff" };
+  }
+  if (["returned", "rejected", "cancelled"].includes(strValue)) {
+    return { ...objChipBaseSx, color: "#b42318", backgroundColor: "#fef3f2", borderColor: "#fecdca" };
+  }
+  return { ...objChipBaseSx, color: "#b54708", backgroundColor: "#fffaeb", borderColor: "#fedf89" };
+}
+
 export default function SalaryFlexiPayDeclarationsRoute() {
   const objRouter = useRouter();
   const { t } = useFlexiPayDeclarationLabels();
@@ -69,20 +93,11 @@ export default function SalaryFlexiPayDeclarationsRoute() {
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
   const [objSummary, setObjSummary] = useState<FlexiDeclarationSummaryRecord | null>(null);
-  const objBannerChipSx = {
-    color: "#000000",
-    backgroundColor: "#ffffff",
-    border: "1px solid rgba(15, 23, 42, 0.1)",
-    "& .MuiChip-label": {
-      color: "#000000",
-      fontWeight: 500,
-    },
-  };
 
-  const getTranslatedStatus = (strStatus?: string | null) => {
+  const getTranslatedStatus = useCallback((strStatus?: string | null) => {
     const strStatusKey = getStatusLabelKey(strStatus);
     return t(strStatusKey, formatStatus(strStatus));
-  };
+  }, [t]);
 
   useEffect(() => {
     let blnMounted = true;
@@ -132,6 +147,54 @@ export default function SalaryFlexiPayDeclarationsRoute() {
     };
   }, [objSummary, strCurrentFinancialYearCode]);
 
+  const lstTableRows = useMemo(() => {
+    if (!objSummary) {
+      return [];
+    }
+    return [
+      {
+        id: "current",
+        action: (
+          <Button
+            size="small"
+            variant="contained"
+            endIcon={<ArrowForwardRoundedIcon />}
+            onClick={() => objRouter.push("/salary/flexi-pay-declaration")}
+            controlId={`flexi-pay-declarations.row.${objListRow.blnCanDeclare ? "edit" : "view"}.button`}
+          >
+            {objListRow.blnCanDeclare ? t("open", "Open") : t("view", "View")}
+          </Button>
+        ),
+        strEmployeeCode: objListRow.strEmployeeCode,
+        strEmployeeName: objListRow.strEmployeeName,
+        strFinancialYearCode: objListRow.strFinancialYearCode,
+        strStructureName: objListRow.strStructureName,
+        strStatus: <Chip size="small" color={getStatusColor(objListRow.strStatus)} label={getTranslatedStatus(objListRow.strStatus)} />,
+        strStatusSort: objListRow.strStatus,
+        decBasket: formatCurrency(objListRow.decBasket, objListRow.strCurrencyCode),
+        decDeclared: formatCurrency(objListRow.decDeclared, objListRow.strCurrencyCode),
+        decResidual: formatCurrency(objListRow.decResidual, objListRow.strCurrencyCode),
+        intHistoryCount: objListRow.intHistoryCount,
+      },
+    ];
+  }, [getTranslatedStatus, objListRow, objRouter, objSummary, t]);
+
+  const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
+    () => [
+      { field: "action", headerName: t("action", "Action"), align: "center", sortable: false, filterable: false, exportable: false, width: 110 },
+      { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code"), width: 150 },
+      { field: "strEmployeeName", headerName: t("employee_name", "Employee Name"), width: 200 },
+      { field: "strFinancialYearCode", headerName: t("financial_year", "Financial Year"), width: 140 },
+      { field: "strStructureName", headerName: t("assigned_salary_structure", "Assigned Salary Structure"), width: 200 },
+      { field: "strStatus", headerName: t("current_status", "Current Status"), filterable: false, width: 150, sortAccessor: (objRow) => String(objRow.strStatusSort) },
+      { field: "decBasket", headerName: t("flexi_basket_available", "Flexi Basket Available"), align: "right", width: 190 },
+      { field: "decDeclared", headerName: t("declared_flexi", "Declared Flexi"), align: "right", width: 160 },
+      { field: "decResidual", headerName: t("residual_taxable_balance", "Residual Taxable Balance"), align: "right", width: 200 },
+      { field: "intHistoryCount", headerName: t("history_count", "History Count"), align: "right", width: 140 },
+    ],
+    [t]
+  );
+
   if (blnLoading) {
     return (
       <Box sx={{ display: "grid", placeItems: "center", minHeight: "48vh" }}>
@@ -141,29 +204,22 @@ export default function SalaryFlexiPayDeclarationsRoute() {
   }
 
   return (
-    <Stack spacing={0} className={styles.page}>
+    <Stack spacing={0} className={styles.page} sx={{ gap: 0.5 }}>
       {strError ? <Alert severity="error">{strError}</Alert> : null}
 
-      <Box className="pageBanner">
-        <Box className="bannerDots" />
-        <Box className="bannerIcon">
-          <AccountBalanceWalletOutlinedIcon sx={{ fontSize: 30 }} />
-        </Box>
-        <Box className="bannerDivider" />
-        <Box sx={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0 }}>
-          <Typography component="h1" className="bannerTitle">
-            {t("page_title", "Flexi Pay Declaration")}
-          </Typography>
-          <Typography component="p" className="bannerSubTitle">
-            {t("employee_declaration_list", "Employee declaration list")}
-          </Typography>
-        </Box>
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ position: "relative", zIndex: 1 }}>
-          <Chip size="small" label={`${t("financial_year", "Financial Year")} ${objListRow.strFinancialYearCode}`} sx={objBannerChipSx} />
-          <Chip size="small" label={`${t("history", "History")} ${objListRow.intHistoryCount}`} sx={objBannerChipSx} />
-          <Chip size="small" label={getTranslatedStatus(objListRow.strStatus)} sx={objBannerChipSx} />
-        </Stack>
-      </Box>
+      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ px: 2, py: 0.25 }}>
+        <Chip
+          size="small"
+          label={`${t("financial_year", "Financial Year")} ${objListRow.strFinancialYearCode}`}
+          sx={{ ...objChipBaseSx, color: "#175cd3", backgroundColor: "#eff8ff", borderColor: "#b2ddff" }}
+        />
+        <Chip
+          size="small"
+          label={`${t("history", "History")} ${objListRow.intHistoryCount}`}
+          sx={{ ...objChipBaseSx, color: "#6941c6", backgroundColor: "#f4f3ff", borderColor: "#d9d6fe" }}
+        />
+        <Chip size="small" label={getTranslatedStatus(objListRow.strStatus)} sx={getStatusChipSx(objListRow.strStatus)} />
+      </Stack>
 
       {objSummary && !objSummary.blnCanDeclare ? (
         <Alert severity="info" icon={<InfoOutlinedIcon fontSize="inherit" />}>
@@ -172,61 +228,16 @@ export default function SalaryFlexiPayDeclarationsRoute() {
       ) : null}
 
       <Paper className={styles.tableCard} sx={{ mt: "0 !important" }}>
-        <Box className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>{t("action", "Action")}</th>
-                <th>{t("employee_code", "Employee Code")}</th>
-                <th>{t("employee_name", "Employee Name")}</th>
-                <th>{t("financial_year", "Financial Year")}</th>
-                <th>{t("assigned_salary_structure", "Assigned Salary Structure")}</th>
-                <th>{t("current_status", "Current Status")}</th>
-                <th>{t("flexi_basket_available", "Flexi Basket Available")}</th>
-                <th>{t("declared_flexi", "Declared Flexi")}</th>
-                <th>{t("residual_taxable_balance", "Residual Taxable Balance")}</th>
-                <th>{t("history_count", "History Count")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {objSummary ? (
-                <tr>
-                  <td>
-                    <Button
-                      size="small"
-                      variant="contained"
-                      endIcon={<ArrowForwardRoundedIcon />}
-                      onClick={() => objRouter.push("/salary/flexi-pay-declaration")}
-                    >
-                      {objListRow.blnCanDeclare ? t("open", "Open") : t("view", "View")}
-                    </Button>
-                  </td>
-                  <td>{objListRow.strEmployeeCode}</td>
-                  <td>{objListRow.strEmployeeName}</td>
-                  <td>{objListRow.strFinancialYearCode}</td>
-                  <td>{objListRow.strStructureName}</td>
-                  <td>
-                    <Chip
-                      size="small"
-                      color={getStatusColor(objListRow.strStatus)}
-                      label={getTranslatedStatus(objListRow.strStatus)}
-                    />
-                  </td>
-                  <td>{formatCurrency(objListRow.decBasket, objListRow.strCurrencyCode)}</td>
-                  <td>{formatCurrency(objListRow.decDeclared, objListRow.strCurrencyCode)}</td>
-                  <td>{formatCurrency(objListRow.decResidual, objListRow.strCurrencyCode)}</td>
-                  <td>{objListRow.intHistoryCount}</td>
-                </tr>
-              ) : (
-                <tr>
-                  <td colSpan={10} className={styles.emptyState}>
-                    {t("flexi_declaration_summary_not_available", "Flexi declaration summary is not available right now.")}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </Box>
+        <CommonTable
+          columns={lstTableColumns}
+          rows={lstTableRows}
+          rowIdField="id"
+          hideToolbar
+          minTableWidth={1400}
+          emptyMessage={t("flexi_declaration_summary_not_available", "Flexi declaration summary is not available right now.")}
+          testIdPrefix="flexi-pay-declarations.list"
+          withPaper={false}
+        />
       </Paper>
     </Stack>
   );

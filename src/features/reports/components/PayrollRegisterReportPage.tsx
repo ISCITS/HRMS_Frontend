@@ -6,19 +6,21 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField, Typography } from "@mui/material";
 import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
+import { useSearchParams } from "next/navigation";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
+import ReportMultiSelectField, { getUniqueOptions } from "@/features/reports/components/ReportMultiSelectField";
 import { payrollReportService } from "@/features/reports/services/payrollReportService";
 import type { PayrollResultListRecord } from "@/features/payroll/types";
 
 type SearchForm = {
   strSearchEmployee: string;
   strSearchRun: string;
-  strStatus: "All" | "Calculated" | "Approved" | "Published" | "Paid";
+  strStatus: string;
   strDepartment: string;
   strLocation: string;
   strPayrollMonth: string;
@@ -33,6 +35,16 @@ const dicEmptySearch: SearchForm = {
   strPayrollMonth: "",
 };
 const lstRowsPerPageOptions = [10, 20, 50];
+
+function normalizeQueryMonth(strValue: string | null) {
+  const strTrimmed = String(strValue ?? "").trim();
+  return /^\d{4}-\d{2}/.test(strTrimmed) ? strTrimmed.slice(0, 7) : "";
+}
+
+function buildInitialSearchFromQuery(objSearchParams: { get: (strKey: string) => string | null }): SearchForm {
+  const strPayrollMonth = normalizeQueryMonth(objSearchParams.get("month"));
+  return strPayrollMonth ? { ...dicEmptySearch, strPayrollMonth } : dicEmptySearch;
+}
 
 type PayrollRegisterLabels = {
   strEmployeeCode: string;
@@ -262,6 +274,8 @@ function exportPdf(strTitle: string, lstRows: PayrollResultListRecord[], dicLabe
 }
 
 export default function PayrollRegisterReportPage() {
+  const objSearchParams = useSearchParams();
+  const dicInitialSearch = useMemo(() => buildInitialSearchFromQuery(objSearchParams), [objSearchParams]);
   const { t } = useModuleLabels("reports");
   const dicLabels = useMemo(() => buildPayrollRegisterLabels(t), [t]);
   const { blnLoading: blnRightsLoading, canDoAny, canViewAny } = useModuleActionAccess([
@@ -276,7 +290,7 @@ export default function PayrollRegisterReportPage() {
   const [blnHasLoadedRows, setBlnHasLoadedRows] = useState(false);
   const [blnFilterDialogOpen, setBlnFilterDialogOpen] = useState(false);
   const [strError, setStrError] = useState("");
-  const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
+  const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicInitialSearch);
   const [setSelectedRowIDs, setSetSelectedRowIDs] = useState<Set<number>>(new Set());
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
 
@@ -295,6 +309,18 @@ export default function PayrollRegisterReportPage() {
   }
 
   const lstFilteredRows = useMemo(() => lstRows, [lstRows]);
+  const dicFilterOptions = useMemo(() => ({
+    lstEmployees: getUniqueOptions(lstRows.flatMap((dicRow) => [
+      dicRow.strEmployeeCode,
+      dicRow.strEmployeeName,
+      `${dicRow.strEmployeeCode} - ${dicRow.strEmployeeName}`,
+    ])),
+    lstRuns: getUniqueOptions(lstRows.flatMap((dicRow) => [dicRow.strRunCode, dicRow.strRunName])),
+    lstMonths: getUniqueOptions(lstRows.map((dicRow) => dicRow.dtPayrollMonth?.slice(0, 7))),
+    lstDepartments: getUniqueOptions(lstRows.map((dicRow) => dicRow.strDepartmentName)),
+    lstLocations: getUniqueOptions(lstRows.map((dicRow) => dicRow.strLocationName)),
+    lstStatuses: getUniqueOptions(lstRows.map((dicRow) => dicRow.strStatus)),
+  }), [lstRows]);
 
   const dicTotals = useMemo(() => lstFilteredRows.reduce(
     (dicAccumulator, dicRow) => ({
@@ -355,8 +381,8 @@ export default function PayrollRegisterReportPage() {
     if (!blnCanView) {
       return;
     }
-    loadRows(dicEmptySearch).catch(() => undefined);
-  }, [blnCanView]);
+    loadRows(dicInitialSearch).catch(() => undefined);
+  }, [blnCanView, dicInitialSearch]);
 
   const lstTableRows = useMemo(
     () =>
@@ -374,20 +400,31 @@ export default function PayrollRegisterReportPage() {
         strEmployeeName: dicRow.strEmployeeName,
         strRegimeUsed: dicRow.strRegimeUsed || "-",
         strPayrollPeriod: formatMonth(dicRow.dtPayrollMonth),
+        strPayrollPeriodSortValue: dicRow.dtPayrollMonth ? new Date(dicRow.dtPayrollMonth).getTime() : 0,
         decCalendarDays: dicRow.decCalendarDays ?? "-",
         decPaidDays: dicRow.decPaidDays ?? "-",
         decLwpDays: dicRow.decLwpDays ?? "-",
         decLopDays: dicRow.decLopDays ?? "-",
         decOriginalSalaryAmount: formatCurrency(dicRow.decOriginalSalaryAmount ?? 0),
+        decOriginalSalaryAmountSortValue: Number(dicRow.decOriginalSalaryAmount ?? 0),
         decLwpReductionAmount: formatCurrency(dicRow.decLwpReductionAmount ?? 0),
+        decLwpReductionAmountSortValue: Number(dicRow.decLwpReductionAmount ?? 0),
         decGrossEarningsAmount: formatCurrency(getGrossEarnings(dicRow)),
+        decGrossEarningsAmountSortValue: getGrossEarnings(dicRow),
         decEmployeeDeductionTotal: formatCurrency(getEmployeeDeductions(dicRow)),
+        decEmployeeDeductionTotalSortValue: getEmployeeDeductions(dicRow),
         decTaxTotal: formatCurrency(getTaxAmount(dicRow)),
+        decTaxTotalSortValue: getTaxAmount(dicRow),
         decTaxableIncome: formatCurrency(dicRow.decTaxableIncome),
+        decTaxableIncomeSortValue: Number(dicRow.decTaxableIncome ?? 0),
         decAnnualTaxAmount: formatCurrency(dicRow.decAnnualTaxAmount),
+        decAnnualTaxAmountSortValue: Number(dicRow.decAnnualTaxAmount ?? 0),
         decMonthlyTds: formatCurrency(dicRow.decMonthlyTds),
+        decMonthlyTdsSortValue: Number(dicRow.decMonthlyTds ?? 0),
         decEmployerContributionTotal: formatCurrency(dicRow.decEmployerContributionTotal ?? 0),
+        decEmployerContributionTotalSortValue: Number(dicRow.decEmployerContributionTotal ?? 0),
         decNetPayAmount: formatCurrency(dicRow.decNetPayAmount),
+        decNetPayAmountSortValue: Number(dicRow.decNetPayAmount ?? 0),
         strStatus: dicRow.strStatus,
       })),
     [lstFilteredRows, setSelectedRowIDs]
@@ -415,21 +452,21 @@ export default function PayrollRegisterReportPage() {
       { field: "strEmployeeCode", headerName: dicLabels.strEmployeeCode, width: 150 },
       { field: "strEmployeeName", headerName: dicLabels.strEmployeeName, width: 220 },
       { field: "strRegimeUsed", headerName: dicLabels.strTaxRegime, width: 140 },
-      { field: "strPayrollPeriod", headerName: dicLabels.strPayrollPeriod, width: 140 },
+      { field: "strPayrollPeriod", headerName: dicLabels.strPayrollPeriod, width: 140, sortAccessor: (dicRow) => dicRow.strPayrollPeriodSortValue },
       { field: "decCalendarDays", headerName: dicLabels.strCalendarDays, width: 120, align: "right" },
       { field: "decPaidDays", headerName: dicLabels.strPaidDays, width: 110, align: "right" },
       { field: "decLwpDays", headerName: dicLabels.strLwpDays, width: 110, align: "right" },
       { field: "decLopDays", headerName: dicLabels.strLopDays, width: 110, align: "right" },
-      { field: "decOriginalSalaryAmount", headerName: dicLabels.strOriginalSalary, width: 150, align: "right" },
-      { field: "decLwpReductionAmount", headerName: dicLabels.strLwpReduction, width: 150, align: "right" },
-      { field: "decGrossEarningsAmount", headerName: dicLabels.strGrossEarnings, width: 150, align: "right" },
-      { field: "decEmployeeDeductionTotal", headerName: dicLabels.strEmployeeDeductions, width: 170, align: "right" },
-      { field: "decTaxTotal", headerName: dicLabels.strTax, width: 140, align: "right" },
-      { field: "decTaxableIncome", headerName: dicLabels.strTaxableIncome, width: 150, align: "right" },
-      { field: "decAnnualTaxAmount", headerName: dicLabels.strAnnualTax, width: 140, align: "right" },
-      { field: "decMonthlyTds", headerName: dicLabels.strMonthlyTds, width: 140, align: "right" },
-      { field: "decEmployerContributionTotal", headerName: dicLabels.strEmployerContributions, width: 180, align: "right" },
-      { field: "decNetPayAmount", headerName: dicLabels.strNetPay, width: 140, align: "right" },
+      { field: "decOriginalSalaryAmount", headerName: dicLabels.strOriginalSalary, width: 150, align: "right", sortAccessor: (dicRow) => dicRow.decOriginalSalaryAmountSortValue },
+      { field: "decLwpReductionAmount", headerName: dicLabels.strLwpReduction, width: 150, align: "right", sortAccessor: (dicRow) => dicRow.decLwpReductionAmountSortValue },
+      { field: "decGrossEarningsAmount", headerName: dicLabels.strGrossEarnings, width: 150, align: "right", sortAccessor: (dicRow) => dicRow.decGrossEarningsAmountSortValue },
+      { field: "decEmployeeDeductionTotal", headerName: dicLabels.strEmployeeDeductions, width: 170, align: "right", sortAccessor: (dicRow) => dicRow.decEmployeeDeductionTotalSortValue },
+      { field: "decTaxTotal", headerName: dicLabels.strTax, width: 140, align: "right", sortAccessor: (dicRow) => dicRow.decTaxTotalSortValue },
+      { field: "decTaxableIncome", headerName: dicLabels.strTaxableIncome, width: 150, align: "right", sortAccessor: (dicRow) => dicRow.decTaxableIncomeSortValue },
+      { field: "decAnnualTaxAmount", headerName: dicLabels.strAnnualTax, width: 140, align: "right", sortAccessor: (dicRow) => dicRow.decAnnualTaxAmountSortValue },
+      { field: "decMonthlyTds", headerName: dicLabels.strMonthlyTds, width: 140, align: "right", sortAccessor: (dicRow) => dicRow.decMonthlyTdsSortValue },
+      { field: "decEmployerContributionTotal", headerName: dicLabels.strEmployerContributions, width: 180, align: "right", sortAccessor: (dicRow) => dicRow.decEmployerContributionTotalSortValue },
+      { field: "decNetPayAmount", headerName: dicLabels.strNetPay, width: 140, align: "right", sortAccessor: (dicRow) => dicRow.decNetPayAmountSortValue },
       { field: "strStatus", headerName: dicLabels.strStatus, width: 120 },
     ],
     [blnAllFilteredSelected, blnSomeFilteredSelected, dicLabels, lstFilteredRows.length]
@@ -446,26 +483,28 @@ export default function PayrollRegisterReportPage() {
         <Box className={styles.controlsHeader} sx={{ mb: 1.25 }}>
           <Box />
         </Box>
-        <Box className={styles.payrollRegisterSearchPanel}>
-          <Box className={styles.payrollRegisterSearchLinePrimary}>
-            <TextField value={dicSearchDraft.strSearchEmployee} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: objEvent.target.value }))} placeholder="Search by employee code" fullWidth data-controlid="reports.payroll-register.employee-search.input" />
-            <TextField value={dicSearchDraft.strSearchRun} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: objEvent.target.value }))} placeholder="Payroll period or run" fullWidth data-controlid="reports.payroll-register.run-search.input" />
-            <TextField type="month" value={dicSearchDraft.strPayrollMonth} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: objEvent.target.value }))} label="Payroll Month" fullWidth InputLabelProps={{ shrink: true }} data-controlid="reports.payroll-register.payroll-month.input" />
-            <TextField value={dicSearchDraft.strDepartment} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: objEvent.target.value }))} placeholder="Department" fullWidth data-controlid="reports.payroll-register.department.input" />
-            <TextField value={dicSearchDraft.strLocation} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: objEvent.target.value }))} placeholder="Location" fullWidth data-controlid="reports.payroll-register.location.input" />
+        <Box className={styles.reportSearchPanelRow}>
+          <Box className={styles.reportSearchField}>
+            <ReportMultiSelectField value={dicSearchDraft.strSearchEmployee} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: strValue }))} options={dicFilterOptions.lstEmployees} placeholder="Search by employee code or name" controlId="reports.payroll-register.employee-search.input" />
           </Box>
-          <Box className={styles.payrollRegisterSearchLineSecondary}>
-            <TextField select label="Status" value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} fullWidth data-controlid="reports.payroll-register.status.select">
-              <MenuItem value="All">All</MenuItem>
-              <MenuItem value="Calculated">Calculated</MenuItem>
-              <MenuItem value="Approved">Approved</MenuItem>
-              <MenuItem value="Published">Published</MenuItem>
-              <MenuItem value="Paid">Paid</MenuItem>
-            </TextField>
-            <Box className={styles.searchActions}>
-              <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} data-controlid="reports.payroll-register.search.button">Search</Button>
-              <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} data-controlid="reports.payroll-register.clear.button">Clear</Button>
-            </Box>
+          <Box className={styles.reportSearchField}>
+            <ReportMultiSelectField value={dicSearchDraft.strSearchRun} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: strValue }))} options={dicFilterOptions.lstRuns} placeholder="Payroll period or run" controlId="reports.payroll-register.run-search.input" />
+          </Box>
+          <Box className={styles.reportSearchField}>
+            <ReportMultiSelectField value={dicSearchDraft.strPayrollMonth} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: strValue }))} options={dicFilterOptions.lstMonths} label="Payroll Month" placeholder="Payroll Month" controlId="reports.payroll-register.payroll-month.input" />
+          </Box>
+          <Box className={styles.reportSearchField}>
+            <ReportMultiSelectField value={dicSearchDraft.strDepartment} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: strValue }))} options={dicFilterOptions.lstDepartments} placeholder="Department" controlId="reports.payroll-register.department.input" />
+          </Box>
+          <Box className={styles.reportSearchField}>
+            <ReportMultiSelectField value={dicSearchDraft.strLocation} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: strValue }))} options={dicFilterOptions.lstLocations} placeholder="Location" controlId="reports.payroll-register.location.input" />
+          </Box>
+          <Box className={styles.reportSearchField}>
+            <ReportMultiSelectField label="Status" value={dicSearchDraft.strStatus === "All" ? "" : dicSearchDraft.strStatus} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: (strValue || "All") as SearchForm["strStatus"] }))} options={dicFilterOptions.lstStatuses.length ? dicFilterOptions.lstStatuses : ["Calculated", "Approved", "Published", "Paid"]} placeholder="All statuses" controlId="reports.payroll-register.status.select" />
+          </Box>
+          <Box className={`${styles.searchActions} ${styles.reportBottomRightActions}`}>
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} data-controlid="reports.payroll-register.search.button">Search</Button>
+            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} data-controlid="reports.payroll-register.clear.button">Clear</Button>
           </Box>
         </Box>
       </Box>
@@ -510,7 +549,7 @@ export default function PayrollRegisterReportPage() {
             </Box>
           )}
           footerContent={lstFilteredRows.length > 0 ? (
-            <Box sx={{ px: 1.5, py: 1.25, borderTop: "1px solid #e2e8f0", overflowX: "auto" }}>
+            <Box sx={{ px: 1.5, py: 1.25, borderTop: "1px solid #e2e8f0" }}>
               <Box sx={{ minWidth: 2746, display: "grid", gridTemplateColumns: "56px 150px 220px 140px 140px 120px 110px 110px 110px 150px 150px 150px 170px 140px 150px 140px 140px 180px 140px 120px", alignItems: "center" }}>
                 <Typography sx={{ fontWeight: 700, gridColumn: "1 / span 9" }}>{dicLabels.strTotal}</Typography>
                 <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicTotals.decOriginalSalary)}</Typography>

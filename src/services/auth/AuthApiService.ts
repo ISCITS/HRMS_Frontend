@@ -2,7 +2,8 @@
 
 import {
   ApiRequestMethod,
-  ApiResultCode
+  ApiResultCode,
+  ApiRoutePrefix
 } from "@/Common/enums/AppEnums";
 import { ApiRequestError, requestEncryptedApi, resolveErrorMessage } from "@/Common/utils/apiErrorHandler";
 import { authHelpers } from "@/lib/auth";
@@ -10,11 +11,16 @@ import { encryptPassBase64 } from "@/lib/passwordEncryption";
 import type { ModuleLabelsResponse } from "@/features/labels/types";
 import {
   GenericLoginRequest,
+  type ChangePasswordRequest,
+  type ChangePasswordResponse,
   LoginRequest,
   type ActionRightsResponse,
   type AuthLoginData,
   type AuthOtpChallengeData,
   type AuthSuccessData,
+  type PortalCode,
+  type PasswordResetEmployeeOption,
+  type PortalContextData,
   type CurrentUserContext,
   type DashboardResponse,
   type GoogleMfaChallengeData,
@@ -210,6 +216,36 @@ export const authApiService = {
     return objResult;
   },
 
+  async changePassword(objPayload: ChangePasswordRequest) {
+    const objRequestBody = {
+      ...(objPayload.strCurrentPassword
+        ? { strCurrentPassword: encryptPassBase64(objPayload.strCurrentPassword) }
+        : {}),
+      strNewPassword: encryptPassBase64(objPayload.strNewPassword),
+      strConfirmPassword: encryptPassBase64(objPayload.strConfirmPassword),
+      ...(objPayload.intEmployeeID ? { intEmployeeID: objPayload.intEmployeeID } : {})
+    };
+
+    // Match master/department calls: use the shared encrypted API client directly
+    // against the versioned backend route with the authenticated user context.
+    return requestEncryptedApi<ChangePasswordResponse>({
+      strPath: `${ApiRoutePrefix.ApiV1}/auth/change-password`,
+      strMethod: ApiRequestMethod.Post,
+      objBody: objRequestBody,
+      strMenuAction: "AUTH_CHANGE_PASSWORD",
+      blnUseAuthHeader: true
+    });
+  },
+
+  async getPasswordResetEmployees() {
+    return requestEncryptedApi<PasswordResetEmployeeOption[]>({
+      strPath: `${ApiRoutePrefix.ApiV1}/auth/change-password/employees`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: "RESET_EMPLOYEE_PASSWORD",
+      blnUseAuthHeader: true
+    });
+  },
+
   async verifyOtp(objPayload: VerifyOtpRequest) {
     const objResult = await requestApi<VerifyOtpResponseData>({
       strPath: "auth/verify-otp",
@@ -219,6 +255,22 @@ export const authApiService = {
     });
     if (!isGoogleMfaChallengeData(objResult.Data)) {
       persistAuthenticatedSession(objResult.Data);
+    }
+    return objResult;
+  },
+
+  // Activates ESS or HRMS for a dual-access identity ("Continue To", and portal switching). The
+  // server revalidates the choice and re-issues the token carrying the active context.
+  async selectPortalContext(strPortal: PortalCode) {
+    const objResult = await requestApi<PortalContextData>({
+      strPath: "auth/context",
+      strMethod: ApiRequestMethod.Post,
+      objBody: { strPortal },
+      strMenuAction: "AUTH_PORTAL_CONTEXT"
+    });
+    if (objResult.Data?.objToken?.strAccessToken) {
+      // Same session, new active context: only the token is refreshed.
+      authHelpers.setAuthenticatedSession(objResult.Data.objToken.strAccessToken);
     }
     return objResult;
   },
@@ -296,7 +348,7 @@ export const authApiService = {
     });
   },
 
-  async uploadCurrentAvatar(objFile: File) {
+  async uploadCurrentAvatar(objFile: File, intEmployeeID?: number) {
     const objFormData = new FormData();
     objFormData.append("objFile", objFile);
     return requestApi<{
@@ -308,15 +360,17 @@ export const authApiService = {
       strPath: "auth/avatar/current",
       strMethod: ApiRequestMethod.Put,
       objBody: objFormData,
+      objQueryParams: intEmployeeID ? { employee_id: intEmployeeID } : undefined,
       strMenuAction: "AUTH_AVATAR_UPDATE",
       blnUseAuthHeader: true
     });
   },
 
-  async deleteCurrentAvatar() {
+  async deleteCurrentAvatar(intEmployeeID?: number) {
     return requestApi<{ blnDeleted: boolean }>({
       strPath: "auth/avatar/current",
       strMethod: ApiRequestMethod.Delete,
+      objQueryParams: intEmployeeID ? { employee_id: intEmployeeID } : undefined,
       strMenuAction: "AUTH_AVATAR_DELETE",
       blnUseAuthHeader: true
     });

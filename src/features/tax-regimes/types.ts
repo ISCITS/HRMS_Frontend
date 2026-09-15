@@ -21,6 +21,8 @@ export type TaxRegimeTextFormValue = {
 
 export type TaxRegimeListRecord = {
   intID: number;
+  /** Public identifier used in URLs and API paths; the internal id stays server-side. */
+  strRecordUUID: string;
   strRegimeCode: string;
   strRegimeName: string;
   strCountryCode: string;

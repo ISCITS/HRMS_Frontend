@@ -1,16 +1,23 @@
 "use client";
 
+import { isCtcProvisionCategory } from "@/lib/salaryCategories";
+
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
+import AccountBalanceWalletRoundedIcon from "@mui/icons-material/AccountBalanceWalletRounded";
+import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import MonetizationOnRoundedIcon from "@mui/icons-material/MonetizationOnRounded";
+import SavingsRoundedIcon from "@mui/icons-material/SavingsRounded";
 import { Box, Button, CircularProgress, Paper, Stack, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+
+import SalaryCalculationTooltip from "./SalaryCalculationTooltip";
 
 import styles from "@/components/master/MasterScreen.module.css";
 import { useEmployeeLabels } from "@/features/employee/hooks/useEmployeeLabels";
 import { employeeSalaryService } from "@/features/employee-salary/services/employeeSalaryService";
 import type { EmployeeSalaryDetailRecord, EmployeeSalarySummaryRecord } from "@/features/employee-salary/types";
-import { calculateEmployeeSalaryBaseSummaryMetrics } from "@/features/employee-salary/utils/employeeSalarySummary";
+import { buildEmployeeSalaryCalculationRows, calculateEmployeeSalaryBaseSummaryMetrics } from "@/features/employee-salary/utils/employeeSalarySummary";
 
 function formatCurrency(decValue: number | null) {
   if (decValue === null) {
@@ -23,18 +30,47 @@ function formatCurrency(decValue: number | null) {
   }).format(decValue);
 }
 
+function formatSummaryDate(strValue: string | null | undefined) {
+  if (!strValue) {
+    return "-";
+  }
+  const dtValue = new Date(`${strValue.slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(dtValue.getTime())) {
+    return "-";
+  }
+  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(dtValue);
+}
+
 type EmployeeSalarySummaryCardProps = {
   intEmployeeID?: number | null;
   blnHideOpenPageButton?: boolean;
+  blnCompact?: boolean;
 };
 
-export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPageButton = false }: EmployeeSalarySummaryCardProps) {
+export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPageButton = false, blnCompact = false }: EmployeeSalarySummaryCardProps) {
   const objRouter = useRouter();
   const { t } = useEmployeeLabels();
   const [objSummary, setObjSummary] = useState<EmployeeSalarySummaryRecord | null>(null);
   const [objSalaryDetail, setObjSalaryDetail] = useState<EmployeeSalaryDetailRecord | null>(null);
   const [blnLoading, setBlnLoading] = useState(false);
   const dicBaseSummaryMetrics = calculateEmployeeSalaryBaseSummaryMetrics(objSalaryDetail);
+  const decGrossAnnual = intEmployeeID ? dicBaseSummaryMetrics.decGrossMonthly * 12 : null;
+  const decNetAnnual = intEmployeeID
+    ? (objSalaryDetail?.objSalarySummary?.decNetFixedMonthly ?? dicBaseSummaryMetrics.decGrossMonthly) * 12
+    : null;
+  const dicCalculationRows = buildEmployeeSalaryCalculationRows(objSalaryDetail);
+  const lstFixedCalculationRows = objSalaryDetail?.objSalarySummary?.decNetFixedMonthly != null
+    ? (objSalaryDetail.lstComponentLines ?? []).filter(line => {
+        const category = (line.strComponentCategory || "").trim().toLowerCase();
+        return !isCtcProvisionCategory(category) && category !== "deduction" && category !== "recovery" && !(category.includes("employer") && category.includes("contribution")) && !line.blnIsFlexiBenefit && !line.blnIsFlexiBasket;
+      }).map(line => ({ strName: line.strComponentName || line.strComponentCode || "Component", decAmount: Number(line.decAmountMonthly || 0) * 12 }))
+    : dicCalculationRows.grossAnnual;
+  const dicCompactValueSx = {
+    fontSize: "0.875rem",
+    lineHeight: 1.43,
+    fontWeight: 700,
+    whiteSpace: "nowrap"
+  } as const;
 
   function openSalaryPage() {
     if (!intEmployeeID) {
@@ -78,6 +114,59 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
     };
   }, [intEmployeeID]);
 
+  if (blnCompact) {
+    return (
+      <Box>
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.15 }}>
+          <Box sx={{ width: 32, height: 32, borderRadius: "11px", display: "grid", placeItems: "center", bgcolor: "rgba(14,165,233,0.12)", color: "#0369a1", flexShrink: 0 }}>
+            <MonetizationOnRoundedIcon sx={{ fontSize: 20 }} />
+          </Box>
+          <Typography component="strong" sx={{ typography: "body2", fontWeight: 900, color: "#0f172a" }}>{t("salary_summary_card_title", "Salary Summary")}</Typography>
+        </Stack>
+
+        {blnLoading ? (
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ py: 1, color: "#64748b" }}>
+            <CircularProgress size={16} />
+            <Typography sx={{ typography: "caption" }}>{t("salary_summary_card_loading", "Loading salary summary...")}</Typography>
+          </Stack>
+        ) : !objSalaryDetail ? (
+          <Typography sx={{ py: 0.8, color: "#64748b", typography: "caption" }}>{t("salary_summary_card_unavailable", "Salary details are not available.")}</Typography>
+        ) : (
+          <Stack spacing={0.9}>
+            <Stack direction="row" spacing={0.9} alignItems="center" justifyContent="space-between">
+              <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
+                <Box sx={{ width: 28, height: 28, borderRadius: "50%", display: "grid", placeItems: "center", bgcolor: "#e8f8ee", color: "#16a34a", flexShrink: 0 }}><CalendarMonthRoundedIcon sx={{ fontSize: 16 }} /></Box>
+                <Typography sx={{ color: "#526581", typography: "caption", fontWeight: 700 }}><SalaryCalculationTooltip rows={dicCalculationRows.ctcAnnual} total={dicBaseSummaryMetrics.decAnnualCtc} title={t("salary_summary_card_ctc_annual_calculation", "CTC Annual = annual CTC-included earnings + annual employer contributions included in CTC + annual Flexi Bucket. Flexi allocations and residual taxable amounts are not added again.")}>{t("salary_summary_card_ctc_annual", "CTC Annual")}</SalaryCalculationTooltip></Typography>
+              </Stack>
+              <Typography sx={{ ...dicCompactValueSx, color: "#075fe4" }}>{formatCurrency(dicBaseSummaryMetrics.decAnnualCtc)}</Typography>
+            </Stack>
+            <Stack direction="row" spacing={0.9} alignItems="center" justifyContent="space-between">
+              <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
+                <Box sx={{ width: 28, height: 28, borderRadius: "50%", display: "grid", placeItems: "center", bgcolor: "#eaf1ff", color: "#2563eb", flexShrink: 0 }}><AccountBalanceWalletRoundedIcon sx={{ fontSize: 16 }} /></Box>
+                <Typography sx={{ color: "#526581", typography: "caption", fontWeight: 700 }}><SalaryCalculationTooltip rows={dicCalculationRows.grossAnnual} total={decGrossAnnual ?? 0} title={t("salary_summary_card_gross_annual_calculation", "Gross Annual = Gross Monthly * 12. Gross Monthly is monthly CTC-included earnings plus the monthly Flexi Bucket, excluding employer contributions and deductions.")}>{t("salary_summary_card_gross_annual", "Gross Annual")}</SalaryCalculationTooltip></Typography>
+              </Stack>
+              <Typography sx={{ ...dicCompactValueSx, color: "#075fe4" }}>{formatCurrency(decGrossAnnual)}</Typography>
+            </Stack>
+            <Stack direction="row" spacing={0.9} alignItems="center" justifyContent="space-between">
+              <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
+                <Box sx={{ width: 28, height: 28, borderRadius: "50%", display: "grid", placeItems: "center", bgcolor: "#f3eaff", color: "#7c3aed", flexShrink: 0 }}><SavingsRoundedIcon sx={{ fontSize: 16 }} /></Box>
+                <Typography sx={{ color: "#526581", typography: "caption", fontWeight: 700 }}><SalaryCalculationTooltip rows={lstFixedCalculationRows} total={decNetAnnual ?? 0} title={t("salary_summary_card_net_annual_calculation", "Net Annual = the salary summary's fixed monthly amount * 12. The fixed amount excludes deduction/recovery, employer contribution and flexi components. Gross Monthly is used if the fixed monthly amount is unavailable.")}>{t("salary_summary_card_net_annual", "Net Annual")}</SalaryCalculationTooltip></Typography>
+              </Stack>
+              <Typography sx={{ ...dicCompactValueSx, color: "#075fe4" }}>{formatCurrency(decNetAnnual)}</Typography>
+            </Stack>
+            <Stack direction="row" spacing={0.9} alignItems="center" justifyContent="space-between">
+              <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
+                <Box sx={{ width: 28, height: 28, borderRadius: "50%", display: "grid", placeItems: "center", bgcolor: "#fff7e6", color: "#d97706", flexShrink: 0 }}><CalendarMonthRoundedIcon sx={{ fontSize: 16 }} /></Box>
+                <Typography sx={{ color: "#526581", typography: "caption", fontWeight: 700 }}>{t("salary_summary_card_revised_on", "Salary Revised On")}</Typography>
+              </Stack>
+              <Typography sx={{ ...dicCompactValueSx, color: "#0f172a" }}>{formatSummaryDate(objSummary?.objCurrentSalarySnapshot?.dtEffectiveFrom)}</Typography>
+            </Stack>
+          </Stack>
+        )}
+      </Box>
+    );
+  }
+
   return (
     <Paper
       sx={{
@@ -87,9 +176,15 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
         background: "linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(240,249,255,0.96) 100%)"
       }}
     >
-      <Stack spacing={1.5}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
-          <Stack direction="row" spacing={1.25} alignItems="center">
+      <Box
+        sx={{
+          display: "grid",
+          alignItems: "center",
+          gap: { xs: 2, md: 2.5 },
+          gridTemplateColumns: { xs: "1fr", md: "minmax(190px, .8fr) repeat(3, minmax(150px, 1fr)) minmax(145px, .75fr) auto" }
+        }}
+      >
+          <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0 }}>
             <Box
               sx={{
                 width: 42,
@@ -103,72 +198,52 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
             >
               <MonetizationOnRoundedIcon />
             </Box>
-            <Box>
-              <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{t("salary_summary_card_title", "Salary Summary")}</Typography>
-              <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
-                {t("salary_summary_card_subtitle", "Snapshot only. Full maintenance stays on the dedicated salary page.")}
-              </Typography>
-            </Box>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a", whiteSpace: "nowrap" }}>{t("salary_summary_card_title", "Salary Summary")}</Typography>
           </Stack>
-          {!blnHideOpenPageButton ? (
-            <Button
-              controlId="employee-salary.summary.open-page.button"
-              className={styles.primaryButton}
-              variant="contained"
-              endIcon={<ArrowForwardRoundedIcon />}
-              onClick={openSalaryPage}
-              disabled={!intEmployeeID}
-              sx={{ borderRadius: "14px", px: 2 }}
-            >
-              {t("salary_summary_card_open_page", "Open Salary Page")}
-            </Button>
-          ) : null}
-        </Stack>
 
         {!intEmployeeID ? (
-          <Typography sx={{ color: "#64748b" }}>
+          <Typography sx={{ color: "#64748b", gridColumn: { md: "2 / 6" } }}>
             {t("salary_summary_card_save_employee_first", "Save the employee first to view salary information.")}
           </Typography>
         ) : blnLoading ? (
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, color: "#64748b" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, color: "#64748b", gridColumn: { md: "2 / 6" } }}>
             <CircularProgress size={18} />
             <Typography>{t("salary_summary_card_loading", "Loading salary summary...")}</Typography>
           </Box>
         ) : (
-          <Box
-            sx={{
-              display: "grid",
-              gap: 1.5,
-              gridTemplateColumns: { xs: "1fr", md: "repeat(4, minmax(0, 1fr))" }
-            }}
-          >
+          <>
+            <Stack direction="row" spacing={1.1} alignItems="center">
+              <Box sx={{ width: 36, height: 36, borderRadius: "50%", display: "grid", placeItems: "center", bgcolor: "#e8f8ee", color: "#16a34a", flexShrink: 0 }}><CalendarMonthRoundedIcon sx={{ fontSize: 20 }} /></Box>
+              <Box><Typography sx={{ color: "#526581", fontSize: "0.78rem", fontWeight: 700 }}><SalaryCalculationTooltip rows={dicCalculationRows.ctcAnnual} total={dicBaseSummaryMetrics.decAnnualCtc} title={t("salary_summary_card_ctc_annual_calculation", "CTC Annual = annual CTC-included earnings + annual employer contributions included in CTC + annual Flexi Bucket. Flexi allocations and residual taxable amounts are not added again.")}>{t("salary_summary_card_ctc_annual", "CTC Annual")}</SalaryCalculationTooltip></Typography><Typography sx={{ color: "#075fe4", fontSize: "1.08rem", fontWeight: 800 }}>{formatCurrency(dicBaseSummaryMetrics.decAnnualCtc)}</Typography></Box>
+            </Stack>
+            <Stack direction="row" spacing={1.1} alignItems="center">
+              <Box sx={{ width: 36, height: 36, borderRadius: "50%", display: "grid", placeItems: "center", bgcolor: "#eaf1ff", color: "#2563eb", flexShrink: 0 }}><AccountBalanceWalletRoundedIcon sx={{ fontSize: 20 }} /></Box>
+              <Box><Typography sx={{ color: "#526581", fontSize: "0.78rem", fontWeight: 700 }}><SalaryCalculationTooltip rows={dicCalculationRows.grossAnnual} total={decGrossAnnual ?? 0} title={t("salary_summary_card_gross_annual_calculation", "Gross Annual = Gross Monthly * 12. Gross Monthly is monthly CTC-included earnings plus the monthly Flexi Bucket, excluding employer contributions and deductions.")}>{t("salary_summary_card_gross_annual", "Gross Annual")}</SalaryCalculationTooltip></Typography><Typography sx={{ color: "#075fe4", fontSize: "1.08rem", fontWeight: 800 }}>{formatCurrency(decGrossAnnual)}</Typography></Box>
+            </Stack>
+            <Stack direction="row" spacing={1.1} alignItems="center">
+              <Box sx={{ width: 36, height: 36, borderRadius: "50%", display: "grid", placeItems: "center", bgcolor: "#f3eaff", color: "#7c3aed", flexShrink: 0 }}><SavingsRoundedIcon sx={{ fontSize: 20 }} /></Box>
+              <Box><Typography sx={{ color: "#526581", fontSize: "0.78rem", fontWeight: 700 }}><SalaryCalculationTooltip rows={lstFixedCalculationRows} total={decNetAnnual ?? 0} title={t("salary_summary_card_net_annual_calculation", "Net Annual = the salary summary's fixed monthly amount * 12. The fixed amount excludes deduction/recovery, employer contribution and flexi components. Gross Monthly is used if the fixed monthly amount is unavailable.")}>{t("salary_summary_card_net_annual", "Net Annual")}</SalaryCalculationTooltip></Typography><Typography sx={{ color: "#075fe4", fontSize: "1.08rem", fontWeight: 800 }}>{formatCurrency(decNetAnnual)}</Typography></Box>
+            </Stack>
             <Box>
-              <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{t("salary_summary_card_current_structure", "Current Structure")}</Typography>
-              <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>
-                {objSummary?.objAssignedStructure?.strStructureName ?? t("salary_summary_card_not_assigned", "Not assigned")}
-              </Typography>
+              <Typography sx={{ color: "#526581", fontSize: "0.78rem", fontWeight: 700 }}>{t("salary_summary_card_revised_on", "Salary Revised On")}</Typography>
+              <Typography sx={{ color: "#0f172a", fontWeight: 800 }}>{formatSummaryDate(objSummary?.objCurrentSalarySnapshot?.dtEffectiveFrom)}</Typography>
             </Box>
-            <Box>
-              <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{t("salary_summary_card_gross_monthly", "Gross Monthly")}</Typography>
-              <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>
-                {formatCurrency(intEmployeeID ? dicBaseSummaryMetrics.decGrossMonthly : null)}
-              </Typography>
-            </Box>
-            <Box>
-              <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{t("salary_summary_card_ctc_annual", "CTC Annual")}</Typography>
-              <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>
-                {formatCurrency(intEmployeeID ? dicBaseSummaryMetrics.decAnnualCtc : null)}
-              </Typography>
-            </Box>
-            <Box>
-              <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{t("salary_summary_card_revisions", "Revisions")}</Typography>
-              <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>
-                {objSummary?.intRevisionCount ?? 0}
-              </Typography>
-            </Box>
-          </Box>
+          </>
         )}
-      </Stack>
+        {!blnHideOpenPageButton ? (
+          <Button
+            controlId="employee-salary.summary.open-page.button"
+            className={styles.primaryButton}
+            variant="contained"
+            endIcon={<ArrowForwardRoundedIcon />}
+            onClick={openSalaryPage}
+            disabled={!intEmployeeID}
+            sx={{ borderRadius: "12px", px: 2, minHeight: 40, whiteSpace: "nowrap", justifySelf: { md: "end" } }}
+          >
+            {t("salary_summary_card_open_page", "Open Salary Page")}
+          </Button>
+        ) : null}
+      </Box>
     </Paper>
   );
 }

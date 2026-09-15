@@ -60,9 +60,12 @@ export default function ActiveStatusSwitch({
             },
           },
           "&.Mui-disabled": {
-            color: blnIsActive ? "#86efac" : "#fca5a5",
+            // Read unmistakably as "locked": grey, not a pale green/red that
+            // looks like a live control the user just cannot make respond.
+            color: "#cbd5e1",
             "& + .MuiSwitch-track": {
-              opacity: 0.55,
+              backgroundColor: "#cbd5e1 !important",
+              opacity: 0.7,
             },
           },
         },

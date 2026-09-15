@@ -121,7 +121,7 @@ export default function VersionLogListPage() {
             rowKey={dicRow.intID}
             blnCanView={blnCanView}
             blnCanEdit={blnCanEdit}
-            onView={() => objRouter.push(`/version-logs/edit/${dicRow.intID}?mode=view`)}
+            onView={() => objRouter.push(`/version-logs/edit/${dicRow.intID}`)}
             onEdit={blnCanEdit ? () => objRouter.push(`/version-logs/edit/${dicRow.intID}`) : undefined}
           />
         ),
@@ -255,8 +255,6 @@ export default function VersionLogListPage() {
           columns={lstTableColumns}
           rows={lstTableRows}
           rowIdField="id"
-          defaultPageSize={10}
-          pageSizeOptions={[10, 20, 50]}
           exportFileName="version_logs"
           showExportOptions={blnCanExport}
           testIdPrefix="version-logs.list"

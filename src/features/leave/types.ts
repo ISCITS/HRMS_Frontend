@@ -7,8 +7,11 @@ export type LeaveTypeDto = {
   intCompanyID: number | null;
   strTypeCode: string;
   strTypeName: string;
+  strLeaveCategoryCode?: string | null;
   blnIsPaid: boolean;
   strUnit: string;
+  /** Ceiling on a single hour-based request; set only while strUnit === "hour". */
+  decMaxHourLimit?: number | null;
   blnRequiresProof: boolean;
   blnAllowHalfDay: boolean;
   blnIsEncashable: boolean;
@@ -19,9 +22,18 @@ export type LeaveTypeDto = {
   blnRequiresReason?: boolean;
 };
 
+export type RestrictedHolidayDto = {
+  intID: number;
+  dtHolidayDate: string;
+  strHolidayCode: string;
+  strHolidayName: string;
+};
+
 // Enterprise leave-type row (GET /leave/leave-types) — master + current-policy summary + localized name.
 export type LeaveTypeEnrichedDto = {
   intID: number;
+  /** Public identifier used in URLs and API paths; the internal id stays server-side. */
+  strRecordUUID: string;
   intCompanyID: number | null;
   strTypeCode: string;
   strTypeName: string;
@@ -30,6 +42,7 @@ export type LeaveTypeEnrichedDto = {
   strLeaveCategoryCode: string;
   blnIsPaid: boolean;
   strUnit: string;
+  decMaxHourLimit?: number | null;
   blnRequiresProof: boolean;
   blnAllowHalfDay: boolean;
   blnIsEncashable: boolean;
@@ -88,6 +101,8 @@ export type LeavePolicyAggregate = {
   decMaxPerApplication?: number | null;
   decMaxConsecutiveDays?: number | null;
   intMaxApplicationsPerMonth?: number | null;
+  decMaxDaysPerMonth?: number | null;
+  blnAccrualLapseUnused?: boolean;
   intMaxApplicationsPerYear?: number | null;
   intMinNoticeDays: number;
   blnBackdatedApplicationAllowed: boolean;
@@ -185,6 +200,8 @@ export type LeaveTypeAggregate = {
   strDescription?: string | null;
   strLeaveCategoryCode: string;
   strUnit: string;
+  /** Max Hour Limit — required when strUnit === "hour", cleared by the server for every other unit. */
+  decMaxHourLimit?: number | null;
   blnIsPaid: boolean;
   strPayrollTreatmentCode: string;
   strAttendanceStatusCode: string;
@@ -295,6 +312,39 @@ export type LeaveBalanceDto = {
   decAvailable: number;
 };
 
+export type LeaveLedgerDto = {
+  intID: number;
+  intLeaveTypeID: number;
+  strLeaveTypeCode: string | null;
+  strLeaveTypeName: string | null;
+  intLeaveYear: number;
+  dtTransactionDate: string | null;
+  strTransactionType: string;
+  decCreditDays: number;
+  decDebitDays: number;
+  decHoldDays: number;
+  decReleaseHoldDays: number;
+  decBalanceAfter: number;
+  decHoldAfter: number;
+  strSourceType: string;
+  intSourceReferenceID: number | null;
+  strTransactionRemarks: string | null;
+  dtTransactionOn: string | null;
+  // Enrichment for leave-application movements.
+  dtLeaveFromDate: string | null;
+  dtLeaveToDate: string | null;
+  strUserRemarks: string | null;
+  // Backup resource assigned to the source leave request, if any.
+  strBackupResourceName: string | null;
+};
+
+export type LedgerEmployeeDto = {
+  intEmployeeID: number;
+  strFullName: string;
+  strEmployeeCode: string | null;
+  blnIsSelf: boolean;
+};
+
 export type LeaveApplicationActionDto = {
   intID: number;
   strAction: string;
@@ -333,7 +383,14 @@ export type LeavePreviewDto = {
   lstWarnings: LeaveValidationMessage[];
   lstDateBreakdown: LeaveDateBreakdownDto[];
   decCalculatedDays: number;
+  /** The unit decCalculatedDays is expressed in ("day" | "half_day" | "hour"). */
+  strUnit?: string | null;
+  blnHourBased?: boolean;
+  decRequestedHours?: number | null;
+  decMaxHourLimit?: number | null;
   blnProofRequired: boolean;
+  strBackupResourceRuleCode: string | null;
+  blnManagerCancelApprovedAllowed: boolean | null;
   intLeavePolicyID: number | null;
   intLeavePlanAssignmentID: number | null;
   intBalanceID: number | null;
@@ -352,6 +409,12 @@ export type LeaveApplicationDto = {
   decDays: number;
   blnFromHalf: boolean;
   blnToHalf: boolean;
+  strFromHalfSession?: "first" | "second" | null;
+  strToHalfSession?: "first" | "second" | null;
+  /** Unit decDays is denominated in, plus the hour window on an hour-based application. */
+  strUnit?: string | null;
+  tmStartTime?: string | null;
+  tmEndTime?: string | null;
   strReason: string | null;
   intBackupEmployeeID?: number | null;
   strStatus: string;
@@ -375,6 +438,11 @@ export type LeaveApplyRequest = {
   dtToDate: string;
   blnFromHalf: boolean;
   blnToHalf: boolean;
+  strFromHalfSession?: "first" | "second" | null;
+  strToHalfSession?: "first" | "second" | null;
+  /** Hour-based leave window ("HH:MM"); sent only for a Leave Type whose unit is "hour". */
+  tmStartTime?: string | null;
+  tmEndTime?: string | null;
   strReason?: string | null;
   strContactDuringLeave?: string | null;
   strBackupEmployee?: string | null;
@@ -423,11 +491,21 @@ export type LeaveWorkflowDto = {
 };
 
 // A row in the approver queue: the serialized application + workflow cursor + enterprise-UX tags.
+export type LeaveBackupCommitmentDto = {
+  intApplicationID: number;
+  intEmployeeID: number;
+  strEmployeeName: string | null;
+  strSessions: string;
+};
+
 export type LeaveQueueItemDto = LeaveApplicationDto & {
   objWorkflow?: LeaveWorkflowDto | null;
   intCurrentStepNo?: number | null;
   blnIsDelegated?: boolean;
   blnIsOverdue?: boolean;
+  // Leave of other employees that this applicant is the assigned backup for, on the very sessions
+  // they are requesting off. Non-empty means a replacement backup is required before approval.
+  lstBackupCommitments?: LeaveBackupCommitmentDto[];
   blnIsConfidential?: boolean;
   blnIsMasked?: boolean;
   dtLastActionOn?: string | null;
@@ -499,12 +577,36 @@ export const LEAVE_UNIT_OPTIONS = ["day", "half_day", "hour"] as const;
 export const ACCRUAL_FREQUENCY_OPTIONS = ["monthly", "yearly", "none"] as const;
 
 export const LEAVE_STATUS_COLORS: Record<string, { bg: string; fg: string }> = {
+  draft: { bg: "#f1f5f9", fg: "#475569" },
   pending: { bg: "#fef3c7", fg: "#92400e" },
   approved: { bg: "#dcfce7", fg: "#166534" },
   rejected: { bg: "#fee2e2", fg: "#991b1b" },
+  sent_back: { bg: "#ffedd5", fg: "#9a3412" },
+  cancellation_pending: { bg: "#fef3c7", fg: "#92400e" },
   cancelled: { bg: "#f1f5f9", fg: "#475569" },
   withdrawn: { bg: "#f1f5f9", fg: "#475569" },
 };
+
+// Canonical status wording (guide §10). Screens render these through the i18n framework via
+// getLeaveStatusLabel so ESS and HR always show identical, consistent status text.
+export const LEAVE_STATUS_LABELS: Record<string, string> = {
+  draft: "Draft",
+  pending: "Pending Approval",
+  approved: "Approved",
+  rejected: "Rejected",
+  sent_back: "Sent Back",
+  cancellation_pending: "Cancellation Pending",
+  cancelled: "Cancelled",
+  withdrawn: "Withdrawn",
+};
+
+export function getLeaveStatusLabel(
+  strStatus: string,
+  fnLabel: (strKey: string, strFallback: string) => string,
+): string {
+  const strFallback = LEAVE_STATUS_LABELS[strStatus] ?? strStatus.replaceAll("_", " ");
+  return fnLabel(`leave_status_${strStatus}`, strFallback);
+}
 
 // Rotating palette for leave-type badges (the coloured "CL / OD / SV" circles).
 export const LEAVE_TYPE_PALETTE: { bg: string; fg: string }[] = [
@@ -547,3 +649,18 @@ export function formatLeaveDate(strValue?: string | null): string {
   const strDay = String(objDate.getDate()).padStart(2, "0");
   return `${strDay}-${lstMonths[objDate.getMonth()]}-${objDate.getFullYear()}`;
 }
+
+// Server-decided capabilities that travel with a resource. The screen opens read-only and enables
+// controls from these flags, so the mode is never taken from the URL.
+export type ResourceCapabilities = {
+  blnCanView: boolean;
+  blnCanEdit: boolean;
+  blnCanDelete: boolean;
+  blnCanApprove: boolean;
+  blnCanExport: boolean;
+};
+
+export type LeaveTypeAggregateEnvelope = {
+  objData: LeaveTypeAggregate;
+  objCapabilities: ResourceCapabilities;
+};

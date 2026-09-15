@@ -304,13 +304,13 @@ export default function SalaryComponentListPage() {
     });
   }
 
-  function deleteSalaryComponent(intSalaryComponentID: number) {
+  function deleteSalaryComponent(strRecordUUID: string) {
     openConfirmDialog({
       strTitle: t("confirm_delete_title", "Delete Salary Component"),
       strMessage: t("confirm_delete_message", "Are you sure you want to delete this salary component record?"),
       strConfirmLabel: t("delete_button", "Delete"),
       fnOnConfirm: async () => {
-        await salaryComponentService.deleteSalaryComponent(intSalaryComponentID);
+        await salaryComponentService.deleteSalaryComponent(strRecordUUID);
         await loadComponents();
         showToast(t("delete_success", "Salary component deleted successfully."));
       }
@@ -331,12 +331,13 @@ export default function SalaryComponentListPage() {
               blnCanView={blnCanView}
               blnCanEdit={blnCanEdit}
               blnCanDelete={blnCanDelete}
-              onView={() => objRouter.push(`/salary-components/view/${dicRow.intID}?backRoute=${encodeURIComponent(strCurrentListRoute)}`)}
-              onEdit={() => objRouter.push(`/salary-components/edit/${dicRow.intID}?backRoute=${encodeURIComponent(strCurrentListRoute)}`)}
-              onDelete={() => deleteSalaryComponent(dicRow.intID)}
+              onView={() => objRouter.push(`/salary-components/view/${dicRow.strRecordUUID}?backRoute=${encodeURIComponent(strCurrentListRoute)}`)}
+              onEdit={() => objRouter.push(`/salary-components/edit/${dicRow.strRecordUUID}?backRoute=${encodeURIComponent(strCurrentListRoute)}`)}
+              onDelete={() => deleteSalaryComponent(dicRow.strRecordUUID)}
             />
           ),
           strComponentName: dicRow.strComponentName,
+          strComponentCode: dicRow.strComponentCode,
           strComponentCategory: getCategoryLabel(dicRow.strComponentCategory),
           strComponentGroup: dicRow.strComponentGroup ?? "-",
           strCalcMethod: dicRow.strCalcMethod,
@@ -374,6 +375,7 @@ export default function SalaryComponentListPage() {
       },
       { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 110 },
       { field: "strComponentName", headerName: t("component_name", "Component Name") },
+      { field: "strComponentCode", headerName: t("component_code", "Component Code") },
       { field: "strComponentCategory", headerName: t("category", "Category") },
       { field: "strComponentGroup", headerName: t("payroll_group", "Payroll Group") },
       { field: "strCalcMethod", headerName: t("calc_method", "Calc Method") },
@@ -481,8 +483,6 @@ export default function SalaryComponentListPage() {
             columns={lstTableColumns}
             rows={lstTableRows}
             rowIdField="id"
-            defaultPageSize={10}
-            pageSizeOptions={[10, 20, 50]}
             exportFileName="salary_components"
             showExportOptions={blnCanExport}
             showPaginationSummary

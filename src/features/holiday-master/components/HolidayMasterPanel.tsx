@@ -5,8 +5,8 @@ import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { yupResolver } from "@hookform/resolvers/yup";
 import {
-  Alert, Box, Button, Checkbox, CircularProgress, FormControlLabel, MenuItem, Snackbar,
-  Switch, TextField, Typography,
+  Alert, Box, Button, Checkbox, CircularProgress, MenuItem, Snackbar,
+  TextField, Typography,
 } from "@mui/material";
 import { useMemo, useState, type InputHTMLAttributes } from "react";
 import { Controller, useFieldArray, useForm, type Resolver } from "react-hook-form";
@@ -36,8 +36,8 @@ const objHolidaySchema = yup.object({
   intHolidayYear: yup.number().integer().min(1900).max(9999).required(),
   dtHolidayDate: yup.string().required("Holiday date is required."),
   strHolidayCode: yup.string().trim().matches(/^[A-Za-z0-9][A-Za-z0-9._-]{1,49}$/, "Use 2-50 letters, numbers, dot, underscore, or hyphen.").required("Holiday code is required."),
-  strHolidayName: yup.string().trim().min(2).max(150).required("Holiday name is required."),
-  strHolidayDescription: yup.string().max(500).required(),
+  strHolidayName: yup.string().trim().max(150).defined(),
+  strHolidayDescription: yup.string().max(500).defined(),
   strHolidayTypeCode: yup.string().required("Holiday type is required."),
   blnIsPaid: yup.boolean().required(),
   blnIsOptional: yup.boolean().required(),
@@ -47,19 +47,19 @@ const objHolidaySchema = yup.object({
   lstTexts: yup.array().of(yup.object({
     intLanguageID: yup.number().positive().required().defined(),
     strLanguageName: yup.string().required().defined(),
-    strHolidayName: yup.string().trim().max(150).required().defined(),
-    strHolidayDescription: yup.string().max(500).required().defined(),
+    strHolidayName: yup.string().trim().max(150).defined(),
+    strHolidayDescription: yup.string().max(500).defined(),
   }).required().defined()).required().defined(),
 });
 
-function createHolidayForm(intYear: number): HolidayFormValues {
+function createHolidayForm(intYear: number, strHolidayTypeCode = ""): HolidayFormValues {
   return {
     intHolidayYear: intYear,
     dtHolidayDate: "",
     strHolidayCode: "",
     strHolidayName: "",
     strHolidayDescription: "",
-    strHolidayTypeCode: "COMPANY",
+    strHolidayTypeCode,
     blnIsPaid: true,
     blnIsOptional: false,
     blnIsWorkOnHoliday: false,
@@ -97,6 +97,7 @@ export default function HolidayMasterPanel() {
   });
   const { fields: lstTextFields } = useFieldArray({ control, name: "lstTexts" });
   const intPrimaryLanguageID = authHelpers.getLanguageID() ?? objOptions.lstLanguages[0]?.intID;
+  const intSecondaryLanguageID = authHelpers.getSecondaryLanguageID();
   const intPrimaryTextIndex = lstTextFields.findIndex((objText) => objText.intLanguageID === intPrimaryLanguageID);
   const blnFormActive = watch("blnIsActive");
   const blnCanView = canViewAny();
@@ -127,7 +128,13 @@ export default function HolidayMasterPanel() {
     setStrMode("add");
     setIntEditingID(null);
     setStrSubmitError("");
-    reset({ ...createHolidayForm(objSearchDraft.intYear), lstTexts: buildTranslations() });
+    reset({
+      ...createHolidayForm(
+        objSearchDraft.intYear,
+        objOptions.lstHolidayTypes[0]?.strCode ?? "",
+      ),
+      lstTexts: buildTranslations(),
+    });
     setBlnDialogOpen(true);
   }
 
@@ -163,8 +170,7 @@ export default function HolidayMasterPanel() {
   async function translateHolidayFields() {
     const objValues = getValues();
     const intSourceLanguageID = authHelpers.getLanguageID() ?? objOptions.lstLanguages[0]?.intID;
-    const intTargetLanguageID = authHelpers.getSecondaryLanguageID()
-      ?? objOptions.lstLanguages.find((objLanguage) => objLanguage.intID !== intSourceLanguageID)?.intID;
+    const intTargetLanguageID = intSecondaryLanguageID;
     const intTargetIndex = objValues.lstTexts.findIndex((objText) => objText.intLanguageID === intTargetLanguageID);
     if (!intSourceLanguageID || !intTargetLanguageID || intSourceLanguageID === intTargetLanguageID || intTargetIndex < 0) {
       showToast(t("translation_language_unavailable", "A secondary tenant language is not configured."), "error");
@@ -279,7 +285,6 @@ export default function HolidayMasterPanel() {
   }
 
   const lstTableRows = useMemo(() => lstHolidays.map((objHoliday) => {
-    const fnBooleanLabel = (blnValue: boolean) => blnValue ? t("yes", "Yes") : t("no", "No");
     return {
       id: String(objHoliday.intID),
       select: <Checkbox controlId={`holiday-master.list.row.${objHoliday.intID}.select.checkbox`} checked={lstSelectedIDs.includes(objHoliday.intID)} onChange={() => toggleSelection(objHoliday.intID)} inputProps={{ "data-control-id": `holiday-master.list.row.${objHoliday.intID}.select.checkbox` } as InputHTMLAttributes<HTMLInputElement>} />,
@@ -288,9 +293,6 @@ export default function HolidayMasterPanel() {
       code: objHoliday.strHolidayCode,
       name: objHoliday.strHolidayName,
       type: objOptions.lstHolidayTypes.find((objType) => objType.strCode === objHoliday.strHolidayTypeCode)?.strLabel ?? objHoliday.strHolidayTypeCode,
-      paid: fnBooleanLabel(objHoliday.blnIsPaid),
-      workOnHoliday: fnBooleanLabel(objHoliday.blnIsWorkOnHoliday),
-      compOffEligible: fnBooleanLabel(objHoliday.blnIsCompensatoryOffApplicable),
       status: <span className={`${styles.statusPill} ${objHoliday.blnIsActive ? styles.statusActive : styles.statusInactive}`}>{objHoliday.blnIsActive ? t("active", "Active") : t("inactive", "Inactive")}</span>,
     };
   }), [blnCanEdit, blnCanView, lstHolidays, lstSelectedIDs, objOptions.lstHolidayTypes, strLanguageCode, t]);
@@ -302,9 +304,6 @@ export default function HolidayMasterPanel() {
     { field: "name", headerName: t("name", "Holiday Name") },
     { field: "code", headerName: t("code", "Holiday Code"), width: 150 },
     { field: "type", headerName: t("type", "Holiday Type"), width: 170 },
-    { field: "paid", headerName: t("paid_holiday", "Paid Holiday"), width: 140 },
-    { field: "workOnHoliday", headerName: t("can_work_on_holiday", "Can Work on Holiday"), width: 190 },
-    { field: "compOffEligible", headerName: t("comp_off_eligible", "Comp-Off Eligible"), width: 170 },
     { field: "status", headerName: t("status", "Status"), sortable: false, width: 120 },
   ], [blnAllSelected, blnSomeSelected, lstTableRows, t]);
 
@@ -343,12 +342,12 @@ export default function HolidayMasterPanel() {
           gridTemplateColumns: {
             xs: "1fr",
             sm: "repeat(2, minmax(0, 1fr))",
-            lg: "0.7fr 1.55fr 1.35fr 1.15fr 0.9fr 1.25fr 1.25fr",
+            lg: "0.7fr 1.55fr 1.35fr 1.15fr 0.9fr 132px 132px",
           },
           gap: 1.25,
           mt: 1.25,
           "& > *": { minWidth: 0 },
-          "& .MuiButton-root": { minHeight: 48, whiteSpace: "nowrap" },
+          "& .MuiButton-root": { minHeight: 34, minWidth: 0, width: "100%", whiteSpace: "nowrap" },
         }}>
           <Button data-control-id="holiday-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={applySearch} sx={{ gridColumn: { lg: 6 } }}>{t("search", "Search")}</Button>
           <Button data-control-id="holiday-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearSearch} sx={{ gridColumn: { lg: 7 } }}>{t("clear", "Clear")}</Button>
@@ -357,7 +356,7 @@ export default function HolidayMasterPanel() {
       </Box>
 
       <Box className={styles.tableCard}>
-        {!blnCanView && !blnRightsLoading ? <Box className={styles.emptyState}><Typography>{t("access_denied", "Holiday access is not available for your user group.")}</Typography></Box> : <CommonTable columns={lstTableColumns} rows={lstTableRows} rowIdField="id" defaultPageSize={10} pageSizeOptions={[10, 20, 50]} exportFileName="holiday" showExportOptions={blnCanExport} showPaginationSummary testIdPrefix="holiday-master.list" emptyMessage={t("empty", "No holidays found for the selected filters.")} toolbarLeft={blnCanAdd ? <Button data-control-id="holiday-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={openAdd}>{t("add_button", "Add Holiday")}</Button> : null} sx={{ p: 0, boxShadow: "none", background: "transparent" }} />}
+        {!blnCanView && !blnRightsLoading ? <Box className={styles.emptyState}><Typography>{t("access_denied", "Holiday access is not available for your user group.")}</Typography></Box> : <CommonTable columns={lstTableColumns} rows={lstTableRows} rowIdField="id" exportFileName="holiday" showExportOptions={blnCanExport} showPaginationSummary testIdPrefix="holiday-master.list" emptyMessage={t("empty", "No holidays found for the selected filters.")} toolbarLeft={blnCanAdd ? <Button data-control-id="holiday-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={openAdd}>{t("add_button", "Add Holiday")}</Button> : null} sx={{ p: 0, boxShadow: "none", background: "transparent" }} />}
       </Box>
 
       <CommonMasterDialog
@@ -383,10 +382,11 @@ export default function HolidayMasterPanel() {
             <TextField {...register("intHolidayYear", { valueAsNumber: true })} inputProps={{ "data-control-id": "holiday-master.dialog.year.input" }} label={t("year", "Holiday Year")} type="number" disabled helperText={t("year_derived", "Derived automatically from Holiday Date")} />
             <TextField {...register("strHolidayCode")} inputProps={{ "data-control-id": "holiday-master.dialog.code.input" }} label={t("code", "Holiday Code")} disabled={strMode !== "add"} error={Boolean(errors.strHolidayCode)} helperText={errors.strHolidayCode?.message ?? (strMode === "edit" ? t("code_immutable", "Holiday Code cannot be changed after creation.") : undefined)} required />
             <Controller control={control} name="strHolidayTypeCode" render={({ field }) => <TextField {...field} inputProps={{ "data-control-id": "holiday-master.dialog.type.select" }} select label={t("type", "Holiday Type")} disabled={strMode === "view"} error={Boolean(errors.strHolidayTypeCode)} required>{objOptions.lstHolidayTypes.map((objType) => <MenuItem key={objType.strCode} value={objType.strCode}>{objType.strLabel}</MenuItem>)}</TextField>} />
-            <Box sx={{ gridColumn: { xs: "auto", md: "span 2" } }}><TextField {...register("strHolidayName", { onChange: (objEvent) => { if (intPrimaryTextIndex >= 0) setValue(`lstTexts.${intPrimaryTextIndex}.strHolidayName`, objEvent.target.value, { shouldValidate: true }); } })} inputProps={{ "data-control-id": "holiday-master.dialog.name.input" }} label={t("name", "Holiday Name")} disabled={strMode === "view"} error={Boolean(errors.strHolidayName)} helperText={errors.strHolidayName?.message} required fullWidth /></Box>
+            <Box sx={{ gridColumn: { xs: "auto", md: "span 2" } }}><TextField {...register("strHolidayName", { onChange: (objEvent) => { if (intPrimaryTextIndex >= 0) setValue(`lstTexts.${intPrimaryTextIndex}.strHolidayName`, objEvent.target.value, { shouldValidate: true }); } })} inputProps={{ "data-control-id": "holiday-master.dialog.name.input" }} label={t("name", "Holiday Name")} disabled={strMode === "view"} error={Boolean(errors.strHolidayName)} helperText={errors.strHolidayName?.message} fullWidth /></Box>
           </Box>
           <TextField {...register("strHolidayDescription", { onChange: (objEvent) => { if (intPrimaryTextIndex >= 0) setValue(`lstTexts.${intPrimaryTextIndex}.strHolidayDescription`, objEvent.target.value, { shouldValidate: true }); } })} inputProps={{ "data-control-id": "holiday-master.dialog.description.input" }} label={t("description", "Description")} disabled={strMode === "view"} error={Boolean(errors.strHolidayDescription)} helperText={errors.strHolidayDescription?.message} multiline minRows={2} fullWidth />
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, max-content)", lg: "repeat(4, max-content)" }, columnGap: 3, rowGap: 1, alignItems: "center" }}>{([ ["blnIsPaid", "paid", "Paid"], ["blnIsOptional", "optional", "Optional"], ["blnIsWorkOnHoliday", "work_on_holiday", "Work on Holiday"], ["blnIsCompensatoryOffApplicable", "comp_off_short_label", "Comp-Off"] ] as const).map(([strName, strKey, strFallback]) => <Controller key={strName} control={control} name={strName} render={({ field }) => <FormControlLabel sx={{ m: 0 }} control={<Switch data-control-id={`holiday-master.dialog.${strName}.switch`} checked={field.value} disabled={strMode === "view"} onChange={(_, blnChecked) => field.onChange(blnChecked)} />} label={t(strKey, strFallback)} />} />)}</Box>
+          {intSecondaryLanguageID ? (
+          <>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1.25, flexWrap: "wrap" }}>
             <Box>
               <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("multilingual_text", "Multilingual Text")}</Typography>
@@ -411,11 +411,13 @@ export default function HolidayMasterPanel() {
               );
             })}
           </Box>
+          </>
+          ) : null}
         </Box>}
       />
 
       <CommonConfirmDialog blnOpen={Boolean(objConfirmDialog)} strTitle={objConfirmDialog?.strTitle} strMessage={objConfirmDialog?.strMessage} strCancelLabel={t("cancel", "Cancel")} strConfirmLabel={t("confirm", "Confirm")} blnConfirmDisabled={blnSubmitting} onClose={() => setObjConfirmDialog(null)} onConfirm={() => void executeConfirmedAction()} />
-      <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnSubmitting} strLabel={t("loading", "Loading...")} intZIndex={1400} />
+      <BlockingLoader blnOpen={blnSubmitting || ((blnLoading || blnRightsLoading) && !blnDialogOpen)} strLabel={t("loading", "Loading...")} intZIndex={1400} />
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={() => setObjToast((objPrevious) => ({ ...objPrevious, blnOpen: false }))} anchorOrigin={{ vertical: "top", horizontal: "right" }}><Alert severity={objToast.strSeverity} variant="filled" onClose={() => setObjToast((objPrevious) => ({ ...objPrevious, blnOpen: false }))}>{objToast.strMessage}</Alert></Snackbar>
     </Box>
   );

@@ -97,36 +97,36 @@ export const payrollReimbursementService = {
     return objResult.Data ?? [];
   },
 
-  async getClaim(intClaimID: number): Promise<ReimbursementClaimDto> {
+  async getClaim(strClaimRecordUUID: string): Promise<ReimbursementClaimDto> {
     const objResult = await requestApi<ReimbursementClaimDto>({
-      strPath: `/payroll/reimbursements/${intClaimID}`,
+      strPath: `/payroll/reimbursements/${strClaimRecordUUID}`,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: "PAYROLL_REIMBURSEMENT_VIEW",
     });
     return objResult.Data;
   },
 
-  async listEligiblePayrollRuns(intClaimID: number): Promise<PayrollRunOption[]> {
+  async listEligiblePayrollRuns(strClaimRecordUUID: string): Promise<PayrollRunOption[]> {
     const objResult = await requestApi<PayrollRunOption[]>({
-      strPath: `/payroll/reimbursements/${intClaimID}/payroll-runs`,
+      strPath: `/payroll/reimbursements/${strClaimRecordUUID}/payroll-runs`,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: "PAYROLL_REIMBURSEMENT_VIEW",
     });
     return objResult.Data ?? [];
   },
 
-  async startReview(intClaimID: number): Promise<ReimbursementClaimDto> {
+  async startReview(strClaimRecordUUID: string): Promise<ReimbursementClaimDto> {
     const objResult = await requestApi<ReimbursementClaimDto>({
-      strPath: `/payroll/reimbursements/${intClaimID}/start-review`,
+      strPath: `/payroll/reimbursements/${strClaimRecordUUID}/start-review`,
       strMethod: ApiRequestMethod.Post,
       strMenuAction: "PAYROLL_REIMBURSEMENT_REVIEW",
     });
     return objResult.Data;
   },
 
-  async approveClaim(intClaimID: number, objPayload: ReimbursementDecisionPayload): Promise<ReimbursementClaimDto> {
+  async approveClaim(strClaimRecordUUID: string, objPayload: ReimbursementDecisionPayload): Promise<ReimbursementClaimDto> {
     const objResult = await requestApi<ReimbursementClaimDto>({
-      strPath: `/payroll/reimbursements/${intClaimID}/approve`,
+      strPath: `/payroll/reimbursements/${strClaimRecordUUID}/approve`,
       strMethod: ApiRequestMethod.Post,
       objBody: objPayload,
       strMenuAction: "PAYROLL_REIMBURSEMENT_APPROVE",
@@ -134,9 +134,9 @@ export const payrollReimbursementService = {
     return objResult.Data;
   },
 
-  async rejectClaim(intClaimID: number, objPayload: ReimbursementDecisionPayload): Promise<ReimbursementClaimDto> {
+  async rejectClaim(strClaimRecordUUID: string, objPayload: ReimbursementDecisionPayload): Promise<ReimbursementClaimDto> {
     const objResult = await requestApi<ReimbursementClaimDto>({
-      strPath: `/payroll/reimbursements/${intClaimID}/reject`,
+      strPath: `/payroll/reimbursements/${strClaimRecordUUID}/reject`,
       strMethod: ApiRequestMethod.Post,
       objBody: objPayload,
       strMenuAction: "PAYROLL_REIMBURSEMENT_REJECT",
@@ -144,9 +144,9 @@ export const payrollReimbursementService = {
     return objResult.Data;
   },
 
-  async releaseClaim(intClaimID: number, objPayload: ReimbursementDecisionPayload): Promise<ReimbursementClaimDto> {
+  async releaseClaim(strClaimRecordUUID: string, objPayload: ReimbursementDecisionPayload): Promise<ReimbursementClaimDto> {
     const objResult = await requestApi<ReimbursementClaimDto>({
-      strPath: `/payroll/reimbursements/${intClaimID}/release`,
+      strPath: `/payroll/reimbursements/${strClaimRecordUUID}/release`,
       strMethod: ApiRequestMethod.Post,
       objBody: objPayload,
       strMenuAction: "PAYROLL_REIMBURSEMENT_RELEASE",
@@ -154,18 +154,18 @@ export const payrollReimbursementService = {
     return objResult.Data;
   },
 
-  async lockClaim(intClaimID: number): Promise<ReimbursementClaimDto> {
+  async lockClaim(strClaimRecordUUID: string): Promise<ReimbursementClaimDto> {
     const objResult = await requestApi<ReimbursementClaimDto>({
-      strPath: `/payroll/reimbursements/${intClaimID}/lock`,
+      strPath: `/payroll/reimbursements/${strClaimRecordUUID}/lock`,
       strMethod: ApiRequestMethod.Post,
       strMenuAction: "PAYROLL_REIMBURSEMENT_LOCK",
     });
     return objResult.Data;
   },
 
-  async pushToPayroll(intClaimID: number, objPayload: ReimbursementPushPayload): Promise<ReimbursementClaimDto> {
+  async pushToPayroll(strClaimRecordUUID: string, objPayload: ReimbursementPushPayload): Promise<ReimbursementClaimDto> {
     const objResult = await requestApi<ReimbursementClaimDto>({
-      strPath: `/payroll/reimbursements/${intClaimID}/push-to-payroll`,
+      strPath: `/payroll/reimbursements/${strClaimRecordUUID}/push-to-payroll`,
       strMethod: ApiRequestMethod.Post,
       objBody: objPayload,
       strMenuAction: "PAYROLL_REIMBURSEMENT_PUSH_TO_PAYROLL",
@@ -173,9 +173,9 @@ export const payrollReimbursementService = {
     return objResult.Data;
   },
 
-  async markFinanceSettled(intClaimID: number, objPayload: ReimbursementFinanceSettlementPayload): Promise<ReimbursementClaimDto> {
+  async markFinanceSettled(strClaimRecordUUID: string, objPayload: ReimbursementFinanceSettlementPayload): Promise<ReimbursementClaimDto> {
     const objResult = await requestApi<ReimbursementClaimDto>({
-      strPath: `/payroll/reimbursements/${intClaimID}/mark-finance-settled`,
+      strPath: `/payroll/reimbursements/${strClaimRecordUUID}/mark-finance-settled`,
       strMethod: ApiRequestMethod.Post,
       objBody: objPayload,
       strMenuAction: "PAYROLL_REIMBURSEMENT_RELEASE",
@@ -183,9 +183,9 @@ export const payrollReimbursementService = {
     return objResult.Data;
   },
 
-  async approveItem(intClaimID: number, intItemID: number, objPayload: ReimbursementItemDecisionPayload): Promise<ReimbursementClaimDto> {
+  async approveItem(strClaimRecordUUID: string, intItemID: number, objPayload: ReimbursementItemDecisionPayload): Promise<ReimbursementClaimDto> {
     const objResult = await requestApi<ReimbursementClaimDto>({
-      strPath: `/payroll/reimbursements/${intClaimID}/items/${intItemID}/approve`,
+      strPath: `/payroll/reimbursements/${strClaimRecordUUID}/items/${intItemID}/approve`,
       strMethod: ApiRequestMethod.Post,
       objBody: objPayload,
       strMenuAction: "PAYROLL_REIMBURSEMENT_APPROVE",
@@ -193,9 +193,9 @@ export const payrollReimbursementService = {
     return objResult.Data;
   },
 
-  async rejectItem(intClaimID: number, intItemID: number, objPayload: ReimbursementDecisionPayload): Promise<ReimbursementClaimDto> {
+  async rejectItem(strClaimRecordUUID: string, intItemID: number, objPayload: ReimbursementDecisionPayload): Promise<ReimbursementClaimDto> {
     const objResult = await requestApi<ReimbursementClaimDto>({
-      strPath: `/payroll/reimbursements/${intClaimID}/items/${intItemID}/reject`,
+      strPath: `/payroll/reimbursements/${strClaimRecordUUID}/items/${intItemID}/reject`,
       strMethod: ApiRequestMethod.Post,
       objBody: objPayload,
       strMenuAction: "PAYROLL_REIMBURSEMENT_REJECT",
@@ -203,9 +203,9 @@ export const payrollReimbursementService = {
     return objResult.Data;
   },
 
-  async markProofPending(intClaimID: number, intItemID: number, objPayload: ReimbursementDecisionPayload): Promise<ReimbursementClaimDto> {
+  async markProofPending(strClaimRecordUUID: string, intItemID: number, objPayload: ReimbursementDecisionPayload): Promise<ReimbursementClaimDto> {
     const objResult = await requestApi<ReimbursementClaimDto>({
-      strPath: `/payroll/reimbursements/${intClaimID}/items/${intItemID}/mark-proof-pending`,
+      strPath: `/payroll/reimbursements/${strClaimRecordUUID}/items/${intItemID}/mark-proof-pending`,
       strMethod: ApiRequestMethod.Post,
       objBody: objPayload,
       strMenuAction: "PAYROLL_REIMBURSEMENT_REVIEW",
@@ -213,9 +213,9 @@ export const payrollReimbursementService = {
     return objResult.Data;
   },
 
-  async verifyProof(intClaimID: number, intProofID: number, objPayload: ReimbursementDecisionPayload): Promise<ReimbursementClaimDto> {
+  async verifyProof(strClaimRecordUUID: string, intProofID: number, objPayload: ReimbursementDecisionPayload): Promise<ReimbursementClaimDto> {
     const objResult = await requestApi<ReimbursementClaimDto>({
-      strPath: `/payroll/reimbursements/${intClaimID}/proofs/${intProofID}/verify`,
+      strPath: `/payroll/reimbursements/${strClaimRecordUUID}/proofs/${intProofID}/verify`,
       strMethod: ApiRequestMethod.Post,
       objBody: objPayload,
       strMenuAction: "PAYROLL_REIMBURSEMENT_PROOF_VERIFY",
@@ -223,9 +223,9 @@ export const payrollReimbursementService = {
     return objResult.Data;
   },
 
-  async rejectProof(intClaimID: number, intProofID: number, objPayload: ReimbursementDecisionPayload): Promise<ReimbursementClaimDto> {
+  async rejectProof(strClaimRecordUUID: string, intProofID: number, objPayload: ReimbursementDecisionPayload): Promise<ReimbursementClaimDto> {
     const objResult = await requestApi<ReimbursementClaimDto>({
-      strPath: `/payroll/reimbursements/${intClaimID}/proofs/${intProofID}/reject`,
+      strPath: `/payroll/reimbursements/${strClaimRecordUUID}/proofs/${intProofID}/reject`,
       strMethod: ApiRequestMethod.Post,
       objBody: objPayload,
       strMenuAction: "PAYROLL_REIMBURSEMENT_PROOF_VERIFY",
@@ -233,19 +233,19 @@ export const payrollReimbursementService = {
     return objResult.Data;
   },
 
-  async previewProof(intClaimID: number, intProofID: number): Promise<Blob> {
+  async previewProof(strClaimRecordUUID: string, intProofID: number): Promise<Blob> {
     const objResponse = await axiosInstance.request<Blob>({
       method: ApiRequestMethod.Get,
-      url: `${ApiRoutePrefix.ApiV1}/payroll/reimbursements/${intClaimID}/proofs/${intProofID}/preview`,
+      url: `${ApiRoutePrefix.ApiV1}/payroll/reimbursements/${strClaimRecordUUID}/proofs/${intProofID}/preview`,
       responseType: "blob",
       csrfMenuAction: "PAYROLL_REIMBURSEMENT_VIEW",
     } as ApiRequestConfig);
     return objResponse.data;
   },
 
-  async listAudit(intClaimID: number): Promise<ReimbursementAuditRecord[]> {
+  async listAudit(strClaimRecordUUID: string): Promise<ReimbursementAuditRecord[]> {
     const objResult = await requestApi<ReimbursementAuditRecord[]>({
-      strPath: `/payroll/reimbursements/${intClaimID}/audit`,
+      strPath: `/payroll/reimbursements/${strClaimRecordUUID}/audit`,
       strMethod: ApiRequestMethod.Get,
       strMenuAction: "PAYROLL_REIMBURSEMENT_AUDIT_VIEW",
     });

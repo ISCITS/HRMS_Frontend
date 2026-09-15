@@ -10,5 +10,5 @@ export default async function PayrollResultAliasDetailRoute({
   params,
 }: PayrollResultAliasDetailRouteProps) {
   const { intResultID } = await params;
-  return <PayrollResultDetailPage intResultID={Number(intResultID)} />;
+  return <PayrollResultDetailPage strResultID={intResultID} />;
 }

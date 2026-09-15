@@ -6,6 +6,7 @@ export type WorkHolidayAction = {
   strRemarks?: string | null;
   dtActionOn: string;
   intActionBy?: number | null;
+  strActionByName?: string | null;
 };
 
 export type WorkHolidayAttendanceSnapshot = {
@@ -34,6 +35,15 @@ export type WorkHolidayEligibilitySnapshot = {
   };
 };
 
+export type WorkHolidayAttachment = {
+  intID: number;
+  strFileName: string;
+  intFileSizeBytes: number;
+  strFileMimeType: string;
+  strVerificationStatus: string;
+  dtAddedOn?: string | null;
+};
+
 export type WorkHolidayRequest = {
   intID: number;
   strRequestNumber?: string | null;
@@ -52,14 +62,21 @@ export type WorkHolidayRequest = {
   decApprovedCreditDays?: number | null;
   strWorkReason: string;
   strWorkDescription?: string | null;
+  tmPlannedStartTime?: string | null;
+  tmPlannedEndTime?: string | null;
+  tmActualStartTime?: string | null;
+  tmActualEndTime?: string | null;
+  intBackupEmployeeID?: number | null;
   strAttendanceVerificationStatus: string;
   strPostingStatus: string;
   intRowVersion: number;
   intCurrentApproverUserID?: number | null;
+  blnApprovalDecisionTaken?: boolean;
   strCurrentApproverName?: string | null;
   objEligibilitySnapshot: WorkHolidayEligibilitySnapshot;
   objAttendanceSnapshot: WorkHolidayAttendanceSnapshot;
   lstTimeline?: WorkHolidayAction[];
+  lstAttachments?: WorkHolidayAttachment[];
   strTeamCalendarPath?: string;
 };
 
@@ -70,21 +87,30 @@ export type WorkHolidayList = {
   intPageSize: number;
 };
 
-export type WorkHolidayPosting = {
+export type WorkHolidayEarnedCompOff = {
   intID: number;
   intWorkHolidayRequestID: number;
-  strPostingTypeCode: string;
-  strPostingStatus: string;
-  decPostedDays?: number | null;
-  strErrorMessage?: string | null;
+  strRequestNumber?: string | null;
+  dtWorkDate?: string | null;
+  decCreditedDays?: number | null;
+  dtCreditDate?: string | null;
+  dtExpiryDate?: string | null;
   blnIsReversed: boolean;
+  strStatus: "AVAILABLE" | "REVERSED";
 };
 
-export type WorkHolidayPostingList = {
-  lstItems: WorkHolidayPosting[];
+export type WorkHolidayEarnedCompOffList = {
+  lstItems: WorkHolidayEarnedCompOff[];
   intTotal: number;
   intPage: number;
   intPageSize: number;
+};
+
+export type WorkHolidayEligibilityPreview = {
+  strDayTypeCode: "HOLIDAY" | "WEEKLY_OFF" | "NONE";
+  strHolidayName?: string | null;
+  blnRetrospective: boolean;
+  objAttendanceSnapshot: WorkHolidayAttendanceSnapshot | null;
 };
 
 export type WorkHolidayFormValues = {
@@ -124,6 +150,45 @@ export type WorkHolidayMutationPayload = {
   decApprovedCreditDays?: number | null;
 };
 
+/**
+ * Maps technical workflow/posting codes to the business-friendly employee status
+ * required by the Work on Holiday POC guide (Draft, Pending Approval, Approved –
+ * Attendance Pending, Attendance Verified, Processing Benefit, Completed, ...).
+ */
+export function getWorkHolidayBusinessStatus(
+  objRequest: Pick<WorkHolidayRequest, "strRequestStatus" | "strPostingStatus">,
+  t: (strKey: string, strFallback: string) => string,
+): string {
+  const { strRequestStatus, strPostingStatus } = objRequest;
+  switch (strRequestStatus) {
+    case "DRAFT":
+      return t("business_status_draft", "Draft");
+    case "PENDING_APPROVAL":
+      return t("business_status_pending_approval", "Pending Approval");
+    case "SENT_BACK":
+      return t("business_status_sent_back", "Sent Back");
+    case "APPROVED":
+    case "PENDING_ATTENDANCE_VERIFICATION":
+      return t("business_status_attendance_pending", "Approved – Attendance Pending");
+    case "VERIFIED":
+      return strPostingStatus === "PROCESSING"
+        ? t("business_status_processing_benefit", "Processing Benefit")
+        : t("business_status_attendance_verified", "Attendance Verified");
+    case "POSTED":
+    case "REVERSED":
+      return t("business_status_completed", "Completed");
+    case "POSTING_FAILED":
+      // Posting exceptions are an HR/Admin concern; the employee only ever sees "still processing".
+      return t("business_status_processing_benefit", "Processing Benefit");
+    case "REJECTED":
+      return t("business_status_rejected", "Rejected");
+    case "WITHDRAWN":
+      return t("business_status_withdrawn", "Withdrawn");
+    default:
+      return t(`status_${strRequestStatus.toLowerCase()}`, strRequestStatus);
+  }
+}
+
 export const WORK_HOLIDAY_MODULE_CODES = [
   "ess_work_on_holiday",
   "work_on_holiday_requests",
@@ -142,11 +207,11 @@ export const WORK_HOLIDAY_ACTION_ALIASES: Record<string, string[]> = {
   WORK_ON_HOLIDAY_APPROVE: ["WORK_ON_HOLIDAY_APPROVE", "approve"],
   WORK_ON_HOLIDAY_REJECT: ["WORK_ON_HOLIDAY_REJECT", "reject"],
   WORK_ON_HOLIDAY_SEND_BACK: ["WORK_ON_HOLIDAY_SEND_BACK", "send_back", "send-back"],
-  WORK_ON_HOLIDAY_VIEW_ALL: ["WORK_ON_HOLIDAY_VIEW_ALL", "view_all", "view-all", "list", "read"],
-  WORK_ON_HOLIDAY_CREATE_ON_BEHALF: ["WORK_ON_HOLIDAY_CREATE_ON_BEHALF", "create_on_behalf", "create-on-behalf", "add"],
+  WORK_ON_HOLIDAY_VIEW_ALL: ["WORK_ON_HOLIDAY_VIEW_ALL", "view_all", "view-all"],
+  WORK_ON_HOLIDAY_CREATE_ON_BEHALF: ["WORK_ON_HOLIDAY_CREATE_ON_BEHALF", "create_on_behalf", "create-on-behalf"],
   WORK_ON_HOLIDAY_VERIFY: ["WORK_ON_HOLIDAY_VERIFY", "verify", "review"],
   WORK_ON_HOLIDAY_POST: ["WORK_ON_HOLIDAY_POST", "post", "process"],
-  WORK_ON_HOLIDAY_REVERSE: ["WORK_ON_HOLIDAY_REVERSE", "reverse", "cancel"],
+  WORK_ON_HOLIDAY_REVERSE: ["WORK_ON_HOLIDAY_REVERSE", "reverse"],
   WORK_ON_HOLIDAY_OVERRIDE: ["WORK_ON_HOLIDAY_OVERRIDE", "override", "manage"],
-  WORK_ON_HOLIDAY_MANAGE: ["WORK_ON_HOLIDAY_MANAGE", "manage", "edit"],
+  WORK_ON_HOLIDAY_MANAGE: ["WORK_ON_HOLIDAY_MANAGE", "manage"],
 };

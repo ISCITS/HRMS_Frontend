@@ -215,7 +215,6 @@ export default function FamilyDetailsTab({
     <Stack spacing={2.5}>
       <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.5}>
         <Box>
-          <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{t("section_family_details", "Family Details")}</Typography>
           <Typography sx={{ mt: 0.5, color: "#64748b" }}>
             {t("section_family_details_help", "Manage dependents, nominees, and contact details for employee family members.")}
           </Typography>

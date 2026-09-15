@@ -8,5 +8,5 @@ type ReimbursementClaimRouteProps = {
 
 export default async function EssReimbursementClaimDetailRoute({ params }: ReimbursementClaimRouteProps) {
   const { claimId } = await params;
-  return <ReimbursementClaimDetailPage intClaimID={Number(claimId)} />;
+  return <ReimbursementClaimDetailPage strClaimID={claimId} />;
 }

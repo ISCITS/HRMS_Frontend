@@ -1,6 +1,5 @@
 "use client";
 
-import BeachAccessRoundedIcon from "@mui/icons-material/BeachAccessRounded";
 import {
   Alert,
   Box,
@@ -52,28 +51,6 @@ export default function LeaveBalancePanel() {
 
   return (
     <Stack spacing={1.5}>
-      <Paper
-        sx={{
-          p: { xs: 1.5, md: 2 },
-          borderRadius: "20px",
-          background: "linear-gradient(135deg, #0b3f70 0%, #0a66a3 52%, #0e7490 100%)",
-          color: "white",
-          boxShadow: "0 14px 28px rgba(2, 6, 23, 0.18)",
-        }}
-      >
-        <Stack direction="row" spacing={1.2} alignItems="center">
-          <Box sx={{ width: 46, height: 46, borderRadius: "50%", backgroundColor: "rgba(255,255,255,0.2)", display: "grid", placeItems: "center" }}>
-            <BeachAccessRoundedIcon />
-          </Box>
-          <Box>
-            <Typography sx={{ fontWeight: 800, fontSize: "1rem" }}>My Leave Balance</Typography>
-            <Typography sx={{ fontSize: "0.82rem", color: "rgba(241,245,249,0.92)" }}>
-              Available balance is credited minus availed and held (pending) leave.
-            </Typography>
-          </Box>
-        </Stack>
-      </Paper>
-
       {blnLoading ? (
         <Box sx={{ display: "grid", placeItems: "center", py: 6 }}>
           <CircularProgress />

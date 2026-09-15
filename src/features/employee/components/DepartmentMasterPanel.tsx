@@ -93,7 +93,7 @@ function mapDepartmentRecord(dicRecord: DepartmentApiRecord): DepartmentRecord {
     code: dicRecord.strDepartmentCode,
     name: dicRecord.strDepartmentName,
     status: dicRecord.blnIsActive ? "Active" : "Inactive",
-    employeeCount: 0
+    employeeCount: dicRecord.intEmployeeCount ?? 0
   };
 }
 
@@ -206,7 +206,6 @@ export default function DepartmentMasterPanel() {
     confirmDeactivateMessage: t("confirm_deactivate_message", "Are you sure you want to mark this department as inactive?"),
     fieldName: t("field_name", dicConstant.departments.fields.name),
     fieldCode: t("field_code", dicConstant.departments.fields.code),
-    fieldEmployees: t("field_employees", "Employees"),
     fieldIsActive: t("field_is_active", "Is Active"),
     saving: t("saving", "Saving..."),
     validationNameRequired: t("validation_name_required", dicConstant.departments.validation.nameRequired),
@@ -222,11 +221,7 @@ export default function DepartmentMasterPanel() {
     objFormOptions.lstLanguages[0]?.intID ??
     1;
 
-  const intSecondaryLanguageID =
-    authHelpers.getSecondaryLanguageID() ??
-    objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.strCode?.toLowerCase() === "hi")?.intID ??
-    objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID !== intDefaultLanguageID)?.intID ??
-    intDefaultLanguageID;
+  const intSecondaryLanguageID = authHelpers.getSecondaryLanguageID();
 
   function buildFixedLanguageRow(
     intLanguageID: number,
@@ -253,6 +248,12 @@ export default function DepartmentMasterPanel() {
       dicValues.code,
       dicValues.lstTexts,
     );
+    if (!intSecondaryLanguageID) {
+      return {
+        ...dicValues,
+        lstTexts: [dicDefaultRow],
+      };
+    }
     const dicSecondaryExistingText = dicValues.lstTexts.find(
       (dicText) => Number(dicText.intLanguageID) === intSecondaryLanguageID
     );
@@ -695,7 +696,7 @@ export default function DepartmentMasterPanel() {
               {dicDepartment.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}
             </span>
           ),
-          employeeCount: String(dicDepartment.employeeCount),
+          employeeCount: dicDepartment.employeeCount,
         };
       }),
     [blnCanChangeStatus, blnCanDelete, blnCanEdit, blnCanView, dicCommonLabels.statusActive, dicCommonLabels.statusInactive, lstFilteredDepartments, lstSelectedIds]
@@ -798,8 +799,6 @@ export default function DepartmentMasterPanel() {
             columns={lstTableColumns}
             rows={lstTableRows}
             rowIdField="id"
-            defaultPageSize={10}
-            pageSizeOptions={[10, 20, 50]}
             exportFileName={dicDepartmentLabels.exportFileName}
             showExportOptions={blnCanExport}
             testIdPrefix="department-master.list"
@@ -896,17 +895,10 @@ export default function DepartmentMasterPanel() {
                 sx={{ "& .MuiFormLabel-asterisk": { color: "#dc2626" } }}
                 fullWidth
               />
-              <TextField
-                controlId="department-master.dialog.employee-count.input"
-                label={dicDepartmentLabels.fieldEmployees}
-                value={strMode === "add" ? "0" : lstDepartments.find((dicDepartment) => dicDepartment.id === strEditingDepartmentId)?.employeeCount ?? 0}
-                inputProps={{ "controlId": "department-master.dialog.employee-count.input" }}
-                disabled
-                sx={{ gridColumn: { xs: "auto", sm: "1 / -1" } }}
-                fullWidth
-              />
             </Box>
 
+            {intSecondaryLanguageID ? (
+            <>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1.25, flexWrap: "wrap" }}>
               <Box>
                 <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("multilingual_text", "Multilingual Text")}</Typography>
@@ -1012,6 +1004,8 @@ export default function DepartmentMasterPanel() {
                 </Box>
               ))}
             </Box>
+            </>
+            ) : null}
           </Box>
         }
       />
@@ -1027,8 +1021,7 @@ export default function DepartmentMasterPanel() {
         onConfirm={executeConfirmedAction}
       />
 
-      <BlockingLoader
-        blnOpen={blnLoading || blnRightsLoading || blnSubmitting}
+      <BlockingLoader blnOpen={blnSubmitting || ((blnLoading || blnRightsLoading) && !blnDialogOpen)}
         strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing}
         intZIndex={1400}
         blnLocal

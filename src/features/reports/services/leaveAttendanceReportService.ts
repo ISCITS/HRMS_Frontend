@@ -18,6 +18,7 @@ export type LeaveBalanceRow = {
   strEmployeeName: string;
   strDepartment: string | null;
   strLeaveType: string;
+  intLeaveTypeID: number;
   intLeaveYear: number;
   decOpening: number;
   decEntitled: number;

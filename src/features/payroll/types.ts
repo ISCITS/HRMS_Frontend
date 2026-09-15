@@ -55,12 +55,11 @@ export type PayrollRunOption = PayrollSelectOption & {
 export type PayrollRunScopeType = "All" | "SelectedEmployee";
 
 export type PayrollRunStatus =
-  | "Open"
-  | "Submitted"
-  | "Approved"
-  | "Failed"
-  | "Processed"
-  | "Closed";
+  | "DRAFT"
+  | "VALIDATED"
+  | "PROCESSED"
+  | "FINALIZED"
+  | "CANCELLED";
 
 export type PayrollRunSummary = {
   intInputCount: number;
@@ -77,6 +76,8 @@ export type PayrollRunSummary = {
 export type PayrollValidationResultRecord = {
   intID?: number;
   intEmployeeID: number | null;
+  strEmployeeCode?: string | null;
+  strEmployeeName?: string | null;
   strValidationCode: string;
   strValidationLevel: string;
   strValidationMessage: string;
@@ -84,6 +85,16 @@ export type PayrollValidationResultRecord = {
   blnIsResolved?: boolean;
   strEntityName?: string | null;
   intEntityID?: number | null;
+  strCategory?: string;
+  strSeverity?: "BLOCKING" | "WARNING" | "INFO";
+  objNavigationTarget?: { strEntityName: string; intEntityID: number | null } | null;
+};
+
+export type PayrollValidationCategorySummary = {
+  strCategory: string;
+  intBlockingCount: number;
+  intWarningCount: number;
+  intInfoCount: number;
 };
 
 export type PayrollValidationSummary = {
@@ -100,6 +111,8 @@ export type PayrollValidationSummary = {
   strRuleSetCode: string | null;
   decNonWageCapPercent: number | null;
   lstIssues: PayrollValidationResultRecord[];
+  lstCategorySummary?: PayrollValidationCategorySummary[];
+  dicAttendanceSync?: AttendanceValidateRunResult | null;
 };
 
 export type PayrollProcessSummary = {
@@ -114,6 +127,7 @@ export type PayrollProcessSummary = {
   decNetPayTotal?: number;
   decEmployerContributionTotal?: number;
   intReprocessAuditID?: number;
+  dicAttendanceSync?: AttendanceValidateRunResult | null;
   lstExceptions: {
     intEmployeeID: number;
     strEmployeeCode: string;
@@ -123,17 +137,29 @@ export type PayrollProcessSummary = {
 
 export type PayrollRunRecord = {
   intID: number;
+  /** Public identifier the UI routes on; the internal id stays out of the address bar. */
+  strRecordUUID: string;
   intPayrollCycleID: number;
+  strPayrollScheduleName: string | null;
+  strPayrollGroupName: string | null;
   strRunCode: string;
   strRunName: string;
   strScopeType: PayrollRunScopeType;
   intScopedEmployeeID: number | null;
+  strScopedEmployeeName?: string | null;
+  strScopedEmployeeCode?: string | null;
   dtPayrollMonth: string;
   strRunStatus: PayrollRunStatus;
+  intRunTypeID: number | null;
+  strRunTypeCode: string;
+  dtPaymentDate: string | null;
+  intVariablePayTypeID: number | null;
+  intReferencePayrollRunID: number | null;
   blnIsLocked: boolean;
   intEmployeeCount: number;
   intProcessedEmployeeCount: number;
   intFailedEmployeeCount: number;
+  blnHasPayrollResults: boolean;
   decGrossPayTotal: number;
   decDeductionTotal: number;
   decTaxTotal: number;
@@ -143,6 +169,8 @@ export type PayrollRunRecord = {
   strFinancialYearCode: string | null;
   strValidationStatus: string | null;
   intReprocessCount: number;
+  strRemarks: string | null;
+  dtLastExecutedOn: string | null;
   dicSummary: PayrollRunSummary;
 };
 
@@ -151,7 +179,6 @@ export type PayrollRunListRecord = PayrollRunRecord;
 export type PayrollRunDetailRecord = PayrollRunRecord & {
   dtAddedOn: string | null;
   dtLastModifiedOn: string | null;
-  dtLastExecutedOn: string | null;
   dtClosedOn: string | null;
   lstValidationResults: PayrollValidationResultRecord[];
   lstProcessedResults?: Array<PayrollResultRecord & { lstLines?: PayrollResultLineRecord[] }>;
@@ -159,7 +186,6 @@ export type PayrollRunDetailRecord = PayrollRunRecord & {
 
 export type PayrollRunFormValues = {
   intPayrollCycleID: number | "";
-  strRunCode: string;
   strRunName: string;
   strScopeType: PayrollRunScopeType;
   strProcessFor: "AllEmployees" | "SelectedEmployees" | "PayrollGroup";
@@ -167,6 +193,24 @@ export type PayrollRunFormValues = {
   dtPayrollMonth: string;
   strRunStatus: PayrollRunStatus;
   blnIsLocked: boolean;
+  strRemarks: string;
+  intRunTypeID: number | "";
+  dtPaymentDate: string;
+  intVariablePayTypeID: number | "";
+  intReferencePayrollRunID: number | "";
+};
+
+export type PayrollRunTypeLookupOption = {
+  intID: number;
+  strValueCode: string;
+  strDisplayName: string;
+};
+
+export type VariablePayTypeOption = {
+  intID: number;
+  strValueCode: string;
+  strDisplayName: string;
+  intSalaryComponentID: number | null;
 };
 
 export type PayrollRunFormOptions = {
@@ -175,8 +219,12 @@ export type PayrollRunFormOptions = {
     strLabel: string;
     strCode: string;
     strPeriodType: string;
+    intPayrollGroupID: number | null;
+    strPayrollGroupName: string | null;
   }>;
   lstEmployees: PayrollSelectOption[];
+  lstPayrollRunTypeLookups?: PayrollRunTypeLookupOption[];
+  lstVariablePayTypes?: VariablePayTypeOption[];
 };
 
 export type FNFSettlementStatus =
@@ -238,6 +286,8 @@ export type FNFSettlementLineRecord = {
 
 export type FNFSettlementRecord = {
   intID: number;
+  /** Public identifier used in URLs and API paths; the internal id stays server-side. */
+  strRecordUUID: string;
   intEmployeeID: number;
   strEmployeeCode?: string | null;
   strDepartmentName?: string | null;
@@ -380,6 +430,13 @@ export type LoanAdvanceScheduleRecord = {
   decRecoveredTotalAmount?: number;
   decClosingPrincipalBalance: number;
   strScheduleStatus: string;
+  // HR verification step on the Loan Finalization screen -- one installment at a time.
+  blnIsFinalized?: boolean;
+  dtFinalizedOn?: string | null;
+  intFinalizedBy?: number | null;
+  dtFinalizationReopenedOn?: string | null;
+  intFinalizationReopenedBy?: number | null;
+  strFinalizationReopenReason?: string | null;
 };
 
 export type LoanAdvanceLedgerRecord = {
@@ -395,6 +452,8 @@ export type LoanAdvanceLedgerRecord = {
 
 export type LoanAdvanceRecord = {
   intID: number;
+  /** Public identifier used in URLs and API paths; the internal id stays server-side. */
+  strRecordUUID: string;
   intEmployeeID: number;
   strLoanAdvanceNumber?: string | null;
   strRequestType: LoanAdvanceRequestType;
@@ -421,6 +480,13 @@ export type LoanAdvanceRecord = {
   dtDisbursementDate?: string | null;
   strPaymentMode?: string | null;
   strTransactionReferenceNo?: string | null;
+  // HR verification step on the Loan Finalization screen -- independent of strWorkflowStatus.
+  blnIsFinalized?: boolean;
+  dtFinalizedOn?: string | null;
+  intFinalizedBy?: number | null;
+  dtFinalizationReopenedOn?: string | null;
+  intFinalizationReopenedBy?: number | null;
+  strFinalizationReopenReason?: string | null;
   objEmployee?: LoanAdvanceEmployeeRecord | null;
   objCategory?: LoanAdvanceCategoryRecord | null;
   objPolicySnapshot?: LoanAdvanceCategoryRecord | Record<string, unknown> | null;
@@ -449,6 +515,57 @@ export type LoanAdvanceFormValues = {
   blnAutoDeductInPayroll: boolean;
 };
 
+export type LoanBudgetEmployeeScope = "all" | "specific";
+// Company-level choice, one level up from LoanBudgetEmployeeScope: "all" means one shared limit
+// applies to every designation; "specific" means each designation carries its own limit amount.
+export type LoanBudgetDesignationScope = "all" | "specific";
+
+export type LoanBudgetSummaryRecord = {
+  intID: number;
+  strFinancialYear: string;
+  decTotalBudgetAmount: number;
+  decApprovedTotal: number;
+  decOutstandingTotal: number;
+  decRemaining: number;
+  strDesignationScope: LoanBudgetDesignationScope;
+  blnIsActive: boolean;
+  strRemarks?: string | null;
+};
+
+export type LoanBudgetEmployeeLimitRecord = {
+  intEmployeeID: number;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  decLimitAmount: number;
+};
+
+export type LoanBudgetDesignationLimitRecord = {
+  intID: number;
+  intDesignationID: number;
+  strDesignationName?: string | null;
+  strEmployeeScope: LoanBudgetEmployeeScope;
+  decLimitAmount: number;
+  lstEmployees: LoanBudgetEmployeeLimitRecord[];
+};
+
+export type LoanBudgetConfigurationRecord = {
+  objBudget: LoanBudgetSummaryRecord;
+  lstDesignationLimits: LoanBudgetDesignationLimitRecord[];
+};
+
+export type LoanBudgetFormValues = {
+  strFinancialYear: string;
+  decTotalBudgetAmount: string;
+  strDesignationScope: LoanBudgetDesignationScope;
+  strRemarks: string;
+  lstDesignationLimits: {
+    intDesignationID: number | "";
+    decLimitAmount: string;
+    strEmployeeScope: LoanBudgetEmployeeScope;
+    lstEmployees: { intEmployeeID: number; strEmployeeCode: string; strEmployeeName: string; decLimitAmount: string }[];
+  }[];
+};
+
 export type EmployeePayrollInputLineRecord = {
   intID: number;
   intSalaryComponentID: number;
@@ -461,6 +578,8 @@ export type EmployeePayrollInputLineRecord = {
 
 export type EmployeePayrollInputRecord = {
   intID: number;
+  /** Public identifier used in URLs and API paths; the internal id stays server-side. */
+  strRecordUUID: string;
   intPayrollRunID: number;
   strRunCode: string;
   strRunName: string;
@@ -482,6 +601,7 @@ export type EmployeePayrollInputRecord = {
   strRemarks: string | null;
   strStatus: EmployeePayrollInputStatus;
   blnIsLocked: boolean;
+  intAdjustmentLineCount?: number;
   lstValidationMessages?: Array<{
     strLevel: string;
     strCode: string;
@@ -500,15 +620,30 @@ export type EmployeePayrollInputDetailRecord = EmployeePayrollInputRecord & {
 // Attendance-to-payroll integration (Stage 2/3)
 // ---------------------------------------------------------------------------
 
+export type AttendanceIntegrationStatusRecord = {
+  strIntegrationStatus: "NOT_STARTED" | "IMPORTED" | "FINALIZED" | "REOPENED";
+  intVersionNumber: number | null;
+  intEmployeeCount: number;
+  intReadyCount: number;
+  intBlockedCount: number;
+  intWarningCount: number;
+  dtImportedOn: string | null;
+  dtFinalizedOn: string | null;
+  dtReopenedOn: string | null;
+  strReopenReason: string | null;
+};
+
 export type AttendanceValidateRunResult = {
   intTotalEmployees: number;
   intReadyCount: number;
   intBlockedCount: number;
   intWarningCount: number;
   intAppliedCount: number;
+  intFinalizedLockedCount: number;
   intPreservedManualCount: number;
   intSkippedCount: number;
   intInputLockedCount: number;
+  dicIntegrationStatus?: AttendanceIntegrationStatusRecord;
 };
 
 export type AttendanceReasonEntry = {
@@ -523,12 +658,6 @@ export type AttendanceDayBreakdownEntry = {
   strSource: string | null;
 };
 
-// Note: the backend preview endpoint (GET
-// /payroll/runs/{intRunID}/employees/{intEmployeeID}/attendance/preview) does not return
-// denominator, denominator source, reconciliation status, or override status fields -
-// only the fields below (confirmed by reading
-// clsAttendancePayrollIntegrationService.computeEmployeeAttendanceSummary). Do not
-// fabricate those fields on the frontend.
 export type EmployeeAttendancePreview = {
   decCalendarDays: number;
   decWorkingDays: number;
@@ -536,6 +665,9 @@ export type EmployeeAttendancePreview = {
   decPaidDays: number;
   decLwpLopDays: number;
   decPayableDays: number;
+  decDenominator?: number;
+  strDenominatorSource?: string | null;
+  strReconciliationStatus?: string | null;
   dtEffectiveStart: string;
   dtEffectiveEnd: string;
   blnHasZeroServiceDays: boolean;
@@ -551,6 +683,9 @@ export type AttendanceTraceJson = {
   blnBlocked: boolean;
   lstBlockingReasons: AttendanceReasonEntry[];
   lstWarnings: AttendanceReasonEntry[];
+  decDenominator?: string | null;
+  strDenominatorSource?: string | null;
+  strReconciliationStatus?: string | null;
   dicDayBreakdown: Record<string, AttendanceDayBreakdownEntry>;
 } | null;
 
@@ -692,7 +827,11 @@ export type WageRulePreviewRecord = {
 
 export type PayrollResultRecord = {
   intID: number;
+  /** Public identifier used in URLs and API paths; the internal id stays server-side. */
+  strRecordUUID: string;
   intPayrollRunID: number;
+  /** The run's public identifier, so run-scoped calls from result screens need no internal id. */
+  strPayrollRunRecordUUID: string | null;
   intEmployeePayrollInputID: number | null;
   strRunCode: string;
   strRunName: string;
@@ -700,6 +839,8 @@ export type PayrollResultRecord = {
   intEmployeeID: number;
   strEmployeeCode: string;
   strEmployeeName: string;
+  strDepartmentName?: string | null;
+  strLocationName?: string | null;
   strBankName?: string | null;
   strBankCode?: string | null;
   strBankAccountMasked?: string | null;
@@ -765,6 +906,8 @@ export type PayrollResultRecord = {
   decLwpDays?: number | null;
   decLopDays: number | null;
   intPayslipID: number | null;
+  /** Public identifier the payslip-document URL routes on; null when no payslip exists yet. */
+  strPayslipRecordUUID?: string | null;
   strPayslipNumber: string | null;
   strPayslipStatus: string | null;
   blnPayslipGenerated: boolean;
@@ -782,6 +925,79 @@ export type PayrollResultDetailRecord = PayrollResultRecord & {
   lstStatutoryResults?: PayrollStatutoryResultRecord[];
 };
 
+export type TaxDeclarationItemRecord = {
+  strCategoryCode: string | null;
+  strSectionCode: string | null;
+  strCategoryType: string | null;
+  decDeclaredAmount: number;
+  decApprovedAmount: number;
+};
+
+export type TaxSlabTraceRecord = {
+  mode?: string;
+  intSlabID?: number | null;
+  from_amount: number;
+  to_amount: number | null;
+  taxable_amount: number;
+  rate_percent: number;
+  fixed_tax_amount?: number;
+  tax_amount: number;
+  slab_profile_code?: string | null;
+};
+
+export type TaxCessRuleRecord = {
+  strCalculationBaseCode: string | null;
+  fltCessRatePercent: number | null;
+  decBaseAmount: number;
+  decCessAmount: number;
+};
+
+export type TaxCalculationDetailRecord = {
+  intResultID: number;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strFinancialYearCode: string | null;
+  strRegimeUsed: string | null;
+  strRegimeTypeCode: string | null;
+  decGrossTaxableIncomeYtd: number;
+  decProjectedTaxableIncome: number;
+  dicExemptions: {
+    decTotalAmount: number;
+    lstItems: TaxDeclarationItemRecord[];
+  };
+  dicDeductions: {
+    decDeclaredTotalAmount: number;
+    lstItems: TaxDeclarationItemRecord[];
+    decStandardDeductionAmount: number;
+    dicStandardDeductionRule: Record<string, unknown> | null;
+  };
+  decNetTaxableIncome: number;
+  lstSlabTrace: TaxSlabTraceRecord[];
+  decTaxBeforeRebate: number;
+  dicRebate: {
+    decAmount: number;
+    decMarginalReliefAmount: number;
+    dicRule: Record<string, unknown> | null;
+  };
+  decTaxAfterRebate: number;
+  dicSurcharge: {
+    decAmount: number;
+    decMarginalReliefAmount: number;
+    dicRule: Record<string, unknown> | null;
+  };
+  decTaxAfterSurcharge: number;
+  dicCess: {
+    decTotalAmount: number;
+    lstRules: TaxCessRuleRecord[];
+  };
+  decTotalTaxLiability: number;
+  decTaxDeductedYtd: number;
+  decMonthlyTds: number;
+  intRemainingMonths: number | null;
+  strSlabProfileCode: string | null;
+  strTaxRuleVersion: string | null;
+};
+
 export type StatutoryReportCode = "ALL" | "PF" | "ESI" | "PT" | "LWF";
 
 export type StatutoryReportRow = {
@@ -794,6 +1010,8 @@ export type StatutoryReportRow = {
   dtPayrollMonth: string | null;
   strEmployeeCode: string;
   strEmployeeName: string;
+  strDepartmentName?: string | null;
+  strLocationName?: string | null;
   strStatus: string;
   strStatutoryCode: string;
   strStatutoryName: string;
@@ -807,6 +1025,53 @@ export type StatutoryReportRow = {
   strCalculationMode: string | null;
   intRuleID: number | null;
   strRemarks: string | null;
+};
+
+export type TdsReportRow = {
+  intID: number;
+  intEmployeePayrollResultID: number;
+  intEmployeeID: number;
+  strRunCode: string;
+  strRunName: string;
+  dtPayrollMonth: string | null;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strDepartmentName?: string | null;
+  strLocationName?: string | null;
+  strStatus: string;
+  strFinancialYearCode: string | null;
+  strRegimeUsed: string | null;
+  decGrossTaxableIncomeYtd: number;
+  decNetTaxableIncome: number;
+  decTotalTaxLiability: number;
+  decTaxDeductedYtd: number;
+  decMonthlyTds: number;
+  strSlabProfileCode: string | null;
+};
+
+export type VariablePayRegisterRow = {
+  intID: number;
+  intPayrollRunID: number;
+  strRunCode: string;
+  strRunName: string;
+  dtPayrollMonth: string | null;
+  intEmployeeID: number;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strVariablePayTypeName: string;
+  strComponentName: string;
+  decInputAmount: number;
+  decApprovedAmount: number;
+  decFinalAmount: number;
+  strTransactionStatus: string;
+  strSourceType: string;
+  strExternalReference: string | null;
+  strRemarks: string | null;
+  strRegimeUsed: string | null;
+  decGrossEarningsAmount: number;
+  decTaxTotal: number;
+  decNetPayAmount: number;
+  strPayrollRunStatus: string;
 };
 
 export type PayslipLineRecord = {
@@ -827,6 +1092,8 @@ export type PayslipLineRecord = {
 
 export type PayslipPreviewRecord = {
   intPayslipID: number | null;
+  /** Public identifier the payslip-document URL routes on; null when no payslip exists yet. */
+  strPayslipRecordUUID?: string | null;
   strPayslipNumber: string | null;
   strPayslipStatus: string;
   blnGenerated: boolean;
@@ -935,6 +1202,8 @@ export type PayslipPreviewRecord = {
 
 export type PayslipRunListRecord = {
   intPayslipID: number | null;
+  /** Public identifier the payslip-document URL routes on; null when no payslip exists yet. */
+  strPayslipRecordUUID?: string | null;
   intPayrollRunID: number;
   intEmployeeID: number;
   strPayslipNumber: string | null;
@@ -955,9 +1224,143 @@ export type PayslipGenerateAllSummary = {
   intGeneratedCount: number;
   lstPayslips: {
     intPayslipID: number | null;
+  /** Public identifier the payslip-document URL routes on; null when no payslip exists yet. */
+  strPayslipRecordUUID?: string | null;
     strPayslipNumber: string | null;
     strEmployeeCode: string | null;
     strEmployeeName: string | null;
     strPayslipStatus: string | null;
   }[];
+};
+
+export type Form16ListRecord = {
+  intForm16ID: number;
+  /** Public identifier the Form 16 document URL routes on. */
+  strRecordUUID: string;
+  strForm16Number: string;
+  strFinancialYearCode: string;
+  strGenerationStatus: string;
+  intSupersededForm16ID: number | null;
+  dtGeneratedOn: string | null;
+  dtPeriodStart: string | null;
+  dtPeriodEnd: string | null;
+  decGrossSalary: number;
+  decTotalTaxDeducted: number;
+  strEmployeeCode: string | null;
+  strEmployeeName: string | null;
+};
+
+export type Form16QuarterlyBreakdown = {
+  strQuarterCode: string;
+  dtQuarterStart: string;
+  dtQuarterEnd: string;
+  decTaxableAmount: number;
+  decTaxDeducted: number;
+  decTaxDeposited: number;
+};
+
+export type Form16DeclarationBreakupRow = {
+  strSectionCode: string;
+  strCategoryName: string;
+  decDeclaredAmount: number;
+  decEligibleAmount: number;
+};
+
+export type Form16PreviewRecord = {
+  intForm16ID: number;
+  strForm16Number: string;
+  strFinancialYearCode: string;
+  strAssessmentYear: string;
+  strGenerationStatus: string;
+  dtPeriodStart: string | null;
+  dtPeriodEnd: string | null;
+  dtGeneratedOn: string | null;
+  dicCompany: {
+    strCompanyName: string;
+    strCompanyAddress: string | null;
+    strCompanyTan: string | null;
+    strCompanyPan: string | null;
+  };
+  dicEmployee: {
+    strEmployeeCode: string;
+    strEmployeeName: string;
+    strPanNumber: string | null;
+    strWorkEmail: string | null;
+  };
+  strTaxRegimeLabel: string | null;
+  dicAnnualSummary: Record<string, number>;
+  lstQuarterlyBreakdown: Form16QuarterlyBreakdown[];
+  lstDeclarationBreakup: Form16DeclarationBreakupRow[];
+  decYtdReconciliationVariance: number;
+  strSignatoryName: string | null;
+  strSignatoryDesignation: string | null;
+};
+
+export type Form16GenerateResultRow = {
+  intEmployeeID: number;
+  blnSuccess: boolean;
+  intForm16ID: number | null;
+  strForm16Number: string | null;
+  strEmployeeName: string | null;
+  strMessage: string | null;
+};
+
+export type Form16GenerateCompanySummary = {
+  intGeneratedCount: number;
+  intFailedCount: number;
+  lstResults: Form16GenerateResultRow[];
+};
+
+// Payroll-integration lifecycle for one loan/advance installment -- separate from its business
+// strScheduleStatus (pending/recovered/partial/...), which never changes because of posting.
+export const dicLoanRecoveryPostingStatus = {
+  NOT_POSTED: 0,
+  POSTED_TO_PAYROLL_INPUT: 10,
+  PAYROLL_PROCESSED: 20,
+  REVERSED_OR_UNPOSTED: 30,
+  POSTING_ERROR: 90,
+} as const;
+export type LoanRecoveryPostingStatus = (typeof dicLoanRecoveryPostingStatus)[keyof typeof dicLoanRecoveryPostingStatus];
+
+export type LoanRecoveryRunOption = {
+  intID: number;
+  strRecordUUID: string;
+  strRunCode: string;
+  strRunName: string;
+  dtPayrollMonth: string;
+  strRunStatus: string;
+};
+
+export type LoanRecoveryRow = {
+  intScheduleID: number;
+  intLoanAdvanceID: number;
+  strLoanRecordUUID: string;
+  strLoanAdvanceNumber?: string | null;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strCategoryName: string;
+  intInstallmentNo: number;
+  decOpeningPrincipalBalance: number;
+  decPrincipalDueAmount: number;
+  decInterestDueAmount: number;
+  decTotalDueAmount: number;
+  decClosingPrincipalBalance: number;
+  strScheduleStatus: string;
+  intPayrollPostingStatus: LoanRecoveryPostingStatus;
+  blnRecoveryComponentConfigured: boolean;
+  strPostingErrorMessage?: string | null;
+  blnCanSkip: boolean;
+  blnCanAdjust: boolean;
+  blnCanPost: boolean;
+  blnCanUnpost: boolean;
+};
+
+export type LoanRecoveryEligibleResult = {
+  objRun: LoanRecoveryRunOption;
+  lstRows: LoanRecoveryRow[];
+};
+
+export type LoanRecoveryPostResult = LoanRecoveryEligibleResult & {
+  intPostedCount: number;
+  intFailedCount: number;
 };

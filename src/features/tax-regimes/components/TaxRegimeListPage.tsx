@@ -3,8 +3,6 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
-import RuleFolderRoundedIcon from "@mui/icons-material/RuleFolderRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
@@ -114,21 +112,15 @@ export default function TaxRegimeListPage() {
       lstFilteredRows.map((dicRow) => ({
         id: dicRow.intID,
         action: (
-          <Box className={styles.actionCell}>
+          <Box className={styles.actionCell} sx={{ flexWrap: "wrap", whiteSpace: "normal", rowGap: 0.5 }}>
             <CommonRowActions
               testIdPrefix="tax-regimes.list.row"
               rowKey={dicRow.intID}
               blnCanView={blnCanView}
               blnCanEdit={blnCanEdit}
-              onView={() => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}?mode=view`)}
-              onEdit={blnCanEdit ? () => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}`) : undefined}
+              onView={() => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.strRecordUUID}`)}
+              onEdit={blnCanEdit ? () => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.strRecordUUID}`) : undefined}
             />
-            <Button variant="outlined" size="small" startIcon={<ReceiptLongRoundedIcon />} onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}/slabs`)} sx={{ borderRadius: "10px", textTransform: "none", minWidth: "auto" }}>
-              {t("manage_slabs", "Slabs")}
-            </Button>
-            <Button variant="outlined" size="small" startIcon={<RuleFolderRoundedIcon />} onClick={() => objRouter.push(`/payroll/tax-regimes/edit/${dicRow.intID}`)} sx={{ borderRadius: "10px", textTransform: "none", minWidth: "auto" }}>
-              {t("manage_tax_rules", "Tax Rules")}
-            </Button>
           </Box>
         ),
         strRegimeCode: dicRow.strRegimeCode,
@@ -141,6 +133,7 @@ export default function TaxRegimeListPage() {
         strCountryCode: dicRow.strCountryCode,
         strTaxYearCode: dicRow.strTaxYearCode || "-",
         decStandardDeductionAmount: dicRow.blnStandardDeductionEnabled ? dicRow.decStandardDeductionAmount.toLocaleString() : "-",
+        decStandardDeductionAmountSortValue: dicRow.blnStandardDeductionEnabled ? Number(dicRow.decStandardDeductionAmount ?? 0) : 0,
         blnIsDefaultRegime: (
           <span className={`${styles.statusPill} ${dicRow.blnIsDefaultRegime ? styles.statusActive : styles.statusInactive}`}>
             {dicRow.blnIsDefaultRegime ? t("yes", "Yes") : t("no", "No")}
@@ -159,12 +152,12 @@ export default function TaxRegimeListPage() {
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 280 },
+      { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 170 },
       { field: "strRegimeCode", headerName: t("regime_code", "Regime Code"), width: 130 },
       { field: "strRegimeName", headerName: t("regime_name", "Regime Name"), sortable: false, filterable: false, width: 130 },
       { field: "strCountryCode", headerName: t("country", "Country"), width: 130 },
       { field: "strTaxYearCode", headerName: t("tax_year", "Tax Year") },
-      { field: "decStandardDeductionAmount", headerName: t("standard_deduction", "Standard Deduction"), align: "right" },
+      { field: "decStandardDeductionAmount", headerName: t("standard_deduction", "Standard Deduction"), align: "right", sortAccessor: (dicRow) => dicRow.decStandardDeductionAmountSortValue },
       { field: "blnIsDefaultRegime", headerName: t("default_regime", "Default Regime"), sortable: false, filterable: false, width: 150 },
       { field: "blnAllowEmployeeOptOut", headerName: t("employee_opt_out", "Employee Opt-Out") },
       { field: "intSlabProfiles", headerName: t("slab_profiles", "Slab Profiles / Slab Count") },
@@ -192,17 +185,9 @@ export default function TaxRegimeListPage() {
   }
 
   return (
-    <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
+    <Stack spacing={1.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
       <Box className={styles.controlsCard}>
-        <Box
-          className={styles.searchRow}
-          sx={{
-            gridTemplateColumns: {
-              xs: "1fr",
-              md: "minmax(180px, 0.75fr) repeat(4, minmax(170px, 1fr))",
-            },
-          }}
-        >
+        <Box className={`${styles.searchRow} ${styles.taxRegimeSearchRow}`}>
           <TextField label={t("regime_code", "Regime Code")} value={dicSearchDraft.strCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strCode: objEvent.target.value }))} size="small" fullWidth />
           <TextField label={t("regime_name", "Regime Name")} value={dicSearchDraft.strName} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strName: objEvent.target.value }))} size="small" fullWidth />
           <TextField label={t("country", "Country")} value={dicSearchDraft.strCountryCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strCountryCode: objEvent.target.value }))} size="small" fullWidth />
@@ -218,6 +203,7 @@ export default function TaxRegimeListPage() {
               gridColumn: { xs: "auto", md: "auto" },
               flexWrap: "nowrap",
               alignItems: "center",
+              justifyContent: { lg: "flex-end" },
             }}
           >
             <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }}>
@@ -239,8 +225,6 @@ export default function TaxRegimeListPage() {
           columns={lstTableColumns}
           rows={lstTableRows}
           rowIdField="id"
-          defaultPageSize={10}
-          pageSizeOptions={[10, 20, 50]}
           exportFileName="tax_regimes"
           showExportOptions={blnCanExport}
           showPaginationSummary

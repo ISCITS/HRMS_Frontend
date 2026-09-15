@@ -28,6 +28,8 @@ function createOverride(dicPartial: Partial<EmployeeSalaryOverrideFormValue>): E
     strDefaultMonthly: "",
     strDefaultAnnual: "",
     strDefaultPercentage: "",
+    strMinAmount: "",
+    strMaxAmount: "",
     strRemarks: "",
     ...dicPartial,
   };
@@ -270,4 +272,58 @@ export function testSyncCalculatedOverrideRowsFromPreviewDoesNotReuseStaleCalcul
 
   assertEqual(lstUpdated[1].decAmountAnnual, "190000", "Calculated percentage row should recompute from the edited annual base");
   assertEqual(lstUpdated[1].decAmountMonthly, "15833.33", "Calculated percentage row monthly value should recompute from the edited annual base");
+}
+
+export function testCalculatedDefaultsAreClampedToAnnualMinAndMax() {
+  const lstOverrides = [
+    createOverride({
+      intSalaryComponentID: 1,
+      strComponentName: "Basic",
+      strValueSource: "fixed",
+      decAmountAnnual: "120000",
+      decAmountMonthly: "10000",
+    }),
+    createOverride({
+      intSalaryComponentID: 2,
+      strComponentName: "Allowance",
+      strValueSource: "percentage",
+      decPercentageValue: "50",
+      strDefaultPercentage: "50",
+      strMinAmount: "72000",
+      strMaxAmount: "90000",
+    }),
+  ];
+  const lstComponents = [
+    createStructureComponent({ intSalaryComponentID: 1, strComponentCode: "BASIC", strValueSource: "fixed" }),
+    createStructureComponent({ intSalaryComponentID: 2, strValueSource: "percentage", intBasisComponentID: 1, decPercentageValue: 50 }),
+  ];
+
+  const lstUpdated = syncCalculatedOverrideRowsFromPreview(lstOverrides, [], lstComponents);
+
+  assertEqual(lstUpdated[1].strDefaultAnnual, "72000", "Calculated default should be raised to its annual minimum");
+  assertEqual(lstUpdated[1].decAmountMonthly, "6000", "Monthly should be derived from the clamped annual default");
+}
+
+export function testManualAnnualCalculatedOverrideIsPreservedAndRecalculatesMonthly() {
+  const dicOverride = createOverride({
+    intSalaryComponentID: 2,
+    strComponentName: "Allowance",
+    strValueSource: "formula",
+    strFormulaExpression: "1000",
+    decAmountAnnual: "18000",
+    decAmountMonthly: "1500",
+    strMinAmount: "12000",
+    strMaxAmount: "24000",
+    blnAmountOverridden: true,
+  });
+
+  const lstUpdated = syncCalculatedOverrideRowsFromPreview(
+    [dicOverride],
+    [{ intSalaryComponentID: 2, decAmountAnnual: 12000, decAmountMonthly: 1000 }],
+    [createStructureComponent({ intSalaryComponentID: 2, strValueSource: "formula", strFormulaExpression: "1000" })]
+  );
+
+  assertEqual(lstUpdated[0].decAmountAnnual, "18000", "Manual calculated annual override should not be replaced by preview");
+  assertEqual(lstUpdated[0].decAmountMonthly, "1500", "Monthly should remain annual divided by twelve");
+  assertEqual(lstUpdated[0].strDefaultAnnual, "12000", "Formula default should remain visible separately from the override");
 }

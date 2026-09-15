@@ -45,11 +45,12 @@ import {
 } from "@/features/payroll/utils/payslipDocument";
 
 type PayrollRunDetailPageProps = {
-  intRunID: number;
+  /** record_uuid of the run; every payroll service addresses a run by it. */
+  strRunID: string;
 };
 
 const lstPayrollRunModuleCodes = ["PAYROLL_RUN", "PAYROLL_RUNS", "PAYROLL_PROCESS", "PAYROLL_PROCESSES"];
-const lstEditableRunStatuses: PayrollRunStatus[] = ["Open", "Submitted", "Approved"];
+const lstEditableRunStatuses: PayrollRunStatus[] = ["DRAFT", "VALIDATED"];
 
 function formatDateTime(strDate: string | null) {
   if (!strDate) {
@@ -82,36 +83,33 @@ function formatCurrency(decValue: number) {
 
 function getStatusPillSx(strStatus: string) {
   const dicToneByStatus: Record<string, { background: string; color: string }> = {
-    Open: { background: "#2563eb", color: "#fff" },
-    Submitted: { background: "#ea580c", color: "#fff" },
-    Approved: { background: "#16a34a", color: "#fff" },
-    Failed: { background: "#dc2626", color: "#fff" },
-    Processed: { background: "#0f766e", color: "#fff" },
-    Closed: { background: "#475569", color: "#fff" },
+    DRAFT: { background: "#2563eb", color: "#fff" },
+    VALIDATED: { background: "#16a34a", color: "#fff" },
+    PROCESSED: { background: "#0f766e", color: "#fff" },
+    FINALIZED: { background: "#475569", color: "#fff" },
+    CANCELLED: { background: "#dc2626", color: "#fff" },
   };
   return dicToneByStatus[strStatus] ?? { background: "#2563eb", color: "#fff" };
 }
 
 function getPayrollRunStatusLabel(strStatus: string) {
   const dicLabels: Record<string, string> = {
-    Open: "Draft",
-    Approved: "Approved",
-    Failed: "Failed",
-    Processed: "Processed",
-    Closed: "Closed",
+    DRAFT: "Draft",
+    VALIDATED: "Validated",
+    PROCESSED: "Processed",
+    FINALIZED: "Finalized",
+    CANCELLED: "Cancelled",
   };
   return dicLabels[strStatus] ?? strStatus;
 }
 
 function getWorkflowSteps(strRunStatus: string, blnHasPayslips: boolean) {
   const strCurrentStep =
-    strRunStatus === "Closed"
+    strRunStatus === "FINALIZED"
       ? "Close"
-      : strRunStatus === "Processed"
+      : strRunStatus === "PROCESSED"
         ? blnHasPayslips ? "Generate Payslips" : "Process"
-        : strRunStatus === "Failed"
-          ? "Process"
-        : strRunStatus === "Approved"
+        : strRunStatus === "VALIDATED"
           ? "Validate"
           : "Draft";
   return ["Draft", "Validate", "Process", "Generate Payslips", "Close"].map((strStep) => ({
@@ -124,11 +122,11 @@ function canProcessPayrollRun(objRun: PayrollRunDetailRecord, blnCanProcess: boo
   if (!blnCanProcess) {
     return false;
   }
-  if (["Approved", "Failed"].includes(objRun.strRunStatus)) {
+  if (objRun.strRunStatus === "VALIDATED") {
     return true;
   }
   return (
-    objRun.strRunStatus === "Processed" &&
+    objRun.strRunStatus === "PROCESSED" &&
     (objRun.intProcessedEmployeeCount || objRun.dicSummary.intProcessedCount || 0) <= 0 &&
     (objRun.intFailedEmployeeCount || 0) > 0
   );
@@ -151,19 +149,19 @@ function isWorkflowStepEnabled(
     case "Draft":
       return false;
     case "Validate":
-      return blnCanValidate && objRun.strRunStatus !== "Closed";
+      return blnCanValidate && objRun.strRunStatus === "DRAFT";
     case "Process":
       return canProcessPayrollRun(objRun, blnCanProcess);
     case "Generate Payslips":
       return (
         blnCanGeneratePayslip &&
         !blnPayslipLoading &&
-        ["Processed", "Closed"].includes(objRun.strRunStatus)
+        ["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus)
       );
     case "Close":
       return (
         blnCanClose &&
-        objRun.strRunStatus === "Processed" &&
+        objRun.strRunStatus === "PROCESSED" &&
         objRun.dicSummary.intValidationErrorCount <= 0
       );
     default:
@@ -210,7 +208,7 @@ function DetailValue({
 }
 
 function PayrollRunDetailPageLegacy({
-  intRunID,
+  strRunID,
 }: PayrollRunDetailPageProps) {
   const objRouter = useRouter();
   const { t } = useModuleLabels("payroll-runs");
@@ -222,6 +220,7 @@ function PayrollRunDetailPageLegacy({
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
   const [blnIsLocked, setBlnIsLocked] = useState(false);
+  const [strSavedRunStatus, setStrSavedRunStatus] = useState<PayrollRunStatus>("DRAFT");
   const [objValidationSummary, setObjValidationSummary] =
     useState<PayrollValidationSummary | null>(null);
   const [objProcessSummary, setObjProcessSummary] =
@@ -250,11 +249,12 @@ function PayrollRunDetailPageLegacy({
     }
     setStrError("");
     try {
-      const dicRun = await payrollRunService.getPayrollRunById(intRunID);
+      const dicRun = await payrollRunService.getPayrollRunById(strRunID);
       setObjRun(dicRun);
       setBlnIsLocked(dicRun.blnIsLocked);
-      if (["Processed", "Closed"].includes(dicRun.strRunStatus)) {
-        setLstPayslips(await payslipService.getRunPayslips(intRunID));
+      setStrSavedRunStatus(dicRun.strRunStatus);
+      if (["PROCESSED", "FINALIZED"].includes(dicRun.strRunStatus)) {
+        setLstPayslips(await payslipService.getRunPayslips(strRunID));
       } else {
         setLstPayslips([]);
       }
@@ -275,7 +275,7 @@ function PayrollRunDetailPageLegacy({
     }
 
     loadRun().catch(() => undefined);
-  }, [intRunID, blnRightsLoading, blnCanView]);
+  }, [strRunID, blnRightsLoading, blnCanView]);
 
   async function saveLockState() {
     if (!blnCanEdit || !objRun) {
@@ -285,14 +285,22 @@ function PayrollRunDetailPageLegacy({
     setStrError("");
     setStrSuccess("");
     try {
+      const strRunStatusForSave: PayrollRunStatus =
+        objRun.strRunStatus === strSavedRunStatus &&
+        !blnIsLocked &&
+        objRun.strRunStatus === "PROCESSED"
+          ? "DRAFT"
+          : objRun.strRunStatus;
       const dicRun = await payrollRunService.updatePayrollRunStatus(
-        intRunID,
-        objRun.strRunStatus,
+        strRunID,
+        strRunStatusForSave,
         blnIsLocked,
         objRun.strScopeType,
         objRun.intScopedEmployeeID ?? ""
       );
       setObjRun(dicRun);
+      setBlnIsLocked(dicRun.blnIsLocked);
+      setStrSavedRunStatus(dicRun.strRunStatus);
       setStrSuccess(t("status_update_success", "Payroll run updated successfully."));
     } catch (objError) {
       setStrError(
@@ -315,7 +323,7 @@ function PayrollRunDetailPageLegacy({
     setStrSuccess("");
     setObjProcessSummary(null);
     try {
-      const dicSummary = await payrollRunService.validatePayrollRun(intRunID);
+      const dicSummary = await payrollRunService.validatePayrollRun(strRunID);
       setObjValidationSummary(dicSummary);
       await loadRun(false);
       setStrSuccess(
@@ -344,7 +352,7 @@ function PayrollRunDetailPageLegacy({
     setStrError("");
     setStrSuccess("");
     try {
-      const dicSummary = await payrollRunService.processPayrollRun(intRunID);
+      const dicSummary = await payrollRunService.processPayrollRun(strRunID);
       setObjProcessSummary(dicSummary);
       setObjValidationSummary(dicSummary.dicValidationSummary ?? null);
       if (dicSummary.strStatus === "ValidationFailed") {
@@ -389,7 +397,7 @@ function PayrollRunDetailPageLegacy({
     setStrSuccess("");
     try {
       const dicSummary = await payrollRunService.reprocessPayrollRun(
-        intRunID,
+        strRunID,
         strReason.trim()
       );
       setObjProcessSummary(dicSummary);
@@ -416,7 +424,7 @@ function PayrollRunDetailPageLegacy({
     setStrError("");
     setStrSuccess("");
     try {
-      const dicRun = await payrollRunService.closePayrollRun(intRunID);
+      const dicRun = await payrollRunService.closePayrollRun(strRunID);
       setObjRun(dicRun);
       setBlnIsLocked(dicRun.blnIsLocked);
       setStrSuccess(t("close_complete", "Payroll run closed successfully."));
@@ -430,11 +438,11 @@ function PayrollRunDetailPageLegacy({
   }
 
   async function reloadPayslips() {
-    if (!objRun || !["Processed", "Closed"].includes(objRun.strRunStatus)) {
+    if (!objRun || !["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus)) {
       setLstPayslips([]);
       return;
     }
-    setLstPayslips(await payslipService.getRunPayslips(intRunID));
+    setLstPayslips(await payslipService.getRunPayslips(strRunID));
   }
 
   async function generateAllPayslips() {
@@ -446,7 +454,7 @@ function PayrollRunDetailPageLegacy({
     setStrError("");
     setStrSuccess("");
     try {
-      const dicSummary = await payslipService.generateAll(intRunID);
+      const dicSummary = await payslipService.generateAll(strRunID);
       setStrSuccess(
         t(
           "payslip_generate_all_success",
@@ -473,7 +481,7 @@ function PayrollRunDetailPageLegacy({
     setStrSuccess("");
     try {
       const dicPayslip = await payslipService.generatePayslip(
-        intRunID,
+        strRunID,
         dicRow.intEmployeeID
       );
       setStrSuccess(t("payslip_generated", "Payslip generated successfully."));
@@ -502,7 +510,7 @@ function PayrollRunDetailPageLegacy({
         setStrError(t("payslip_not_generated", "Payslip could not be generated for this employee."));
         return;
       }
-      setStrPayslipPreviewHtml(await payslipService.getDownloadHtml(intPayslipID));
+      setStrPayslipPreviewHtml(await payslipService.getDownloadHtml(String(intPayslipID)));
       setBlnPayslipDialogOpen(true);
     } catch (objError) {
       setStrError(
@@ -529,7 +537,7 @@ function PayrollRunDetailPageLegacy({
       if (!intPayslipID) {
         return;
       }
-      const strHtml = await payslipService.getDownloadHtml(intPayslipID);
+      const strHtml = await payslipService.getDownloadHtml(String(intPayslipID));
       if (blnPrint) {
         printPayslipHtml(strHtml);
       } else {
@@ -570,9 +578,9 @@ function PayrollRunDetailPageLegacy({
   const objSectionCardSx = {
     background: "#ffffff",
     border: "1px solid rgba(148,163,184,0.18)",
-    borderRadius: "24px",
+    borderRadius: "var(--app-card-radius)",
     boxShadow: "none",
-    p: 2.5,
+    p: "10px",
   };
 
   const objSectionTitleSx = {
@@ -590,12 +598,12 @@ function PayrollRunDetailPageLegacy({
       sx={{
         display: "flex",
         flexDirection: "column",
-        gap: 2.5,
+        gap: 1.5,
         height: "100%",
         minHeight: 0,
         overflowX: "hidden",
         overflowY: "auto",
-        pb: 3,
+        pb: 2,
         pr: 0.5,
       }}
     >
@@ -678,7 +686,7 @@ function PayrollRunDetailPageLegacy({
             className={styles.secondaryButton}
             startIcon={<RestartAltRoundedIcon />}
             onClick={reprocessRun}
-            disabled={blnSaving || objRun.strRunStatus !== "Processed"}
+            disabled={blnSaving || objRun.strRunStatus !== "PROCESSED"}
             controlId="payroll.run-detail.reprocess.button"
           >
             {t("reprocess", "Reprocess")}
@@ -698,9 +706,9 @@ function PayrollRunDetailPageLegacy({
         className={styles.controlsCard}
         sx={{
           border: "1px solid rgba(148,163,184,0.18)",
-          borderRadius: "28px",
+          borderRadius: "var(--app-card-radius)",
           boxShadow: "none",
-          p: { xs: 2, md: 3 },
+          p: "10px",
         }}
       >
         <Box className={styles.controlsHeader}>
@@ -725,7 +733,9 @@ function PayrollRunDetailPageLegacy({
             strLabel={t("run_scope", "Process For")}
             strValue={
               objRun.strScopeType === "SelectedEmployee"
-                ? `${t("scope_selected_employee", "Selected Employees")} #${objRun.intScopedEmployeeID ?? "-"}`
+                ? (objRun.strScopedEmployeeName
+                    ? `${objRun.strScopedEmployeeName}${objRun.strScopedEmployeeCode ? ` (${objRun.strScopedEmployeeCode})` : ""}`
+                    : `${t("scope_selected_employee", "Selected Employees")} #${objRun.intScopedEmployeeID ?? "-"}`)
                 : t("scope_payroll_group", "Payroll Group")
             }
           />
@@ -745,7 +755,7 @@ function PayrollRunDetailPageLegacy({
           display: "flex",
           flexDirection: "column",
           flex: "0 0 auto",
-          gap: 2.5,
+          gap: 1.5,
           minHeight: 0,
           overflow: "visible",
         }}
@@ -812,7 +822,9 @@ function PayrollRunDetailPageLegacy({
                 strLabel={t("run_scope", "Process For")}
                 strValue={
                   objRun.strScopeType === "SelectedEmployee"
-                    ? `${t("scope_selected_employee", "Selected Employees")} #${objRun.intScopedEmployeeID ?? "-"}`
+                    ? (objRun.strScopedEmployeeName
+                        ? `${objRun.strScopedEmployeeName}${objRun.strScopedEmployeeCode ? ` (${objRun.strScopedEmployeeCode})` : ""}`
+                        : `${t("scope_selected_employee", "Selected Employees")} #${objRun.intScopedEmployeeID ?? "-"}`)
                     : t("scope_payroll_group", "Payroll Group")
                 }
               />
@@ -899,7 +911,7 @@ function PayrollRunDetailPageLegacy({
           </Box>
         ) : null}
 
-        {["Processed", "Closed"].includes(objRun.strRunStatus) ? (
+        {["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus) ? (
           <Box sx={objSectionCardSx}>
             <Box className={styles.controlsHeader} sx={{ mb: 1.5 }}>
               <Typography sx={{ color: "#0f172a", fontWeight: 800 }}>

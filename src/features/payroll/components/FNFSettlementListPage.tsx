@@ -105,8 +105,8 @@ export default function FNFSettlementListPage() {
         rowKey={row.intID}
         blnCanView={blnHasViewRight}
         blnCanEdit={blnCanEdit && lstEditableStatuses.includes(row.strSettlementStatus)}
-        onView={() => objRouter.push(`/payroll/fnf-settlements/${row.intID}?mode=view`)}
-        onEdit={() => objRouter.push(`/payroll/fnf-settlements/${row.intID}`)}
+        onView={() => objRouter.push(`/payroll/fnf-settlements/${row.strRecordUUID}`)}
+        onEdit={() => objRouter.push(`/payroll/fnf-settlements/${row.strRecordUUID}`)}
       />
     ),
     strSettlementNumber: row.strSettlementNumber || row.intID,
@@ -127,7 +127,7 @@ export default function FNFSettlementListPage() {
       </Typography>
 
       <Box className={styles.controlsCard}>
-        <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", mt: 1 }}>
+        <Box sx={{ display: "flex", flexWrap: "nowrap", gap: 1, alignItems: "center", mt: 1, overflowX: "auto", pb: 0.5, "& > .MuiTextField-root, & > .MuiAutocomplete-root, & > .MuiFormControl-root": { flex: "1 1 160px", minWidth: 150 } }}>
           <Autocomplete
             size="small"
             options={lstEmployeeOptions}
@@ -136,7 +136,8 @@ export default function FNFSettlementListPage() {
             getOptionLabel={(objOption) => objOption?.strLabel || ""}
             isOptionEqualToValue={(objOption, objValue) => objOption.strEmployeeCode === objValue.strEmployeeCode}
             onChange={(_, objValue) => setDicFilters((d) => ({ ...d, employee_code: objValue?.strEmployeeCode || "" }))}
-            renderInput={(params) => <TextField {...params} label="Employee Code" inputProps={{ ...params.inputProps, "controlId": "payroll.fnf-settlements.employee-code.input" }} controlId="payroll.fnf-settlements.employee-code.input" />}
+            renderInput={(params) => <TextField {...params} label="Employee Code" placeholder="Search employee..." inputProps={{ ...params.inputProps, "controlId": "payroll.fnf-settlements.employee-code.input" }} controlId="payroll.fnf-settlements.employee-code.input"
+              InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />}
           />
           <TextField size="small" label="Department" inputProps={{ "controlId": "payroll.fnf-settlements.department.input" }} value={dicFilters.department} onChange={(e) => setDicFilters((d) => ({ ...d, department: e.target.value }))} controlId="payroll.fnf-settlements.department.input" />
           <TextField size="small" type="month" label="Settlement Month" inputProps={{ "controlId": "payroll.fnf-settlements.month.input" }} InputLabelProps={{ shrink: true }} value={dicFilters.settlement_month} onChange={(e) => setDicFilters((d) => ({ ...d, settlement_month: e.target.value }))} controlId="payroll.fnf-settlements.month.input" />
@@ -145,7 +146,7 @@ export default function FNFSettlementListPage() {
           <TextField size="small" label="Exit Type" inputProps={{ "controlId": "payroll.fnf-settlements.exit-type.input" }} value={dicFilters.exit_type} onChange={(e) => setDicFilters((d) => ({ ...d, exit_type: e.target.value }))} controlId="payroll.fnf-settlements.exit-type.input" />
           <TextField size="small" type="date" label="LWD From" inputProps={{ "controlId": "payroll.fnf-settlements.lwd-from.input" }} InputLabelProps={{ shrink: true }} value={dicFilters.lwd_from} onChange={(e) => setDicFilters((d) => ({ ...d, lwd_from: e.target.value }))} controlId="payroll.fnf-settlements.lwd-from.input" />
           <TextField size="small" type="date" label="LWD To" inputProps={{ "controlId": "payroll.fnf-settlements.lwd-to.input" }} InputLabelProps={{ shrink: true }} value={dicFilters.lwd_to} onChange={(e) => setDicFilters((d) => ({ ...d, lwd_to: e.target.value }))} controlId="payroll.fnf-settlements.lwd-to.input" />
-          <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+          <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexShrink: 0, ml: "auto" }}>
             <Button className={styles.primaryButton} size="small" startIcon={<SearchRoundedIcon />} onClick={() => loadRows()} controlId="payroll.fnf-settlements.search.button">Search</Button>
             <Button className={styles.secondaryButton} size="small" startIcon={<ClearRoundedIcon />} onClick={() => setDicFilters({ employee_code: "", department: "", settlement_month: "", status: "All", exit_type: "", lwd_from: "", lwd_to: "", payable_type: "All" })} controlId="payroll.fnf-settlements.clear.button">Clear</Button>
           </Box>
@@ -158,8 +159,6 @@ export default function FNFSettlementListPage() {
           rows={lstTableRows}
           toolbarLeft={blnCanCreate ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/payroll/fnf-settlements/new")} controlId="payroll.fnf-settlements.new.button">New Settlement</Button> : null}
           rowIdField="id"
-          defaultPageSize={10}
-          pageSizeOptions={[10, 20, 50]}
           emptyMessage="No FNF settlements found."
           testIdPrefix="payroll.fnf-settlements.list"
           showPaginationSummary

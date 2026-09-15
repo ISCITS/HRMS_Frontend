@@ -5,6 +5,7 @@ import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   MenuItem,
@@ -39,7 +40,7 @@ type ToastState = {
 };
 
 type PayrollProcessLogPageProps = {
-  intInitialPayrollRunID?: number;
+  strInitialPayrollRunRecordUUID?: string;
 };
 
 const lstModuleCodes = ["PAYROLL_PROCESS_LOG", "PAYROLL_PROCESS_LOGS", "MASTER_PAYROLL_PROCESS_LOG"];
@@ -69,13 +70,13 @@ function formatDateTime(strValue: string | null | undefined) {
   });
 }
 
-export default function PayrollProcessLogPage({ intInitialPayrollRunID }: PayrollProcessLogPageProps) {
+export default function PayrollProcessLogPage({ strInitialPayrollRunRecordUUID }: PayrollProcessLogPageProps) {
   const objRouter = useRouter();
   const { t } = usePayrollProcessLogLabels();
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly } = useModuleActionAccess(lstModuleCodes);
   const dicInitialFilters = useMemo(
-    () => createInitialPayrollProcessLogFilters(intInitialPayrollRunID),
-    [intInitialPayrollRunID]
+    () => createInitialPayrollProcessLogFilters(strInitialPayrollRunRecordUUID),
+    [strInitialPayrollRunRecordUUID]
   );
 
   const [lstLogs, setLstLogs] = useState<PayrollProcessLogListRecord[]>([]);
@@ -87,7 +88,7 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
   const blnCanView = canViewAny();
   const blnCanExport = canDoAny("export");
   const blnReadOnly = isReadOnly();
-  const blnRunScoped = typeof intInitialPayrollRunID === "number" && !Number.isNaN(intInitialPayrollRunID);
+  const blnRunScoped = Boolean(strInitialPayrollRunRecordUUID);
 
   function showToast(strMessage: string, strSeverity: ToastState["strSeverity"] = "success") {
     setObjToast({ blnOpen: true, strMessage, strSeverity });
@@ -129,13 +130,13 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
 
   const lstTableRows = useMemo(
     () => lstLogs.map((dicRow) => ({
-      id: dicRow.intID,
+      id: dicRow.strRecordUUID,
       action: (
         <CommonRowActions
           testIdPrefix="payroll-process-logs.list.row"
-          rowKey={dicRow.intID}
+          rowKey={dicRow.strRecordUUID}
           blnCanView
-          onView={() => objRouter.push(`/payroll/process-log/run/${dicRow.intPayrollRunID}`)}
+          onView={() => objRouter.push(`/payroll/process-log/run/${dicRow.strPayrollRunRecordUUID}`)}
         />
       ),
       employee: (
@@ -162,7 +163,8 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
           {dicRow.strMessageText}
         </Box>
       ),
-      dtAddedOn: formatDateTime(dicRow.dtAddedOn)
+      dtAddedOn: formatDateTime(dicRow.dtAddedOn),
+      dtAddedOnSortValue: dicRow.dtAddedOn ? new Date(dicRow.dtAddedOn).getTime() : 0
     })),
     [lstLogs, objRouter]
   );
@@ -175,7 +177,7 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
       { field: "strProcessStatus", headerName: t("process_status", "Process Status"), sortable: false, filterable: false, width: 150 },
       { field: "entity", headerName: t("entity", "Entity"), sortable: false, filterable: false, width: 220 },
       { field: "message", headerName: t("message_text", "Message"), sortable: false, filterable: false, width: 420 },
-      { field: "dtAddedOn", headerName: t("logged_on", "Logged On") }
+      { field: "dtAddedOn", headerName: t("logged_on", "Logged On"), sortAccessor: (dicRow) => dicRow.dtAddedOnSortValue }
     ],
     [lstTableRows, t]
   );
@@ -207,9 +209,9 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
   }
 
   return (
-    <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
+    <Stack spacing={1.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
       {blnRunScoped ? (
-        <Box sx={{ display: "flex", justifyContent: "flex-start" }}>
+        <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
           <Button
             data-controlid="payroll-process-logs.view.back.button"
             className={styles.secondaryButton}
@@ -230,26 +232,24 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
             gap: 1,
           }}
         >
-          <TextField
-            select
-            label={t("employee", "Employee")}
-            value={dicFiltersDraft.intEmployeeID}
-            onChange={(objEvent) =>
+          <Autocomplete
+            size="small"
+            options={dicOptions.lstEmployees}
+            value={dicOptions.lstEmployees.find((dicOption) => dicOption.intID === dicFiltersDraft.intEmployeeID) ?? null}
+            getOptionLabel={(dicOption) => dicOption.strLabel}
+            isOptionEqualToValue={(dicA, dicB) => dicA.intID === dicB.intID}
+            onChange={(_objEvent, dicOption) =>
               setDicFiltersDraft((dicPrevious) => ({
                 ...dicPrevious,
-                intEmployeeID: objEvent.target.value === "" ? "" : Number(objEvent.target.value)
+                intEmployeeID: dicOption ? dicOption.intID : ""
               }))
             }
-            size="small"
             sx={{ flex: { xs: "1 1 100%", md: "1 1 220px" }, minWidth: { md: 220 }, maxWidth: { md: 320 } }}
-          >
-            <MenuItem value="">{t("all_employees", "All Employees")}</MenuItem>
-            {dicOptions.lstEmployees.map((dicOption) => (
-              <MenuItem key={dicOption.intID} value={String(dicOption.intID)}>
-                {dicOption.strLabel}
-              </MenuItem>
-            ))}
-          </TextField>
+            renderInput={(params) => (
+              <TextField {...params} label={t("employee", "Employee")} placeholder={t("search_employee", "Search employee...")}
+                InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />
+            )}
+          />
           <TextField
             select
             label={t("process_stage", "Process Stage")}
@@ -304,8 +304,7 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
 
       {blnRunScoped ? (
         <Alert severity="info">
-          {t("run_scoped_message", "Showing payroll process logs for the selected payroll run only.")}{" "}
-          <strong>#{intInitialPayrollRunID}</strong>
+          {t("run_scoped_message", "Showing payroll process logs for the selected payroll run only.")}
         </Alert>
       ) : null}
 
@@ -318,8 +317,6 @@ export default function PayrollProcessLogPage({ intInitialPayrollRunID }: Payrol
           columns={lstTableColumns}
           rows={lstTableRows}
           rowIdField="id"
-          defaultPageSize={10}
-          pageSizeOptions={[10, 20, 50]}
           exportFileName="payroll_process_logs"
           showExportOptions={blnCanExport}
           showPaginationSummary

@@ -11,13 +11,14 @@ import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonT
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import type { StatutoryReportCode, StatutoryReportRow } from "@/features/payroll/types";
+import ReportMultiSelectField, { getUniqueOptions } from "@/features/reports/components/ReportMultiSelectField";
 import { payrollReportService } from "@/features/reports/services/payrollReportService";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 type SearchForm = {
   strSearchEmployee: string;
   strSearchRun: string;
-  strStatus: "All" | "Calculated" | "Approved" | "Published" | "Paid";
+  strStatus: string;
   strStatutoryCode: StatutoryReportCode;
   strDepartment: string;
   strLocation: string;
@@ -214,6 +215,18 @@ export default function StatutoryReportPage() {
   }
 
   const lstFilteredRows = lstRows;
+  const dicFilterOptions = useMemo(() => ({
+    lstEmployees: getUniqueOptions(lstRows.flatMap((dicRow) => [
+      dicRow.strEmployeeCode,
+      dicRow.strEmployeeName,
+      `${dicRow.strEmployeeCode} - ${dicRow.strEmployeeName}`,
+    ])),
+    lstRuns: getUniqueOptions(lstRows.flatMap((dicRow) => [dicRow.strRunCode, dicRow.strRunName])),
+    lstMonths: getUniqueOptions(lstRows.map((dicRow) => dicRow.dtPayrollMonth?.slice(0, 7))),
+    lstDepartments: getUniqueOptions(lstRows.map((dicRow) => dicRow.strDepartmentName)),
+    lstLocations: getUniqueOptions(lstRows.map((dicRow) => dicRow.strLocationName)),
+    lstStatuses: getUniqueOptions(lstRows.map((dicRow) => dicRow.strStatus)),
+  }), [lstRows]);
   const dicTotals = useMemo(() => lstFilteredRows.reduce((dicAccumulator, dicRow) => ({
     decBasis: dicAccumulator.decBasis + (dicRow.decBasisAmount || 0),
     decEmployee: dicAccumulator.decEmployee + (dicRow.decEmployeeAmount || 0),
@@ -291,16 +304,24 @@ export default function StatutoryReportPage() {
           />
         ),
         strPayrollPeriod: formatMonth(dicRow.dtPayrollMonth),
+        strPayrollPeriodSortValue: dicRow.dtPayrollMonth ? new Date(dicRow.dtPayrollMonth).getTime() : 0,
         strEmployeeCode: dicRow.strEmployeeCode,
         strEmployeeName: dicRow.strEmployeeName,
         strStatutoryName: dicRow.strStatutoryName,
         decBasisAmount: formatCurrency(dicRow.decBasisAmount),
+        decBasisAmountSortValue: Number(dicRow.decBasisAmount ?? 0),
         decEmployeeRatePercent: formatPercent(dicRow.decEmployeeRatePercent),
+        decEmployeeRatePercentSortValue: Number(dicRow.decEmployeeRatePercent ?? 0),
         decEmployerRatePercent: formatPercent(dicRow.decEmployerRatePercent),
+        decEmployerRatePercentSortValue: Number(dicRow.decEmployerRatePercent ?? 0),
         decEmployeeAmount: formatCurrency(dicRow.decEmployeeAmount),
+        decEmployeeAmountSortValue: Number(dicRow.decEmployeeAmount ?? 0),
         decEmployerAmount: formatCurrency(dicRow.decEmployerAmount),
+        decEmployerAmountSortValue: Number(dicRow.decEmployerAmount ?? 0),
         decTotalAmount: formatCurrency(dicRow.decTotalAmount),
+        decTotalAmountSortValue: Number(dicRow.decTotalAmount ?? 0),
         decCeilingAmount: dicRow.decCeilingAmount === null ? "-" : formatCurrency(dicRow.decCeilingAmount),
+        decCeilingAmountSortValue: Number(dicRow.decCeilingAmount ?? 0),
         strCalculationMode: dicRow.strCalculationMode || "-",
         strStatus: dicRow.strStatus,
       })),
@@ -326,17 +347,17 @@ export default function StatutoryReportPage() {
         exportable: false,
         width: 56,
       },
-      { field: "strPayrollPeriod", headerName: "Payroll Period", width: 140 },
+      { field: "strPayrollPeriod", headerName: "Payroll Period", width: 140, sortAccessor: (dicRow) => dicRow.strPayrollPeriodSortValue },
       { field: "strEmployeeCode", headerName: "Employee Code", width: 140 },
       { field: "strEmployeeName", headerName: "Employee Name", width: 220 },
       { field: "strStatutoryName", headerName: "Statutory", width: 170 },
-      { field: "decBasisAmount", headerName: "Basis", width: 140, align: "right" },
-      { field: "decEmployeeRatePercent", headerName: "Employee Rate", width: 130, align: "right" },
-      { field: "decEmployerRatePercent", headerName: "Employer Rate", width: 130, align: "right" },
-      { field: "decEmployeeAmount", headerName: "Employee Amount", width: 150, align: "right" },
-      { field: "decEmployerAmount", headerName: "Employer Amount", width: 150, align: "right" },
-      { field: "decTotalAmount", headerName: "Total", width: 140, align: "right" },
-      { field: "decCeilingAmount", headerName: "Ceiling", width: 130, align: "right" },
+      { field: "decBasisAmount", headerName: "Basis", width: 140, align: "right", sortAccessor: (dicRow) => dicRow.decBasisAmountSortValue },
+      { field: "decEmployeeRatePercent", headerName: "Employee Rate", width: 130, align: "right", sortAccessor: (dicRow) => dicRow.decEmployeeRatePercentSortValue },
+      { field: "decEmployerRatePercent", headerName: "Employer Rate", width: 130, align: "right", sortAccessor: (dicRow) => dicRow.decEmployerRatePercentSortValue },
+      { field: "decEmployeeAmount", headerName: "Employee Amount", width: 150, align: "right", sortAccessor: (dicRow) => dicRow.decEmployeeAmountSortValue },
+      { field: "decEmployerAmount", headerName: "Employer Amount", width: 150, align: "right", sortAccessor: (dicRow) => dicRow.decEmployerAmountSortValue },
+      { field: "decTotalAmount", headerName: "Total", width: 140, align: "right", sortAccessor: (dicRow) => dicRow.decTotalAmountSortValue },
+      { field: "decCeilingAmount", headerName: "Ceiling", width: 130, align: "right", sortAccessor: (dicRow) => dicRow.decCeilingAmountSortValue },
       { field: "strCalculationMode", headerName: "Mode", width: 140 },
       { field: "strStatus", headerName: "Status", width: 120 },
     ],
@@ -348,18 +369,29 @@ export default function StatutoryReportPage() {
       lstSummaryRows.map((dicRow) => ({
         intID: dicRow.intID,
         strPayrollPeriod: formatMonth(dicRow.dtPayrollMonth),
+        strPayrollPeriodSortValue: dicRow.dtPayrollMonth ? new Date(dicRow.dtPayrollMonth).getTime() : 0,
         strEmployeeCode: dicRow.strEmployeeCode,
         strEmployeeName: dicRow.strEmployeeName,
         decPfEmployee: formatCurrency(dicRow.decPfEmployee),
+        decPfEmployeeSortValue: Number(dicRow.decPfEmployee ?? 0),
         decPfEmployer: formatCurrency(dicRow.decPfEmployer),
+        decPfEmployerSortValue: Number(dicRow.decPfEmployer ?? 0),
         decEsiEmployee: formatCurrency(dicRow.decEsiEmployee),
+        decEsiEmployeeSortValue: Number(dicRow.decEsiEmployee ?? 0),
         decEsiEmployer: formatCurrency(dicRow.decEsiEmployer),
+        decEsiEmployerSortValue: Number(dicRow.decEsiEmployer ?? 0),
         decPtEmployee: formatCurrency(dicRow.decPtEmployee),
+        decPtEmployeeSortValue: Number(dicRow.decPtEmployee ?? 0),
         decLwfEmployee: formatCurrency(dicRow.decLwfEmployee),
+        decLwfEmployeeSortValue: Number(dicRow.decLwfEmployee ?? 0),
         decGratuityEmployer: formatCurrency(dicRow.decGratuityEmployer),
+        decGratuityEmployerSortValue: Number(dicRow.decGratuityEmployer ?? 0),
         decTotalEmployee: formatCurrency(dicRow.decTotalEmployee),
+        decTotalEmployeeSortValue: Number(dicRow.decTotalEmployee ?? 0),
         decTotalEmployer: formatCurrency(dicRow.decTotalEmployer),
+        decTotalEmployerSortValue: Number(dicRow.decTotalEmployer ?? 0),
         decGrandTotal: formatCurrency(dicRow.decGrandTotal),
+        decGrandTotalSortValue: Number(dicRow.decGrandTotal ?? 0),
         strStatus: dicRow.strStatus,
       })),
     [lstSummaryRows],
@@ -367,19 +399,19 @@ export default function StatutoryReportPage() {
 
   const lstSummaryTableColumns = useMemo<CommonTableColumn<(typeof lstSummaryTableRows)[number]>[]>(
     () => [
-      { field: "strPayrollPeriod", headerName: "Payroll Period", width: 140 },
+      { field: "strPayrollPeriod", headerName: "Payroll Period", width: 140, sortAccessor: (dicRow) => dicRow.strPayrollPeriodSortValue },
       { field: "strEmployeeCode", headerName: "Employee Code", width: 140 },
       { field: "strEmployeeName", headerName: "Employee Name", width: 220 },
-      { field: "decPfEmployee", headerName: "PF Employee", width: 140, align: "right" },
-      { field: "decPfEmployer", headerName: "PF Employer", width: 140, align: "right" },
-      { field: "decEsiEmployee", headerName: "ESI Employee", width: 140, align: "right" },
-      { field: "decEsiEmployer", headerName: "ESI Employer", width: 140, align: "right" },
-      { field: "decPtEmployee", headerName: "PT", width: 110, align: "right" },
-      { field: "decLwfEmployee", headerName: "LWF", width: 110, align: "right" },
-      { field: "decGratuityEmployer", headerName: "Gratuity Employer", width: 170, align: "right" },
-      { field: "decTotalEmployee", headerName: "Total Employee", width: 150, align: "right" },
-      { field: "decTotalEmployer", headerName: "Total Employer", width: 150, align: "right" },
-      { field: "decGrandTotal", headerName: "Grand Total", width: 150, align: "right" },
+      { field: "decPfEmployee", headerName: "PF Employee", width: 140, align: "right", sortAccessor: (dicRow) => dicRow.decPfEmployeeSortValue },
+      { field: "decPfEmployer", headerName: "PF Employer", width: 140, align: "right", sortAccessor: (dicRow) => dicRow.decPfEmployerSortValue },
+      { field: "decEsiEmployee", headerName: "ESI Employee", width: 140, align: "right", sortAccessor: (dicRow) => dicRow.decEsiEmployeeSortValue },
+      { field: "decEsiEmployer", headerName: "ESI Employer", width: 140, align: "right", sortAccessor: (dicRow) => dicRow.decEsiEmployerSortValue },
+      { field: "decPtEmployee", headerName: "PT", width: 110, align: "right", sortAccessor: (dicRow) => dicRow.decPtEmployeeSortValue },
+      { field: "decLwfEmployee", headerName: "LWF", width: 110, align: "right", sortAccessor: (dicRow) => dicRow.decLwfEmployeeSortValue },
+      { field: "decGratuityEmployer", headerName: "Gratuity Employer", width: 170, align: "right", sortAccessor: (dicRow) => dicRow.decGratuityEmployerSortValue },
+      { field: "decTotalEmployee", headerName: "Total Employee", width: 150, align: "right", sortAccessor: (dicRow) => dicRow.decTotalEmployeeSortValue },
+      { field: "decTotalEmployer", headerName: "Total Employer", width: 150, align: "right", sortAccessor: (dicRow) => dicRow.decTotalEmployerSortValue },
+      { field: "decGrandTotal", headerName: "Grand Total", width: 150, align: "right", sortAccessor: (dicRow) => dicRow.decGrandTotalSortValue },
       { field: "strStatus", headerName: "Status", width: 120 },
     ],
     [lstSummaryTableRows],
@@ -396,25 +428,33 @@ export default function StatutoryReportPage() {
         <Box className={styles.controlsHeader} sx={{ mb: 1.25 }}>
           <Box />
         </Box>
-        <Box className={styles.statutorySearchPanel}>
-          <Box className={styles.statutorySearchLinePrimary}>
+        <Box className={styles.reportSearchPanelRow}>
+          <Box className={styles.reportSearchField}>
             <TextField select value={dicSearchDraft.strStatutoryCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatutoryCode: objEvent.target.value as StatutoryReportCode }))} fullWidth controlId="reports.statutory.report-type.select">
               {lstReportTypes.map((dicType) => <MenuItem key={dicType.strCode} value={dicType.strCode}>{dicType.strLabel}</MenuItem>)}
             </TextField>
-            <TextField value={dicSearchDraft.strSearchEmployee} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: objEvent.target.value }))} placeholder="Search by employee code or name" fullWidth controlId="reports.statutory.employee-search.input" />
-            <TextField value={dicSearchDraft.strSearchRun} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: objEvent.target.value }))} placeholder="Payroll period or run" fullWidth controlId="reports.statutory.run-search.input" />
-            <TextField type="month" value={dicSearchDraft.strPayrollMonth} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: objEvent.target.value }))} label="Payroll Month" fullWidth InputLabelProps={{ shrink: true }} controlId="reports.statutory.payroll-month.input" />
-            <TextField value={dicSearchDraft.strDepartment} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: objEvent.target.value }))} placeholder="Department" fullWidth controlId="reports.statutory.department.input" />
           </Box>
-          <Box className={styles.statutorySearchLinePrimary}>
-            <TextField value={dicSearchDraft.strLocation} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: objEvent.target.value }))} placeholder="Location" fullWidth controlId="reports.statutory.location.input" />
-            <TextField select label="Status" value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} fullWidth controlId="reports.statutory.status.select">
-              <MenuItem value="All">All Statuses</MenuItem><MenuItem value="Calculated">Calculated</MenuItem><MenuItem value="Approved">Approved</MenuItem><MenuItem value="Published">Published</MenuItem><MenuItem value="Paid">Paid</MenuItem>
-            </TextField>
-            <Box className={styles.searchActions}>
-              <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} controlId="reports.statutory.search.button">Search</Button>
-              <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} controlId="reports.statutory.clear.button">Clear</Button>
-            </Box>
+          <Box className={styles.reportSearchField}>
+            <ReportMultiSelectField value={dicSearchDraft.strSearchEmployee} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: strValue }))} options={dicFilterOptions.lstEmployees} placeholder="Search by employee code or name" controlId="reports.statutory.employee-search.input" />
+          </Box>
+          <Box className={styles.reportSearchField}>
+            <ReportMultiSelectField value={dicSearchDraft.strSearchRun} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: strValue }))} options={dicFilterOptions.lstRuns} placeholder="Payroll period or run" controlId="reports.statutory.run-search.input" />
+          </Box>
+          <Box className={styles.reportSearchField}>
+            <ReportMultiSelectField value={dicSearchDraft.strPayrollMonth} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: strValue }))} options={dicFilterOptions.lstMonths} label="Payroll Month" placeholder="Payroll Month" controlId="reports.statutory.payroll-month.input" />
+          </Box>
+          <Box className={styles.reportSearchField} sx={{ flexBasis: 160, minWidth: 160 }}>
+            <ReportMultiSelectField value={dicSearchDraft.strDepartment} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: strValue }))} options={dicFilterOptions.lstDepartments} placeholder="Department" controlId="reports.statutory.department.input" />
+          </Box>
+          <Box className={styles.reportSearchField} sx={{ flexBasis: 160, minWidth: 160 }}>
+            <ReportMultiSelectField value={dicSearchDraft.strLocation} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: strValue }))} options={dicFilterOptions.lstLocations} placeholder="Location" controlId="reports.statutory.location.input" />
+          </Box>
+          <Box className={styles.reportSearchField} sx={{ flexBasis: 160, minWidth: 160 }}>
+            <ReportMultiSelectField label="Status" value={dicSearchDraft.strStatus === "All" ? "" : dicSearchDraft.strStatus} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: strValue || "All" }))} options={dicFilterOptions.lstStatuses.length ? dicFilterOptions.lstStatuses : ["Calculated", "Approved", "Published", "Paid"]} placeholder="All Statuses" controlId="reports.statutory.status.select" />
+          </Box>
+          <Box className={styles.searchActions}>
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} controlId="reports.statutory.search.button">Search</Button>
+            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} controlId="reports.statutory.clear.button">Clear</Button>
           </Box>
         </Box>
       </Box>
@@ -460,7 +500,7 @@ export default function StatutoryReportPage() {
           footerContent={
             blnSummaryReport ? (
               lstSummaryRows.length > 0 ? (
-                <Box sx={{ px: 1.5, py: 1.25, borderTop: "1px solid #e2e8f0", overflowX: "auto" }}>
+                <Box sx={{ px: 1.5, py: 1.25, borderTop: "1px solid #e2e8f0" }}>
                   <Box sx={{ minWidth: 2030, display: "grid", gridTemplateColumns: "140px 140px 220px 140px 140px 140px 140px 110px 110px 170px 150px 150px 150px 120px", alignItems: "center" }}>
                     <Typography sx={{ fontWeight: 700, gridColumn: "1 / span 3" }}>Total</Typography>
                     <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicSummaryTotals.decPfEmployee)}</Typography>
@@ -478,7 +518,7 @@ export default function StatutoryReportPage() {
                 </Box>
               ) : null
             ) : lstFilteredRows.length > 0 ? (
-              <Box sx={{ px: 1.5, py: 1.25, borderTop: "1px solid #e2e8f0", overflowX: "auto" }}>
+              <Box sx={{ px: 1.5, py: 1.25, borderTop: "1px solid #e2e8f0" }}>
                 <Box sx={{ minWidth: 1936, display: "grid", gridTemplateColumns: "56px 140px 140px 220px 170px 140px 130px 130px 150px 150px 140px 130px 140px 120px", alignItems: "center" }}>
                   <Typography sx={{ fontWeight: 700, gridColumn: "1 / span 5" }}>Total</Typography>
                   <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicTotals.decBasis)}</Typography>

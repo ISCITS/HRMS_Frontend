@@ -8,6 +8,16 @@ const lstReports = [
     strHref: "/reports/payroll-register",
   },
   {
+    strTitle: "Salary Register",
+    strDescription: "Employee-wise, component-wise monthly salary register from the CTC/salary structure, with filters and a grand total per employee.",
+    strHref: "/reports/salary-register",
+  },
+  {
+    strTitle: "Salary Statement",
+    strDescription: "Employee yearly salary component register with Apr-Mar month totals.",
+    strHref: "/reports/salary-statement",
+  },
+  {
     strTitle: "Bank File",
     strDescription: "Payment-ready net salary report for approved, published, or paid payroll.",
     strHref: "/reports/bank-file",
@@ -21,6 +31,16 @@ const lstReports = [
     strTitle: "Statutory Reports",
     strDescription: "PF, ESI, professional tax, labour welfare fund, summary, challan, payment, and returns.",
     strHref: "/reports/statutory",
+  },
+  {
+    strTitle: "TDS Register",
+    strDescription: "Employee-wise monthly TDS deducted, year-to-date TDS, and total tax liability.",
+    strHref: "/reports/tds-register",
+  },
+  {
+    strTitle: "Variable Pay Register",
+    strDescription: "Employee-wise Variable Pay (Separate Payroll) transactions, amounts, tax, and net pay.",
+    strHref: "/reports/variable-pay-register",
   },
 ];
 

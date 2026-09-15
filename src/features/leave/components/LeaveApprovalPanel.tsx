@@ -18,6 +18,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
+import styles from "@/components/master/MasterScreen.module.css";
 import { useLeaveWorkflowPermissions } from "@/features/leave/hooks/useLeaveWorkflowPermissions";
 import { leaveService } from "@/features/leave/services/leaveService";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -191,11 +192,13 @@ export default function LeaveApprovalPanel() {
     { strLabel: t("tab_actioned", "Actioned by Me"), blnShow: true },
   ];
 
-  return <Stack spacing={2}>
-    <Paper sx={{ p: { xs: 1.75, md: 2.25 }, borderRadius: "20px", background: "linear-gradient(135deg,#0b3f70 0%,#0a66a3 52%,#0e7490 100%)", color: "white", boxShadow: "0 14px 28px rgba(2,6,23,.18)" }}>
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ xs: "stretch", sm: "center" }} justifyContent="space-between">
-        <Stack direction="row" spacing={1.4} alignItems="center"><Box sx={{ width: 48, height: 48, borderRadius: "14px", bgcolor: "rgba(255,255,255,.18)", display: "grid", placeItems: "center" }}><FactCheckRoundedIcon /></Box><Box><Typography component="h1" sx={{ fontWeight: 800, fontSize: "1.08rem" }}>{t("page_title", "Leave Requests & Approvals")}</Typography><Typography sx={{ fontSize: ".82rem", color: "rgba(241,245,249,.92)" }}>{t("page_subtitle", "The HR workbench for every leave request and workflow action.")}</Typography></Box></Stack>
-        <Button data-controlid="hr.leave.workbench.refresh" variant="contained" startIcon={<RefreshRoundedIcon />} onClick={() => void fnLoadTab(intTab, true)} sx={{ bgcolor: "white", color: "#0b3f70", fontWeight: 800, "&:hover": { bgcolor: "#e2e8f0" } }}>{t("refresh", "Refresh")}</Button>
+  // 12px between cards and the light toolbar chrome shared by the other HR leave-management screens.
+  return <Stack spacing={1.5}>
+    <Paper sx={{ borderRadius: "28px", px: { xs: 2, md: 3 }, py: { xs: 1.5, md: 2 }, border: "1px solid rgba(148,163,184,0.18)", background: "linear-gradient(135deg, #f9fbff 0%, #eef4ff 50%, #f8fafc 100%)" }}>
+      <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ md: "center" }} justifyContent="space-between">
+        {/* The page title lives here rather than in the app-shell header (see blnLeaveApprovalsRoute). */}
+        <Typography component="h1" sx={{ fontWeight: 800, fontSize: { xs: "1.1rem", md: "1.28rem" }, color: "#0f172a" }}>{t("page_title", "Leave Requests & Approvals")}</Typography>
+        <Button className={styles.secondaryButton} startIcon={<RefreshRoundedIcon />} onClick={() => void fnLoadTab(intTab, true)} sx={{ borderRadius: "14px", height: 38, minHeight: 38, py: 0, px: 2.25, minWidth: 100, fontSize: "0.9rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }} data-controlid="hr.leave.workbench.refresh">{t("refresh", "Refresh")}</Button>
       </Stack>
     </Paper>
 

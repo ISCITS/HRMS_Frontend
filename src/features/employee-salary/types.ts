@@ -2,6 +2,8 @@ export type EmployeeSalaryStatus = "Assigned" | "Unassigned";
 
 export type EmployeeSalaryListRecord = {
   intEmployeeID: number;
+  /** Employee's public identifier used in URLs. */
+  strEmployeeRecordUUID: string;
   strEmployeeCode: string;
   strEmployeeName: string;
   strWorkEmail: string | null;
@@ -16,6 +18,7 @@ export type EmployeeSalaryListRecord = {
 };
 
 export type EmployeeSalaryOption = {
+  strOverrideMode?: "annual" | "monthly" | "both";
   intID: number;
   strLabel: string;
   strCode?: string;
@@ -70,6 +73,8 @@ export type EmployeeSalaryStructureComponentOption = {
   decReimbursementMaxClaimMonthlyLimit?: number | null;
   decReimbursementMaxClaimYearlyLimit?: number | null;
   decPercentageValue?: number | null;
+  fltMinAmount?: number | null;
+  fltMaxAmount?: number | null;
   strFormulaExpression?: string | null;
   strFlexiComponentRole?: string | null;
   blnIsFlexiBasketLine?: boolean;
@@ -116,12 +121,15 @@ export type EmployeeSalaryComponentLine = {
   strTaxTreatment?: string | null;
   blnAllowManualOverride: boolean;
   strComponentValueType: string;
+  strValueSource?: string | null;
   decAmountMonthly: number | null;
   decAmountAnnual: number | null;
   decPercentageValue: number | null;
   decDefaultAmountMonthly?: number | null;
   decDefaultAmountAnnual?: number | null;
   decDefaultPercentageValue?: number | null;
+  fltMinAmount?: number | null;
+  fltMaxAmount?: number | null;
   intBasisComponentID: number | null;
   strFormulaExpression: string | null;
   blnIsOverride: boolean;
@@ -227,6 +235,7 @@ export type EmployeeFlexiDeclarationRecord = {
 export type EmployeeSalaryDetailRecord = {
   objEmployeeSummary: {
     intEmployeeID: number;
+    strEmployeeRecordUUID: string;
     strEmployeeCode: string;
     strEmployeeName: string;
     strWorkEmail: string | null;
@@ -262,6 +271,17 @@ export type EmployeeSalaryDetailRecord = {
   } | null;
   objFlexiAllocation?: EmployeeSalaryFlexiAllocationSummary;
   objFlexiDeclaration?: EmployeeFlexiDeclarationRecord;
+  objItDeclarationDashboard?: {
+    strCurrentFinancialYearCode: string;
+    lstDeclarations: Array<{
+      intDeclarationID: number;
+      strFinancialYearCode: string;
+      strTaxRegime: string;
+      strStatus: string;
+      decDeclaredAmount: number;
+      decApprovedAmount: number;
+    }>;
+  };
   lstWarnings?: string[];
   lstComponentLines: EmployeeSalaryComponentLine[];
   lstRevisionHistory: EmployeeSalaryHistoryRecord[];
@@ -291,6 +311,9 @@ export type EmployeeSalaryOverrideFormValue = {
   strDefaultMonthly: string;
   strDefaultAnnual: string;
   strDefaultPercentage: string;
+  strMinAmount: string;
+  strMaxAmount: string;
+  blnAmountOverridden?: boolean;
   strRemarks: string;
 };
 
@@ -311,6 +334,7 @@ export type EmployeeSalaryFlexiAllocationFormValue = {
 export type EmployeeSalaryRevisionFormValues = {
   intSalaryStructureID: number | "";
   dtEffectiveFrom: string;
+  dtEffectiveTo?: string;
   strRevisionReason: string;
   lstOverrides: EmployeeSalaryOverrideFormValue[];
   lstFlexiAllocations: EmployeeSalaryFlexiAllocationFormValue[];

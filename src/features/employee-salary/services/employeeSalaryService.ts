@@ -1,6 +1,5 @@
 import { masterApiService } from "@/services/master/MasterApiService";
 import { resolveLookupDisplayLabel } from "@/features/payroll-lookups/utils/lookupLabel";
-import { usesAutoCalculatedOverrideValue, usesFixedOverrideValue } from "@/features/employee-salary/utils/overrideRecalculation";
 import type {
   EmployeeSalaryDetailRecord,
   EmployeeSalaryFormOptions,
@@ -47,7 +46,6 @@ function areOptionalDecimalsEqual(decLeft: number | null, decRight: number | nul
 }
 
 function shouldPersistOverride(dicOverride: EmployeeSalaryOverrideFormValue) {
-  const blnUsesCalculatedAmounts = usesAutoCalculatedOverrideValue(dicOverride.strValueSource);
   const decAmountMonthly = parseOptionalDecimal(dicOverride.decAmountMonthly);
   const decAmountAnnual = parseOptionalDecimal(dicOverride.decAmountAnnual);
   const decPercentageValue = parseOptionalDecimal(dicOverride.decPercentageValue);
@@ -55,6 +53,9 @@ function shouldPersistOverride(dicOverride: EmployeeSalaryOverrideFormValue) {
   const decDefaultAnnual = parseOptionalDecimal(dicOverride.strDefaultAnnual);
   const decDefaultPercentage = parseOptionalDecimal(dicOverride.strDefaultPercentage);
   const strRemarks = dicOverride.strRemarks.trim();
+  const blnAmountOverridden = Boolean(dicOverride.blnAmountOverridden) ||
+    !areOptionalDecimalsEqual(decAmountMonthly, decDefaultMonthly) ||
+    !areOptionalDecimalsEqual(decAmountAnnual, decDefaultAnnual);
 
   return {
     decAmountMonthly,
@@ -62,11 +63,10 @@ function shouldPersistOverride(dicOverride: EmployeeSalaryOverrideFormValue) {
     decPercentageValue,
     strRemarks,
     blnShouldPersist:
-      (!blnUsesCalculatedAmounts &&
-        (!areOptionalDecimalsEqual(decAmountMonthly, decDefaultMonthly) ||
-          !areOptionalDecimalsEqual(decAmountAnnual, decDefaultAnnual))) ||
+      blnAmountOverridden ||
       !areOptionalDecimalsEqual(decPercentageValue, decDefaultPercentage) ||
-      Boolean(strRemarks)
+      Boolean(strRemarks),
+    blnAmountOverridden
   };
 }
 
@@ -74,10 +74,8 @@ function mapOverridePayload(dicOverride: EmployeeSalaryOverrideFormValue) {
   const dicNormalizedOverride = shouldPersistOverride(dicOverride);
   return {
     intSalaryComponentID: dicOverride.intSalaryComponentID,
-    decAmountMonthly:
-      usesFixedOverrideValue(dicOverride.strValueSource) ? dicNormalizedOverride.decAmountMonthly : null,
-    decAmountAnnual:
-      usesFixedOverrideValue(dicOverride.strValueSource) ? dicNormalizedOverride.decAmountAnnual : null,
+    decAmountMonthly: dicNormalizedOverride.blnAmountOverridden ? dicNormalizedOverride.decAmountMonthly : null,
+    decAmountAnnual: dicNormalizedOverride.blnAmountOverridden ? dicNormalizedOverride.decAmountAnnual : null,
     decPercentageValue: dicNormalizedOverride.decPercentageValue,
     strRemarks: dicNormalizedOverride.strRemarks || null,
     blnShouldPersist: dicNormalizedOverride.blnShouldPersist
@@ -135,23 +133,24 @@ export const employeeSalaryService = {
     };
   },
 
-  async getEmployeeSalaryDetail(intEmployeeID: number): Promise<EmployeeSalaryDetailRecord> {
+  async getEmployeeSalaryDetail(intEmployeeID: string | number): Promise<EmployeeSalaryDetailRecord> {
     const objResult = await masterApiService.getEmployeeSalaryDetail(intEmployeeID);
     return objResult.Data;
   },
 
-  async getEmployeeSalarySummary(intEmployeeID: number): Promise<EmployeeSalarySummaryRecord> {
+  async getEmployeeSalarySummary(intEmployeeID: string | number): Promise<EmployeeSalarySummaryRecord> {
     const objResult = await masterApiService.getEmployeeSalarySummary(intEmployeeID);
     return objResult.Data;
   },
 
   async previewRevision(
-    intEmployeeID: number,
+    intEmployeeID: string | number,
     dicValues: EmployeeSalaryRevisionFormValues
   ): Promise<EmployeeSalaryRevisionPreviewRecord> {
     const objResult = await masterApiService.previewEmployeeSalaryRevision(intEmployeeID, {
       intSalaryStructureID: dicValues.intSalaryStructureID,
       dtEffectiveFrom: dicValues.dtEffectiveFrom,
+      dtEffectiveTo: dicValues.dtEffectiveTo || null,
       strRevisionReason: dicValues.strRevisionReason.trim() || null,
       lstOverrides: dicValues.lstOverrides
         .filter((dicOverride) => dicOverride.blnAllowManualOverride)
@@ -172,12 +171,13 @@ export const employeeSalaryService = {
   },
 
   async createRevision(
-    intEmployeeID: number,
+    intEmployeeID: string | number,
     dicValues: EmployeeSalaryRevisionFormValues
   ): Promise<EmployeeSalaryDetailRecord> {
     const objResult = await masterApiService.createEmployeeSalaryRevision(intEmployeeID, {
       intSalaryStructureID: dicValues.intSalaryStructureID,
       dtEffectiveFrom: dicValues.dtEffectiveFrom,
+      dtEffectiveTo: dicValues.dtEffectiveTo || null,
       strRevisionReason: dicValues.strRevisionReason.trim() || null,
       lstOverrides: dicValues.lstOverrides
         .filter((dicOverride) => dicOverride.blnAllowManualOverride)
@@ -197,7 +197,7 @@ export const employeeSalaryService = {
     return objResult.Data;
   },
 
-  async unassignSalary(intEmployeeID: number): Promise<EmployeeSalaryDetailRecord> {
+  async unassignSalary(intEmployeeID: string | number): Promise<EmployeeSalaryDetailRecord> {
     const objResult = await masterApiService.unassignEmployeeSalary(intEmployeeID);
     return objResult.Data;
   }

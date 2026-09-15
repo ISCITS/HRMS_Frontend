@@ -167,6 +167,12 @@
             "accountHolderName": "Account Holder Name",
             "accountNumber": "Account Number",
             "ifscCode": "IFSC Code",
+            "secondaryBankDetails": "Secondary Bank Details",
+            "secondaryBankActive": "Secondary Bank Active",
+            "secondaryBank": "Secondary Bank",
+            "secondaryAccountHolderName": "Secondary Account Holder Name",
+            "secondaryAccountNumber": "Secondary Account Number",
+            "secondaryIfscCode": "Secondary IFSC Code",
             "isPrimary": "Primary Account",
             "bankActive": "Bank Record Active",
             "panNumber": "PAN Number",
@@ -199,6 +205,8 @@
             "joiningDateRequired": "Joining Date is required.",
             "employmentTypeRequired": "Employment Type is required.",
             "locationRequired": "Location is required.",
+            "reportingManagerRequired": "Reporting Manager is required.",
+            "lineManagerRequired": "Line Manager is required.",
             "workEmailInvalid": "Enter a valid work email address.",
             "personalEmailInvalid": "Enter a valid personal email address.",
             "mobileNumberInvalid": "Mobile Number can contain digits, spaces, plus, and hyphen only.",
@@ -209,7 +217,11 @@
             "bankRequired": "Bank is required.",
             "accountHolderRequired": "Account Holder Name is required.",
             "accountNumberRequired": "Account Number is required.",
-            "pfNumberRequired": "PF Number is required when PF Applicable is on."
+            "secondaryBankRequired": "Secondary Bank is required when the secondary account is active.",
+            "secondaryAccountHolderRequired": "Secondary Account Holder Name is required when the secondary account is active.",
+            "secondaryAccountNumberRequired": "Secondary Account Number is required when the secondary account is active.",
+            "pfNumberRequired": "PF Number is required when PF Applicable is on.",
+            "esiNumberRequired": "ESI Number is required when ESI Applicable is on."
         }
     },
     "leave": {

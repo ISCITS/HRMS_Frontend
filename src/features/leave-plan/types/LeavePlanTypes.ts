@@ -1,8 +1,13 @@
 export type LeavePlanItem = {
   intID?: number;
   intLeaveTypeID: number;
+  // Resolved server-side from Leave Type + plan effective date; the UI no longer selects it.
   intLeavePolicyID: number | null;
   decAnnualEntitlement: number;
+  // Entitlement inheritance/override (POC refinement).
+  blnIsEntitlementOverride: boolean;
+  decBaseEntitlementSnapshot?: number | null;
+  strOverrideReason?: string | null;
   blnOpeningBalanceAllowed: boolean;
   decNegativeBalanceLimit: number;
   intDisplayOrder: number;
@@ -21,6 +26,8 @@ export type LeavePlanUsage = { intAssignments: number; intAssignedEmployeeCount:
 
 export type LeavePlan = {
   intID: number;
+  /** Public identifier used in URLs; the internal id stays server-side. */
+  strRecordUUID: string;
   intCompanyID: number;
   strPlanCode: string;
   strPlanName: string;
@@ -40,13 +47,14 @@ export type LeavePlan = {
   objUsage?: LeavePlanUsage;
 };
 
-export type LeavePlanSaveRequest = Omit<LeavePlan, "intID" | "intCompanyID" | "strDisplayName" | "intItemCount" | "intAssignedEmployeeCount" | "lstItems" | "lstText" | "objUsage"> & {
+// strRecordUUID is server-assigned identity, never part of a save payload.
+export type LeavePlanSaveRequest = Omit<LeavePlan, "intID" | "strRecordUUID" | "intCompanyID" | "strDisplayName" | "intItemCount" | "intAssignedEmployeeCount" | "lstItems" | "lstText" | "objUsage"> & {
   intCompanyID?: number;
   lstItems: LeavePlanItem[];
   lstText: LeavePlanText[];
 };
 
-export type LeaveTypeOption = { intID: number; strTypeCode: string; strTypeName: string; blnIsActive: boolean };
+export type LeaveTypeOption = { intID: number; strTypeCode: string; strTypeName: string; blnIsActive: boolean; blnAllowNegativeBalance?: boolean };
 export type LeavePolicyOption = {
   intID: number;
   intLeaveTypeID: number;
@@ -60,6 +68,9 @@ export type LeavePolicyOption = {
 export type LanguageOption = { intID: number; strLabel: string; strCode?: string };
 export type LeavePlanLanguages = { lstLanguages: LanguageOption[]; intDefaultLanguageID: number; intSecondaryLanguageID: number | null };
 export type LeavePlanFilters = { strSearch?: string; blnIsActive?: boolean; dtEffectiveOn?: string };
+
+/** One row of the company-wide "current plan per employee" lookup used by the assignment list. */
+export type EmployeeCurrentPlan = { intEmployeeID: number; intLeavePlanID: number; strPlanCode: string; strPlanName: string };
 
 export type EmployeeLeavePlanAssignment = {
   intID: number;
@@ -114,11 +125,23 @@ export type EmployeeLeaveLedger = {
   dtTransactionOn: string | null;
 };
 
+export type ReplacementImpactLine = { intLeaveTypeID: number; strLeaveType: string; lstReasons?: string[]; decAvailableBalance?: number };
+export type ReplacementImpact = {
+  lstRetained: ReplacementImpactLine[];
+  lstAdded: ReplacementImpactLine[];
+  lstRemovedFrozen: ReplacementImpactLine[];
+  lstBlocking: ReplacementImpactLine[];
+  blnCanReplace: boolean;
+};
+
 export type EmployeeLeavePlanOverview = {
   objCurrentAssignment: EmployeeLeavePlanAssignment | null;
   lstAssignments: EmployeeLeavePlanAssignment[];
   lstBalances: EmployeeLeaveBalance[];
+  objReplacementImpact?: ReplacementImpact;
 };
+
+export type ReplacementPreviewRequest = { intLeavePlanID: number; intLeaveYear: number; dtEffectiveFrom: string };
 
 export type BalanceMutationResult = { objBalance: EmployeeLeaveBalance; lstLedger: EmployeeLeaveLedger[] };
 

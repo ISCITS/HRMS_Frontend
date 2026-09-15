@@ -77,11 +77,20 @@ function normalizeRightsMenuName(objNode: SecurityMenuNode): string {
   if (strRoute.includes("/reports/payroll-register") || strMenuCode.includes("payroll_register")) {
     return "Payroll Register";
   }
+  if (strRoute.includes("/reports/salary-register") || strMenuCode.includes("salary_register")) {
+    return "Salary Register";
+  }
+  if (strRoute.includes("/reports/salary-statement") || strMenuCode.includes("salary_statement")) {
+    return "Salary Statement";
+  }
   if (strRoute.includes("/reports/bank-file") || strMenuCode.includes("bank_file")) {
     return "Bank File";
   }
   if (strRoute.includes("/reports/statutory") || strMenuCode.includes("statutory_report")) {
     return "Statutory Reports";
+  }
+  if (strRoute.includes("/reports/variable-pay-register") || strMenuCode.includes("variable_pay_register")) {
+    return "Variable Pay Register";
   }
 
   return strMenuName;

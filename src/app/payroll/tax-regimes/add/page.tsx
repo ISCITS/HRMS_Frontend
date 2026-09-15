@@ -1,5 +1,5 @@
-import TaxRegimeEditorPage from "@/features/tax-regimes/components/TaxRegimeEditorPage";
+import TaxRegimeWorkspaceTabs from "@/features/tax-regimes/components/TaxRegimeWorkspaceTabs";
 
 export default function AddTaxRegimePage() {
-  return <TaxRegimeEditorPage strMode="add" />;
+  return <TaxRegimeWorkspaceTabs strMode="add" />;
 }
