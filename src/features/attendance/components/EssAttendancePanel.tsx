@@ -7,7 +7,6 @@ import FingerprintRoundedIcon from "@mui/icons-material/FingerprintRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import {
   Alert,
-  Autocomplete,
   Box,
   Button,
   ButtonBase,
@@ -32,6 +31,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import styles from "@/components/master/MasterScreen.module.css";
 import { ATTENDANCE_STATUS_COLORS, LATE_ARRIVAL_BADGE_COLOR, type AttendanceDayDto } from "@/features/attendance/dto";
@@ -45,10 +45,6 @@ import { useModuleActionAccess } from "@/features/security/hooks/useModuleAction
 // Selectable employee for the Employee dropdown: HR mode's "Employee Attendance" (any employee)
 // or ESS manager mode (self + direct reports).
 type ReviewEmployeeDto = { intEmployeeID: number; strFullName: string; strEmployeeCode: string | null; blnIsSelf: boolean };
-
-function reviewEmployeeLabel(objEmployee: ReviewEmployeeDto): string {
-  return objEmployee.strEmployeeCode ? `${objEmployee.strFullName} (${objEmployee.strEmployeeCode})` : objEmployee.strFullName;
-}
 
 type ToastState = {
   blnOpen: boolean;
@@ -515,25 +511,23 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
   }
 
   const objEmployeeSelector = blnShowEmployeeSelector ? (
-    <Autocomplete
-      size="small"
-      options={lstEmployees}
-      value={objSelectedEmployee}
-      getOptionLabel={(objOption) => reviewEmployeeLabel(objOption)}
-      isOptionEqualToValue={(objA, objB) => objA.intEmployeeID === objB.intEmployeeID}
-      onChange={(_objEvent, objNext) => {
+    <CommonSearchableSelect
+      controlId="attendance-review.employee.select"
+      label="Employee"
+      placeholder="Search employee..."
+      options={lstEmployees.map((objEmployee) => ({
+        intID: objEmployee.intEmployeeID,
+        strLabel: objEmployee.strFullName,
+        strCode: objEmployee.strEmployeeCode ?? undefined,
+      }))}
+      getOptionLabel={(dicOption) => (dicOption.strCode ? `${dicOption.strLabel} (${dicOption.strCode})` : dicOption.strLabel)}
+      value={objSelectedEmployee?.intEmployeeID ?? ""}
+      onChange={(intValue) => {
+        if (intValue === "") return;
+        const objNext = lstEmployees.find((objEmployee) => objEmployee.intEmployeeID === intValue) ?? null;
         if (objNext) setObjSelectedEmployee(objNext);
       }}
-      sx={{ width: { xs: "100%", sm: 300 }, "& .MuiAutocomplete-clearIndicator": { display: "none" } }}
-      renderInput={(objParams) => (
-        <TextField
-          {...objParams}
-          label="Employee"
-          placeholder="Search employee..."
-          controlId="attendance-review.employee.select"
-          InputLabelProps={{ ...objParams.InputLabelProps, shrink: true }}
-        />
-      )}
+      sx={{ width: { xs: "100%", sm: 300 } }}
     />
   ) : null;
 

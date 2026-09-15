@@ -207,6 +207,7 @@
             "locationRequired": "Location is required.",
             "reportingManagerRequired": "Reporting Manager is required.",
             "lineManagerRequired": "Line Manager is required.",
+            "workEmailRequired": "Work Email is required.",
             "workEmailInvalid": "Enter a valid work email address.",
             "personalEmailInvalid": "Enter a valid personal email address.",
             "mobileNumberInvalid": "Mobile Number can contain digits, spaces, plus, and hyphen only.",

@@ -441,7 +441,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
             <TableRow data-controlid={`${testIdPrefix}.table.header-row`}>
               {orderedColumns.map((column) => {
                 const strField = String(column.field);
-                const strAlign = column.align ?? (strField === "select" || strField === "action" || strField === "rowActions" ? "center" : "left");
+                const strAlign = column.align ?? "left";
                 return (
                   <TableCell
                     key={String(column.field)}
@@ -524,7 +524,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                     {orderedColumns.map((column) => {
                       const strField = String(column.field);
                       const blnIsActionColumn = strField === "action" || strField === "rowActions";
-                      const strAlign = column.align ?? (strField === "select" || blnIsActionColumn ? "center" : "left");
+                      const strAlign = column.align ?? "left";
                       return (
                         <TableCell
                           key={`${String(column.field)}-${index}`}

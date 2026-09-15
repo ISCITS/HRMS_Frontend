@@ -99,7 +99,7 @@ export default function MyReimbursementClaimsPage() {
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      { field: "action", headerName: t("action", "Action"), align: "center", sortable: false, filterable: false, exportable: false, width: 90 },
+      { field: "action", headerName: t("action", "Action"), sortable: false, filterable: false, exportable: false, width: 90 },
       { field: "strClaimReference", headerName: t("claim_ref_number", "Claim Ref #"), filterable: false, width: 150, sortAccessor: (objRow) => String(objRow.strClaimReferenceSort) },
       { field: "strClaimTitle", headerName: t("claim_purpose", "Claim Purpose"), width: 220 },
       { field: "dtClaimDate", headerName: t("claim_date", "Claim Date"), width: 140, sortAccessor: (objRow) => String(objRow.dtClaimDateSort) },

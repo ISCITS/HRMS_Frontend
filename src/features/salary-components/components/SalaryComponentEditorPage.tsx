@@ -29,6 +29,7 @@ import {
 import { useEffect, useMemo, useState, type Dispatch, type InputHTMLAttributes, type SetStateAction } from "react";
 import { useRouter } from "next/navigation";
 
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/components/master/MasterScreen.module.css";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
@@ -1616,25 +1617,17 @@ export default function SalaryComponentEditorPage({
             ))}
           </TextField>
           {blnShowPercentageCalculationFields ? (
-            <TextField
+            <CommonSearchableSelect
               required
-              select
               label={t("base_component", "Base Component")}
               value={dicForm.intDefaultBasisComponentID}
-              onChange={(objEvent) => updateRootField("intDefaultBasisComponentID", objEvent.target.value === "" ? "" : Number(objEvent.target.value))}
+              options={(objFormOptions?.lstDependencyComponents ?? []).filter((dicOption) => dicOption.intID !== objDetail?.intID)}
+              onChange={(intValue) => updateRootField("intDefaultBasisComponentID", intValue)}
+              placeholder={t("select", "Select")}
               disabled={blnFieldDisabled}
               fullWidth
-              {...buildSelectTestIdProps("salary-components.editor.default-basis-component.select")}
-            >
-              <MenuItem value="" data-controlid="salary-components.editor.default-basis-component.select.option">{t("select", "Select")}</MenuItem>
-              {(objFormOptions?.lstDependencyComponents ?? [])
-                .filter((dicOption) => dicOption.intID !== objDetail?.intID)
-                .map((dicOption) => (
-                  <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.default-basis-component.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
-                    {dicOption.strCode ? `${dicOption.strCode} - ${dicOption.strLabel}` : dicOption.strLabel}
-                  </MenuItem>
-                ))}
-            </TextField>
+              controlId="salary-components.editor.default-basis-component.select"
+            />
           ) : null}
           {blnShowPercentageCalculationFields ? (
             <TextField
@@ -1742,21 +1735,17 @@ export default function SalaryComponentEditorPage({
         <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
           <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{t("flexi_bucket_settings", "Flexi Bucket Settings")}</Typography>
           <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "minmax(320px, 420px)" }, alignItems: "start" }}>
-            <TextField
+            <CommonSearchableSelect
               required
-              select
               label={t("residual_component", "Residual Component")}
               value={dicForm.intResidualComponentID}
-              onChange={(objEvent) => updateRootField("intResidualComponentID", objEvent.target.value === "" ? "" : Number(objEvent.target.value))}
+              options={(objFormOptions?.lstResidualComponents ?? []).filter((dicOption) => dicOption.intID !== objDetail?.intID)}
+              onChange={(intValue) => updateRootField("intResidualComponentID", intValue)}
+              placeholder={t("none", "None")}
               disabled={blnFieldDisabled}
               fullWidth
-              {...buildSelectTestIdProps("salary-components.editor.residual-component.select")}
-            >
-              <MenuItem value="" data-controlid="salary-components.editor.residual-component.none.option">{t("none", "None")}</MenuItem>
-              {(objFormOptions?.lstResidualComponents ?? []).filter((dicOption) => dicOption.intID !== objDetail?.intID).map((dicOption) => (
-                <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.residual-component.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>{dicOption.strCode ? `${dicOption.strCode} - ${dicOption.strLabel}` : dicOption.strLabel}</MenuItem>
-              ))}
-            </TextField>
+              controlId="salary-components.editor.residual-component.select"
+            />
           </Box>
         </Paper>
       ) : null}

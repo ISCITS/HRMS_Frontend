@@ -8,7 +8,6 @@ import {
   Autocomplete,
   Box,
   Button,
-  MenuItem,
   Snackbar,
   Stack,
   TextField,
@@ -18,6 +17,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -250,36 +250,22 @@ export default function PayrollProcessLogPage({ strInitialPayrollRunRecordUUID }
                 InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />
             )}
           />
-          <TextField
-            select
+          <CommonSearchableSelect
             label={t("process_stage", "Process Stage")}
             value={dicFiltersDraft.strProcessStage}
-            onChange={(objEvent) => setDicFiltersDraft((dicPrevious) => ({ ...dicPrevious, strProcessStage: objEvent.target.value }))}
-            size="small"
+            options={dicOptions.lstProcessStages.map((strStage) => ({ intID: strStage, strLabel: strStage }))}
+            onChange={(strValue) => setDicFiltersDraft((dicPrevious) => ({ ...dicPrevious, strProcessStage: strValue }))}
+            placeholder={t("all_stages", "All Stages")}
             sx={{ flex: { xs: "1 1 100%", md: "1 1 210px" }, minWidth: { md: 210 }, maxWidth: { md: 280 } }}
-          >
-            <MenuItem value="">{t("all_stages", "All Stages")}</MenuItem>
-            {dicOptions.lstProcessStages.map((strStage) => (
-              <MenuItem key={strStage} value={strStage}>
-                {strStage}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            select
+          />
+          <CommonSearchableSelect
             label={t("process_status", "Process Status")}
             value={dicFiltersDraft.strProcessStatus}
-            onChange={(objEvent) => setDicFiltersDraft((dicPrevious) => ({ ...dicPrevious, strProcessStatus: objEvent.target.value }))}
-            size="small"
+            options={dicOptions.lstProcessStatuses.map((strStatus) => ({ intID: strStatus, strLabel: strStatus }))}
+            onChange={(strValue) => setDicFiltersDraft((dicPrevious) => ({ ...dicPrevious, strProcessStatus: strValue }))}
+            placeholder={t("all_statuses", "All Statuses")}
             sx={{ flex: { xs: "1 1 100%", md: "1 1 210px" }, minWidth: { md: 210 }, maxWidth: { md: 280 } }}
-          >
-            <MenuItem value="">{t("all_statuses", "All Statuses")}</MenuItem>
-            {dicOptions.lstProcessStatuses.map((strStatus) => (
-              <MenuItem key={strStatus} value={strStatus}>
-                {strStatus}
-              </MenuItem>
-            ))}
-          </TextField>
+          />
           <TextField
             data-controlid="payroll-process-logs.list.search-text.input"
             inputProps={{ "data-controlid": "payroll-process-logs.list.search-text.input" }}

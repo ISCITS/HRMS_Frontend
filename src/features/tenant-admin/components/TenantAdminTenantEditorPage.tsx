@@ -23,6 +23,7 @@ import {
 } from "@mui/material";
 import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
 
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import type { TenantOnboardingFormOptions } from "@/models/TenantOnboardingModels";
 import type {
   TenantEditPayload,
@@ -418,18 +419,35 @@ export default function TenantAdminTenantEditorPage({ intTenantID }: TenantEdito
           <TextField label="Contact Person Name" inputProps={{ "controlId": "tenant-admin.editor.contact-person.input" }} value={objForm.basic.strContactPersonName} onChange={(e) => setField("basic.strContactPersonName", e.target.value)} error={Boolean(dicErrors["basic.strContactPersonName"])} helperText={dicErrors["basic.strContactPersonName"]} fullWidth />
           <TextField label="Contact Email Address" inputProps={{ "controlId": "tenant-admin.editor.contact-email.input" }} value={objForm.basic.strContactEmailAddress} onChange={(e) => setField("basic.strContactEmailAddress", e.target.value)} error={Boolean(dicErrors["basic.strContactEmailAddress"])} helperText={dicErrors["basic.strContactEmailAddress"]} fullWidth />
           <TextField label="Contact Mobile Number" inputProps={{ "controlId": "tenant-admin.editor.contact-mobile.input" }} value={objForm.basic.strContactMobileNumber} onChange={(e) => setField("basic.strContactMobileNumber", e.target.value)} error={Boolean(dicErrors["basic.strContactMobileNumber"])} helperText={dicErrors["basic.strContactMobileNumber"]} fullWidth />
-          <TextField select label="Default Language *" inputProps={{ "controlId": "tenant-admin.editor.default-language.select" }} value={objForm.basic.intDefaultLanguageID === "" ? "" : String(objForm.basic.intDefaultLanguageID)} onChange={(e) => setField("basic.intDefaultLanguageID", e.target.value ? Number(e.target.value) : "")} error={Boolean(dicErrors["basic.intDefaultLanguageID"])} helperText={dicErrors["basic.intDefaultLanguageID"]} fullWidth>
-            <MenuItem value="">Select language</MenuItem>
-            {(objFormOptions?.lstLanguages ?? []).map((dicOption) => <MenuItem key={dicOption.intID} value={String(dicOption.intID)}>{dicOption.strLabel}</MenuItem>)}
-          </TextField>
-          <TextField select label="Secondary Language" inputProps={{ "controlId": "tenant-admin.editor.secondary-language.select" }} value={objForm.basic.intSecondaryLanguageID === "" ? "" : String(objForm.basic.intSecondaryLanguageID)} onChange={(e) => setField("basic.intSecondaryLanguageID", e.target.value ? Number(e.target.value) : "")} fullWidth>
-            <MenuItem value="">None</MenuItem>
-            {(objFormOptions?.lstLanguages ?? []).map((dicOption) => <MenuItem key={dicOption.intID} value={String(dicOption.intID)}>{dicOption.strLabel}</MenuItem>)}
-          </TextField>
-          <TextField select label="Default Country" inputProps={{ "controlId": "tenant-admin.editor.default-country.select" }} value={objForm.basic.intDefaultCountryID === "" ? "" : String(objForm.basic.intDefaultCountryID)} onChange={(e) => setField("basic.intDefaultCountryID", e.target.value ? Number(e.target.value) : "")} fullWidth>
-            <MenuItem value="">None</MenuItem>
-            {(objFormOptions?.lstCountries ?? []).map((dicOption) => <MenuItem key={dicOption.intID} value={String(dicOption.intID)}>{dicOption.strLabel}</MenuItem>)}
-          </TextField>
+          <CommonSearchableSelect
+            controlId="tenant-admin.editor.default-language.select"
+            label="Default Language *"
+            placeholder="Select language"
+            value={objForm.basic.intDefaultLanguageID}
+            options={objFormOptions?.lstLanguages ?? []}
+            onChange={(intValue) => setField("basic.intDefaultLanguageID", intValue)}
+            error={Boolean(dicErrors["basic.intDefaultLanguageID"])}
+            helperText={dicErrors["basic.intDefaultLanguageID"]}
+            fullWidth
+          />
+          <CommonSearchableSelect
+            controlId="tenant-admin.editor.secondary-language.select"
+            label="Secondary Language"
+            placeholder="None"
+            value={objForm.basic.intSecondaryLanguageID}
+            options={objFormOptions?.lstLanguages ?? []}
+            onChange={(intValue) => setField("basic.intSecondaryLanguageID", intValue)}
+            fullWidth
+          />
+          <CommonSearchableSelect
+            controlId="tenant-admin.editor.default-country.select"
+            label="Default Country"
+            placeholder="None"
+            value={objForm.basic.intDefaultCountryID}
+            options={objFormOptions?.lstCountries ?? []}
+            onChange={(intValue) => setField("basic.intDefaultCountryID", intValue)}
+            fullWidth
+          />
         </Box>
       </Stack>
     );

@@ -296,7 +296,7 @@ export default function ReimbursementReviewListPage() {
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      { field: "action", headerName: "Action", align: "center", sortable: false, filterable: false, exportable: false, width: 110 },
+      { field: "action", headerName: "Action", sortable: false, filterable: false, exportable: false, width: 110 },
       { field: "strClaimReference", headerName: "Claim Ref #", filterable: false, width: 150, sortAccessor: (objRow) => String(objRow.strClaimReferenceSort) },
       { field: "strClaimTitle", headerName: "Claim Purpose", width: 220 },
       { field: "strEmployee", headerName: "Employee", width: 230 },

@@ -4,11 +4,12 @@ import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert, Box, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
-  FormControlLabel, MenuItem, Snackbar, TextField, Typography,
+  FormControlLabel, Snackbar, TextField, Typography,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
 
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import CommonRowActions from "@/components/master/CommonRowActions";
@@ -91,11 +92,23 @@ export default function EmployeeLeaveAssignmentPanel() {
     [lstCurrentPlans],
   );
 
+  // CommonSearchableSelect expects {intID, strLabel, strCode?}; LeavePlan carries strPlanCode/strPlanName instead.
+  const lstBulkPlanSelectOptions = useMemo(
+    () => lstPlans.filter((objPlan) => objPlan.blnIsActive).map((objPlan) => ({ ...objPlan, strLabel: objPlan.strDisplayName || objPlan.strPlanName, strCode: objPlan.strPlanCode })),
+    [lstPlans],
+  );
+
   // Department options come from the loaded employees, so the dropdown only ever offers departments
   // that can actually match a row.
   const lstDepartmentOptions = useMemo(
     () => Array.from(new Set(lstEmployees.map((objEmployee) => objEmployee.strDepartmentName).filter((strName): strName is string => Boolean(strName)))).sort((strA, strB) => strA.localeCompare(strB)),
     [lstEmployees],
+  );
+  // CommonSearchableSelect options need {intID, strLabel}; "all" is kept as a real selectable option
+  // (rather than the component's own "" sentinel) since it is this filter's actual default value.
+  const lstDepartmentSelectOptions = useMemo(
+    () => [{ intID: "all", strLabel: t("filter_all_departments", "All Departments") }, ...lstDepartmentOptions.map((strDepartment) => ({ intID: strDepartment, strLabel: strDepartment }))],
+    [lstDepartmentOptions, t],
   );
 
   const lstFiltered = useMemo(() => {
@@ -295,20 +308,14 @@ export default function EmployeeLeaveAssignmentPanel() {
             inputProps={{ "data-control-id": "employee-leave-plan.list.search-plan-code.input" }}
             fullWidth
           />
-          <TextField
-            select
-            size="small"
+          <CommonSearchableSelect
             label={t("filter_department", "Department")}
             value={dicSearchDraft.department}
-            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, department: objEvent.target.value }))}
-            inputProps={{ "data-control-id": "employee-leave-plan.list.department.select" }}
+            options={lstDepartmentSelectOptions}
+            onChange={(intValue) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, department: intValue === "" ? "all" : String(intValue) }))}
+            controlId="employee-leave-plan.list.department.select"
             fullWidth
-          >
-            <MenuItem value="all">{t("filter_all_departments", "All Departments")}</MenuItem>
-            {lstDepartmentOptions.map((strDepartment) => (
-              <MenuItem key={strDepartment} value={strDepartment}>{strDepartment}</MenuItem>
-            ))}
-          </TextField>
+          />
           <Box sx={{ display: "flex", gap: 1, gridColumn: { xs: "auto", sm: "1 / -1", lg: "auto" }, justifyContent: { sm: "flex-end" }, whiteSpace: "nowrap" }}>
             <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applySearch(dicSearchDraft)} disabled={blnLoading} data-control-id="employee-leave-plan.list.search.button">
               {t("search", "Search")}
@@ -373,12 +380,14 @@ export default function EmployeeLeaveAssignmentPanel() {
           {lstSelectedIds.length === 0 ? (
             <Alert severity="info" data-control-id="employee-leave-plan.bulk-assign.no-selection">{t("bulk_assign_no_selection", "Select one or more employees from the list first, then choose a plan to assign.")}</Alert>
           ) : null}
-          <TextField select size="small" label={t("select_plan", "Leave Plan")} value={objBulk.intLeavePlanID || ""} onChange={(objEvent) => { const intPlanID = Number(objEvent.target.value); const objSelectedPlan = lstPlans.find((objPlan) => objPlan.intID === intPlanID); setObjBulk((objPrev) => ({ ...objPrev, intLeavePlanID: intPlanID, dtEffectiveFrom: objSelectedPlan?.dtEffectiveFrom ? String(objSelectedPlan.dtEffectiveFrom).slice(0, 10) : objPrev.dtEffectiveFrom, intLeaveYear: objSelectedPlan?.dtEffectiveFrom ? new Date(objSelectedPlan.dtEffectiveFrom).getFullYear() : objPrev.intLeaveYear })); }} inputProps={{ "data-control-id": "employee-leave-plan.bulk-assign.plan.select" }}>
-            <MenuItem value="">{t("select_plan_placeholder", "Select Plan")}</MenuItem>
-            {lstPlans.filter((objPlan) => objPlan.blnIsActive).map((objPlan) => (
-              <MenuItem key={objPlan.intID} value={objPlan.intID}>{objPlan.strPlanCode} - {objPlan.strDisplayName || objPlan.strPlanName}</MenuItem>
-            ))}
-          </TextField>
+          <CommonSearchableSelect
+            label={t("select_plan", "Leave Plan")}
+            placeholder={t("select_plan_placeholder", "Select Plan")}
+            value={objBulk.intLeavePlanID || ""}
+            options={lstBulkPlanSelectOptions}
+            onChange={(intOption) => { const intPlanID = intOption === "" ? 0 : Number(intOption); const objSelectedPlan = lstPlans.find((objPlan) => objPlan.intID === intPlanID); setObjBulk((objPrev) => ({ ...objPrev, intLeavePlanID: intPlanID, dtEffectiveFrom: objSelectedPlan?.dtEffectiveFrom ? String(objSelectedPlan.dtEffectiveFrom).slice(0, 10) : objPrev.dtEffectiveFrom, intLeaveYear: objSelectedPlan?.dtEffectiveFrom ? new Date(objSelectedPlan.dtEffectiveFrom).getFullYear() : objPrev.intLeaveYear })); }}
+            controlId="employee-leave-plan.bulk-assign.plan.select"
+          />
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}>
             <TextField type="date" size="small" label={t("effective_from", "Effective From")} value={objBulk.dtEffectiveFrom} onChange={(objEvent) => setObjBulk((objPrev) => ({ ...objPrev, dtEffectiveFrom: objEvent.target.value }))} InputLabelProps={{ shrink: true }} inputProps={{ "data-control-id": "employee-leave-plan.bulk-assign.effective-from.input" }} />
             <TextField type="number" size="small" label={t("leave_year", "Leave Year")} value={objBulk.intLeaveYear} onChange={(objEvent) => setObjBulk((objPrev) => ({ ...objPrev, intLeaveYear: Number(objEvent.target.value) }))} inputProps={{ "data-control-id": "employee-leave-plan.bulk-assign.year.input", min: 2001, max: 2999 }} />

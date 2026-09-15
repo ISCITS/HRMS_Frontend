@@ -26,6 +26,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import styles from "@/components/master/MasterScreen.module.css";
 import { employeeService } from "@/features/employee/services/employeeService";
@@ -897,22 +898,17 @@ export default function LeaveTypeEditorPage({ strMode, strLeaveTypeID }: { strMo
                     {optsWithCurrent(lstPocApproverSources, objStep.strApproverSourceCode).map((o) => <MenuItem key={o.code} value={o.code}>{o.label}</MenuItem>)}
                   </TextField>
                   {objStep.strApproverSourceCode === strFixedEmployeeSource ? (
-                    <TextField
+                    <CommonSearchableSelect
                       label="Employee"
-                      select
-                      size="small"
-                      value={lstEmployeeOptions.some((objEmployee) => objEmployee.intID === objStep.intFixedEmployeeID) ? String(objStep.intFixedEmployeeID) : ""}
-                      onChange={(e) => updateStep(intIndex, { intFixedEmployeeID: Number(e.target.value) || null })}
+                      value={objStep.intFixedEmployeeID ?? ""}
+                      options={lstEmployeeOptions.map((objEmployee) => ({ ...objEmployee, strLabel: `${objEmployee.strEmployeeCode} - ${objEmployee.strFullName}` }))}
+                      onChange={(intValue) => updateStep(intIndex, { intFixedEmployeeID: intValue === "" ? null : Number(intValue) })}
+                      placeholder={blnEmployeesLoading ? "Loading employees..." : "Select Employee"}
                       error={!objStep.intFixedEmployeeID}
                       helperText={!objStep.intFixedEmployeeID ? "Select the approving employee." : undefined}
                       sx={{ width: 260 }}
                       {...objInputProps}
-                    >
-                      <MenuItem value="">{blnEmployeesLoading ? "Loading employees..." : "Select Employee"}</MenuItem>
-                      {lstEmployeeOptions.map((objEmployee) => (
-                        <MenuItem key={objEmployee.intID} value={String(objEmployee.intID)}>{objEmployee.strEmployeeCode} - {objEmployee.strFullName}</MenuItem>
-                      ))}
-                    </TextField>
+                    />
                   ) : null}
                   <TextField label="Action Due Within (Days)" type="number" size="small" value={objStep.intNoActionAfterDays ?? ""} onChange={(e) => updateStep(intIndex, { intNoActionAfterDays: toNum(e.target.value) })} sx={{ width: 170 }} {...objInputProps} />
                   <TextField label="If No Action" select size="small" value={objStep.strNoActionRuleCode} onChange={(e) => updateStep(intIndex, { strNoActionRuleCode: e.target.value })} sx={{ width: 200 }} {...objInputProps}>
@@ -1018,9 +1014,14 @@ export default function LeaveTypeEditorPage({ strMode, strLeaveTypeID }: { strMo
           <Stack spacing={1}>
             {objForm.lstCombinationRules.map((objRow, intIndex) => (
               <Stack key={intIndex} direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                <TextField label="Other leave type" select size="small" value={objRow.intOtherLeaveTypeID} onChange={(e) => updateCombo(intIndex, { intOtherLeaveTypeID: Number(e.target.value) })} sx={{ width: 220 }} {...objInputProps}>
-                  {lstOtherTypes.filter((t) => t.intID !== objForm.intID).map((t) => <MenuItem key={t.intID} value={t.intID}>{t.strDisplayName} ({t.strTypeCode})</MenuItem>)}
-                </TextField>
+                <CommonSearchableSelect
+                  label="Other leave type"
+                  value={objRow.intOtherLeaveTypeID}
+                  options={lstOtherTypes.filter((t) => t.intID !== objForm.intID).map((t) => ({ ...t, strLabel: `${t.strDisplayName} (${t.strTypeCode})` }))}
+                  onChange={(intValue) => updateCombo(intIndex, { intOtherLeaveTypeID: intValue === "" ? 0 : Number(intValue) })}
+                  sx={{ width: 220 }}
+                  {...objInputProps}
+                />
                 <TextField label="Rule" select size="small" value={objRow.strCombinationRuleCode} onChange={(e) => updateCombo(intIndex, { strCombinationRuleCode: e.target.value })} sx={{ width: 180 }} {...objInputProps}>
                   {lstCombinationRuleCodes.map((c) => <MenuItem key={c} value={c}>{c.replace(/_/g, " ")}</MenuItem>)}
                 </TextField>

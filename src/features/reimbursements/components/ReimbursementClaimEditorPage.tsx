@@ -536,7 +536,7 @@ export default function ReimbursementClaimEditorPage({ strClaimID, strMode }: { 
 
   const lstItemTableColumns = useMemo<DataGridColumn<(typeof lstItemTableRows)[number]>[]>(
     () => [
-      { field: "rowActions", headerName: t("actions", "Actions"), align: "center", width: 130, sortable: false, exportable: false },
+      { field: "rowActions", headerName: t("actions", "Actions"), width: 130, sortable: false, exportable: false },
       { field: "reimbursementType", headerName: t("reimbursement_type", "Reimbursement Type"), width: 260, sortable: false },
       { field: "expenseDate", headerName: t("expense_date", "Expense Date"), width: 140, sortable: false },
       { field: "claimedAmount", headerName: t("claimed_amount", "Claimed Amount"), align: "right", width: 150, sortable: false },
