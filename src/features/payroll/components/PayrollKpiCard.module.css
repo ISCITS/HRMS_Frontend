@@ -1,0 +1,90 @@
+.card:global(.MuiCard-root) {
+  height: 100%;
+  border-radius: 24px;
+  border: none;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
+  transition: all 0.15s ease;
+}
+
+.card:global(.MuiCard-root):hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 35px rgba(0, 0, 0, 0.08);
+}
+
+.cardContent:global(.MuiCardContent-root) {
+  padding: 24px;
+}
+
+.cardContent:global(.MuiCardContent-root:last-child) {
+  padding-bottom: 24px;
+}
+
+.stack {
+  text-align: center;
+}
+
+.title {
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.value {
+  font-size: 32px;
+  line-height: 1.1;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.chip:global(.MuiChip-root) {
+  width: fit-content;
+  height: 22px;
+  font-size: 12px;
+  font-weight: 600;
+  animation: trendFadeIn 180ms ease-out;
+}
+
+.chipPositive:global(.MuiChip-root) {
+  border-color: #16a34a;
+  color: #16a34a;
+  background-color: rgba(22, 163, 74, 0.08);
+}
+
+.chipNeutral:global(.MuiChip-root) {
+  border-color: #f59e0b;
+  color: #b45309;
+  background-color: rgba(245, 158, 11, 0.12);
+}
+
+.chipNegative:global(.MuiChip-root) {
+  border-color: #ef4444;
+  color: #b91c1c;
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+@keyframes trendFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 600px) {
+  .card:global(.MuiCard-root) {
+    border-radius: 16px;
+  }
+
+  .cardContent:global(.MuiCardContent-root),
+  .cardContent:global(.MuiCardContent-root:last-child) {
+    padding: 16px;
+  }
+
+  .value {
+    font-size: clamp(1.5rem, 8vw, 2rem);
+  }
+}

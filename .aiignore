@@ -1,0 +1,85 @@
+# AI tool ignore file — controls what files AI tools (Claude, Codex, Cursor, etc.)
+# include when building context. Exclude anything that adds noise or sensitive data.
+
+# Dependencies (largest noise source — never needed for code gen)
+node_modules/
+
+# Next.js build output
+.next/
+out/
+
+# Environment / secrets — never include these
+.env
+.env.local
+.env.*.local
+*.env.*
+*.pem
+*.key
+
+# Type-check incremental cache
+*.tsbuildinfd
+*.tsbuildinfo
+
+# Temporary / lock files from Office
+~$*
+*.tmp
+
+# Version control internals
+.git/
+.git/**
+
+# CI/CD
+.github/
+
+# IDE / editor metadata
+.vscode/
+.idea/
+
+# Documentation & non-code files
+*.md
+*.rtf
+*.docx
+*.txt
+*.rst
+docs/
+
+# Flow documentation (verbose, not useful for generation)
+src/COUNTRY_MASTER_FLOW.md
+src/STATE_MASTER_FLOW.md
+src/USER_MASTER_FLOW.md
+HRMS_FRONTEND_WORKFLOW.md
+ACCESS_CONTROL_DYNAMIC_MENU_FLOW.rtf
+
+# Tooling scripts
+tools/
+
+# Logs
+*.log
+logs/
+
+# Coverage / test output
+coverage/
+.nyc_output/
+
+# Static assets (images, fonts — not logic)
+public/
+src/assets/images/
+*.svg
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+*.woff
+*.woff2
+*.ttf
+*.eot
+
+# Package manager lock files (dependency resolution detail, not logic)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Misc
+.DS_Store
+Thumbs.db

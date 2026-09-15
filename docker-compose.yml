@@ -1,0 +1,15 @@
+services:
+  frontend:
+    build:
+      context: .
+      target: dev
+    image: hrms_frontend_dev:local
+    container_name: hrms-frontend
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.local
+    environment:
+      NODE_ENV: development
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"

@@ -1,0 +1,85 @@
+"use strict";
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// src/lib/security/isEncryptablePayload.ts
+var isEncryptablePayload_exports = {};
+__export(isEncryptablePayload_exports, {
+  isEmptyPayload: () => isEmptyPayload,
+  isEncryptablePayload: () => isEncryptablePayload,
+  isPayloadEncryptionMethod: () => isPayloadEncryptionMethod
+});
+module.exports = __toCommonJS(isEncryptablePayload_exports);
+function isObjectLike(value) {
+  return typeof value === "object" && value !== null;
+}
+function isFormData(value) {
+  return typeof FormData !== "undefined" && value instanceof FormData;
+}
+function isFile(value) {
+  return typeof File !== "undefined" && value instanceof File;
+}
+function isBlob(value) {
+  return typeof Blob !== "undefined" && value instanceof Blob;
+}
+function isArrayBuffer(value) {
+  return typeof ArrayBuffer !== "undefined" && value instanceof ArrayBuffer;
+}
+function isArrayBufferView(value) {
+  return typeof ArrayBuffer !== "undefined" && ArrayBuffer.isView(value);
+}
+function isEmptyObject(value) {
+  return Object.keys(value).length === 0;
+}
+function isPayloadEncryptionMethod(method) {
+  if (!method) {
+    return false;
+  }
+  const strMethod = method.toUpperCase();
+  return strMethod === "POST" || strMethod === "PUT" || strMethod === "PATCH" || strMethod === "DELETE";
+}
+function isEmptyPayload(payload) {
+  if (payload == null) {
+    return true;
+  }
+  if (typeof payload === "string") {
+    return payload.trim().length === 0;
+  }
+  if (Array.isArray(payload)) {
+    return payload.length === 0;
+  }
+  if (isObjectLike(payload) && !isFormData(payload) && !isFile(payload) && !isBlob(payload) && !isArrayBuffer(payload)) {
+    return isEmptyObject(payload);
+  }
+  return false;
+}
+function isEncryptablePayload(payload) {
+  if (isEmptyPayload(payload)) {
+    return false;
+  }
+  if (isFormData(payload) || isFile(payload) || isBlob(payload) || isArrayBuffer(payload) || isArrayBufferView(payload)) {
+    return false;
+  }
+  return true;
+}
+// Annotate the CommonJS export names for ESM import in node:
+0 && (module.exports = {
+  isEmptyPayload,
+  isEncryptablePayload,
+  isPayloadEncryptionMethod
+});
