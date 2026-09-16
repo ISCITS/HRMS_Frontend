@@ -1420,6 +1420,12 @@ export default function DynamicMenu({
       return strModuleName || "Employee Leave Assignment";
     }
 
+    // Employee Monthly Tax / TDS (module code contains "employee") must not be
+    // caught by the generic employee-master branch below either; use its own menu name.
+    if (strRoute.includes("/payroll/employee-monthly-tax") || strModuleCode === "employee_monthly_tax") {
+      return strModuleName || "Employee Monthly Tax / TDS";
+    }
+
     if (strModuleCode.includes("employee") || strRoute.includes("/employees")) {
       return tEmployee("page_title", strModuleName || "Employee");
     }

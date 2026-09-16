@@ -1046,6 +1046,20 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
           >
             {t("fix", "Fix")}
           </Button>
+        ) : dicIssue.objNavigationTarget?.strEntityName === "tblemployee_tax_ytd" ? (
+          <Button
+            size="small"
+            onClick={() =>
+              objRouter.push(
+                `/payroll/employee-monthly-tax?${dicIssue.intEmployeeID ? `employeeId=${dicIssue.intEmployeeID}&` : ""}financialYearCode=${objValidationSummary?.strFinancialYearCode ?? ""}`,
+              )
+            }
+            controlId="payroll.run-detail.validation.fix-link.button"
+            data-row-key={`${dicIssue.strValidationCode}-${dicIssue.intEmployeeID ?? "run"}-${intIndex}`}
+            sx={{ minWidth: 0, fontSize: "0.76rem", fontWeight: 800 }}
+          >
+            {t("fix", "Fix")}
+          </Button>
         ) : (
           "-"
         ),
