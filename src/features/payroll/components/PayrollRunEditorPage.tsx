@@ -392,7 +392,10 @@ export default function PayrollRunEditorPage() {
               controlId="payroll.run-editor.run-type.select"
               label={t("run_type", "Run Type")}
               value={dicForm.intRunTypeID}
-              options={(objOptions?.lstPayrollRunTypeLookups ?? []).map((dicOption) => ({ intID: dicOption.intID, strLabel: dicOption.strDisplayName }))}
+              options={(objOptions?.lstPayrollRunTypeLookups ?? []).map((dicOption) => ({
+                intID: dicOption.intID,
+                strLabel: dicOption.strValueCode === "VARIABLE_PAY" ? "Seprate Payroll" : dicOption.strDisplayName,
+              }))}
               onChange={(intValue) =>
                 setDicForm((dicPrevious) => ({
                   ...dicPrevious,
@@ -401,7 +404,7 @@ export default function PayrollRunEditorPage() {
               }
               disabled={blnFieldDisabled}
               fullWidth
-              helperText={t("run_type_help", "Regular Payroll runs normal salary; Variable Pay processes Monthly Variable Pay amounts only.")}
+              helperText={t("run_type_help", "Regular Payroll runs normal salary; Seprate Payroll processes Monthly Variable Pay amounts only.")}
             />
             {blnIsVariablePayRun ? (
               <CommonSearchableSelect
