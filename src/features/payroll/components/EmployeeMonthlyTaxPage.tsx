@@ -1,16 +1,16 @@
 "use client";
 
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import {
-  Alert, Box, Button, Chip, CircularProgress, InputAdornment, Pagination, Snackbar, Stack, Table, TableBody,
+  Alert, Box, Chip, CircularProgress, InputAdornment, Pagination, Snackbar, Stack, Table, TableBody,
   TableCell, TableHead, TableRow, TextField, Typography,
 } from "@mui/material";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import payrollStyles from "@/features/payroll/components/PayrollScreen.module.css";
 import styles from "@/features/payroll/components/EmployeeMonthlyTaxPage.module.css";
 import MonthlyTaxImportPanel from "@/features/payroll/components/MonthlyTaxImportPanel";
 import MonthlyTaxTransactionDetailDialog from "@/features/payroll/components/MonthlyTaxTransactionDetailDialog";
@@ -80,10 +80,28 @@ export default function EmployeeMonthlyTaxPage({
   const [blnLoading, setBlnLoading] = useState(false);
   const [strError, setStrError] = useState("");
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
-  const [blnShowImport, setBlnShowImport] = useState(false);
   const [objDetailTarget, setObjDetailTarget] = useState<{ intEmployeeID: number; strEmployeeName: string; strPeriodMonth: string } | null>(null);
   const [intPage, setIntPage] = useState(0);
   const [intRowsPerPage, setIntRowsPerPage] = useState(lstPageSizeOptions[1]);
+
+  const objTableWrapRef = useRef<HTMLDivElement | null>(null);
+  const objTopScrollRef = useRef<HTMLDivElement | null>(null);
+  const [intScrollWidth, setIntScrollWidth] = useState(0);
+
+  useEffect(() => {
+    const objWrap = objTableWrapRef.current;
+    const objTable = objWrap?.querySelector("table");
+    if (!objWrap || !objTable) return;
+    const fnUpdateWidth = () => {
+      setIntScrollWidth(objWrap.scrollWidth);
+      if (objTopScrollRef.current) objTopScrollRef.current.scrollLeft = objWrap.scrollLeft;
+    };
+    const objObserver = new ResizeObserver(fnUpdateWidth);
+    objObserver.observe(objWrap);
+    objObserver.observe(objTable);
+    fnUpdateWidth();
+    return () => objObserver.disconnect();
+  }, [objMatrix, blnLoading, strError]);
 
   const lstFinancialYearOptions = useMemo(buildFinancialYearOptions, []);
   const strNormalizedFinancialYearCode = useMemo(() => normalizeFinancialYearCode(strFinancialYearCode), [strFinancialYearCode]);
@@ -132,66 +150,55 @@ export default function EmployeeMonthlyTaxPage({
     [lstFilteredRows, intPage, intRowsPerPage],
   );
 
+  const objFilters = (
+    <Box className={styles.filtersRow}>
+      <TextField
+        controlId="employee-monthly-tax.financial-year.select"
+        select
+        SelectProps={{ native: true }}
+        label={t("financial_year_label", "Financial Year")}
+        size="small"
+        sx={{ minWidth: 160 }}
+        value={strFinancialYearCode}
+        onChange={(objEvent) => setStrFinancialYearCode(objEvent.target.value)}
+      >
+        {lstFinancialYearOptions.map((strCode) => (
+          <option key={strCode} value={strCode}>
+            {strCode}
+          </option>
+        ))}
+      </TextField>
+      <TextField
+        controlId="employee-monthly-tax.employee-search.input"
+        label={t("employee_search_label", "Employee search")}
+        placeholder={t("employee_search_placeholder", "Search by code or name")}
+        size="small"
+        value={strEmployeeSearch}
+        onChange={(objEvent) => {
+          setStrEmployeeSearch(objEvent.target.value);
+          if (intFilterEmployeeID) setIntFilterEmployeeID(undefined);
+        }}
+        sx={{ minWidth: 240 }}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <SearchRoundedIcon fontSize="small" sx={{ color: "text.secondary" }} />
+            </InputAdornment>
+          ),
+        }}
+      />
+    </Box>
+  );
+
   return (
     <Box className={styles.page}>
-      <Typography variant="h5" fontWeight={700}>{t("page_title", "Employee Monthly Tax / TDS")}</Typography>
-      <Typography variant="body2" color="text.secondary">
-        {t(
-          "page_subtitle",
-          "One continuous financial-year tax history per employee - historical/imported values plus everything payroll (Regular, Separate Payroll, F&F) has generated, month by month.",
-        )}
+      <Typography component="h1" className={payrollStyles.title}>
+        {t("page_title", "Employee Monthly Tax / TDS")}
       </Typography>
-
       <Box className={styles.controlsCard}>
-        <Box className={styles.controlsHeader}>
-          <Box className={styles.filtersRow}>
-            <TextField
-              select
-              SelectProps={{ native: true }}
-              label={t("financial_year_label", "Financial Year")}
-              size="small"
-              sx={{ minWidth: 160 }}
-              value={strFinancialYearCode}
-              onChange={(objEvent) => setStrFinancialYearCode(objEvent.target.value)}
-            >
-              {lstFinancialYearOptions.map((strCode) => (
-                <option key={strCode} value={strCode}>
-                  {strCode}
-                </option>
-              ))}
-            </TextField>
-            <TextField
-              label={t("employee_search_label", "Employee search")}
-              placeholder={t("employee_search_placeholder", "Search by code or name")}
-              size="small"
-              value={strEmployeeSearch}
-              onChange={(objEvent) => {
-                setStrEmployeeSearch(objEvent.target.value);
-                if (intFilterEmployeeID) setIntFilterEmployeeID(undefined);
-              }}
-              sx={{ minWidth: 240 }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchRoundedIcon fontSize="small" sx={{ color: "text.secondary" }} />
-                  </InputAdornment>
-                ),
-              }}
-            />
-          </Box>
-          {blnCanImport && (
-            <Button
-              variant="outlined"
-              startIcon={<UploadFileRoundedIcon />}
-              onClick={() => setBlnShowImport((blnPrev) => !blnPrev)}
-              controlId="employee-monthly-tax.toggle-import.button"
-            >
-              {blnShowImport ? t("hide_import", "Hide Import") : t("show_import", "Import Excel")}
-            </Button>
-          )}
-        </Box>
-
-        {blnShowImport && <MonthlyTaxImportPanel onImported={loadMatrix} />}
+        {blnCanImport ? (
+          <MonthlyTaxImportPanel onImported={loadMatrix} objToolbarLeft={objFilters} />
+        ) : objFilters}
       </Box>
 
       {blnLoading && (
@@ -203,7 +210,59 @@ export default function EmployeeMonthlyTaxPage({
 
       {!blnLoading && !strError && objMatrix && (
         <Box className={styles.tableCard}>
-          <Box className={styles.tableWrap}>
+          <Box className={styles.paginationBar}>
+            <Box className={styles.paginationInfo}>
+              <TextField
+                controlId="employee-monthly-tax.rows-per-page.select"
+                select
+                SelectProps={{ native: true }}
+                size="small"
+                className={styles.rowsPerPageSelect}
+                inputProps={{ "aria-label": t("rows_per_page", "Rows per page") }}
+                value={String(intRowsPerPage)}
+                onChange={(objEvent) => setIntRowsPerPage(Number(objEvent.target.value))}
+              >
+                {lstPageSizeOptions.map((intOption) => (
+                  <option key={intOption} value={intOption}>
+                    {intOption}
+                  </option>
+                ))}
+              </TextField>
+              <Typography component="p" className={styles.paginationRange}>
+                {`${lstFilteredRows.length ? intPage * intRowsPerPage + 1 : 0}-${Math.min((intPage + 1) * intRowsPerPage, lstFilteredRows.length)} of ${lstFilteredRows.length}`}
+              </Typography>
+            </Box>
+            <Pagination
+              data-control-id="employee-monthly-tax.pagination"
+              size="small"
+              color="primary"
+              count={Math.max(1, Math.ceil(lstFilteredRows.length / intRowsPerPage))}
+              page={intPage + 1}
+              onChange={(_objEvent, intNextPage) => setIntPage(intNextPage - 1)}
+              showFirstButton
+              showLastButton
+            />
+          </Box>
+          <Box
+            ref={objTopScrollRef}
+            className={styles.topScrollbar}
+            tabIndex={0}
+            role="region"
+            aria-label={t("scroll_months", "Scroll monthly tax columns")}
+            data-control-id="employee-monthly-tax.top-scrollbar"
+            onScroll={(objEvent) => {
+              if (objTableWrapRef.current) objTableWrapRef.current.scrollLeft = objEvent.currentTarget.scrollLeft;
+            }}
+          >
+            <Box sx={{ width: intScrollWidth, height: 1 }} />
+          </Box>
+          <Box
+            ref={objTableWrapRef}
+            className={styles.tableWrap}
+            onScroll={(objEvent) => {
+              if (objTopScrollRef.current) objTopScrollRef.current.scrollLeft = objEvent.currentTarget.scrollLeft;
+            }}
+          >
             <Table className={styles.table}>
               <TableHead>
                 <TableRow>
@@ -306,38 +365,7 @@ export default function EmployeeMonthlyTaxPage({
             </Table>
           </Box>
 
-          {lstFilteredRows.length > 0 && (
-            <Box className={styles.paginationBar}>
-              <Box className={styles.paginationInfo}>
-                <TextField
-                  select
-                  SelectProps={{ native: true }}
-                  size="small"
-                  className={styles.rowsPerPageSelect}
-                  value={String(intRowsPerPage)}
-                  onChange={(objEvent) => setIntRowsPerPage(Number(objEvent.target.value))}
-                >
-                  {lstPageSizeOptions.map((intOption) => (
-                    <option key={intOption} value={intOption}>
-                      {intOption}
-                    </option>
-                  ))}
-                </TextField>
-                <Typography component="p" className={styles.paginationRange}>
-                  {`${intPage * intRowsPerPage + 1}-${Math.min((intPage + 1) * intRowsPerPage, lstFilteredRows.length)} of ${lstFilteredRows.length}`}
-                </Typography>
-              </Box>
-              <Pagination
-                size="small"
-                color="primary"
-                count={Math.max(1, Math.ceil(lstFilteredRows.length / intRowsPerPage))}
-                page={intPage + 1}
-                onChange={(_objEvent, intNextPage) => setIntPage(intNextPage - 1)}
-                showFirstButton
-                showLastButton
-              />
-            </Box>
-          )}
+
         </Box>
       )}
 
@@ -360,7 +388,7 @@ export default function EmployeeMonthlyTaxPage({
       />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={4000} onClose={() => setObjToast((objPrev) => ({ ...objPrev, blnOpen: false }))}>
-        <Alert severity={objToast.strSeverity} onClose={() => setObjToast((objPrev) => ({ ...objPrev, blnOpen: false }))}>
+        <Alert componentsProps={{ closeButton: { controlId: "employee-monthly-tax.toast.close.button" } }} severity={objToast.strSeverity} onClose={() => setObjToast((objPrev) => ({ ...objPrev, blnOpen: false }))}>
           {objToast.strMessage}
         </Alert>
       </Snackbar>

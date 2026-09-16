@@ -56,6 +56,7 @@ import { attendancePayrollService } from "@/features/payroll/services/attendance
 import { variablePayService } from "@/features/variable-pay/services/variablePayService";
 import type {
   PayslipRunListRecord,
+  PayslipPreviewRecord,
   PayrollProcessSummary,
   PayrollResultDetailRecord,
   PayrollResultListRecord,
@@ -851,22 +852,49 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     }
   }
 
+  async function resolveFreshPayslipID(
+    dicRow: PayslipRunListRecord
+  ): Promise<{ intPayslipID: number | null; strPayslipRecordUUID: string | null; dicPayslip: PayslipPreviewRecord | null }> {
+    if (!dicRow.intPayslipID) {
+      const dicPayslip = await generatePayslip(dicRow);
+      return {
+        intPayslipID: dicPayslip?.intPayslipID ?? null,
+        strPayslipRecordUUID: dicPayslip?.strPayslipRecordUUID ?? null,
+        dicPayslip: dicPayslip ?? null,
+      };
+    }
+    // A payslip already exists for this row, but a reprocess since it was generated can
+    // leave that persisted document stale. getPayslipPreview flags this with
+    // blnGenerated:false (no persisted document matches the current result version) -
+    // regenerate in that case instead of silently reusing yesterday's snapshot.
+    const dicPreview = await payslipService.getPayslipPreview(strRunID, dicRow.intEmployeeID);
+    if (dicPreview.blnGenerated) {
+      return {
+        intPayslipID: dicPreview.intPayslipID ?? dicRow.intPayslipID,
+        strPayslipRecordUUID: dicPreview.strPayslipRecordUUID ?? null,
+        dicPayslip: dicPreview,
+      };
+    }
+    const dicPayslip = await generatePayslip(dicRow);
+    return {
+      intPayslipID: dicPayslip?.intPayslipID ?? null,
+      strPayslipRecordUUID: dicPayslip?.strPayslipRecordUUID ?? null,
+      dicPayslip: dicPayslip ?? null,
+    };
+  }
+
   async function viewPayslip(dicRow: PayslipRunListRecord) {
     setBlnPayslipLoading(true);
     setStrActionLoaderLabel(t("opening_payslip", "Opening payslip preview..."));
     setStrError("");
     try {
-      let intPayslipID = dicRow.intPayslipID;
-      let dicPayslip = intPayslipID
-        ? await payslipService.getPayslipPreview(strRunID, dicRow.intEmployeeID)
-        : await generatePayslip(dicRow);
-      intPayslipID = dicPayslip?.intPayslipID ?? intPayslipID;
+      const { intPayslipID, strPayslipRecordUUID, dicPayslip } = await resolveFreshPayslipID(dicRow);
       if (!intPayslipID) {
         setStrError(t("payslip_not_generated", "Payslip could not be generated for this employee."));
         return;
       }
       setIntPreviewResultID(dicPayslip?.dicFooter?.intPayrollResultID ?? null);
-      setStrPayslipPreviewHtml(await payslipService.getDownloadHtml(dicPayslip?.strPayslipRecordUUID ?? String(intPayslipID)));
+      setStrPayslipPreviewHtml(await payslipService.getDownloadHtml(strPayslipRecordUUID ?? String(intPayslipID)));
       setBlnPayslipDialogOpen(true);
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to load payslip preview.");
@@ -884,17 +912,11 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     setStrActionLoaderLabel(blnPrint ? t("preparing_print", "Preparing print view...") : t("preparing_download", "Preparing download..."));
     setStrError("");
     try {
-      let intPayslipID = dicRow.intPayslipID;
-      let strPayslipUUID = dicRow.strPayslipRecordUUID ?? null;
-      if (!intPayslipID) {
-        const dicPayslip = await generatePayslip(dicRow);
-        intPayslipID = dicPayslip?.intPayslipID ?? null;
-        strPayslipUUID = dicPayslip?.strPayslipRecordUUID ?? strPayslipUUID;
-      }
+      const { intPayslipID, strPayslipRecordUUID } = await resolveFreshPayslipID(dicRow);
       if (!intPayslipID) {
         return;
       }
-      const strHtml = await payslipService.getDownloadHtml(strPayslipUUID ?? String(intPayslipID));
+      const strHtml = await payslipService.getDownloadHtml(strPayslipRecordUUID ?? String(intPayslipID));
       if (blnPrint) {
         printPayslipHtml(strHtml);
       } else {

@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { employeeMonthlyTaxService, type MonthlyTaxTransaction } from "@/features/payroll/services/employeeMonthlyTaxService";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { buildMonthlyTaxDisplayRows } from "@/features/payroll/utils/monthlyTaxDisplayRows";
 
 const EDITABLE_SOURCE_TYPES = ["OPENING_IMPORT", "MANUAL_ENTRY", "PREVIOUS_EMPLOYER_OPENING", "ADJUSTMENT"];
 
@@ -62,6 +63,7 @@ export default function MonthlyTaxTransactionDetailDialog({
   const [strRemarks, setStrRemarks] = useState("");
   const [blnSaving, setBlnSaving] = useState(false);
   const [strSaveError, setStrSaveError] = useState("");
+  const lstDisplayRows = buildMonthlyTaxDisplayRows(lstTransactions);
 
   async function loadTransactions() {
     if (!intEmployeeID || !strPeriodMonth) return;
@@ -116,7 +118,7 @@ export default function MonthlyTaxTransactionDetailDialog({
   }
 
   return (
-    <Dialog open={blnOpen} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog open={blnOpen} onClose={onClose} maxWidth="md" fullWidth data-control-id="employee-monthly-tax.detail.dialog">
       <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span>
           {t("transaction_detail_title", "Transaction Detail")}
@@ -130,6 +132,7 @@ export default function MonthlyTaxTransactionDetailDialog({
         {lstAvailableMonths && lstAvailableMonths.length > 0 && (
           <TextField
             select
+            controlId="employee-monthly-tax.detail.month.select"
             label={t("column_month", "Month")}
             size="small"
             value={strPeriodMonth ?? ""}
@@ -159,7 +162,7 @@ export default function MonthlyTaxTransactionDetailDialog({
               </TableRow>
             </TableHead>
             <TableBody>
-              {lstTransactions.map((objTxn) => (
+              {lstDisplayRows.map((objTxn) => (
                 <TableRow key={objTxn.intID} sx={{ opacity: objTxn.blnIsReversed ? 0.5 : 1 }}>
                   <TableCell>
                     {SOURCE_LABELS[objTxn.strSourceType] || objTxn.strSourceType}
@@ -168,9 +171,9 @@ export default function MonthlyTaxTransactionDetailDialog({
                     )}
                   </TableCell>
                   <TableCell>{objTxn.strSourceReferenceNo || "-"}</TableCell>
-                  <TableCell align="right">{objTxn.decGrossIncomeAmount.toLocaleString()}</TableCell>
-                  <TableCell align="right">{objTxn.decTaxableIncomeAmount.toLocaleString()}</TableCell>
-                  <TableCell align="right">{objTxn.decTdsAmount.toLocaleString()}</TableCell>
+                  <TableCell align="right">{objTxn.decGrossIncomeAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                  <TableCell align="right">{objTxn.decTaxableIncomeAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                  <TableCell align="right">{objTxn.decTdsAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                   <TableCell>
                     <Chip size="small" label={objTxn.blnIsSystemGenerated ? t("yes", "Yes") : t("no", "No")} color={objTxn.blnIsSystemGenerated ? "success" : undefined} />
                   </TableCell>
@@ -205,6 +208,7 @@ export default function MonthlyTaxTransactionDetailDialog({
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mb: 1 }}>
               <TextField
                 select
+                controlId="employee-monthly-tax.detail.source-type.select"
                 label={t("column_source_type", "Source Type")}
                 size="small"
                 value={strSourceType}
@@ -219,6 +223,7 @@ export default function MonthlyTaxTransactionDetailDialog({
               </TextField>
               <TextField
                 label={t("column_taxable", "Taxable")}
+                controlId="employee-monthly-tax.detail.taxable.input"
                 type="number"
                 size="small"
                 value={strTaxable}
@@ -226,6 +231,7 @@ export default function MonthlyTaxTransactionDetailDialog({
               />
               <TextField
                 label={t("column_tds", "TDS")}
+                controlId="employee-monthly-tax.detail.tds.input"
                 type="number"
                 size="small"
                 value={strTds}
@@ -233,6 +239,7 @@ export default function MonthlyTaxTransactionDetailDialog({
               />
               <TextField
                 label={t("remarks", "Remarks")}
+                controlId="employee-monthly-tax.detail.remarks.input"
                 size="small"
                 value={strRemarks}
                 onChange={(objEvent) => setStrRemarks(objEvent.target.value)}
@@ -251,7 +258,7 @@ export default function MonthlyTaxTransactionDetailDialog({
         )}
       </DialogContent>
       <Snackbar open={Boolean(strSaveError)} autoHideDuration={5000} onClose={() => setStrSaveError("")}>
-        <Alert severity="error" onClose={() => setStrSaveError("")}>
+        <Alert severity="error" onClose={() => setStrSaveError("")} componentsProps={{ closeButton: { controlId: "employee-monthly-tax.detail.error.close.button" } }}>
           {strSaveError}
         </Alert>
       </Snackbar>

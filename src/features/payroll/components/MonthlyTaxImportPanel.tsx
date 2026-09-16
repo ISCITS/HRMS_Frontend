@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type ChangeEvent } from "react";
+import { useRef, useState, type ReactNode, type ChangeEvent } from "react";
 
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import DownloadIcon from "@mui/icons-material/Download";
@@ -9,12 +9,13 @@ import {
   TableContainer, TableHead, TableRow, Tooltip, Typography,
 } from "@mui/material";
 
+import payrollStyles from "@/features/payroll/components/PayrollScreen.module.css";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import {
   employeeMonthlyTaxService, type MonthlyTaxImportPreviewResult,
 } from "@/features/payroll/services/employeeMonthlyTaxService";
 
-export default function MonthlyTaxImportPanel({ onImported }: { onImported?: () => void }) {
+export default function MonthlyTaxImportPanel({ onImported, objToolbarLeft }: { onImported?: () => void; objToolbarLeft?: ReactNode }) {
   const { t } = useModuleLabels("employee_monthly_tax");
 
   const objFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -99,40 +100,36 @@ export default function MonthlyTaxImportPanel({ onImported }: { onImported?: () 
   const lstRows = objPreview?.lstRows ?? [];
 
   return (
-    <Paper sx={{ p: 2 }}>
-      <Typography variant="h6" gutterBottom>
-        {t("import_title", "Import Monthly Tax History")}
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {t(
-          "import_description",
-          "Bulk-load month-wise taxable income/TDS (opening balances, previous employer, manual corrections). Download the template, fill it in, then upload it below for review before committing.",
-        )}
-      </Typography>
-
-      <Box sx={{ display: "flex", gap: 2, mb: objPreview || strCommitSummary ? 2 : 0, flexWrap: "wrap" }}>
-        <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleDownloadTemplate} controlId="employee-monthly-tax.import.download-template.button">
-          {t("download_template", "Download Template")}
-        </Button>
-        <Button variant="contained" startIcon={<UploadFileIcon />} onClick={handlePickFile} controlId="employee-monthly-tax.import.import-data.button">
-          {t("import_data", "Import Data")}
-        </Button>
-        <input ref={objFileInputRef} type="file" accept=".xlsx" hidden onChange={handleFileSelected} />
-        {strFileName ? (
-          <Typography variant="body2" sx={{ alignSelf: "center" }} color="text.secondary">
+    <Box>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1.5, flexWrap: "wrap" }}>
+        {objToolbarLeft}
+        <Box sx={{ display: "flex", gap: 1.25, flexWrap: "wrap", ml: "auto" }}>
+          <Button className={payrollStyles.secondaryButton} disabled={blnBusy} variant="outlined" startIcon={<DownloadIcon />} onClick={handleDownloadTemplate} controlId="employee-monthly-tax.import.download-template.button">
+            {t("download_template", "Download Template")}
+          </Button>
+          <Button className={payrollStyles.primaryButton} disabled={blnBusy} variant="contained" startIcon={<UploadFileIcon />} onClick={handlePickFile} controlId="employee-monthly-tax.import.import-data.button">
+            {t("import_data", "Import Data")}
+          </Button>
+          <input ref={objFileInputRef} type="file" data-control-id="employee-monthly-tax.import.file.input" accept=".xlsx" hidden onChange={handleFileSelected} />
+        </Box>
+      </Box>
+      {strFileName ? (
+          <Typography variant="body2" sx={{ mt: 1 }} color="text.secondary">
             {strFileName}
           </Typography>
         ) : null}
-      </Box>
 
       {strCommitSummary ? (
-        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setStrCommitSummary(null)}>
+        <Alert componentsProps={{ closeButton: { controlId: "employee-monthly-tax.import.success.close.button" } }} severity="success" sx={{ mt: 2 }} onClose={() => setStrCommitSummary(null)}>
           {strCommitSummary}
         </Alert>
       ) : null}
 
       {objPreview ? (
-        <>
+        <Paper variant="outlined" sx={{ p: 2, mt: 2 }}>
+          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+            {t("import_title", "Import Monthly Tax History")}
+          </Typography>
           <Box sx={{ display: "flex", gap: 1.5, mb: 1 }}>
             <Chip label={`${t("total", "Total")}: ${objPreview.intTotalRows}`} />
             <Chip color="success" label={`${t("valid", "Valid")}: ${objPreview.intValidRows}`} />
@@ -158,6 +155,7 @@ export default function MonthlyTaxImportPanel({ onImported }: { onImported?: () 
                   <TableRow key={objRow.intExcelRowNumber} hover>
                     <TableCell padding="checkbox">
                       <Checkbox
+                        controlId={`employee-monthly-tax.import.row.${objRow.intExcelRowNumber}.checkbox`}
                         disabled={!objRow.blnValid}
                         checked={setSelectedRows.has(objRow.intExcelRowNumber)}
                         onChange={(objEvent) => toggleRow(objRow.intExcelRowNumber, objEvent.target.checked)}
@@ -193,14 +191,14 @@ export default function MonthlyTaxImportPanel({ onImported }: { onImported?: () 
           >
             {t("confirm_import", "Confirm Import")}
           </Button>
-        </>
+        </Paper>
       ) : null}
 
       <Snackbar open={Boolean(strError)} autoHideDuration={6000} onClose={() => setStrError(null)}>
-        <Alert severity="error" onClose={() => setStrError(null)}>
+        <Alert componentsProps={{ closeButton: { controlId: "employee-monthly-tax.import.error.close.button" } }} severity="error" onClose={() => setStrError(null)}>
           {strError}
         </Alert>
       </Snackbar>
-    </Paper>
+    </Box>
   );
 }
