@@ -58,6 +58,7 @@ type EmployeeTableRow = {
   joiningDateSortValue: number;
   workerType: string;
   partialSave: ReactNode;
+  partialSaveSortValue: number;
   status: ReactNode;
 };
 
@@ -75,7 +76,7 @@ function getWorkerTypeLabel(blnIsWorker: boolean, t: (strKey: string, strFallbac
 }
 
 function getPartialSaveLabel(blnIsPartialSave: boolean, t: (strKey: string, strFallback?: string) => string) {
-  return blnIsPartialSave ? t("partial_save_yes", "Yes") : t("partial_save_no", "Partial");
+  return blnIsPartialSave ? t("profile_status_partial", "Partial") : "";
 }
 
 export default function EmployeeMasterListPanel() {
@@ -286,7 +287,10 @@ export default function EmployeeMasterListPanel() {
       joiningDate: formatDisplayDate(dicEmployee.dtDateOfJoining),
       joiningDateSortValue: dicEmployee.dtDateOfJoining ? new Date(dicEmployee.dtDateOfJoining).getTime() : 0,
       workerType: getWorkerTypeLabel(dicEmployee.blnIsWorker, t),
-      partialSave: <span className={`${styles.statusPill} ${styles.statusNeutral}`}>{getPartialSaveLabel(dicEmployee.blnIsPartialSave, t)}</span>,
+      partialSaveSortValue: dicEmployee.blnIsPartialSave ? 1 : 0,
+      partialSave: dicEmployee.blnIsPartialSave
+        ? <span className={`${styles.statusPill} ${styles.statusNeutral}`}>{getPartialSaveLabel(dicEmployee.blnIsPartialSave, t)}</span>
+        : "",
       status: <span className={`${styles.statusPill} ${dicEmployee.strEmploymentStatus === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicEmployee.strEmploymentStatus === "Active" ? dicConstant.common.statusActive : dicConstant.common.statusInactive}</span>
     };
   }), [blnCanDelete, blnCanEdit, blnCanView, lstFilteredEmployees, lstSelectedIDs, objRouter, t]);
@@ -322,7 +326,14 @@ export default function EmployeeMasterListPanel() {
       sortAccessor: (dicRow) => dicRow.joiningDateSortValue
     },
     { field: "workerType", headerName: t("grid_worker", "Worker Category") },
-    { field: "partialSave", headerName: t("grid_partial_save", "Partial Save"), sortable: false, filterable: false, width: 140 },
+    {
+      field: "partialSave",
+      headerName: t("grid_partial_save", "Profile Status"),
+      sortable: true,
+      sortAccessor: (dicRow) => dicRow.partialSaveSortValue,
+      filterable: false,
+      width: 160
+    },
     { field: "status", headerName: t("grid_status", dicConstant.employeeMaster.grid.status), sortable: false, filterable: false, width: 130 }
   ], [blnAllFilteredSelected, blnSomeFilteredSelected, lstFilteredEmployees.length, t]);
 
