@@ -1128,6 +1128,7 @@ export default function DynamicMenu({
   const { t: tDepartment } = useModuleLabels("department");
   const { t: tDesignation } = useModuleLabels("designation");
   const { t: tEmployee } = useModuleLabels("employee");
+  const { t: tEmployeeCategory } = useModuleLabels("employee_category");
   const { t: tState } = useModuleLabels("state");
   const { t: tCountry } = useModuleLabels("country");
   const { t: tBank } = useModuleLabels("bank");
@@ -1424,6 +1425,14 @@ export default function DynamicMenu({
     // caught by the generic employee-master branch below either; use its own menu name.
     if (strRoute.includes("/payroll/employee-monthly-tax") || strModuleCode === "employee_monthly_tax") {
       return strModuleName || "Employee Monthly Tax / TDS";
+    }
+
+    if (
+      strModuleCode === "employee_category" ||
+      strModuleCode === "employee_categories" ||
+      strRoute.includes("/employee-categories")
+    ) {
+      return tEmployeeCategory("page_title", strModuleName || "Employee Category");
     }
 
     if (strModuleCode.includes("employee") || strRoute.includes("/employees")) {

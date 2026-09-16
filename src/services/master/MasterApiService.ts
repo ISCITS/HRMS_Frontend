@@ -47,6 +47,19 @@ export type DesignationApiRecord = {
   }>;
 };
 
+export type EmployeeCategoryApiRecord = {
+  intID: number;
+  strEmployeeCategoryCode: string;
+  strEmployeeCategoryName: string;
+  blnIsActive: boolean;
+  intTenantID: number;
+  lstTexts?: Array<{
+    intLanguageID: number;
+    strLanguageName: string;
+    strEmployeeCategoryName: string;
+  }>;
+};
+
 export type SimpleMasterFormOptionsApiRecord = {
   lstLanguages: EmployeeLookupOptionApiRecord[];
 };
@@ -1811,6 +1824,101 @@ export const masterApiService = {
       strMethod: ApiRequestMethod.Post,
       objBody: { lstIDs },
       strMenuAction: MasterMenuAction.DesignationBulkDelete
+    });
+  },
+
+  getEmployeeCategories() {
+    // Fetches the employeeCategory list scoped by the logged-in tenant.
+    return requestApi<EmployeeCategoryApiRecord[]>({
+      strPath: MasterApiResource.EmployeeCategories,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.EmployeeCategoryList
+    });
+  },
+
+  getEmployeeCategory(intID: number, intLanguageID?: number | null) {
+    return requestApi<EmployeeCategoryApiRecord>({
+      strPath: buildApiPath(MasterApiResource.EmployeeCategories, intID),
+      strMethod: ApiRequestMethod.Get,
+      objQueryParams: intLanguageID ? { language_id: intLanguageID } : undefined,
+      strMenuAction: MasterMenuAction.EmployeeCategoryList
+    });
+  },
+
+  getEmployeeCategoryFormOptions() {
+    return requestApi<SimpleMasterFormOptionsApiRecord>({
+      strPath: buildApiPath(MasterApiResource.EmployeeCategories, MasterApiRouteSegment.FormOptions),
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: MasterMenuAction.EmployeeCategoryList
+    });
+  },
+
+  translateEmployeeCategoryText(objBody: {
+    strText: string;
+    intSourceLanguageID?: number | null;
+    intTargetLanguageID: number;
+  }) {
+    return requestApi<{
+      strTranslatedText: string;
+      intSourceLanguageID: number;
+      intTargetLanguageID: number;
+    }>({
+      strPath: buildApiPath(MasterApiResource.EmployeeCategories, MasterApiRouteSegment.Translate),
+      strMethod: ApiRequestMethod.Post,
+      objBody,
+      strMenuAction: MasterMenuAction.EmployeeCategoryList
+    });
+  },
+
+  createEmployeeCategory(objBody: {
+    strEmployeeCategoryCode: string;
+    strEmployeeCategoryName: string;
+    blnIsActive: boolean;
+    intLanguageID: number;
+    lstTexts: Array<{ intLanguageID: number; strEmployeeCategoryName: string }>;
+  }) {
+    // Creates a new employeeCategory record.
+    return requestApi<EmployeeCategoryApiRecord>({
+      strPath: MasterApiResource.EmployeeCategories,
+      strMethod: ApiRequestMethod.Post,
+      objBody,
+      strMenuAction: MasterMenuAction.EmployeeCategoryCreate
+    });
+  },
+
+  updateEmployeeCategory(intID: number, objBody: {
+    strEmployeeCategoryCode: string;
+    strEmployeeCategoryName: string;
+    blnIsActive: boolean;
+    intLanguageID: number;
+    lstTexts: Array<{ intLanguageID: number; strEmployeeCategoryName: string }>;
+  }) {
+    // Updates an existing employeeCategory by primary key.
+    return requestApi<EmployeeCategoryApiRecord>({
+      strPath: buildApiPath(MasterApiResource.EmployeeCategories, intID),
+      strMethod: ApiRequestMethod.Put,
+      objBody,
+      strMenuAction: MasterMenuAction.EmployeeCategoryUpdate
+    });
+  },
+
+  bulkEmployeeCategoryStatus(lstIDs: number[], blnIsActive: boolean) {
+    // Applies one status change to all selected employeeCategories.
+    return requestApi<{ blnSuccess: boolean }>({
+      strPath: buildApiPath(MasterApiResource.EmployeeCategories, MasterApiRouteSegment.BulkStatus),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { lstIDs, blnIsActive },
+      strMenuAction: MasterMenuAction.EmployeeCategoryBulkStatus
+    });
+  },
+
+  bulkEmployeeCategoryDelete(lstIDs: number[]) {
+    // Deletes multiple employeeCategory records in one backend request.
+    return requestApi<{ blnSuccess: boolean }>({
+      strPath: buildApiPath(MasterApiResource.EmployeeCategories, MasterApiRouteSegment.BulkDelete),
+      strMethod: ApiRequestMethod.Post,
+      objBody: { lstIDs },
+      strMenuAction: MasterMenuAction.EmployeeCategoryBulkDelete
     });
   },
 
