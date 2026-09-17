@@ -125,7 +125,7 @@ function resolveMenuRoute(objItem: MenuItem): string | null {
     return "/employee-function";
   }
   if (strModuleCode === "employee_type") {
-    return "/employee-type";
+    return "/employment-type";
   }
 
   // Work on Holiday had multiple legacy seed routes. The module identity is the
@@ -1448,7 +1448,9 @@ export default function DynamicMenu({
       return strModuleName || "Employee Function";
     }
 
-    if (strModuleCode === "employee_type" || strRoute.includes("/employee-type")) {
+    if (
+      strRoute.includes("/employment-type")
+    ) {
       return strModuleName || "Employment Type";
     }
 
