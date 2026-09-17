@@ -5,7 +5,7 @@ import { masterApiService } from "@/services/master/MasterApiService";
 
 const config: EmployeeAttributeMasterConfig = {
   singular: "Employment Type", plural: "Employment Types", moduleName: "employee_type",
-  moduleCodes: ["EMPLOYEE_TYPE"], testId: "employment-type-master", exportFileName: "employment-types",
+  moduleCodes: ["EMPLOYMENT_TYPE"], testId: "employment-type-master", exportFileName: "employment-types",
   codeKey: "strEmploymentTypeCode", nameKey: "strEmploymentTypeName",
   list: () => masterApiService.getEmploymentTypes(),
   get: (id) => masterApiService.getEmploymentType(id),
