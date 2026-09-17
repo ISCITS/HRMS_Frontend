@@ -503,10 +503,10 @@ export default function EmployeeEditorScreen({
     if (lstLookupOptions) {
       return (
         <Box key={strField}>
-          {renderSelectField(
+          {renderLookupCodeSearchableField(
             strLabel,
             String(dicBasicForm[strField] ?? ""),
-            (objValue) => updateBasicField(strField, String(objValue) as never),
+            (strValue) => updateBasicField(strField, strValue as never),
             lstLookupOptions,
             blnViewOnly,
           )}
@@ -1416,6 +1416,46 @@ export default function EmployeeEditorScreen({
     );
   }
 
+  function renderLookupCodeSearchableField(
+    strLabel: string,
+    strValue: string,
+    fnOnChange: (strValue: string) => void,
+    lstOptions: Array<{ intID: number; strLabel: string; strCode?: string }>,
+    blnDisabled = false
+  ) {
+    const intParsedValue = strValue === "" ? NaN : Number(strValue);
+    const objValue = Number.isNaN(intParsedValue) ? "" : intParsedValue;
+    return (
+      <CommonSearchableSelect
+        label={strLabel}
+        value={objValue}
+        options={lstOptions}
+        onChange={(objSelected) => fnOnChange(objSelected === "" ? "" : String(objSelected))}
+        disabled={blnDisabled}
+        fullWidth
+      />
+    );
+  }
+
+  function renderStringListSearchableField(
+    strLabel: string,
+    strValue: string,
+    fnOnChange: (strValue: string) => void,
+    lstOptions: string[],
+    blnDisabled = false
+  ) {
+    return (
+      <CommonSearchableSelect
+        label={strLabel}
+        value={strValue}
+        options={lstOptions.map((strOption) => ({ intID: strOption, strLabel: strOption }))}
+        onChange={(objSelected) => fnOnChange(objSelected === "" ? "" : String(objSelected))}
+        disabled={blnDisabled}
+        fullWidth
+      />
+    );
+  }
+
   if (blnLoading || blnRightsLoading) {
     return (
       <Box sx={{ minHeight: "60vh", display: "grid", placeItems: "center" }}>
@@ -1748,7 +1788,7 @@ export default function EmployeeEditorScreen({
                   {renderSearchableSelectField(t("field_payroll_group", dicConstant.employeeMaster.fields.payrollGroup), dicBasicForm.intPayrollGroupID, (objValue) => updateBasicField("intPayrollGroupID", objValue), objFormOptions?.lstPayrollGroups ?? [], blnViewOnly)}
                   {renderSearchableSelectField(t("field_manager", dicConstant.employeeMaster.fields.manager), dicBasicForm.intManagerEmployeeID, (objValue) => updateReportingManagerField(objValue), lstManagerOptions, blnViewOnly, dicBasicErrors.intManagerEmployeeID, Boolean(dicBasicErrors.intManagerEmployeeID), true)}
                   {renderSearchableSelectField(t("field_line_manager", "Line Manager"), dicBasicForm.intLineManagerEmployeeID, (objValue) => updateBasicField("intLineManagerEmployeeID", objValue || dicBasicForm.intManagerEmployeeID), lstManagerOptions, blnViewOnly, dicBasicErrors.intLineManagerEmployeeID, Boolean(dicBasicErrors.intLineManagerEmployeeID), true)}
-                  {renderSelectField(t("field_preferred_language", dicConstant.employeeMaster.fields.preferredLanguage), dicBasicForm.intPreferredLanguageID, (objValue) => updateBasicField("intPreferredLanguageID", objValue as number | ""), objFormOptions?.lstLanguages ?? [], blnViewOnly)}
+                  {renderSearchableSelectField(t("field_preferred_language", dicConstant.employeeMaster.fields.preferredLanguage), dicBasicForm.intPreferredLanguageID, (objValue) => updateBasicField("intPreferredLanguageID", objValue), objFormOptions?.lstLanguages ?? [], blnViewOnly)}
                   {lstEmploymentAssignmentFields.map((dicField) => renderOptionalEmployeeField(dicField.strField, dicField.strLabel, dicField.strType))}
                 </Box>
               </Box> : null}
@@ -1846,7 +1886,7 @@ export default function EmployeeEditorScreen({
               <Box>
                 <Typography sx={{ mb: 1.5, fontWeight: 700, color: "#334155" }}>Address</Typography>
                 <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))" } }}>
-                {renderSelectField(t("field_address_type", dicConstant.employeeMaster.fields.addressType), dicAddressForm.strAddressType, (objValue) => updateAddressField("strAddressType", String(objValue)), objFormOptions?.lstAddressTypes ?? [], blnViewOnly)}
+                {renderStringListSearchableField(t("field_address_type", dicConstant.employeeMaster.fields.addressType), dicAddressForm.strAddressType, (strValue) => updateAddressField("strAddressType", strValue), objFormOptions?.lstAddressTypes ?? [], blnViewOnly)}
                 <TextField data-controlid="employee.editor.address-line1.input" inputProps={{ "data-controlid": "employee.editor.address-line1.input" }} label={renderRequiredLabel(t("field_address_line1", dicConstant.employeeMaster.fields.addressLine1))} inputRef={dicFieldRefs.strAddressLine1} value={dicAddressForm.strAddressLine1} onChange={(objEvent) => updateAddressField("strAddressLine1", objEvent.target.value)} error={Boolean(dicAddressErrors.strAddressLine1)} helperText={dicAddressErrors.strAddressLine1} disabled={blnViewOnly} fullWidth />
                 <TextField data-controlid="employee.editor.address-line2.input" inputProps={{ "data-controlid": "employee.editor.address-line2.input" }} label={t("field_address_line2", dicConstant.employeeMaster.fields.addressLine2)} value={dicAddressForm.strAddressLine2} onChange={(objEvent) => updateAddressField("strAddressLine2", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
                 <TextField data-controlid="employee.editor.city.input" inputProps={{ "data-controlid": "employee.editor.city.input" }} label={t("field_city", dicConstant.employeeMaster.fields.cityName)} value={dicAddressForm.strCityName} onChange={(objEvent) => updateAddressField("strCityName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
@@ -1880,7 +1920,7 @@ export default function EmployeeEditorScreen({
                   {renderSearchableSelectField(t("field_bank", dicConstant.employeeMaster.fields.bank), dicBankForm.intBankID, (objValue) => updateBankField("intBankID", objValue), objFormOptions?.lstBanks ?? [], blnViewOnly, dicBankErrors.intBankID, Boolean(dicBankErrors.intBankID), true)}
                   <TextField label="Branch Name" value={dicBankForm.strBranchName} onChange={(objEvent) => updateBankField("strBranchName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
                   <TextField data-controlid="employee.editor.account-holder-name.input" inputProps={{ "data-controlid": "employee.editor.account-holder-name.input" }} label={renderRequiredLabel(t("field_account_holder_name", dicConstant.employeeMaster.fields.accountHolderName))} inputRef={dicFieldRefs.strAccountHolderName} value={dicBankForm.strAccountHolderName} onChange={(objEvent) => updateBankField("strAccountHolderName", objEvent.target.value)} error={Boolean(dicBankErrors.strAccountHolderName)} helperText={dicBankErrors.strAccountHolderName} disabled={blnViewOnly} fullWidth />
-                  {renderSelectField("Account Type", dicBankForm.strAccountType, (objValue) => updateBankField("strAccountType", String(objValue)), objFormOptions?.lstBankAccountTypes ?? [], blnViewOnly)}
+                  {renderLookupCodeSearchableField("Account Type", dicBankForm.strAccountType, (strValue) => updateBankField("strAccountType", strValue), objFormOptions?.lstBankAccountTypes ?? [], blnViewOnly)}
                   <TextField data-controlid="employee.editor.account-number.input" inputProps={{ "data-controlid": "employee.editor.account-number.input" }} label={renderRequiredLabel(t("field_account_number", dicConstant.employeeMaster.fields.accountNumber))} inputRef={dicFieldRefs.strAccountNumber} value={dicBankForm.strAccountNumber} onChange={(objEvent) => updateBankField("strAccountNumber", objEvent.target.value)} error={Boolean(dicBankErrors.strAccountNumber)} helperText={dicBankErrors.strAccountNumber} disabled={blnViewOnly} fullWidth />
                   <TextField data-controlid="employee.editor.ifsc-code.input" inputProps={{ "data-controlid": "employee.editor.ifsc-code.input" }} label={t("field_ifsc_code", dicConstant.employeeMaster.fields.ifscCode)} value={dicBankForm.strIfscCode} onChange={(objEvent) => updateBankField("strIfscCode", objEvent.target.value.toUpperCase())} disabled={blnViewOnly} fullWidth />
                   <TextField data-controlid="employee.editor.swift-code.input" inputProps={{ "data-controlid": "employee.editor.swift-code.input", maxLength: 20 }} label="SWIFT Code" value={dicBankForm.strSwiftCode} onChange={(objEvent) => updateBankField("strSwiftCode", objEvent.target.value.toUpperCase())} disabled={blnViewOnly} fullWidth />
@@ -1929,7 +1969,7 @@ export default function EmployeeEditorScreen({
                 <Typography sx={{ mb: 1.5, fontWeight: 700, color: "#334155" }}>Tax & National Identification</Typography>
                 <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", lg: "repeat(3, minmax(0, 1fr))" } }}>
                   <TextField data-controlid="employee.editor.pan-number.input" inputProps={{ "data-controlid": "employee.editor.pan-number.input" }} label={t("field_pan_number", dicConstant.employeeMaster.fields.panNumber)} value={dicStatutoryForm.strPanNumber} onChange={(objEvent) => updateStatutoryField("strPanNumber", objEvent.target.value.toUpperCase())} disabled={blnViewOnly} fullWidth />
-                  {renderSelectField(t("field_tax_regime", dicConstant.employeeMaster.fields.taxRegimeCode), dicStatutoryForm.strTaxRegimeCode, (objValue) => updateStatutoryField("strTaxRegimeCode", String(objValue)), objFormOptions?.lstTaxRegimeCodes ?? [], blnViewOnly)}
+                  {renderStringListSearchableField(t("field_tax_regime", dicConstant.employeeMaster.fields.taxRegimeCode), dicStatutoryForm.strTaxRegimeCode, (strValue) => updateStatutoryField("strTaxRegimeCode", strValue), objFormOptions?.lstTaxRegimeCodes ?? [], blnViewOnly)}
                   <TextField label="SSN Number" value={dicStatutoryForm.strSsnNumber} onChange={(objEvent) => updateStatutoryField("strSsnNumber", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
                   <TextField label="PRAN Number" value={dicStatutoryForm.strPranNumber} onChange={(objEvent) => updateStatutoryField("strPranNumber", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
                   <TextField label="Gratuity Number" value={dicStatutoryForm.strGratuityNumber} onChange={(objEvent) => updateStatutoryField("strGratuityNumber", objEvent.target.value)} disabled={blnViewOnly} fullWidth />

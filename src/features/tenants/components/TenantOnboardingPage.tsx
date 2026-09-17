@@ -7,12 +7,8 @@ import {
   Checkbox,
   CircularProgress,
   FormControlLabel,
-  InputLabel,
-  ListItemText,
   MenuItem,
-  OutlinedInput,
   Paper,
-  Select,
   Snackbar,
   Stack,
   Step,
@@ -25,6 +21,7 @@ import type { InputHTMLAttributes } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import CommonSearchableMultiSelect from "@/Common/components/CommonSearchableMultiSelect";
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import type {
   TenantExistingDatabaseOnboardingRequest,
@@ -593,36 +590,15 @@ export default function TenantOnboardingPage() {
           </Stack>
         ) : null}
         <Box>
-          <InputLabel id="tenant-onboarding-modules-label" sx={{ mb: 1 }}>Modules</InputLabel>
-          <Select
+          <CommonSearchableMultiSelect
             controlId="tenant.onboarding.datastore.modules.select"
-            labelId="tenant-onboarding-modules-label"
-            multiple
-            value={objForm.datastore.lstModuleIDs.map(String)}
-            onChange={(objEvent) => {
-              const lstSelectedValues = objEvent.target.value as string[];
-              setField("datastore.lstModuleIDs", lstSelectedValues.map((strValue) => Number(strValue)));
-            }}
-            input={<OutlinedInput />}
-            renderValue={(lstSelectedValues) => {
-              const lstResolvedValues = lstSelectedValues as string[];
-              const lstLabels = lstResolvedValues
-                .map((strValue) => objFormOptions?.lstModules.find((dicOption) => String(dicOption.intID) === strValue)?.strLabel)
-                .filter(Boolean);
-              return lstLabels.length > 0 ? lstLabels.join(", ") : "Select modules";
-            }}
+            label="Modules"
+            placeholder="Select modules"
+            value={objForm.datastore.lstModuleIDs}
+            options={objFormOptions?.lstModules ?? []}
+            onChange={(lstValues) => setField("datastore.lstModuleIDs", lstValues as number[])}
             fullWidth
-          >
-            {(objFormOptions?.lstModules ?? []).map((dicOption) => {
-              const blnChecked = objForm.datastore.lstModuleIDs.includes(dicOption.intID);
-              return (
-                <MenuItem key={dicOption.intID} value={String(dicOption.intID)} controlId="tenant.onboarding.datastore.modules.option" data-option-key={dicOption.intID}>
-                  <Checkbox checked={blnChecked} inputProps={{ "controlId": "tenant.onboarding.datastore.modules.checkbox", "data-option-key": dicOption.intID } as InputHTMLAttributes<HTMLInputElement>} />
-                  <ListItemText primary={dicOption.strLabel} secondary={dicOption.strCode ?? undefined} />
-                </MenuItem>
-              );
-            })}
-          </Select>
+          />
         </Box>
         <FormControlLabel control={<Checkbox checked={objForm.datastore.blnIsActive} onChange={(_, blnChecked) => setField("datastore.blnIsActive", blnChecked)} inputProps={{ "controlId": "tenant.onboarding.datastore.active.checkbox" } as InputHTMLAttributes<HTMLInputElement>} />} label="Datastore active" />
         {objForm.datastore.blnUseExistingDatabase ? renderInitialAdminSection() : null}

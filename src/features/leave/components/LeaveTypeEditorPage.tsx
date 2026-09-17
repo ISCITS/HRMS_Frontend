@@ -963,9 +963,14 @@ export default function LeaveTypeEditorPage({ strMode, strLeaveTypeID }: { strMo
           <Stack spacing={1}>
             {objForm.lstApplicability.map((objRow, intIndex) => (
               <Stack key={intIndex} direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                <TextField label="Type" select size="small" value={objRow.strApplicabilityTypeCode} onChange={(e) => updateApplicability(intIndex, { strApplicabilityTypeCode: e.target.value })} sx={{ width: 180 }} {...objInputProps}>
-                  {lstApplicabilityTypes.map((c) => <MenuItem key={c} value={c}>{c.replace(/_/g, " ")}</MenuItem>)}
-                </TextField>
+                <CommonSearchableSelect
+                  label="Type"
+                  value={objRow.strApplicabilityTypeCode}
+                  options={lstApplicabilityTypes.map((c) => ({ intID: c, strLabel: c.replace(/_/g, " ") }))}
+                  onChange={(v) => updateApplicability(intIndex, { strApplicabilityTypeCode: v === "" ? "" : String(v) })}
+                  disabled={blnReadOnly}
+                  sx={{ width: 180 }}
+                />
                 <TextField label="Entity ID" type="number" size="small" value={objRow.intApplicabilityEntityID ?? ""} onChange={(e) => updateApplicability(intIndex, { intApplicabilityEntityID: toNum(e.target.value) })} sx={{ width: 120 }} {...objInputProps} />
                 <TextField label="Value code" size="small" value={objRow.strApplicabilityValueCode ?? ""} onChange={(e) => updateApplicability(intIndex, { strApplicabilityValueCode: e.target.value.toUpperCase() })} sx={{ width: 150 }} {...objInputProps} />
                 <TextField label="Priority" type="number" size="small" value={objRow.intPriority} onChange={(e) => updateApplicability(intIndex, { intPriority: Number(e.target.value) || 100 })} sx={{ width: 100 }} {...objInputProps} />
@@ -991,9 +996,14 @@ export default function LeaveTypeEditorPage({ strMode, strLeaveTypeID }: { strMo
                   <TextField label="Group" type="number" size="small" value={objRow.intRuleGroupNo} onChange={(e) => updateRule(intIndex, { intRuleGroupNo: Number(e.target.value) || 1 })} sx={{ width: 80 }} {...objInputProps} />
                   <TextField label="Seq" type="number" size="small" value={objRow.intRuleSequence} onChange={(e) => updateRule(intIndex, { intRuleSequence: Number(e.target.value) || 0 })} sx={{ width: 80 }} {...objInputProps} />
                   <TextField label="Attribute" size="small" value={objRow.strAttributeCode} onChange={(e) => updateRule(intIndex, { strAttributeCode: e.target.value.toUpperCase() })} placeholder="e.g. GENDER, TENURE_MONTHS" sx={{ width: 190 }} {...objInputProps} />
-                  <TextField label="Operator" select size="small" value={objRow.strOperatorCode} onChange={(e) => updateRule(intIndex, { strOperatorCode: e.target.value })} sx={{ width: 160 }} {...objInputProps}>
-                    {lstRuleOperators.map((c) => <MenuItem key={c} value={c}>{c.replace(/_/g, " ")}</MenuItem>)}
-                  </TextField>
+                  <CommonSearchableSelect
+                    label="Operator"
+                    value={objRow.strOperatorCode}
+                    options={lstRuleOperators.map((c) => ({ intID: c, strLabel: c.replace(/_/g, " ") }))}
+                    onChange={(v) => updateRule(intIndex, { strOperatorCode: v === "" ? "" : String(v) })}
+                    disabled={blnReadOnly}
+                    sx={{ width: 160 }}
+                  />
                   <TextField label={blnRange ? "From" : "Value"} size="small" value={objRow.strValueFrom ?? ""} onChange={(e) => updateRule(intIndex, { strValueFrom: e.target.value })} sx={{ width: 120 }} {...objInputProps} />
                   {blnRange ? <TextField label="To" size="small" value={objRow.strValueTo ?? ""} onChange={(e) => updateRule(intIndex, { strValueTo: e.target.value })} sx={{ width: 120 }} {...objInputProps} /> : null}
                   <TextField label="Failure message" size="small" value={objRow.strFailureMessage ?? ""} onChange={(e) => updateRule(intIndex, { strFailureMessage: e.target.value })} sx={{ width: 220 }} {...objInputProps} />
