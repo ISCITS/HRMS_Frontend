@@ -40,8 +40,10 @@ import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { employeeService } from "@/features/employee/services/employeeService";
 import { useAuthenticatedAvatar } from "@/hooks/useAuthenticatedAvatar";
 import { authHelpers } from "@/lib/auth";
+import { withBasePath } from "@/lib/basePath";
 import { normalizeMenuResponse } from "@/lib/menu";
 import { getPostLoginRoute } from "@/lib/RouteGuard";
+import { getLogoutUrl } from "@/lib/urlHelpers";
 import {
   isAuthenticatedAppRoute,
   readAuthenticatedRouteHistory,
@@ -874,10 +876,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     setBlnLoggingOut(true);
     const objLogoutResult = await authApiService.logout().catch(() => undefined);
     const strTenantUUID = objLogoutResult?.Data?.strTenantUUID || authHelpers.getTenantUUID();
-    const strLogoutUrl = strTenantUUID
-      ? `/logout?tenantUuid=${encodeURIComponent(strTenantUUID)}`
-      : "/logout";
-    window.location.replace(strLogoutUrl);
+    window.location.replace(getLogoutUrl(strTenantUUID));
   }
 
   async function switchPortal(strPortal: PortalCode) {
@@ -892,7 +891,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       const objResult = await authApiService.selectPortalContext(strPortal);
       // A full navigation guarantees menus, permissions, dashboard data and shell branding all
       // bootstrap from the newly issued portal-scoped token.
-      window.location.assign(getPostLoginRoute(objResult.Data.strHomeRoute));
+      window.location.assign(withBasePath(getPostLoginRoute(objResult.Data.strHomeRoute)));
     } catch (objError) {
       setBlnPortalSwitching(false);
       if (isSessionExpiredError(objError)) {

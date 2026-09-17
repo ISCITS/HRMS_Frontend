@@ -7,12 +7,8 @@ import {
   Checkbox,
   CircularProgress,
   FormControlLabel,
-  InputLabel,
-  ListItemText,
   MenuItem,
-  OutlinedInput,
   Paper,
-  Select,
   Snackbar,
   Stack,
   Step,
@@ -23,6 +19,7 @@ import {
 } from "@mui/material";
 import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
 
+import CommonSearchableMultiSelect from "@/Common/components/CommonSearchableMultiSelect";
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import type { TenantOnboardingFormOptions } from "@/models/TenantOnboardingModels";
 import type {
@@ -530,36 +527,15 @@ export default function TenantAdminTenantEditorPage({ intTenantID }: TenantEdito
           <TextField type="password" label="DB Password *" value={objForm.datastore.strDbPassword} onChange={(e) => setField("datastore.strDbPassword", e.target.value)} error={Boolean(dicErrors["datastore.strDbPassword"])} helperText={dicErrors["datastore.strDbPassword"] ?? (objSecrets.blnDbPasswordConfigured ? "Leave blank to keep the current DB password." : "")} fullWidth />
         </Box>
         <Box>
-          <InputLabel id="tenant-editor-modules-label" sx={{ mb: 1 }}>Modules</InputLabel>
-          <Select
+          <CommonSearchableMultiSelect
             controlId="tenant-admin.editor.modules.select"
-            labelId="tenant-editor-modules-label"
-            multiple
-            value={objForm.datastore.lstModuleIDs.map(String)}
-            onChange={(objEvent) => {
-              const lstSelectedValues = objEvent.target.value as string[];
-              setField("datastore.lstModuleIDs", lstSelectedValues.map((strValue) => Number(strValue)));
-            }}
-            input={<OutlinedInput />}
-            renderValue={(lstSelectedValues) => {
-              const lstResolvedValues = lstSelectedValues as string[];
-              const lstLabels = lstResolvedValues
-                .map((strValue) => objFormOptions?.lstModules.find((dicOption) => String(dicOption.intID) === strValue)?.strLabel)
-                .filter(Boolean);
-              return lstLabels.length > 0 ? lstLabels.join(", ") : "Select modules";
-            }}
+            label="Modules"
+            placeholder="Select modules"
+            value={objForm.datastore.lstModuleIDs}
+            options={objFormOptions?.lstModules ?? []}
+            onChange={(lstValues) => setField("datastore.lstModuleIDs", lstValues as number[])}
             fullWidth
-          >
-            {(objFormOptions?.lstModules ?? []).map((dicOption) => {
-              const blnChecked = objForm.datastore.lstModuleIDs.includes(dicOption.intID);
-              return (
-                <MenuItem key={dicOption.intID} value={String(dicOption.intID)} controlId="tenant-admin.tenant-editor.datastore.module.option" data-option-key={dicOption.intID}>
-                  <Checkbox controlId="tenant-admin.tenant-editor.datastore.module.checkbox" checked={blnChecked} inputProps={{ "controlId": "tenant-admin.tenant-editor.datastore.module.checkbox", "data-option-key": dicOption.intID } as InputHTMLAttributes<HTMLInputElement>} />
-                  <ListItemText primary={dicOption.strLabel} secondary={dicOption.strCode ?? undefined} />
-                </MenuItem>
-              );
-            })}
-          </Select>
+          />
         </Box>
         <FormControlLabel control={<Checkbox controlId="tenant-admin.tenant-editor.datastore.active.checkbox" checked={objForm.datastore.blnIsActive} onChange={(_, blnChecked) => setField("datastore.blnIsActive", blnChecked)} inputProps={{ "controlId": "tenant-admin.tenant-editor.datastore.active.checkbox" } as InputHTMLAttributes<HTMLInputElement>} />} label="Datastore active" />
       </Stack>

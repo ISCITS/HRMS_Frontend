@@ -7,13 +7,13 @@ import {
   Alert,
   Box,
   Button,
-  MenuItem,
   TextField,
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -79,6 +79,14 @@ export default function PayrollRunListPage() {
   const blnCanView = canViewAny() || canDoAny("list");
   const blnCanAdd = canDoAny("add");
   const blnCanExport = canDoAny("export");
+  const lstStatusOptions = useMemo(() => ([
+    { intID: "All", strLabel: t("status_all", "All") },
+    { intID: "DRAFT", strLabel: t("status_draft", "Draft") },
+    { intID: "VALIDATED", strLabel: t("status_validated", "Validated") },
+    { intID: "PROCESSED", strLabel: t("status_processed", "Processed") },
+    { intID: "FINALIZED", strLabel: t("status_finalized", "Finalized") },
+    { intID: "CANCELLED", strLabel: t("status_cancelled", "Cancelled") },
+  ]), [t]);
 
   async function loadRuns(objFilters: SearchForm = dicSearchApplied) {
     if (!blnCanView) {
@@ -220,26 +228,19 @@ export default function PayrollRunListPage() {
             placeholder={t("group_placeholder", "Search payroll group")}
             fullWidth
           />
-          <TextField
+          <CommonSearchableSelect
             controlId="payroll-runs.list.search-status.select"
-            select
             label={t("status", "Status")}
             value={dicSearchDraft.strStatus}
-            onChange={(objEvent) =>
+            options={lstStatusOptions}
+            onChange={(value) =>
               setDicSearchDraft((dicPrevious) => ({
                 ...dicPrevious,
-                strStatus: objEvent.target.value as SearchForm["strStatus"],
+                strStatus: (value || "All") as SearchForm["strStatus"],
               }))
             }
             fullWidth
-          >
-            <MenuItem value="All">{t("status_all", "All")}</MenuItem>
-            <MenuItem value="DRAFT">{t("status_draft", "Draft")}</MenuItem>
-            <MenuItem value="VALIDATED">{t("status_validated", "Validated")}</MenuItem>
-            <MenuItem value="PROCESSED">{t("status_processed", "Processed")}</MenuItem>
-            <MenuItem value="FINALIZED">{t("status_finalized", "Finalized")}</MenuItem>
-            <MenuItem value="CANCELLED">{t("status_cancelled", "Cancelled")}</MenuItem>
-          </TextField>
+          />
           <Box className={styles.searchActions}>
             <Button
               controlId="payroll-runs.list.search.button"
