@@ -425,8 +425,8 @@ export default function EmployeeCategoryMasterPanel() {
 
   const lstTableColumns: DataGridColumn<EmployeeCategoryTableRow>[] = [
     { field: "action", headerName: dicEmployeeCategoryLabels.tableActions, sortable: false, filterable: false, exportable: false, width: 140 },
-    { field: "code", headerName: dicEmployeeCategoryLabels.tableCode, width: 230 },
     { field: "name", headerName: dicEmployeeCategoryLabels.tableName, width: 260 },
+    { field: "code", headerName: dicEmployeeCategoryLabels.tableCode, width: 230 },
     { field: "status", headerName: dicEmployeeCategoryLabels.tableStatus, width: 140, sortAccessor: (dicRow) => dicRow.statusSortValue }
   ];
 
