@@ -49,6 +49,7 @@ import FamilyDetailsTab from "@/features/employee/components/FamilyDetailsTab";
 import EmployeeSalarySummaryCard from "@/features/employee-salary/components/EmployeeSalarySummaryCard";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useAuthenticatedAvatar } from "@/hooks/useAuthenticatedAvatar";
+import { withBasePath } from "@/lib/basePath";
 import { authApiService } from "@/services/auth/AuthApiService";
 import {
   dicEmptyEmployeeAddressForm,
@@ -218,12 +219,12 @@ function buildPartialEmployeeCode() {
 function buildEmployeeAvatarUrl(intEmployeeID: number, strProfilePhotoUrl?: string | null) {
   const strResolvedAvatarUrl = strProfilePhotoUrl?.trim();
   if (!strResolvedAvatarUrl) {
-    return `/api/auth/avatar/current?employee_id=${intEmployeeID}&v=${Date.now()}`;
+    return withBasePath(`/api/auth/avatar/current?employee_id=${intEmployeeID}&v=${Date.now()}`);
   }
 
   const strVersionedAvatarUrl = new URL(strResolvedAvatarUrl, window.location.origin);
   strVersionedAvatarUrl.searchParams.set("v", Date.now().toString());
-  return `${strVersionedAvatarUrl.pathname}${strVersionedAvatarUrl.search}`;
+  return withBasePath(`${strVersionedAvatarUrl.pathname}${strVersionedAvatarUrl.search}`);
 }
 
 export default function EmployeeEditorScreen({

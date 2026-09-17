@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import CommonDataGrid, { type DataGridColumn } from "@/components/ui/CommonDataGrid";
+import { withBasePath } from "@/lib/basePath";
 import ReimbursementClaimItemForm from "@/features/reimbursements/components/ReimbursementClaimItemForm";
 import ReimbursementClaimStatusBadge from "@/features/reimbursements/components/ReimbursementClaimStatusBadge";
 import { formatCurrency, formatDateLabel, toInputDate, translateKnownReimbursementText } from "@/features/reimbursements/formatters";
@@ -463,13 +464,13 @@ export default function ReimbursementClaimEditorPage({ strClaimID, strMode }: { 
     setStrSuccess("");
     if (strClaimIDToLoadAfterSuccess === strDeletedClaimSentinel) {
       setStrClaimIDToLoadAfterSuccess(null);
-      window.location.href = "/ess/reimbursements";
+      window.location.href = withBasePath("/ess/reimbursements");
       return;
     }
     if (strClaimIDToLoadAfterSuccess) {
       const strSubmittedClaimID = strClaimIDToLoadAfterSuccess;
       setStrClaimIDToLoadAfterSuccess(null);
-      window.location.href = buildEssClaimRoute(strSubmittedClaimID, "view");
+      window.location.href = withBasePath(buildEssClaimRoute(strSubmittedClaimID, "view"));
     }
   }
 

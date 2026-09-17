@@ -20,6 +20,7 @@ import { masterApiService, type EmployeeDetailApiRecord } from "@/services/maste
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { createApiRequestError, requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
 import { authHelpers } from "@/lib/auth";
+import { withBasePath } from "@/lib/basePath";
 import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
 import type { FileMetadataDto, ListFilesFilter, UploadFileRequest } from "@/lib/fileUploadService";
 import { openBlobUrlInNewTab } from "@/lib/openBlobUrlInNewTab";
@@ -167,7 +168,7 @@ export const employeeService = {
       objHeaders["X-Company-Id"] = String(intCompanyID);
     }
 
-    const objResponse = await fetch(`/api/employees/avatar/${intEmployeeID}`, {
+    const objResponse = await fetch(withBasePath(`/api/employees/avatar/${intEmployeeID}`), {
       method: "PUT",
       headers: Object.keys(objHeaders).length ? objHeaders : undefined,
       body: objFormData,
