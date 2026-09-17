@@ -7,12 +7,8 @@ import {
   Checkbox,
   CircularProgress,
   FormControlLabel,
-  InputLabel,
-  ListItemText,
   MenuItem,
-  OutlinedInput,
   Paper,
-  Select,
   Snackbar,
   Stack,
   Step,
@@ -23,6 +19,8 @@ import {
 } from "@mui/material";
 import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
 
+import CommonSearchableMultiSelect from "@/Common/components/CommonSearchableMultiSelect";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import type { TenantOnboardingFormOptions } from "@/models/TenantOnboardingModels";
 import type {
   TenantEditPayload,
@@ -418,18 +416,35 @@ export default function TenantAdminTenantEditorPage({ intTenantID }: TenantEdito
           <TextField label="Contact Person Name" inputProps={{ "controlId": "tenant-admin.editor.contact-person.input" }} value={objForm.basic.strContactPersonName} onChange={(e) => setField("basic.strContactPersonName", e.target.value)} error={Boolean(dicErrors["basic.strContactPersonName"])} helperText={dicErrors["basic.strContactPersonName"]} fullWidth />
           <TextField label="Contact Email Address" inputProps={{ "controlId": "tenant-admin.editor.contact-email.input" }} value={objForm.basic.strContactEmailAddress} onChange={(e) => setField("basic.strContactEmailAddress", e.target.value)} error={Boolean(dicErrors["basic.strContactEmailAddress"])} helperText={dicErrors["basic.strContactEmailAddress"]} fullWidth />
           <TextField label="Contact Mobile Number" inputProps={{ "controlId": "tenant-admin.editor.contact-mobile.input" }} value={objForm.basic.strContactMobileNumber} onChange={(e) => setField("basic.strContactMobileNumber", e.target.value)} error={Boolean(dicErrors["basic.strContactMobileNumber"])} helperText={dicErrors["basic.strContactMobileNumber"]} fullWidth />
-          <TextField select label="Default Language *" inputProps={{ "controlId": "tenant-admin.editor.default-language.select" }} value={objForm.basic.intDefaultLanguageID === "" ? "" : String(objForm.basic.intDefaultLanguageID)} onChange={(e) => setField("basic.intDefaultLanguageID", e.target.value ? Number(e.target.value) : "")} error={Boolean(dicErrors["basic.intDefaultLanguageID"])} helperText={dicErrors["basic.intDefaultLanguageID"]} fullWidth>
-            <MenuItem value="">Select language</MenuItem>
-            {(objFormOptions?.lstLanguages ?? []).map((dicOption) => <MenuItem key={dicOption.intID} value={String(dicOption.intID)}>{dicOption.strLabel}</MenuItem>)}
-          </TextField>
-          <TextField select label="Secondary Language" inputProps={{ "controlId": "tenant-admin.editor.secondary-language.select" }} value={objForm.basic.intSecondaryLanguageID === "" ? "" : String(objForm.basic.intSecondaryLanguageID)} onChange={(e) => setField("basic.intSecondaryLanguageID", e.target.value ? Number(e.target.value) : "")} fullWidth>
-            <MenuItem value="">None</MenuItem>
-            {(objFormOptions?.lstLanguages ?? []).map((dicOption) => <MenuItem key={dicOption.intID} value={String(dicOption.intID)}>{dicOption.strLabel}</MenuItem>)}
-          </TextField>
-          <TextField select label="Default Country" inputProps={{ "controlId": "tenant-admin.editor.default-country.select" }} value={objForm.basic.intDefaultCountryID === "" ? "" : String(objForm.basic.intDefaultCountryID)} onChange={(e) => setField("basic.intDefaultCountryID", e.target.value ? Number(e.target.value) : "")} fullWidth>
-            <MenuItem value="">None</MenuItem>
-            {(objFormOptions?.lstCountries ?? []).map((dicOption) => <MenuItem key={dicOption.intID} value={String(dicOption.intID)}>{dicOption.strLabel}</MenuItem>)}
-          </TextField>
+          <CommonSearchableSelect
+            controlId="tenant-admin.editor.default-language.select"
+            label="Default Language *"
+            placeholder="Select language"
+            value={objForm.basic.intDefaultLanguageID}
+            options={objFormOptions?.lstLanguages ?? []}
+            onChange={(intValue) => setField("basic.intDefaultLanguageID", intValue)}
+            error={Boolean(dicErrors["basic.intDefaultLanguageID"])}
+            helperText={dicErrors["basic.intDefaultLanguageID"]}
+            fullWidth
+          />
+          <CommonSearchableSelect
+            controlId="tenant-admin.editor.secondary-language.select"
+            label="Secondary Language"
+            placeholder="None"
+            value={objForm.basic.intSecondaryLanguageID}
+            options={objFormOptions?.lstLanguages ?? []}
+            onChange={(intValue) => setField("basic.intSecondaryLanguageID", intValue)}
+            fullWidth
+          />
+          <CommonSearchableSelect
+            controlId="tenant-admin.editor.default-country.select"
+            label="Default Country"
+            placeholder="None"
+            value={objForm.basic.intDefaultCountryID}
+            options={objFormOptions?.lstCountries ?? []}
+            onChange={(intValue) => setField("basic.intDefaultCountryID", intValue)}
+            fullWidth
+          />
         </Box>
       </Stack>
     );
@@ -512,36 +527,15 @@ export default function TenantAdminTenantEditorPage({ intTenantID }: TenantEdito
           <TextField type="password" label="DB Password *" value={objForm.datastore.strDbPassword} onChange={(e) => setField("datastore.strDbPassword", e.target.value)} error={Boolean(dicErrors["datastore.strDbPassword"])} helperText={dicErrors["datastore.strDbPassword"] ?? (objSecrets.blnDbPasswordConfigured ? "Leave blank to keep the current DB password." : "")} fullWidth />
         </Box>
         <Box>
-          <InputLabel id="tenant-editor-modules-label" sx={{ mb: 1 }}>Modules</InputLabel>
-          <Select
+          <CommonSearchableMultiSelect
             controlId="tenant-admin.editor.modules.select"
-            labelId="tenant-editor-modules-label"
-            multiple
-            value={objForm.datastore.lstModuleIDs.map(String)}
-            onChange={(objEvent) => {
-              const lstSelectedValues = objEvent.target.value as string[];
-              setField("datastore.lstModuleIDs", lstSelectedValues.map((strValue) => Number(strValue)));
-            }}
-            input={<OutlinedInput />}
-            renderValue={(lstSelectedValues) => {
-              const lstResolvedValues = lstSelectedValues as string[];
-              const lstLabels = lstResolvedValues
-                .map((strValue) => objFormOptions?.lstModules.find((dicOption) => String(dicOption.intID) === strValue)?.strLabel)
-                .filter(Boolean);
-              return lstLabels.length > 0 ? lstLabels.join(", ") : "Select modules";
-            }}
+            label="Modules"
+            placeholder="Select modules"
+            value={objForm.datastore.lstModuleIDs}
+            options={objFormOptions?.lstModules ?? []}
+            onChange={(lstValues) => setField("datastore.lstModuleIDs", lstValues as number[])}
             fullWidth
-          >
-            {(objFormOptions?.lstModules ?? []).map((dicOption) => {
-              const blnChecked = objForm.datastore.lstModuleIDs.includes(dicOption.intID);
-              return (
-                <MenuItem key={dicOption.intID} value={String(dicOption.intID)} controlId="tenant-admin.tenant-editor.datastore.module.option" data-option-key={dicOption.intID}>
-                  <Checkbox controlId="tenant-admin.tenant-editor.datastore.module.checkbox" checked={blnChecked} inputProps={{ "controlId": "tenant-admin.tenant-editor.datastore.module.checkbox", "data-option-key": dicOption.intID } as InputHTMLAttributes<HTMLInputElement>} />
-                  <ListItemText primary={dicOption.strLabel} secondary={dicOption.strCode ?? undefined} />
-                </MenuItem>
-              );
-            })}
-          </Select>
+          />
         </Box>
         <FormControlLabel control={<Checkbox controlId="tenant-admin.tenant-editor.datastore.active.checkbox" checked={objForm.datastore.blnIsActive} onChange={(_, blnChecked) => setField("datastore.blnIsActive", blnChecked)} inputProps={{ "controlId": "tenant-admin.tenant-editor.datastore.active.checkbox" } as InputHTMLAttributes<HTMLInputElement>} />} label="Datastore active" />
       </Stack>

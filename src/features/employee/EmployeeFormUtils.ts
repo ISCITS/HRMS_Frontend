@@ -319,6 +319,7 @@ export function validateEmployeeForm(
     locationRequired: dicConstant.employeeMaster.validation.locationRequired,
     reportingManagerRequired: dicConstant.employeeMaster.validation.reportingManagerRequired,
     lineManagerRequired: dicConstant.employeeMaster.validation.lineManagerRequired,
+    workEmailRequired: dicConstant.employeeMaster.validation.workEmailRequired,
     workEmailInvalid: dicConstant.employeeMaster.validation.workEmailInvalid,
     personalEmailInvalid: dicConstant.employeeMaster.validation.personalEmailInvalid,
     mobileNumberInvalid: dicConstant.employeeMaster.validation.mobileNumberInvalid,
@@ -369,7 +370,9 @@ export function validateEmployeeForm(
     dicNextErrors.intLineManagerEmployeeID = dicValidationLabels.lineManagerRequired;
   }
 
-  if (strWorkEmail && !isEmailValid(strWorkEmail)) {
+  if (!strWorkEmail) {
+    dicNextErrors.strWorkEmail = dicValidationLabels.workEmailRequired;
+  } else if (!isEmailValid(strWorkEmail)) {
     dicNextErrors.strWorkEmail = dicValidationLabels.workEmailInvalid;
   }
 

@@ -30,6 +30,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import styles from "@/components/master/MasterScreen.module.css";
 import CommonDataGrid, { type DataGridColumn } from "@/components/ui/CommonDataGrid";
 import {
@@ -2363,21 +2364,14 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
 
         <Box className={`${styles.tableCard} ${styles.revisionCard}`} sx={{ px: 2.25, py: 3 }}>
           <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr" } }}>
-            <TextField
-              data-controlid="employee-salary.revision.salary-structure.select"
-              inputProps={{ "data-controlid": "employee-salary.revision.salary-structure.select" }}
-              select
+            <CommonSearchableSelect
+              controlId="employee-salary.revision.salary-structure.select"
               label={t("employee_salary_structure_field", "Salary structure")}
               value={dicRevisionForm.intSalaryStructureID}
-              onChange={(objEvent) => handleSalaryStructureChange(objEvent.target.value)}
-            >
-              <MenuItem data-controlid="employee-salary.revision.salary-structure.select.option" value="">{t("employee_salary_select", "Select")}</MenuItem>
-              {(objFormOptions?.lstSalaryStructures ?? []).map((dicOption) => (
-                <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`employee-salary.revision.salary-structure.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
-                  {dicOption.strCode ? `${dicOption.strCode} - ${dicOption.strLabel}` : dicOption.strLabel}
-                </MenuItem>
-              ))}
-            </TextField>
+              options={objFormOptions?.lstSalaryStructures ?? []}
+              onChange={(intValue) => handleSalaryStructureChange(intValue === "" ? "" : String(intValue))}
+              placeholder={t("employee_salary_select", "Select")}
+            />
             <TextField
               data-controlid="employee-salary.revision.effective-from.input"
               inputProps={{ "data-controlid": "employee-salary.revision.effective-from.input" }}
@@ -2847,22 +2841,15 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
     {blnIsRevisionMode ? (
         <Box className={`${styles.tableCard} ${styles.revisionCard}`} sx={{ px: 2.25, py: 3 }}>
           <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr" } }}>
-            <TextField
-              data-controlid="employee-salary.revision.salary-structure.select"
-              inputProps={{ "data-controlid": "employee-salary.revision.salary-structure.select" }}
-              select
+            <CommonSearchableSelect
+              controlId="employee-salary.revision.salary-structure.select"
               label={t("employee_salary_structure_field", "Salary structure")}
               value={dicRevisionForm.intSalaryStructureID}
-              onChange={(objEvent) => handleSalaryStructureChange(objEvent.target.value)}
+              options={objFormOptions?.lstSalaryStructures ?? []}
+              onChange={(intValue) => handleSalaryStructureChange(intValue === "" ? "" : String(intValue))}
+              placeholder={t("employee_salary_select", "Select")}
               required
-            >
-              <MenuItem data-controlid="employee-salary.revision.salary-structure.select.option" value="">{t("employee_salary_select", "Select")}</MenuItem>
-              {(objFormOptions?.lstSalaryStructures ?? []).map((dicOption) => (
-                <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`employee-salary.revision.salary-structure.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
-                  {dicOption.strCode ? `${dicOption.strCode} - ${dicOption.strLabel}` : dicOption.strLabel}
-                </MenuItem>
-              ))}
-            </TextField>
+            />
             <TextField
               data-controlid="employee-salary.revision.effective-from.input"
               inputProps={{ "data-controlid": "employee-salary.revision.effective-from.input" }}

@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import CommonDataGrid, { type DataGridColumn } from "@/components/ui/CommonDataGrid";
+import { withBasePath } from "@/lib/basePath";
 import ReimbursementClaimItemForm from "@/features/reimbursements/components/ReimbursementClaimItemForm";
 import ReimbursementClaimStatusBadge from "@/features/reimbursements/components/ReimbursementClaimStatusBadge";
 import { formatCurrency, formatDateLabel, toInputDate, translateKnownReimbursementText } from "@/features/reimbursements/formatters";
@@ -463,13 +464,13 @@ export default function ReimbursementClaimEditorPage({ strClaimID, strMode }: { 
     setStrSuccess("");
     if (strClaimIDToLoadAfterSuccess === strDeletedClaimSentinel) {
       setStrClaimIDToLoadAfterSuccess(null);
-      window.location.href = "/ess/reimbursements";
+      window.location.href = withBasePath("/ess/reimbursements");
       return;
     }
     if (strClaimIDToLoadAfterSuccess) {
       const strSubmittedClaimID = strClaimIDToLoadAfterSuccess;
       setStrClaimIDToLoadAfterSuccess(null);
-      window.location.href = buildEssClaimRoute(strSubmittedClaimID, "view");
+      window.location.href = withBasePath(buildEssClaimRoute(strSubmittedClaimID, "view"));
     }
   }
 
@@ -536,7 +537,7 @@ export default function ReimbursementClaimEditorPage({ strClaimID, strMode }: { 
 
   const lstItemTableColumns = useMemo<DataGridColumn<(typeof lstItemTableRows)[number]>[]>(
     () => [
-      { field: "rowActions", headerName: t("actions", "Actions"), align: "center", width: 130, sortable: false, exportable: false },
+      { field: "rowActions", headerName: t("actions", "Actions"), width: 130, sortable: false, exportable: false },
       { field: "reimbursementType", headerName: t("reimbursement_type", "Reimbursement Type"), width: 260, sortable: false },
       { field: "expenseDate", headerName: t("expense_date", "Expense Date"), width: 140, sortable: false },
       { field: "claimedAmount", headerName: t("claimed_amount", "Claimed Amount"), align: "right", width: 150, sortable: false },

@@ -318,7 +318,7 @@ export default function SalaryEssDeclarationsPage() {
   }, [blnCanEdit, lstFilteredRows, strBusyKey, t]);
 
   const lstColumns: CommonTableColumn<(typeof lstGridRows)[number]>[] = [
-    { field: "action", headerName: t("action", "Action"), width: 120, sortable: false, exportable: false, align: "center" },
+    { field: "action", headerName: t("action", "Action"), width: 120, sortable: false, exportable: false },
     { field: "fy", headerName: t("fy", "FY"), width: 160 },
     { field: "regime", headerName: t("regime", "Regime"), width: 180 },
     { field: "status", headerName: t("status", "Status"), width: 140, sortable: false },

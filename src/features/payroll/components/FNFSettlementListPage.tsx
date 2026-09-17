@@ -7,6 +7,7 @@ import { Alert, Autocomplete, Box, Button, MenuItem, TextField, Typography } fro
 import { useRouter } from "next/navigation";
 import { ReactNode, useEffect, useMemo, useState } from "react";
 
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import CommonDataGrid, { type DataGridColumn } from "@/components/ui/CommonDataGrid";
@@ -86,7 +87,7 @@ export default function FNFSettlementListPage() {
   }), [lstRows, dicFilters]);
 
   const lstTableColumns = useMemo<DataGridColumn<FNFSettlementGridRow>[]>(() => [
-    { field: "action", headerName: "Actions", width: 116, sortable: false, exportable: false, align: "center" },
+    { field: "action", headerName: "Actions", width: 116, sortable: false, exportable: false },
     { field: "strEmployee", headerName: "Employee", width: 170 },
     { field: "strDepartment", headerName: "Department", width: 160 },
     { field: "dtLastWorkingDate", headerName: "LWD", width: 130 },
@@ -141,7 +142,13 @@ export default function FNFSettlementListPage() {
           />
           <TextField size="small" label="Department" inputProps={{ "controlId": "payroll.fnf-settlements.department.input" }} value={dicFilters.department} onChange={(e) => setDicFilters((d) => ({ ...d, department: e.target.value }))} controlId="payroll.fnf-settlements.department.input" />
           <TextField size="small" type="month" label="Settlement Month" inputProps={{ "controlId": "payroll.fnf-settlements.month.input" }} InputLabelProps={{ shrink: true }} value={dicFilters.settlement_month} onChange={(e) => setDicFilters((d) => ({ ...d, settlement_month: e.target.value }))} controlId="payroll.fnf-settlements.month.input" />
-          <TextField size="small" select label="Status" inputProps={{ "controlId": "payroll.fnf-settlements.status.select" }} value={dicFilters.status} onChange={(e) => setDicFilters((d) => ({ ...d, status: e.target.value }))} controlId="payroll.fnf-settlements.status.select">{lstStatuses.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}</TextField>
+          <CommonSearchableSelect
+            controlId="payroll.fnf-settlements.status.select"
+            label="Status"
+            value={dicFilters.status}
+            options={lstStatuses.map((s) => ({ intID: s as string, strLabel: s }))}
+            onChange={(strValue) => setDicFilters((d) => ({ ...d, status: strValue || "All" }))}
+          />
           <TextField size="small" select label="Payable / Recoverable" value={dicFilters.payable_type} onChange={(e) => setDicFilters((d) => ({ ...d, payable_type: e.target.value }))} controlId="payroll.fnf-settlements.payable-type.select">{["All", "payable", "recoverable"].map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}</TextField>
           <TextField size="small" label="Exit Type" inputProps={{ "controlId": "payroll.fnf-settlements.exit-type.input" }} value={dicFilters.exit_type} onChange={(e) => setDicFilters((d) => ({ ...d, exit_type: e.target.value }))} controlId="payroll.fnf-settlements.exit-type.input" />
           <TextField size="small" type="date" label="LWD From" inputProps={{ "controlId": "payroll.fnf-settlements.lwd-from.input" }} InputLabelProps={{ shrink: true }} value={dicFilters.lwd_from} onChange={(e) => setDicFilters((d) => ({ ...d, lwd_from: e.target.value }))} controlId="payroll.fnf-settlements.lwd-from.input" />

@@ -1,0 +1,226 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  width: 100%;
+}
+
+.controlsCard {
+  background: var(--app-surface-color);
+  border: 1px solid var(--app-card-border-color);
+  border-radius: var(--app-card-radius);
+  box-shadow: var(--app-shadow-soft);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.filtersRow {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.tableCard {
+  background: var(--app-surface-color);
+  border: 1px solid var(--app-card-border-color);
+  border-radius: var(--app-card-radius);
+  box-shadow: var(--app-shadow-soft);
+  overflow: hidden;
+  padding: 10px;
+  min-width: 0;
+}
+
+.topScrollbar {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-gutter: stable;
+  min-height: 16px;
+}
+
+.topScrollbar:focus-visible {
+  outline: 2px solid var(--app-primary-color);
+  outline-offset: -2px;
+}
+
+.tableWrap {
+  border-radius: 14px;
+  max-height: 640px;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.table {
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 1100px;
+  width: 100%;
+}
+
+.table thead th {
+  background: var(--app-grid-header-background);
+  border-bottom: 1px solid var(--app-grid-border-color);
+  color: var(--app-grid-header-color);
+  font-size: var(--app-grid-header-font-size);
+  font-weight: 700;
+  padding: var(--app-grid-cell-padding-block) var(--app-grid-cell-padding-inline);
+  position: sticky;
+  text-align: center;
+  top: 0;
+  white-space: nowrap;
+  z-index: 2;
+}
+
+.table thead tr:first-child th {
+  top: 0;
+}
+
+.table thead tr:nth-child(2) th {
+  top: 37px;
+}
+
+.table tbody td {
+  border-bottom: 1px solid var(--app-grid-border-color);
+  color: var(--app-grid-row-color);
+  font-size: var(--app-grid-row-font-size);
+  padding: var(--app-grid-cell-padding-block) var(--app-grid-cell-padding-inline);
+  text-align: right;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.table tbody tr:hover td {
+  background: var(--app-grid-row-hover-background);
+}
+
+.employeeCell {
+  text-align: left !important;
+}
+
+.stickyAction,
+.stickyEmployee {
+  background: var(--app-grid-header-background);
+  position: sticky;
+  z-index: 3;
+}
+
+tbody .stickyAction,
+tbody .stickyEmployee {
+  background: var(--app-surface-color);
+  z-index: 1;
+}
+
+tbody tr:hover .stickyAction,
+tbody tr:hover .stickyEmployee {
+  background: var(--app-grid-row-hover-background);
+}
+
+.stickyAction {
+  border-right: 1px solid var(--app-grid-border-color);
+  left: 0;
+  min-width: 76px;
+  text-align: center !important;
+  width: 76px;
+}
+
+.stickyEmployee {
+  border-right: 2px solid var(--app-grid-border-color);
+  left: 76px;
+  min-width: 190px;
+}
+
+/* Visually separates each month's Taxable/TDS pair from the next so the
+   month-by-month structure reads at a glance while horizontally scrolling. */
+.monthGroupEnd {
+  border-right: 2px solid var(--app-grid-border-color) !important;
+}
+
+.monthGroupTint {
+  background: rgba(29, 93, 150, 0.035);
+}
+
+.employeeCode {
+  color: var(--app-grid-row-color);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.employeeName {
+  color: #64748b;
+  font-size: 0.76rem;
+}
+
+.emptyState {
+  color: #697586;
+  padding: 32px 12px;
+  text-align: center;
+}
+
+.paginationBar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 0 2px 10px;
+}
+
+.paginationInfo {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.paginationRange {
+  color: #51606f;
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.rowsPerPageSelect {
+  min-width: 76px;
+}
+
+.rowsPerPageSelect :global(.MuiInputBase-root) {
+  min-height: 34px;
+}
+
+.paginationBar :global(.MuiPagination-ul) {
+  gap: 2px;
+}
+
+.paginationBar :global(.MuiPaginationItem-root) {
+  color: var(--app-primary-color);
+  font-size: 0.78rem;
+  height: 26px;
+  margin: 0;
+  min-width: 26px;
+}
+
+.paginationBar :global(.MuiPaginationItem-root.Mui-selected) {
+  background-color: var(--app-primary-color);
+  color: #ffffff;
+}
+
+.paginationBar :global(.MuiPaginationItem-root:hover) {
+  background-color: var(--app-primary-soft);
+}
+
+@media (max-width: 900px) {
+  .filtersRow {
+    width: 100%;
+  }
+
+  .filtersRow > * {
+    flex: 1 1 180px;
+    min-width: 0 !important;
+  }
+
+  .paginationBar {
+    justify-content: center;
+  }
+}

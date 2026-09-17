@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import CommonRowActions from "@/components/master/CommonRowActions";
@@ -413,28 +414,22 @@ export default function StateMasterPanel() {
         contentSx={{ overflowX: "hidden", overflowY: "visible" }}
         nodeContent={
           <Box sx={{ display: "grid", gap: 2, pt: 0.5 }}>
-            <TextField controlId="state-master.dialog.country.select"
-              inputProps={{ "controlId": "state-master.dialog.country.select" }}
+            <CommonSearchableSelect
+              controlId="state-master.dialog.country.select"
               required
-              select label={`${dicLabels.fieldCountry}`} value={dicForm.countryId === "" ? "" : String(dicForm.countryId)}
+              label={`${dicLabels.fieldCountry}`}
+              value={dicForm.countryId}
+              options={objFormOptions.lstCountries}
+              getOptionLabel={(dicCountry) => `${dicCountry.strLabel}${dicCountry.strCode ? ` (${dicCountry.strCode})` : ""}`}
               disabled={strMode === "view"}
-              onChange={(objEvent) => {
+              onChange={(intValue) => {
                 setDicErrors((dicPrevious) => ({ ...dicPrevious, countryId: undefined }));
-                setDicForm((dicPrevious) => ({ ...dicPrevious, countryId: objEvent.target.value ? Number(objEvent.target.value) : "" }));
+                setDicForm((dicPrevious) => ({ ...dicPrevious, countryId: intValue }));
               }}
-              error={Boolean(dicErrors.countryId)} 
-              helperText={dicErrors.countryId} 
-              fullWidth>
-              <MenuItem
-                controlId="state-master.dialog.country.empty.option"
-                value="">{dicLabels.selectCountry}
-                </MenuItem>{
-                objFormOptions.lstCountries.map((dicCountry) => <MenuItem controlId="state-master.dialog.country.option"
-                  data-option-key={dicCountry.intID} 
-                  key={dicCountry.intID} 
-                  value={String(dicCountry.intID)}>{
-                    dicCountry.strLabel}{dicCountry.strCode ? ` (${dicCountry.strCode})` : ""}</MenuItem>)}
-            </TextField>
+              error={Boolean(dicErrors.countryId)}
+              helperText={dicErrors.countryId}
+              fullWidth
+            />
             <TextField 
             controlId="state-master.dialog.name.input" 
             inputProps={{ "controlId": "state-master.dialog.name.input" }}

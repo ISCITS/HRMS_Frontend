@@ -16,7 +16,7 @@ import {
   TextField,
   Typography
 } from "@mui/material";
-import { useEffect, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
@@ -41,14 +41,24 @@ type PayrollGroupEditorPageProps = {
   strMode: "add" | "edit" | "view";
   /** Public identifier from the URL. */
   strPayrollGroupID?: string;
+  blnEmbedded?: boolean;
+  onClose?: () => void;
+  onSaved?: (dicRecord: PayrollGroupDetailRecord) => void;
 };
 
 const lstPayrollGroupModuleCodes = ["PAYROLL_GROUP", "PAYROLL_GROUPS", "MASTER_PAYROLL_GROUP"];
 
-export default function PayrollGroupEditorPage({
+export type PayrollGroupEditorHandle = {
+  save: () => void;
+};
+
+const PayrollGroupEditorPage = forwardRef<PayrollGroupEditorHandle, PayrollGroupEditorPageProps>(function PayrollGroupEditorPage({
   strMode,
-  strPayrollGroupID
-}: PayrollGroupEditorPageProps) {
+  strPayrollGroupID,
+  blnEmbedded = false,
+  onClose,
+  onSaved
+}, ref) {
   const objRouter = useRouter();
   const { t } = useModuleLabels("payroll-groups");
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstPayrollGroupModuleCodes);
@@ -94,7 +104,7 @@ export default function PayrollGroupEditorPage({
           return;
         }
         setObjFormOptions(objOptions);
-        if (strMode === "edit" && strPayrollGroupID) {
+        if ((strMode === "edit" || strMode === "view") && strPayrollGroupID) {
           const dicDetail = await payrollGroupService.getPayrollGroupById(strPayrollGroupID);
           if (!blnMounted) {
             return;
@@ -261,6 +271,10 @@ export default function PayrollGroupEditorPage({
           ? t("group_update_success", "Payroll group updated successfully.")
           : t("group_create_success", "Payroll group created successfully.")
       );
+      onSaved?.(dicSavedRecord);
+      if (blnEmbedded) {
+        return;
+      }
       if (strMode === "add") {
         objRouter.push(`/masters/payroll-groups/edit/${dicSavedRecord.strRecordUUID}`);
       }
@@ -270,6 +284,12 @@ export default function PayrollGroupEditorPage({
       setBlnSaving(false);
     }
   }
+
+  useImperativeHandle(ref, () => ({
+    save: () => {
+      void handleSave();
+    }
+  }));
 
   if (blnLoading || blnRightsLoading) {
     return (
@@ -298,61 +318,10 @@ export default function PayrollGroupEditorPage({
     );
   }
 
-  return (
-    <Stack spacing={1.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
-      <Paper
-        sx={{
-          borderRadius: "var(--app-card-radius)",
-          p: "10px",
-          border: "1px solid rgba(148,163,184,0.18)",
-          background: "linear-gradient(135deg, #f8fbff 0%, #eef7f4 48%, #f8fafc 100%)"
-        }}
-      >
-        <Stack spacing={1.25}>
-          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
-            <Box>
-              <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
-                {strMode === "add"
-                  ? t("group_add_title", "Add Payroll Group")
-                  : blnReadOnly
-                    ? t("group_view_title", "View Payroll Group")
-                    : t("group_edit_title", "Edit Payroll Group")}
-              </Typography>
-              <Typography sx={{ color: "#64748b", mt: 0.75 }}>
-                {t("group_subtitle", "Group employees for payroll processing and scheduling.")}
-              </Typography>
-            </Box>
-            <Stack spacing={1.25} alignItems={{ xs: "flex-start", md: "flex-end" }}>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
-                <Button
-                  controlId="payroll-groups.editor.back.button"
-                  className={styles.secondaryButton}
-                  startIcon={<ArrowBackRoundedIcon />}
-                  onClick={() => objRouter.push("/masters/payroll-groups")}
-                  sx={{ height: 38, minHeight: 38, py: 0, px: 1.5, fontSize: "0.9rem", whiteSpace: "nowrap" }}
-                >
-                  {t("group_back_to_list", "Back to List")}
-                </Button>
-                {blnCanSave ? (
-                  <Button
-                    controlId="payroll-groups.editor.save.button"
-                    className={styles.primaryButton}
-                    startIcon={<SaveRoundedIcon />}
-                    onClick={handleSave}
-                    disabled={blnSaving}
-                    sx={{ height: 38, minHeight: 38, py: 0, px: 1.75, fontSize: "0.9rem", whiteSpace: "nowrap" }}
-                  >
-                    {blnSaving ? t("group_saving", "Saving...") : t("group_save", "Save")}
-                  </Button>
-                ) : null}
-              </Stack>
-            </Stack>
-          </Stack>
-        </Stack>
-      </Paper>
-
+  const nodeFormContent = (
+    <>
       {strError ? <Alert severity="error">{strError}</Alert> : null}
-      {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
+      {strSuccess && !blnEmbedded ? <Alert severity="success">{strSuccess}</Alert> : null}
       <CommonEditModeBanner
         blnReadOnly={blnReadOnly}
         strReadOnlyMessage={t("group_read_only_mode", "You have view-only access to Payroll Groups.")}
@@ -363,7 +332,7 @@ export default function PayrollGroupEditorPage({
           borderRadius: "var(--app-card-radius)",
           p: "10px",
           border: "1px solid rgba(187, 213, 232, 0.7)",
-          boxShadow: "var(--app-shadow-soft)"
+          boxShadow: blnEmbedded ? "none" : "var(--app-shadow-soft)"
         }}
       >
         <Stack spacing={1.5}>
@@ -530,6 +499,73 @@ export default function PayrollGroupEditorPage({
         </Stack>
       </Paper>
       ) : null}
+    </>
+  );
+
+  if (blnEmbedded) {
+    return (
+      <Stack spacing={1.5} sx={{ pr: 0.5 }}>
+        {nodeFormContent}
+      </Stack>
+    );
+  }
+
+  return (
+    <Stack spacing={1.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
+      <Paper
+        sx={{
+          borderRadius: "var(--app-card-radius)",
+          p: "10px",
+          border: "1px solid rgba(148,163,184,0.18)",
+          background: "linear-gradient(135deg, #f8fbff 0%, #eef7f4 48%, #f8fafc 100%)"
+        }}
+      >
+        <Stack spacing={1.25}>
+          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
+            <Box>
+              <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
+                {strMode === "add"
+                  ? t("group_add_title", "Add Payroll Group")
+                  : blnReadOnly
+                    ? t("group_view_title", "View Payroll Group")
+                    : t("group_edit_title", "Edit Payroll Group")}
+              </Typography>
+              <Typography sx={{ color: "#64748b", mt: 0.75 }}>
+                {t("group_subtitle", "Group employees for payroll processing and scheduling.")}
+              </Typography>
+            </Box>
+            <Stack spacing={1.25} alignItems={{ xs: "flex-start", md: "flex-end" }}>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
+                <Button
+                  controlId="payroll-groups.editor.back.button"
+                  className={styles.secondaryButton}
+                  startIcon={<ArrowBackRoundedIcon />}
+                  onClick={() => onClose ? onClose() : objRouter.push("/masters/payroll-groups")}
+                  sx={{ height: 38, minHeight: 38, py: 0, px: 1.5, fontSize: "0.9rem", whiteSpace: "nowrap" }}
+                >
+                  {t("group_back_to_list", "Back to List")}
+                </Button>
+                {blnCanSave ? (
+                  <Button
+                    controlId="payroll-groups.editor.save.button"
+                    className={styles.primaryButton}
+                    startIcon={<SaveRoundedIcon />}
+                    onClick={handleSave}
+                    disabled={blnSaving}
+                    sx={{ height: 38, minHeight: 38, py: 0, px: 1.75, fontSize: "0.9rem", whiteSpace: "nowrap" }}
+                  >
+                    {blnSaving ? t("group_saving", "Saving...") : t("group_save", "Save")}
+                  </Button>
+                ) : null}
+              </Stack>
+            </Stack>
+          </Stack>
+        </Stack>
+      </Paper>
+
+      {nodeFormContent}
     </Stack>
   );
-}
+});
+
+export default PayrollGroupEditorPage;

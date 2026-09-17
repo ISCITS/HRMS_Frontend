@@ -19,6 +19,7 @@ import { handleSingleDialogActionEnter } from "@/Common/utils/dialogKeyboard";
 import { apiConstants } from "@/config/constants";
 import { enMessages } from "@/i18n/messages/en";
 import { authHelpers } from "@/lib/auth";
+import { withBasePath } from "@/lib/basePath";
 import type {
   AuthOtpChallengeData,
   GoogleMfaChallengeData,
@@ -80,7 +81,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
       // that now carries the chosen portal.
       const strHomeRoute = getPostLoginRoute(objResult.Data.strHomeRoute);
       if (typeof window !== "undefined") {
-        window.location.assign(strHomeRoute);
+        window.location.assign(withBasePath(strHomeRoute));
         return;
       }
       objRouter.replace(strHomeRoute);
@@ -650,7 +651,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         <Box className={styles.heroPanel}>
           <Box className={styles.heroContent}>
             <Box className={styles.heroIllustrationFrame}>
-              <Box component="img" src="/images/hrms-login.png" alt={getLoginLabel("heroImageAlt")} className={styles.heroImage} />
+              <Box component="img" src={withBasePath("/images/hrms-login.png")} alt={getLoginLabel("heroImageAlt")} className={styles.heroImage} />
             </Box>
           </Box>
         </Box>

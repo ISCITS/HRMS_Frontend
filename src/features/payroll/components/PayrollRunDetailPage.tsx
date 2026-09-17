@@ -497,20 +497,44 @@ function PayrollRunDetailPageLegacy({
     }
   }
 
+  async function resolveFreshPayslipID(
+    dicRow: PayslipRunListRecord
+  ): Promise<{ intPayslipID: number | null; strPayslipRecordUUID: string | null }> {
+    if (!dicRow.intPayslipID) {
+      const dicPayslip = await generatePayslip(dicRow);
+      return {
+        intPayslipID: dicPayslip?.intPayslipID ?? null,
+        strPayslipRecordUUID: dicPayslip?.strPayslipRecordUUID ?? null,
+      };
+    }
+    // A payslip already exists for this row, but a reprocess since it was generated can
+    // leave that persisted document stale. getPayslipPreview flags this with
+    // blnGenerated:false (no persisted document matches the current result version) -
+    // regenerate in that case instead of silently reusing yesterday's snapshot.
+    const dicPreview = await payslipService.getPayslipPreview(strRunID, dicRow.intEmployeeID);
+    if (dicPreview.blnGenerated) {
+      return {
+        intPayslipID: dicPreview.intPayslipID ?? dicRow.intPayslipID,
+        strPayslipRecordUUID: dicPreview.strPayslipRecordUUID ?? null,
+      };
+    }
+    const dicPayslip = await generatePayslip(dicRow);
+    return {
+      intPayslipID: dicPayslip?.intPayslipID ?? null,
+      strPayslipRecordUUID: dicPayslip?.strPayslipRecordUUID ?? null,
+    };
+  }
+
   async function viewPayslip(dicRow: PayslipRunListRecord) {
     setBlnPayslipLoading(true);
     setStrError("");
     try {
-      let intPayslipID = dicRow.intPayslipID;
-      if (!intPayslipID) {
-        const dicPayslip = await generatePayslip(dicRow);
-        intPayslipID = dicPayslip?.intPayslipID ?? null;
-      }
+      const { intPayslipID, strPayslipRecordUUID } = await resolveFreshPayslipID(dicRow);
       if (!intPayslipID) {
         setStrError(t("payslip_not_generated", "Payslip could not be generated for this employee."));
         return;
       }
-      setStrPayslipPreviewHtml(await payslipService.getDownloadHtml(String(intPayslipID)));
+      setStrPayslipPreviewHtml(await payslipService.getDownloadHtml(strPayslipRecordUUID ?? String(intPayslipID)));
       setBlnPayslipDialogOpen(true);
     } catch (objError) {
       setStrError(
@@ -529,15 +553,11 @@ function PayrollRunDetailPageLegacy({
     setBlnPayslipLoading(true);
     setStrError("");
     try {
-      let intPayslipID = dicRow.intPayslipID;
-      if (!intPayslipID) {
-        const dicPayslip = await generatePayslip(dicRow);
-        intPayslipID = dicPayslip?.intPayslipID ?? null;
-      }
+      const { intPayslipID, strPayslipRecordUUID } = await resolveFreshPayslipID(dicRow);
       if (!intPayslipID) {
         return;
       }
-      const strHtml = await payslipService.getDownloadHtml(String(intPayslipID));
+      const strHtml = await payslipService.getDownloadHtml(strPayslipRecordUUID ?? String(intPayslipID));
       if (blnPrint) {
         printPayslipHtml(strHtml);
       } else {

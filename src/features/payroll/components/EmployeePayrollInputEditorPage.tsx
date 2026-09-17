@@ -37,6 +37,7 @@ import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
 import { useRouter } from "next/navigation";
 
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -599,29 +600,16 @@ export default function EmployeePayrollInputEditorPage({
   const lstAdjustmentRows = dicForm.lstLines.map((dicLine) => ({
     id: dicLine.intTempID,
     strComponent: (
-      <TextField
-        select
+      <CommonSearchableSelect
+        label=""
         value={dicLine.intSalaryComponentID}
-        onChange={(objEvent) => updateLine(dicLine.intTempID, "intSalaryComponentID", parseSelectNumber(objEvent.target.value))}
+        options={objOptions?.lstSalaryComponents ?? []}
+        onChange={(intValue) => updateLine(dicLine.intTempID, "intSalaryComponentID", intValue)}
         disabled={blnFormLocked}
         fullWidth
-        size="small"
+        placeholder={t("select_component", "Select component")}
         sx={objFieldSx}
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <StorageRoundedIcon sx={{ color: "#94a3b8", fontSize: 18 }} />
-            </InputAdornment>
-          ),
-        }}
-      >
-        <MenuItem value="">{t("select_component", "Select component")}</MenuItem>
-        {(objOptions?.lstSalaryComponents ?? []).map((dicComponent) => (
-          <MenuItem key={dicComponent.intID} value={dicComponent.intID}>
-            {dicComponent.strLabel}
-          </MenuItem>
-        ))}
-      </TextField>
+      />
     ),
     strCategory: (
       <TextField

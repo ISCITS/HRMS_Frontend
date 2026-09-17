@@ -13,6 +13,7 @@ import { useSearchParams } from "next/navigation";
 
 import LookupChip, { lookupLabel } from "@/features/attendance-regularization/components/LookupChip";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import styles from "@/components/master/MasterScreen.module.css";
@@ -317,9 +318,7 @@ export default function RegularizationRequestsPage({ blnEssManagerMode = false }
               <TextField data-control-id="regularization-requests.on-behalf.date.input" fullWidth type="date" required label={t("work_date", "Work Date")} InputLabelProps={{ shrink: true }} value={objOnBehalf.dtWorkDate} onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, dtWorkDate: objEvent.target.value }))} />
             </Grid>
             <Grid item xs={12} md={blnOnBehalfNeedsTimes ? 4 : 6}>
-              <TextField data-control-id="regularization-requests.on-behalf.type.select" fullWidth select required label={t("request_type", "Request Type")} value={objOnBehalf.strRequestTypeCode} onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, strRequestTypeCode: objEvent.target.value }))}>
-                {lstTypes.map((objOption) => <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>{objOption.strDisplayName}</MenuItem>)}
-              </TextField>
+              <CommonSearchableSelect controlId="regularization-requests.on-behalf.type.select" fullWidth required label={t("request_type", "Request Type")} value={objOnBehalf.strRequestTypeCode} onChange={(intValue) => setObjOnBehalf((objValue) => ({ ...objValue, strRequestTypeCode: intValue }))} options={lstTypes.map((objOption) => ({ intID: objOption.strValueCode, strLabel: objOption.strDisplayName }))} />
             </Grid>
             {blnOnBehalfNeedsTimes ? (
               <>
@@ -350,19 +349,17 @@ export default function RegularizationRequestsPage({ blnEssManagerMode = false }
               </>
             ) : null}
             <Grid item xs={12} sm={6}>
-              <TextField
-                data-control-id="regularization-requests.on-behalf.status.select"
+              <CommonSearchableSelect
+                controlId="regularization-requests.on-behalf.status.select"
                 fullWidth
-                select
                 required
                 disabled={blnOnBehalfAutoCalculated}
                 label={t("proposed_status", "Proposed Status")}
                 value={objOnBehalf.strProposedStatus}
                 helperText={blnOnBehalfAutoCalculated ? t("calculated_from_timings", "Calculated from timings") : " "}
-                onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, strProposedStatus: objEvent.target.value }))}
-              >
-                {lstAttendanceStatuses.map((objOption) => <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>{objOption.strDisplayName}</MenuItem>)}
-              </TextField>
+                onChange={(intValue) => setObjOnBehalf((objValue) => ({ ...objValue, strProposedStatus: intValue }))}
+                options={lstAttendanceStatuses.map((objOption) => ({ intID: objOption.strValueCode, strLabel: objOption.strDisplayName }))}
+              />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField

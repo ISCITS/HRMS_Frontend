@@ -405,17 +405,20 @@ export default function PayrollResultListPage({
         dicRow.strPayrollRunRecordUUID ?? String(dicRow.intPayrollRunID),
         dicRow.intEmployeeID
       );
-      const intPayslipID =
-        dicRow.intPayslipID ??
-        dicPayslip.intPayslipID ??
-        (blnPayslipScreen
-          ? null
-          : (
-              await payslipService.generatePayslip(
-                dicRow.strPayrollRunRecordUUID ?? String(dicRow.intPayrollRunID),
-                dicRow.intEmployeeID
-              )
-            ).intPayslipID);
+      // A reprocess since the last generated payslip leaves that persisted document
+      // stale - getPayslipPreview flags this with blnGenerated:false (no persisted
+      // document matches the current result version). Don't trust the row's cached
+      // intPayslipID in that case; regenerate instead where this screen allows it.
+      const intPayslipID = dicPayslip.blnGenerated
+        ? dicPayslip.intPayslipID ?? dicRow.intPayslipID
+        : blnPayslipScreen
+        ? dicRow.intPayslipID ?? dicPayslip.intPayslipID
+        : (
+            await payslipService.generatePayslip(
+              dicRow.strPayrollRunRecordUUID ?? String(dicRow.intPayrollRunID),
+              dicRow.intEmployeeID
+            )
+          ).intPayslipID;
       if (!intPayslipID) {
         setStrError(t("payslip_not_generated", "Payslip could not be generated for this employee."));
         return;

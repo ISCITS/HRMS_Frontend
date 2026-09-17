@@ -17,6 +17,7 @@ import {
 } from "@mui/material";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -330,32 +331,22 @@ export default function LeaveSettingsPanel() {
             <Typography sx={sxSubHeading}>Leave Calendar</Typography>
             <Typography sx={sxSubCaption}>Leave Year Starts On.</Typography>
             <Box sx={{ ...sxCalendarGrid, mb: 3 }}>
-              <TextField
-                select
+              <CommonSearchableSelect
                 label="Day"
-                size="small"
-                value={String(Math.min(intDay, intMaxDay))}
-                onChange={(objEvent) => setIntDay(Number(objEvent.target.value))}
+                value={Math.min(intDay, intMaxDay)}
+                options={lstDayOptions.map((intOption) => ({ intID: intOption, strLabel: String(intOption).padStart(2, "0") }))}
+                onChange={(intValue) => setIntDay(intValue === "" ? 1 : Number(intValue))}
                 disabled={blnReadOnly}
                 controlId="settings.leave.year-day.select"
-              >
-                {lstDayOptions.map((intOption) => (
-                  <MenuItem key={intOption} value={String(intOption)}>{String(intOption).padStart(2, "0")}</MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                select
+              />
+              <CommonSearchableSelect
                 label="Month"
-                size="small"
-                value={String(intMonth)}
-                onChange={(objEvent) => setIntMonth(Number(objEvent.target.value))}
+                value={intMonth}
+                options={lstMonths.map((strName, intIndex) => ({ intID: intIndex + 1, strLabel: strName }))}
+                onChange={(intValue) => setIntMonth(intValue === "" ? 1 : Number(intValue))}
                 disabled={blnReadOnly}
                 controlId="settings.leave.year-month.select"
-              >
-                {lstMonths.map((strName, intIndex) => (
-                  <MenuItem key={strName} value={String(intIndex + 1)}>{strName}</MenuItem>
-                ))}
-              </TextField>
+              />
               <Box sx={{ display: "flex", alignItems: "center" }}>
                 <Chip label={`Starts on ${strYearStartPreview}`} color="primary" variant="outlined" />
               </Box>

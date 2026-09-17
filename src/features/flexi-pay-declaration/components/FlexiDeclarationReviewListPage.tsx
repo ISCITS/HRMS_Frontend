@@ -97,7 +97,7 @@ export default function FlexiDeclarationReviewListPage() {
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      { field: "action", headerName: "Action", align: "center", sortable: false, filterable: false, exportable: false, width: 100 },
+      { field: "action", headerName: "Action", sortable: false, filterable: false, exportable: false, width: 100 },
       { field: "strEmployeeCode", headerName: "Employee Code", width: 150 },
       { field: "strEmployeeName", headerName: "Employee Name", width: 200 },
       { field: "strFinancialYearCode", headerName: "Financial Year", width: 140 },

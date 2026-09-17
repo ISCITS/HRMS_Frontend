@@ -24,6 +24,7 @@ import {
 } from "@mui/material";
 import { Fragment, useEffect, useMemo, useState } from "react";
 
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import styles from "@/components/master/MasterScreen.module.css";
 import { employeeService } from "@/features/employee/services/employeeService";
@@ -256,6 +257,11 @@ export default function EssLeaveLedgerPanel({ blnHrMode = false }: { blnHrMode?:
     return Array.from(dicSeen, ([intLeaveTypeID, strLabel]) => ({ intLeaveTypeID, strLabel }));
   }, [lstLedger]);
 
+  const lstLeaveTypeSelectOptions = useMemo(
+    () => [{ intID: "all", strLabel: "All Leave Types" }, ...lstLeaveTypeOptions.map((objOption) => ({ intID: String(objOption.intLeaveTypeID), strLabel: objOption.strLabel }))],
+    [lstLeaveTypeOptions],
+  );
+
   // Group visible movements under their Leave Type parent (respecting the Leave Type filter, hiding
   // the redundant approval-release rows).
   const lstGroups = useMemo<LeaveTypeGroup[]>(() => {
@@ -312,22 +318,14 @@ export default function EssLeaveLedgerPanel({ blnHrMode = false }: { blnHrMode?:
           />
         )}
       />
-      <TextField
-        select
-        size="small"
+      <CommonSearchableSelect
         label="Leave Type"
         value={strLeaveTypeFilter}
-        onChange={(objEvent) => setStrLeaveTypeFilter(objEvent.target.value)}
+        options={lstLeaveTypeSelectOptions}
+        onChange={(strValue) => setStrLeaveTypeFilter(strValue === "" ? "all" : String(strValue))}
         controlId="ess.leave-ledger.type.select"
         sx={{ minWidth: 160 }}
-      >
-        <MenuItem value="all">All Leave Types</MenuItem>
-        {lstLeaveTypeOptions.map((objOption) => (
-          <MenuItem key={objOption.intLeaveTypeID} value={String(objOption.intLeaveTypeID)}>
-            {objOption.strLabel}
-          </MenuItem>
-        ))}
-      </TextField>
+      />
       <TextField
         select
         size="small"
