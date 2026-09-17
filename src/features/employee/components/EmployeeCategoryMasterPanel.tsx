@@ -280,25 +280,29 @@ export default function EmployeeCategoryMasterPanel() {
       dicValues.code,
       dicValues.lstTexts,
     );
-    if (!intSecondaryLanguageID) {
-      return {
-        ...dicValues,
-        lstTexts: [dicDefaultRow],
-      };
+    const lstOtherTexts = dicValues.lstTexts
+      .filter((dicText) => dicText.intLanguageID && Number(dicText.intLanguageID) !== intDefaultLanguageID)
+      .map((dicText) => ({ ...dicText, strEmployeeCategoryCode: dicValues.code }));
+    if (intSecondaryLanguageID && intSecondaryLanguageID !== intDefaultLanguageID &&
+        !lstOtherTexts.some((dicText) => Number(dicText.intLanguageID) === intSecondaryLanguageID)) {
+      lstOtherTexts.unshift(buildFixedLanguageRow(intSecondaryLanguageID, "", dicValues.code, []));
     }
-    const dicSecondaryExistingText = dicValues.lstTexts.find(
-      (dicText) => Number(dicText.intLanguageID) === intSecondaryLanguageID,
-    );
-    const dicSecondaryRow = buildFixedLanguageRow(
-      intSecondaryLanguageID,
-      dicSecondaryExistingText?.strEmployeeCategoryName ?? "",
-      dicValues.code,
-      dicValues.lstTexts,
-    );
     return {
       ...dicValues,
-      lstTexts: [dicDefaultRow, dicSecondaryRow],
+      lstTexts: [dicDefaultRow, ...lstOtherTexts],
     };
+  }
+
+  function addLanguageRow() {
+    setDicForm((dicPrevious) => {
+      const dicLanguage = objFormOptions.lstLanguages.find((dicOption) =>
+        !dicPrevious.lstTexts.some((dicText) => Number(dicText.intLanguageID) === dicOption.intID));
+      if (!dicLanguage) return dicPrevious;
+      return {
+        ...dicPrevious,
+        lstTexts: [...dicPrevious.lstTexts, buildFixedLanguageRow(dicLanguage.intID, "", dicPrevious.code, [])],
+      };
+    });
   }
 
   function syncEnglishEmployeeCategoryName(strEmployeeCategoryName: string) {
@@ -394,16 +398,12 @@ export default function EmployeeCategoryMasterPanel() {
   }
 
   async function handleTranslateClick() {
-    const dicSecondaryRow = dicForm.lstTexts[1];
-    if (!dicSecondaryRow) {
-      return;
+    for (const dicText of dicForm.lstTexts.slice(1)) {
+      const intTargetLanguageID = Number(dicText.intLanguageID);
+      if (intTargetLanguageID && intTargetLanguageID !== intDefaultLanguageID) {
+        await translateTextRow(dicText.strRowID, intTargetLanguageID);
+      }
     }
-    const intTargetLanguageID =
-      Number(dicSecondaryRow.intLanguageID) || intSecondaryLanguageID;
-    if (!intTargetLanguageID || intTargetLanguageID === intDefaultLanguageID) {
-      return;
-    }
-    await translateTextRow(dicSecondaryRow.strRowID, intTargetLanguageID);
   }
 
   // Filter draft values are only committed on Search/Clear to keep the grid interactions predictable.
@@ -760,7 +760,6 @@ export default function EmployeeCategoryMasterPanel() {
               />
             </Box>
 
-            {intSecondaryLanguageID ? (
             <>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1.25, flexWrap: "wrap" }}>
               <Box>
@@ -770,14 +769,14 @@ export default function EmployeeCategoryMasterPanel() {
                 </Typography>
               </Box>
               <Box sx={{ display: "flex", gap: 1.1, alignItems: "center", ml: "auto" }}>
-                <Button controlId="employee-category-master.dialog.add-language.button" className={styles.secondaryButton} startIcon={<AddRoundedIcon />} disabled sx={{ minHeight: 34 }}>
+                <Button controlId="employee-category-master.dialog.add-language.button" className={styles.secondaryButton} startIcon={<AddRoundedIcon />} onClick={addLanguageRow} disabled={strMode === "view" || blnSubmitting || !objFormOptions.lstLanguages.some((dicLanguage) => !dicForm.lstTexts.some((dicText) => Number(dicText.intLanguageID) === dicLanguage.intID))} sx={{ minHeight: 34 }}>
                   {t("add_language", "Add Language")}
                 </Button>
                 <Button
                   controlId="employee-category-master.dialog.translate.button"
                   className={styles.primaryButton}
                   onClick={() => void handleTranslateClick()}
-                  disabled={strMode === "view" || blnSubmitting || dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]}
+                  disabled={strMode === "view" || blnSubmitting || dicForm.lstTexts.length < 2 || !dicForm.name.trim() || Object.values(dicTextTranslationLoading).some(Boolean)}
                   sx={{
                     minWidth: 108,
                     minHeight: 34,
@@ -785,7 +784,7 @@ export default function EmployeeCategoryMasterPanel() {
                     "&:hover": { boxShadow: "none" },
                   }}
                 >
-                  {dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""] ? (
+                  {Object.values(dicTextTranslationLoading).some(Boolean) ? (
                     <CircularProgress size={18} sx={{ color: "#ffffff" }} />
                   ) : (
                     t("translate", "AI Translate")
@@ -874,7 +873,6 @@ export default function EmployeeCategoryMasterPanel() {
               ))}
             </Box>
             </>
-            ) : null}
 
           </Box>
         }
