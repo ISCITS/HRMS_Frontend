@@ -60,6 +60,23 @@ export type EmployeeCategoryApiRecord = {
   }>;
 };
 
+export type EmployeeFunctionApiRecord = {
+  intID: number;
+  strEmployeeFunctionCode: string;
+  strEmployeeFunctionName: string;
+  blnIsActive: boolean;
+  intTenantID: number;
+  lstTexts?: Array<{ intLanguageID: number; strLanguageName: string; strEmployeeFunctionName: string }>;
+};
+
+export type EmploymentTypeApiRecord = {
+  intID: number;
+  strEmploymentTypeCode: string;
+  strEmploymentTypeName: string;
+  blnIsActive: boolean;
+  intTenantID: number;
+};
+
 export type SimpleMasterFormOptionsApiRecord = {
   lstLanguages: EmployeeLookupOptionApiRecord[];
 };
@@ -1920,6 +1937,44 @@ export const masterApiService = {
       objBody: { lstIDs },
       strMenuAction: MasterMenuAction.EmployeeCategoryBulkDelete
     });
+  },
+
+  getEmployeeFunctions() {
+    return requestApi<EmployeeFunctionApiRecord[]>({ strPath: MasterApiResource.EmployeeFunctions, strMethod: ApiRequestMethod.Get, strMenuAction: MasterMenuAction.EmployeeFunctionList });
+  },
+  getEmployeeFunction(intID: number) {
+    return requestApi<EmployeeFunctionApiRecord>({ strPath: buildApiPath(MasterApiResource.EmployeeFunctions, intID), strMethod: ApiRequestMethod.Get, strMenuAction: MasterMenuAction.EmployeeFunctionList });
+  },
+  createEmployeeFunction(objBody: { strEmployeeFunctionCode: string; strEmployeeFunctionName: string; blnIsActive: boolean; intLanguageID: number; lstTexts: Array<{ intLanguageID: number; strEmployeeFunctionName: string }> }) {
+    return requestApi<EmployeeFunctionApiRecord>({ strPath: MasterApiResource.EmployeeFunctions, strMethod: ApiRequestMethod.Post, objBody, strMenuAction: MasterMenuAction.EmployeeFunctionCreate });
+  },
+  updateEmployeeFunction(intID: number, objBody: { strEmployeeFunctionCode: string; strEmployeeFunctionName: string; blnIsActive: boolean; intLanguageID: number; lstTexts: Array<{ intLanguageID: number; strEmployeeFunctionName: string }> }) {
+    return requestApi<EmployeeFunctionApiRecord>({ strPath: buildApiPath(MasterApiResource.EmployeeFunctions, intID), strMethod: ApiRequestMethod.Put, objBody, strMenuAction: MasterMenuAction.EmployeeFunctionUpdate });
+  },
+  bulkEmployeeFunctionStatus(lstIDs: number[], blnIsActive: boolean) {
+    return requestApi<{ blnSuccess: boolean }>({ strPath: buildApiPath(MasterApiResource.EmployeeFunctions, MasterApiRouteSegment.BulkStatus), strMethod: ApiRequestMethod.Post, objBody: { lstIDs, blnIsActive }, strMenuAction: MasterMenuAction.EmployeeFunctionBulkStatus });
+  },
+  bulkEmployeeFunctionDelete(lstIDs: number[]) {
+    return requestApi<{ blnSuccess: boolean }>({ strPath: buildApiPath(MasterApiResource.EmployeeFunctions, MasterApiRouteSegment.BulkDelete), strMethod: ApiRequestMethod.Post, objBody: { lstIDs }, strMenuAction: MasterMenuAction.EmployeeFunctionBulkDelete });
+  },
+
+  getEmploymentTypes() {
+    return requestApi<EmploymentTypeApiRecord[]>({ strPath: MasterApiResource.EmploymentTypes, strMethod: ApiRequestMethod.Get, strMenuAction: MasterMenuAction.EmploymentTypeList });
+  },
+  getEmploymentType(intID: number) {
+    return requestApi<EmploymentTypeApiRecord>({ strPath: buildApiPath(MasterApiResource.EmploymentTypes, intID), strMethod: ApiRequestMethod.Get, strMenuAction: MasterMenuAction.EmploymentTypeList });
+  },
+  createEmploymentType(objBody: { strEmploymentTypeCode: string; strEmploymentTypeName: string; blnIsActive: boolean }) {
+    return requestApi<EmploymentTypeApiRecord>({ strPath: MasterApiResource.EmploymentTypes, strMethod: ApiRequestMethod.Post, objBody, strMenuAction: MasterMenuAction.EmploymentTypeCreate });
+  },
+  updateEmploymentType(intID: number, objBody: { strEmploymentTypeCode: string; strEmploymentTypeName: string; blnIsActive: boolean }) {
+    return requestApi<EmploymentTypeApiRecord>({ strPath: buildApiPath(MasterApiResource.EmploymentTypes, intID), strMethod: ApiRequestMethod.Put, objBody, strMenuAction: MasterMenuAction.EmploymentTypeUpdate });
+  },
+  bulkEmploymentTypeStatus(lstIDs: number[], blnIsActive: boolean) {
+    return requestApi<{ blnSuccess: boolean }>({ strPath: buildApiPath(MasterApiResource.EmploymentTypes, MasterApiRouteSegment.BulkStatus), strMethod: ApiRequestMethod.Post, objBody: { lstIDs, blnIsActive }, strMenuAction: MasterMenuAction.EmploymentTypeBulkStatus });
+  },
+  bulkEmploymentTypeDelete(lstIDs: number[]) {
+    return requestApi<{ blnSuccess: boolean }>({ strPath: buildApiPath(MasterApiResource.EmploymentTypes, MasterApiRouteSegment.BulkDelete), strMethod: ApiRequestMethod.Post, objBody: { lstIDs }, strMenuAction: MasterMenuAction.EmploymentTypeBulkDelete });
   },
 
   // Bank CRUD and bulk actions.

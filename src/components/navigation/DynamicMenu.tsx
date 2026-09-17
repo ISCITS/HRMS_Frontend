@@ -119,6 +119,15 @@ function resolveMenuRoute(objItem: MenuItem): string | null {
   const strModuleName = objItem.strModuleName.trim().toLowerCase();
   const strRoute = objItem.strRoute?.trim() ?? "";
 
+  // These masters were historically seeded with menu-code-like route values.
+  // Resolve by stable module identity so both old and corrected menu rows work.
+  if (strModuleCode === "employee_function") {
+    return "/employee-function";
+  }
+  if (strModuleCode === "employee_type") {
+    return "/employee-type";
+  }
+
   // Work on Holiday had multiple legacy seed routes. The module identity is the
   // stable contract, so cached menu data must always resolve to the live route.
   if (strModuleCode === "ess_work_on_holiday" || strModuleName === "work on holiday") {
@@ -1433,6 +1442,14 @@ export default function DynamicMenu({
       strRoute.includes("/employee-categories")
     ) {
       return tEmployeeCategory("page_title", strModuleName || "Employee Category");
+    }
+
+    if (strModuleCode === "employee_function" || strRoute.includes("/employee-function")) {
+      return strModuleName || "Employee Function";
+    }
+
+    if (strModuleCode === "employee_type" || strRoute.includes("/employee-type")) {
+      return strModuleName || "Employment Type";
     }
 
     if (strModuleCode.includes("employee") || strRoute.includes("/employees")) {
