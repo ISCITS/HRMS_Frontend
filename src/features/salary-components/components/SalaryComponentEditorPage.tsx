@@ -34,6 +34,7 @@ import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/components/master/MasterScreen.module.css";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useSalaryComponentLabels } from "@/features/salary-components/hooks/useSalaryComponentLabels";
+import { allocationMasterService } from "@/features/allocation-masters/services/allocationMasterService";
 import {
   createEmptySalaryComponentFlexiEligibilityRuleRow,
   createEmptySalaryComponentTextRow,
@@ -454,6 +455,7 @@ export default function SalaryComponentEditorPage({
   const [blnPayslipSectionTouched, setBlnPayslipSectionTouched] = useState(false);
   const [dicTextTranslationLoading, setDicTextTranslationLoading] = useState<Record<string, boolean>>({});
   const [dicLastTranslatedSourceByRow, setDicLastTranslatedSourceByRow] = useState<Record<string, string>>({});
+  const [lstAllocationEntityTypeOptions, setLstAllocationEntityTypeOptions] = useState<Array<{ intID: number; strDisplayName: string }>>([]);
 
   const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
@@ -480,6 +482,19 @@ export default function SalaryComponentEditorPage({
     return () => {
       window.removeEventListener("storage", syncLanguage);
       window.removeEventListener("hrms:language-changed", syncLanguage as EventListener);
+    };
+  }, []);
+
+  useEffect(() => {
+    let blnMounted = true;
+    allocationMasterService.listEntityTypes(true)
+      .then((lstTypes) => {
+        if (!blnMounted) return;
+        setLstAllocationEntityTypeOptions(lstTypes.map((dicType) => ({ intID: dicType.intID, strDisplayName: dicType.strTypeName })));
+      })
+      .catch(() => undefined);
+    return () => {
+      blnMounted = false;
     };
   }, []);
 
@@ -2137,6 +2152,202 @@ export default function SalaryComponentEditorPage({
           <FormControlLabel control={<Switch checked={dicForm.blnDeclarationRequired} onChange={(objEvent) => updateRootField("blnDeclarationRequired", objEvent.target.checked)} disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-components.editor.declaration-required.switch")} />} label={t("declaration_required", "Declaration required")} />
           {!blnIsReimbursementCategory ? <FormControlLabel control={<Switch checked={dicForm.blnProofRequired} onChange={(objEvent) => updateRootField("blnProofRequired", objEvent.target.checked)} disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-components.editor.proof-required.switch")} />} label={t("proof_required_tax_exemption", "Proof Required for Tax Exemption")} /> : null}
         </Stack>
+      </Paper>
+
+      <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("variable_pay_calculation", "Variable Pay Calculation")}</Typography>
+        <Typography sx={{ color: "#64748b", fontSize: "0.86rem", mt: 0.4, mb: 1.5 }}>
+          {t(
+            "variable_pay_calculation_help",
+            "Independent of Payroll Processing Mode above: that answers WHERE/HOW this component is processed (Regular, Separate, Both). This answers HOW the amount is derived (a direct manual/import amount, or split across configured Allocation Entities)."
+          )}
+        </Typography>
+        <FormControlLabel
+          sx={{ mb: 1.5 }}
+          control={
+            <Switch
+              checked={dicForm.blnVariablePayCalculationEnabled}
+              onChange={(objEvent) => updateRootField("blnVariablePayCalculationEnabled", objEvent.target.checked)}
+              disabled={blnFieldDisabled}
+              inputProps={buildInputTestIdProps("salary-components.editor.variable-pay-calculation-enabled.switch")}
+            />
+          }
+          label={t("variable_pay_calculation_enabled", "Variable Pay Calculation Enabled")}
+        />
+        {dicForm.blnVariablePayCalculationEnabled ? (
+          <Box sx={{ display: "grid", gap: 2 }}>
+            <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" } }}>
+              <CommonSearchableSelect
+                required
+                label={t("variable_pay_calculation_method", "Calculation Method")}
+                value={
+                  dicForm.strVariablePayCalculationMethodCode === "ALLOCATION_BASED"
+                    ? 2
+                    : dicForm.strVariablePayCalculationMethodCode === "FORMULA_BASED"
+                      ? 3
+                      : 1
+                }
+                options={[
+                  { intID: 1, strLabel: t("direct_amount", "Direct Amount") },
+                  { intID: 2, strLabel: t("allocation_based", "Allocation Based") },
+                  { intID: 3, strLabel: t("formula_based", "Formula Based") },
+                ]}
+                onChange={(intValue) =>
+                  updateRootField(
+                    "strVariablePayCalculationMethodCode",
+                    intValue === 2 ? "ALLOCATION_BASED" : intValue === 3 ? "FORMULA_BASED" : "DIRECT_AMOUNT"
+                  )
+                }
+                disabled={blnFieldDisabled}
+                fullWidth
+                controlId="salary-components.editor.variable-pay-calculation-method.select"
+              />
+              {dicForm.strVariablePayCalculationMethodCode === "ALLOCATION_BASED" ? (
+                <CommonSearchableSelect
+                  required
+                  label={t("allocation_entity_type", "Allocation Entity Type")}
+                  value={dicForm.intAllocationEntityTypeID}
+                  options={lstAllocationEntityTypeOptions.map((dicOption) => ({ ...dicOption, strLabel: dicOption.strDisplayName }))}
+                  onChange={(intValue) => updateRootField("intAllocationEntityTypeID", intValue)}
+                  disabled={blnFieldDisabled}
+                  fullWidth
+                  controlId="salary-components.editor.allocation-entity-type.select"
+                  helperText={t("allocation_entity_type_help", "Configure entity types/entities in Allocation Entity Master first.")}
+                />
+              ) : null}
+            </Box>
+
+            {dicForm.strVariablePayCalculationMethodCode === "ALLOCATION_BASED" ? (
+              <>
+                <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" }, alignItems: "start" }}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={dicForm.blnMonthlyAdjustmentApplicable}
+                        onChange={(objEvent) => updateRootField("blnMonthlyAdjustmentApplicable", objEvent.target.checked)}
+                        disabled={blnFieldDisabled}
+                        inputProps={buildInputTestIdProps("salary-components.editor.monthly-adjustment-applicable.switch")}
+                      />
+                    }
+                    label={t("monthly_adjustment_applicable", "Monthly Adjustment Applicable")}
+                  />
+                  {dicForm.blnMonthlyAdjustmentApplicable ? (
+                    <TextField
+                      label={t("monthly_adjustment_min_percent", "Adjustment Min %")}
+                      value={dicForm.strMonthlyAdjustmentMinPercent}
+                      onChange={(objEvent) => updateRootField("strMonthlyAdjustmentMinPercent", objEvent.target.value.replace(/[^0-9.-]/g, ""))}
+                      disabled={blnFieldDisabled}
+                      fullWidth
+                      data-controlid="salary-components.editor.monthly-adjustment-min-percent.input"
+                      inputProps={buildInputTestIdProps("salary-components.editor.monthly-adjustment-min-percent.input")}
+                    />
+                  ) : null}
+                  {dicForm.blnMonthlyAdjustmentApplicable ? (
+                    <TextField
+                      label={t("monthly_adjustment_max_percent", "Adjustment Max %")}
+                      value={dicForm.strMonthlyAdjustmentMaxPercent}
+                      onChange={(objEvent) => updateRootField("strMonthlyAdjustmentMaxPercent", objEvent.target.value.replace(/[^0-9.-]/g, ""))}
+                      disabled={blnFieldDisabled}
+                      fullWidth
+                      data-controlid="salary-components.editor.monthly-adjustment-max-percent.input"
+                      inputProps={buildInputTestIdProps("salary-components.editor.monthly-adjustment-max-percent.input")}
+                    />
+                  ) : null}
+                </Box>
+
+                <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" }, alignItems: "start" }}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={dicForm.blnAttendanceEligibilityApplicable}
+                        onChange={(objEvent) => updateRootField("blnAttendanceEligibilityApplicable", objEvent.target.checked)}
+                        disabled={blnFieldDisabled}
+                        inputProps={buildInputTestIdProps("salary-components.editor.attendance-eligibility-applicable.switch")}
+                      />
+                    }
+                    label={t("attendance_eligibility_applicable", "Attendance Eligibility Applicable")}
+                  />
+                  {dicForm.blnAttendanceEligibilityApplicable ? (
+                    <TextField
+                      required
+                      label={t("eligibility_percent", "Eligibility % Threshold")}
+                      value={dicForm.strAttendanceEligibilityPercent}
+                      onChange={(objEvent) => updateRootField("strAttendanceEligibilityPercent", objEvent.target.value.replace(/[^0-9.]/g, ""))}
+                      disabled={blnFieldDisabled}
+                      fullWidth
+                      data-controlid="salary-components.editor.attendance-eligibility-percent.input"
+                      inputProps={buildInputTestIdProps("salary-components.editor.attendance-eligibility-percent.input")}
+                    />
+                  ) : null}
+                </Box>
+                {dicForm.blnAttendanceEligibilityApplicable ? (
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={dicForm.blnAttendanceProrationApplicable}
+                          onChange={(objEvent) => updateRootField("blnAttendanceProrationApplicable", objEvent.target.checked)}
+                          disabled={blnFieldDisabled}
+                          inputProps={buildInputTestIdProps("salary-components.editor.attendance-proration-applicable.switch")}
+                        />
+                      }
+                      label={t("attendance_proration_applicable", "Attendance Proration Applicable")}
+                    />
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={dicForm.blnEligibilityOverrideAllowed}
+                          onChange={(objEvent) => updateRootField("blnEligibilityOverrideAllowed", objEvent.target.checked)}
+                          disabled={blnFieldDisabled}
+                          inputProps={buildInputTestIdProps("salary-components.editor.eligibility-override-allowed.switch")}
+                        />
+                      }
+                      label={t("eligibility_override_allowed", "Eligibility Override Allowed")}
+                    />
+                  </Stack>
+                ) : null}
+              </>
+            ) : null}
+
+            {dicForm.blnIncludeInTaxableIncome ? (
+              <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" } }}>
+                <CommonSearchableSelect
+                  label={t("tax_projection_mode", "Tax Projection Mode")}
+                  value={dicForm.strTaxProjectionBehavior === "PROJECT" ? 1 : dicForm.strTaxProjectionBehavior === "ACTUAL_ONLY" ? 2 : ""}
+                  options={[
+                    { intID: 1, strLabel: t("project_ctc_base_amount", "Project CTC/Base Amount") },
+                    { intID: 2, strLabel: t("actual_payment_only", "Actual Payment Only") },
+                  ]}
+                  onChange={(intValue) => updateRootField("strTaxProjectionBehavior", intValue === 1 ? "PROJECT" : intValue === 2 ? "ACTUAL_ONLY" : "")}
+                  placeholder={t("none", "None")}
+                  disabled={blnFieldDisabled}
+                  fullWidth
+                  controlId="salary-components.editor.tax-projection-behavior.select"
+                  helperText={t(
+                    "tax_projection_mode_help",
+                    "For a taxable Separate Payroll component: Project includes its CTC/base entitlement in Regular Payroll's annual tax projection ahead of the actual payment."
+                  )}
+                />
+                <CommonSearchableSelect
+                  label={t("tds_recovery_mode", "TDS Recovery Mode")}
+                  value={dicForm.strTdsRecoveryModeCode === "REGULAR_PAYROLL" ? 2 : 1}
+                  options={[
+                    { intID: 1, strLabel: t("same_payroll_run", "Same Payroll Run") },
+                    { intID: 2, strLabel: t("regular_payroll", "Regular Payroll") },
+                  ]}
+                  onChange={(intValue) => updateRootField("strTdsRecoveryModeCode", intValue === 2 ? "REGULAR_PAYROLL" : "SAME_RUN")}
+                  disabled={blnFieldDisabled}
+                  fullWidth
+                  controlId="salary-components.editor.tds-recovery-mode.select"
+                  helperText={t(
+                    "tds_recovery_mode_help",
+                    "Controls which payroll run actually deducts TDS for this component when it is taxable and Separate Payroll processed."
+                  )}
+                />
+              </Box>
+            ) : null}
+          </Box>
+        ) : null}
       </Paper>
 
       {intSecondaryLanguageID ? (

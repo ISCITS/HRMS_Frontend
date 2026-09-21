@@ -879,6 +879,19 @@ export type SalaryComponentApiRecord = {
   intUsedInSalaryStructures?: number;
   intAssignedEmployees?: number;
   intFormulaReferences?: number;
+  blnVariablePayCalculationEnabled?: boolean;
+  strVariablePayCalculationMethodCode?: string;
+  intAllocationEntityTypeID?: number | null;
+  strVariablePayBaseSourceCode?: string;
+  blnMonthlyAdjustmentApplicable?: boolean;
+  decMonthlyAdjustmentMinPercent?: number | null;
+  decMonthlyAdjustmentMaxPercent?: number | null;
+  blnAttendanceEligibilityApplicable?: boolean;
+  decAttendanceEligibilityPercent?: number | null;
+  blnAttendanceProrationApplicable?: boolean;
+  blnEligibilityOverrideAllowed?: boolean;
+  strTdsRecoveryModeCode?: string;
+  strTaxProjectionBehavior?: string | null;
   lstDependencyComponentIDs: number[];
   lstFlexiEligibilityIDs?: number[];
   lstFlexiEligibilityRules?: Array<{
