@@ -119,9 +119,16 @@ export default function VariablePayCalculationPage() {
   const [blnBusy, setBlnBusy] = useState(false);
   const [strError, setStrError] = useState<string | null>(null);
   const [strSuccess, setStrSuccess] = useState<string | null>(null);
+  const [blnCompanyAutoDetected, setBlnCompanyAutoDetected] = useState(true);
 
   useEffect(() => {
-    setIntCompanyID(authHelpers.getCompanyID() ?? "");
+    const intDetectedCompanyID = authHelpers.getCompanyID();
+    setIntCompanyID(intDetectedCompanyID ?? "");
+    // Every screen in this app derives company from session silently - this field is normally
+    // read-only. But this endpoint (unlike most others) requires the company id explicitly, so
+    // if the session genuinely has none on file, fall back to letting the user type it rather
+    // than leaving the feature permanently blocked with no way to proceed.
+    setBlnCompanyAutoDetected(intDetectedCompanyID != null);
   }, []);
 
   useEffect(() => {
@@ -388,10 +395,6 @@ export default function VariablePayCalculationPage() {
     <Stack spacing={2} sx={{ p: 2 }}>
       <BlockingLoader blnOpen={blnBusy} strLabel={t("working", "Please wait...")} />
 
-      <Typography variant="h5" fontWeight={800}>
-        {t("page_title", "Variable Pay Calculation")}
-      </Typography>
-
       {objAccess.strError ? <Alert severity="warning">{objAccess.strError}</Alert> : null}
       {strError ? (
         <Alert severity="error" onClose={() => setStrError(null)}>
@@ -411,17 +414,20 @@ export default function VariablePayCalculationPage() {
       ) : null}
 
       <Paper sx={{ p: 2 }}>
-        <Stack direction={{ xs: "column", md: "row" }} gap={2} alignItems={{ xs: "stretch", md: "flex-end" }} flexWrap="wrap">
+        <Stack direction={{ xs: "column", md: "row" }} gap={2} alignItems={{ xs: "stretch", md: "center" }} flexWrap="wrap">
           <TextField
-            label={t("company", "Company ID")}
-            type="number"
+            label={t("company", "Company")}
+            type={blnCompanyAutoDetected ? "text" : "number"}
             value={intCompanyID}
-            onChange={(objEvent) =>
-              setIntCompanyID(objEvent.target.value === "" ? "" : Number(objEvent.target.value))
+            onChange={
+              blnCompanyAutoDetected
+                ? undefined
+                : (objEvent) => setIntCompanyID(objEvent.target.value === "" ? "" : Number(objEvent.target.value))
             }
+            InputLabelProps={{ shrink: true }}
+            InputProps={{ readOnly: blnCompanyAutoDetected }}
             inputProps={{ controlId: "variable-pay-calculation.filter.company.input", min: 1 }}
-            helperText={t("company_help", "Defaults to your signed-in company.")}
-            sx={{ minWidth: { xs: "100%", md: 170 } }}
+            sx={{ minWidth: { xs: "100%", md: 160 } }}
           />
           <TextField
             label={t("payroll_month", "Payroll Month")}
@@ -462,10 +468,6 @@ export default function VariablePayCalculationPage() {
                 setIntSourcePayrollRunID(objEvent.target.value === "" ? "" : Number(objEvent.target.value))
               }
               inputProps={{ controlId: "variable-pay-calculation.filter.source-run.select" }}
-              helperText={t(
-                "source_run_help",
-                "This component uses attendance eligibility/proration - select the finalized Regular Payroll run to read payable days from.",
-              )}
               sx={{ minWidth: { xs: "100%", md: 280 } }}
             >
               <MenuItem value="">{t("none", "None")}</MenuItem>
@@ -484,7 +486,6 @@ export default function VariablePayCalculationPage() {
               setIntTargetPayrollRunID(objEvent.target.value === "" ? "" : Number(objEvent.target.value))
             }
             inputProps={{ controlId: "variable-pay-calculation.filter.target-run.select" }}
-            helperText={t("target_run_help", "Optional - the Separate Payroll run to post into.")}
             sx={{ minWidth: { xs: "100%", md: 280 } }}
           >
             <MenuItem value="">{t("none", "None")}</MenuItem>
@@ -499,18 +500,30 @@ export default function VariablePayCalculationPage() {
             onClick={() => void handleCreateOrLoadBatch()}
             disabled={blnBusy || !blnCanCreate}
             data-control-id="variable-pay-calculation.filter.create-batch.button"
-            sx={{ minHeight: 40 }}
+            sx={{ height: 40, alignSelf: { xs: "stretch", md: "center" } }}
           >
             {t("create_batch", "Create / Load Batch")}
           </Button>
         </Stack>
+
+        <Typography sx={{ mt: 1, color: "#64748b", fontSize: "0.78rem" }}>
+          {blnCompanyAutoDetected
+            ? t(
+                "filter_row_help",
+                "Company defaults to your signed-in company. Target Payroll Run is optional - the Separate Payroll run to post into.",
+              )
+            : t(
+                "filter_row_help_manual",
+                "Your session has no company on file - enter it manually. Target Payroll Run is optional - the Separate Payroll run to post into.",
+              )}
+        </Typography>
 
         {objSelectedComponent?.blnAttendanceEligibilityApplicable ||
         objSelectedComponent?.blnAttendanceProrationApplicable ? (
           <Alert severity="info" sx={{ mt: 2 }}>
             {t(
               "attendance_notice",
-              "This component uses attendance-based eligibility or proration, so the batch needs a Source Payroll Run before calculating.",
+              "This component uses attendance-based eligibility or proration, so the batch needs a Source Payroll Run before calculating - select the finalized Regular Payroll run to read payable days from.",
             )}
           </Alert>
         ) : null}

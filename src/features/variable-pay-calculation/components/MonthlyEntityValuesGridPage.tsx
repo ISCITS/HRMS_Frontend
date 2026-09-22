@@ -82,9 +82,16 @@ export default function MonthlyEntityValuesGridPage() {
   const [blnBusy, setBlnBusy] = useState(false);
   const [strError, setStrError] = useState<string | null>(null);
   const [strSuccess, setStrSuccess] = useState<string | null>(null);
+  const [blnCompanyAutoDetected, setBlnCompanyAutoDetected] = useState(true);
 
   useEffect(() => {
-    setIntCompanyID(authHelpers.getCompanyID() ?? "");
+    const intDetectedCompanyID = authHelpers.getCompanyID();
+    setIntCompanyID(intDetectedCompanyID ?? "");
+    // Every screen in this app derives company from session silently - this field is normally
+    // read-only. But this endpoint (unlike most others) requires the company id explicitly, so
+    // if the session genuinely has none on file, fall back to letting the user type it rather
+    // than leaving the feature permanently blocked with no way to proceed.
+    setBlnCompanyAutoDetected(intDetectedCompanyID != null);
   }, []);
 
   useEffect(() => {
@@ -239,10 +246,6 @@ export default function MonthlyEntityValuesGridPage() {
     <Stack spacing={2} sx={{ p: 2 }}>
       <BlockingLoader blnOpen={blnBusy} strLabel={t("working", "Please wait...")} />
 
-      <Typography variant="h5" fontWeight={800}>
-        {t("page_title", "Monthly Allocation Entity Values")}
-      </Typography>
-
       {objAccess.strError ? <Alert severity="warning">{objAccess.strError}</Alert> : null}
       {strError ? (
         <Alert severity="error" onClose={() => setStrError(null)}>
@@ -262,17 +265,20 @@ export default function MonthlyEntityValuesGridPage() {
       ) : null}
 
       <Paper sx={{ p: 2 }}>
-        <Stack direction={{ xs: "column", md: "row" }} gap={2} alignItems={{ xs: "stretch", md: "flex-end" }}>
+        <Stack direction={{ xs: "column", md: "row" }} gap={2} alignItems={{ xs: "stretch", md: "center" }}>
           <TextField
-            label={t("company", "Company ID")}
-            type="number"
+            label={t("company", "Company")}
+            type={blnCompanyAutoDetected ? "text" : "number"}
             value={intCompanyID}
-            onChange={(objEvent) =>
-              setIntCompanyID(objEvent.target.value === "" ? "" : Number(objEvent.target.value))
+            onChange={
+              blnCompanyAutoDetected
+                ? undefined
+                : (objEvent) => setIntCompanyID(objEvent.target.value === "" ? "" : Number(objEvent.target.value))
             }
+            InputLabelProps={{ shrink: true }}
+            InputProps={{ readOnly: blnCompanyAutoDetected }}
             inputProps={{ controlId: "variable-pay-monthly-values.filter.company.input", min: 1 }}
-            helperText={t("company_help", "Defaults to your signed-in company.")}
-            sx={{ minWidth: { xs: "100%", md: 180 } }}
+            sx={{ minWidth: { xs: "100%", md: 160 } }}
           />
           <TextField
             label={t("payroll_month", "Payroll Month")}
@@ -309,11 +315,22 @@ export default function MonthlyEntityValuesGridPage() {
             onClick={() => void handleLoad()}
             disabled={blnBusy || !objAccess.canViewAny()}
             data-control-id="variable-pay-monthly-values.filter.load.button"
-            sx={{ minHeight: 40 }}
+            sx={{ height: 40, alignSelf: { xs: "stretch", md: "center" } }}
           >
             {t("load", "Load")}
           </Button>
         </Stack>
+        <Typography sx={{ mt: 1, color: "#64748b", fontSize: "0.78rem" }}>
+          {blnCompanyAutoDetected
+            ? t(
+                "company_help",
+                "Company defaults to your signed-in company. These values apply to every employee in it.",
+              )
+            : t(
+                "company_help_manual",
+                "Your session has no company on file - enter it manually. These values apply to every employee in that company.",
+              )}
+        </Typography>
 
         {blnLoaded ? (
           <Box sx={{ mt: 2, display: "flex", flexWrap: "wrap", gap: 1.5 }}>

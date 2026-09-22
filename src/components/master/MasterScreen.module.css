@@ -181,6 +181,19 @@
     auto;
 }
 
+.allocationEntitySearchRow {
+  align-items: stretch;
+  display: grid;
+  gap: 10px;
+  grid-template-columns:
+    minmax(200px, 1fr)
+    minmax(200px, 1fr)
+    minmax(180px, 0.8fr)
+    minmax(140px, 0.6fr)
+    auto
+    auto;
+}
+
 .searchActions {
   display: flex;
   gap: 10px;
@@ -648,7 +661,8 @@
 @media (max-width: 1200px) {
   .searchRow,
   .employeeSearchRow,
-  .userSearchRow {
+  .userSearchRow,
+  .allocationEntitySearchRow {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -672,6 +686,7 @@
   .headerActions,
   .searchRow,
   .employeeSearchRow,
+  .allocationEntitySearchRow,
   .tableHeaderActions {
     gap: 8px;
   }
@@ -685,6 +700,7 @@
   .searchRow,
   .employeeSearchRow,
   .taxRegimeSearchRow,
+  .allocationEntitySearchRow,
   .dialogGrid {
     grid-template-columns: 1fr !important;
   }

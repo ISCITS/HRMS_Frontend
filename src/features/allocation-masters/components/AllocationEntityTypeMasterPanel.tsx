@@ -8,7 +8,6 @@ import { Alert, Box, Button, MenuItem, Snackbar, TextField, Typography } from "@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
@@ -31,13 +30,6 @@ type SearchForm = {
   strCode: string;
   strName: string;
   strStatus: "All" | "Active" | "Inactive";
-};
-
-type ConfirmDialogState = {
-  strTitle: string;
-  strMessage: string;
-  strConfirmLabel: string;
-  fnOnConfirm: () => Promise<void>;
 };
 
 type ToastState = {
@@ -71,7 +63,6 @@ export default function AllocationEntityTypeMasterPanel() {
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSubmitting, setBlnSubmitting] = useState(false);
-  const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
 
   const blnCanView = objAccess.canViewAny();
@@ -195,46 +186,6 @@ export default function AllocationEntityTypeMasterPanel() {
     }
   }
 
-  function toggleStatus(dicRecord: AllocationEntityTypeApiRecord) {
-    const blnNextActive = !dicRecord.blnIsActive;
-    setObjConfirmDialog({
-      strTitle: blnNextActive
-        ? t("confirm_activate_title", "Activate Allocation Entity Type")
-        : t("confirm_deactivate_title", "Deactivate Allocation Entity Type"),
-      strMessage: blnNextActive
-        ? t("confirm_activate_message", "Are you sure you want to mark this Allocation Entity Type as active?")
-        : t("confirm_deactivate_message", "Are you sure you want to mark this Allocation Entity Type as inactive?"),
-      strConfirmLabel: blnNextActive ? t("activate", "Activate") : t("deactivate", "Deactivate"),
-      fnOnConfirm: async () => {
-        await allocationMasterService.setEntityTypeStatus(dicRecord.intID, blnNextActive);
-        await loadEntityTypes();
-        showToast(
-          blnNextActive
-            ? t("activate_success", "Allocation Entity Type activated.")
-            : t("deactivate_success", "Allocation Entity Type deactivated."),
-        );
-      },
-    });
-  }
-
-  async function executeConfirmedAction() {
-    if (!objConfirmDialog) {
-      return;
-    }
-    setBlnSubmitting(true);
-    try {
-      await objConfirmDialog.fnOnConfirm();
-    } catch (objError) {
-      showToast(
-        objError instanceof Error ? objError.message : t("request_failed", "Request failed."),
-        "error",
-      );
-    } finally {
-      setBlnSubmitting(false);
-      setObjConfirmDialog(null);
-    }
-  }
-
   const lstTableRows = useMemo(
     () =>
       lstFiltered.map((dicRecord) => ({
@@ -245,11 +196,8 @@ export default function AllocationEntityTypeMasterPanel() {
             rowKey={dicRecord.intID}
             blnCanView={blnCanView}
             blnCanEdit={blnCanEdit}
-            blnCanToggle={blnCanEdit}
-            blnToggleActive={dicRecord.blnIsActive}
             onView={() => openDialog("view", dicRecord)}
             onEdit={() => openDialog("edit", dicRecord)}
-            onToggle={() => toggleStatus(dicRecord)}
           />
         ),
         strTypeCode: dicRecord.strTypeCode,
@@ -264,7 +212,6 @@ export default function AllocationEntityTypeMasterPanel() {
           </span>
         ),
       })),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [blnCanEdit, blnCanView, lstFiltered, t],
   );
 
@@ -301,7 +248,6 @@ export default function AllocationEntityTypeMasterPanel() {
       </Box>
 
       <Box className={styles.controlsCard}>
-        <Typography className={styles.title}>{t("page_title", "Allocation Entity Types")}</Typography>
         {objAccess.strError ? (
           <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{objAccess.strError}</Typography>
         ) : null}
@@ -507,17 +453,6 @@ export default function AllocationEntityTypeMasterPanel() {
             />
           </Box>
         }
-      />
-
-      <CommonConfirmDialog
-        blnOpen={Boolean(objConfirmDialog)}
-        strTitle={objConfirmDialog?.strTitle}
-        strMessage={objConfirmDialog?.strMessage}
-        strCancelLabel={t("cancel", "Cancel")}
-        strConfirmLabel={objConfirmDialog?.strConfirmLabel ?? t("confirm_button", "Confirm")}
-        blnConfirmDisabled={blnSubmitting}
-        onClose={() => setObjConfirmDialog(null)}
-        onConfirm={executeConfirmedAction}
       />
 
       <BlockingLoader
