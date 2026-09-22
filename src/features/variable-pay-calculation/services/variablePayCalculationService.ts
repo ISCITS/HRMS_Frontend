@@ -145,6 +145,7 @@ export const variablePayCalculationService = {
     dtPayrollMonth: string;
     intSalaryComponentID: number;
     intTargetPayrollRunID?: number | null;
+    intSourcePayrollRunID?: number | null;
   }): Promise<VariablePayCalculationBatch> {
     const objResult = await requestApi<VariablePayCalculationBatch>({
       strPath: "/variable-pay-calculation/batches",
@@ -154,7 +155,23 @@ export const variablePayCalculationService = {
         dtPayrollMonth: objPayload.dtPayrollMonth,
         intSalaryComponentID: objPayload.intSalaryComponentID,
         intTargetPayrollRunID: objPayload.intTargetPayrollRunID ?? null,
+        intSourcePayrollRunID: objPayload.intSourcePayrollRunID ?? null,
       },
+      strMenuAction: CALCULATION_EDIT,
+    });
+    return objResult.Data;
+  },
+
+  // Sets/changes which finalized Regular Payroll run a batch reads attendance/payable-days
+  // from - needed for a batch that was created/loaded before a Source Payroll Run was picked.
+  async setBatchSourcePayrollRun(
+    intCalculationBatchID: number,
+    intSourcePayrollRunID: number,
+  ): Promise<VariablePayCalculationBatch> {
+    const objResult = await requestApi<VariablePayCalculationBatch>({
+      strPath: `/variable-pay-calculation/batches/${intCalculationBatchID}/source-run`,
+      strMethod: ApiRequestMethod.Patch,
+      objBody: { intSourcePayrollRunID },
       strMenuAction: CALCULATION_EDIT,
     });
     return objResult.Data;
@@ -162,8 +179,6 @@ export const variablePayCalculationService = {
 
   // If the component has attendance eligibility/proration enabled and the batch has no
   // intSourcePayrollRunID, the backend answers 409 with an explanatory message.
-  // TODO: there is no PATCH endpoint to set intSourcePayrollRunID on an existing batch;
-  // confirm with the backend owner whether one should be added before wiring a picker here.
   async calculateBatch(intCalculationBatchID: number): Promise<VariablePayCalculationBatch> {
     const objResult = await requestApi<VariablePayCalculationBatch>({
       strPath: `/variable-pay-calculation/batches/${intCalculationBatchID}/calculate`,

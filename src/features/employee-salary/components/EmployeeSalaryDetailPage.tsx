@@ -2592,6 +2592,33 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
               >
                 {t("employee_salary_back_button", "Back")}
               </Button>
+              {!blnIsRevisionMode ? (
+                <Button
+                  data-controlid="employee-salary.detail.separate-pay.button"
+                  className={styles.secondaryButton}
+                  startIcon={<AccountBalanceWalletOutlinedIcon />}
+                  onClick={() => objRouter.push(`/employee-salary/${strEmployeeID}/separate-pay`)}
+                  sx={{
+                    borderRadius: "14px",
+                    height: 38,
+                    minHeight: 38,
+                    py: 0,
+                    px: 2.25,
+                    minWidth: 100,
+                    fontSize: "0.9rem",
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                    "& .MuiButton-startIcon": {
+                      mr: 0.75,
+                      "& svg": {
+                        fontSize: "1rem"
+                      }
+                    }
+                  }}
+                >
+                  {t("employee_salary_separate_pay_button", "Separate Payroll Entitlements")}
+                </Button>
+              ) : null}
               {blnIsRevisionMode ? (
                 <>
                   <Button

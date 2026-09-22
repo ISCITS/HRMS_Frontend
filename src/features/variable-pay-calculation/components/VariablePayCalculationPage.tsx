@@ -97,6 +97,7 @@ export default function VariablePayCalculationPage() {
 
   const [lstComponents, setLstComponents] = useState<AllocationBasedComponentOption[]>([]);
   const [lstRuns, setLstRuns] = useState<PayrollRunListRecord[]>([]);
+  const [lstRegularRuns, setLstRegularRuns] = useState<PayrollRunListRecord[]>([]);
   const [lstEntities, setLstEntities] = useState<AllocationEntityApiRecord[]>([]);
   const [lstEmployeeNames, setLstEmployeeNames] = useState<EmployeeNameOption[]>([]);
 
@@ -104,6 +105,7 @@ export default function VariablePayCalculationPage() {
   const [strMonthInputValue, setStrMonthInputValue] = useState<string>(currentMonthInputValue());
   const [intSalaryComponentID, setIntSalaryComponentID] = useState<number | "">("");
   const [intTargetPayrollRunID, setIntTargetPayrollRunID] = useState<number | "">("");
+  const [intSourcePayrollRunID, setIntSourcePayrollRunID] = useState<number | "">("");
 
   const [objBatch, setObjBatch] = useState<VariablePayCalculationBatch | null>(null);
   const [lstCalculations, setLstCalculations] = useState<VariablePayEmployeeCalculation[]>([]);
@@ -135,10 +137,15 @@ export default function VariablePayCalculationPage() {
             t("load_components_failed", "Unable to load Allocation-Based salary components."),
         ),
       );
-    // The optional target run for posting is a Separate Payroll (Variable Pay) run.
+    // The optional target run for posting is a Separate Payroll (Variable Pay) run; the source
+    // run (for components with attendance eligibility/proration) is a Regular Payroll run whose
+    // attendance has been finalized.
     payrollRunService
       .getPayrollRuns()
-      .then((lstAllRuns) => setLstRuns(lstAllRuns.filter((objRun) => objRun.strRunTypeCode === "VARIABLE_PAY")))
+      .then((lstAllRuns) => {
+        setLstRuns(lstAllRuns.filter((objRun) => objRun.strRunTypeCode === "VARIABLE_PAY"));
+        setLstRegularRuns(lstAllRuns.filter((objRun) => objRun.strRunTypeCode === "REGULAR"));
+      })
       .catch(() => undefined);
     variablePayCalculationService
       .listEmployeeNameOptions()
@@ -151,6 +158,19 @@ export default function VariablePayCalculationPage() {
     () => lstComponents.find((dicComponent) => dicComponent.intID === intSalaryComponentID) ?? null,
     [lstComponents, intSalaryComponentID],
   );
+
+  // The backend only requires a Source Payroll Run when the component has attendance
+  // eligibility or proration enabled - the field is hidden otherwise so it doesn't look
+  // mandatory for components that never need it.
+  const blnAttendanceSourceNeeded = Boolean(
+    objSelectedComponent?.blnAttendanceEligibilityApplicable || objSelectedComponent?.blnAttendanceProrationApplicable,
+  );
+
+  useEffect(() => {
+    if (!blnAttendanceSourceNeeded && intSourcePayrollRunID !== "") {
+      setIntSourcePayrollRunID("");
+    }
+  }, [blnAttendanceSourceNeeded, intSourcePayrollRunID]);
 
   const dicEntityNameByID = useMemo(() => {
     const dicMap: Record<number, string> = {};
@@ -202,6 +222,7 @@ export default function VariablePayCalculationPage() {
       const objNewBatch = await variablePayCalculationService.createBatch({
         ...dicFilters,
         intTargetPayrollRunID: intTargetPayrollRunID === "" ? null : Number(intTargetPayrollRunID),
+        intSourcePayrollRunID: intSourcePayrollRunID === "" ? null : Number(intSourcePayrollRunID),
       });
       setObjBatch(objNewBatch);
       setSetExpandedRowIDs(new Set());
@@ -219,6 +240,27 @@ export default function VariablePayCalculationPage() {
       setStrError((objErr as Error)?.message ?? t("batch_failed", "Unable to create or load the calculation batch."));
       setObjBatch(null);
       setLstCalculations([]);
+    } finally {
+      setBlnBusy(false);
+    }
+  }
+
+  async function handleSetSourceRun() {
+    if (!objBatch || intSourcePayrollRunID === "") {
+      return;
+    }
+    setBlnBusy(true);
+    setStrError(null);
+    setStrSuccess(null);
+    try {
+      const objUpdatedBatch = await variablePayCalculationService.setBatchSourcePayrollRun(
+        objBatch.intID,
+        Number(intSourcePayrollRunID),
+      );
+      setObjBatch(objUpdatedBatch);
+      setStrSuccess(t("source_run_set_success", "Source Payroll Run set on the batch."));
+    } catch (objErr) {
+      setStrError((objErr as Error)?.message ?? t("source_run_set_failed", "Unable to set the Source Payroll Run."));
     } finally {
       setBlnBusy(false);
     }
@@ -411,6 +453,29 @@ export default function VariablePayCalculationPage() {
               </MenuItem>
             ))}
           </TextField>
+          {blnAttendanceSourceNeeded ? (
+            <TextField
+              select
+              label={t("source_run", "Source Payroll Run")}
+              value={intSourcePayrollRunID}
+              onChange={(objEvent) =>
+                setIntSourcePayrollRunID(objEvent.target.value === "" ? "" : Number(objEvent.target.value))
+              }
+              inputProps={{ controlId: "variable-pay-calculation.filter.source-run.select" }}
+              helperText={t(
+                "source_run_help",
+                "This component uses attendance eligibility/proration - select the finalized Regular Payroll run to read payable days from.",
+              )}
+              sx={{ minWidth: { xs: "100%", md: 280 } }}
+            >
+              <MenuItem value="">{t("none", "None")}</MenuItem>
+              {lstRegularRuns.map((objRun) => (
+                <MenuItem key={objRun.intID} value={objRun.intID}>
+                  {`${objRun.strRunCode} - ${objRun.strRunName}`}
+                </MenuItem>
+              ))}
+            </TextField>
+          ) : null}
           <TextField
             select
             label={t("target_run", "Target Payroll Run")}
@@ -513,9 +578,22 @@ export default function VariablePayCalculationPage() {
                 label={`${t("total_approved", "Total Approved")}: ${formatAmount(objBatch.decTotalApprovedAmount)}`}
               />
               <Chip
-                color={objBatch.intSourcePayrollRunID ? "default" : "warning"}
+                color={!objBatch.intSourcePayrollRunID && blnAttendanceSourceNeeded ? "warning" : "default"}
                 label={`${t("source_run", "Source Payroll Run")}: ${objBatch.intSourcePayrollRunID ?? t("not_set", "Not set")}`}
+                data-control-id="variable-pay-calculation.batch.source-run.chip"
               />
+              {!objBatch.intSourcePayrollRunID && blnAttendanceSourceNeeded && blnCanCalculate ? (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="warning"
+                  onClick={() => void handleSetSourceRun()}
+                  disabled={blnBusy || intSourcePayrollRunID === ""}
+                  data-control-id="variable-pay-calculation.batch.set-source-run.button"
+                >
+                  {t("set_source_run", "Set Source Run")}
+                </Button>
+              ) : null}
               <Chip
                 label={`${t("target_run", "Target Payroll Run")}: ${objBatch.intTargetPayrollRunID ?? t("not_set", "Not set")}`}
               />
