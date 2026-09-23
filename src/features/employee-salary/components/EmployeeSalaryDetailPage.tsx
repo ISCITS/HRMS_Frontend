@@ -43,7 +43,7 @@ import { useModuleActionAccess } from "@/features/security/hooks/useModuleAction
 import { useEmployeeSalaryLabels } from "@/features/employee-salary/hooks/useEmployeeSalaryLabels";
 import { employeeSalaryService, type EmployeeSalaryRevisionPreviewRecord } from "@/features/employee-salary/services/employeeSalaryService";
 import { clampAnnualAmountToRange, syncCalculatedOverrideRowsFromPreview, usesAutoCalculatedOverrideValue } from "@/features/employee-salary/utils/overrideRecalculation";
-import { buildEmployeeSalaryCalculationRows, calculateEmployeeSalaryBaseSummaryMetrics, calculateEmployeeSalaryWageMetrics } from "@/features/employee-salary/utils/employeeSalarySummary";
+import { buildEmployeeSalaryCalculationRows, calculateEmployeeSalaryBaseSummaryMetrics, calculateEmployeeSalaryWageMetrics, getEmployeeSalaryApplicableLines } from "@/features/employee-salary/utils/employeeSalarySummary";
 import { masterApiService, type SalaryComponentApiRecord } from "@/services/master/MasterApiService";
 import type {
   EmployeeSalaryComponentLine,
@@ -766,7 +766,7 @@ function calculateSalarySummaryMetrics(
   dicSalaryComponentByID: Map<number, SalaryComponentApiRecord>
 ): SalarySummaryMetrics {
   const dicBaseSummaryMetrics = calculateEmployeeSalaryBaseSummaryMetrics(objDetail);
-  const lstComponentLines = objDetail?.lstComponentLines ?? [];
+  const lstComponentLines = getEmployeeSalaryApplicableLines(objDetail);
   const decFlexiBucketAnnual = dicBaseSummaryMetrics.decFlexiBucketAnnual;
   const strDeclarationStatus = objDetail?.objFlexiDeclaration?.strStatus ?? null;
   const strFlexiStatusType = getApprovedFlexiStatus(strDeclarationStatus);
@@ -871,7 +871,11 @@ function calculateRevisionSalarySummaryMetrics(
       decAllocatedFlexiAnnual: 0,
     },
   });
-  const decEmployeeDeductionsMonthly = lstResolvedComponentLines.reduce((decTotal, dicLine) => {
+  const lstApplicableComponentLines = getEmployeeSalaryApplicableLines({
+    lstComponentLines: lstResolvedComponentLines,
+    objFlexiAllocation: { decFlexiBasketAvailableAnnual: decFlexiBucketAnnual },
+  });
+  const decEmployeeDeductionsMonthly = lstApplicableComponentLines.reduce((decTotal, dicLine) => {
     if (!isDeductionCategory(dicLine.strComponentCategory) && !isEmployeePfComponent(dicLine)) {
       return decTotal;
     }
@@ -1548,7 +1552,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
 
   const lstComponentRows: ComponentGridRow[] = useMemo(() => {
     const dicFlexiBucketAmounts = getEmployeeFlexiBucketAmounts(objDetail);
-    return (objDetail?.lstComponentLines ?? []).map((dicLine: EmployeeSalaryComponentLine) => {
+    return getEmployeeSalaryApplicableLines(objDetail).map((dicLine: EmployeeSalaryComponentLine) => {
       const blnIsFlexiBucket = isFlexiBucketLine(dicLine);
       const decLineMonthlyAmount = getNumberValue(dicLine.decAmountMonthly);
       const decLineAnnualAmount = getNumberValue(dicLine.decAmountAnnual);
@@ -1861,7 +1865,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
   const dicCalculationRows = buildEmployeeSalaryCalculationRows(objDetail);
   const lstNetMonthlyCalculationRows = [
     ...dicCalculationRows.grossMonthly,
-    ...(objDetail?.lstComponentLines ?? [])
+    ...getEmployeeSalaryApplicableLines(objDetail)
       .filter(line => isDeductionCategory(line.strComponentCategory) || isEmployeePfComponent(line))
       .map(line => ({ strName: line.strComponentName || line.strComponentCode || "Deduction", decAmount: -getNumberValue(line.decAmountMonthly) })),
   ];
@@ -1874,7 +1878,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
       ) ?? objItDeclarationDashboard.lstDeclarations[0] ?? null
     : null;
   const lstRevisionCurrentBreakdownComponentRows: RevisionBreakdownComponentRow[] = useMemo(() => {
-    return (objDetail?.lstComponentLines ?? [])
+    return getEmployeeSalaryApplicableLines(objDetail)
       .filter((dicLine) =>
         !isFlexiPayComponentName(dicLine.strComponentName ?? dicLine.strComponentCode ?? "") &&
         !isFlexiAllocationLine(dicLine) &&

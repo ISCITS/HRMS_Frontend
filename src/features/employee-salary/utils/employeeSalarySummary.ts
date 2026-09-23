@@ -181,8 +181,22 @@ function getEmployeeFlexiBucketAmounts(objSource: EmployeeSalarySummarySource | 
   };
 }
 
+export function getEmployeeSalaryApplicableLines<T extends EmployeeSalarySummaryComponentLine>(
+  objSource: (Omit<EmployeeSalarySummarySource, "lstComponentLines"> & { lstComponentLines?: T[] }) | null,
+): T[] {
+  const lines = objSource?.lstComponentLines ?? [];
+  const grossMonthly = lines.reduce((total, line) => (
+    isCtcIncludedEarning(line) ? total + getNumberValue(line.decAmountMonthly) : total
+  ), 0) + getEmployeeFlexiBucketAmounts(objSource).decMonthlyAmount;
+  if (grossMonthly <= 21000) return lines;
+  return lines.filter(line => ![line.strComponentCode, line.strComponentName].some(value => {
+    const token = normalizeSelectToken(value);
+    return /^(employee|employer)?esic?(employee|employer)?$/.test(token);
+  }));
+}
+
 export function calculateEmployeeSalaryBaseSummaryMetrics(objSource: EmployeeSalarySummarySource | null): EmployeeSalaryBaseSummaryMetrics {
-  const lstComponentLines = objSource?.lstComponentLines ?? [];
+  const lstComponentLines = getEmployeeSalaryApplicableLines(objSource);
   const { decAnnualAmount: decFlexiBucketAnnual, decMonthlyAmount: decFlexiBucketMonthly } = getEmployeeFlexiBucketAmounts(objSource);
   const decEmployerContributionAnnual = lstComponentLines.reduce((decTotal, dicLine) => {
     if (!isEmployerContributionCategory(dicLine.strComponentCategory) && !isEmployerPfComponent(dicLine)) {
@@ -245,7 +259,7 @@ export function buildEmployeeSalaryFixedRows(
 
 // Use the same eligibility and flexi source as the displayed summary totals.
 export function buildEmployeeSalaryCalculationRows(objSource: EmployeeSalarySummarySource | null) {
-  const lines = objSource?.lstComponentLines ?? [];
+  const lines = getEmployeeSalaryApplicableLines(objSource);
   const name = (line: EmployeeSalarySummaryComponentLine) => line.strComponentName || line.strComponentCode || "Component";
   const earnings = lines.filter(isCtcIncludedEarning);
   const flexi = getEmployeeFlexiBucketAmounts(objSource);
