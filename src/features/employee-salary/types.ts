@@ -250,6 +250,7 @@ export type EmployeeSalaryDetailRecord = {
     intFlexiBalanceComponentID?: number | null;
     strRevisionReason: string | null;
     dtEffectiveFrom: string;
+    dtEffectiveTo?: string | null;
   } | null;
   objAssignedStructure: {
     intSalaryStructureID: number;

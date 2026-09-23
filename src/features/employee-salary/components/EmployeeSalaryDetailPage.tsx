@@ -1375,7 +1375,7 @@ function buildRevisionForm(
   return {
     intSalaryStructureID,
     dtEffectiveFrom: getRevisionMinEffectiveDate(objDetail) || getTodayDateString(),
-    dtEffectiveTo: "",
+    dtEffectiveTo: objDetail?.objCurrentSalarySnapshot?.dtEffectiveTo ?? "",
     strRevisionReason: "",
     lstOverrides: buildOverrideRows(
       lstStructureComponents.length > 0 ? lstStructureComponents : objDetail?.lstComponentLines ?? [],
