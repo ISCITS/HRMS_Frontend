@@ -763,6 +763,32 @@ export default function SalaryComponentEditorPage({
     });
   }
 
+  function handleVariablePayCalculationMethodSelection(
+    strSelectedMethod: SalaryComponentFormValues["strVariablePayCalculationMethodCode"],
+  ) {
+    setDicForm((dicPrevious) => {
+      const dicNext: SalaryComponentFormValues = {
+        ...dicPrevious,
+        strVariablePayCalculationMethodCode: strSelectedMethod,
+      };
+      // These fields only mean anything for Allocation Based - switching to Direct Amount or
+      // Formula Based must clear them (not just hide them), otherwise stale Allocation Based
+      // config from an earlier selection would still be saved and would silently reappear if
+      // the user switches back to Allocation Based later.
+      if (strSelectedMethod !== "ALLOCATION_BASED") {
+        dicNext.intAllocationEntityTypeID = "";
+        dicNext.blnMonthlyAdjustmentApplicable = false;
+        dicNext.strMonthlyAdjustmentMinPercent = "";
+        dicNext.strMonthlyAdjustmentMaxPercent = "";
+        dicNext.blnAttendanceEligibilityApplicable = false;
+        dicNext.strAttendanceEligibilityPercent = "";
+        dicNext.blnAttendanceProrationApplicable = false;
+        dicNext.blnEligibilityOverrideAllowed = false;
+      }
+      return dicNext;
+    });
+  }
+
   function applyLookupSelection(
     dicValues: SalaryComponentFormValues,
     strIDField: keyof SalaryComponentFormValues,
@@ -2193,8 +2219,7 @@ export default function SalaryComponentEditorPage({
                   { intID: 3, strLabel: t("formula_based", "Formula Based") },
                 ]}
                 onChange={(intValue) =>
-                  updateRootField(
-                    "strVariablePayCalculationMethodCode",
+                  handleVariablePayCalculationMethodSelection(
                     intValue === 2 ? "ALLOCATION_BASED" : intValue === 3 ? "FORMULA_BASED" : "DIRECT_AMOUNT"
                   )
                 }
@@ -2219,8 +2244,9 @@ export default function SalaryComponentEditorPage({
 
             {dicForm.strVariablePayCalculationMethodCode === "ALLOCATION_BASED" ? (
               <>
-                <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" }, alignItems: "start" }}>
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, alignItems: "center" }}>
                   <FormControlLabel
+                    sx={{ m: 0, minWidth: { xs: "100%", md: 280 } }}
                     control={
                       <Switch
                         checked={dicForm.blnMonthlyAdjustmentApplicable}
@@ -2237,7 +2263,7 @@ export default function SalaryComponentEditorPage({
                       value={dicForm.strMonthlyAdjustmentMinPercent}
                       onChange={(objEvent) => updateRootField("strMonthlyAdjustmentMinPercent", objEvent.target.value.replace(/[^0-9.-]/g, ""))}
                       disabled={blnFieldDisabled}
-                      fullWidth
+                      sx={{ flex: { xs: "1 1 100%", md: "1 1 220px" } }}
                       data-controlid="salary-components.editor.monthly-adjustment-min-percent.input"
                       inputProps={buildInputTestIdProps("salary-components.editor.monthly-adjustment-min-percent.input")}
                     />
@@ -2248,15 +2274,16 @@ export default function SalaryComponentEditorPage({
                       value={dicForm.strMonthlyAdjustmentMaxPercent}
                       onChange={(objEvent) => updateRootField("strMonthlyAdjustmentMaxPercent", objEvent.target.value.replace(/[^0-9.-]/g, ""))}
                       disabled={blnFieldDisabled}
-                      fullWidth
+                      sx={{ flex: { xs: "1 1 100%", md: "1 1 220px" } }}
                       data-controlid="salary-components.editor.monthly-adjustment-max-percent.input"
                       inputProps={buildInputTestIdProps("salary-components.editor.monthly-adjustment-max-percent.input")}
                     />
                   ) : null}
                 </Box>
 
-                <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" }, alignItems: "start" }}>
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, alignItems: "center" }}>
                   <FormControlLabel
+                    sx={{ m: 0, minWidth: { xs: "100%", md: 280 } }}
                     control={
                       <Switch
                         checked={dicForm.blnAttendanceEligibilityApplicable}
@@ -2274,15 +2301,14 @@ export default function SalaryComponentEditorPage({
                       value={dicForm.strAttendanceEligibilityPercent}
                       onChange={(objEvent) => updateRootField("strAttendanceEligibilityPercent", objEvent.target.value.replace(/[^0-9.]/g, ""))}
                       disabled={blnFieldDisabled}
-                      fullWidth
+                      sx={{ flex: { xs: "1 1 100%", md: "1 1 220px" } }}
                       data-controlid="salary-components.editor.attendance-eligibility-percent.input"
                       inputProps={buildInputTestIdProps("salary-components.editor.attendance-eligibility-percent.input")}
                     />
                   ) : null}
-                </Box>
-                {dicForm.blnAttendanceEligibilityApplicable ? (
-                  <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                  {dicForm.blnAttendanceEligibilityApplicable ? (
                     <FormControlLabel
+                      sx={{ m: 0, minWidth: { xs: "100%", md: 260 } }}
                       control={
                         <Switch
                           checked={dicForm.blnAttendanceProrationApplicable}
@@ -2293,7 +2319,10 @@ export default function SalaryComponentEditorPage({
                       }
                       label={t("attendance_proration_applicable", "Attendance Proration Applicable")}
                     />
+                  ) : null}
+                  {dicForm.blnAttendanceEligibilityApplicable ? (
                     <FormControlLabel
+                      sx={{ m: 0, minWidth: { xs: "100%", md: 260 } }}
                       control={
                         <Switch
                           checked={dicForm.blnEligibilityOverrideAllowed}
@@ -2304,8 +2333,8 @@ export default function SalaryComponentEditorPage({
                       }
                       label={t("eligibility_override_allowed", "Eligibility Override Allowed")}
                     />
-                  </Stack>
-                ) : null}
+                  ) : null}
+                </Box>
               </>
             ) : null}
 

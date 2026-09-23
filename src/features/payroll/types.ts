@@ -952,6 +952,14 @@ export type TaxCessRuleRecord = {
   decCessAmount: number;
 };
 
+export type VariablePayProjectedIncomeBreakdownRow = {
+  strComponentCode: string | null;
+  strComponentName: string | null;
+  decMonthlyBaseAmount: number;
+  intRemainingMonths: number;
+  decProjectedAmount: number;
+};
+
 export type TaxCalculationDetailRecord = {
   intResultID: number;
   strEmployeeCode: string;
@@ -961,6 +969,11 @@ export type TaxCalculationDetailRecord = {
   strRegimeTypeCode: string | null;
   decGrossTaxableIncomeYtd: number;
   decProjectedTaxableIncome: number;
+  /** How much of decProjectedTaxableIncome comes from Separate-Payroll components (e.g. an
+   * Allocation-Based Incentive) configured to project their remaining CTC/base entitlement into
+   * annual tax ahead of actually being paid. 0 when no such component applies. */
+  decVariablePayProjectedIncome: number;
+  lstVariablePayProjectedIncomeBreakdown: VariablePayProjectedIncomeBreakdownRow[];
   dicExemptions: {
     decTotalAmount: number;
     lstItems: TaxDeclarationItemRecord[];
