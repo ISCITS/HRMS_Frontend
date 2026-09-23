@@ -12,7 +12,6 @@ import {
   Chip,
   Collapse,
   IconButton,
-  MenuItem,
   Paper,
   Stack,
   Table,
@@ -28,6 +27,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import {
   allocationMasterService,
@@ -164,6 +164,47 @@ export default function VariablePayCalculationPage() {
   const objSelectedComponent = useMemo(
     () => lstComponents.find((dicComponent) => dicComponent.intID === intSalaryComponentID) ?? null,
     [lstComponents, intSalaryComponentID],
+  );
+
+  const dicRunByID = useMemo(() => {
+    const dicMap: Record<number, PayrollRunListRecord> = {};
+    for (const objRun of lstRuns) {
+      dicMap[objRun.intID] = objRun;
+    }
+    return dicMap;
+  }, [lstRuns]);
+
+  // Drives the "which employee is this run for" panel below the Target Payroll Run picker -
+  // getPayrollRuns() already resolves strScopedEmployeeName/strScopedEmployeeCode server-side,
+  // so no extra request is needed once a run is selected.
+  const objSelectedTargetRun = intTargetPayrollRunID === "" ? null : dicRunByID[intTargetPayrollRunID] ?? null;
+
+  const lstTargetRunOptions = useMemo(
+    () =>
+      lstRuns.map((objRun) => ({
+        intID: objRun.intID,
+        strCode: objRun.strRunCode,
+        strLabel:
+          objRun.strScopeType === "SelectedEmployee" && objRun.strScopedEmployeeName
+            ? `${objRun.strRunName} (${objRun.strScopedEmployeeName})`
+            : objRun.strRunName,
+      })),
+    [lstRuns],
+  );
+
+  const lstSourceRunOptions = useMemo(
+    () => lstRegularRuns.map((objRun) => ({ intID: objRun.intID, strCode: objRun.strRunCode, strLabel: objRun.strRunName })),
+    [lstRegularRuns],
+  );
+
+  const lstComponentOptions = useMemo(
+    () =>
+      lstComponents.map((dicComponent) => ({
+        intID: dicComponent.intID,
+        strCode: dicComponent.strComponentCode,
+        strLabel: dicComponent.strComponentName,
+      })),
+    [lstComponents],
   );
 
   // The backend only requires a Source Payroll Run when the component has attendance
@@ -438,63 +479,40 @@ export default function VariablePayCalculationPage() {
             inputProps={{ controlId: "variable-pay-calculation.filter.month.input" }}
             sx={{ minWidth: { xs: "100%", md: 190 } }}
           />
-          <TextField
-            select
+          <CommonSearchableSelect
             label={t("salary_component", "Salary Component")}
             value={intSalaryComponentID}
-            onChange={(objEvent) =>
-              setIntSalaryComponentID(objEvent.target.value === "" ? "" : Number(objEvent.target.value))
+            options={lstComponentOptions}
+            onChange={(intValue) => setIntSalaryComponentID(intValue === "" ? "" : Number(intValue))}
+            controlId="variable-pay-calculation.filter.component.select"
+            placeholder={t("search_component", "Search salary component...")}
+            helperText={
+              lstComponents.length === 0
+                ? t("no_components", "No Allocation-Based salary components found.")
+                : undefined
             }
-            inputProps={{ controlId: "variable-pay-calculation.filter.component.select" }}
             sx={{ minWidth: { xs: "100%", md: 300 } }}
-          >
-            {lstComponents.length === 0 ? (
-              <MenuItem value="" disabled>
-                {t("no_components", "No Allocation-Based salary components found.")}
-              </MenuItem>
-            ) : null}
-            {lstComponents.map((dicComponent) => (
-              <MenuItem key={dicComponent.intID} value={dicComponent.intID}>
-                {`${dicComponent.strComponentCode} - ${dicComponent.strComponentName}`}
-              </MenuItem>
-            ))}
-          </TextField>
+          />
           {blnAttendanceSourceNeeded ? (
-            <TextField
-              select
+            <CommonSearchableSelect
               label={t("source_run", "Source Payroll Run")}
               value={intSourcePayrollRunID}
-              onChange={(objEvent) =>
-                setIntSourcePayrollRunID(objEvent.target.value === "" ? "" : Number(objEvent.target.value))
-              }
-              inputProps={{ controlId: "variable-pay-calculation.filter.source-run.select" }}
+              options={lstSourceRunOptions}
+              onChange={(intValue) => setIntSourcePayrollRunID(intValue === "" ? "" : Number(intValue))}
+              controlId="variable-pay-calculation.filter.source-run.select"
+              placeholder={t("search_run", "Search payroll run...")}
               sx={{ minWidth: { xs: "100%", md: 280 } }}
-            >
-              <MenuItem value="">{t("none", "None")}</MenuItem>
-              {lstRegularRuns.map((objRun) => (
-                <MenuItem key={objRun.intID} value={objRun.intID}>
-                  {`${objRun.strRunCode} - ${objRun.strRunName}`}
-                </MenuItem>
-              ))}
-            </TextField>
+            />
           ) : null}
-          <TextField
-            select
+          <CommonSearchableSelect
             label={t("target_run", "Target Payroll Run")}
             value={intTargetPayrollRunID}
-            onChange={(objEvent) =>
-              setIntTargetPayrollRunID(objEvent.target.value === "" ? "" : Number(objEvent.target.value))
-            }
-            inputProps={{ controlId: "variable-pay-calculation.filter.target-run.select" }}
-            sx={{ minWidth: { xs: "100%", md: 280 } }}
-          >
-            <MenuItem value="">{t("none", "None")}</MenuItem>
-            {lstRuns.map((objRun) => (
-              <MenuItem key={objRun.intID} value={objRun.intID}>
-                {`${objRun.strRunCode} - ${objRun.strRunName}`}
-              </MenuItem>
-            ))}
-          </TextField>
+            options={lstTargetRunOptions}
+            onChange={(intValue) => setIntTargetPayrollRunID(intValue === "" ? "" : Number(intValue))}
+            controlId="variable-pay-calculation.filter.target-run.select"
+            placeholder={t("search_run", "Search payroll run...")}
+            sx={{ minWidth: { xs: "100%", md: 320 } }}
+          />
           <Button
             variant="contained"
             onClick={() => void handleCreateOrLoadBatch()}
@@ -510,13 +528,31 @@ export default function VariablePayCalculationPage() {
           {blnCompanyAutoDetected
             ? t(
                 "filter_row_help",
-                "Company defaults to your signed-in company. Target Payroll Run is optional - the Separate Payroll run to post into.",
+                "Company defaults to your signed-in company. Target Payroll Run is optional - the Separate Payroll run to post into. Each Target Payroll Run gets its own independent calculation batch, so you can calculate/approve/post one employee's run without affecting any other employee's run for the same month.",
               )
             : t(
                 "filter_row_help_manual",
-                "Your session has no company on file - enter it manually. Target Payroll Run is optional - the Separate Payroll run to post into.",
+                "Your session has no company on file - enter it manually. Target Payroll Run is optional - the Separate Payroll run to post into. Each Target Payroll Run gets its own independent calculation batch, so you can calculate/approve/post one employee's run without affecting any other employee's run for the same month.",
               )}
         </Typography>
+
+        {intTargetPayrollRunID !== "" ? (
+          <Box sx={{ mt: 1.5 }}>
+            {objSelectedTargetRun ? (
+              <Chip
+                color={objSelectedTargetRun.strScopeType === "SelectedEmployee" ? "primary" : "default"}
+                label={
+                  objSelectedTargetRun.strScopeType === "SelectedEmployee"
+                    ? `${t("employee", "Employee")}: ${objSelectedTargetRun.strScopedEmployeeName ?? t("unknown", "Unknown")}${
+                        objSelectedTargetRun.strScopedEmployeeCode ? ` (${objSelectedTargetRun.strScopedEmployeeCode})` : ""
+                      }`
+                    : `${t("scope", "Scope")}: ${objSelectedTargetRun.strScopeType ?? "All"}`
+                }
+                data-control-id="variable-pay-calculation.filter.target-run-employee.chip"
+              />
+            ) : null}
+          </Box>
+        ) : null}
 
         {objSelectedComponent?.blnAttendanceEligibilityApplicable ||
         objSelectedComponent?.blnAttendanceProrationApplicable ? (
@@ -608,7 +644,19 @@ export default function VariablePayCalculationPage() {
                 </Button>
               ) : null}
               <Chip
-                label={`${t("target_run", "Target Payroll Run")}: ${objBatch.intTargetPayrollRunID ?? t("not_set", "Not set")}`}
+                label={`${t("target_run", "Target Payroll Run")}: ${(() => {
+                  if (!objBatch.intTargetPayrollRunID) {
+                    return t("not_set", "Not set");
+                  }
+                  const objTargetRun = dicRunByID[objBatch.intTargetPayrollRunID];
+                  if (!objTargetRun) {
+                    return String(objBatch.intTargetPayrollRunID);
+                  }
+                  return objTargetRun.strScopedEmployeeName
+                    ? `${objTargetRun.strRunCode} - ${objTargetRun.strScopedEmployeeName}`
+                    : objTargetRun.strRunCode;
+                })()}`}
+                data-control-id="variable-pay-calculation.batch.target-run.chip"
               />
               <Chip
                 label={`${t("variable_pay_type", "Variable Pay Type")}: ${objBatch.intVariablePayTypeID ?? t("not_set", "Not set")}`}
