@@ -943,6 +943,7 @@
   .tableCard,
   .listUtilityBar {
     padding: 8px;
+    padding-top: 0px;
   }
 
   .controlsHeader,
@@ -1042,6 +1043,7 @@
   .tableCard,
   .listUtilityBar {
     padding: 8px;
+    padding-top: 0px;
   }
 
   .headerActions > *,
