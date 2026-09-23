@@ -663,10 +663,10 @@ export default function PayrollResultListPage({
           <Box
             sx={{
               display: "flex",
-              flexWrap: "nowrap",
+              flexWrap: "wrap",
               gap: 1.2,
               alignItems: "center",
-              overflowX: "auto",
+              pt: 1, rowGap: 2,
               pb: 0.5,
               "& > .MuiTextField-root, & > .MuiFormControl-root": { flex: "1 1 180px", minWidth: 170 },
             }}
@@ -680,6 +680,8 @@ export default function PayrollResultListPage({
                     strSearchEmployee: objEvent.target.value,
                   }))
                 }
+                label={t("employee", "Employee")}
+                InputLabelProps={{ shrink: true }}
                 placeholder={t("employee_search_placeholder", "Search by employee code or name")}
                 fullWidth
                 InputProps={{
@@ -698,6 +700,8 @@ export default function PayrollResultListPage({
                     strSearchRun: objEvent.target.value,
                   }))
                 }
+                label={t("payroll_run", "Payroll Run")}
+                InputLabelProps={{ shrink: true }}
                 placeholder={t("run_search_placeholder", "Search by payroll run")}
                 fullWidth
                 InputProps={{
