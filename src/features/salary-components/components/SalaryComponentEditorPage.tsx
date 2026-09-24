@@ -2246,7 +2246,7 @@ export default function SalaryComponentEditorPage({
               <>
                 <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, alignItems: "center" }}>
                   <FormControlLabel
-                    sx={{ m: 0, minWidth: { xs: "100%", md: 280 } }}
+                    sx={{ ml: -1.375, mr: 0, my: 0, minWidth: { xs: "100%", md: 280 } }}
                     control={
                       <Switch
                         checked={dicForm.blnMonthlyAdjustmentApplicable}
@@ -2283,7 +2283,7 @@ export default function SalaryComponentEditorPage({
 
                 <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, alignItems: "center" }}>
                   <FormControlLabel
-                    sx={{ m: 0, minWidth: { xs: "100%", md: 280 } }}
+                    sx={{ ml: -1.375, mr: 0, my: 0, minWidth: { xs: "100%", md: 280 } }}
                     control={
                       <Switch
                         checked={dicForm.blnAttendanceEligibilityApplicable}

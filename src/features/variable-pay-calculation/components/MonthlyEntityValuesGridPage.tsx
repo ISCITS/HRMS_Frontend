@@ -243,7 +243,7 @@ export default function MonthlyEntityValuesGridPage() {
   }
 
   return (
-    <Stack spacing={2} sx={{ p: 2 }}>
+    <Stack spacing={1.5} sx={{ p: 1.25 }}>
       <BlockingLoader blnOpen={blnBusy} strLabel={t("working", "Please wait...")} />
 
       {objAccess.strError ? <Alert severity="warning">{objAccess.strError}</Alert> : null}
@@ -264,22 +264,30 @@ export default function MonthlyEntityValuesGridPage() {
         </Alert>
       ) : null}
 
-      <Paper sx={{ p: 2 }}>
+      <Paper sx={{ p: 1.25 }}>
         <Stack direction={{ xs: "column", md: "row" }} gap={2} alignItems={{ xs: "stretch", md: "center" }}>
-          <TextField
-            label={t("company", "Company")}
-            type={blnCompanyAutoDetected ? "text" : "number"}
-            value={intCompanyID}
-            onChange={
-              blnCompanyAutoDetected
-                ? undefined
-                : (objEvent) => setIntCompanyID(objEvent.target.value === "" ? "" : Number(objEvent.target.value))
-            }
-            InputLabelProps={{ shrink: true }}
-            InputProps={{ readOnly: blnCompanyAutoDetected }}
-            inputProps={{ controlId: "variable-pay-monthly-values.filter.company.input", min: 1 }}
-            sx={{ minWidth: { xs: "100%", md: 160 } }}
-          />
+          {blnCompanyAutoDetected ? (
+            <TextField
+              select
+              label={t("company", "Company")}
+              value={intCompanyID}
+              InputProps={{ readOnly: true }}
+              inputProps={{ controlId: "variable-pay-monthly-values.filter.company.select" }}
+              sx={{ minWidth: { xs: "100%", md: 200 } }}
+            >
+              <MenuItem value={intCompanyID}>{`${t("company", "Company")} #${intCompanyID}`}</MenuItem>
+            </TextField>
+          ) : (
+            <TextField
+              label={t("company", "Company")}
+              type="number"
+              value={intCompanyID}
+              onChange={(objEvent) => setIntCompanyID(objEvent.target.value === "" ? "" : Number(objEvent.target.value))}
+              InputLabelProps={{ shrink: true }}
+              inputProps={{ controlId: "variable-pay-monthly-values.filter.company.input", min: 1 }}
+              sx={{ minWidth: { xs: "100%", md: 160 } }}
+            />
+          )}
           <TextField
             label={t("payroll_month", "Payroll Month")}
             type="month"

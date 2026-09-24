@@ -12,6 +12,7 @@ import {
   Chip,
   Collapse,
   IconButton,
+  MenuItem,
   Paper,
   Stack,
   Table,
@@ -433,7 +434,7 @@ export default function VariablePayCalculationPage() {
   }
 
   return (
-    <Stack spacing={2} sx={{ p: 2 }}>
+    <Stack spacing={1.5} sx={{ p: 1.25 }}>
       <BlockingLoader blnOpen={blnBusy} strLabel={t("working", "Please wait...")} />
 
       {objAccess.strError ? <Alert severity="warning">{objAccess.strError}</Alert> : null}
@@ -454,22 +455,30 @@ export default function VariablePayCalculationPage() {
         </Alert>
       ) : null}
 
-      <Paper sx={{ p: 2 }}>
+      <Paper sx={{ p: 1.25 }}>
         <Stack direction={{ xs: "column", md: "row" }} gap={2} alignItems={{ xs: "stretch", md: "center" }} flexWrap="wrap">
-          <TextField
-            label={t("company", "Company")}
-            type={blnCompanyAutoDetected ? "text" : "number"}
-            value={intCompanyID}
-            onChange={
-              blnCompanyAutoDetected
-                ? undefined
-                : (objEvent) => setIntCompanyID(objEvent.target.value === "" ? "" : Number(objEvent.target.value))
-            }
-            InputLabelProps={{ shrink: true }}
-            InputProps={{ readOnly: blnCompanyAutoDetected }}
-            inputProps={{ controlId: "variable-pay-calculation.filter.company.input", min: 1 }}
-            sx={{ minWidth: { xs: "100%", md: 160 } }}
-          />
+          {blnCompanyAutoDetected ? (
+            <TextField
+              select
+              label={t("company", "Company")}
+              value={intCompanyID}
+              InputProps={{ readOnly: true }}
+              inputProps={{ controlId: "variable-pay-calculation.filter.company.select" }}
+              sx={{ minWidth: { xs: "100%", md: 200 } }}
+            >
+              <MenuItem value={intCompanyID}>{`${t("company", "Company")} #${intCompanyID}`}</MenuItem>
+            </TextField>
+          ) : (
+            <TextField
+              label={t("company", "Company")}
+              type="number"
+              value={intCompanyID}
+              onChange={(objEvent) => setIntCompanyID(objEvent.target.value === "" ? "" : Number(objEvent.target.value))}
+              InputLabelProps={{ shrink: true }}
+              inputProps={{ controlId: "variable-pay-calculation.filter.company.input", min: 1 }}
+              sx={{ minWidth: { xs: "100%", md: 160 } }}
+            />
+          )}
           <TextField
             label={t("payroll_month", "Payroll Month")}
             type="month"
@@ -567,7 +576,7 @@ export default function VariablePayCalculationPage() {
 
       {objBatch ? (
         <>
-          <Paper sx={{ p: 2 }}>
+          <Paper sx={{ p: 1.25 }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
               <Typography variant="h6">{t("batch_summary", "Batch Summary")}</Typography>
               <Stack direction="row" spacing={1} flexWrap="wrap">
@@ -664,7 +673,7 @@ export default function VariablePayCalculationPage() {
             </Box>
           </Paper>
 
-          <Paper sx={{ p: 2 }}>
+          <Paper sx={{ p: 1.25 }}>
             <Typography variant="h6" sx={{ mb: 1.5 }}>
               {t("employee_grid", "Employee Calculations")}
             </Typography>

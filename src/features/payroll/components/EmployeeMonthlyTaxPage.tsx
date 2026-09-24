@@ -10,7 +10,6 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
-import payrollStyles from "@/features/payroll/components/PayrollScreen.module.css";
 import styles from "@/features/payroll/components/EmployeeMonthlyTaxPage.module.css";
 import MonthlyTaxImportPanel from "@/features/payroll/components/MonthlyTaxImportPanel";
 import MonthlyTaxTransactionDetailDialog from "@/features/payroll/components/MonthlyTaxTransactionDetailDialog";
@@ -192,9 +191,6 @@ export default function EmployeeMonthlyTaxPage({
 
   return (
     <Box className={styles.page}>
-      <Typography component="h1" className={payrollStyles.title}>
-        {t("page_title", "Employee Monthly Tax / TDS")}
-      </Typography>
       <Box className={styles.controlsCard}>
         {blnCanImport ? (
           <MonthlyTaxImportPanel onImported={loadMatrix} objToolbarLeft={objFilters} />

@@ -137,7 +137,8 @@ export default function MonthlyTaxTransactionDetailDialog({
             size="small"
             value={strPeriodMonth ?? ""}
             onChange={(objEvent) => onPeriodMonthChange?.(objEvent.target.value)}
-            sx={{ minWidth: 200, mb: 2 }}
+            InputLabelProps={{ shrink: true }}
+            sx={{ minWidth: 200, mt: 2, mb: 2 }}
           >
             {lstAvailableMonths.map((strMonth) => (
               <MenuItem key={strMonth} value={strMonth}>
