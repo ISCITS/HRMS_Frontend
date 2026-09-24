@@ -1,10 +1,10 @@
 "use client";
 
-import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
-import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
+import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
+import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
+import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
-import SpaceDashboardRoundedIcon from "@mui/icons-material/SpaceDashboardRounded";
 import SwapHorizRoundedIcon from "@mui/icons-material/SwapHorizRounded";
 import {
   AppBar,
@@ -24,13 +24,16 @@ import {
   MenuItem,
   Paper,
   Stack,
+  SvgIcon,
   Toolbar,
+  Tooltip,
   Typography
 } from "@mui/material";
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { DashboardHeaderModeContext } from "@/components/layout/DashboardHeaderModeContext";
+import BannerSearch from "@/components/layout/BannerSearch";
 import DynamicMenu from "@/components/navigation/DynamicMenu";
 import BlockingLoader, { BlockingLoaderViewportProvider } from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -41,6 +44,7 @@ import { employeeService } from "@/features/employee/services/employeeService";
 import { useAuthenticatedAvatar } from "@/hooks/useAuthenticatedAvatar";
 import { authHelpers } from "@/lib/auth";
 import { withBasePath } from "@/lib/basePath";
+import { appConfig } from "@/config/app";
 import { normalizeMenuResponse } from "@/lib/menu";
 import { getPostLoginRoute } from "@/lib/RouteGuard";
 import { getLogoutUrl } from "@/lib/urlHelpers";
@@ -54,7 +58,8 @@ import { ApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { authApiService } from "@/services";
 
 const intDrawerWidth = 308;
-const intTopBarHeight = 64;
+const intTopBarHeight = 55;
+const intBannerHeight = 56;
 const intMenuZIndex = 1700;
 const intCollapsedMenuRailWidth = 60;
 const intContentLoaderZIndex = 1200;
@@ -64,10 +69,31 @@ const strModuleLabelsLoadStartEventName = "hrms:module-label-load-start";
 const strModuleLabelsLoadEndEventName = "hrms:module-label-load-end";
 const strAvatarRefreshEventName = "hrms:avatar-refresh";
 const intLanguageSwitchSettledDelayMs = 900;
-const strSharedHeaderGradient = "var(--app-banner-background)";
 const strSidebarGradient = "var(--app-menu-background)";
 // Product and current-page headings share one responsive scale across the app bar.
 const objAppBarHeadingFontSize = { xs: "1.02rem", md: "1.28rem", lg: "1.42rem" } as const;
+
+function AppMenuLogo() {
+  return (
+    <Box sx={{
+      width: 40,
+      height: 40,
+      display: "grid",
+      placeItems: "center",
+      flexShrink: 0,
+      "& .app-logo-image, & .app-logo-hover-icon": { gridArea: "1 / 1" },
+      "& .app-logo-hover-icon": { opacity: 0 },
+      "&:hover .app-logo-image, .MuiIconButton-root:hover & .app-logo-image": { opacity: 0 },
+      "&:hover .app-logo-hover-icon, .MuiIconButton-root:hover & .app-logo-hover-icon": { opacity: 1 }
+    }}>
+      <Box className="app-logo-image" component="img" src={withBasePath("/app_logo/NavHR_Menu_Icon_96px.jpg")} alt="" sx={{ width: 40, height: 40, borderRadius: "16px", objectFit: "contain" }} />
+      <SvgIcon className="app-logo-hover-icon" viewBox="0 0 24 24" sx={{ fontSize: 24, color: "var(--app-menu-icon-color, #2463a0)" }}>
+        <rect x="4" y="4" width="16" height="16" rx="2" fill="none" stroke="currentColor" strokeWidth="1.7" />
+        <path d="M10 4v16" fill="none" stroke="currentColor" strokeWidth="1.7" />
+      </SvgIcon>
+    </Box>
+  );
+}
 
 function getAutomationProps(strControlId?: string) {
   return strControlId ? ({ "data-controlid": strControlId } as const) : {};
@@ -575,8 +601,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [blnPortalSwitching, setBlnPortalSwitching] = useState(false);
   const [strPortalSwitchError, setStrPortalSwitchError] = useState("");
   const [blnLogoutDialogOpen, setBlnLogoutDialogOpen] = useState(false);
+  const [blnLanguageMenuExpanded, setBlnLanguageMenuExpanded] = useState(true);
   const [objProfileAnchorEl, setObjProfileAnchorEl] = useState<HTMLElement | null>(null);
   const [objUserContext, setObjUserContext] = useState<CurrentUserContext | null>(null);
+  const [strFailedCompanyLogoUrl, setStrFailedCompanyLogoUrl] = useState("");
   const [blnEssDashboardActive, setBlnEssDashboardActive] = useState(false);
   const [objMenu, setObjMenu] = useState<MenuResponse>({ lstMenuItems: [], strHomeRoute: "/dashboard" });
   const [blnMenuLoaded, setBlnMenuLoaded] = useState(false);
@@ -989,6 +1017,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const strLinkedEmployeeName = strResolvedEmployeeName || extractLinkedEmployeeName(objUserContext);
   const { strEmployeeCode, strDesignation } = extractEmployeeMeta(objUserContext);
   const strProfileDisplayName = strLinkedEmployeeName || strUserName;
+  const strProfileEmail = objUserContext?.objUser.strEmailAddress?.trim() || "";
   const strAvatarText = strProfileDisplayName.trim().charAt(0).toUpperCase() || "U";
   const strAvatarUrl = objUserContext?.strAvatarUrl || objUserContext?.objEmployee?.strProfilePhotoUrl || "";
   const strAuthenticatedAvatarUrl = useAuthenticatedAvatar(strAvatarUrl);
@@ -1032,6 +1061,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
       ));
   const blnDashboardRoute = (strPathname || "").toLowerCase() === "/dashboard";
   const strTenantName = objUserContext?.objTenant.strTenantName || "Workspace";
+  const strCompanyName = objUserContext?.objCompany?.strCompanyName?.trim() || strTenantName;
+  const strCompanyLogoUrl = objUserContext?.objCompany?.strLogoUrl?.trim() || "";
   const blnProfileMenuOpen = Boolean(objProfileAnchorEl);
 
   useEffect(() => {
@@ -1078,7 +1109,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         display: "flex",
         flexDirection: "column",
         gap: 1.5,
-        p: { xs: 1, md: 1.5 },
+        p: 0,
         background:
           "linear-gradient(180deg, rgba(248,250,252,0.98) 0%, rgba(241,245,249,0.96) 50%, rgba(248,250,252,0.98) 100%)",
         overflow: "hidden"
@@ -1090,7 +1121,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           flexDirection: "column",
           flex: 1,
           minHeight: 0,
-          borderRadius: "24px",
+          borderRadius: 0,
           overflow: "hidden",
           backgroundColor: "var(--app-menu-surface)",
           backdropFilter: "blur(22px)",
@@ -1103,7 +1134,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             px: 2.25,
             height: `${intTopBarHeight}px`,
             flexShrink: 0,
-            background: strSharedHeaderGradient,
+            backgroundColor: "#ffffff",
             color: "var(--app-banner-text-color)",
             display: "flex",
             alignItems: "center",
@@ -1113,8 +1144,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
           <Stack direction="row" spacing={1.5} alignItems="center" sx={{ height: "100%", flex: 1, minWidth: 0 }}>
             <Box
               sx={{
-                width: 46,
-                height: 46,
+                width: 40,
+                height: 40,
                 borderRadius: "16px",
                 display: "grid",
                 placeItems: "center",
@@ -1123,13 +1154,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 color: "var(--app-icon-active-color)"
               }}
             >
-              <SpaceDashboardRoundedIcon />
+              <AppMenuLogo />
             </Box>
             <Box sx={{ minWidth: 0 }}>
               <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
                 {blnEssShellBrand
                   ? tCommon("brand_short_name", "ESS")
-                  : tCommon("brand_short_name_hrms", "HRMS")}
+                  : appConfig.appName}
               </Typography>
             </Box>
           </Stack>
@@ -1141,15 +1172,19 @@ export default function AppShell({ children }: { children: ReactNode }) {
             }}
             sx={{
               color: "var(--app-primary-color)",
-              backgroundColor: "rgba(37, 99, 235, 0.12)",
-              border: "1px solid rgba(37, 99, 235, 0.18)",
+              backgroundColor: "transparent",
+              border: 0,
+              borderRadius: "6px",
               "&:hover": {
-                backgroundColor: "rgba(37, 99, 235, 0.2)"
+                backgroundColor: "#f3f4f6"
               }
             }}
             {...getAutomationProps("app-shell.sidebar-close.button")}
           >
-            <MenuRoundedIcon />
+            <SvgIcon sx={{ fontSize: 22 }} viewBox="0 0 24 24">
+              <rect x="4" y="4" width="16" height="16" rx="2" fill="none" stroke="currentColor" strokeWidth="1.7" />
+              <path d="M10 4v16" fill="none" stroke="currentColor" strokeWidth="1.7" />
+            </SvgIcon>
           </IconButton>
         </Box>
 
@@ -1296,7 +1331,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
         <Box
           sx={{
             width: "100%",
-            height: 96,
+            height: intBannerHeight,
+            mt: "7px",
             display: "grid",
             placeItems: "center",
             flexShrink: 0,
@@ -1307,10 +1343,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
               sx={{
                 width: 40,
                 height: 40,
-                border: "1px solid var(--app-menu-border-color)",
-                backgroundColor: "#ffffff",
+                p: 0,
+                borderRadius: "16px",
+                overflow: "hidden",
+                border: "1px solid rgba(37, 99, 235, 0.18)",
+                backgroundColor: "rgba(37, 99, 235, 0.12)",
                 color: "var(--app-menu-icon-color)",
-                boxShadow: "0 8px 20px rgba(15, 23, 42, 0.08)",
                 "&:hover": {
                   backgroundColor: "var(--app-menu-hover-background)",
                   color: "var(--app-menu-active-color)",
@@ -1318,7 +1356,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               }}
               {...getAutomationProps("app-shell.desktop-menu-toggle.button")}
             >
-              <MenuRoundedIcon sx={{ fontSize: { xs: 21, xl: 24 } }} />
+              <AppMenuLogo />
           </IconButton>
         </Box>
         <Box
@@ -1367,7 +1405,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           height: "100dvh",
           minHeight: 0,
           display: { xs: "none", lg: "block" },
-          p: { xs: 1, md: 1.5 },
+          p: 0,
           pr: 0,
           overflow: "hidden",
           transform: blnDesktopSidebarOpen ? "translateX(0)" : `translateX(-${intDrawerWidth + 28}px)`,
@@ -1425,128 +1463,68 @@ export default function AppShell({ children }: { children: ReactNode }) {
             sx={{
               position: "relative",
               flexShrink: 0,
-              borderRadius: "24px",
+              "--app-banner-text-color": "#172b4d",
+              "--app-banner-border-color": "#e5edf5",
+              borderRadius: 0,
+              mt: blnDashboardRoute ? { xs: -0.75, xl: -1 } : { xs: -1, xl: -1.5 },
+              mx: blnDashboardRoute ? { xs: -0.75, xl: -1 } : { xs: -1, xl: -1.5 },
+              width: blnDashboardRoute
+                ? { xs: "calc(100% + 12px)", xl: "calc(100% + 16px)" }
+                : { xs: "calc(100% + 16px)", xl: "calc(100% + 24px)" },
               mb: { xs: 1, xl: 1.5 },
-              px: { xs: 0.25, sm: 0.75 },
-              background: strSharedHeaderGradient,
-              border: "1px solid var(--app-banner-border-color)",
-              boxShadow: "var(--app-banner-shadow)"
+              background: "#ffffff",
+              border: 0,
+              borderBottom: "1px solid var(--app-banner-border-color)",
+              boxShadow: "none"
             }}
           >
-            <Toolbar sx={{ gap: { xs: 0.5, sm: 1, xl: 1.5 }, height: { xs: "56px", xl: `${intTopBarHeight}px` }, minHeight: { xs: "56px !important", xl: `${intTopBarHeight}px !important` }, boxSizing: "border-box", alignItems: "center", px: { xs: 1, sm: 2 } }}>
+            <Toolbar sx={{ gap: { xs: 0.5, sm: 1, xl: 1.5 }, height: { xs: "auto", lg: intBannerHeight }, minHeight: `${intBannerHeight}px !important`, flexWrap: { xs: "wrap", lg: "nowrap" }, py: { xs: 1, lg: 0 }, boxSizing: "border-box", alignItems: "center", px: { xs: 1, sm: 2 } }}>
               <IconButton
+                aria-label="Open navigation menu"
                 onClick={handleMenuToggle}
                 sx={{
                   position: "relative",
                   zIndex: intMenuZIndex,
                   display: { xs: "inline-flex", lg: "none" },
-                  border: "1px solid rgba(148, 163, 184, 0.18)",
-                  backgroundColor: "rgba(248,250,252,0.88)"
+                  width: 40,
+                  height: 40,
+                  p: 0,
+                  borderRadius: "16px",
+                  overflow: "hidden",
+                  border: "1px solid rgba(37, 99, 235, 0.18)",
+                  backgroundColor: "rgba(37, 99, 235, 0.12)"
                 }}
                 {...getAutomationProps("app-shell.menu-toggle.button")}
               >
-                <MenuRoundedIcon />
+                <AppMenuLogo />
               </IconButton>
 
-              <Box sx={{ minWidth: 0, flexShrink: 0, display: { xs: "none", md: "block" } }}>
-                <Typography
-                  sx={{
-                    fontSize: objAppBarHeadingFontSize,
-                    color: "var(--app-banner-text-color)",
-                    textTransform: "none",
-                    letterSpacing: "normal",
-                    fontWeight: 700,
-                    lineHeight: 1.43,
-                    whiteSpace: "nowrap"
-                  }}
-                >
-                  {blnEssShellBrand
-                    ? tCommon("ess_app_title", "Employee Self Service")
-                    : tCommon("app_title", "Human Resource Management System")}
+              <Stack direction="row" spacing={{ xs: 1, md: 1.5 }} alignItems="center" sx={{ minWidth: 0, flexShrink: 1, maxWidth: { xs: "65%", md: "38%", lg: "30%" } }}>
+                <Typography sx={{ fontSize: objAppBarHeadingFontSize, color: "var(--app-banner-text-color)", fontWeight: 800, lineHeight: 1, whiteSpace: "nowrap", flexShrink: 0 }}>
+                  {appConfig.appName}
                 </Typography>
-              </Box>
+                <Divider orientation="vertical" flexItem sx={{ borderColor: "var(--app-banner-border-color)", my: 0.5 }} />
+                {strCompanyLogoUrl && strFailedCompanyLogoUrl !== strCompanyLogoUrl ? (
+                  <Box
+                    component="img"
+                    src={strCompanyLogoUrl}
+                    alt=""
+                    onError={() => setStrFailedCompanyLogoUrl(strCompanyLogoUrl)}
+                    sx={{ height: { xs: 24, md: 30 }, maxWidth: { xs: 40, md: 64 }, objectFit: "contain", flexShrink: 0 }}
+                  />
+                ) : null}
+                <Typography title={strCompanyName} noWrap sx={{ minWidth: 0, fontSize: { xs: "0.8rem", md: "0.95rem", lg: "1rem" }, lineHeight: 1, fontWeight: 400, color: "#64748b" }}>
+                  {strCompanyName}
+                </Typography>
+              </Stack>
 
-              {lstLanguageOptions.length > 1 ? (
-                <Box
-                  sx={{
-                    position: "absolute",
-                    left: "50%",
-                    top: "50%",
-                    transform: "translate(-50%, -50%)",
-                    zIndex: 1,
-                    display: { xs: "none", md: "block" }
-                  }}
-                >
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 0.25,
-                      px: 0.75,
-                      py: 0.55,
-                      borderRadius: "16px",
-                      backgroundColor: "rgba(255,255,255,0.96)",
-                      border: "1px solid #dbe3ee",
-                      boxShadow: "0 10px 20px rgba(15, 23, 42, 0.08)"
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        width: 28,
-                        height: 28,
-                        display: "grid",
-                        placeItems: "center",
-                        borderRadius: "999px",
-                        color: "#47658a"
-                      }}
-                    >
-                      {blnLanguageSwitching ? <CircularProgress size={14} /> : <LanguageRoundedIcon sx={{ fontSize: 16 }} />}
-                    </Box>
-                    {lstLanguageOptions.map((dicLanguageOption) => {
-                      const blnActive = dicLanguageOption.intLanguageID === intCurrentLanguageID;
-                      return (
-                        <ButtonBase
-                          key={dicLanguageOption.intLanguageID}
-                          onClick={() => {
-                            void switchWorkspaceLanguage(dicLanguageOption.intLanguageID);
-                          }}
-                          disabled={blnLanguageSwitching || blnActive}
-                          sx={{
-                            px: 1.15,
-                            py: 0.75,
-                            minWidth: 44,
-                            borderRadius: "12px",
-                            fontSize: "0.8rem",
-                            fontWeight: 700,
-                            lineHeight: 1,
-                            color: blnActive ? "#ffffff" : "#52637a",
-                            backgroundColor: blnActive ? "#3f5f99" : "transparent",
-                            boxShadow: blnActive ? "0 8px 16px rgba(63, 95, 153, 0.22)" : "none",
-                            opacity: blnLanguageSwitching && !blnActive ? 0.72 : 1,
-                            transition: "background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease",
-                            "&:hover": blnActive
-                              ? {
-                                  backgroundColor: "#3f5f99",
-                                }
-                              : {
-                                  backgroundColor: "rgba(19, 42, 99, 0.08)",
-                                  color: "#132a63",
-                                }
-                          }}
-                          {...getAutomationProps(`app-shell.language.${dicLanguageOption.intLanguageID}.button`)}
-                        >
-                          {dicLanguageOption.strLabel}
-                        </ButtonBase>
-                      );
-                    })}
-                  </Paper>
-                </Box>
-              ) : null}
+              <Box sx={{ order: { xs: 10, lg: 0 }, flex: { xs: "1 0 100%", lg: "0 1 440px" }, minWidth: 0, width: { lg: "36%" }, maxWidth: { lg: 440 }, position: { lg: "absolute" }, left: { lg: "50%" }, transform: { lg: "translateX(-50%)" } }}>
+                <BannerSearch key={strActivePortalContext + ":" + strPathname + ":" + intCurrentLanguageID} items={objMenu.lstMenuItems} disabled={blnPortalSwitching || blnLanguageSwitching || blnLoggingOut} />
+              </Box>
 
               <Box sx={{ flex: 1, minWidth: 0 }} />
 
-              {(blnDashboardRoute && blnEssDashboardActive) || blnEmployeeSalaryEditorRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute ? null : (
+              {blnDashboardRoute || blnEmployeeSalaryEditorRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute ? null : (
                 <Box
                   sx={{
                     display: "flex",
@@ -1565,7 +1543,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
-                      maxWidth: { xs: "42vw", sm: "240px", md: "320px" },
+                      maxWidth: { xs: "24vw", sm: "160px", lg: "180px" },
                       textAlign: "right"
                     }}
                   >
@@ -1592,73 +1570,41 @@ export default function AppShell({ children }: { children: ReactNode }) {
                     flexShrink: 0
                   }}
                 >
-                  <IconButton
-                    onClick={openProfileMenu}
-                    disabled={blnLoggingOut}
-                    sx={{
-                      p: 0.4,
-                      border: "1px solid rgba(148, 163, 184, 0.18)",
-                      backgroundColor: "rgba(248,250,252,0.92)",
-                      flexShrink: 0
-                    }}
-                    {...getAutomationProps("app-shell.profile-menu.button")}
+                  <Tooltip
+                    title={blnProfileMenuOpen ? "" : (
+                      <Box sx={{ py: 0.5, overflowWrap: "anywhere" }}>
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>{strProfileDisplayName}</Typography>
+                        {strProfileEmail ? <Typography variant="caption">{strProfileEmail}</Typography> : null}
+                      </Box>
+                    )}
+                    placement="bottom-end"
+                    describeChild
+                    arrow
                   >
-                    <Avatar src={strAuthenticatedAvatarUrl || undefined} sx={{ bgcolor: "rgba(14,116,144,0.12)", color: "#0e7490", fontWeight: 700, width: { xs: 36, sm: 42 }, height: { xs: 36, sm: 42 } }}>
-                      {strAvatarText}
-                    </Avatar>
-                  </IconButton>
-                  <Box
-                    sx={{
-                      display: { xs: "none", sm: "flex" },
-                      flexDirection: "column",
-                      alignItems: "flex-start",
-                      minWidth: 0,
-                      maxWidth: { sm: "152px", md: "180px" }
-                    }}
-                  >
-                    <Typography
+                    <IconButton
+                      id="app-shell-profile-button"
+                      aria-label={tCommon("my_account", "My account")}
+                      aria-controls={blnProfileMenuOpen ? "app-shell-profile-menu" : undefined}
+                      aria-haspopup="menu"
+                      aria-expanded={blnProfileMenuOpen ? "true" : undefined}
+                      onClick={openProfileMenu}
+                      disabled={blnLoggingOut}
                       sx={{
-                        fontSize: "0.80rem",
-                        fontWeight: 700,
-                        color: "#1d4f91",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        width: "100%"
+                        p: 0,
+                        borderRadius: "50%",
+                        border: 0,
+                        backgroundColor: "transparent",
+                        flexShrink: 0,
+                        "&:hover": { backgroundColor: "transparent" },
+                        "&.Mui-focusVisible": { outline: "2px solid #2563eb", outlineOffset: "3px" }
                       }}
-                      title={strProfileDisplayName}
+                      {...getAutomationProps("app-shell.profile-menu.button")}
                     >
-                      {strProfileDisplayName}
-                    </Typography>
-                    {strDesignation ? (
-                      <Typography
-                        sx={{
-                          fontSize: { xs: "0.78rem", md: "0.84rem" },
-                          color: "#64748b",
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          width: "100%"
-                        }}
-                        title={strDesignation}
-                      >
-                        {strDesignation}
-                      </Typography>
-                    ) : null}
-                  </Box>
-                  <IconButton
-                    onClick={openProfileMenu}
-                    disabled={blnLoggingOut}
-                    sx={{
-                      p: 0.2,
-                      color: "#1f3b73",
-                      flexShrink: 0,
-                      display: { xs: "none", sm: "inline-flex" }
-                    }}
-                    {...getAutomationProps("app-shell.profile-menu.button")}
-                  >
-                    <KeyboardArrowDownRoundedIcon sx={{ fontSize: 20 }} />
-                  </IconButton>
+                      <Avatar src={strAuthenticatedAvatarUrl || undefined} alt={strProfileDisplayName} sx={{ bgcolor: "#3b82f6", color: "#fff", fontSize: "0.875rem", fontWeight: 600, width: 36, height: 36 }}>
+                        {strAvatarText}
+                      </Avatar>
+                    </IconButton>
+                  </Tooltip>
                 </Box>
               </Box>
             </Toolbar>
@@ -1703,6 +1649,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
       </BlockingLoaderViewportProvider>
 
       <Menu
+        id="app-shell-profile-menu"
+        MenuListProps={{ "aria-labelledby": "app-shell-profile-button" }}
         anchorEl={objProfileAnchorEl}
         open={blnProfileMenuOpen}
         onClose={closeProfileMenu}
@@ -1712,19 +1660,41 @@ export default function AppShell({ children }: { children: ReactNode }) {
           "data-controlid": "app-shell.profile-menu",
           sx: {
             mt: 1,
-            minWidth: 240,
-            borderRadius: "18px",
+            width: 320,
+            maxWidth: "calc(100vw - 32px)",
+            borderRadius: "12px",
             boxShadow: "0 20px 45px rgba(15, 23, 42, 0.14)"
           }
         }}
       >
-        <Box sx={{ px: 2, py: 1.5, textAlign: "left" }}>
-          <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{strProfileDisplayName}</Typography>
-          {strLinkedEmployeeName && strLinkedEmployeeName !== strUserName ? (
-            <Typography sx={{ mt: 0.35, color: "#64748b", fontSize: "0.8rem" }}>{strUserName}</Typography>
-          ) : null}
-        </Box>
+        <Stack direction="row" spacing={1.5} sx={{ m: 1, p: 1.5, bgcolor: "#f5f7fa", borderRadius: "8px", alignItems: "center" }}>
+          <Avatar src={strAuthenticatedAvatarUrl || undefined} alt={strProfileDisplayName} sx={{ bgcolor: "#3b82f6", width: 44, height: 44, fontWeight: 700 }}>
+            {strAvatarText}
+          </Avatar>
+          <Box sx={{ minWidth: 0, overflowWrap: "anywhere" }}>
+            <Typography sx={{ fontWeight: 700, color: "#0f172a", fontSize: "0.9rem" }}>{strProfileDisplayName}</Typography>
+            {strDesignation ? <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{strDesignation}</Typography> : null}
+            {strProfileEmail ? <Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>{strProfileEmail}</Typography> : null}
+          </Box>
+        </Stack>
         <Divider />
+        {blnEssOnlyNavigation ? (
+          <>
+            <MenuItem
+              onClick={() => {
+                closeProfileMenu();
+                objRouter.push("/ess/my-profile");
+              }}
+              disabled={blnLoggingOut || blnPortalSwitching}
+              sx={{ gap: 1.25, py: 1.25 }}
+              {...getAutomationProps("app-shell.my-profile.menu-item")}
+            >
+              <PersonOutlineRoundedIcon fontSize="small" />
+              <Typography sx={{ fontWeight: 600 }}>{tCommon("my_profile", "My Profile")}</Typography>
+            </MenuItem>
+            <Divider />
+          </>
+        ) : null}
         {strSwitchTargetPortal ? (
           <>
             <MenuItem
@@ -1743,6 +1713,54 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <Divider />
           </>
         ) : null}
+        {lstLanguageOptions.length > 1 ? (
+          <Box component="li" sx={{ listStyle: "none" }}>
+            <ButtonBase
+              onClick={() => setBlnLanguageMenuExpanded(value => !value)}
+              aria-expanded={blnLanguageMenuExpanded}
+              aria-controls="app-shell-language-options"
+              disabled={blnLanguageSwitching || blnLoggingOut || blnPortalSwitching}
+              sx={{ width: "100%", px: 2, py: 1.25, gap: 1.25, justifyContent: "flex-start", color: "#334155" }}
+              {...getAutomationProps("app-shell.language.toggle")}
+            >
+              {blnLanguageSwitching ? <CircularProgress size={20} /> : <LanguageRoundedIcon fontSize="small" />}
+              <Typography sx={{ flex: 1, textAlign: "left", fontWeight: 600 }}>{tCommon("language", "Language")}</Typography>
+              <ExpandMoreRoundedIcon sx={{ fontSize: 20, transform: blnLanguageMenuExpanded ? "none" : "rotate(-90deg)" }} />
+            </ButtonBase>
+            {blnLanguageMenuExpanded ? (
+              <Box
+                id="app-shell-language-options"
+                role="group"
+                aria-label={tCommon("language", "Language")}
+                sx={{ mx: 1, mb: 1, p: 0.5, border: "1px solid #e2e8f0", borderRadius: "8px", bgcolor: "#ffffff", boxShadow: "0 2px 6px rgba(15, 23, 42, 0.06)" }}
+              >
+                {lstLanguageOptions.map((dicLanguageOption) => {
+                  const blnActive = dicLanguageOption.intLanguageID === intCurrentLanguageID;
+                  return (
+                    <ButtonBase
+                      key={dicLanguageOption.intLanguageID}
+                      aria-pressed={blnActive}
+                      onClick={() => {
+                        if (blnActive) return;
+                        closeProfileMenu();
+                        void switchWorkspaceLanguage(dicLanguageOption.intLanguageID);
+                      }}
+                      disabled={blnLanguageSwitching || blnLoggingOut || blnPortalSwitching}
+                      sx={{ width: "100%", justifyContent: "flex-start", gap: 1.25, px: 1.25, py: 1, borderRadius: "6px", color: blnActive ? "#2563eb" : "#334155", bgcolor: blnActive ? "#eaf2ff" : "transparent", "&:hover": { bgcolor: blnActive ? "#eaf2ff" : "#f8fafc" } }}
+                      {...getAutomationProps(`app-shell.language.${dicLanguageOption.intLanguageID}.button`)}
+                    >
+                      <CheckRoundedIcon sx={{ fontSize: 18, visibility: blnActive ? "visible" : "hidden" }} />
+                      <Typography sx={{ fontWeight: blnActive ? 600 : 400 }}>
+                        {dicLanguageOption.intLanguageID === 1 ? "English" : dicLanguageOption.strLabel}
+                      </Typography>
+                    </ButtonBase>
+                  );
+                })}
+              </Box>
+            ) : null}
+          </Box>
+        ) : null}
+
         <MenuItem
           onClick={() => {
             closeProfileMenu();
