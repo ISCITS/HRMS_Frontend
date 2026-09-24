@@ -134,6 +134,8 @@ export type EmployeeSalaryComponentLine = {
   strFormulaExpression: string | null;
   blnIsOverride: boolean;
   strRemarks: string | null;
+  strSourceType?: "structure" | "override" | "direct";
+  strVariablePayCalculationMethodCode?: string | null;
 };
 
 export type EmployeeSalaryHistoryRecord = {

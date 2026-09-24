@@ -53,6 +53,8 @@ export type CommonDataGridProps<T extends Record<string, ReactNode>> = {
   columns: DataGridColumn<T>[];
   rows: T[];
   toolbarLeft?: ReactNode;
+  /** Optional content rendered immediately before the rows-per-page/pagination controls. */
+  paginationLeftSlot?: ReactNode;
   footerContent?: ReactNode;
   hideToolbar?: boolean;
   minTableWidth?: number;
@@ -77,6 +79,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   columns,
   rows,
   toolbarLeft,
+  paginationLeftSlot,
   footerContent,
   hideToolbar = false,
   minTableWidth = 980,
@@ -370,6 +373,9 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
               justifyContent={{ xs: "flex-start", lg: "flex-end" }}
               sx={{ width: { xs: "100%", lg: "auto" }, flexWrap: "wrap" }}
             >
+              {paginationLeftSlot ? (
+                <Box sx={{ display: "flex", alignItems: "center", minHeight: 40 }}>{paginationLeftSlot}</Box>
+              ) : null}
               <Box className={styles.paginationInfo} sx={{ flexWrap: "nowrap" }}>
                 <TextField
                   data-controlid={`${testIdPrefix}.rows-per-page.select`}

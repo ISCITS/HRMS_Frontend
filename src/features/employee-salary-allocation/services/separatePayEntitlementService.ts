@@ -33,9 +33,10 @@ async function requestApi<TData>(objOptions: {
   });
 }
 
-// Developer Guide s6, last bullet: a Separate-Payroll salary component (e.g. Incentive) is
-// deliberately rejected as a Salary Structure line, so its employee-specific CTC/base
-// entitlement is assigned directly here against the employee's current salary structure period.
+// Assigns any active salary component's value directly to one employee, without adding it as a
+// Salary Structure line - used by the Employee Salary Detail "Add Line" flow for a component
+// that isn't part of the employee's assigned structure (e.g. Incentive, which stays out of the
+// structure on purpose since it's processed via Separate Payroll).
 export const separatePayEntitlementService = {
   async listEntitlements(strEmployeeID: string | number): Promise<SeparatePayComponentEntitlementRecord[]> {
     const objResult = await requestApi<SeparatePayComponentEntitlementRecord[]>({
@@ -49,7 +50,7 @@ export const separatePayEntitlementService = {
   async saveEntitlement(
     strEmployeeID: string | number,
     intSalaryComponentID: number,
-    dicAmount: { decAmountMonthly?: number | null; decAmountAnnual?: number | null },
+    dicAmount: { decAmountMonthly?: number | null; decAmountAnnual?: number | null; strRemarks?: string | null },
   ): Promise<{ intSalaryComponentID: number; intEmployeeSalaryComponentID: number; decAmountMonthly: number | null; decAmountAnnual: number | null }> {
     const objResult = await requestApi<{
       intSalaryComponentID: number;

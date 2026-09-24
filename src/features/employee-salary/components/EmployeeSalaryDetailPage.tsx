@@ -11,12 +11,15 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import RemoveCircleOutlineRoundedIcon from "@mui/icons-material/RemoveCircleOutlineRounded";
 import SavingsOutlinedIcon from "@mui/icons-material/SavingsOutlined";
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import {
   Alert,
   Box,
   Button,
   CircularProgress,
   FormControlLabel,
+  IconButton,
   Radio,
   RadioGroup,
   Tooltip,
@@ -39,6 +42,7 @@ import {
   type FlexiDeclarationLineRecord,
 } from "@/features/flexi-pay-declaration/services/flexiPayDeclarationService";
 import CommonEditModeBanner from "@/Common/components/CommonEditModeBanner";
+import AddEmployeeSalaryComponentDialog from "@/features/employee-salary/components/AddEmployeeSalaryComponentDialog";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useEmployeeSalaryLabels } from "@/features/employee-salary/hooks/useEmployeeSalaryLabels";
 import { employeeSalaryService, type EmployeeSalaryRevisionPreviewRecord } from "@/features/employee-salary/services/employeeSalaryService";
@@ -155,6 +159,7 @@ const objOverrideValueFieldSx = {
 
 type ComponentGridRow = {
   intEmployeeSalaryComponentID: number;
+  intSalaryComponentID: number;
   strComponentName: string;
   strCategory: string;
   strValueType: string;
@@ -166,11 +171,13 @@ type ComponentGridRow = {
   decAnnualSort: number;
   decMonthlySort: number;
   blnIsOverride: boolean;
+  strSourceType: "structure" | "override" | "direct";
   strOverride: string;
   strRemarks: string;
   blnIsFlexiBucket: boolean;
   blnIsFlexiReimbursementOption: boolean;
   blnIsNonCtcReimbursement: boolean;
+  blnIsAllocationBased: boolean;
 };
 
 type HistoryGridRow = {
@@ -189,9 +196,10 @@ type HistoryGridRow = {
   strReason: string;
 };
 
-type ComponentDataGridRow = Omit<ComponentGridRow, "strComponentName" | "strOverride"> & {
+type ComponentDataGridRow = Omit<ComponentGridRow, "strComponentName" | "strOverride" | "strMonthly"> & {
   strComponentName: ReactNode;
   strOverride: ReactNode;
+  strMonthly: ReactNode;
 };
 
 type HistoryDataGridRow = Omit<HistoryGridRow, "strCurrent"> & {
@@ -1411,6 +1419,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
+  const [blnAddLineDialogOpen, setBlnAddLineDialogOpen] = useState(false);
   const refRevisionPreviewRequest = useRef(0);
   const [blnIsRevisionMode, setBlnIsRevisionMode] = useState(blnRevisionMode);
   const [dicRevisionForm, setDicRevisionForm] = useState<EmployeeSalaryRevisionFormValues>(buildRevisionForm(null));
@@ -1569,8 +1578,16 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
         ? Number(decMonthlyAmount) * 12
         : decFallbackAnnualAmount;
 
+      const strSourceType = dicLine.strSourceType ?? (dicLine.blnIsOverride ? "override" : "structure");
+      const strOverrideLabel = strSourceType === "direct"
+        ? t("employee_salary_direct_source", "Direct")
+        : strSourceType === "override"
+          ? t("employee_salary_override", "HR Override")
+          : t("employee_salary_structure_source", "Structure");
+
       return {
         intEmployeeSalaryComponentID: dicLine.intEmployeeSalaryComponentID,
+        intSalaryComponentID: dicLine.intSalaryComponentID,
         strComponentName: dicLine.strComponentName ?? dicLine.strComponentCode ?? "-",
         strCategory: dicLine.strComponentCategory ?? "-",
         strValueType: dicLine.strComponentValueType,
@@ -1582,13 +1599,13 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
         decAnnualSort: Number(decAnnualAmount ?? 0),
         decMonthlySort: Number(decMonthlyAmount ?? 0),
         blnIsOverride: dicLine.blnIsOverride,
-        strOverride: dicLine.blnIsOverride
-          ? t("employee_salary_override", "HR Override")
-          : t("employee_salary_structure_source", "Structure"),
+        strSourceType,
+        strOverride: strOverrideLabel,
         strRemarks: dicLine.strRemarks ?? "-",
         blnIsFlexiBucket,
         blnIsFlexiReimbursementOption: isFlexiAllocationLine(dicLine),
-        blnIsNonCtcReimbursement: isNonCtcReimbursementLine(dicLine)
+        blnIsNonCtcReimbursement: isNonCtcReimbursementLine(dicLine),
+        blnIsAllocationBased: dicLine.strVariablePayCalculationMethodCode === "ALLOCATION_BASED"
       };
     });
   }, [objDetail, strCurrencyCode, t]);
@@ -1923,19 +1940,44 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
         </Typography>
       ),
       strOverride: (
-        <span className={`${styles.statusPill} ${dicRow.blnIsOverride ? styles.statusInactive : styles.statusActive}`}>
+        <span
+          className={`${styles.statusPill} ${
+            dicRow.strSourceType === "direct"
+              ? styles.statusNeutral
+              : dicRow.strSourceType === "override"
+                ? styles.statusInactive
+                : styles.statusActive
+          }`}
+        >
           {dicRow.strOverride}
         </span>
+      ),
+      strMonthly: (
+        <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="flex-end">
+          <span>{dicRow.strMonthly}</span>
+          {dicRow.blnIsAllocationBased && dicRow.intEmployeeSalaryComponentID ? (
+            <Tooltip arrow title={t("employee_salary_configure_allocation", "Configure Allocation")}>
+              <IconButton
+                size="small"
+                data-controlid={`employee-salary.detail.salary-structure.allocate-${dicRow.intSalaryComponentID}.button`}
+                onClick={() => objRouter.push(`/employee-salary/allocation/${dicRow.intEmployeeSalaryComponentID}`)}
+                sx={{ p: 0.25 }}
+              >
+                <TuneRoundedIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+          ) : null}
+        </Stack>
       )
     })),
-    [lstFilteredComponentRows]
+    [lstFilteredComponentRows, t, objRouter]
   );
   const lstComponentColumns = useMemo<DataGridColumn<ComponentDataGridRow>[]>(() => [
     { field: "strComponentName", headerName: t("employee_salary_component", "Component"), width: 180, sortable: false },
     { field: "strCategory", headerName: t("employee_salary_category", "Category"), width: 130 },
     { field: "strValueType", headerName: t("employee_salary_value_type", "Value Type"), width: 130 },
     { field: "strAnnual", headerName: t("employee_salary_annual", "Annual"), width: 130, align: "right", sortAccessor: (dicRow) => dicRow.decAnnualSort },
-    { field: "strMonthly", headerName: t("employee_salary_monthly", "Monthly"), width: 130, align: "right", sortAccessor: (dicRow) => dicRow.decMonthlySort },
+    { field: "strMonthly", headerName: t("employee_salary_monthly", "Monthly"), width: 160, align: "right", sortAccessor: (dicRow) => dicRow.decMonthlySort },
     { field: "strOverride", headerName: t("employee_salary_source", "Source"), width: 130, sortable: false },
     { field: "strRemarks", headerName: t("employee_salary_remarks", "Remarks"), width: 320 }
   ], [t]);
@@ -2239,6 +2281,20 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
     setStrSuccess("");
     setDicRevisionForm(buildRevisionForm(objDetail, objFormOptions, lstSalaryComponents, t));
     setBlnIsRevisionMode(true);
+  }
+
+  async function handleAddLineSaved() {
+    try {
+      const dicRefreshedDetail = await employeeSalaryService.getEmployeeSalaryDetail(strEmployeeID);
+      setObjDetail(dicRefreshedDetail);
+      setStrSuccess(t("employee_salary_add_line_success", "Component added successfully."));
+    } catch (objError) {
+      setStrError(
+        objError instanceof Error
+          ? objError.message
+          : t("employee_salary_add_line_refresh_failed", "Component added, but the screen failed to refresh. Reload the page.")
+      );
+    }
   }
 
   function handleCancelRevision() {
@@ -2596,33 +2652,6 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
               >
                 {t("employee_salary_back_button", "Back")}
               </Button>
-              {!blnIsRevisionMode ? (
-                <Button
-                  data-controlid="employee-salary.detail.separate-pay.button"
-                  className={styles.secondaryButton}
-                  startIcon={<AccountBalanceWalletOutlinedIcon />}
-                  onClick={() => objRouter.push(`/employee-salary/${strEmployeeID}/separate-pay`)}
-                  sx={{
-                    borderRadius: "14px",
-                    height: 38,
-                    minHeight: 38,
-                    py: 0,
-                    px: 2.25,
-                    minWidth: 100,
-                    fontSize: "0.9rem",
-                    whiteSpace: "nowrap",
-                    flexShrink: 0,
-                    "& .MuiButton-startIcon": {
-                      mr: 0.75,
-                      "& svg": {
-                        fontSize: "1rem"
-                      }
-                    }
-                  }}
-                >
-                  {t("employee_salary_separate_pay_button", "Separate Payroll Entitlements")}
-                </Button>
-              ) : null}
               {blnIsRevisionMode ? (
                 <>
                   <Button
@@ -3212,6 +3241,35 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
                 {t("employee_salary_salary_structure", "Salary Structure")}
               </Typography>
             )}
+            paginationLeftSlot={
+              blnCanEdit ? (
+                <Button
+                  data-controlid="employee-salary.detail.salary-structure.add-line.button"
+                  className={styles.primaryButton}
+                  startIcon={<AddRoundedIcon />}
+                  onClick={() => setBlnAddLineDialogOpen(true)}
+                  sx={{
+                    borderRadius: "14px",
+                    height: 34,
+                    minHeight: 34,
+                    py: 0,
+                    px: 1.75,
+                    minWidth: 0,
+                    fontSize: "0.82rem",
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                    "& .MuiButton-startIcon": {
+                      mr: 0.5,
+                      "& svg": {
+                        fontSize: "0.95rem"
+                      }
+                    }
+                  }}
+                >
+                  {t("add_line", "Add Line")}
+                </Button>
+              ) : null
+            }
             minTableWidth={980}
             emptyMessage={t("employee_salary_no_component_lines_found", "No salary component lines found.")}
             testIdPrefix="employee-salary.detail.salary-structure"
@@ -3406,6 +3464,12 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
         blnCancelDisabled={blnSaving}
         onClose={() => setObjConfirmDialog(null)}
         onConfirm={handleConfirmUnassign}
+      />
+      <AddEmployeeSalaryComponentDialog
+        strEmployeeID={strEmployeeID}
+        blnOpen={blnAddLineDialogOpen}
+        onClose={() => setBlnAddLineDialogOpen(false)}
+        onSaved={() => void handleAddLineSaved()}
       />
     </Stack>
   );
