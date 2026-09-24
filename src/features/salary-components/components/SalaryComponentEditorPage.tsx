@@ -338,6 +338,39 @@ function getCategoryLabel(strValue: string) {
   }
 }
 
+// Variable Pay Calculation: each row is [toggle | label + field | label + field] on a shared grid so
+// dependent fields always land in the same columns no matter which toggles are on. Everything sits on a
+// 40px band (theme TextFields are size "small") so toggles, labels and inputs share one baseline.
+const dicVariablePayRowSx = {
+  display: "grid",
+  alignItems: "start",
+  columnGap: 4,
+  rowGap: 1.5,
+  py: 2.25,
+  gridTemplateColumns: { xs: "1fr", lg: "minmax(340px, 0.75fr) repeat(2, minmax(0, 1fr))" },
+} as const;
+const dicVariablePayToggleSx = { m: 0, minHeight: 40, gap: 2, width: "100%", maxWidth: 360, justifyContent: "space-between" } as const;
+// Paired toggles sharing one cell: each gets half the cell and its label wraps inside that half,
+// so the pair never breaks onto a second line as the column narrows.
+const dicVariablePayInlineToggleSx = { m: 0, minHeight: 40, minWidth: 0, gap: 1.5, "& .MuiFormControlLabel-label": { minWidth: 0, lineHeight: 1.3 } } as const;
+const dicVariablePayFieldCellSx = {
+  display: "grid",
+  alignItems: "center",
+  columnGap: 2,
+  rowGap: 0.5,
+  gridTemplateColumns: { xs: "1fr", sm: "190px minmax(0, 1fr)" },
+} as const;
+const dicVariablePayHelpSx = { color: "#64748b", fontSize: "0.8rem", lineHeight: 1.5 } as const;
+
+function VariablePayFieldLabel({ strLabel, blnRequired = false }: { strLabel: string; blnRequired?: boolean }) {
+  return (
+    <Typography sx={{ color: "#0f172a", minHeight: 40, display: "flex", alignItems: "center" }}>
+      {strLabel}
+      {blnRequired ? <Box component="span" sx={{ color: "#ef4444", ml: 0.4, alignSelf: "flex-start", mt: 0.75 }}>*</Box> : null}
+    </Typography>
+  );
+}
+
 function isCategory(strValue: string, strExpected: string) {
   return normalizeSelectToken(strValue) === normalizeSelectToken(strExpected);
 }
@@ -2182,133 +2215,159 @@ export default function SalaryComponentEditorPage({
 
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
         <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("variable_pay_calculation", "Variable Pay Calculation")}</Typography>
-        <Typography sx={{ color: "#64748b", fontSize: "0.86rem", mt: 0.4, mb: 1.5 }}>
+        <Typography sx={{ color: "#64748b", fontSize: "0.86rem", mt: 0.4, mb: 0.5 }}>
           {t(
             "variable_pay_calculation_help",
             "Independent of Payroll Processing Mode above: that answers WHERE/HOW this component is processed (Regular, Separate, Both). This answers HOW the amount is derived (a direct manual/import amount, or split across configured Allocation Entities)."
           )}
         </Typography>
-        <FormControlLabel
-          sx={{ mb: 1.5 }}
-          control={
-            <Switch
-              checked={dicForm.blnVariablePayCalculationEnabled}
-              onChange={(objEvent) => updateRootField("blnVariablePayCalculationEnabled", objEvent.target.checked)}
-              disabled={blnFieldDisabled}
-              inputProps={buildInputTestIdProps("salary-components.editor.variable-pay-calculation-enabled.switch")}
+        <Box sx={{ "& > *:not(:last-child)": { borderBottom: "1px solid rgba(226,232,240,0.9)" } }}>
+          <Box sx={dicVariablePayRowSx}>
+            <FormControlLabel
+              sx={dicVariablePayToggleSx}
+              control={
+                <Switch
+                  checked={dicForm.blnVariablePayCalculationEnabled}
+                  onChange={(objEvent) => updateRootField("blnVariablePayCalculationEnabled", objEvent.target.checked)}
+                  disabled={blnFieldDisabled}
+                  inputProps={buildInputTestIdProps("salary-components.editor.variable-pay-calculation-enabled.switch")}
+                />
+              }
+              label={t("variable_pay_calculation_enabled", "Variable Pay Calculation Enabled")}
             />
-          }
-          label={t("variable_pay_calculation_enabled", "Variable Pay Calculation Enabled")}
-        />
-        {dicForm.blnVariablePayCalculationEnabled ? (
-          <Box sx={{ display: "grid", gap: 2 }}>
-            <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" } }}>
-              <CommonSearchableSelect
-                required
-                label={t("variable_pay_calculation_method", "Calculation Method")}
-                value={
-                  dicForm.strVariablePayCalculationMethodCode === "ALLOCATION_BASED"
-                    ? 2
-                    : dicForm.strVariablePayCalculationMethodCode === "FORMULA_BASED"
-                      ? 3
-                      : 1
-                }
-                options={[
-                  { intID: 1, strLabel: t("direct_amount", "Direct Amount") },
-                  { intID: 2, strLabel: t("allocation_based", "Allocation Based") },
-                  { intID: 3, strLabel: t("formula_based", "Formula Based") },
-                ]}
-                onChange={(intValue) =>
-                  handleVariablePayCalculationMethodSelection(
-                    intValue === 2 ? "ALLOCATION_BASED" : intValue === 3 ? "FORMULA_BASED" : "DIRECT_AMOUNT"
-                  )
-                }
-                disabled={blnFieldDisabled}
-                fullWidth
-                controlId="salary-components.editor.variable-pay-calculation-method.select"
-              />
-              {dicForm.strVariablePayCalculationMethodCode === "ALLOCATION_BASED" ? (
+            {dicForm.blnVariablePayCalculationEnabled ? (
+              <Box sx={dicVariablePayFieldCellSx}>
+                <VariablePayFieldLabel strLabel={t("variable_pay_calculation_method", "Calculation Method")} blnRequired />
                 <CommonSearchableSelect
                   required
-                  label={t("allocation_entity_type", "Allocation Entity Type")}
+                  label=""
+                  value={
+                    dicForm.strVariablePayCalculationMethodCode === "ALLOCATION_BASED"
+                      ? 2
+                      : dicForm.strVariablePayCalculationMethodCode === "FORMULA_BASED"
+                        ? 3
+                        : 1
+                  }
+                  options={[
+                    { intID: 1, strLabel: t("direct_amount", "Direct Amount") },
+                    { intID: 2, strLabel: t("allocation_based", "Allocation Based") },
+                    { intID: 3, strLabel: t("formula_based", "Formula Based") },
+                  ]}
+                  onChange={(intValue) =>
+                    handleVariablePayCalculationMethodSelection(
+                      intValue === 2 ? "ALLOCATION_BASED" : intValue === 3 ? "FORMULA_BASED" : "DIRECT_AMOUNT"
+                    )
+                  }
+                  disabled={blnFieldDisabled}
+                  fullWidth
+                  controlId="salary-components.editor.variable-pay-calculation-method.select"
+                />
+              </Box>
+            ) : null}
+            {dicForm.blnVariablePayCalculationEnabled && dicForm.strVariablePayCalculationMethodCode === "ALLOCATION_BASED" ? (
+              <Box sx={dicVariablePayFieldCellSx}>
+                <VariablePayFieldLabel strLabel={t("allocation_entity_type", "Allocation Entity Type")} blnRequired />
+                <CommonSearchableSelect
+                  required
+                  label=""
                   value={dicForm.intAllocationEntityTypeID}
                   options={lstAllocationEntityTypeOptions.map((dicOption) => ({ ...dicOption, strLabel: dicOption.strDisplayName }))}
                   onChange={(intValue) => updateRootField("intAllocationEntityTypeID", intValue)}
                   disabled={blnFieldDisabled}
                   fullWidth
                   controlId="salary-components.editor.allocation-entity-type.select"
-                  helperText={t("allocation_entity_type_help", "Configure entity types/entities in Allocation Entity Master first.")}
                 />
-              ) : null}
-            </Box>
+                <Typography sx={{ ...dicVariablePayHelpSx, gridColumn: { sm: 2 } }}>
+                  {t("allocation_entity_type_help", "Configure entity types/entities in Allocation Entity Master first.")}
+                </Typography>
+              </Box>
+            ) : null}
+          </Box>
 
-            {dicForm.strVariablePayCalculationMethodCode === "ALLOCATION_BASED" ? (
-              <>
-                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, alignItems: "center" }}>
-                  <FormControlLabel
-                    sx={{ ml: -1.375, mr: 0, my: 0, minWidth: { xs: "100%", md: 280 } }}
-                    control={
-                      <Switch
-                        checked={dicForm.blnMonthlyAdjustmentApplicable}
-                        onChange={(objEvent) => updateRootField("blnMonthlyAdjustmentApplicable", objEvent.target.checked)}
-                        disabled={blnFieldDisabled}
-                        inputProps={buildInputTestIdProps("salary-components.editor.monthly-adjustment-applicable.switch")}
-                      />
-                    }
-                    label={t("monthly_adjustment_applicable", "Monthly Adjustment Applicable")}
-                  />
-                  {dicForm.blnMonthlyAdjustmentApplicable ? (
+          {dicForm.blnVariablePayCalculationEnabled && dicForm.strVariablePayCalculationMethodCode === "ALLOCATION_BASED" ? (
+            <>
+              <Box sx={dicVariablePayRowSx}>
+                <FormControlLabel
+                  sx={dicVariablePayToggleSx}
+                  control={
+                    <Switch
+                      checked={dicForm.blnMonthlyAdjustmentApplicable}
+                      onChange={(objEvent) => updateRootField("blnMonthlyAdjustmentApplicable", objEvent.target.checked)}
+                      disabled={blnFieldDisabled}
+                      inputProps={buildInputTestIdProps("salary-components.editor.monthly-adjustment-applicable.switch")}
+                    />
+                  }
+                  label={t("monthly_adjustment_applicable", "Monthly Adjustment Applicable")}
+                />
+                {dicForm.blnMonthlyAdjustmentApplicable ? (
+                  <Box sx={dicVariablePayFieldCellSx}>
+                    <VariablePayFieldLabel strLabel={t("monthly_adjustment_min_percent", "Adjustment Min %")} />
                     <TextField
-                      label={t("monthly_adjustment_min_percent", "Adjustment Min %")}
                       value={dicForm.strMonthlyAdjustmentMinPercent}
                       onChange={(objEvent) => updateRootField("strMonthlyAdjustmentMinPercent", objEvent.target.value.replace(/[^0-9.-]/g, ""))}
                       disabled={blnFieldDisabled}
-                      sx={{ flex: { xs: "1 1 100%", md: "1 1 220px" } }}
+                      fullWidth
                       data-controlid="salary-components.editor.monthly-adjustment-min-percent.input"
-                      inputProps={buildInputTestIdProps("salary-components.editor.monthly-adjustment-min-percent.input")}
+                      inputProps={{
+                        ...buildInputTestIdProps("salary-components.editor.monthly-adjustment-min-percent.input"),
+                        "aria-label": t("monthly_adjustment_min_percent", "Adjustment Min %"),
+                      }}
                     />
-                  ) : null}
-                  {dicForm.blnMonthlyAdjustmentApplicable ? (
+                  </Box>
+                ) : null}
+                {dicForm.blnMonthlyAdjustmentApplicable ? (
+                  <Box sx={dicVariablePayFieldCellSx}>
+                    <VariablePayFieldLabel strLabel={t("monthly_adjustment_max_percent", "Adjustment Max %")} />
                     <TextField
-                      label={t("monthly_adjustment_max_percent", "Adjustment Max %")}
                       value={dicForm.strMonthlyAdjustmentMaxPercent}
                       onChange={(objEvent) => updateRootField("strMonthlyAdjustmentMaxPercent", objEvent.target.value.replace(/[^0-9.-]/g, ""))}
                       disabled={blnFieldDisabled}
-                      sx={{ flex: { xs: "1 1 100%", md: "1 1 220px" } }}
+                      fullWidth
                       data-controlid="salary-components.editor.monthly-adjustment-max-percent.input"
-                      inputProps={buildInputTestIdProps("salary-components.editor.monthly-adjustment-max-percent.input")}
+                      inputProps={{
+                        ...buildInputTestIdProps("salary-components.editor.monthly-adjustment-max-percent.input"),
+                        "aria-label": t("monthly_adjustment_max_percent", "Adjustment Max %"),
+                      }}
                     />
-                  ) : null}
-                </Box>
+                  </Box>
+                ) : null}
+              </Box>
 
-                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, alignItems: "center" }}>
-                  <FormControlLabel
-                    sx={{ ml: -1.375, mr: 0, my: 0, minWidth: { xs: "100%", md: 280 } }}
-                    control={
-                      <Switch
-                        checked={dicForm.blnAttendanceEligibilityApplicable}
-                        onChange={(objEvent) => updateRootField("blnAttendanceEligibilityApplicable", objEvent.target.checked)}
-                        disabled={blnFieldDisabled}
-                        inputProps={buildInputTestIdProps("salary-components.editor.attendance-eligibility-applicable.switch")}
-                      />
-                    }
-                    label={t("attendance_eligibility_applicable", "Attendance Eligibility Applicable")}
-                  />
-                  {dicForm.blnAttendanceEligibilityApplicable ? (
+              <Box sx={dicVariablePayRowSx}>
+                <FormControlLabel
+                  sx={dicVariablePayToggleSx}
+                  control={
+                    <Switch
+                      checked={dicForm.blnAttendanceEligibilityApplicable}
+                      onChange={(objEvent) => updateRootField("blnAttendanceEligibilityApplicable", objEvent.target.checked)}
+                      disabled={blnFieldDisabled}
+                      inputProps={buildInputTestIdProps("salary-components.editor.attendance-eligibility-applicable.switch")}
+                    />
+                  }
+                  label={t("attendance_eligibility_applicable", "Attendance Eligibility Applicable")}
+                />
+                {dicForm.blnAttendanceEligibilityApplicable ? (
+                  <Box sx={dicVariablePayFieldCellSx}>
+                    <VariablePayFieldLabel strLabel={t("eligibility_percent", "Eligibility % Threshold")} blnRequired />
                     <TextField
                       required
-                      label={t("eligibility_percent", "Eligibility % Threshold")}
+                      placeholder={t("eligibility_percent", "Eligibility % Threshold")}
                       value={dicForm.strAttendanceEligibilityPercent}
                       onChange={(objEvent) => updateRootField("strAttendanceEligibilityPercent", objEvent.target.value.replace(/[^0-9.]/g, ""))}
                       disabled={blnFieldDisabled}
-                      sx={{ flex: { xs: "1 1 100%", md: "1 1 220px" } }}
+                      fullWidth
                       data-controlid="salary-components.editor.attendance-eligibility-percent.input"
-                      inputProps={buildInputTestIdProps("salary-components.editor.attendance-eligibility-percent.input")}
+                      inputProps={{
+                        ...buildInputTestIdProps("salary-components.editor.attendance-eligibility-percent.input"),
+                        "aria-label": t("eligibility_percent", "Eligibility % Threshold"),
+                      }}
                     />
-                  ) : null}
-                  {dicForm.blnAttendanceEligibilityApplicable ? (
+                  </Box>
+                ) : null}
+                {dicForm.blnAttendanceEligibilityApplicable ? (
+                  <Box sx={{ display: "grid", columnGap: 3, rowGap: 1, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" } }}>
                     <FormControlLabel
-                      sx={{ m: 0, minWidth: { xs: "100%", md: 260 } }}
+                      sx={dicVariablePayInlineToggleSx}
                       control={
                         <Switch
                           checked={dicForm.blnAttendanceProrationApplicable}
@@ -2319,10 +2378,8 @@ export default function SalaryComponentEditorPage({
                       }
                       label={t("attendance_proration_applicable", "Attendance Proration Applicable")}
                     />
-                  ) : null}
-                  {dicForm.blnAttendanceEligibilityApplicable ? (
                     <FormControlLabel
-                      sx={{ m: 0, minWidth: { xs: "100%", md: 260 } }}
+                      sx={dicVariablePayInlineToggleSx}
                       control={
                         <Switch
                           checked={dicForm.blnEligibilityOverrideAllowed}
@@ -2333,15 +2390,18 @@ export default function SalaryComponentEditorPage({
                       }
                       label={t("eligibility_override_allowed", "Eligibility Override Allowed")}
                     />
-                  ) : null}
-                </Box>
-              </>
-            ) : null}
+                  </Box>
+                ) : null}
+              </Box>
+            </>
+          ) : null}
 
-            {dicForm.blnIncludeInTaxableIncome ? (
-              <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" } }}>
+          {dicForm.blnVariablePayCalculationEnabled && dicForm.blnIncludeInTaxableIncome ? (
+            <Box sx={{ display: "grid", alignItems: "start", columnGap: 6, rowGap: 2, py: 2.25, gridTemplateColumns: { xs: "1fr", lg: "repeat(2, minmax(0, 1fr))" } }}>
+              <Box sx={{ ...dicVariablePayFieldCellSx, gridTemplateColumns: { xs: "1fr", sm: "210px minmax(0, 1fr)" } }}>
+                <VariablePayFieldLabel strLabel={t("tax_projection_mode", "Tax Projection Mode")} />
                 <CommonSearchableSelect
-                  label={t("tax_projection_mode", "Tax Projection Mode")}
+                  label=""
                   value={dicForm.strTaxProjectionBehavior === "PROJECT" ? 1 : dicForm.strTaxProjectionBehavior === "ACTUAL_ONLY" ? 2 : ""}
                   options={[
                     { intID: 1, strLabel: t("project_ctc_base_amount", "Project CTC/Base Amount") },
@@ -2352,13 +2412,18 @@ export default function SalaryComponentEditorPage({
                   disabled={blnFieldDisabled}
                   fullWidth
                   controlId="salary-components.editor.tax-projection-behavior.select"
-                  helperText={t(
+                />
+                <Typography sx={{ ...dicVariablePayHelpSx, gridColumn: "1 / -1" }}>
+                  {t(
                     "tax_projection_mode_help",
                     "For a taxable Separate Payroll component: Project includes its CTC/base entitlement in Regular Payroll's annual tax projection ahead of the actual payment."
                   )}
-                />
+                </Typography>
+              </Box>
+              <Box sx={{ ...dicVariablePayFieldCellSx, gridTemplateColumns: { xs: "1fr", sm: "210px minmax(0, 1fr)" } }}>
+                <VariablePayFieldLabel strLabel={t("tds_recovery_mode", "TDS Recovery Mode")} />
                 <CommonSearchableSelect
-                  label={t("tds_recovery_mode", "TDS Recovery Mode")}
+                  label=""
                   value={dicForm.strTdsRecoveryModeCode === "REGULAR_PAYROLL" ? 2 : 1}
                   options={[
                     { intID: 1, strLabel: t("same_payroll_run", "Same Payroll Run") },
@@ -2368,15 +2433,17 @@ export default function SalaryComponentEditorPage({
                   disabled={blnFieldDisabled}
                   fullWidth
                   controlId="salary-components.editor.tds-recovery-mode.select"
-                  helperText={t(
+                />
+                <Typography sx={{ ...dicVariablePayHelpSx, gridColumn: "1 / -1" }}>
+                  {t(
                     "tds_recovery_mode_help",
                     "Controls which payroll run actually deducts TDS for this component when it is taxable and Separate Payroll processed."
                   )}
-                />
+                </Typography>
               </Box>
-            ) : null}
-          </Box>
-        ) : null}
+            </Box>
+          ) : null}
+        </Box>
       </Paper>
 
       {intSecondaryLanguageID ? (
