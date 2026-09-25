@@ -43,6 +43,7 @@ import {
 } from "@/features/flexi-pay-declaration/services/flexiPayDeclarationService";
 import CommonEditModeBanner from "@/Common/components/CommonEditModeBanner";
 import AddEmployeeSalaryComponentRow from "@/features/employee-salary/components/AddEmployeeSalaryComponentRow";
+import EmployeeAllocationDialog from "@/features/employee-salary-allocation/components/EmployeeAllocationDialog";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useEmployeeSalaryLabels } from "@/features/employee-salary/hooks/useEmployeeSalaryLabels";
 import { employeeSalaryService, type EmployeeSalaryRevisionPreviewRecord } from "@/features/employee-salary/services/employeeSalaryService";
@@ -1419,6 +1420,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
+  const [intAllocationTargetComponentID, setIntAllocationTargetComponentID] = useState<number | null>(null);
   const [blnAddingLine, setBlnAddingLine] = useState(false);
   const refRevisionPreviewRequest = useRef(0);
   const [blnIsRevisionMode, setBlnIsRevisionMode] = useState(blnRevisionMode);
@@ -1960,7 +1962,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
               <IconButton
                 size="small"
                 data-controlid={`employee-salary.detail.salary-structure.allocate-${dicRow.intSalaryComponentID}.button`}
-                onClick={() => objRouter.push(`/employee-salary/allocation/${dicRow.intEmployeeSalaryComponentID}`)}
+                onClick={() => setIntAllocationTargetComponentID(dicRow.intEmployeeSalaryComponentID ?? null)}
                 sx={{ p: 0.25 }}
               >
                 <TuneRoundedIcon sx={{ fontSize: 18 }} />
@@ -1970,7 +1972,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
         </Stack>
       )
     })),
-    [lstFilteredComponentRows, t, objRouter]
+    [lstFilteredComponentRows, t]
   );
   const lstComponentColumns = useMemo<DataGridColumn<ComponentDataGridRow>[]>(() => [
     { field: "strComponentName", headerName: t("employee_salary_component", "Component"), width: 180, sortable: false },
@@ -3472,6 +3474,14 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
         blnCancelDisabled={blnSaving}
         onClose={() => setObjConfirmDialog(null)}
         onConfirm={handleConfirmUnassign}
+      />
+
+      <EmployeeAllocationDialog
+        blnOpen={intAllocationTargetComponentID !== null}
+        onClose={() => setIntAllocationTargetComponentID(null)}
+        intEmployeeSalaryComponentID={intAllocationTargetComponentID}
+        strEmployeeName={objDetail?.objEmployeeSummary?.strEmployeeName}
+        strEmployeeCode={objDetail?.objEmployeeSummary?.strEmployeeCode}
       />
     </Stack>
   );
