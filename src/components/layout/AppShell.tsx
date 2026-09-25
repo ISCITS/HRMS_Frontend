@@ -1060,8 +1060,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         objSearchParams.get("source") || ""
       ));
   const blnDashboardRoute = (strPathname || "").toLowerCase() === "/dashboard";
-  const strTenantName = objUserContext?.objTenant.strTenantName || "Workspace";
-  const strCompanyName = objUserContext?.objCompany?.strCompanyName?.trim() || strTenantName;
+  const strCompanyName = objUserContext?.objCompany?.strCompanyName?.trim() || "";
   const strCompanyLogoUrl = objUserContext?.objCompany?.strLogoUrl?.trim() || "";
   const blnProfileMenuOpen = Boolean(objProfileAnchorEl);
 
@@ -1300,8 +1299,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
         height: "100dvh",
         minHeight: "100dvh",
         overflow: "hidden",
-        background:
-          "radial-gradient(circle at top left, rgba(14,116,144,0.12), transparent 28%), linear-gradient(180deg, #f8fbff 0%, #eef4f8 100%)"
+        background: strPathname === "/departments"
+          ? "#edf4fc"
+          : "radial-gradient(circle at top left, rgba(14,116,144,0.12), transparent 28%), linear-gradient(180deg, #f8fbff 0%, #eef4f8 100%)"
       }}
     >
       <Box
@@ -1503,7 +1503,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 <Typography sx={{ fontSize: objAppBarHeadingFontSize, color: "var(--app-banner-text-color)", fontWeight: 800, lineHeight: 1, whiteSpace: "nowrap", flexShrink: 0 }}>
                   {appConfig.appName}
                 </Typography>
-                <Divider orientation="vertical" flexItem sx={{ borderColor: "var(--app-banner-border-color)", my: 0.5 }} />
+                {strCompanyName || strCompanyLogoUrl ? (
+                  <Divider orientation="vertical" flexItem sx={{ borderColor: "var(--app-banner-border-color)", my: 0.5 }} />
+                ) : null}
                 {strCompanyLogoUrl && strFailedCompanyLogoUrl !== strCompanyLogoUrl ? (
                   <Box
                     component="img"
@@ -1513,9 +1515,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
                     sx={{ height: { xs: 24, md: 30 }, maxWidth: { xs: 40, md: 64 }, objectFit: "contain", flexShrink: 0 }}
                   />
                 ) : null}
-                <Typography title={strCompanyName} noWrap sx={{ minWidth: 0, fontSize: { xs: "0.8rem", md: "0.95rem", lg: "1rem" }, lineHeight: 1, fontWeight: 400, color: "#64748b" }}>
-                  {strCompanyName}
-                </Typography>
+                {strCompanyName ? (
+                  <Typography title={strCompanyName} noWrap sx={{ minWidth: 0, fontSize: { xs: "0.8rem", md: "0.95rem", lg: "1rem" }, lineHeight: 1, fontWeight: 400, color: "#64748b" }}>
+                    {strCompanyName}
+                  </Typography>
+                ) : null}
               </Stack>
 
               <Box sx={{ order: { xs: 10, lg: 0 }, flex: { xs: "1 0 100%", lg: "0 1 440px" }, minWidth: 0, width: { lg: "36%" }, maxWidth: { lg: 440 }, position: { lg: "absolute" }, left: { lg: "50%" }, transform: { lg: "translateX(-50%)" } }}>
@@ -1524,7 +1528,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
               <Box sx={{ flex: 1, minWidth: 0 }} />
 
-              {blnDashboardRoute || blnEmployeeSalaryEditorRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute ? null : (
+              {strPathname === "/departments" || blnDashboardRoute || blnEmployeeSalaryEditorRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute ? null : (
                 <Box
                   sx={{
                     display: "flex",

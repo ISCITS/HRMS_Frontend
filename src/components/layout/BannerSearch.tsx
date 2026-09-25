@@ -14,7 +14,7 @@ export default function BannerSearch({ items, disabled }: { items: MenuItem[]; d
   const [input, setInput] = useState("");
   const [noMatch, setNoMatch] = useState(false);
   const options = useMemo(() => buildBannerSearchOptions(items), [items]);
-  const label = t("search_pages_modules", "Search pages and modules...");
+  const label = t("search_employees_departments_designations", "Search employees, departments, designations...");
 
   return (
     <Box

@@ -13,6 +13,7 @@ type CommonMasterDialogProps = {
   strTitle: string;
   nodeContent: ReactNode;
   nodeTitleAction?: ReactNode;
+  nodeFooterStart?: ReactNode;
   titleSx?: SxProps<Theme>;
   strSecondaryLabel: string;
   onClose: () => void;
@@ -43,6 +44,7 @@ export default function CommonMasterDialog({
   strTitle,
   nodeContent,
   nodeTitleAction,
+  nodeFooterStart,
   titleSx,
   strSecondaryLabel,
   onClose,
@@ -102,6 +104,7 @@ export default function CommonMasterDialog({
       </DialogTitle>
       <DialogContent dividers sx={contentSx}>{nodeContent}</DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
+        {nodeFooterStart ? <Box sx={{ mr: "auto" }}>{nodeFooterStart}</Box> : null}
         <Button data-control-id={strCancelButtonControlId} className={strSecondaryButtonClassName} onClick={onClose}>
           {strSecondaryLabel}
         </Button>
