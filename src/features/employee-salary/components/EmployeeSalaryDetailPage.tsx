@@ -42,7 +42,7 @@ import {
   type FlexiDeclarationLineRecord,
 } from "@/features/flexi-pay-declaration/services/flexiPayDeclarationService";
 import CommonEditModeBanner from "@/Common/components/CommonEditModeBanner";
-import AddEmployeeSalaryComponentDialog from "@/features/employee-salary/components/AddEmployeeSalaryComponentDialog";
+import AddEmployeeSalaryComponentRow from "@/features/employee-salary/components/AddEmployeeSalaryComponentRow";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useEmployeeSalaryLabels } from "@/features/employee-salary/hooks/useEmployeeSalaryLabels";
 import { employeeSalaryService, type EmployeeSalaryRevisionPreviewRecord } from "@/features/employee-salary/services/employeeSalaryService";
@@ -1419,7 +1419,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
-  const [blnAddLineDialogOpen, setBlnAddLineDialogOpen] = useState(false);
+  const [blnAddingLine, setBlnAddingLine] = useState(false);
   const refRevisionPreviewRequest = useRef(0);
   const [blnIsRevisionMode, setBlnIsRevisionMode] = useState(blnRevisionMode);
   const [dicRevisionForm, setDicRevisionForm] = useState<EmployeeSalaryRevisionFormValues>(buildRevisionForm(null));
@@ -2284,6 +2284,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
   }
 
   async function handleAddLineSaved() {
+    setBlnAddingLine(false);
     try {
       const dicRefreshedDetail = await employeeSalaryService.getEmployeeSalaryDetail(strEmployeeID);
       setObjDetail(dicRefreshedDetail);
@@ -3242,12 +3243,12 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
               </Typography>
             )}
             paginationLeftSlot={
-              blnCanEdit ? (
+              blnCanEdit && !blnAddingLine ? (
                 <Button
                   data-controlid="employee-salary.detail.salary-structure.add-line.button"
                   className={styles.primaryButton}
                   startIcon={<AddRoundedIcon />}
-                  onClick={() => setBlnAddLineDialogOpen(true)}
+                  onClick={() => setBlnAddingLine(true)}
                   sx={{
                     borderRadius: "14px",
                     height: 34,
@@ -3275,6 +3276,13 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
             testIdPrefix="employee-salary.detail.salary-structure"
             withPaper={false}
           />
+          {blnAddingLine ? (
+            <AddEmployeeSalaryComponentRow
+              strEmployeeID={strEmployeeID}
+              onCancel={() => setBlnAddingLine(false)}
+              onSaved={() => void handleAddLineSaved()}
+            />
+          ) : null}
         </Box>
 
         {blnHasStructureFlexi && (
@@ -3464,12 +3472,6 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
         blnCancelDisabled={blnSaving}
         onClose={() => setObjConfirmDialog(null)}
         onConfirm={handleConfirmUnassign}
-      />
-      <AddEmployeeSalaryComponentDialog
-        strEmployeeID={strEmployeeID}
-        blnOpen={blnAddLineDialogOpen}
-        onClose={() => setBlnAddLineDialogOpen(false)}
-        onSaved={() => void handleAddLineSaved()}
       />
     </Stack>
   );
