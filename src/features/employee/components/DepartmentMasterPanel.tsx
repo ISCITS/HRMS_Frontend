@@ -24,7 +24,7 @@ import {
   TextField,
   Typography
 } from "@mui/material";
-import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
+import { useEffect, useMemo, useRef, useState, type InputHTMLAttributes } from "react";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
@@ -112,6 +112,8 @@ export default function DepartmentMasterPanel() {
   const [strEditingDepartmentId, setStrEditingDepartmentId] = useState("");
   const [dicForm, setDicForm] = useState<DepartmentFormValues>(dicEmptyForm);
   const [dicErrors, setDicErrors] = useState<Partial<Record<"code" | "name", string>>>({});
+  const objNameInputRef = useRef<HTMLInputElement>(null);
+  const objCodeInputRef = useRef<HTMLInputElement>(null);
   const [dicTextTranslationLoading, setDicTextTranslationLoading] = useState<Record<string, boolean>>({});
   const [dicLastTranslatedSourceByRow, setDicLastTranslatedSourceByRow] = useState<Record<string, string>>({});
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
@@ -538,6 +540,11 @@ export default function DepartmentMasterPanel() {
     }
 
     setDicErrors(dicNextErrors);
+    if (dicNextErrors.name) {
+      objNameInputRef.current?.focus();
+    } else if (dicNextErrors.code) {
+      objCodeInputRef.current?.focus();
+    }
     return Object.keys(dicNextErrors).length === 0;
   }
 
@@ -677,7 +684,6 @@ export default function DepartmentMasterPanel() {
   return (
     <Box className={styles.page} sx={{ position: "relative" }}>
       <Breadcrumbs aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ fontSize: 13, py: 0.5, ml: "3px" }}>
-        <Link href="/dashboard" underline="hover" color="inherit">{t("breadcrumb_home", "Home")}</Link>
         <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{t("breadcrumb_masters", "Masters")}</Typography>
         <Typography component="h1" aria-current="page" sx={{ fontSize: "inherit", fontWeight: 700, color: "#243b53" }}>{t("breadcrumb_departments", "Departments")}</Typography>
       </Breadcrumbs>
@@ -748,6 +754,11 @@ export default function DepartmentMasterPanel() {
             testIdPrefix="department-master.list"
             showPaginationSummary
             hideRowClickHint
+            onRowDoubleClick={(dicRow) => {
+              if (blnRightsLoading || blnLoading || blnSubmitting || (!blnCanEdit && !blnCanView)) return;
+              const dicDepartment = lstDepartments.find((dicItem) => dicItem.id === dicRow.id);
+              if (dicDepartment) openDialog(blnCanEdit ? "edit" : "view", dicDepartment);
+            }}
             minTableWidth={800}
             emptyMessage={dicDepartmentLabels.emptyMessage}
             toolbarLeft={(
@@ -829,7 +840,7 @@ export default function DepartmentMasterPanel() {
         fullWidth={false}
         contentSx={{ overflowX: "hidden", overflowY: "auto", px: 3, py: 2.5, borderColor: "#e5edf5" }}
         nodeContent={
-          <Box sx={{ display: "grid", gap: 2.5, pt: 0.5, "& .MuiOutlinedInput-root": { borderRadius: "6px", backgroundColor: "#fff", fontSize: "14px", fontWeight: 400 }, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#cbd5e1" } }}>
+          <Box sx={{ display: "grid", gap: 2.5, pt: 0.5, "& .MuiOutlinedInput-root": { borderRadius: "6px", backgroundColor: "#fff", fontSize: "14px", fontWeight: 400 }, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#cbd5e1" }, "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "primary.main", borderWidth: 2 }, "& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline": { borderColor: "error.main" }, "& .MuiFormHelperText-root.Mui-error": { margin: "4px 14px 0px 0px" } }}>
             <Box
               sx={{
                 display: "grid",
@@ -842,6 +853,8 @@ export default function DepartmentMasterPanel() {
             >
               <TextField
                 controlId="department-master.dialog.name.input"
+                inputRef={objNameInputRef}
+                autoFocus={strMode !== "view"}
                 label={dicDepartmentLabels.fieldName}
                 required
                 value={dicForm.name}
@@ -860,6 +873,7 @@ export default function DepartmentMasterPanel() {
               />
               <TextField
                 controlId="department-master.dialog.code.input"
+                inputRef={objCodeInputRef}
                 label={dicDepartmentLabels.fieldCode}
                 required
                 value={dicForm.code}
