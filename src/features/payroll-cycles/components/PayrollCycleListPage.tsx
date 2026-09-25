@@ -181,7 +181,7 @@ export default function PayrollCycleListPage() {
       </Box>
 
       <Box className={styles.controlsCard}>
-        <Box className={styles.searchRow} sx={{ display: "flex", gridTemplateColumns: "none", flexWrap: "nowrap", alignItems: "center", gap: 1.25, overflowX: "auto", pb: 0.5, "& > .MuiTextField-root": { flex: "1 1 240px", minWidth: 200 } }}>
+        <Box className={styles.searchRow} sx={{ display: "flex", gridTemplateColumns: "none", flexWrap: "wrap", alignItems: "center", gap: 1.25, pt: 1, rowGap: 2, pb: 0.5, "& > .MuiTextField-root": { flex: "1 1 240px", minWidth: 200 } }}>
           <TextField controlId="payroll-cycles.list.cycle-name.input" inputProps={{ "controlId": "payroll-cycles.list.cycle-name.input" }} label={t("schedule_name", "Payroll Schedule")} value={dicSearchDraft.strName} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strName: objEvent.target.value }))} size="small" />
           <TextField controlId="payroll-cycles.list.search-status.select" inputProps={{ "controlId": "payroll-cycles.list.search-status.select" }} select label={t("status")} value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} size="small">
             <MenuItem controlId="payroll-cycles.list.search-status.all.option" value="All">{t("all")}</MenuItem>

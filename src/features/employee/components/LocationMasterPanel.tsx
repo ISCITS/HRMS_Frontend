@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
@@ -707,8 +708,8 @@ export default function LocationMasterPanel() {
         }} 
         nodeTitleAction={
           <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
-            <Typography className={styles.switchLabel}>{dicModuleLabels.fieldIsActive}</Typography>
             <ActiveStatusSwitch blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
+            <Typography className={styles.switchLabel}>{dicModuleLabels.fieldIsActive}</Typography>
           </Box>
         } 
         nodeContent={
@@ -751,21 +752,15 @@ export default function LocationMasterPanel() {
                 helperText={dicErrors.code}
                 fullWidth
               />
-              <TextField
+              <CommonSearchableSelect
                 label={dicModuleLabels.fieldState}
-                select
-                value={dicForm.intStateID === "" ? "" : String(dicForm.intStateID)}
-                onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, intStateID: objEvent.target.value ? Number(objEvent.target.value) : "" }))}
+                value={dicForm.intStateID}
+                options={objFormOptions.lstStates}
+                getOptionLabel={(dicState) => `${dicState.strLabel}${dicState.strCode ? ` (${dicState.strCode})` : ""}`}
+                onChange={(intValue) => setDicForm((dicPrevious) => ({ ...dicPrevious, intStateID: intValue }))}
                 fullWidth
                 disabled={strMode === "view"}
-              >
-                <MenuItem value="">{dicModuleLabels.selectState}</MenuItem>
-                {objFormOptions.lstStates.map((dicState) => (
-                  <MenuItem key={dicState.intID} value={String(dicState.intID)}>
-                    {dicState.strLabel}{dicState.strCode ? ` (${dicState.strCode})` : ""}
-                  </MenuItem>
-                ))}
-              </TextField>
+              />
               <TextField
                 label={dicModuleLabels.fieldCity}
                 value={dicForm.strCityName}

@@ -21,6 +21,7 @@ import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonT
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
+import { withBasePath } from "@/lib/basePath";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { employeePayrollInputService } from "@/features/payroll/services/employeePayrollInputService";
 import type {
@@ -146,7 +147,7 @@ export default function EmployeePayrollInputListPage() {
   }
 
   function navigateToFullScreen(strPath: string) {
-    window.location.assign(strPath);
+    window.location.assign(withBasePath(strPath));
   }
 
   const lstTableRows = useMemo(

@@ -320,10 +320,10 @@
 .reportSearchPanelRow {
   align-items: center;
   display: flex;
-  flex-wrap: nowrap;
-  gap: 10px;
-  overflow-x: auto;
-  padding-bottom: 4px;
+  flex-wrap: wrap;
+  gap: 16px 10px;
+  /* Floating labels extend above the input outline. */
+  padding: 8px 0 4px;
 }
 
 .reportSearchField {
@@ -943,6 +943,7 @@
   .tableCard,
   .listUtilityBar {
     padding: 8px;
+    padding-top: 2px;
   }
 
   .controlsHeader,
@@ -1042,6 +1043,7 @@
   .tableCard,
   .listUtilityBar {
     padding: 8px;
+    padding-top: 2px;
   }
 
   .headerActions > *,

@@ -15,7 +15,6 @@ import {
   FormControlLabel,
   IconButton,
   InputAdornment,
-  ListItemText,
   MenuItem,
   Paper,
   Radio,
@@ -29,10 +28,13 @@ import {
 import { useEffect, useMemo, useState, type Dispatch, type InputHTMLAttributes, type SetStateAction } from "react";
 import { useRouter } from "next/navigation";
 
+import CommonSearchableMultiSelect from "@/Common/components/CommonSearchableMultiSelect";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/components/master/MasterScreen.module.css";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useSalaryComponentLabels } from "@/features/salary-components/hooks/useSalaryComponentLabels";
+import { allocationMasterService } from "@/features/allocation-masters/services/allocationMasterService";
 import {
   createEmptySalaryComponentFlexiEligibilityRuleRow,
   createEmptySalaryComponentTextRow,
@@ -58,13 +60,6 @@ type SalaryComponentEditorPageProps = {
 };
 
 const lstSalaryComponentModuleCodes = ["SALARY_COMPONENT", "SALARY_COMPONENTS", "MASTER_SALARY_COMPONENT"];
-
-function parseMultiSelectNumberValues(objValue: string | string[]) {
-  const lstRawValues = Array.isArray(objValue) ? objValue : objValue.split(",");
-  return lstRawValues
-    .map((strValue) => Number(strValue))
-    .filter((intValue) => Number.isInteger(intValue) && intValue > 0);
-}
 
 function normalizeSelectToken(strValue: string) {
   return strValue.trim().toLowerCase().replace(/[\s_-]+/g, "");
@@ -343,6 +338,39 @@ function getCategoryLabel(strValue: string) {
   }
 }
 
+// Variable Pay Calculation: each row is [toggle | label + field | label + field] on a shared grid so
+// dependent fields always land in the same columns no matter which toggles are on. Everything sits on a
+// 40px band (theme TextFields are size "small") so toggles, labels and inputs share one baseline.
+const dicVariablePayRowSx = {
+  display: "grid",
+  alignItems: "start",
+  columnGap: 4,
+  rowGap: 1.5,
+  py: 2.25,
+  gridTemplateColumns: { xs: "1fr", lg: "minmax(340px, 0.75fr) repeat(2, minmax(0, 1fr))" },
+} as const;
+const dicVariablePayToggleSx = { m: 0, minHeight: 40, gap: 2, width: "100%", maxWidth: 360, justifyContent: "space-between" } as const;
+// Paired toggles sharing one cell: each gets half the cell and its label wraps inside that half,
+// so the pair never breaks onto a second line as the column narrows.
+const dicVariablePayInlineToggleSx = { m: 0, minHeight: 40, minWidth: 0, gap: 1.5, "& .MuiFormControlLabel-label": { minWidth: 0, lineHeight: 1.3 } } as const;
+const dicVariablePayFieldCellSx = {
+  display: "grid",
+  alignItems: "center",
+  columnGap: 2,
+  rowGap: 0.5,
+  gridTemplateColumns: { xs: "1fr", sm: "190px minmax(0, 1fr)" },
+} as const;
+const dicVariablePayHelpSx = { color: "#64748b", fontSize: "0.8rem", lineHeight: 1.5 } as const;
+
+function VariablePayFieldLabel({ strLabel, blnRequired = false }: { strLabel: string; blnRequired?: boolean }) {
+  return (
+    <Typography sx={{ color: "#0f172a", minHeight: 40, display: "flex", alignItems: "center" }}>
+      {strLabel}
+      {blnRequired ? <Box component="span" sx={{ color: "#ef4444", ml: 0.4, alignSelf: "flex-start", mt: 0.75 }}>*</Box> : null}
+    </Typography>
+  );
+}
+
 function isCategory(strValue: string, strExpected: string) {
   return normalizeSelectToken(strValue) === normalizeSelectToken(strExpected);
 }
@@ -460,6 +488,7 @@ export default function SalaryComponentEditorPage({
   const [blnPayslipSectionTouched, setBlnPayslipSectionTouched] = useState(false);
   const [dicTextTranslationLoading, setDicTextTranslationLoading] = useState<Record<string, boolean>>({});
   const [dicLastTranslatedSourceByRow, setDicLastTranslatedSourceByRow] = useState<Record<string, string>>({});
+  const [lstAllocationEntityTypeOptions, setLstAllocationEntityTypeOptions] = useState<Array<{ intID: number; strDisplayName: string }>>([]);
 
   const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
@@ -486,6 +515,19 @@ export default function SalaryComponentEditorPage({
     return () => {
       window.removeEventListener("storage", syncLanguage);
       window.removeEventListener("hrms:language-changed", syncLanguage as EventListener);
+    };
+  }, []);
+
+  useEffect(() => {
+    let blnMounted = true;
+    allocationMasterService.listEntityTypes(true)
+      .then((lstTypes) => {
+        if (!blnMounted) return;
+        setLstAllocationEntityTypeOptions(lstTypes.map((dicType) => ({ intID: dicType.intID, strDisplayName: dicType.strTypeName })));
+      })
+      .catch(() => undefined);
+    return () => {
+      blnMounted = false;
     };
   }, []);
 
@@ -552,9 +594,6 @@ export default function SalaryComponentEditorPage({
     };
   }, [blnCanLoadWorkspace, blnRightsLoading, intCurrentLanguageID, strSalaryComponentID, strMode]);
 
-  const dicDependencyOptionByID = useMemo(() => {
-    return new Map((objFormOptions?.lstDependencyComponents ?? []).map((dicOption) => [dicOption.intID, dicOption]));
-  }, [objFormOptions]);
   const lstFlexiEligibilityQuestions = objFormOptions?.lstFlexiEligibilityQuestions ?? [];
   const dicFlexiEligibilityQuestionByID = useMemo(() => {
     return new Map(lstFlexiEligibilityQuestions.map((dicQuestion) => [dicQuestion.intID, dicQuestion]));
@@ -752,6 +791,32 @@ export default function SalaryComponentEditorPage({
       if (!isCalculationMethod(strSelectedMethod, "percentage")) {
         dicNext.intDefaultBasisComponentID = "";
         dicNext.strDefaultPercentageValue = "";
+      }
+      return dicNext;
+    });
+  }
+
+  function handleVariablePayCalculationMethodSelection(
+    strSelectedMethod: SalaryComponentFormValues["strVariablePayCalculationMethodCode"],
+  ) {
+    setDicForm((dicPrevious) => {
+      const dicNext: SalaryComponentFormValues = {
+        ...dicPrevious,
+        strVariablePayCalculationMethodCode: strSelectedMethod,
+      };
+      // These fields only mean anything for Allocation Based - switching to Direct Amount or
+      // Formula Based must clear them (not just hide them), otherwise stale Allocation Based
+      // config from an earlier selection would still be saved and would silently reappear if
+      // the user switches back to Allocation Based later.
+      if (strSelectedMethod !== "ALLOCATION_BASED") {
+        dicNext.intAllocationEntityTypeID = "";
+        dicNext.blnMonthlyAdjustmentApplicable = false;
+        dicNext.strMonthlyAdjustmentMinPercent = "";
+        dicNext.strMonthlyAdjustmentMaxPercent = "";
+        dicNext.blnAttendanceEligibilityApplicable = false;
+        dicNext.strAttendanceEligibilityPercent = "";
+        dicNext.blnAttendanceProrationApplicable = false;
+        dicNext.blnEligibilityOverrideAllowed = false;
       }
       return dicNext;
     });
@@ -1499,11 +1564,16 @@ export default function SalaryComponentEditorPage({
             inputProps={buildInputTestIdProps("salary-components.editor.component-name.input")}
           />
 
-          <TextField required select label={t("component_category", "Component Category")} value={dicForm.intComponentCategoryID} onChange={(objEvent) => handleLookupSelection(setDicForm, "intComponentCategoryID", "strComponentCategory", lstCategoryOptions, Number(objEvent.target.value))} disabled={blnFieldDisabled} fullWidth {...buildSelectTestIdProps("salary-components.editor.component-category.select")}>
-            {lstCategoryOptions.map((dicOption) => (
-              <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.component-category.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{getCategoryLabel(dicOption.strDisplayName)}</MenuItem>
-            ))}
-          </TextField>
+          <CommonSearchableSelect
+            required
+            label={t("component_category", "Component Category")}
+            value={dicForm.intComponentCategoryID}
+            options={lstCategoryOptions.map((dicOption) => ({ ...dicOption, strLabel: getCategoryLabel(dicOption.strDisplayName) }))}
+            onChange={(intValue) => handleLookupSelection(setDicForm, "intComponentCategoryID", "strComponentCategory", lstCategoryOptions, intValue)}
+            disabled={blnFieldDisabled}
+            fullWidth
+            controlId="salary-components.editor.component-category.select"
+          />
           <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "flex-start", minWidth: 0, pt: 0 }}>
             <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1, minWidth: 0 }}>
               <Typography sx={{ fontSize: "0.75rem", lineHeight: "18px", color: "rgba(15, 23, 42, 0.6)", whiteSpace: "nowrap" }}>
@@ -1552,17 +1622,26 @@ export default function SalaryComponentEditorPage({
               </Typography>
             </Box>
           ) : null}
-          <TextField select label={t("component_group", "Component Group")} value={dicForm.intComponentGroupID} onChange={(objEvent) => handleLookupSelection(setDicForm, "intComponentGroupID", "strComponentGroup", lstGroupOptions, objEvent.target.value === "" ? "" : Number(objEvent.target.value))} disabled={blnFieldDisabled || blnIsFlexiBucketCategory} fullWidth {...buildSelectTestIdProps("salary-components.editor.component-group.select")}>
-            <MenuItem value="" data-controlid="salary-components.editor.component-group.none.option">{t("none", "None")}</MenuItem>
-            {lstGroupOptions.map((dicOption) => (
-              <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.component-group.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{dicOption.strDisplayName}</MenuItem>
-            ))}
-          </TextField>
-          <TextField required select label={t("payroll_processing_mode", "Payroll Processing Mode")} value={dicForm.intPayrollProcessingModeID} onChange={(objEvent) => handleLookupSelection(setDicForm, "intPayrollProcessingModeID", "strPayrollProcessingMode", lstPayrollProcessingModeOptions, Number(objEvent.target.value))} disabled={blnFieldDisabled} fullWidth {...buildSelectTestIdProps("salary-components.editor.payroll-processing-mode.select")}>
-            {lstPayrollProcessingModeOptions.map((dicOption) => (
-              <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.payroll-processing-mode.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{dicOption.strDisplayName}</MenuItem>
-            ))}
-          </TextField>
+          <CommonSearchableSelect
+            label={t("component_group", "Component Group")}
+            value={dicForm.intComponentGroupID}
+            options={lstGroupOptions.map((dicOption) => ({ ...dicOption, strLabel: dicOption.strDisplayName }))}
+            onChange={(intValue) => handleLookupSelection(setDicForm, "intComponentGroupID", "strComponentGroup", lstGroupOptions, intValue)}
+            placeholder={t("none", "None")}
+            disabled={blnFieldDisabled || blnIsFlexiBucketCategory}
+            fullWidth
+            controlId="salary-components.editor.component-group.select"
+          />
+          <CommonSearchableSelect
+            required
+            label={t("payroll_processing_mode", "Payroll Processing Mode")}
+            value={dicForm.intPayrollProcessingModeID}
+            options={lstPayrollProcessingModeOptions.map((dicOption) => ({ ...dicOption, strLabel: dicOption.strDisplayName }))}
+            onChange={(intValue) => handleLookupSelection(setDicForm, "intPayrollProcessingModeID", "strPayrollProcessingMode", lstPayrollProcessingModeOptions, intValue)}
+            disabled={blnFieldDisabled}
+            fullWidth
+            controlId="salary-components.editor.payroll-processing-mode.select"
+          />
           <TextField
             required
             label={t("component_code", "Component Code")}
@@ -1594,47 +1673,57 @@ export default function SalaryComponentEditorPage({
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
         <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{t("calculation_setup", "Calculation Setup")}</Typography>
         <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" } }}>
-          <TextField required select label={t("calculation_method", "Calculation Method")} value={dicForm.intCalcMethodID} onChange={(objEvent) => handleCalculationMethodSelection(Number(objEvent.target.value))} disabled={blnFieldDisabled} helperText={t("calculation_method_help", "Defines how the component amount is calculated.")} fullWidth {...buildSelectTestIdProps("salary-components.editor.calculation-method.select")}>
-            {lstCalcMethodOptions.map((dicOption) => (
-              <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.calculation-method.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{dicOption.strDisplayName}</MenuItem>
-            ))}
-          </TextField>
-          <TextField select label={t("rounding_rule", "Rounding Rule")} value={dicForm.intRoundingRuleID} onChange={(objEvent) => handleLookupSelection(setDicForm, "intRoundingRuleID", "strRoundingRule", lstRoundingRuleOptions, objEvent.target.value === "" ? "" : Number(objEvent.target.value))} disabled={blnFieldDisabled} fullWidth {...buildSelectTestIdProps("salary-components.editor.rounding-rule.select")}>
-            {lstRoundingRuleOptions.map((dicOption) => (
-              <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.rounding-rule.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{dicOption.strDisplayName}</MenuItem>
-            ))}
-          </TextField>
-          <TextField select label={t("default_periodicity", "Default Periodicity")} value={dicForm.intDefaultPeriodicityID} onChange={(objEvent) => handleLookupSelection(setDicForm, "intDefaultPeriodicityID", "strDefaultPeriodicity", lstDefaultPeriodicityOptions, Number(objEvent.target.value))} disabled={blnFieldDisabled} fullWidth {...buildSelectTestIdProps("salary-components.editor.default-periodicity.select")}>
-            {lstDefaultPeriodicityOptions.map((dicOption) => (
-              <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.default-periodicity.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{dicOption.strDisplayName}</MenuItem>
-            ))}
-          </TextField>
-          <TextField select label={t("tax_treatment", "Tax Treatment")} value={dicForm.intTaxTreatmentID} onChange={(objEvent) => handleLookupSelection(setDicForm, "intTaxTreatmentID", "strTaxTreatment", lstTaxTreatmentOptions, objEvent.target.value === "" ? "" : Number(objEvent.target.value))} disabled={blnFieldDisabled} fullWidth {...buildSelectTestIdProps("salary-components.editor.tax-treatment.select")}>
-            <MenuItem value="" data-controlid="salary-components.editor.tax-treatment.none.option">{t("none", "None")}</MenuItem>
-            {lstTaxTreatmentOptions.map((dicOption) => (
-              <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.tax-treatment.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{getTaxTreatmentLabel(dicOption.strDisplayName)}</MenuItem>
-            ))}
-          </TextField>
+          <CommonSearchableSelect
+            required
+            label={t("calculation_method", "Calculation Method")}
+            value={dicForm.intCalcMethodID}
+            options={lstCalcMethodOptions.map((dicOption) => ({ ...dicOption, strLabel: dicOption.strDisplayName }))}
+            onChange={(intValue) => handleCalculationMethodSelection(intValue)}
+            disabled={blnFieldDisabled}
+            helperText={t("calculation_method_help", "Defines how the component amount is calculated.")}
+            fullWidth
+            controlId="salary-components.editor.calculation-method.select"
+          />
+          <CommonSearchableSelect
+            label={t("rounding_rule", "Rounding Rule")}
+            value={dicForm.intRoundingRuleID}
+            options={lstRoundingRuleOptions.map((dicOption) => ({ ...dicOption, strLabel: dicOption.strDisplayName }))}
+            onChange={(intValue) => handleLookupSelection(setDicForm, "intRoundingRuleID", "strRoundingRule", lstRoundingRuleOptions, intValue)}
+            disabled={blnFieldDisabled}
+            fullWidth
+            controlId="salary-components.editor.rounding-rule.select"
+          />
+          <CommonSearchableSelect
+            label={t("default_periodicity", "Default Periodicity")}
+            value={dicForm.intDefaultPeriodicityID}
+            options={lstDefaultPeriodicityOptions.map((dicOption) => ({ ...dicOption, strLabel: dicOption.strDisplayName }))}
+            onChange={(intValue) => handleLookupSelection(setDicForm, "intDefaultPeriodicityID", "strDefaultPeriodicity", lstDefaultPeriodicityOptions, intValue)}
+            disabled={blnFieldDisabled}
+            fullWidth
+            controlId="salary-components.editor.default-periodicity.select"
+          />
+          <CommonSearchableSelect
+            label={t("tax_treatment", "Tax Treatment")}
+            value={dicForm.intTaxTreatmentID}
+            options={lstTaxTreatmentOptions.map((dicOption) => ({ ...dicOption, strLabel: getTaxTreatmentLabel(dicOption.strDisplayName) }))}
+            onChange={(intValue) => handleLookupSelection(setDicForm, "intTaxTreatmentID", "strTaxTreatment", lstTaxTreatmentOptions, intValue)}
+            placeholder={t("none", "None")}
+            disabled={blnFieldDisabled}
+            fullWidth
+            controlId="salary-components.editor.tax-treatment.select"
+          />
           {blnShowPercentageCalculationFields ? (
-            <TextField
+            <CommonSearchableSelect
               required
-              select
               label={t("base_component", "Base Component")}
               value={dicForm.intDefaultBasisComponentID}
-              onChange={(objEvent) => updateRootField("intDefaultBasisComponentID", objEvent.target.value === "" ? "" : Number(objEvent.target.value))}
+              options={(objFormOptions?.lstDependencyComponents ?? []).filter((dicOption) => dicOption.intID !== objDetail?.intID)}
+              onChange={(intValue) => updateRootField("intDefaultBasisComponentID", intValue)}
+              placeholder={t("select", "Select")}
               disabled={blnFieldDisabled}
               fullWidth
-              {...buildSelectTestIdProps("salary-components.editor.default-basis-component.select")}
-            >
-              <MenuItem value="" data-controlid="salary-components.editor.default-basis-component.select.option">{t("select", "Select")}</MenuItem>
-              {(objFormOptions?.lstDependencyComponents ?? [])
-                .filter((dicOption) => dicOption.intID !== objDetail?.intID)
-                .map((dicOption) => (
-                  <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.default-basis-component.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
-                    {dicOption.strCode ? `${dicOption.strCode} - ${dicOption.strLabel}` : dicOption.strLabel}
-                  </MenuItem>
-                ))}
-            </TextField>
+              controlId="salary-components.editor.default-basis-component.select"
+            />
           ) : null}
           {blnShowPercentageCalculationFields ? (
             <TextField
@@ -1742,21 +1831,17 @@ export default function SalaryComponentEditorPage({
         <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
           <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1.5 }}>{t("flexi_bucket_settings", "Flexi Bucket Settings")}</Typography>
           <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "minmax(320px, 420px)" }, alignItems: "start" }}>
-            <TextField
+            <CommonSearchableSelect
               required
-              select
               label={t("residual_component", "Residual Component")}
               value={dicForm.intResidualComponentID}
-              onChange={(objEvent) => updateRootField("intResidualComponentID", objEvent.target.value === "" ? "" : Number(objEvent.target.value))}
+              options={(objFormOptions?.lstResidualComponents ?? []).filter((dicOption) => dicOption.intID !== objDetail?.intID)}
+              onChange={(intValue) => updateRootField("intResidualComponentID", intValue)}
+              placeholder={t("none", "None")}
               disabled={blnFieldDisabled}
               fullWidth
-              {...buildSelectTestIdProps("salary-components.editor.residual-component.select")}
-            >
-              <MenuItem value="" data-controlid="salary-components.editor.residual-component.none.option">{t("none", "None")}</MenuItem>
-              {(objFormOptions?.lstResidualComponents ?? []).filter((dicOption) => dicOption.intID !== objDetail?.intID).map((dicOption) => (
-                <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.residual-component.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>{dicOption.strCode ? `${dicOption.strCode} - ${dicOption.strLabel}` : dicOption.strLabel}</MenuItem>
-              ))}
-            </TextField>
+              controlId="salary-components.editor.residual-component.select"
+            />
           </Box>
         </Paper>
       ) : null}
@@ -1773,34 +1858,26 @@ export default function SalaryComponentEditorPage({
               intSettlementMethodID: objEvent.target.checked ? (findLookupOptionByValue(lstSettlementMethodOptions, "payroll")?.intID ?? "") : "",
               strSettlementMethod: objEvent.target.checked ? "payroll" : "none",
             }))} disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-components.editor.is-flexi-benefit.switch")} />} label={t("is_flexi_reimbursement", blnIsReimbursementCategory ? "Is Flexi Reimbursement" : "Is Flexi Benefit")} />
-            <TextField
-              select
+            <CommonSearchableSelect
               label={t("reimbursement_type", "Reimbursement Type")}
               value={dicForm.intReimbursementTypeID}
-              onChange={(objEvent) => handleLookupSelection(setDicForm, "intReimbursementTypeID", "strReimbursementType", lstReimbursementTypeOptions, objEvent.target.value === "" ? "" : Number(objEvent.target.value))}
+              options={lstReimbursementTypeOptions.map((dicOption) => ({ ...dicOption, strLabel: t(`reimbursement_type_${dicOption.strValueCode}`, dicOption.strDisplayName) }))}
+              onChange={(intValue) => handleLookupSelection(setDicForm, "intReimbursementTypeID", "strReimbursementType", lstReimbursementTypeOptions, intValue)}
+              placeholder={t("select", "Select")}
               disabled={blnFieldDisabled || !dicForm.blnIsReimbursement || blnIsFlexiReimbursement}
               fullWidth
-              {...buildSelectTestIdProps("salary-components.editor.reimbursement-type.select")}
-            >
-              <MenuItem value="" data-controlid="salary-components.editor.reimbursement-type.none.option">{t("select", "Select")}</MenuItem>
-              {lstReimbursementTypeOptions.map((dicOption) => (
-                <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.reimbursement-type.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{t(`reimbursement_type_${dicOption.strValueCode}`, dicOption.strDisplayName)}</MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              select
+              controlId="salary-components.editor.reimbursement-type.select"
+            />
+            <CommonSearchableSelect
               label={t("settlement_method", "Settlement Method")}
               value={dicForm.intSettlementMethodID}
-              onChange={(objEvent) => handleLookupSelection(setDicForm, "intSettlementMethodID", "strSettlementMethod", lstSettlementMethodOptions, objEvent.target.value === "" ? "" : Number(objEvent.target.value))}
+              options={lstSettlementMethodOptions.map((dicOption) => ({ ...dicOption, strLabel: t(`settlement_method_${dicOption.strValueCode}`, dicOption.strDisplayName) }))}
+              onChange={(intValue) => handleLookupSelection(setDicForm, "intSettlementMethodID", "strSettlementMethod", lstSettlementMethodOptions, intValue)}
+              placeholder={t("select", "Select")}
               disabled={blnFieldDisabled || blnIsFlexiReimbursement || dicForm.intReimbursementTypeID !== ""}
               fullWidth
-              {...buildSelectTestIdProps("salary-components.editor.settlement-method.select")}
-            >
-              <MenuItem value="" data-controlid="salary-components.editor.settlement-method.none.option">{t("select", "Select")}</MenuItem>
-              {lstSettlementMethodOptions.map((dicOption) => (
-                <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.settlement-method.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{t(`settlement_method_${dicOption.strValueCode}`, dicOption.strDisplayName)}</MenuItem>
-              ))}
-            </TextField>
+              controlId="salary-components.editor.settlement-method.select"
+            />
             <TextField
               select
               label={t("applicable_for_which_tax_regime", "Applicable For Which Tax Regime")}
@@ -1917,12 +1994,16 @@ export default function SalaryComponentEditorPage({
                       </Button>
                     </Stack>
                     <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" }, mt: 1.25 }}>
-                      <TextField select label={t("eligibility_question", "Eligibility Question")} value={dicRule.intEligibilityQuestionID} onChange={(objEvent) => updateFlexiEligibilityRule(dicRule.strRowID, "intEligibilityQuestionID", objEvent.target.value === "" ? "" : Number(objEvent.target.value))} disabled={blnFieldDisabled} fullWidth data-controlid="salary-components.editor.flexi-eligibility.question.select" inputProps={{ ...buildInputTestIdProps("salary-components.editor.flexi-eligibility.question.select"), "data-row-key": dicRule.strRowID }}>
-                        <MenuItem value="" data-controlid="salary-components.editor.flexi-eligibility.question.select.option">{t("select", "Select")}</MenuItem>
-                        {lstFlexiEligibilityQuestions.map((dicQuestion) => (
-                          <MenuItem key={dicQuestion.intID} value={dicQuestion.intID} data-controlid={`salary-components.editor.flexi-eligibility.question.${dicQuestion.intID}.option`}>{resolveEligibilityQuestionLabel(dicQuestion, intDefaultLanguageID)}</MenuItem>
-                        ))}
-                      </TextField>
+                      <CommonSearchableSelect
+                        label={t("eligibility_question", "Eligibility Question")}
+                        value={dicRule.intEligibilityQuestionID}
+                        options={lstFlexiEligibilityQuestions.map((dicQuestion) => ({ ...dicQuestion, strLabel: resolveEligibilityQuestionLabel(dicQuestion, intDefaultLanguageID) }))}
+                        onChange={(intValue) => updateFlexiEligibilityRule(dicRule.strRowID, "intEligibilityQuestionID", intValue)}
+                        placeholder={t("select", "Select")}
+                        disabled={blnFieldDisabled}
+                        fullWidth
+                        controlId="salary-components.editor.flexi-eligibility.question.select"
+                      />
                       <TextField select label={t("rule_condition", "Rule Condition")} value={dicRule.strOperator} onChange={(objEvent) => updateFlexiEligibilityRule(dicRule.strRowID, "strOperator", objEvent.target.value)} disabled={blnFieldDisabled || !objQuestion} fullWidth data-controlid="salary-components.editor.flexi-eligibility.condition.select" inputProps={{ ...buildInputTestIdProps("salary-components.editor.flexi-eligibility.condition.select"), "data-row-key": dicRule.strRowID }}>
                         {lstRuleConditionOptions.map((dicOption) => (
                           <MenuItem key={dicOption.value} value={dicOption.value} data-controlid={`salary-components.editor.flexi-eligibility.condition.${normalizeSelectToken(dicOption.value)}.option`}>{t(`eligibility_rule_condition_${dicOption.value}`, dicOption.label)}</MenuItem>
@@ -2039,37 +2120,25 @@ export default function SalaryComponentEditorPage({
             gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" },
           }}
         >
-          <TextField
-            select
+          <CommonSearchableSelect
             label={t("lwp_treatment", "LWP Treatment")}
             value={dicForm.intLwpTreatmentID}
-            onChange={(objEvent) => handleLwpTreatmentSelection(objEvent.target.value === "" ? "" : Number(objEvent.target.value))}
+            options={lstLwpTreatmentOptions.map((dicOption) => ({ ...dicOption, strLabel: dicOption.strDisplayName }))}
+            onChange={(intValue) => handleLwpTreatmentSelection(intValue)}
             disabled={blnFieldDisabled}
             fullWidth
-            {...buildSelectTestIdProps("salary-components.editor.lwp-treatment.select")}
-          >
-            {lstLwpTreatmentOptions.map((dicOption) => (
-              <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.lwp-treatment.${normalizeSelectToken(dicOption.strValueCode)}.option`}>
-                {dicOption.strDisplayName}
-              </MenuItem>
-            ))}
-          </TextField>
+            controlId="salary-components.editor.lwp-treatment.select"
+          />
           {blnShowLwpReducedAmountHandling ? (
-            <TextField
-              select
+            <CommonSearchableSelect
               label={t("lwp_reduced_amount_handling", "Reduced Amount Handling")}
               value={dicForm.intLwpReducedAmountHandlingID}
-              onChange={(objEvent) => handleLookupSelection(setDicForm, "intLwpReducedAmountHandlingID", "strLwpReducedAmountHandlingCode", lstLwpReducedAmountHandlingOptions, objEvent.target.value === "" ? "" : Number(objEvent.target.value))}
+              options={lstLwpReducedAmountHandlingOptions.map((dicOption) => ({ ...dicOption, strLabel: dicOption.strDisplayName }))}
+              onChange={(intValue) => handleLookupSelection(setDicForm, "intLwpReducedAmountHandlingID", "strLwpReducedAmountHandlingCode", lstLwpReducedAmountHandlingOptions, intValue)}
               disabled={blnFieldDisabled}
               fullWidth
-              {...buildSelectTestIdProps("salary-components.editor.lwp-reduced-amount-handling.select")}
-            >
-              {lstLwpReducedAmountHandlingOptions.map((dicOption) => (
-                <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.lwp-reduced-amount-handling.${normalizeSelectToken(dicOption.strValueCode)}.option`}>
-                  {dicOption.strDisplayName}
-                </MenuItem>
-              ))}
-            </TextField>
+              controlId="salary-components.editor.lwp-reduced-amount-handling.select"
+            />
           ) : null}
           {blnShowLwpCustomFormula ? (
             <TextField
@@ -2121,12 +2190,17 @@ export default function SalaryComponentEditorPage({
             control={<Switch checked={dicForm.blnIncludeInPayslip} onChange={(objEvent) => updateRootField("blnIncludeInPayslip", objEvent.target.checked)} disabled={blnFieldDisabled || blnIsFlexiBucketCategory} inputProps={buildInputTestIdProps("salary-components.editor.include-in-payslip.switch")} />}
             label={t("show_on_payslip", "Show on Payslip")}
           />
-          <TextField required={dicForm.blnIncludeInPayslip && !blnIsFlexiBucketCategory} select label={t("payslip_section", "Payslip Section")} value={dicForm.intPayslipSectionID} onChange={(objEvent) => handlePayslipSectionSelection(objEvent.target.value === "" ? "" : Number(objEvent.target.value))} disabled={blnFieldDisabled || blnIsFlexiBucketCategory || !dicForm.blnIncludeInPayslip} fullWidth {...buildSelectTestIdProps("salary-components.editor.payslip-section.select")}>
-            <MenuItem value="" data-controlid="salary-components.editor.payslip-section.none.option">{t("none", "None")}</MenuItem>
-            {lstPayslipSections.map((dicOption) => (
-              <MenuItem key={dicOption.intID} value={dicOption.intID} data-controlid={`salary-components.editor.payslip-section.${normalizeSelectToken(dicOption.strValueCode)}.option`}>{dicOption.strDisplayName}</MenuItem>
-            ))}
-          </TextField>
+          <CommonSearchableSelect
+            required={dicForm.blnIncludeInPayslip && !blnIsFlexiBucketCategory}
+            label={t("payslip_section", "Payslip Section")}
+            value={dicForm.intPayslipSectionID}
+            options={lstPayslipSections.map((dicOption) => ({ ...dicOption, strLabel: dicOption.strDisplayName }))}
+            onChange={(intValue) => handlePayslipSectionSelection(intValue)}
+            placeholder={t("none", "None")}
+            disabled={blnFieldDisabled || blnIsFlexiBucketCategory || !dicForm.blnIncludeInPayslip}
+            fullWidth
+            controlId="salary-components.editor.payslip-section.select"
+          />
           <TextField required={dicForm.blnIncludeInPayslip && !blnIsFlexiBucketCategory} label={t("display_order", "Display Order")} value={dicForm.strDisplayOrder} onChange={(objEvent) => updateRootField("strDisplayOrder", objEvent.target.value.replace(/\D/g, ""))} disabled={blnFieldDisabled || blnIsFlexiBucketCategory || !dicForm.blnIncludeInPayslip} fullWidth data-controlid="salary-components.editor.display-order.input" inputProps={buildInputTestIdProps("salary-components.editor.display-order.input")} />
         </Box>
       </Paper>
@@ -2137,6 +2211,239 @@ export default function SalaryComponentEditorPage({
           <FormControlLabel control={<Switch checked={dicForm.blnDeclarationRequired} onChange={(objEvent) => updateRootField("blnDeclarationRequired", objEvent.target.checked)} disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-components.editor.declaration-required.switch")} />} label={t("declaration_required", "Declaration required")} />
           {!blnIsReimbursementCategory ? <FormControlLabel control={<Switch checked={dicForm.blnProofRequired} onChange={(objEvent) => updateRootField("blnProofRequired", objEvent.target.checked)} disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-components.editor.proof-required.switch")} />} label={t("proof_required_tax_exemption", "Proof Required for Tax Exemption")} /> : null}
         </Stack>
+      </Paper>
+
+      <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
+        <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("variable_pay_calculation", "Variable Pay Calculation")}</Typography>
+        <Typography sx={{ color: "#64748b", fontSize: "0.86rem", mt: 0.4, mb: 0.5 }}>
+          {t(
+            "variable_pay_calculation_help",
+            "Independent of Payroll Processing Mode above: that answers WHERE/HOW this component is processed (Regular, Separate, Both). This answers HOW the amount is derived (a direct manual/import amount, or split across configured Allocation Entities)."
+          )}
+        </Typography>
+        <Box sx={{ "& > *:not(:last-child)": { borderBottom: "1px solid rgba(226,232,240,0.9)" } }}>
+          <Box sx={dicVariablePayRowSx}>
+            <FormControlLabel
+              sx={dicVariablePayToggleSx}
+              control={
+                <Switch
+                  checked={dicForm.blnVariablePayCalculationEnabled}
+                  onChange={(objEvent) => updateRootField("blnVariablePayCalculationEnabled", objEvent.target.checked)}
+                  disabled={blnFieldDisabled}
+                  inputProps={buildInputTestIdProps("salary-components.editor.variable-pay-calculation-enabled.switch")}
+                />
+              }
+              label={t("variable_pay_calculation_enabled", "Variable Pay Calculation Enabled")}
+            />
+            {dicForm.blnVariablePayCalculationEnabled ? (
+              <Box sx={dicVariablePayFieldCellSx}>
+                <VariablePayFieldLabel strLabel={t("variable_pay_calculation_method", "Calculation Method")} blnRequired />
+                <CommonSearchableSelect
+                  required
+                  label=""
+                  value={
+                    dicForm.strVariablePayCalculationMethodCode === "ALLOCATION_BASED"
+                      ? 2
+                      : dicForm.strVariablePayCalculationMethodCode === "FORMULA_BASED"
+                        ? 3
+                        : 1
+                  }
+                  options={[
+                    { intID: 1, strLabel: t("direct_amount", "Direct Amount") },
+                    { intID: 2, strLabel: t("allocation_based", "Allocation Based") },
+                    { intID: 3, strLabel: t("formula_based", "Formula Based") },
+                  ]}
+                  onChange={(intValue) =>
+                    handleVariablePayCalculationMethodSelection(
+                      intValue === 2 ? "ALLOCATION_BASED" : intValue === 3 ? "FORMULA_BASED" : "DIRECT_AMOUNT"
+                    )
+                  }
+                  disabled={blnFieldDisabled}
+                  fullWidth
+                  controlId="salary-components.editor.variable-pay-calculation-method.select"
+                />
+              </Box>
+            ) : null}
+            {dicForm.blnVariablePayCalculationEnabled && dicForm.strVariablePayCalculationMethodCode === "ALLOCATION_BASED" ? (
+              <Box sx={dicVariablePayFieldCellSx}>
+                <VariablePayFieldLabel strLabel={t("allocation_entity_type", "Allocation Entity Type")} blnRequired />
+                <CommonSearchableSelect
+                  required
+                  label=""
+                  value={dicForm.intAllocationEntityTypeID}
+                  options={lstAllocationEntityTypeOptions.map((dicOption) => ({ ...dicOption, strLabel: dicOption.strDisplayName }))}
+                  onChange={(intValue) => updateRootField("intAllocationEntityTypeID", intValue)}
+                  disabled={blnFieldDisabled}
+                  fullWidth
+                  controlId="salary-components.editor.allocation-entity-type.select"
+                />
+                <Typography sx={{ ...dicVariablePayHelpSx, gridColumn: { sm: 2 } }}>
+                  {t("allocation_entity_type_help", "Configure entity types/entities in Allocation Entity Master first.")}
+                </Typography>
+              </Box>
+            ) : null}
+          </Box>
+
+          {dicForm.blnVariablePayCalculationEnabled && dicForm.strVariablePayCalculationMethodCode === "ALLOCATION_BASED" ? (
+            <>
+              <Box sx={dicVariablePayRowSx}>
+                <FormControlLabel
+                  sx={dicVariablePayToggleSx}
+                  control={
+                    <Switch
+                      checked={dicForm.blnMonthlyAdjustmentApplicable}
+                      onChange={(objEvent) => updateRootField("blnMonthlyAdjustmentApplicable", objEvent.target.checked)}
+                      disabled={blnFieldDisabled}
+                      inputProps={buildInputTestIdProps("salary-components.editor.monthly-adjustment-applicable.switch")}
+                    />
+                  }
+                  label={t("monthly_adjustment_applicable", "Monthly Adjustment Applicable")}
+                />
+                {dicForm.blnMonthlyAdjustmentApplicable ? (
+                  <Box sx={dicVariablePayFieldCellSx}>
+                    <VariablePayFieldLabel strLabel={t("monthly_adjustment_min_percent", "Adjustment Min %")} />
+                    <TextField
+                      value={dicForm.strMonthlyAdjustmentMinPercent}
+                      onChange={(objEvent) => updateRootField("strMonthlyAdjustmentMinPercent", objEvent.target.value.replace(/[^0-9.-]/g, ""))}
+                      disabled={blnFieldDisabled}
+                      fullWidth
+                      data-controlid="salary-components.editor.monthly-adjustment-min-percent.input"
+                      inputProps={{
+                        ...buildInputTestIdProps("salary-components.editor.monthly-adjustment-min-percent.input"),
+                        "aria-label": t("monthly_adjustment_min_percent", "Adjustment Min %"),
+                      }}
+                    />
+                  </Box>
+                ) : null}
+                {dicForm.blnMonthlyAdjustmentApplicable ? (
+                  <Box sx={dicVariablePayFieldCellSx}>
+                    <VariablePayFieldLabel strLabel={t("monthly_adjustment_max_percent", "Adjustment Max %")} />
+                    <TextField
+                      value={dicForm.strMonthlyAdjustmentMaxPercent}
+                      onChange={(objEvent) => updateRootField("strMonthlyAdjustmentMaxPercent", objEvent.target.value.replace(/[^0-9.-]/g, ""))}
+                      disabled={blnFieldDisabled}
+                      fullWidth
+                      data-controlid="salary-components.editor.monthly-adjustment-max-percent.input"
+                      inputProps={{
+                        ...buildInputTestIdProps("salary-components.editor.monthly-adjustment-max-percent.input"),
+                        "aria-label": t("monthly_adjustment_max_percent", "Adjustment Max %"),
+                      }}
+                    />
+                  </Box>
+                ) : null}
+              </Box>
+
+              <Box sx={dicVariablePayRowSx}>
+                <FormControlLabel
+                  sx={dicVariablePayToggleSx}
+                  control={
+                    <Switch
+                      checked={dicForm.blnAttendanceEligibilityApplicable}
+                      onChange={(objEvent) => updateRootField("blnAttendanceEligibilityApplicable", objEvent.target.checked)}
+                      disabled={blnFieldDisabled}
+                      inputProps={buildInputTestIdProps("salary-components.editor.attendance-eligibility-applicable.switch")}
+                    />
+                  }
+                  label={t("attendance_eligibility_applicable", "Attendance Eligibility Applicable")}
+                />
+                {dicForm.blnAttendanceEligibilityApplicable ? (
+                  <Box sx={dicVariablePayFieldCellSx}>
+                    <VariablePayFieldLabel strLabel={t("eligibility_percent", "Eligibility % Threshold")} blnRequired />
+                    <TextField
+                      required
+                      placeholder={t("eligibility_percent", "Eligibility % Threshold")}
+                      value={dicForm.strAttendanceEligibilityPercent}
+                      onChange={(objEvent) => updateRootField("strAttendanceEligibilityPercent", objEvent.target.value.replace(/[^0-9.]/g, ""))}
+                      disabled={blnFieldDisabled}
+                      fullWidth
+                      data-controlid="salary-components.editor.attendance-eligibility-percent.input"
+                      inputProps={{
+                        ...buildInputTestIdProps("salary-components.editor.attendance-eligibility-percent.input"),
+                        "aria-label": t("eligibility_percent", "Eligibility % Threshold"),
+                      }}
+                    />
+                  </Box>
+                ) : null}
+                {dicForm.blnAttendanceEligibilityApplicable ? (
+                  <Box sx={{ display: "grid", columnGap: 3, rowGap: 1, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" } }}>
+                    <FormControlLabel
+                      sx={dicVariablePayInlineToggleSx}
+                      control={
+                        <Switch
+                          checked={dicForm.blnAttendanceProrationApplicable}
+                          onChange={(objEvent) => updateRootField("blnAttendanceProrationApplicable", objEvent.target.checked)}
+                          disabled={blnFieldDisabled}
+                          inputProps={buildInputTestIdProps("salary-components.editor.attendance-proration-applicable.switch")}
+                        />
+                      }
+                      label={t("attendance_proration_applicable", "Attendance Proration Applicable")}
+                    />
+                    <FormControlLabel
+                      sx={dicVariablePayInlineToggleSx}
+                      control={
+                        <Switch
+                          checked={dicForm.blnEligibilityOverrideAllowed}
+                          onChange={(objEvent) => updateRootField("blnEligibilityOverrideAllowed", objEvent.target.checked)}
+                          disabled={blnFieldDisabled}
+                          inputProps={buildInputTestIdProps("salary-components.editor.eligibility-override-allowed.switch")}
+                        />
+                      }
+                      label={t("eligibility_override_allowed", "Eligibility Override Allowed")}
+                    />
+                  </Box>
+                ) : null}
+              </Box>
+            </>
+          ) : null}
+
+          {dicForm.blnVariablePayCalculationEnabled && dicForm.blnIncludeInTaxableIncome ? (
+            <Box sx={{ display: "grid", alignItems: "start", columnGap: 6, rowGap: 2, py: 2.25, gridTemplateColumns: { xs: "1fr", lg: "repeat(2, minmax(0, 1fr))" } }}>
+              <Box sx={{ ...dicVariablePayFieldCellSx, gridTemplateColumns: { xs: "1fr", sm: "210px minmax(0, 1fr)" } }}>
+                <VariablePayFieldLabel strLabel={t("tax_projection_mode", "Tax Projection Mode")} />
+                <CommonSearchableSelect
+                  label=""
+                  value={dicForm.strTaxProjectionBehavior === "PROJECT" ? 1 : dicForm.strTaxProjectionBehavior === "ACTUAL_ONLY" ? 2 : ""}
+                  options={[
+                    { intID: 1, strLabel: t("project_ctc_base_amount", "Project CTC/Base Amount") },
+                    { intID: 2, strLabel: t("actual_payment_only", "Actual Payment Only") },
+                  ]}
+                  onChange={(intValue) => updateRootField("strTaxProjectionBehavior", intValue === 1 ? "PROJECT" : intValue === 2 ? "ACTUAL_ONLY" : "")}
+                  placeholder={t("none", "None")}
+                  disabled={blnFieldDisabled}
+                  fullWidth
+                  controlId="salary-components.editor.tax-projection-behavior.select"
+                />
+                <Typography sx={{ ...dicVariablePayHelpSx, gridColumn: "1 / -1" }}>
+                  {t(
+                    "tax_projection_mode_help",
+                    "For a taxable Separate Payroll component: Project includes its CTC/base entitlement in Regular Payroll's annual tax projection ahead of the actual payment."
+                  )}
+                </Typography>
+              </Box>
+              <Box sx={{ ...dicVariablePayFieldCellSx, gridTemplateColumns: { xs: "1fr", sm: "210px minmax(0, 1fr)" } }}>
+                <VariablePayFieldLabel strLabel={t("tds_recovery_mode", "TDS Recovery Mode")} />
+                <CommonSearchableSelect
+                  label=""
+                  value={dicForm.strTdsRecoveryModeCode === "REGULAR_PAYROLL" ? 2 : 1}
+                  options={[
+                    { intID: 1, strLabel: t("same_payroll_run", "Same Payroll Run") },
+                    { intID: 2, strLabel: t("regular_payroll", "Regular Payroll") },
+                  ]}
+                  onChange={(intValue) => updateRootField("strTdsRecoveryModeCode", intValue === 2 ? "REGULAR_PAYROLL" : "SAME_RUN")}
+                  disabled={blnFieldDisabled}
+                  fullWidth
+                  controlId="salary-components.editor.tds-recovery-mode.select"
+                />
+                <Typography sx={{ ...dicVariablePayHelpSx, gridColumn: "1 / -1" }}>
+                  {t(
+                    "tds_recovery_mode_help",
+                    "Controls which payroll run actually deducts TDS for this component when it is taxable and Separate Payroll processed."
+                  )}
+                </Typography>
+              </Box>
+            </Box>
+          ) : null}
+        </Box>
       </Paper>
 
       {intSecondaryLanguageID ? (
@@ -2219,49 +2526,15 @@ export default function SalaryComponentEditorPage({
           {t("dependency_mapping_help", "Select salary components required for formula calculations.")}
         </Typography>
         <Box sx={{ maxWidth: 540 }}>
-          <TextField
-            select
+          <CommonSearchableMultiSelect
+            controlId="salary-components.editor.dependency-components.select"
             label={t("dependency_components", "Dependency Components")}
             value={dicForm.lstDependencyComponentIDs}
-            onChange={(objEvent) => updateRootField("lstDependencyComponentIDs", parseMultiSelectNumberValues(objEvent.target.value))}
-            data-controlid="salary-components.editor.dependency-components.select"
-            inputProps={buildInputTestIdProps("salary-components.editor.dependency-components.select")}
-            SelectProps={{ multiple: true, renderValue: (lstSelected) => (
-              <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
-                {(lstSelected as Array<string | number>).map((objValue) => {
-                  const intValue = Number(objValue);
-                  const dicOption = dicDependencyOptionByID.get(intValue);
-                  return <Chip key={String(objValue)} size="small" data-controlid="salary-components.editor.dependency-components.selected.chip" data-option-key={String(objValue)} label={dicOption?.strCode ? `${dicOption.strCode} - ${dicOption.strLabel}` : dicOption?.strLabel ?? String(objValue)} />;
-                })}
-              </Box>
-            ) }}
+            options={(objFormOptions?.lstDependencyComponents ?? []).filter((dicOption) => dicOption.intID !== objDetail?.intID)}
+            onChange={(lstValues) => updateRootField("lstDependencyComponentIDs", lstValues as number[])}
             disabled={blnFieldDisabled}
             fullWidth
-          >
-            {(objFormOptions?.lstDependencyComponents ?? [])
-              .filter((dicOption) => dicOption.intID !== objDetail?.intID)
-              .map((dicOption) => (
-                <MenuItem
-                  key={dicOption.intID}
-                  value={dicOption.intID}
-                  data-controlid={`salary-components.editor.dependency-components.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}
-                  data-option-key={dicOption.intID}
-                >
-                  <Checkbox
-                    data-controlid={`salary-components.editor.dependency-components.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.checkbox`}
-                    data-option-key={dicOption.intID}
-                    size="small"
-                    checked={dicForm.lstDependencyComponentIDs.includes(dicOption.intID)}
-                    inputProps={{
-                      ...buildInputTestIdProps(`salary-components.editor.dependency-components.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.checkbox`),
-                      "data-option-key": String(dicOption.intID)
-                    } as InputHTMLAttributes<HTMLInputElement>}
-                    sx={{ mr: 1 }}
-                  />
-                  <ListItemText primary={dicOption.strCode ? `${dicOption.strCode} - ${dicOption.strLabel}` : dicOption.strLabel} />
-                </MenuItem>
-              ))}
-          </TextField>
+          />
         </Box>
       </Paper>
       ) : null}

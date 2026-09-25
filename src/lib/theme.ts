@@ -137,7 +137,7 @@ export const getTheme = (mode: PaletteMode, preset: ThemePreset = "ocean") => {
     },
     spacing: 8,
     typography: {
-      fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif",
+      fontFamily: "'Segoe UI Variable', 'Segoe UI', Arial, sans-serif",
       h4: {
         fontWeight: 700
       },

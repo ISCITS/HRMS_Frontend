@@ -184,16 +184,13 @@ export default function VariablePayGridPage() {
   }
 
   return (
-    <Stack spacing={2} sx={{ p: 2 }}>
+    <Stack spacing={1.5} sx={{ p: 1.25 }}>
       <BlockingLoader blnOpen={blnBusy} strLabel={t("working", "Please wait...")} />
-      <Typography variant="h5" fontWeight={800}>
-        {t("page_title", "Monthly Variable Pay")}
-      </Typography>
 
       {strError ? <Alert severity="error" onClose={() => setStrError(null)}>{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success" onClose={() => setStrSuccess(null)}>{strSuccess}</Alert> : null}
 
-      <Paper sx={{ p: 2 }}>
+      <Paper sx={{ p: 1.25 }}>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "flex-start" }} gap={2}>
           <Autocomplete
             options={lstRuns}
@@ -239,7 +236,7 @@ export default function VariablePayGridPage() {
 
       {objContext ? (
         <>
-          <Paper sx={{ p: 2 }}>
+          <Paper sx={{ p: 1.25 }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
               <Typography variant="h6">{t("employee_grid", "Employee Grid")}</Typography>
               <Stack direction="row" spacing={1}>

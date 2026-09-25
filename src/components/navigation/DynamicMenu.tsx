@@ -119,6 +119,15 @@ function resolveMenuRoute(objItem: MenuItem): string | null {
   const strModuleName = objItem.strModuleName.trim().toLowerCase();
   const strRoute = objItem.strRoute?.trim() ?? "";
 
+  // These masters were historically seeded with menu-code-like route values.
+  // Resolve by stable module identity so both old and corrected menu rows work.
+  if (strModuleCode === "employee_function") {
+    return "/employee-function";
+  }
+  if (strModuleCode === "employee_type") {
+    return "/employment-type";
+  }
+
   // Work on Holiday had multiple legacy seed routes. The module identity is the
   // stable contract, so cached menu data must always resolve to the live route.
   if (strModuleCode === "ess_work_on_holiday" || strModuleName === "work on holiday") {
@@ -1128,6 +1137,7 @@ export default function DynamicMenu({
   const { t: tDepartment } = useModuleLabels("department");
   const { t: tDesignation } = useModuleLabels("designation");
   const { t: tEmployee } = useModuleLabels("employee");
+  const { t: tEmployeeCategory } = useModuleLabels("employee_category");
   const { t: tState } = useModuleLabels("state");
   const { t: tCountry } = useModuleLabels("country");
   const { t: tBank } = useModuleLabels("bank");
@@ -1418,6 +1428,30 @@ export default function DynamicMenu({
     // caught by the generic employee-master branch below; use its localized menu name.
     if (strRoute.includes("/leave/plan-assignments") || strModuleCode === "employee_leave_assignment") {
       return strModuleName || "Employee Leave Assignment";
+    }
+
+    // Employee Monthly Tax / TDS (module code contains "employee") must not be
+    // caught by the generic employee-master branch below either; use its own menu name.
+    if (strRoute.includes("/payroll/employee-monthly-tax") || strModuleCode === "employee_monthly_tax") {
+      return strModuleName || "Employee Monthly Tax / TDS";
+    }
+
+    if (
+      strModuleCode === "employee_category" ||
+      strModuleCode === "employee_categories" ||
+      strRoute.includes("/employee-categories")
+    ) {
+      return tEmployeeCategory("page_title", strModuleName || "Employee Category");
+    }
+
+    if (strModuleCode === "employee_function" || strRoute.includes("/employee-function")) {
+      return strModuleName || "Employee Function";
+    }
+
+    if (
+      strRoute.includes("/employment-type")
+    ) {
+      return strModuleName || "Employment Type";
     }
 
     if (strModuleCode.includes("employee") || strRoute.includes("/employees")) {

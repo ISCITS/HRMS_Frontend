@@ -403,10 +403,10 @@ export default function VariablePayRegisterReportPage() {
         </Box>
         <Box className={styles.reportSearchPanelRow}>
           <Box className={styles.reportSearchField}>
-            <ReportMultiSelectField value={dicSearchDraft.strSearchEmployee} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: strValue }))} options={dicFilterOptions.lstEmployees} placeholder="Search by employee code or name" controlId="reports.variable-pay-register.employee-search.input" />
+            <ReportMultiSelectField label="Employee" value={dicSearchDraft.strSearchEmployee} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: strValue }))} options={dicFilterOptions.lstEmployees} placeholder="Search by employee code or name" controlId="reports.variable-pay-register.employee-search.input" />
           </Box>
           <Box className={styles.reportSearchField}>
-            <ReportMultiSelectField value={dicSearchDraft.strSearchRun} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: strValue }))} options={dicFilterOptions.lstRuns} placeholder="Payroll run" controlId="reports.variable-pay-register.run-search.input" />
+            <ReportMultiSelectField label="Payroll Run" value={dicSearchDraft.strSearchRun} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: strValue }))} options={dicFilterOptions.lstRuns} placeholder="Payroll run" controlId="reports.variable-pay-register.run-search.input" />
           </Box>
           <Box className={styles.reportSearchField}>
             <ReportMultiSelectField value={dicSearchDraft.strPayrollMonth} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: strValue }))} options={dicFilterOptions.lstMonths} label="Payroll Month" placeholder="Payroll Month" controlId="reports.variable-pay-register.payroll-month.input" />

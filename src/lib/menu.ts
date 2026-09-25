@@ -3,6 +3,7 @@ import type { MenuItem, MenuResponse } from "@/models/AuthModels";
 const dicRouteAliases: Record<string, string> = {
   "/master/departments": "/departments",
   "/master/designations": "/designations",
+  "/master/employee-categories": "/employee-categories",
   "/master/employees": "/employees",
   "/master/users": "/users",
   "/master/states": "/states",

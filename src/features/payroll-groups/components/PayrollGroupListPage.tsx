@@ -15,19 +15,22 @@ import {
   TextField,
   Typography
 } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import PayrollGroupEditorPage, { type PayrollGroupEditorHandle } from "@/features/payroll-groups/components/PayrollGroupEditorPage";
 import { payrollGroupService } from "@/features/payroll-groups/services/payrollGroupService";
 import type { PayrollGroupListRecord } from "@/features/payroll-groups/types";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 type Status = "Active" | "Inactive";
+type DialogMode = "add" | "edit" | "view";
 type SearchForm = {
   strName: string;
   strStatus: "All" | Status;
@@ -50,10 +53,23 @@ export default function PayrollGroupListPage() {
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSubmitting] = useState(false);
+  const [dicDialog, setDicDialog] = useState<{ blnOpen: boolean; strMode: DialogMode; strPayrollGroupID?: string }>({
+    blnOpen: false,
+    strMode: "add"
+  });
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
+  const objEditorRef = useRef<PayrollGroupEditorHandle>(null);
 
-  function openGroupEditor(strRecordUUID: string) {
-    objRouter.push(`/masters/payroll-groups/edit/${strRecordUUID}`);
+  function openGroupEditor(strMode: DialogMode, dicRow?: PayrollGroupListRecord) {
+    setDicDialog({
+      blnOpen: true,
+      strMode,
+      strPayrollGroupID: dicRow?.strRecordUUID
+    });
+  }
+
+  function closeGroupEditor() {
+    setDicDialog((dicPrevious) => ({ ...dicPrevious, blnOpen: false }));
   }
 
   async function loadPayrollGroups() {
@@ -106,8 +122,8 @@ export default function PayrollGroupListPage() {
             rowKey={dicRow.intID}
             blnCanView={blnCanView}
             blnCanEdit={blnCanEdit}
-            onView={() => openGroupEditor(dicRow.strRecordUUID)}
-            onEdit={blnCanEdit ? () => openGroupEditor(dicRow.strRecordUUID) : undefined}
+            onView={() => openGroupEditor("view", dicRow)}
+            onEdit={blnCanEdit ? () => openGroupEditor("edit", dicRow) : undefined}
           />
         ),
         strPayrollGroupName: dicRow.strPayrollGroupName,
@@ -216,13 +232,58 @@ export default function PayrollGroupListPage() {
           showPaginationSummary
           emptyMessage={t("group_no_records", "No payroll groups found.")}
           toolbarLeft={blnCanAdd ? (
-            <Button controlId="payroll-groups.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/masters/payroll-groups/add")} disabled={blnLoading || blnRightsLoading}>
+            <Button controlId="payroll-groups.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openGroupEditor("add")} disabled={blnLoading || blnRightsLoading}>
               {t("group_add_button", "Add Payroll Group")}
             </Button>
           ) : undefined}
           sx={{ p: 0, boxShadow: "none", background: "transparent" }}
         />
       </Box>
+
+      <CommonMasterDialog
+        blnOpen={dicDialog.blnOpen}
+        onClose={closeGroupEditor}
+        strTitle={
+          dicDialog.strMode === "add"
+            ? t("group_add_title", "Add Payroll Group")
+            : dicDialog.strMode === "view" || !blnCanEdit
+              ? t("group_view_title", "View Payroll Group")
+              : t("group_edit_title", "Edit Payroll Group")
+        }
+        strSecondaryLabel={dicDialog.strMode === "view" || !blnCanEdit ? t("close", "Close") : t("cancel", "Cancel")}
+        strPrimaryLabel={t("group_save", "Save")}
+        onPrimaryAction={() => objEditorRef.current?.save()}
+        blnHidePrimary={dicDialog.strMode === "view" || !blnCanEdit}
+        paperClassName={styles.compactDialogPaper}
+        paperSx={{
+          width: "min(920px, calc(100vw - 32px)) !important",
+          maxWidth: "920px !important",
+          overflow: "hidden",
+          m: 2
+        }}
+        contentSx={{ overflowX: "hidden", overflowY: "auto", maxHeight: "calc(100vh - 190px)" }}
+        titleSx={{ px: 2.25, py: 1.25, fontSize: "1rem", maxHeight: 58 }}
+        nodeContent={
+          dicDialog.blnOpen ? (
+            <PayrollGroupEditorPage
+              ref={objEditorRef}
+              strMode={dicDialog.strMode}
+              strPayrollGroupID={dicDialog.strPayrollGroupID}
+              blnEmbedded
+              onClose={closeGroupEditor}
+              onSaved={(dicSavedRecord) => {
+                closeGroupEditor();
+                showToast(
+                  dicDialog.strMode === "add"
+                    ? t("group_create_success", "Payroll group created successfully.")
+                    : t("group_update_success", "Payroll group updated successfully.")
+                );
+                loadPayrollGroups().catch(() => undefined);
+              }}
+            />
+          ) : null
+        }
+      />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}>
         <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>

@@ -181,7 +181,7 @@ export default function SalaryFlexiPayDeclarationsRoute() {
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      { field: "action", headerName: t("action", "Action"), align: "center", sortable: false, filterable: false, exportable: false, width: 110 },
+      { field: "action", headerName: t("action", "Action"), sortable: false, filterable: false, exportable: false, width: 110 },
       { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code"), width: 150 },
       { field: "strEmployeeName", headerName: t("employee_name", "Employee Name"), width: 200 },
       { field: "strFinancialYearCode", headerName: t("financial_year", "Financial Year"), width: 140 },

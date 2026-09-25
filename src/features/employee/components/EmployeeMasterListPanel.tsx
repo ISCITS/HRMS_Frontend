@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import AlertDialog from "@/Common/components/AlertDialog";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { handleSingleDialogActionEnter } from "@/Common/utils/dialogKeyboard";
 import CommonRowActions from "@/components/master/CommonRowActions";
@@ -57,6 +58,7 @@ type EmployeeTableRow = {
   joiningDateSortValue: number;
   workerType: string;
   partialSave: ReactNode;
+  partialSaveSortValue: number;
   status: ReactNode;
 };
 
@@ -74,7 +76,7 @@ function getWorkerTypeLabel(blnIsWorker: boolean, t: (strKey: string, strFallbac
 }
 
 function getPartialSaveLabel(blnIsPartialSave: boolean, t: (strKey: string, strFallback?: string) => string) {
-  return blnIsPartialSave ? t("partial_save_yes", "Yes") : t("partial_save_no", "Partial");
+  return blnIsPartialSave ? t("profile_status_partial", "Partial") : "";
 }
 
 export default function EmployeeMasterListPanel() {
@@ -180,6 +182,15 @@ export default function EmployeeMasterListPanel() {
       .filter((strDesignation): strDesignation is string => Boolean(strDesignation))
   )).sort((strFirst, strSecond) => strFirst.localeCompare(strSecond)), [lstEmployees]);
 
+  const lstDepartmentSelectOptions = useMemo(
+    () => lstDepartmentOptions.map((strDepartment) => ({ intID: strDepartment, strLabel: strDepartment })),
+    [lstDepartmentOptions]
+  );
+  const lstDesignationSelectOptions = useMemo(
+    () => lstDesignationOptions.map((strDesignation) => ({ intID: strDesignation, strLabel: strDesignation })),
+    [lstDesignationOptions]
+  );
+
   const lstFilteredEmployees = useMemo(() => lstEmployees.filter((dicEmployee) => {
     const blnNameMatch = !dicSearchApplied.name || dicEmployee.strFullName.toLowerCase().includes(dicSearchApplied.name.toLowerCase());
     const blnCodeMatch = !dicSearchApplied.code || dicEmployee.strEmployeeCode.toLowerCase().includes(dicSearchApplied.code.toLowerCase());
@@ -276,7 +287,10 @@ export default function EmployeeMasterListPanel() {
       joiningDate: formatDisplayDate(dicEmployee.dtDateOfJoining),
       joiningDateSortValue: dicEmployee.dtDateOfJoining ? new Date(dicEmployee.dtDateOfJoining).getTime() : 0,
       workerType: getWorkerTypeLabel(dicEmployee.blnIsWorker, t),
-      partialSave: <span className={`${styles.statusPill} ${styles.statusNeutral}`}>{getPartialSaveLabel(dicEmployee.blnIsPartialSave, t)}</span>,
+      partialSaveSortValue: dicEmployee.blnIsPartialSave ? 1 : 0,
+      partialSave: dicEmployee.blnIsPartialSave
+        ? <span className={`${styles.statusPill} ${styles.statusNeutral}`}>{getPartialSaveLabel(dicEmployee.blnIsPartialSave, t)}</span>
+        : "",
       status: <span className={`${styles.statusPill} ${dicEmployee.strEmploymentStatus === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicEmployee.strEmploymentStatus === "Active" ? dicConstant.common.statusActive : dicConstant.common.statusInactive}</span>
     };
   }), [blnCanDelete, blnCanEdit, blnCanView, lstFilteredEmployees, lstSelectedIDs, objRouter, t]);
@@ -312,7 +326,14 @@ export default function EmployeeMasterListPanel() {
       sortAccessor: (dicRow) => dicRow.joiningDateSortValue
     },
     { field: "workerType", headerName: t("grid_worker", "Worker Category") },
-    { field: "partialSave", headerName: t("grid_partial_save", "Partial Save"), sortable: false, filterable: false, width: 140 },
+    {
+      field: "partialSave",
+      headerName: t("grid_partial_save", "Profile Status"),
+      sortable: true,
+      sortAccessor: (dicRow) => dicRow.partialSaveSortValue,
+      filterable: false,
+      width: 160
+    },
     { field: "status", headerName: t("grid_status", dicConstant.employeeMaster.grid.status), sortable: false, filterable: false, width: 130 }
   ], [blnAllFilteredSelected, blnSomeFilteredSelected, lstFilteredEmployees.length, t]);
 
@@ -333,18 +354,24 @@ export default function EmployeeMasterListPanel() {
         <Box className={styles.employeeSearchRow}>
           <TextField data-controlid="employee.master-list.search.code.input" inputProps={{ "data-controlid": "employee.master-list.search.code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={t("search_code_placeholder", dicConstant.employeeMaster.search.codePlaceholder)} fullWidth />
           <TextField data-controlid="employee.master-list.search.name.input" inputProps={{ "data-controlid": "employee.master-list.search.name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={t("search_name_placeholder", dicConstant.employeeMaster.search.namePlaceholder)} fullWidth />
-          <TextField data-controlid="employee.master-list.search.department.select" inputProps={{ "data-controlid": "employee.master-list.search.department.select" }} select label={t("field_department", dicConstant.employeeMaster.fields.department)} value={dicSearchDraft.department} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, department: objEvent.target.value }))} fullWidth>
-            <MenuItem value="All">{t("all", "All")}</MenuItem>
-            {lstDepartmentOptions.map((strDepartment) => (
-              <MenuItem key={strDepartment} value={strDepartment}>{strDepartment}</MenuItem>
-            ))}
-          </TextField>
-          <TextField data-controlid="employee.master-list.search.designation.select" inputProps={{ "data-controlid": "employee.master-list.search.designation.select" }} select label={t("field_designation", dicConstant.employeeMaster.fields.designation)} value={dicSearchDraft.designation} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, designation: objEvent.target.value }))} fullWidth>
-            <MenuItem value="All">{t("all", "All")}</MenuItem>
-            {lstDesignationOptions.map((strDesignation) => (
-              <MenuItem key={strDesignation} value={strDesignation}>{strDesignation}</MenuItem>
-            ))}
-          </TextField>
+          <CommonSearchableSelect
+            controlId="employee.master-list.search.department.select"
+            label={t("field_department", dicConstant.employeeMaster.fields.department)}
+            value={dicSearchDraft.department === "All" ? "" : dicSearchDraft.department}
+            options={lstDepartmentSelectOptions}
+            onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, department: strValue === "" ? "All" : strValue }))}
+            placeholder={t("all", "All")}
+            fullWidth
+          />
+          <CommonSearchableSelect
+            controlId="employee.master-list.search.designation.select"
+            label={t("field_designation", dicConstant.employeeMaster.fields.designation)}
+            value={dicSearchDraft.designation === "All" ? "" : dicSearchDraft.designation}
+            options={lstDesignationSelectOptions}
+            onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, designation: strValue === "" ? "All" : strValue }))}
+            placeholder={t("all", "All")}
+            fullWidth
+          />
           <TextField data-controlid="employee.master-list.search.status.select" inputProps={{ "data-controlid": "employee.master-list.search.status.select" }} select label={t("search_status_placeholder", dicConstant.employeeMaster.search.statusPlaceholder)} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
               <MenuItem value="All">All</MenuItem>
               <MenuItem value="Active">{dicConstant.common.statusActive}</MenuItem>
