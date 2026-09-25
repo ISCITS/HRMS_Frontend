@@ -5,12 +5,13 @@ import ThemeRegistry from "@/components/shared/ThemeRegistry";
 import ThemeModeProvider from "@/components/shared/ThemeModeProvider";
 import AppLayoutBoundary from "@/components/layout/AppLayoutBoundary";
 import { withBasePath } from "@/lib/basePath";
+import { appConfig } from "@/config/app";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "HRMS",
-  description: "HRMS is a comprehensive human resource management system for managing employees, payroll and organizational workflows efficiently",
+  title: appConfig.appName,
+  description: `${appConfig.appName} is a comprehensive human resource management system for managing employees, payroll and organizational workflows efficiently`,
   icons: {
     // Next.js does not prepend basePath to metadata icon paths (vercel/next.js#61487),
     // so it is added explicitly here.

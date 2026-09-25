@@ -21,7 +21,7 @@
         "paginationSeparator": "of"
     },
     "appShell": {
-        "brand": "HRMS",
+        "brand": "NavHR",
         "title": "Human Resource Management System",
         "logout": "Logout",
         "logoutDialogTitle": "Confirm Logout",
