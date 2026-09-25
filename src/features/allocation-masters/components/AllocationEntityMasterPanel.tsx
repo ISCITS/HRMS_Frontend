@@ -446,15 +446,15 @@ export default function AllocationEntityMasterPanel() {
         blnHidePrimary={strMode === "view" || !(strMode === "add" ? blnCanAdd : blnCanEdit)}
         nodeTitleAction={
           <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
-            <Typography className={styles.switchLabel} sx={{ fontSize: "0.95rem", whiteSpace: "nowrap" }}>
-              {t("field_is_active", "Is Active")}
-            </Typography>
             <ActiveStatusSwitch
               testId="allocation-entity.dialog.active.switch"
               blnIsActive={dicForm.blnIsActive}
               disabled={strMode === "view"}
               onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, blnIsActive: blnChecked }))}
             />
+            <Typography className={styles.switchLabel} sx={{ fontSize: "0.95rem", whiteSpace: "nowrap" }}>
+              {t("field_is_active", "Is Active")}
+            </Typography>
           </Box>
         }
         nodeContent={

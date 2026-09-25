@@ -559,12 +559,13 @@
   width: min(90vw, 900px);
 }
 
-.departmentDialogPaper.departmentDialogPaper {
+.departmentDialogPaper.departmentDialogPaper,
+.designationDialogPaper.designationDialogPaper {
   background:
     linear-gradient(180deg, rgba(248, 251, 254, 0.98) 0%, rgba(255, 255, 255, 0.98) 52%, rgba(246, 250, 253, 0.98) 100%) !important;
   border-radius: 10px !important;
-  width: min(700px, calc(100vw - 32px)) !important;
-  max-width: 700px !important;
+  width: min(550px, calc(100vw - 32px)) !important;
+  max-width: 550px !important;
   margin: 16px;
 }
 

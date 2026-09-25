@@ -375,7 +375,7 @@ export default function HolidayMasterPanel() {
         maxWidth={false}
         paperClassName={styles.dialogPaper}
         paperSx={{ width: "min(1280px, calc(100vw - 32px))", maxWidth: "1280px", m: 2 }}
-        nodeTitleAction={<Box className={styles.switchRow}><Typography className={styles.switchLabel}>{t("active", "Active")}</Typography><ActiveStatusSwitch testId="holiday-master.dialog.active.switch" blnIsActive={blnFormActive} disabled={strMode === "view"} onChange={(blnChecked) => setValue("blnIsActive", blnChecked)} /></Box>}
+        nodeTitleAction={<Box className={styles.switchRow}><ActiveStatusSwitch testId="holiday-master.dialog.active.switch" blnIsActive={blnFormActive} disabled={strMode === "view"} onChange={(blnChecked) => setValue("blnIsActive", blnChecked)} /><Typography className={styles.switchLabel}>{t("active", "Active")}</Typography></Box>}
         nodeContent={<Box sx={{ display: "grid", gap: 1.5, pt: 0.5 }}>
           {strSubmitError ? <Alert severity="error">{strSubmitError}</Alert> : null}
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" }, gap: 1.5 }}>

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
@@ -685,8 +685,8 @@ export default function CostCenterMasterPanel() {
         }} 
         nodeTitleAction={
           <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
-              <Typography className={styles.switchLabel}>{dicModuleLabels.fieldIsActive}</Typography>
               <ActiveStatusSwitch testId="cost-center-master.dialog.active.switch" blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
+              <Typography className={styles.switchLabel}>{dicModuleLabels.fieldIsActive}</Typography>
           </Box>
         }
         contentSx={{ overflowX: "hidden", overflowY: "visible" }}

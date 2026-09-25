@@ -665,10 +665,10 @@ export default function DepartmentMasterPanel() {
         exportable: false,
         width: 56
       },
-      { field: "name", headerName: dicDepartmentLabels.tableName, sortAccessor: (row) => row.nameText, width: 280 },
+      { field: "name", headerName: dicDepartmentLabels.tableName, sortAccessor: (row) => row.nameText },
       { field: "code", headerName: dicDepartmentLabels.tableCode },
       { field: "employeeCount", headerName: dicDepartmentLabels.tableEmployees },
-      { field: "status", headerName: dicDepartmentLabels.tableStatus, sortable: false, filterable: false, width: 130 },
+      { field: "status", headerName: dicDepartmentLabels.tableStatus, sortable: false, filterable: false },
     ],
     [
       blnAllFilteredSelected,
@@ -688,7 +688,7 @@ export default function DepartmentMasterPanel() {
         <Typography component="h1" aria-current="page" sx={{ fontSize: "inherit", fontWeight: 700, color: "#243b53" }}>{t("breadcrumb_departments", "Departments")}</Typography>
       </Breadcrumbs>
 
-      <Box className={styles.controlsCard} sx={{ p: { xs: "16px !important", sm: "20px !important" }, borderRadius: "10px !important", boxShadow: "none" }}>
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {strRightsError ? (
           <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography>
         ) : null}
@@ -779,6 +779,11 @@ export default function DepartmentMasterPanel() {
       <CommonMasterDialog
         blnOpen={blnDialogOpen}
         onClose={closeDialog}
+        onDialogClose={(_, strReason) => {
+          if (strReason !== "backdropClick") {
+            closeDialog();
+          }
+        }}
         rootTestId="department-master.dialog"
         cancelButtonTestId="department-master.dialog.cancel.button"
         primaryButtonTestId="department-master.dialog.save.button"
@@ -790,9 +795,6 @@ export default function DepartmentMasterPanel() {
         blnHidePrimary={strMode === "view"}
         nodeTitleAction={
           <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
-            <Typography className={styles.switchLabel} sx={{ fontSize: "12px !important", fontWeight: "600 !important", whiteSpace: "nowrap" }}>
-              {dicForm.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}
-            </Typography>
             <ActiveStatusSwitch
               testId="department-master.dialog.active.switch"
               blnIsActive={dicForm.status === "Active"}
@@ -827,6 +829,9 @@ export default function DepartmentMasterPanel() {
               }}
               onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))}
             />
+            <Typography className={styles.switchLabel} sx={{ fontSize: "12px !important", fontWeight: "600 !important", whiteSpace: "nowrap" }}>
+              {dicCommonLabels.statusActive}
+            </Typography>
             <IconButton aria-label={dicCommonLabels.close} onClick={closeDialog} size="small" sx={{ ml: 1, color: "#94a3b8" }}>
               <CloseRoundedIcon fontSize="small" />
             </IconButton>
@@ -838,24 +843,39 @@ export default function DepartmentMasterPanel() {
         paperSx={{ "& .MuiButton-root": { fontSize: "12px !important", fontWeight: "600 !important" } }}
         maxWidth={false}
         fullWidth={false}
-        contentSx={{ overflowX: "hidden", overflowY: "auto", px: 3, py: 2.5, borderColor: "#e5edf5" }}
+        contentSx={{ overflowX: "hidden", overflowY: "auto", px: "20px", py: "12px", borderColor: "#e5edf5" }}
         nodeContent={
-          <Box sx={{ display: "grid", gap: 2.5, pt: 0.5, "& .MuiOutlinedInput-root": { borderRadius: "6px", backgroundColor: "#fff", fontSize: "14px", fontWeight: 400 }, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#cbd5e1" }, "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "primary.main", borderWidth: 2 }, "& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline": { borderColor: "error.main" }, "& .MuiFormHelperText-root.Mui-error": { margin: "4px 14px 0px 0px" } }}>
+          <Box sx={{ display: "grid", gap: "12px", "& .MuiOutlinedInput-root": { borderRadius: "6px", backgroundColor: "#fff", fontWeight: 400 }, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#cbd5e1" }, "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "primary.main", borderWidth: 2 }, "& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline": { borderColor: "error.main" }, "& .MuiFormHelperText-root.Mui-error": { margin: "4px 14px 0px 0px" } }}>
             <Box
               sx={{
                 display: "grid",
-                gap: 1.6,
+                columnGap: 1.6, rowGap: "12px",
                 gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
                 alignItems: "start",
-                "& .MuiInputLabel-root": { position: "relative", transform: "none", alignSelf: "flex-start", maxWidth: "100%", fontSize: "12px", fontWeight: 600, lineHeight: 1.5, mb: 0.75 },
+                "& .MuiInputLabel-root": { position: "relative", transform: "none", alignSelf: "flex-start", maxWidth: "100%", fontSize: "12px", fontWeight: 600, lineHeight: 1.5, mb: "4px" },
+                // External labels do not need the floating-label outline offset.
+                "& .MuiOutlinedInput-notchedOutline": { top: 0 },
                 "& .MuiOutlinedInput-notchedOutline legend": { display: "none" },
               }}
             >
+              {strMode === "add" ? (
+                <Box sx={{ gridColumn: "1 / -1" }}>
+                  <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>
+                    {t("basic_information", "Basic Information")}
+                  </Typography>
+                  <Typography sx={{ fontSize: "11px", color: "#64748b", mt: 0.25 }}>
+                    {t("basic_information_help", "Create a new department for your organisation.")}
+                  </Typography>
+                </Box>
+              ) : null}
               <TextField
                 controlId="department-master.dialog.name.input"
                 inputRef={objNameInputRef}
                 autoFocus={strMode !== "view"}
                 label={dicDepartmentLabels.fieldName}
+                placeholder={t("dialog_name_placeholder", "Enter department name")}
+                size="small"
+                InputLabelProps={{ shrink: true }}
                 required
                 value={dicForm.name}
                 inputProps={{ "controlId": "department-master.dialog.name.input" }}
@@ -875,6 +895,9 @@ export default function DepartmentMasterPanel() {
                 controlId="department-master.dialog.code.input"
                 inputRef={objCodeInputRef}
                 label={dicDepartmentLabels.fieldCode}
+                placeholder={t("dialog_code_placeholder", "Enter department code")}
+                size="small"
+                InputLabelProps={{ shrink: true }}
                 required
                 value={dicForm.code}
                 inputProps={{ "controlId": "department-master.dialog.code.input" }}
@@ -927,6 +950,7 @@ export default function DepartmentMasterPanel() {
                       <TextField
                         id={`department-translation-${dicText.strRowID}`}
                         controlId="department-master.dialog.translated-name.input"
+                        placeholder={t("dialog_translated_name_placeholder", "Enter department name in {language}").replace("{language}", objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === Number(dicText.intLanguageID))?.strLabel ?? dicText.strLanguageName)}
                         value={dicText.strDepartmentName}
                         inputProps={{ "controlId": "department-master.dialog.translated-name.input", "data-row-key": dicText.strRowID }}
                         onChange={(objEvent) => updateTextRow(dicText.strRowID, "strDepartmentName", objEvent.target.value)}

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
@@ -702,8 +702,8 @@ export default function EmployeeCategoryMasterPanel() {
         paperClassName={styles.compactDialogPaper}
         nodeTitleAction={
           <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
-              <Typography className={styles.switchLabel}>{dicEmployeeCategoryLabels.fieldIsActive}</Typography>
               <ActiveStatusSwitch testId="employee-category-master.dialog.active.switch" blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
+              <Typography className={styles.switchLabel}>{dicEmployeeCategoryLabels.fieldIsActive}</Typography>
          </Box>
         }
         titleSx={{ px: 2.25, py: 1.25, fontSize: "1rem", maxHeight: 50 }}
