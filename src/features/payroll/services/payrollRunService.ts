@@ -32,6 +32,7 @@ export function createInitialPayrollRunForm(): PayrollRunFormValues {
     strScopeType: "All",
     strProcessFor: "PayrollGroup",
     intScopedEmployeeID: "",
+    lstScopedEmployeeIDs: [],
     dtPayrollMonth: new Date().toISOString().slice(0, 10),
     strRunStatus: "DRAFT",
     blnIsLocked: false,
@@ -43,15 +44,29 @@ export function createInitialPayrollRunForm(): PayrollRunFormValues {
   };
 }
 
+// One employee selected keeps sending the existing 'SelectedEmployee' scope (unchanged wire
+// behavior); two or more switches to the new 'EmployeeGroup' scope. The dropdown only ever sets
+// strScopeType to "SelectedEmployee" as a mode marker - the actual employee count decides which
+// of the two scope types is actually sent.
+function resolveEffectiveScopeType(dicValues: PayrollRunFormValues): PayrollRunFormValues["strScopeType"] {
+  if (dicValues.strScopeType !== "SelectedEmployee") {
+    return dicValues.strScopeType;
+  }
+  return dicValues.lstScopedEmployeeIDs.length >= 2 ? "EmployeeGroup" : "SelectedEmployee";
+}
+
 function toPayload(dicValues: PayrollRunFormValues) {
+  const strEffectiveScopeType = resolveEffectiveScopeType(dicValues);
   return {
     intPayrollCycleID: dicValues.intPayrollCycleID || undefined,
     strRunName: dicValues.strRunName.trim(),
-    strScopeType: dicValues.strScopeType,
+    strScopeType: strEffectiveScopeType,
     intScopedEmployeeID:
-      dicValues.strScopeType === "SelectedEmployee"
-        ? Number(dicValues.intScopedEmployeeID)
+      strEffectiveScopeType === "SelectedEmployee"
+        ? Number(dicValues.lstScopedEmployeeIDs[0] ?? dicValues.intScopedEmployeeID)
         : null,
+    lstScopedEmployeeIDs:
+      strEffectiveScopeType === "EmployeeGroup" ? dicValues.lstScopedEmployeeIDs : undefined,
     dtPayrollMonth: dicValues.dtPayrollMonth,
     strRunStatus: dicValues.strRunStatus,
     blnIsLocked: dicValues.blnIsLocked,

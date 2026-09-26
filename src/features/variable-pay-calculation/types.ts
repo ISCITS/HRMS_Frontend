@@ -7,6 +7,7 @@ export type MonthlyEntityValueStatus = "DRAFT" | "VALIDATED" | "APPROVED" | "LOC
 export type MonthlyEntityValueRecord = {
   intID: number;
   intAllocationEntityID: number;
+  intEmployeeSalaryComponentID: number | null;
   decAdjustmentPercent: string;
   strStatus: MonthlyEntityValueStatus | string;
   strSourceType: string | null;
@@ -77,4 +78,60 @@ export type EmployeeNameOption = {
   intEmployeeID: number;
   strEmployeeCode: string;
   strEmployeeName: string;
+};
+
+// One employee's allocation-entity split for a component, company-wide - used to render the
+// full set of entity columns before a calculation batch even exists.
+export type ComponentAllocationRow = {
+  intEmployeeID: number;
+  strEmployeeName: string;
+  strEmployeeCode: string;
+  intEmployeeSalaryComponentID: number;
+  intAllocationEntityID: number | null;
+  decAllocationPercent: string | null;
+  decBaseAmount: string;
+};
+
+export type WorkspaceSalaryComponent = {
+  intID: number;
+  strComponentName: string;
+  intAllocationEntityTypeID: number | null;
+  blnAttendanceEligibilityApplicable: boolean;
+  decAttendanceEligibilityPercent: string | null;
+  blnAttendanceProrationApplicable: boolean;
+  blnEligibilityOverrideAllowed: boolean;
+  blnMonthlyAdjustmentApplicable: boolean;
+  decMonthlyAdjustmentMinPercent: string | null;
+  decMonthlyAdjustmentMaxPercent: string | null;
+};
+
+// The manual/import-eligible employee row shape from GET /variable-pay/runs/{id}/employees,
+// duplicated here (rather than imported from the variable-pay feature) to keep this feature's
+// public type surface self-contained - the two teams' types happen to already match 1:1.
+export type ManualEligibleEmployeeRow = {
+  intEmployeeID: number;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strDepartment: string | null;
+  strLocation: string | null;
+  intTransactionID: number | null;
+  decAmount: number | null;
+  strSourceType: string | null;
+  strStatus: string;
+  strRemarks: string | null;
+};
+
+export type VariablePayRunWorkspace = {
+  intPayrollRunID: number;
+  dtPayrollMonth: string;
+  intCompanyID: number;
+  intVariablePayTypeID: number;
+  strVariablePayTypeName: string;
+  intSalaryComponentID: number | null;
+  objSalaryComponent: WorkspaceSalaryComponent | null;
+  objBatch: VariablePayCalculationBatch | null;
+  lstEmployeeCalculations: VariablePayEmployeeCalculation[];
+  lstMonthlyEntityValues: MonthlyEntityValueRecord[];
+  lstAllocationsForComponent: ComponentAllocationRow[];
+  lstEligibleEmployeesForRun: ManualEligibleEmployeeRow[];
 };

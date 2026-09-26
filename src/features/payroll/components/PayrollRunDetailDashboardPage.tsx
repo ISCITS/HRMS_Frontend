@@ -39,7 +39,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { type MouseEvent, type ReactNode, useEffect, useState } from "react";
+import { type MouseEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -54,6 +54,7 @@ import { payslipService } from "@/features/payroll/services/payslipService";
 import { payrollRunService } from "@/features/payroll/services/payrollRunService";
 import { attendancePayrollService } from "@/features/payroll/services/attendancePayrollService";
 import { variablePayService } from "@/features/variable-pay/services/variablePayService";
+import PayrollRunVariablePayTab from "@/features/variable-pay-calculation/components/PayrollRunVariablePayTab";
 import type {
   PayslipRunListRecord,
   PayslipPreviewRecord,
@@ -61,6 +62,7 @@ import type {
   PayrollResultDetailRecord,
   PayrollResultListRecord,
   PayrollRunDetailRecord,
+  PayrollValidationResultRecord,
   PayrollValidationSummary,
   AttendanceValidateRunResult,
 } from "@/features/payroll/types";
@@ -490,8 +492,10 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
   const [objActionsAnchor, setObjActionsAnchor] = useState<null | HTMLElement>(null);
   const [objAttendanceValidationResult, setObjAttendanceValidationResult] = useState<AttendanceValidateRunResult | null>(null);
   const [blnAttendanceBlockedFilterActive, setBlnAttendanceBlockedFilterActive] = useState(false);
-  const [strActiveTab, setStrActiveTab] = useState<"run" | "valid" | "review">("run");
+  const [strActiveTab, setStrActiveTab] = useState<"run" | "valid" | "review" | "variablePay">("run");
+  const refDefaultedTabForRunID = useRef<number | null>(null);
   const [lstRunResults, setLstRunResults] = useState<PayrollResultListRecord[]>([]);
+  const [lstVariablePayValidationIssues, setLstVariablePayValidationIssues] = useState<PayrollValidationResultRecord[]>([]);
   const [objResultLinesRecord, setObjResultLinesRecord] = useState<PayrollResultDetailRecord | null>(null);
   const [blnResultLinesLoading, setBlnResultLinesLoading] = useState(false);
   const blnCanView = canViewAny() || canDoAny("list");
@@ -519,6 +523,15 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
       const dicRun = await payrollRunService.getPayrollRunById(strRunID);
       setObjRun(dicRun);
       setBlnIsLocked(dicRun.blnIsLocked);
+      // Land on the Variable Pay tab by default for a Separate Payroll run - that's the
+      // configuration step that comes before Run Summary/Validation for this run type. Only
+      // applies the default once per run (not on every refresh after a Calculate/Approve action).
+      if (refDefaultedTabForRunID.current !== dicRun.intID) {
+        refDefaultedTabForRunID.current = dicRun.intID;
+        if (dicRun.strRunTypeCode === "VARIABLE_PAY") {
+          setStrActiveTab("variablePay");
+        }
+      }
       if (["PROCESSED", "FINALIZED"].includes(dicRun.strRunStatus) && dicRun.strRunTypeCode !== "VARIABLE_PAY") {
         setLstPayslips(await payslipService.getRunPayslips(strRunID));
         try {
@@ -721,11 +734,6 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
       setBlnSaving(false);
       setStrActionLoaderLabel("");
     }
-  }
-
-  function goToMonthlyVariablePay() {
-    handleCloseActions();
-    objRouter.push(`/payroll/monthly-variable-pay?runId=${objRun?.intID ?? ""}`);
   }
 
   function viewBlockedAttendanceEmployees() {
@@ -987,7 +995,10 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     );
   }
 
-  const lstAllValidationRows = objValidationSummary?.lstIssues ?? objRun.lstValidationResults;
+  const lstAllValidationRows = [
+    ...(objValidationSummary?.lstIssues ?? objRun.lstValidationResults),
+    ...(objRun.strRunTypeCode === "VARIABLE_PAY" ? lstVariablePayValidationIssues : []),
+  ];
   const setAttendanceBlockingCodes = new Set(["PAY_ATT_MISSING_DAY", "PAY_ATT_NO_POLICY", "PAY_ATT_BLOCKING_EXCEPTION"]);
   const lstValidationRows = blnAttendanceBlockedFilterActive
     ? lstAllValidationRows.filter(
@@ -1076,6 +1087,16 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
                 `/payroll/employee-monthly-tax?${dicIssue.intEmployeeID ? `employeeId=${dicIssue.intEmployeeID}&` : ""}financialYearCode=${objValidationSummary?.strFinancialYearCode ?? ""}`,
               )
             }
+            controlId="payroll.run-detail.validation.fix-link.button"
+            data-row-key={`${dicIssue.strValidationCode}-${dicIssue.intEmployeeID ?? "run"}-${intIndex}`}
+            sx={{ minWidth: 0, fontSize: "0.76rem", fontWeight: 800 }}
+          >
+            {t("fix", "Fix")}
+          </Button>
+        ) : dicIssue.objNavigationTarget?.strEntityName === "variable_pay_tab" ? (
+          <Button
+            size="small"
+            onClick={() => setStrActiveTab("variablePay")}
             controlId="payroll.run-detail.validation.fix-link.button"
             data-row-key={`${dicIssue.strValidationCode}-${dicIssue.intEmployeeID ?? "run"}-${intIndex}`}
             sx={{ minWidth: 0, fontSize: "0.76rem", fontWeight: 800 }}
@@ -1251,6 +1272,16 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
           sx={{ borderBottom: "1px solid #DCE4EF", minHeight: 46, px: { xs: 1, md: 1.5 } }}
           data-controlid="payroll.run-detail.tabs"
         >
+          {objRun.strRunTypeCode === "VARIABLE_PAY" ? (
+            <Tab
+              value="variablePay"
+              label={t("variable_pay_tab", "Variable Pay")}
+              icon={<PaidRoundedIcon sx={{ fontSize: 18 }} />}
+              iconPosition="start"
+              sx={{ fontSize: "0.82rem", fontWeight: 800, minHeight: 46, textTransform: "none" }}
+              data-controlid="payroll.run-detail.tab.variable-pay.button"
+            />
+          ) : null}
           <Tab
             value="run"
             label={t("summary_title", "Run Summary")}
@@ -1346,7 +1377,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
                 <>
                   <Button
                     className={styles.secondaryButton}
-                    onClick={goToMonthlyVariablePay}
+                    onClick={() => setStrActiveTab("variablePay")}
                     startIcon={<PaidRoundedIcon sx={{ fontSize: 16 }} />}
                     sx={{ height: 32, minHeight: 32 }}
                     controlId="payroll.run-detail.open-variable-pay-inputs.button"
@@ -1532,6 +1563,13 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
             testIdPrefix="payroll.run-detail.review-results"
           />
         </Box>
+        ) : null}
+        {strActiveTab === "variablePay" && objRun.strRunTypeCode === "VARIABLE_PAY" ? (
+          <PayrollRunVariablePayTab
+            intPayrollRunID={objRun.intID}
+            onRunRefreshNeeded={() => loadRun(false)}
+            onValidationIssuesChanged={setLstVariablePayValidationIssues}
+          />
         ) : null}
         </Box>
       </Box>

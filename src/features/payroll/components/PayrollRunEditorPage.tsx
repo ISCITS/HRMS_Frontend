@@ -102,8 +102,8 @@ export default function PayrollRunEditorPage() {
     if (!dicForm.dtPayrollMonth) {
       return t("payroll_month_required", "Payroll month is required.");
     }
-    if (dicForm.strScopeType === "SelectedEmployee" && !dicForm.intScopedEmployeeID) {
-      return t("scoped_employee_required", "Employee is required for selected employee payroll run.");
+    if (dicForm.strScopeType === "SelectedEmployee" && dicForm.lstScopedEmployeeIDs.length === 0) {
+      return t("scoped_employee_required", "At least one employee is required for a selected employee payroll run.");
     }
     if (blnIsVariablePayRun && !dicForm.intVariablePayTypeID) {
       return t("variable_pay_type_required", "Variable Pay Type is required for a Variable Pay run.");
@@ -331,7 +331,9 @@ export default function PayrollRunEditorPage() {
                   strProcessFor: objEvent.target.value as PayrollRunFormValues["strProcessFor"],
                   strScopeType:
                     objEvent.target.value === "SelectedEmployees" ? "SelectedEmployee" : "All",
-                  intScopedEmployeeID: objEvent.target.value === "SelectedEmployees" ? dicPrevious.intScopedEmployeeID : "",
+                  intScopedEmployeeID: "",
+                  lstScopedEmployeeIDs:
+                    objEvent.target.value === "SelectedEmployees" ? dicPrevious.lstScopedEmployeeIDs : [],
                 }))
               }
               disabled={blnFieldDisabled}
@@ -352,19 +354,28 @@ export default function PayrollRunEditorPage() {
             ) : null}
             {dicForm.strProcessFor === "SelectedEmployees" ? (
               <Autocomplete
+                multiple
                 options={objOptions?.lstEmployees ?? []}
-                value={(objOptions?.lstEmployees ?? []).find((dicEmployee) => dicEmployee.intID === dicForm.intScopedEmployeeID) ?? null}
+                value={(objOptions?.lstEmployees ?? []).filter((dicEmployee) =>
+                  dicForm.lstScopedEmployeeIDs.includes(dicEmployee.intID)
+                )}
                 getOptionLabel={(dicEmployee) => `${dicEmployee.strCode} - ${dicEmployee.strLabel}`}
                 isOptionEqualToValue={(dicA, dicB) => dicA.intID === dicB.intID}
-                onChange={(_objEvent, dicSelected) => updateField("intScopedEmployeeID", dicSelected ? dicSelected.intID : "")}
+                onChange={(_objEvent, lstSelected) =>
+                  updateField("lstScopedEmployeeIDs", lstSelected.map((dicEmployee) => dicEmployee.intID))
+                }
                 disabled={blnFieldDisabled || dicForm.strScopeType !== "SelectedEmployee"}
                 fullWidth
                 renderInput={(objParams) => (
                   <TextField
                     {...objParams}
-                    label={t("scope_employee", "Employee")}
+                    label={t("scope_employee", "Employee(s)")}
                     placeholder={t("search_employee", "Search employee...")}
                     controlId="payroll.run-editor.employee.select"
+                    helperText={t(
+                      "scope_employee_help",
+                      "Pick one employee for a single ad-hoc run, or several for a group run."
+                    )}
                     InputProps={{
                       ...objParams.InputProps,
                       startAdornment: (

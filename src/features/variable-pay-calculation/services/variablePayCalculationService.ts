@@ -12,6 +12,7 @@ import type {
   MonthlyEntityValueStatus,
   VariablePayCalculationBatch,
   VariablePayEmployeeCalculation,
+  VariablePayRunWorkspace,
 } from "@/features/variable-pay-calculation/types";
 
 const MONTHLY_ENTITY_VALUE_VIEW = "variable_pay_monthly_entity_value_view";
@@ -48,6 +49,18 @@ function toNullableNumber(objValue: unknown): number | null {
 }
 
 export const variablePayCalculationService = {
+  // Consolidated, read-only composite for the Payroll Run Detail page's Variable Pay tab -
+  // Company/Month/Component are all derived from the run itself, so the tab never needs to
+  // re-ask for them. All mutations still go through the granular methods below.
+  async getRunWorkspace(intPayrollRunID: number): Promise<VariablePayRunWorkspace> {
+    const objResult = await requestApi<VariablePayRunWorkspace>({
+      strPath: `/variable-pay-calculation/runs/${intPayrollRunID}/workspace`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: CALCULATION_VIEW,
+    });
+    return objResult.Data;
+  },
+
   // ------------------------------------------------------------------
   // Filter-bar option loaders
   // ------------------------------------------------------------------
@@ -111,6 +124,7 @@ export const variablePayCalculationService = {
     intCompanyID: number;
     dtPayrollMonth: string;
     intSalaryComponentID: number;
+    intEmployeeSalaryComponentID: number;
     lstValues: MonthlyEntityValueSaveRow[];
   }): Promise<MonthlyEntityValueRecord[]> {
     const objResult = await requestApi<MonthlyEntityValueRecord[]>({
@@ -126,6 +140,7 @@ export const variablePayCalculationService = {
     intCompanyID: number;
     dtPayrollMonth: string;
     intSalaryComponentID: number;
+    intEmployeeSalaryComponentID: number;
     strStatus: MonthlyEntityValueStatus;
   }): Promise<MonthlyEntityValueRecord[]> {
     const objResult = await requestApi<MonthlyEntityValueRecord[]>({

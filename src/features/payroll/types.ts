@@ -52,7 +52,7 @@ export type PayrollRunOption = PayrollSelectOption & {
   blnIsLocked: boolean;
 };
 
-export type PayrollRunScopeType = "All" | "SelectedEmployee";
+export type PayrollRunScopeType = "All" | "SelectedEmployee" | "EmployeeGroup";
 
 export type PayrollRunStatus =
   | "DRAFT"
@@ -148,6 +148,8 @@ export type PayrollRunRecord = {
   intScopedEmployeeID: number | null;
   strScopedEmployeeName?: string | null;
   strScopedEmployeeCode?: string | null;
+  lstScopedEmployeeGroup?: PayrollSelectOption[];
+  intScopedEmployeeCount?: number | null;
   dtPayrollMonth: string;
   strRunStatus: PayrollRunStatus;
   intRunTypeID: number | null;
@@ -190,6 +192,7 @@ export type PayrollRunFormValues = {
   strScopeType: PayrollRunScopeType;
   strProcessFor: "AllEmployees" | "SelectedEmployees" | "PayrollGroup";
   intScopedEmployeeID: number | "";
+  lstScopedEmployeeIDs: number[];
   dtPayrollMonth: string;
   strRunStatus: PayrollRunStatus;
   blnIsLocked: boolean;
