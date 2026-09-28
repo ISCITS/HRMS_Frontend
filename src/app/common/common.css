@@ -261,12 +261,17 @@
   border-color: #cbd5e1;
 }
 
-.app-mui-text-field .MuiOutlinedInput-root.Mui-focused {
+.app-mui-text-field .MuiOutlinedInput-root.Mui-focused:not(.Mui-error) {
   background-color: #f8fafc;
 }
 
-.app-mui-text-field .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
-  border-color: var(--app-primary-color);
+.app-mui-text-field .MuiOutlinedInput-root.Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline {
+  border-color: #7896b0;
+}
+
+.app-mui-text-field .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline,
+.app-mui-text-field .MuiOutlinedInput-root.Mui-error:hover .MuiOutlinedInput-notchedOutline {
+  border-color: #ef4444;
 }
 
 .app-mui-icon-button.MuiIconButton-root {

@@ -1,16 +1,22 @@
 "use client";
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
-import CameraAltOutlinedIcon from "@mui/icons-material/CameraAltOutlined";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
+import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
+import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
+import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
+import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
+import UploadRoundedIcon from "@mui/icons-material/UploadRounded";
 import PostAddRoundedIcon from "@mui/icons-material/PostAddRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import {
   Alert,
   Avatar,
   Box,
+  Breadcrumbs,
   Button,
   CircularProgress,
   Dialog,
@@ -19,6 +25,7 @@ import {
   DialogTitle,
   FormControlLabel,
   IconButton,
+  Link,
   Radio,
   RadioGroup,
   MenuItem,
@@ -37,6 +44,7 @@ import {
   TextField,
   Typography
 } from "@mui/material";
+import NextLink from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FocusEvent, type InputHTMLAttributes, type ReactNode, type RefObject, type SyntheticEvent } from "react";
 
@@ -105,6 +113,54 @@ type TabKey = "basicInfo" | "personalIdentification" | "serviceContract" | "addi
 
 const lstTabOrder: TabKey[] = ["basicInfo", "personalIdentification", "serviceContract", "additionalEmployment", "address", "bankDetails", "statutory", "experience", "qualification", "family"];
 const strRequiredAsteriskColor = "#dc2626";
+
+// Match the Department add dialog: labels sit above compact, 14px inputs.
+const dicEmployeeFieldGridSx = {
+  "& .MuiInputLabel-root": { position: "relative", transform: "none", alignSelf: "flex-start", maxWidth: "100%", fontSize: "12px", fontWeight: 600, lineHeight: 1.5, mb: "4px", color: "#334155" },
+  "& .MuiOutlinedInput-root": { borderRadius: "6px", minHeight: 38, backgroundColor: "#fff" },
+  "& .MuiOutlinedInput-notchedOutline": { top: 0, borderColor: "#cbd5e1" },
+  "& .MuiOutlinedInput-notchedOutline legend": { display: "none" },
+  "& .MuiInputBase-input": { fontSize: "14px", py: "8.5px" },
+  "& .MuiInputBase-input::placeholder": { fontSize: "13px", opacity: 1, color: "#94a3b8" },
+  "& .MuiFormLabel-asterisk": { color: strRequiredAsteriskColor },
+} as const;
+
+const createEmployeeSwitchSx = (strCheckedColor: string) => ({
+  width: 40,
+  height: 22,
+  p: 0,
+  overflow: "visible",
+  "& .MuiSwitch-switchBase": {
+    p: "3px",
+    color: "#fff",
+    transitionDuration: "180ms",
+    "&.Mui-checked": {
+      transform: "translateX(18px)",
+      color: "#fff",
+      "& + .MuiSwitch-track": { backgroundColor: strCheckedColor, opacity: 1 },
+    },
+    "&.Mui-disabled": { color: "#fff", opacity: 0.7 },
+  },
+  "& .MuiSwitch-thumb": {
+    width: 16,
+    height: 16,
+    boxShadow: "0 1px 3px rgba(15, 23, 42, 0.2)",
+  },
+  "& .MuiSwitch-track": {
+    borderRadius: "11px",
+    backgroundColor: "#98a2b3",
+    opacity: 1,
+    transition: "background-color 180ms",
+  },
+} as const);
+
+const dicEmployeeActiveSwitchSx = createEmployeeSwitchSx("#00b86b");
+const dicEmployeeDetailSwitchSx = createEmployeeSwitchSx("#2563eb");
+const dicEmployeeDetailSwitchLabelSx = {
+  m: 0,
+  gap: 1,
+  "& .MuiFormControlLabel-label": { fontSize: 12, fontWeight: 600, color: "#334155" },
+} as const;
 
 const lstPersonalOptionalFields: Array<{ strField: keyof EmployeeFormValues; strLabel: string; strType?: string }> = [
   { strField: "strMaritalStatus", strLabel: "Marital Status" },
@@ -522,6 +578,8 @@ export default function EmployeeEditorScreen({
         data-control-id={`employee.editor.${String(strField)}.input`}
         type={strType}
         label={strLabel}
+        placeholder={strType === "date" ? undefined : t(`placeholder_${String(strField)}`, `Enter ${strLabel.toLowerCase()}`)}
+        size="small"
         value={String(dicBasicForm[strField] ?? "")}
         onChange={(objEvent) => updateBasicField(strField, objEvent.target.value as never)}
         InputLabelProps={strType === "date" ? { shrink: true } : undefined}
@@ -626,6 +684,21 @@ export default function EmployeeEditorScreen({
       window.dispatchEvent(new CustomEvent("hrms:avatar-refresh"));
     } catch (objError: unknown) {
       setStrAvatarError(objError instanceof Error ? objError.message : t("error_upload_photo", "Unable to upload profile photo."));
+    } finally {
+      setBlnAvatarUpdating(false);
+    }
+  }
+
+  async function handleAvatarRemove() {
+    if (!intResolvedEmployeeID || blnAvatarUpdating) return;
+    setBlnAvatarUpdating(true);
+    setStrAvatarError("");
+    try {
+      await authApiService.deleteCurrentAvatar(intResolvedEmployeeID);
+      setStrEmployeeAvatarUrl("");
+      window.dispatchEvent(new CustomEvent("hrms:avatar-refresh"));
+    } catch (objError: unknown) {
+      setStrAvatarError(objError instanceof Error ? objError.message : t("error_remove_photo", "Unable to remove profile photo."));
     } finally {
       setBlnAvatarUpdating(false);
     }
@@ -1359,12 +1432,18 @@ export default function EmployeeEditorScreen({
     blnDisabled = false,
     strHelperText?: string,
     blnError = false,
-    objInputRef?: RefObject<HTMLInputElement | null>
+    objInputRef?: RefObject<HTMLInputElement | null>,
+    strControlId?: string,
+    strPlaceholder = "Select"
   ) {
     return (
       <TextField
         select
+        data-control-id={strControlId}
+        inputProps={strControlId ? { "data-control-id": strControlId } : undefined}
         label={objLabel}
+        size="small"
+        SelectProps={{ displayEmpty: true }}
         inputRef={objInputRef}
         value={objValue}
         onChange={(objEvent) => fnOnChange((objEvent.target.value ? Number.isNaN(Number(objEvent.target.value)) ? objEvent.target.value : Number(objEvent.target.value) : "") as TValue)}
@@ -1373,7 +1452,7 @@ export default function EmployeeEditorScreen({
         helperText={strHelperText}
         fullWidth
       >
-        <MenuItem value="">Select</MenuItem>
+        <MenuItem value="">{strPlaceholder}</MenuItem>
         {lstOptions.map((objOption) => {
           if (typeof objOption === "string") {
             return <MenuItem key={objOption} value={objOption}>{objOption}</MenuItem>;
@@ -1396,7 +1475,8 @@ export default function EmployeeEditorScreen({
     blnDisabled = false,
     strHelperText?: string,
     blnError = false,
-    blnRequired = false
+    blnRequired = false,
+    strControlId?: string
   ) {
     const lstValidOptions = lstOptions.filter(
       (objOption): objOption is { intID: number; strLabel: string; strCode?: string } =>
@@ -1404,7 +1484,11 @@ export default function EmployeeEditorScreen({
     );
     return (
       <CommonSearchableSelect
+        controlId={strControlId ?? `employee.editor.${strLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.select`}
         label={strLabel}
+        placeholder={t(`placeholder_${strLabel.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`, `${strLabel.toLowerCase().includes("manager") ? "Search and select" : "Select"} ${strLabel.toLowerCase()}`)}
+        size="small"
+        showSearchIcon={strLabel.toLowerCase().includes("manager")}
         value={objValue}
         options={lstValidOptions}
         onChange={(objSelected) => fnOnChange(objSelected === "" ? "" : Number(objSelected))}
@@ -1429,6 +1513,10 @@ export default function EmployeeEditorScreen({
     return (
       <CommonSearchableSelect
         label={strLabel}
+        controlId={`employee.editor.${strLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.lookup`}
+        placeholder={t(`placeholder_${strLabel.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`, `Select ${strLabel.toLowerCase()}`)}
+        size="small"
+        showSearchIcon={false}
         value={objValue}
         options={lstOptions}
         onChange={(objSelected) => fnOnChange(objSelected === "" ? "" : String(objSelected))}
@@ -1477,24 +1565,13 @@ export default function EmployeeEditorScreen({
     <Stack spacing={2.5} onFocusCapture={handleEditorFocusCapture}>
       <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.5} alignItems={{ sm: "center" }}>
         <Box>
-          {!blnHidePageHeading ? (
-            <Typography
-              sx={{
-                mt: 0.5,
-                fontWeight: 800,
-                color: "#1f2937",
-                fontSize: "clamp(1.35rem, 1.9vw, 1.75rem)",
-                lineHeight: 1.05,
-              }}
-            >
-              {strPageTitleOverride
-                ? strPageTitleOverride
-                : strMode === "add"
-                  ? t("add_page_title", dicConstant.employeeMaster.addPageTitle)
-                  : strMode === "view"
-                    ? t("view_page_title", dicConstant.employeeMaster.dialogViewTitle ?? "View Employee")
-                    : t("edit_page_title", dicConstant.employeeMaster.editPageTitle)}
-            </Typography>
+          {!blnHidePageHeading ? strPageTitleOverride ? (
+            <Typography component="h1" sx={{ mt: 0.5, fontWeight: 800, color: "#1f2937", fontSize: "clamp(1.35rem, 1.9vw, 1.75rem)", lineHeight: 1.05 }}>{strPageTitleOverride}</Typography>
+          ) : (
+            <Breadcrumbs aria-label={t("employee_breadcrumb", "Employee breadcrumb")} separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ fontSize: 13, py: 0.5, ml: "3px" }}>
+              <Link component={NextLink} href="/employees" data-control-id="employee.editor.breadcrumb.employees.link" underline="hover" sx={{ color: "text.secondary", fontSize: "inherit" }}>{t("breadcrumb_employees", "Employees")}</Link>
+              <Typography component="h1" aria-current="page" sx={{ fontSize: "inherit", fontWeight: 700, color: "#172554" }}>{strMode === "add" ? t("breadcrumb_add", "Add") : strMode === "view" ? t("breadcrumb_view", "View") : t("breadcrumb_edit", "Edit")}</Typography>
+            </Breadcrumbs>
           ) : null}
           {strLabelError ? (
             <Typography sx={{ mt: blnHidePageHeading ? 0 : 0.75, color: "#b45309", fontSize: "0.85rem" }}>{strLabelError}</Typography>
@@ -1597,128 +1674,60 @@ export default function EmployeeEditorScreen({
         </Stack>
       </Stack>
 
-      <Paper sx={{ borderRadius: "26px", border: "1px solid rgba(148,163,184,0.24)", p: { xs: 2, md: 3 } }}>
-        <Stack direction={{ xs: "column", md: "row" }} spacing={2.5} alignItems={{ xs: "stretch", md: "flex-start" }}>
-          <Box sx={{ display: "grid", gap: 2, flex: 1, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" } }}>
-            <TextField data-controlid="employee.editor.employee-code.input" inputProps={{ "data-controlid": "employee.editor.employee-code.input" }} label={renderRequiredLabel(t("field_employee_code", dicConstant.employeeMaster.fields.employeeCode))} inputRef={dicFieldRefs.strEmployeeCode} value={dicBasicForm.strEmployeeCode} onChange={(objEvent) => updateBasicField("strEmployeeCode", objEvent.target.value.toUpperCase())} error={Boolean(dicBasicErrors.strEmployeeCode)} helperText={dicBasicErrors.strEmployeeCode} disabled={blnViewOnly} fullWidth />
-            <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: "repeat(2, minmax(0, 1fr))", minWidth: 0 }}>
-              {renderSelectField(t("field_gender", dicConstant.employeeMaster.fields.gender), dicBasicForm.strGender, (objValue) => updateBasicField("strGender", String(objValue)), objFormOptions?.lstGenders ?? [], blnViewOnly)}
-              {renderSelectField(t("field_title", dicConstant.employeeMaster.fields.title), dicBasicForm.strTitle, (objValue) => updateBasicField("strTitle", String(objValue)), objFormOptions?.lstTitles ?? [], blnViewOnly)}
+      {/* The common fields and photo use separate cards so both stay readable at narrower widths. */}
+      <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 3fr) minmax(220px, 1fr)" }, alignItems: "stretch" }}>
+        <Paper sx={{ borderRadius: "12px", border: "1px solid #dce7f5", p: { xs: 2, md: 2.25 }, boxShadow: "0 4px 18px rgba(31,61,110,0.04)" }}>
+          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "flex-start" }} spacing={0.5} sx={{ mb: 1.75 }}>
+            <Box>
+              <Typography sx={{ fontSize: "1rem", fontWeight: 800, color: "#172554", lineHeight: 1.2 }}>{t("basic_employee_details", "Basic Employee Details")}</Typography>
+              <Typography sx={{ fontSize: "0.75rem", color: "#64748b" }}>{t("basic_employee_details_subtitle", "Identity, category, and account status")}</Typography>
             </Box>
-            <TextField data-controlid="employee.editor.first-name.input" inputProps={{ "data-controlid": "employee.editor.first-name.input" }} label={renderRequiredLabel(t("field_first_name", dicConstant.employeeMaster.fields.firstName))} inputRef={dicFieldRefs.strFirstName} value={dicBasicForm.strFirstName} onChange={(objEvent) => updateBasicField("strFirstName", objEvent.target.value)} error={Boolean(dicBasicErrors.strFirstName)} helperText={dicBasicErrors.strFirstName} disabled={blnViewOnly} fullWidth />
-            <TextField data-controlid="employee.editor.middle-name.input" inputProps={{ "data-controlid": "employee.editor.middle-name.input" }} label={t("field_middle_name", dicConstant.employeeMaster.fields.middleName)} value={dicBasicForm.strMiddleName} onChange={(objEvent) => updateBasicField("strMiddleName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
-            <TextField data-controlid="employee.editor.last-name.input" inputProps={{ "data-controlid": "employee.editor.last-name.input" }} label={t("field_last_name", dicConstant.employeeMaster.fields.lastName)} value={dicBasicForm.strLastName} onChange={(objEvent) => updateBasicField("strLastName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
-            <TextField data-controlid="employee.editor.date-of-birth.input" inputProps={{ "data-controlid": "employee.editor.date-of-birth.input" }} type="date" label={t("field_date_of_birth", dicConstant.employeeMaster.fields.dateOfBirth)} value={dicBasicForm.dtDateOfBirth} onChange={(objEvent) => updateBasicField("dtDateOfBirth", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfBirth)} helperText={dicBasicErrors.dtDateOfBirth} InputLabelProps={{ shrink: true }} disabled={blnViewOnly} fullWidth />
-            <RadioGroup
-              row
-              value={dicBasicForm.blnIsWorker ? "worker" : "nonWorker"}
-              onChange={(objEvent) => {
-                const strValue = objEvent.target.value;
-                updateBasicField("blnIsWorker", strValue === "worker");
-              }}
-            >
-              <FormControlLabel
-                value="worker"
-                control={<Radio disabled={blnViewOnly} />}
-                label={t("field_worker", "Worker")}
-                sx={{ m: 0 }}
-                disabled={blnViewOnly}
-              />
-              <FormControlLabel
-                value="nonWorker"
-                control={<Radio disabled={blnViewOnly} />}
-                label={t("field_non_worker", "Non-Worker")}
-                sx={{ m: 0 }}
-                disabled={blnViewOnly}
-              />
-            </RadioGroup>
-            <FormControlLabel
-              control={<ActiveStatusSwitch testId="employee.editor.employment-status.switch" blnIsActive={dicBasicForm.strEmploymentStatus === "Active"} onChange={(blnChecked) => updateBasicField("strEmploymentStatus", blnChecked ? "Active" : "Inactive")} disabled={blnViewOnly} />}
-              label={t("field_employment_status", dicConstant.employeeMaster.fields.employmentStatus)}
-              sx={{ m: 0, alignSelf: "center", justifySelf: "start", gap: 0.75 }}
-              disabled={blnViewOnly}
-            />
-          </Box>
-
-          <Stack spacing={1.1} alignItems="center" sx={{ width: { xs: "100%", md: 118 }, flexShrink: 0, pt: { md: 0.5 }, order: { xs: -1, md: 0 }, ml: { md: "auto" } }}>
-            <Box
-              sx={{
-                position: "relative",
-                borderRadius: "50%",
-                p: "3px",
-                boxShadow: "0 8px 20px rgba(15,23,42,0.12)",
-                border: "2px solid rgba(37,99,235,0.2)",
-                transition: "all 0.2s ease",
-                "&:hover .employee-avatar-overlay": {
-                  opacity: intResolvedEmployeeID && !blnViewOnly ? 1 : 0
-                }
-              }}
-            >
-              <Avatar
-                src={strAuthenticatedAvatarUrl || undefined}
-                sx={{
-                  width: 88,
-                  height: 88,
-                  bgcolor: "rgba(37, 99, 235, 0.14)",
-                  color: "primary.main",
-                  fontWeight: 700,
-                  fontSize: 30
-                }}
-              >
-                {strAvatarText}
-              </Avatar>
-              <Box
-                className="employee-avatar-overlay"
-                sx={{
-                  position: "absolute",
-                  inset: 0,
-                  borderRadius: "50%",
-                  bgcolor: "rgba(15,23,42,0.38)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity: 0,
-                  transition: "all 0.2s ease"
-                }}
-              >
-                <CameraAltOutlinedIcon sx={{ color: "#ffffff", fontSize: 22 }} />
-              </Box>
-              {blnViewOnly ? null : (
-                <IconButton
-                  component="label"
-                  data-control-id="employee-master-profile-photo-upload"
-                  size="small"
-                  sx={{
-                    position: "absolute",
-                    right: -2,
-                    bottom: -2,
-                    width: 30,
-                    height: 30,
-                    borderRadius: "50%",
-                    p: 0,
-                    bgcolor: "#2563eb",
-                    color: "#ffffff",
-                    boxShadow: "0 10px 22px rgba(37,99,235,0.35)",
-                    "&:hover": { bgcolor: "#1d4ed8" },
-                    "&.Mui-disabled": { bgcolor: "#94a3b8", color: "#e2e8f0" }
-                  }}
-                  disabled={blnAvatarUpdating || !intResolvedEmployeeID}
-                >
-                  {blnAvatarUpdating ? <CircularProgress size={14} color="inherit" /> : <EditRoundedIcon sx={{ fontSize: 16 }} />}
-                  <input
-                    hidden
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    data-control-id="employee-master-profile-photo-file"
-                    onChange={handleAvatarUpload}
-                  />
-                </IconButton>
-              )}
-            </Box>
-            {strAvatarError ? <Typography sx={{ fontSize: 12, color: "#b91c1c", maxWidth: 220, textAlign: "center" }}>{strAvatarError}</Typography> : null}
+            <Typography sx={{ fontSize: "0.7rem", color: "#64748b", whiteSpace: "nowrap" }}>{t("required_fields_legend", "Required fields are marked")} <Box component="span" sx={{ color: strRequiredAsteriskColor }}>*</Box></Typography>
           </Stack>
-        </Stack>
-      </Paper>
+          <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "repeat(3, minmax(0, 1fr))" }, ...dicEmployeeFieldGridSx }}>
+            <TextField data-control-id="employee.editor.employee-code.input" inputProps={{ "data-control-id": "employee.editor.employee-code.input" }} label={renderRequiredLabel(t("field_employee_code", dicConstant.employeeMaster.fields.employeeCode))} placeholder={t("placeholder_employee_code", "Enter employee code")} size="small" inputRef={dicFieldRefs.strEmployeeCode} value={dicBasicForm.strEmployeeCode} onChange={(objEvent) => updateBasicField("strEmployeeCode", objEvent.target.value.toUpperCase())} error={Boolean(dicBasicErrors.strEmployeeCode)} helperText={dicBasicErrors.strEmployeeCode} disabled={blnViewOnly} fullWidth />
+            {renderSelectField(t("field_title", dicConstant.employeeMaster.fields.title), dicBasicForm.strTitle, (objValue) => updateBasicField("strTitle", String(objValue)), objFormOptions?.lstTitles ?? [], blnViewOnly, undefined, false, undefined, "employee.editor.title.select", t("placeholder_title", "Select title"))}
+            {renderSelectField(t("field_gender", dicConstant.employeeMaster.fields.gender), dicBasicForm.strGender, (objValue) => updateBasicField("strGender", String(objValue)), objFormOptions?.lstGenders ?? [], blnViewOnly, undefined, false, undefined, "employee.editor.gender.select", t("placeholder_gender", "Select gender"))}
+            <TextField data-control-id="employee.editor.first-name.input" inputProps={{ "data-control-id": "employee.editor.first-name.input" }} label={renderRequiredLabel(t("field_first_name", dicConstant.employeeMaster.fields.firstName))} placeholder={t("placeholder_first_name", "Enter first name")} size="small" inputRef={dicFieldRefs.strFirstName} value={dicBasicForm.strFirstName} onChange={(objEvent) => updateBasicField("strFirstName", objEvent.target.value)} error={Boolean(dicBasicErrors.strFirstName)} helperText={dicBasicErrors.strFirstName} disabled={blnViewOnly} fullWidth />
+            <TextField data-control-id="employee.editor.middle-name.input" inputProps={{ "data-control-id": "employee.editor.middle-name.input" }} label={t("field_middle_name", dicConstant.employeeMaster.fields.middleName)} placeholder={t("placeholder_middle_name", "Enter middle name")} size="small" value={dicBasicForm.strMiddleName} onChange={(objEvent) => updateBasicField("strMiddleName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+            <TextField data-control-id="employee.editor.last-name.input" inputProps={{ "data-control-id": "employee.editor.last-name.input" }} label={t("field_last_name", dicConstant.employeeMaster.fields.lastName)} placeholder={t("placeholder_last_name", "Enter last name")} size="small" value={dicBasicForm.strLastName} onChange={(objEvent) => updateBasicField("strLastName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+            <TextField data-control-id="employee.editor.date-of-birth.input" inputProps={{ "data-control-id": "employee.editor.date-of-birth.input" }} type="date" label={t("field_date_of_birth", dicConstant.employeeMaster.fields.dateOfBirth)} size="small" value={dicBasicForm.dtDateOfBirth} onChange={(objEvent) => updateBasicField("dtDateOfBirth", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfBirth)} helperText={dicBasicErrors.dtDateOfBirth} InputLabelProps={{ shrink: true }} disabled={blnViewOnly} fullWidth />
+            <Box>
+              <Typography sx={{ fontSize: "12px", fontWeight: 600, lineHeight: 1.5, color: "#334155", mb: "4px" }}>{t("field_worker_status", "Worker Status")}</Typography>
+              <RadioGroup row value={dicBasicForm.blnIsWorker ? "worker" : "nonWorker"} onChange={(objEvent) => updateBasicField("blnIsWorker", objEvent.target.value === "worker")}>
+                <FormControlLabel value="worker" control={<Radio size="small" disabled={blnViewOnly} inputProps={{ "data-control-id": "employee.editor.worker.radio" } as InputHTMLAttributes<HTMLInputElement>} />} label={t("field_worker", "Worker")} sx={{ m: 0, mr: 1 }} disabled={blnViewOnly} />
+                <FormControlLabel value="nonWorker" control={<Radio size="small" disabled={blnViewOnly} inputProps={{ "data-control-id": "employee.editor.non-worker.radio" } as InputHTMLAttributes<HTMLInputElement>} />} label={t("field_non_worker", "Non-Worker")} sx={{ m: 0 }} disabled={blnViewOnly} />
+              </RadioGroup>
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: "12px", fontWeight: 600, lineHeight: 1.5, color: "#334155", mb: "4px" }}>{t("field_employee_active", "Employee Active")}</Typography>
+              <FormControlLabel control={<ActiveStatusSwitch testId="employee.editor.employment-status.switch" blnIsActive={dicBasicForm.strEmploymentStatus === "Active"} onChange={(blnChecked) => updateBasicField("strEmploymentStatus", blnChecked ? "Active" : "Inactive")} disabled={blnViewOnly} sx={dicEmployeeActiveSwitchSx} />} label={dicBasicForm.strEmploymentStatus === "Active" ? t("active", "Active") : t("inactive", "Inactive")} sx={{ m: 0, gap: 1, pr: 1 }} disabled={blnViewOnly} />
+            </Box>
+          </Box>
+        </Paper>
+        <Paper sx={{ borderRadius: "12px", border: "1px solid #dce7f5", p: { xs: 2, md: 2.25 }, boxShadow: "0 4px 18px rgba(31,61,110,0.04)" }}>
+          <Typography sx={{ fontSize: "1rem", fontWeight: 800, color: "#172554", mb: 1 }}>{t("profile_image", "Profile Image")}</Typography>
+          <Stack alignItems="center" spacing={1.5}>
+            <Avatar src={strAuthenticatedAvatarUrl || undefined} sx={{ width: 168, height: 168, bgcolor: "#edf3ff", border: "4px solid #f1f5fb", boxShadow: "0 0 0 2px #f8fbff" }}>
+              <Box sx={{ position: "relative", width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                <PersonRoundedIcon sx={{ position: "absolute", width: 156, height: 156, bottom: -9, color: "#c2cee9" }} />
+                <Box sx={{ position: "absolute", bottom: 15, color: "#2563eb", fontSize: 36, fontWeight: 700, lineHeight: 1 }}>{strAvatarText}</Box>
+              </Box>
+            </Avatar>
+            {!blnViewOnly ? (
+              <Stack direction="row" spacing={0.75}>
+                <Button component="label" data-control-id="employee-master-profile-photo-upload" size="small" variant="outlined" startIcon={blnAvatarUpdating ? <CircularProgress size={14} /> : <UploadRoundedIcon />} disabled={blnAvatarUpdating || !intResolvedEmployeeID} sx={{ textTransform: "none", fontSize: "0.72rem" }}>
+                  {t("upload_photo", "Upload photo")}
+                  <input hidden type="file" accept="image/png,image/jpeg,image/webp" data-control-id="employee-master-profile-photo-file" onChange={handleAvatarUpload} />
+                </Button>
+                <Button data-control-id="employee-master-profile-photo-remove" size="small" variant="outlined" startIcon={<DeleteRoundedIcon />} onClick={handleAvatarRemove} disabled={blnAvatarUpdating || !intResolvedEmployeeID || !strAuthenticatedAvatarUrl} sx={{ textTransform: "none", fontSize: "0.72rem", color: "#64748b", borderColor: "#cbd5e1" }}>{t("remove_photo", "Remove")}</Button>
+              </Stack>
+            ) : null}
+            <Typography sx={{ fontSize: "0.7rem", color: "#94a3b8" }}>{t("photo_formats", "JPG, PNG or WEBP, max 200 KB")}</Typography>
+            {strAvatarError ? <Typography sx={{ fontSize: 12, color: "#b91c1c", textAlign: "center" }}>{strAvatarError}</Typography> : null}
+          </Stack>
+        </Paper>
+      </Box>
 
       {/* Existing employees expose the same salary snapshot in edit and view modes. */}
       {strMode !== "add" && !blnHideSalarySummaryCard ? (
@@ -1728,21 +1737,22 @@ export default function EmployeeEditorScreen({
         />
       ) : null}
 
-      <Paper sx={{ borderRadius: "26px", overflow: "hidden", border: "1px solid rgba(148,163,184,0.24)" }}>
-        <Box sx={{ borderBottom: "1px solid #e2e8f0", px: { xs: 1, md: 2 }, bgcolor: "#f8fafc" }}>
+      <Paper sx={{ borderRadius: "12px", overflow: "hidden", border: "1px solid #dce7f5", boxShadow: "0 4px 18px rgba(31,61,110,0.04)" }}>
+        <Box sx={{ borderBottom: "1px solid #e2e8f0", px: { xs: 1, md: 1.5 }, bgcolor: "#ffffff" }}>
           <Tabs
-            data-controlid="employee.editor.tabs"
+            data-control-id="employee.editor.tabs"
             value={strVisibleActiveTab}
             onChange={(_, strNextValue) => setStrActiveTab(strNextValue)}
             variant="scrollable"
             scrollButtons="auto"
+            sx={{ minHeight: 44, "& .MuiTabs-indicator": { bgcolor: "#22a45a", height: 2 } }}
           >
             {lstVisibleTabOrder.map((strTabKey) => (
               <Tab
                 key={strTabKey}
                 value={strTabKey}
-                data-controlid={`employee.editor.${strTabKey}.tab`}
-                sx={{ textTransform: "none" }}
+                data-control-id={`employee.editor.${strTabKey}.tab`}
+                sx={{ textTransform: "none", minHeight: 44, py: 0.75, px: 1.5, fontSize: "0.875rem", fontWeight: strTabKey === strVisibleActiveTab ? 700 : 500, color: strTabKey === strVisibleActiveTab ? "#23834a" : "#475569", "&.Mui-selected": { color: "#23834a" } }}
                 label={strTabKey === "basicInfo"
                   ? t("tab_employment_info", "Employment Info")
                   : strTabKey === "personalIdentification"
@@ -1767,17 +1777,18 @@ export default function EmployeeEditorScreen({
           </Tabs>
         </Box>
 
-        <Box sx={{ p: { xs: 2, md: 3 } }}>
+        <Box sx={{ p: { xs: 2, md: 2.25 } }}>
           {(["basicInfo", "personalIdentification", "serviceContract", "additionalEmployment"] as TabKey[]).includes(strVisibleActiveTab) ? (
             <Stack spacing={3}>
               {strVisibleActiveTab === "basicInfo" ? <Box>
-                <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", lg: "repeat(3, minmax(0, 1fr))" } }}>
-                  <TextField data-controlid="employee.editor.date-of-joining.input" inputProps={{ "data-controlid": "employee.editor.date-of-joining.input" }} type="date" label={renderRequiredLabel(t("field_date_of_joining", dicConstant.employeeMaster.fields.dateOfJoining))} inputRef={dicFieldRefs.dtDateOfJoining} value={dicBasicForm.dtDateOfJoining} onChange={(objEvent) => updateBasicField("dtDateOfJoining", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfJoining)} helperText={dicBasicErrors.dtDateOfJoining} InputLabelProps={{ shrink: true }} disabled={blnViewOnly} fullWidth />
+                <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(3, minmax(0, 1fr))" }, ...dicEmployeeFieldGridSx }}>
+                  <TextField data-control-id="employee.editor.date-of-joining.input" inputProps={{ "data-control-id": "employee.editor.date-of-joining.input" }} type="date" label={renderRequiredLabel(t("field_date_of_joining", dicConstant.employeeMaster.fields.dateOfJoining))} size="small" inputRef={dicFieldRefs.dtDateOfJoining} value={dicBasicForm.dtDateOfJoining} onChange={(objEvent) => updateBasicField("dtDateOfJoining", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfJoining)} helperText={dicBasicErrors.dtDateOfJoining} InputLabelProps={{ shrink: true }} disabled={blnViewOnly} fullWidth />
                   {renderSearchableSelectField(t("field_employment_type", dicConstant.employeeMaster.fields.employmentType), dicBasicForm.intEmploymentTypeID, (objValue) => updateBasicField("intEmploymentTypeID", objValue), objFormOptions?.lstEmploymentTypes ?? [], blnViewOnly, dicBasicErrors.intEmploymentTypeID, Boolean(dicBasicErrors.intEmploymentTypeID), true)}
-                  <Box sx={{ display: "flex", alignItems: "center", height: 56, alignSelf: "start" }}>
+                  <Box sx={{ alignSelf: "start" }}>
+                    <Typography sx={{ fontSize: "12px", fontWeight: 600, lineHeight: 1.5, mb: "4px", color: "#334155" }}>{t("field_ess_enabled", dicConstant.employeeMaster.fields.essEnabled)}</Typography>
                     <FormControlLabel
-                      control={<Switch checked={dicBasicForm.blnIsEssEnabled} onChange={(_, blnChecked) => updateBasicField("blnIsEssEnabled", blnChecked)} disabled={blnViewOnly} inputProps={{ "data-controlid": "employee.editor.ess-enabled.switch" } as InputHTMLAttributes<HTMLInputElement>} />}
-                      label={t("field_ess_enabled", dicConstant.employeeMaster.fields.essEnabled)}
+                      control={<Switch checked={dicBasicForm.blnIsEssEnabled} onChange={(_, blnChecked) => updateBasicField("blnIsEssEnabled", blnChecked)} disabled={blnViewOnly} inputProps={{ "data-control-id": "employee.editor.ess-enabled.switch" } as InputHTMLAttributes<HTMLInputElement>} />}
+                      label={dicBasicForm.blnIsEssEnabled ? t("yes", "Yes") : t("no", "No")}
                       sx={{ m: 0 }}
                     />
                   </Box>
@@ -1794,25 +1805,50 @@ export default function EmployeeEditorScreen({
                 </Box>
               </Box> : null}
 
-              {strVisibleActiveTab === "personalIdentification" ? <Box>
-                <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))" } }}>
-                  {renderSearchableSelectField("Nationality", dicBasicForm.intNationalityCountryID, (objValue) => updateBasicField("intNationalityCountryID", objValue), objFormOptions?.lstNationalities ?? [], blnViewOnly)}
-                  {renderSearchableSelectField("Mother Tongue", dicBasicForm.intMotherTongueLanguageID, (objValue) => updateBasicField("intMotherTongueLanguageID", objValue), objFormOptions?.lstMotherTongues ?? [], blnViewOnly)}
-                  {lstPersonalOptionalFields.slice(0, 5).map((dicField) => renderOptionalEmployeeField(dicField.strField, dicField.strLabel, dicField.strType))}
-                  <Box aria-hidden sx={{ display: { xs: "none", md: "block" } }} />
-                  {lstPersonalOptionalFields.slice(5).map((dicField) => renderOptionalEmployeeField(dicField.strField, dicField.strLabel, dicField.strType))}
-                </Box>
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mt: 1 }}>
-                  <FormControlLabel control={<Switch checked={dicBasicForm.blnHasDisability} onChange={(_, value) => updateBasicField("blnHasDisability", value)} disabled={blnViewOnly} />} label="Has Disability" />
-                  <FormControlLabel control={<Switch checked={dicBasicForm.blnSuperannuationFlag} onChange={(_, value) => updateBasicField("blnSuperannuationFlag", value)} disabled={blnViewOnly} />} label="Superannuation" />
-                  <FormControlLabel control={<Switch checked={dicBasicForm.blnIsRelatedEmployee} onChange={(_, value) => { updateBasicField("blnIsRelatedEmployee", value); if (!value) updateBasicField("intRelatedEmployeeID", ""); }} disabled={blnViewOnly} />} label="Related Employee" />
-                </Stack>
-                {dicBasicForm.blnIsRelatedEmployee ? (
-                  <Box sx={{ mt: 1.5, maxWidth: 420 }}>
-                    {renderSearchableSelectField("Related Employee", dicBasicForm.intRelatedEmployeeID, (objValue) => updateBasicField("intRelatedEmployeeID", objValue), lstManagerOptions, blnViewOnly)}
+              {strVisibleActiveTab === "personalIdentification" ? (
+                <Box sx={{ display: "grid", gap: 1.5, alignItems: "stretch", gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", lg: "1.05fr 0.95fr 1.4fr" } }}>
+                  <Box sx={{ minWidth: 0, p: 2, border: "1px solid #e2e8f0", borderRadius: "12px", bgcolor: "#fff", boxShadow: "0 2px 10px rgba(15,23,42,0.04)", ...dicEmployeeFieldGridSx }}>
+                    <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+                      <Box sx={{ width: 36, height: 36, display: "grid", placeItems: "center", borderRadius: "50%", bgcolor: "#eff6ff", color: "#31598f" }}><PersonOutlineRoundedIcon fontSize="small" /></Box>
+                      <Box><Typography sx={{ fontSize: 14, fontWeight: 700, color: "#172554" }}>{t("personal_profile", "Personal profile")}</Typography><Typography sx={{ fontSize: 11, color: "#64748b" }}>{t("personal_profile_subtitle", "Core personal information")}</Typography></Box>
+                    </Stack>
+                    <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+                      {renderSearchableSelectField(t("field_nationality", "Nationality"), dicBasicForm.intNationalityCountryID, (objValue) => updateBasicField("intNationalityCountryID", objValue), objFormOptions?.lstNationalities ?? [], blnViewOnly)}
+                      {renderSearchableSelectField(t("field_mother_tongue", "Mother Tongue"), dicBasicForm.intMotherTongueLanguageID, (objValue) => updateBasicField("intMotherTongueLanguageID", objValue), objFormOptions?.lstMotherTongues ?? [], blnViewOnly)}
+                      {lstPersonalOptionalFields.slice(0, 2).map((dicField) => renderOptionalEmployeeField(dicField.strField, dicField.strLabel, dicField.strType))}
+                      {lstPersonalOptionalFields.slice(2, 5).map((dicField) => <Box key={dicField.strField} sx={{ gridColumn: "1 / -1" }}>{renderOptionalEmployeeField(dicField.strField, dicField.strLabel, dicField.strType)}</Box>)}
+                    </Box>
                   </Box>
-                ) : null}
-              </Box> : null}
+                  <Box sx={{ minWidth: 0, p: 2, border: "1px solid #e2e8f0", borderRadius: "12px", bgcolor: "#fff", boxShadow: "0 2px 10px rgba(15,23,42,0.04)", ...dicEmployeeFieldGridSx }}>
+                    <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+                      <Box sx={{ width: 36, height: 36, display: "grid", placeItems: "center", borderRadius: "50%", bgcolor: "#eff6ff", color: "#31598f" }}><GroupsOutlinedIcon fontSize="small" /></Box>
+                      <Box><Typography sx={{ fontSize: 14, fontWeight: 700, color: "#172554" }}>{t("family_information", "Family information")}</Typography><Typography sx={{ fontSize: 11, color: "#64748b" }}>{t("family_information_subtitle", "Family and relationship details")}</Typography></Box>
+                    </Stack>
+                    <Stack spacing={1.5}>
+                      {lstPersonalOptionalFields.slice(5, 9).map((dicField) => renderOptionalEmployeeField(dicField.strField, dicField.strLabel, dicField.strType))}
+                    </Stack>
+                  </Box>
+                  <Box sx={{ minWidth: 0, p: 2, border: "1px solid #e2e8f0", borderRadius: "12px", bgcolor: "#fff", boxShadow: "0 2px 10px rgba(15,23,42,0.04)", gridColumn: { md: "span 2", lg: "auto" }, ...dicEmployeeFieldGridSx }}>
+                    <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+                      <Box sx={{ width: 36, height: 36, display: "grid", placeItems: "center", borderRadius: "50%", bgcolor: "#eff6ff", color: "#31598f" }}><DescriptionOutlinedIcon fontSize="small" /></Box>
+                      <Box><Typography sx={{ fontSize: 14, fontWeight: 700, color: "#172554" }}>{t("identity_documents", "Identity documents")}</Typography><Typography sx={{ fontSize: 11, color: "#64748b" }}>{t("identity_documents_subtitle", "Passport and driving licence")}</Typography></Box>
+                    </Stack>
+                    <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" } }}>
+                      {lstPersonalOptionalFields.slice(9).map((dicField) => renderOptionalEmployeeField(dicField.strField, dicField.strLabel, dicField.strType))}
+                    </Box>
+                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, mt: 2, pt: 1.5, borderTop: "1px solid #e2e8f0" }}>
+                      <FormControlLabel labelPlacement="start" control={<Switch checked={dicBasicForm.blnHasDisability} onChange={(_, value) => updateBasicField("blnHasDisability", value)} disabled={blnViewOnly} sx={dicEmployeeDetailSwitchSx} inputProps={{ "data-control-id": "employee.editor.has-disability.switch" } as InputHTMLAttributes<HTMLInputElement>} />} label={t("field_has_disability", "Has disability")} sx={dicEmployeeDetailSwitchLabelSx} />
+                      <FormControlLabel labelPlacement="start" control={<Switch checked={dicBasicForm.blnSuperannuationFlag} onChange={(_, value) => updateBasicField("blnSuperannuationFlag", value)} disabled={blnViewOnly} sx={dicEmployeeDetailSwitchSx} inputProps={{ "data-control-id": "employee.editor.superannuation.switch" } as InputHTMLAttributes<HTMLInputElement>} />} label={t("field_superannuation", "Superannuation")} sx={dicEmployeeDetailSwitchLabelSx} />
+                      <FormControlLabel labelPlacement="start" control={<Switch checked={dicBasicForm.blnIsRelatedEmployee} onChange={(_, value) => { updateBasicField("blnIsRelatedEmployee", value); if (!value) updateBasicField("intRelatedEmployeeID", ""); }} disabled={blnViewOnly} sx={dicEmployeeDetailSwitchSx} inputProps={{ "data-control-id": "employee.editor.related-employee.switch" } as InputHTMLAttributes<HTMLInputElement>} />} label={t("field_related_employee", "Related employee")} sx={dicEmployeeDetailSwitchLabelSx} />
+                    </Box>
+                    {dicBasicForm.blnIsRelatedEmployee ? (
+                      <Box sx={{ mt: 1.5, maxWidth: 420 }}>
+                        {renderSearchableSelectField(t("field_related_employee", "Related Employee"), dicBasicForm.intRelatedEmployeeID, (objValue) => updateBasicField("intRelatedEmployeeID", objValue), lstManagerOptions, blnViewOnly)}
+                      </Box>
+                    ) : null}
+                  </Box>
+                </Box>
+              ) : null}
 
               {strVisibleActiveTab === "serviceContract" ? (
                 <Stack spacing={3}>

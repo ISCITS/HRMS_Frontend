@@ -23,6 +23,8 @@ type CommonSearchableSelectProps<T extends CommonSearchableSelectOption> = {
   error?: boolean;
   helperText?: string;
   fullWidth?: boolean;
+  size?: "small" | "medium";
+  showSearchIcon?: boolean;
   className?: string;
   sx?: SxProps<Theme>;
   getOptionLabel?: (option: T) => string;
@@ -45,6 +47,8 @@ export default function CommonSearchableSelect<T extends CommonSearchableSelectO
   error = false,
   helperText,
   fullWidth = true,
+  size = "medium",
+  showSearchIcon = true,
   className,
   sx,
   getOptionLabel,
@@ -61,14 +65,17 @@ export default function CommonSearchableSelect<T extends CommonSearchableSelectO
       onChange={(_objEvent, dicOption) => onChange(dicOption ? dicOption.intID : "")}
       disabled={disabled}
       fullWidth={fullWidth}
+      size={size}
       className={className}
       sx={sx}
       renderInput={(objParams) => (
         <TextField
           {...objParams}
           label={label}
+          size={size}
           placeholder={placeholder ?? searchPlaceholder}
-          controlId={controlId}
+          data-control-id={controlId}
+          inputProps={{ ...objParams.inputProps, ...(controlId ? { "data-control-id": controlId } : {}) }}
           required={required}
           error={error}
           helperText={helperText}
@@ -76,7 +83,7 @@ export default function CommonSearchableSelect<T extends CommonSearchableSelectO
             ...objParams.InputProps,
             startAdornment: (
               <>
-                <SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />
+                {showSearchIcon ? <SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} /> : null}
                 {objParams.InputProps.startAdornment}
               </>
             ),

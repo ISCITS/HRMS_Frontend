@@ -124,9 +124,8 @@ const objFieldSx = {
     "&:hover fieldset": {
       borderColor: "#94a3b8",
     },
-    "&.Mui-focused fieldset": {
-      borderColor: "#2563eb",
-      boxShadow: "0 0 0 3px rgba(37, 99, 235, 0.12)",
+    "&.Mui-focused:not(.Mui-error) fieldset": {
+      borderColor: "#7896b0",
     },
   },
   "& .MuiInputBase-input": {
@@ -144,6 +143,9 @@ const objFieldSx = {
     lineHeight: 1.35,
     marginLeft: 2,
     marginTop: "4px",
+  },
+  "& .MuiFormHelperText-root.Mui-error": {
+    color: "#ef4444",
   },
 };
 

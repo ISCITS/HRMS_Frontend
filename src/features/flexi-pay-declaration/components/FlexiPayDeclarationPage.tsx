@@ -418,7 +418,7 @@ function formatFileSize(intFileSizeBytes?: number | null) {
 const OBJ_ELIGIBILITY_FIELD_SX = {
   "& .MuiOutlinedInput-notchedOutline": { borderColor: "#7dd3fc" },
   "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#38bdf8" },
-  "& .Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#0ea5e9" },
+  "& .Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline": { borderColor: "#7896b0" },
 };
 
 function hasAnyEligibilityAnswers(dicEligibilityAnswers: EligibilityAnswerMap) {

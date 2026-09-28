@@ -28,7 +28,7 @@ const dicInputSx = {
   "& .MuiInputLabel-root": {
     fontSize: 14,
     fontWeight: 500,
-    color: "#64748b"
+    color: "#334155"
   },
   "& .MuiOutlinedInput-root": {
     minHeight: 52,
@@ -37,12 +37,12 @@ const dicInputSx = {
     "& .MuiOutlinedInput-notchedOutline": {
       borderColor: "#e2e8f0"
     },
-    "&.Mui-focused": {
+    "&.Mui-focused:not(.Mui-error)": {
       backgroundColor: "#f8fafc",
-      boxShadow: "0 0 0 3px rgba(37,99,235,0.2)"
+      boxShadow: "0 0 0 3px rgba(147,197,253,0.28)"
     },
-    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-      borderColor: "#2563eb"
+    "&.Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline": {
+      borderColor: "#7896b0"
     }
   }
 };

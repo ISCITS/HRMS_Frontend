@@ -55,12 +55,14 @@ export type CommonDataGridProps<T extends Record<string, ReactNode>> = {
   columns: DataGridColumn<T>[];
   rows: T[];
   toolbarLeft?: ReactNode;
+  toolbarAfterExport?: ReactNode;
   /** Optional content rendered immediately before the rows-per-page/pagination controls. */
   paginationLeftSlot?: ReactNode;
   footerContent?: ReactNode;
   hideToolbar?: boolean;
   minTableWidth?: number;
   getRowSx?: (row: T) => SxProps<Theme> | undefined;
+  onRowClick?: (row: T, event: MouseEvent<HTMLTableRowElement>) => void;
   onRowDoubleClick?: (row: T, event: MouseEvent<HTMLTableRowElement>) => void;
   rowIdField?: keyof T;
   defaultPageSize?: number;
@@ -81,11 +83,13 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   columns,
   rows,
   toolbarLeft,
+  toolbarAfterExport,
   paginationLeftSlot,
   footerContent,
   hideToolbar = false,
   minTableWidth = 980,
   getRowSx,
+  onRowClick,
   onRowDoubleClick,
   rowIdField,
   defaultPageSize = 20,
@@ -206,9 +210,19 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
     });
   };
 
-  const handleRowDoubleClick = (row: T, objEvent: MouseEvent<HTMLTableRowElement>) => {
+  const isInteractiveTarget = (objEvent: MouseEvent<HTMLTableRowElement>) => {
     const objTarget = objEvent.target as HTMLElement;
-    if (objTarget.closest("button, input, a, [role='button']")) {
+    return Boolean(objTarget.closest("button, input, a, label, select, textarea, [role='button'], [role='checkbox'], .MuiCheckbox-root, .MuiSwitch-root"));
+  };
+
+  const handleRowClick = (row: T, objEvent: MouseEvent<HTMLTableRowElement>) => {
+    if (!isInteractiveTarget(objEvent)) {
+      onRowClick?.(row, objEvent);
+    }
+  };
+
+  const handleRowDoubleClick = (row: T, objEvent: MouseEvent<HTMLTableRowElement>) => {
+    if (isInteractiveTarget(objEvent)) {
       return;
     }
 
@@ -356,6 +370,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                 </Menu>
               </>
             ) : null}
+            {toolbarAfterExport ? <Box sx={{ display: "flex", alignItems: "center", minHeight: 40 }}>{toolbarAfterExport}</Box> : null}
             {!hideToolbar && !hideRowClickHint ? (
               <Stack
                 direction="row"
@@ -520,7 +535,8 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                     data-controlid={`${testIdPrefix}.row`}
                     data-row-key={strRowKey}
                     hover
-                    onDoubleClick={(objEvent) => handleRowDoubleClick(row, objEvent)}
+                    onClick={onRowClick ? (objEvent) => handleRowClick(row, objEvent) : undefined}
+                    onDoubleClick={onRowClick ? undefined : (objEvent) => handleRowDoubleClick(row, objEvent)}
                     sx={[
                       {
                         height: 40,

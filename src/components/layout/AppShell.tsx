@@ -1025,6 +1025,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
     strPathname?.toLowerCase() === "/payroll/employee-reimbursement" ||
     objSearchParams.get("source") === "employee-reimbursement";
   const strLowerPathname = strPathname?.toLowerCase() || "";
+  // The employee editor has its own breadcrumb and action toolbar.
+  const blnEmployeeEditorRoute = /^\/employees\/(?:add|(?:edit|view)\/[\w-]+)$/.test(strLowerPathname);
   const blnEmployeeSalaryEditorRoute = /^\/employee-salary\/\d+(?:\/revise)?$/.test(strLowerPathname);
   // The id segment is a record_uuid now, not a number; a legacy numeric URL still matches.
   const blnSalaryComponentEditorRoute = /^\/salary-components\/(?:add|(?:edit|view)\/[\w-]+)$/.test(strLowerPathname);
@@ -1528,7 +1530,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
               <Box sx={{ flex: 1, minWidth: 0 }} />
 
-              {strPathname === "/departments" || strPathname === "/designations" || blnDashboardRoute || blnEmployeeSalaryEditorRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute ? null : (
+              {strPathname === "/employees" || strPathname === "/departments" || strPathname === "/designations" || blnEmployeeEditorRoute || blnDashboardRoute || blnEmployeeSalaryEditorRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute ? null : (
                 <Box
                   sx={{
                     display: "flex",

@@ -409,7 +409,7 @@ export default function DesignationMasterPanel() {
         disabled={!blnCanView && !blnCanEdit}
         data-control-id="designation-master.list.row.name.button"
         onClick={() => openDialog(blnCanEdit ? "edit" : "view", dicDesignation)}
-        sx={{ color: "#0066df", cursor: "pointer", fontSize: "inherit", fontWeight: 500, textAlign: "left", "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}>
+        sx={{ color: "inherit", cursor: "pointer", fontSize: "inherit", fontWeight: 500, textAlign: "left", "&:hover": { color: "#0066df" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}>
         {dicDesignation.name}
       </Link>
     ),
@@ -685,7 +685,31 @@ export default function DesignationMasterPanel() {
             <Typography sx={{ mt: 1, color: "#64748b" }}>Contact your administrator if you need designation visibility.</Typography>
           </Box>
         ) : (
-          <CommonDataGrid hideRowClickHint columns={lstTableColumns} rows={lstTableRows} rowIdField="id" defaultPageSize={20} pageSizeOptions={[10, 20, 50]} exportFileName={dicDesignationLabels.exportFileName.replace(/\.(csv|pdf)$/i, "")} showExportOptions={blnCanExport} showPaginationSummary emptyMessage={dicDesignationLabels.emptyMessage} testIdPrefix="designation-master.list" toolbarLeft={blnCanAdd ? <Button controlId="designation-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicDesignationLabels.addButton}</Button> : null} sx={{ p: 0, boxShadow: "none", background: "transparent" }} />
+          <CommonDataGrid
+            hideRowClickHint
+            columns={lstTableColumns}
+            rows={lstTableRows}
+            rowIdField="id"
+            defaultPageSize={20}
+            pageSizeOptions={[10, 20, 50]}
+            exportFileName={dicDesignationLabels.exportFileName.replace(/\.(csv|pdf)$/i, "")}
+            showExportOptions={blnCanExport}
+            showPaginationSummary
+            emptyMessage={dicDesignationLabels.emptyMessage}
+            testIdPrefix="designation-master.list"
+            toolbarLeft={blnCanAdd ? <Button controlId="designation-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicDesignationLabels.addButton}</Button> : null}
+            onRowClick={(dicRow) => {
+              if (blnRightsLoading || blnLoading || blnSubmitting || (!blnCanEdit && !blnCanView)) return;
+              const dicDesignation = lstDesignations.find((dicItem) => dicItem.id === dicRow.id);
+              if (dicDesignation) openDialog(blnCanEdit ? "edit" : "view", dicDesignation);
+            }}
+            getRowSx={() => ({
+              backgroundColor: "#fff",
+              "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
+              "& td:first-of-type:hover .MuiLink-root": { color: "#0066df" },
+            })}
+            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+          />
         )}
       </Box>
 
@@ -758,7 +782,7 @@ export default function DesignationMasterPanel() {
         fullWidth={false}
         contentSx={{ overflowX: "hidden", overflowY: "auto", px: "20px", py: "12px", borderColor: "#e5edf5" }}
         nodeContent={
-          <Box sx={{ display: "grid", gap: "12px", "& .MuiOutlinedInput-root": { borderRadius: "6px", backgroundColor: "#fff", fontWeight: 400 }, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#cbd5e1" }, "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "primary.main", borderWidth: 2 }, "& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline": { borderColor: "error.main" }, "& .MuiFormHelperText-root.Mui-error": { margin: "4px 14px 0px 0px" } }}>
+          <Box sx={{ display: "grid", gap: "12px", "& .MuiOutlinedInput-root": { borderRadius: "6px", backgroundColor: "#fff", fontWeight: 400 }, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#cbd5e1" }, "& .MuiOutlinedInput-root.Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline": { borderColor: "#7896b0", borderWidth: 1 }, "& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline": { borderColor: "error.main" }, "& .MuiFormHelperText-root.Mui-error": { margin: "4px 14px 0px 0px" } }}>
             <Box
               sx={{
                 display: "grid",
@@ -830,7 +854,7 @@ export default function DesignationMasterPanel() {
 
             {lstVisibleTranslationRows.length > 0 ? (
               <Box sx={{ border: "1px solid #e3edfc", borderRadius: "6px", overflow: "hidden", background: "#f7faff" }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap", p: 1.5, borderBottom: "1px solid #e3edfc", background: "#eff6ff" }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap", p: 1, borderBottom: "1px solid #e3edfc", background: "#eff6ff" }}>
                   <LanguageRoundedIcon sx={{ color: "#1473cf" }} />
                   <Box sx={{ flex: 1, minWidth: 180 }}>
                     <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>{t("language_translations", "Language Translations")}</Typography>
@@ -854,7 +878,7 @@ export default function DesignationMasterPanel() {
                     </span>
                   </Tooltip>
                 </Box>
-                <Box sx={{ display: "grid", gap: 1.5, p: 2 }}>
+                <Box sx={{ display: "grid", gap: 1.5, p: 1 }}>
                   {lstVisibleTranslationRows.map((dicText) => (
                     <Box key={dicText.strRowID} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "minmax(100px, 0.3fr) minmax(0, 1fr)" }, alignItems: "center", gap: 1.5 }}>
                       <Typography component="label" htmlFor={`designation-translation-${dicText.strRowID}`} sx={{ fontSize: "12px", fontWeight: 600, color: "#0f172a" }}>

@@ -114,6 +114,8 @@ export default function DepartmentMasterPanel() {
   const [dicErrors, setDicErrors] = useState<Partial<Record<"code" | "name", string>>>({});
   const objNameInputRef = useRef<HTMLInputElement>(null);
   const objCodeInputRef = useRef<HTMLInputElement>(null);
+  const strPendingErrorFocusRef = useRef<"name" | "code" | null>(null);
+  const blnOpeningDepartmentRef = useRef(false);
   const [dicTextTranslationLoading, setDicTextTranslationLoading] = useState<Record<string, boolean>>({});
   const [dicLastTranslatedSourceByRow, setDicLastTranslatedSourceByRow] = useState<Record<string, string>>({});
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
@@ -440,6 +442,17 @@ export default function DepartmentMasterPanel() {
   const blnReadOnly = isDepartmentReadOnly();
   const blnCanChangeStatus = blnCanEdit;
 
+  useEffect(() => {
+    if (!blnDialogOpen || strMode === "view") return;
+    const strField = strPendingErrorFocusRef.current;
+    strPendingErrorFocusRef.current = null;
+    if (strField === "name") {
+      objNameInputRef.current?.focus();
+    } else if (strField === "code") {
+      objCodeInputRef.current?.focus();
+    }
+  }, [blnDialogOpen, dicErrors, strMode]);
+
   // Search is applied explicitly so typing in the filters does not re-query/re-page the grid on every keypress.
   const lstFilteredDepartments = useMemo(() => lstDepartments.filter((dicDepartment) => {
     const blnCodeMatch = !dicSearchApplied.code || dicDepartment.code.toLowerCase().includes(dicSearchApplied.code.toLowerCase());
@@ -452,8 +465,10 @@ export default function DepartmentMasterPanel() {
 
   function openDialog(strNextMode: DepartmentMode, dicDepartment?: DepartmentRecord) {
     // Reuses one dialog for add, edit, and read-only view modes.
+    if (blnOpeningDepartmentRef.current) return;
     setStrMode(strNextMode === "edit" && !blnCanEdit ? "view" : strNextMode);
     setStrEditingDepartmentId(dicDepartment?.id ?? "");
+    strPendingErrorFocusRef.current = null;
     setDicErrors({});
     setDicTextTranslationLoading({});
     setDicLastTranslatedSourceByRow({});
@@ -462,6 +477,7 @@ export default function DepartmentMasterPanel() {
       setBlnDialogOpen(true);
       return;
     }
+    blnOpeningDepartmentRef.current = true;
     setBlnSubmitting(true);
     departmentService.getDepartment(Number(dicDepartment.id))
       .then((dicRecord) => {
@@ -469,11 +485,15 @@ export default function DepartmentMasterPanel() {
         setBlnDialogOpen(true);
       })
       .catch((objError) => showToast(objError instanceof Error ? objError.message : dicDepartmentLabels.requestFailed, "error"))
-      .finally(() => setBlnSubmitting(false));
+      .finally(() => {
+        blnOpeningDepartmentRef.current = false;
+        setBlnSubmitting(false);
+      });
   }
 
   function closeDialog() {
     // Closes the form dialog without mutating persisted data.
+    strPendingErrorFocusRef.current = null;
     setBlnDialogOpen(false);
   }
 
@@ -539,12 +559,8 @@ export default function DepartmentMasterPanel() {
       dicNextErrors.name = dicDepartmentLabels.validationNameDuplicate;
     }
 
+    strPendingErrorFocusRef.current = dicNextErrors.name ? "name" : dicNextErrors.code ? "code" : null;
     setDicErrors(dicNextErrors);
-    if (dicNextErrors.name) {
-      objNameInputRef.current?.focus();
-    } else if (dicNextErrors.code) {
-      objCodeInputRef.current?.focus();
-    }
     return Object.keys(dicNextErrors).length === 0;
   }
 
@@ -570,7 +586,17 @@ export default function DepartmentMasterPanel() {
         closeDialog();
         showToast(strMode === "add" ? dicDepartmentLabels.saveSuccess : dicDepartmentLabels.updateSuccess);
       })
-      .catch((objError) => showToast(objError instanceof Error ? objError.message : dicDepartmentLabels.requestFailed, "error"))
+      .catch((objError) => {
+        const strMessage = objError instanceof Error ? objError.message : dicDepartmentLabels.requestFailed;
+        const blnCodeError = /department code/i.test(strMessage) && !/department name/i.test(strMessage);
+        const blnNameError = /department name/i.test(strMessage) && !/department code/i.test(strMessage);
+        if (blnCodeError || blnNameError) {
+          strPendingErrorFocusRef.current = blnCodeError ? "code" : "name";
+          setDicErrors({ [blnCodeError ? "code" : "name"]: strMessage });
+        } else {
+          showToast(strMessage, "error");
+        }
+      })
       .finally(() => setBlnSubmitting(false));
   }
 
@@ -631,7 +657,7 @@ export default function DepartmentMasterPanel() {
               disabled={!blnCanView && !blnCanEdit}
               data-control-id="department-master.list.row.name.button"
               onClick={() => openDialog(blnCanEdit ? "edit" : "view", dicDepartment)}
-              sx={{ color: "#0066df", cursor: "pointer", fontSize: "inherit", fontWeight: 500, textAlign: "left", "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}>
+              sx={{ color: "inherit", cursor: "pointer", fontSize: "inherit", fontWeight: 500, textAlign: "left", "&:hover": { color: "#0066df" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}>
               {dicDepartment.name}
             </Link>
           ),
@@ -754,7 +780,7 @@ export default function DepartmentMasterPanel() {
             testIdPrefix="department-master.list"
             showPaginationSummary
             hideRowClickHint
-            onRowDoubleClick={(dicRow) => {
+            onRowClick={(dicRow) => {
               if (blnRightsLoading || blnLoading || blnSubmitting || (!blnCanEdit && !blnCanView)) return;
               const dicDepartment = lstDepartments.find((dicItem) => dicItem.id === dicRow.id);
               if (dicDepartment) openDialog(blnCanEdit ? "edit" : "view", dicDepartment);
@@ -770,7 +796,11 @@ export default function DepartmentMasterPanel() {
                 ) : null}
               </Box>
             )}
-            getRowSx={(dicRow) => lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : undefined}
+            getRowSx={() => ({
+              backgroundColor: "#fff",
+              "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
+              "& td:nth-of-type(2):hover .MuiLink-root": { color: "#0066df" },
+            })}
             sx={{ p: 0, boxShadow: "none", background: "transparent" }}
           />
         )}
@@ -845,7 +875,7 @@ export default function DepartmentMasterPanel() {
         fullWidth={false}
         contentSx={{ overflowX: "hidden", overflowY: "auto", px: "20px", py: "12px", borderColor: "#e5edf5" }}
         nodeContent={
-          <Box sx={{ display: "grid", gap: "12px", "& .MuiOutlinedInput-root": { borderRadius: "6px", backgroundColor: "#fff", fontWeight: 400 }, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#cbd5e1" }, "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "primary.main", borderWidth: 2 }, "& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline": { borderColor: "error.main" }, "& .MuiFormHelperText-root.Mui-error": { margin: "4px 14px 0px 0px" } }}>
+          <Box sx={{ display: "grid", gap: "12px", "& .MuiOutlinedInput-root": { borderRadius: "6px", backgroundColor: "#fff", fontWeight: 400 }, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#cbd5e1" }, "& .MuiOutlinedInput-root.Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline": { borderColor: "#7896b0", borderWidth: 1 }, "& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline": { borderColor: "error.main" }, "& .MuiFormHelperText-root.Mui-error": { margin: "4px 14px 0px 0px" } }}>
             <Box
               sx={{
                 display: "grid",
@@ -917,7 +947,7 @@ export default function DepartmentMasterPanel() {
 
             {lstVisibleTranslationRows.length > 0 ? (
               <Box sx={{ border: "1px solid #e3edfc", borderRadius: "6px", overflow: "hidden", background: "#f7faff" }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap", p: 1.5, borderBottom: "1px solid #e3edfc", background: "#eff6ff" }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap", p: 1, borderBottom: "1px solid #e3edfc", background: "#eff6ff" }}>
                   <LanguageRoundedIcon sx={{ color: "#1473cf" }} />
                   <Box sx={{ flex: 1, minWidth: 180 }}>
                     <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>{t("language_translations", "Language Translations")}</Typography>
@@ -941,7 +971,7 @@ export default function DepartmentMasterPanel() {
                     </span>
                   </Tooltip>
                 </Box>
-                <Box sx={{ display: "grid", gap: 1.5, p: 2 }}>
+                <Box sx={{ display: "grid", gap: 1.5, p: 1 }}>
                   {lstVisibleTranslationRows.map((dicText) => (
                     <Box key={dicText.strRowID} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "minmax(100px, 0.3fr) minmax(0, 1fr)" }, alignItems: "center", gap: 1.5 }}>
                       <Typography component="label" htmlFor={`department-translation-${dicText.strRowID}`} sx={{ fontSize: "12px", fontWeight: 600, color: "#0f172a" }}>

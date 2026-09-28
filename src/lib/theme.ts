@@ -101,6 +101,9 @@ export const getTheme = (mode: PaletteMode, preset: ThemePreset = "ocean") => {
   const dicPreset = dicPresetMap[preset];
   const strPrimary = mode === "light" ? dicPreset.lightPrimary : dicPreset.darkPrimary;
   const strSecondary = mode === "light" ? dicPreset.lightSecondary : dicPreset.darkSecondary;
+  const strFieldLabel = mode === "light" ? "#334155" : "#cbd5e1";
+  const strFocusBorder = mode === "light" ? "#7896b0" : "#a8bfd5";
+  const strFocusRing = mode === "light" ? "rgba(147, 197, 253, 0.28)" : "rgba(147, 197, 253, 0.2)";
 
   return createTheme({
     palette: {
@@ -248,6 +251,16 @@ export const getTheme = (mode: PaletteMode, preset: ThemePreset = "ocean") => {
           variant: "outlined"
         }
       },
+      MuiInputLabel: {
+        styleOverrides: {
+          root: {
+            color: strFieldLabel,
+            "&.Mui-focused, &.Mui-error": {
+              color: strFieldLabel
+            }
+          }
+        }
+      },
       MuiFormLabel: {
         styleOverrides: {
           asterisk: {
@@ -270,7 +283,21 @@ export const getTheme = (mode: PaletteMode, preset: ThemePreset = "ocean") => {
       MuiOutlinedInput: {
         styleOverrides: {
           root: {
-            borderRadius: 12
+            borderRadius: 12,
+            "&.Mui-focused:not(.Mui-error)": {
+              boxShadow: `0 0 0 3px ${strFocusRing}`
+            },
+            "&.Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline": {
+              borderColor: strFocusBorder,
+              borderWidth: 1
+            },
+            "&.Mui-error, &.Mui-error.Mui-focused": {
+              boxShadow: "none"
+            },
+            "&.Mui-error .MuiOutlinedInput-notchedOutline, &.Mui-error.Mui-focused .MuiOutlinedInput-notchedOutline": {
+              borderColor: "#ef4444",
+              borderWidth: 1
+            }
           }
         }
       }

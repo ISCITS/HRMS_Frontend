@@ -34,7 +34,7 @@ const objBannerSelectSx = {
     fontWeight: 600,
   },
   "& .MuiInputLabel-root.Mui-focused": {
-    color: "var(--app-primary-color)",
+    color: "#334155",
   },
   "& .MuiSelect-select": {
     color: "#0f172a",

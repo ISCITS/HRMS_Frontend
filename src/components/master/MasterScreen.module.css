@@ -147,15 +147,124 @@
 .employeeSearchRow {
   align-items: stretch;
   display: grid;
-  gap: 10px;
-  grid-template-columns:
-    minmax(220px, 1fr)
-    minmax(220px, 1fr)
-    minmax(150px, 0.6fr)
-    minmax(150px, 0.6fr)
-    minmax(120px, 0.4fr)
-    auto
-    auto;
+  gap: 8px;
+  grid-template-columns: minmax(180px, 1fr) minmax(125px, 0.55fr) minmax(105px, 0.45fr) auto auto auto;
+}
+
+.employeeSearchRow > * {
+  min-width: 0;
+}
+
+.employeeSearchRow > button {
+  white-space: nowrap;
+}
+
+.employeeSearchField {
+  min-width: 0;
+}
+
+.employeeStatusVerified,
+.employeeStatusActive {
+  background: #dff3e5;
+  color: #267249;
+}
+
+.employeeStatusVerified,
+.employeeStatusActive,
+.employeeStatusPending,
+.employeeStatusInactive {
+  border-radius: 5px;
+}
+
+.employeeStatusPending {
+  background: #fff0cb;
+  color: #9a701c;
+}
+
+.employeeStatusInactive {
+  background: #fde2e2;
+  color: #aa3737;
+}
+
+.employeeMoreFilters {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  width: min(340px, calc(100vw - 32px));
+}
+
+.employeeMoreFiltersHeader,
+.employeeMoreFiltersActions,
+.employeeMoreFiltersActionButtons {
+  align-items: center;
+  display: flex;
+}
+
+.employeeMoreFiltersHeader,
+.employeeMoreFiltersActions {
+  justify-content: space-between;
+}
+
+.employeeMoreFiltersHeader > button {
+  color: #64748b;
+  margin: -8px -8px -8px 0;
+}
+
+.employeeMoreFiltersActions {
+  border-top: 1px solid var(--app-divider-color);
+  gap: 8px;
+  margin: 2px -18px -18px;
+  padding: 12px 18px;
+}
+
+.employeeMoreFiltersActionButtons {
+  gap: 8px;
+}
+
+.employeeMoreFiltersActionButtons > button {
+  min-height: 32px;
+}
+
+.employeeMoreFiltersClear {
+  color: var(--app-button-secondary-text) !important;
+  font-size: var(--app-button-font-size) !important;
+  font-weight: var(--app-button-font-weight) !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  text-transform: none !important;
+  white-space: nowrap;
+}
+
+.employeeDetailsDrawer {
+  width: min(420px, 100vw);
+}
+
+.employeeDetailsHeader {
+  align-items: flex-start;
+  border-bottom: 1px solid var(--app-divider-color);
+  display: flex;
+  justify-content: space-between;
+  padding: 20px;
+}
+
+.employeeDetailsContent {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.employeeDetailsField {
+  border-bottom: 1px solid var(--app-divider-color);
+  padding-bottom: 10px;
+}
+
+.employeeDetailsActions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
 }
 
 .userSearchRow {
@@ -670,7 +779,6 @@
 
 @media (max-width: 1200px) {
   .searchRow,
-  .employeeSearchRow,
   .userSearchRow,
   .allocationEntitySearchRow {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -708,7 +816,6 @@
 
 @media (max-width: 900px) {
   .searchRow,
-  .employeeSearchRow,
   .taxRegimeSearchRow,
   .allocationEntitySearchRow,
   .dialogGrid {
@@ -761,6 +868,18 @@
   .dialogFooter {
     padding-left: 20px !important;
     padding-right: 20px !important;
+  }
+}
+
+@media (max-width: 700px) {
+  .employeeSearchRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .employeeSearchRow {
+    grid-template-columns: 1fr;
   }
 }
 
