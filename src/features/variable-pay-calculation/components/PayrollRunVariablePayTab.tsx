@@ -4,7 +4,6 @@ import CalculateRoundedIcon from "@mui/icons-material/CalculateRounded";
 import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
-import LockOpenRoundedIcon from "@mui/icons-material/LockOpenRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import {
@@ -79,6 +78,7 @@ type ComponentEmployeeRow = {
 
 type PayrollRunVariablePayTabProps = {
   intPayrollRunID: number;
+  strView: "declaration" | "grid";
   onRunRefreshNeeded?: () => void;
   onValidationIssuesChanged?: (lstIssues: PayrollValidationResultRecord[]) => void;
 };
@@ -96,6 +96,7 @@ type PayrollRunVariablePayTabProps = {
 // intEmployeeSalaryComponentID is the real scoping key, not the entity alone).
 export default function PayrollRunVariablePayTab({
   intPayrollRunID,
+  strView,
   onRunRefreshNeeded,
   onValidationIssuesChanged,
 }: PayrollRunVariablePayTabProps) {
@@ -120,8 +121,10 @@ export default function PayrollRunVariablePayTab({
   // employee's own value, never shared with another row.
   const [dicPendingAdjustmentByKey, setDicPendingAdjustmentByKey] = useState<Record<string, string>>({});
   const [dicPendingRemarksByKey, setDicPendingRemarksByKey] = useState<Record<string, string>>({});
+  const [dicBulkValueByEntityID, setDicBulkValueByEntityID] = useState<Record<number, string>>({});
   const [setDirtyEmployeeSalaryComponentIDs, setSetDirtyEmployeeSalaryComponentIDs] = useState<Set<number>>(new Set());
   const [setExpandedEmployeeIDs, setSetExpandedEmployeeIDs] = useState<Set<number>>(new Set());
+  const [setExpandedEntityIDs, setSetExpandedEntityIDs] = useState<Set<number>>(new Set());
   const [objOverrideTarget, setObjOverrideTarget] = useState<VariablePayEmployeeCalculation | null>(null);
   const [strOverrideReason, setStrOverrideReason] = useState("");
   const [strOverrideError, setStrOverrideError] = useState<string | null>(null);
@@ -212,6 +215,27 @@ export default function PayrollRunVariablePayTab({
     );
   }, [objWorkspace]);
 
+  // Entity-first grouping for the Declaration view: one group per allocation entity, listing
+  // only the employees actually mapped to it, each with their own allocation %/allocated amount
+  // (derived, read-only) alongside their own editable adjustment % - the same
+  // dicPendingAdjustmentByKey state the grid view reads, so declaring here and reviewing on the
+  // Variable Pay tab is the same data, not a separate copy.
+  const lstEntityGroups = useMemo(
+    () =>
+      lstEntities.map((objEntity) => ({
+        objEntity,
+        lstEmployeeRows: lstComponentRows
+          .filter((objRow) => objEntity.intID in objRow.dicAllocationPercentByEntityID)
+          .map((objRow) => ({
+            objRow,
+            decAllocationPercent: objRow.dicAllocationPercentByEntityID[objEntity.intID],
+            decAllocatedAmount:
+              (Number(objRow.decBaseAmount) * Number(objRow.dicAllocationPercentByEntityID[objEntity.intID])) / 100,
+          })),
+      })),
+    [lstEntities, lstComponentRows],
+  );
+
   // Surface below-threshold/exception rows in the run's own Validation Summary tab too, not
   // just inline here - purely a display-layer merge, nothing is written to the shared payroll
   // validation pipeline, so Regular Payroll's validation results are untouched.
@@ -281,12 +305,22 @@ export default function PayrollRunVariablePayTab({
     });
   }
 
-  function employeeEntityLocked(objRow: ComponentEmployeeRow): boolean {
-    return Object.keys(objRow.dicAllocationPercentByEntityID).some((strEntityID) =>
-      ENTITY_VALUE_LOCKED_STATUSES.has(
-        strEntityStatusByKey[entityKey(objRow.intEmployeeSalaryComponentID, Number(strEntityID))] ?? "DRAFT",
-      ),
-    );
+  // Convenience bulk-fill for the Declaration view's per-entity header input: fills every
+  // employee mapped to this entity with the same starting %, still individually editable/
+  // overridable afterward in either view (same state, same cells).
+  function applyBulkAdjustmentToEntity(intEntityID: number, strValue: string, lstEmployeeRowsForEntity: ComponentEmployeeRow[]) {
+    for (const objRow of lstEmployeeRowsForEntity) {
+      if (!ENTITY_VALUE_LOCKED_STATUSES.has(strEntityStatusByKey[entityKey(objRow.intEmployeeSalaryComponentID, intEntityID)] ?? "DRAFT")) {
+        updateAdjustmentPercent(objRow.intEmployeeSalaryComponentID, intEntityID, strValue);
+      }
+    }
+  }
+
+  async function handleSaveAndCalculate() {
+    const blnSaveOk = await handleSaveDeclarations();
+    if (blnSaveOk) {
+      await handleCalculate();
+    }
   }
 
   // Saves this employee's full entity-adjustment set (every entity they're mapped to, not just
@@ -336,16 +370,18 @@ export default function PayrollRunVariablePayTab({
     }
   }
 
-  async function handleSaveDeclarations() {
+  // Returns whether it's safe for a caller (e.g. "Save & Calculate") to proceed - true both on
+  // an actual successful save and when there was nothing dirty to save (values already
+  // committed from an earlier action), false only on a real save failure.
+  async function handleSaveDeclarations(): Promise<boolean> {
     if (!objWorkspace?.intSalaryComponentID) {
-      return;
+      return false;
     }
     const lstDirtyRows = lstComponentRows.filter((objRow) =>
       setDirtyEmployeeSalaryComponentIDs.has(objRow.intEmployeeSalaryComponentID),
     );
     if (lstDirtyRows.length === 0) {
-      setStrError(t("no_adjustment_entered", "Enter at least one entity adjustment percentage before saving."));
-      return;
+      return true;
     }
     setBlnBusy(true);
     setStrError(null);
@@ -360,8 +396,10 @@ export default function PayrollRunVariablePayTab({
           : t("entity_values_save_success_many", `Entity adjustments saved for ${lstDirtyRows.length} employees.`),
       );
       await loadWorkspace();
+      return true;
     } catch (objErr) {
       setStrError((objErr as Error)?.message ?? t("entity_values_save_failed", "Unable to save entity adjustments."));
+      return false;
     } finally {
       setBlnBusy(false);
     }
@@ -483,6 +521,18 @@ export default function PayrollRunVariablePayTab({
     });
   }
 
+  function toggleExpandedEntity(intEntityID: number) {
+    setSetExpandedEntityIDs((objPrevious) => {
+      const objNext = new Set(objPrevious);
+      if (objNext.has(intEntityID)) {
+        objNext.delete(intEntityID);
+      } else {
+        objNext.add(intEntityID);
+      }
+      return objNext;
+    });
+  }
+
   function eligibilityTooltipFor(objCalc: VariablePayEmployeeCalculation, objComponent: VariablePayRunWorkspace["objSalaryComponent"]): string {
     if (objCalc.blnIsEligible || objCalc.blnEligibilityOverride) {
       return "";
@@ -520,8 +570,8 @@ export default function PayrollRunVariablePayTab({
   const blnAttendanceApplicable = Boolean(
     objComponent?.blnAttendanceEligibilityApplicable || objComponent?.blnAttendanceProrationApplicable,
   );
-  // expand + employee + base + entities + (attendance?) + eligible + calculated + final + status + actions
-  const intTotalColumnCount = 8 + lstEntities.length + (blnAttendanceApplicable ? 1 : 0);
+  // expand + employee + base + (attendance?) + eligible + calculated + status + actions
+  const intTotalColumnCount = 7 + (blnAttendanceApplicable ? 1 : 0);
   const intDirtyCount = setDirtyEmployeeSalaryComponentIDs.size;
 
   return (
@@ -549,6 +599,234 @@ export default function PayrollRunVariablePayTab({
             "This run's Variable Pay Type has no Allocation-Based salary component linked, so there is nothing to calculate here. Use the Manual / Import section below for ad-hoc amounts.",
           )}
         </Alert>
+      ) : strView === "declaration" ? (
+        <Paper sx={{ p: 1.5 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap={1.5} sx={{ mb: 1.5 }}>
+            <Box>
+              <Typography sx={{ fontWeight: 800, fontSize: "0.95rem" }}>{t("declaration_title", "Entity Declarations")}</Typography>
+              <Typography sx={{ color: "#64748b", fontSize: "0.8rem", mt: 0.25 }}>
+                {t(
+                  "declaration_help",
+                  "Declare each entity's adjustment % for the employee(s) mapped to it. Use \"Apply to all\" to fill everyone at once, then fine-tune any employee individually - each stays their own value.",
+                )}
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={1.5} alignItems="flex-start">
+              <TextField
+                size="small"
+                label={t("declaring_for_month", "Declaring For")}
+                type="month"
+                value={objWorkspace.dtPayrollMonth.slice(0, 7)}
+                disabled
+                helperText={t("declaring_for_month_help", "This run's own payroll month")}
+                InputLabelProps={{ shrink: true }}
+                sx={{ width: 170 }}
+              />
+              <Button
+                size="small"
+                variant="contained"
+                startIcon={<CalculateRoundedIcon />}
+                onClick={() => void handleSaveAndCalculate()}
+                disabled={blnBusy || lstComponentRows.length === 0}
+                data-control-id="payroll.run-detail.variable-pay.save-and-calculate.button"
+              >
+                {t("save_and_calculate", "Save & Calculate")}
+              </Button>
+            </Stack>
+          </Stack>
+
+          {lstEntityGroups.length === 0 ? (
+            <Typography sx={{ color: "#94a3b8" }}>
+              {t("no_entities_configured", "No allocation entities are configured for this component's entity type.")}
+            </Typography>
+          ) : (
+            <TableContainer sx={{ maxWidth: 300 }}>
+              <Table size="small" sx={{ width: "auto", tableLayout: "fixed" }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ width: 36, p: "6px 4px" }} />
+                    <TableCell sx={{ width: 110 }}>{t("unit", "Unit")}</TableCell>
+                    <TableCell align="right" sx={{ width: 150 }}>{t("declare_percentage", "Declare Percentage")}</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {lstEntityGroups.map(({ objEntity, lstEmployeeRows }) => {
+                    const blnMultiEmployee = lstEmployeeRows.length > 1;
+                    const blnExpanded = setExpandedEntityIDs.has(objEntity.intID);
+                    const objSingle = lstEmployeeRows[0];
+                    const blnSingleLocked =
+                      objSingle &&
+                      ENTITY_VALUE_LOCKED_STATUSES.has(
+                        strEntityStatusByKey[entityKey(objSingle.objRow.intEmployeeSalaryComponentID, objEntity.intID)] ?? "DRAFT",
+                      );
+                    return (
+                      <Fragment key={objEntity.intID}>
+                        <TableRow hover>
+                          <TableCell>
+                            {blnMultiEmployee ? (
+                              <IconButton size="small" onClick={() => toggleExpandedEntity(objEntity.intID)}>
+                                {blnExpanded ? <ExpandLessRoundedIcon fontSize="small" /> : <ExpandMoreRoundedIcon fontSize="small" />}
+                              </IconButton>
+                            ) : null}
+                          </TableCell>
+                          <TableCell>{objEntity.strEntityCode}</TableCell>
+                          {blnMultiEmployee ? (
+                            <TableCell align="right">
+                              <Stack direction="row" spacing={0.75} justifyContent="flex-end" alignItems="center">
+                                <TextField
+                                  size="small"
+                                  type="number"
+                                  placeholder={t("apply_to_all_percent", "% for all")}
+                                  value={dicBulkValueByEntityID[objEntity.intID] ?? ""}
+                                  onChange={(objEvent) =>
+                                    setDicBulkValueByEntityID((dicPrevious) => ({ ...dicPrevious, [objEntity.intID]: objEvent.target.value }))
+                                  }
+                                  disabled={!blnCanEditEntityValues || blnBusy}
+                                  inputProps={{
+                                    controlId: `payroll.run-detail.variable-pay.declaration-bulk-${objEntity.intID}.input`,
+                                    step: "0.0001",
+                                    style: { textAlign: "right" },
+                                  }}
+                                  sx={{ width: 100 }}
+                                />
+                                <Button
+                                  size="small"
+                                  disabled={!blnCanEditEntityValues || blnBusy || (dicBulkValueByEntityID[objEntity.intID] ?? "").trim() === ""}
+                                  onClick={() =>
+                                    applyBulkAdjustmentToEntity(
+                                      objEntity.intID,
+                                      dicBulkValueByEntityID[objEntity.intID] ?? "",
+                                      lstEmployeeRows.map((dicItem) => dicItem.objRow),
+                                    )
+                                  }
+                                  data-control-id={`payroll.run-detail.variable-pay.declaration-bulk-apply-${objEntity.intID}.button`}
+                                >
+                                  {t("apply_to_all", "Apply to all")}
+                                </Button>
+                              </Stack>
+                            </TableCell>
+                          ) : objSingle ? (
+                            <TableCell align="right">
+                              <TextField
+                                size="small"
+                                type="number"
+                                value={adjustmentPercentFor(objSingle.objRow.intEmployeeSalaryComponentID, objEntity.intID)}
+                                onChange={(objEvent) =>
+                                  updateAdjustmentPercent(objSingle.objRow.intEmployeeSalaryComponentID, objEntity.intID, objEvent.target.value)
+                                }
+                                disabled={!blnCanEditEntityValues || blnBusy || blnSingleLocked}
+                                inputProps={{
+                                  controlId: `payroll.run-detail.variable-pay.declaration-${objEntity.intID}-employee-${objSingle.objRow.intEmployeeID}.input`,
+                                  step: "0.0001",
+                                  style: { textAlign: "right" },
+                                }}
+                                sx={{ width: 110 }}
+                                InputProps={
+                                  blnSingleLocked
+                                    ? {
+                                        endAdornment: blnCanApproveEntityValues ? (
+                                          <Tooltip title={t("unlock_tooltip", "Unlock to edit again")} arrow>
+                                            <IconButton
+                                              size="small"
+                                              onClick={() => void handleUnlockEmployeeDeclaration(objSingle.objRow)}
+                                              disabled={blnBusy}
+                                              sx={{ p: 0.25 }}
+                                              data-control-id={`payroll.run-detail.variable-pay.declaration-unlock-${objEntity.intID}-employee-${objSingle.objRow.intEmployeeID}.button`}
+                                            >
+                                              <LockRoundedIcon sx={{ fontSize: 14 }} />
+                                            </IconButton>
+                                          </Tooltip>
+                                        ) : (
+                                          <LockRoundedIcon sx={{ fontSize: 14, color: "#94a3b8" }} />
+                                        ),
+                                      }
+                                    : undefined
+                                }
+                              />
+                            </TableCell>
+                          ) : null}
+                        </TableRow>
+                        {blnMultiEmployee ? (
+                          <TableRow>
+                            <TableCell colSpan={3} sx={{ p: 0, border: 0 }}>
+                              <Collapse in={blnExpanded} unmountOnExit>
+                                <Box sx={{ pl: 5, pr: 1.5, pb: 1, backgroundColor: "#f8fafc" }}>
+                                  <Table size="small" sx={{ width: "auto", tableLayout: "fixed" }}>
+                                    <TableHead>
+                                      <TableRow>
+                                        <TableCell sx={{ width: 200 }}>{t("employee", "Employee")}</TableCell>
+                                        <TableCell align="right" sx={{ width: 150 }}>{t("declare_percentage", "Declare Percentage")}</TableCell>
+                                      </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                      {lstEmployeeRows.map(({ objRow }) => {
+                                        const blnLocked = ENTITY_VALUE_LOCKED_STATUSES.has(
+                                          strEntityStatusByKey[entityKey(objRow.intEmployeeSalaryComponentID, objEntity.intID)] ?? "DRAFT",
+                                        );
+                                        return (
+                                          <TableRow key={objRow.intEmployeeID}>
+                                            <TableCell>
+                                              {objRow.strEmployeeName}
+                                              <Typography component="span" sx={{ color: "#94a3b8", fontSize: "0.75rem", ml: 0.5 }}>
+                                                ({objRow.strEmployeeCode})
+                                              </Typography>
+                                            </TableCell>
+                                            <TableCell align="right">
+                                              <TextField
+                                                size="small"
+                                                type="number"
+                                                value={adjustmentPercentFor(objRow.intEmployeeSalaryComponentID, objEntity.intID)}
+                                                onChange={(objEvent) =>
+                                                  updateAdjustmentPercent(objRow.intEmployeeSalaryComponentID, objEntity.intID, objEvent.target.value)
+                                                }
+                                                disabled={!blnCanEditEntityValues || blnBusy || blnLocked}
+                                                inputProps={{
+                                                  controlId: `payroll.run-detail.variable-pay.declaration-${objEntity.intID}-employee-${objRow.intEmployeeID}.input`,
+                                                  step: "0.0001",
+                                                  style: { textAlign: "right" },
+                                                }}
+                                                sx={{ width: 110 }}
+                                                InputProps={
+                                                  blnLocked
+                                                    ? {
+                                                        endAdornment: blnCanApproveEntityValues ? (
+                                                          <Tooltip title={t("unlock_tooltip", "Unlock to edit again")} arrow>
+                                                            <IconButton
+                                                              size="small"
+                                                              onClick={() => void handleUnlockEmployeeDeclaration(objRow)}
+                                                              disabled={blnBusy}
+                                                              sx={{ p: 0.25 }}
+                                                              data-control-id={`payroll.run-detail.variable-pay.declaration-unlock-${objEntity.intID}-employee-${objRow.intEmployeeID}.button`}
+                                                            >
+                                                              <LockRoundedIcon sx={{ fontSize: 14 }} />
+                                                            </IconButton>
+                                                          </Tooltip>
+                                                        ) : (
+                                                          <LockRoundedIcon sx={{ fontSize: 14, color: "#94a3b8" }} />
+                                                        ),
+                                                      }
+                                                    : undefined
+                                                }
+                                              />
+                                            </TableCell>
+                                          </TableRow>
+                                        );
+                                      })}
+                                    </TableBody>
+                                  </Table>
+                                </Box>
+                              </Collapse>
+                            </TableCell>
+                          </TableRow>
+                        ) : null}
+                      </Fragment>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </Paper>
       ) : (
         <Paper sx={{ p: 1.5 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1} sx={{ mb: 1 }}>
@@ -603,24 +881,20 @@ export default function PayrollRunVariablePayTab({
             </Typography>
           ) : null}
 
-          <TableContainer sx={{ maxHeight: 560 }}>
-            <Table size="small" stickyHeader>
+          <TableContainer sx={{ maxHeight: 560, maxWidth: 1050 }}>
+            <Table size="small" stickyHeader sx={{ width: "auto", tableLayout: "fixed" }}>
               <TableHead>
                 <TableRow>
-                  <TableCell />
-                  <TableCell>{t("employee", "Employee")}</TableCell>
-                  <TableCell align="right">{t("base_amount", "Base Amount")}</TableCell>
-                  {lstEntities.map((objEntity) => (
-                    <TableCell key={objEntity.intID} align="right">
-                      {objEntity.strEntityCode}
-                    </TableCell>
-                  ))}
-                  {blnAttendanceApplicable ? <TableCell align="right">{t("attendance_percent", "Attendance %")}</TableCell> : null}
-                  <TableCell>{t("eligible", "Eligible")}</TableCell>
-                  <TableCell align="right">{t("calculated_amount", "Calculated Amount")}</TableCell>
-                  <TableCell align="right">{t("final_amount", "Final Amount")}</TableCell>
-                  <TableCell>{t("status", "Status")}</TableCell>
-                  <TableCell>{t("actions", "Actions")}</TableCell>
+                  <TableCell sx={{ width: 36, p: "6px 4px" }} />
+                  <TableCell sx={{ width: 220 }}>{t("employee", "Employee")}</TableCell>
+                  <TableCell align="right" sx={{ width: 130 }}>{t("base_amount", "Base Amount")}</TableCell>
+                  {blnAttendanceApplicable ? (
+                    <TableCell align="right" sx={{ width: 120 }}>{t("attendance_percent", "Attendance %")}</TableCell>
+                  ) : null}
+                  <TableCell sx={{ width: 110 }}>{t("eligible", "Eligible")}</TableCell>
+                  <TableCell align="right" sx={{ width: 150 }}>{t("calculated_amount", "Calculated Amount")}</TableCell>
+                  <TableCell sx={{ width: 120 }}>{t("status", "Status")}</TableCell>
+                  <TableCell sx={{ width: 170 }}>{t("actions", "Actions")}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -634,7 +908,6 @@ export default function PayrollRunVariablePayTab({
                     blnIneligible;
                   const strApproveTooltip = objCalc ? eligibilityTooltipFor(objCalc, objComponent) : "";
                   const blnExpanded = setExpandedEmployeeIDs.has(objRow.intEmployeeID);
-                  const blnRowLocked = employeeEntityLocked(objRow);
                   return (
                     <Fragment key={objRow.intEmployeeID}>
                       <TableRow hover>
@@ -646,68 +919,12 @@ export default function PayrollRunVariablePayTab({
                           ) : null}
                         </TableCell>
                         <TableCell>
-                          <Stack spacing={0.25}>
-                            <Box>
-                              {objRow.strEmployeeName}
-                              <Typography component="span" sx={{ color: "#94a3b8", fontSize: "0.75rem", ml: 0.5 }}>
-                                ({objRow.strEmployeeCode})
-                              </Typography>
-                            </Box>
-                            {blnRowLocked ? (
-                              <Stack direction="row" spacing={0.5} alignItems="center">
-                                <Chip
-                                  size="small"
-                                  icon={<LockRoundedIcon sx={{ fontSize: 12 }} />}
-                                  label={t("declarations_approved", "Declarations Approved")}
-                                  color="success"
-                                  sx={{ height: 18, fontSize: "0.65rem" }}
-                                />
-                                {blnCanApproveEntityValues ? (
-                                  <Tooltip title={t("unlock_tooltip", "Unlock to edit this employee's entity adjustments again.")} arrow>
-                                    <IconButton
-                                      size="small"
-                                      onClick={() => void handleUnlockEmployeeDeclaration(objRow)}
-                                      disabled={blnBusy}
-                                      data-control-id={`payroll.run-detail.variable-pay.unlock-${objRow.intEmployeeSalaryComponentID}.button`}
-                                    >
-                                      <LockOpenRoundedIcon sx={{ fontSize: 14 }} />
-                                    </IconButton>
-                                  </Tooltip>
-                                ) : null}
-                              </Stack>
-                            ) : null}
-                          </Stack>
+                          {objRow.strEmployeeName}
+                          <Typography component="span" sx={{ color: "#94a3b8", fontSize: "0.75rem", ml: 0.5 }}>
+                            ({objRow.strEmployeeCode})
+                          </Typography>
                         </TableCell>
                         <TableCell align="right">{formatAmount(objRow.decBaseAmount)}</TableCell>
-                        {lstEntities.map((objEntity) => {
-                          const blnMapped = objEntity.intID in objRow.dicAllocationPercentByEntityID;
-                          const blnLocked = ENTITY_VALUE_LOCKED_STATUSES.has(
-                            strEntityStatusByKey[entityKey(objRow.intEmployeeSalaryComponentID, objEntity.intID)] ?? "DRAFT",
-                          );
-                          return (
-                            <TableCell key={objEntity.intID} align="right">
-                              {blnMapped ? (
-                                <TextField
-                                  size="small"
-                                  type="number"
-                                  value={adjustmentPercentFor(objRow.intEmployeeSalaryComponentID, objEntity.intID)}
-                                  onChange={(objEvent) =>
-                                    updateAdjustmentPercent(objRow.intEmployeeSalaryComponentID, objEntity.intID, objEvent.target.value)
-                                  }
-                                  disabled={!blnCanEditEntityValues || blnBusy || blnLocked}
-                                  inputProps={{
-                                    controlId: `payroll.run-detail.variable-pay.entity-${objEntity.intID}-employee-${objRow.intEmployeeID}.input`,
-                                    step: "0.0001",
-                                    style: { textAlign: "right" },
-                                  }}
-                                  sx={{ width: 100 }}
-                                />
-                              ) : (
-                                <Typography sx={{ color: "#cbd5e1" }}>-</Typography>
-                              )}
-                            </TableCell>
-                          );
-                        })}
                         {blnAttendanceApplicable ? (
                           <TableCell align="right">
                             {objCalc?.decPayableDaysPercent ? `${Number(objCalc.decPayableDaysPercent).toFixed(2)}%` : "-"}
@@ -731,7 +948,6 @@ export default function PayrollRunVariablePayTab({
                           )}
                         </TableCell>
                         <TableCell align="right">{objCalc ? formatAmount(objCalc.decCalculatedAmount) : "-"}</TableCell>
-                        <TableCell align="right">{objCalc ? formatAmount(objCalc.decApprovedAmount ?? objCalc.decFinalAmount) : "-"}</TableCell>
                         <TableCell>
                           {objCalc ? <Chip size="small" label={objCalc.strStatus} /> : <Chip size="small" label={t("not_calculated", "Not Calculated")} />}
                         </TableCell>
@@ -830,8 +1046,9 @@ export default function PayrollRunVariablePayTab({
       )}
 
       {/* Manual / Import - unchanged from the standalone Monthly Variable Pay screen, just
-          embedded here so nothing needs a separate page for the ad-hoc/import case. */}
-      {blnCanEditManual ? (
+          embedded here so nothing needs a separate page for the ad-hoc/import case. Only shown
+          on the Variable Pay (grid) view - Declaration is entity-adjustment-only. */}
+      {strView === "grid" && blnCanEditManual ? (
         <Paper sx={{ p: 1.5 }}>
           <Typography sx={{ fontWeight: 800, fontSize: "0.95rem", mb: 1 }}>
             {t("manual_import_title", "Manual Entry / Import")}

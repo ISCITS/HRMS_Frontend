@@ -5,6 +5,7 @@ import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded";
 import ErrorOutlineRoundedIcon from "@mui/icons-material/ErrorOutlineRounded";
 import GroupRoundedIcon from "@mui/icons-material/GroupRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
@@ -492,7 +493,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
   const [objActionsAnchor, setObjActionsAnchor] = useState<null | HTMLElement>(null);
   const [objAttendanceValidationResult, setObjAttendanceValidationResult] = useState<AttendanceValidateRunResult | null>(null);
   const [blnAttendanceBlockedFilterActive, setBlnAttendanceBlockedFilterActive] = useState(false);
-  const [strActiveTab, setStrActiveTab] = useState<"run" | "valid" | "review" | "variablePay">("run");
+  const [strActiveTab, setStrActiveTab] = useState<"run" | "valid" | "review" | "variablePay" | "declaration">("run");
   const refDefaultedTabForRunID = useRef<number | null>(null);
   const [lstRunResults, setLstRunResults] = useState<PayrollResultListRecord[]>([]);
   const [lstVariablePayValidationIssues, setLstVariablePayValidationIssues] = useState<PayrollValidationResultRecord[]>([]);
@@ -523,13 +524,13 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
       const dicRun = await payrollRunService.getPayrollRunById(strRunID);
       setObjRun(dicRun);
       setBlnIsLocked(dicRun.blnIsLocked);
-      // Land on the Variable Pay tab by default for a Separate Payroll run - that's the
-      // configuration step that comes before Run Summary/Validation for this run type. Only
-      // applies the default once per run (not on every refresh after a Calculate/Approve action).
+      // Land on the Declaration tab by default for a Separate Payroll run - declare the entity
+      // adjustments first, then move to Variable Pay/Run Summary/Validation. Only applies the
+      // default once per run (not on every refresh after a Calculate/Approve action).
       if (refDefaultedTabForRunID.current !== dicRun.intID) {
         refDefaultedTabForRunID.current = dicRun.intID;
         if (dicRun.strRunTypeCode === "VARIABLE_PAY") {
-          setStrActiveTab("variablePay");
+          setStrActiveTab("declaration");
         }
       }
       if (["PROCESSED", "FINALIZED"].includes(dicRun.strRunStatus) && dicRun.strRunTypeCode !== "VARIABLE_PAY") {
@@ -1274,6 +1275,16 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
         >
           {objRun.strRunTypeCode === "VARIABLE_PAY" ? (
             <Tab
+              value="declaration"
+              label={t("declaration_tab", "Declaration")}
+              icon={<EditNoteRoundedIcon sx={{ fontSize: 18 }} />}
+              iconPosition="start"
+              sx={{ fontSize: "0.82rem", fontWeight: 800, minHeight: 46, textTransform: "none" }}
+              data-controlid="payroll.run-detail.tab.declaration.button"
+            />
+          ) : null}
+          {objRun.strRunTypeCode === "VARIABLE_PAY" ? (
+            <Tab
               value="variablePay"
               label={t("variable_pay_tab", "Variable Pay")}
               icon={<PaidRoundedIcon sx={{ fontSize: 18 }} />}
@@ -1564,9 +1575,10 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
           />
         </Box>
         ) : null}
-        {strActiveTab === "variablePay" && objRun.strRunTypeCode === "VARIABLE_PAY" ? (
+        {(strActiveTab === "variablePay" || strActiveTab === "declaration") && objRun.strRunTypeCode === "VARIABLE_PAY" ? (
           <PayrollRunVariablePayTab
             intPayrollRunID={objRun.intID}
+            strView={strActiveTab === "declaration" ? "declaration" : "grid"}
             onRunRefreshNeeded={() => loadRun(false)}
             onValidationIssuesChanged={setLstVariablePayValidationIssues}
           />
