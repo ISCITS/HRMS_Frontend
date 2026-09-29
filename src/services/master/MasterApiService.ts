@@ -739,6 +739,7 @@ export type EmployeeStatutoryApiRecord = {
   strEsiCode: string | null;
   strSsnNumber: string | null;
   strPranNumber: string | null;
+  strPtRegistrationNumber: string | null;
   blnPfApplicable: boolean;
   blnEsiApplicable: boolean;
   blnPtApplicable: boolean;

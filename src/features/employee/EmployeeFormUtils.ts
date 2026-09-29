@@ -101,6 +101,7 @@ export const dicEmptyEmployeeStatutoryForm: EmployeeStatutoryFormValues = {
   strEsiCode: "",
   strSsnNumber: "",
   strPranNumber: "",
+  strPtRegistrationNumber: "",
   blnPfApplicable: false,
   blnEsiApplicable: false,
   blnPtApplicable: false
@@ -252,6 +253,7 @@ export function toEmployeeStatutoryFormValues(dicRecord: EmployeeStatutoryRecord
     strEsiCode: dicRecord.strEsiCode ?? "",
     strSsnNumber: dicRecord.strSsnNumber ?? "",
     strPranNumber: dicRecord.strPranNumber ?? "",
+    strPtRegistrationNumber: dicRecord.strPtRegistrationNumber ?? "",
     blnPfApplicable: dicRecord.blnPfApplicable,
     blnEsiApplicable: dicRecord.blnEsiApplicable,
     blnPtApplicable: dicRecord.blnPtApplicable

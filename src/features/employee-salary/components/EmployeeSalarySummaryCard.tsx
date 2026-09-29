@@ -45,9 +45,10 @@ type EmployeeSalarySummaryCardProps = {
   intEmployeeID?: number | null;
   blnHideOpenPageButton?: boolean;
   blnCompact?: boolean;
+  blnSidebar?: boolean;
 };
 
-export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPageButton = false, blnCompact = false }: EmployeeSalarySummaryCardProps) {
+export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPageButton = false, blnCompact = false, blnSidebar = false }: EmployeeSalarySummaryCardProps) {
   const objRouter = useRouter();
   const { t } = useEmployeeLabels();
   const [objSummary, setObjSummary] = useState<EmployeeSalarySummaryRecord | null>(null);
@@ -113,6 +114,46 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
       blnMounted = false;
     };
   }, [intEmployeeID]);
+
+  if (blnSidebar) {
+    return (
+      <Paper sx={{ height: "100%", minWidth: 0, borderRadius: "12px", border: "1px solid #dce7f5", p: { xs: 2, md: 2.25 }, boxShadow: "0 4px 18px rgba(31,61,110,0.04)", display: "flex", flexDirection: "column" }}>
+        <Typography sx={{ fontSize: "1rem", fontWeight: 800, color: "#172554", mb: 1.5 }}>{t("salary_summary_card_title", "Salary Summary")}</Typography>
+        {blnLoading ? (
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ flex: 1, color: "#64748b" }}>
+            <CircularProgress size={16} />
+            <Typography sx={{ fontSize: "0.8rem" }}>{t("salary_summary_card_loading", "Loading salary summary...")}</Typography>
+          </Stack>
+        ) : !objSalaryDetail ? (
+          <Typography sx={{ flex: 1, color: "#64748b", fontSize: "0.8rem" }}>{t("salary_summary_card_unavailable", "Salary details are not available.")}</Typography>
+        ) : (
+          <Stack spacing={0.75} sx={{ flex: 1 }}>
+            {[
+              { strLabel: t("salary_summary_card_ctc_annual", "CTC Annual"), decValue: dicBaseSummaryMetrics.decAnnualCtc },
+              { strLabel: t("salary_summary_card_gross_annual", "Gross Annual"), decValue: decGrossAnnual },
+              { strLabel: t("salary_summary_card_net_annual", "Net Annual"), decValue: decNetAnnual }
+            ].map(({ strLabel, decValue }) => (
+              <Stack key={strLabel} direction="row" alignItems="center" justifyContent="space-between" spacing={1} sx={{ flex: 1, px: 1.25, py: 0.9, bgcolor: "#f7f9ff", borderRadius: "5px" }}>
+                <Typography sx={{ fontSize: "var(--app-grid-row-font-size)", color: "#526581" }}>{strLabel}</Typography>
+                <Typography sx={{ fontSize: "var(--app-grid-row-font-size)", fontWeight: 700, color: "#172554", whiteSpace: "nowrap" }}>{formatCurrency(decValue)}</Typography>
+              </Stack>
+            ))}
+          </Stack>
+        )}
+        <Stack direction="row" alignItems="end" justifyContent="space-between" spacing={1} sx={{ mt: 1.5 }}>
+          <Box>
+            <Typography sx={{ color: "#64748b", fontSize: "var(--app-grid-row-font-size)" }}>{t("salary_summary_card_revised_on", "Salary Revised On")}</Typography>
+            <Typography sx={{ color: "#172554", fontSize: "var(--app-grid-row-font-size)", fontWeight: 700 }}>{formatSummaryDate(objSummary?.objCurrentSalarySnapshot?.dtEffectiveFrom)}</Typography>
+          </Box>
+          {!blnHideOpenPageButton ? (
+            <Button controlId="employee-salary.summary.open-page.button" className={styles.primaryButton} variant="contained" endIcon={<ArrowForwardRoundedIcon />} onClick={openSalaryPage} disabled={!intEmployeeID} sx={{ minWidth: 0, px: 1.25, minHeight: 32, fontSize: "0.7rem", whiteSpace: "nowrap", borderRadius: "5px" }}>
+              {t("salary_summary_card_open_page", "Open Salary Page")}
+            </Button>
+          ) : null}
+        </Stack>
+      </Paper>
+    );
+  }
 
   if (blnCompact) {
     return (

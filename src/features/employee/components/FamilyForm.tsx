@@ -1,189 +1,89 @@
 "use client";
 
 import type { InputHTMLAttributes } from "react";
-import {
-  Box,
-  Button,
-  Checkbox,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  FormControlLabel,
-  MenuItem,
-  Stack,
-  TextField
-} from "@mui/material";
-
-import type {
-  EmployeeFamilyDetailFormValues,
-  FamilyGender,
-  FamilyRelationship
-} from "@/features/employee/types";
-import styles from "@/components/master/MasterScreen.module.css";
+import { Box, Button, MenuItem, Switch, TextField, Typography } from "@mui/material";
+import type { EmployeeFamilyDetailFormValues, FamilyGender, FamilyRelationship } from "@/features/employee/types";
+import styles from "./FamilyDetailsTab.module.css";
 
 type FamilyFormProps = {
-  blnOpen: boolean;
   strMode: "add" | "edit";
   dicValues: EmployeeFamilyDetailFormValues;
   dicErrors: Partial<Record<keyof EmployeeFamilyDetailFormValues, string>>;
   blnSaving: boolean;
   fnOnClose: () => void;
-  fnOnChange: <TKey extends keyof EmployeeFamilyDetailFormValues>(
-    strField: TKey,
-    objValue: EmployeeFamilyDetailFormValues[TKey]
-  ) => void;
+  fnOnChange: <TKey extends keyof EmployeeFamilyDetailFormValues>(strField: TKey, objValue: EmployeeFamilyDetailFormValues[TKey]) => void;
   fnOnSubmit: () => void;
   fnTranslate: (strKey: string, strFallback?: string) => string;
 };
 
-const lstRelationships: FamilyRelationship[] = ["Father", "Mother", "Spouse", "Child", "Other"];
-const lstGenders: FamilyGender[] = ["Male", "Female", "Other"];
+const relationships: FamilyRelationship[] = ["Father", "Mother", "Spouse", "Child", "Other"];
+const genders: FamilyGender[] = ["Male", "Female", "Other"];
 
-export default function FamilyForm({
-  blnOpen,
-  strMode,
-  dicValues,
-  dicErrors,
-  blnSaving,
-  fnOnClose,
-  fnOnChange,
-  fnOnSubmit,
-  fnTranslate
-}: FamilyFormProps) {
-  const t = fnTranslate;
+export default function FamilyForm({ strMode, dicValues, dicErrors, blnSaving, fnOnClose, fnOnChange, fnOnSubmit, fnTranslate: t }: FamilyFormProps) {
+  const fieldSx = { "& .MuiOutlinedInput-root": { height: 36, bgcolor: "#fff", borderRadius: "5px", fontSize: 12 }, "& .MuiFormHelperText-root": { mx: 0, mt: 0.5, fontSize: 11 } };
+  const label = (value: string, required = false) => <span>{value}{required && <span className={styles.required}> *</span>}</span>;
 
   return (
-    <Dialog
-      open={blnOpen}
-      onClose={fnOnClose}
-      maxWidth={false}
-      PaperProps={{
-        sx: {
-          width: { xs: "calc(100vw - 24px)", sm: "650px" },
-          minWidth: { xs: "calc(100vw - 24px)", sm: "650px" },
-          maxWidth: "none !important",
-          m: { xs: "12px", sm: 2 }
-        }
-      }}
-      controlId="employee.family.dialog"
-    >
-      <DialogTitle>{strMode === "edit" ? t("family_form_edit_title", "Edit Family Member") : t("family_form_add_title", "Add Family Member")}</DialogTitle>
-      <DialogContent dividers>
-        <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" }, pt: 0.5 }}>
-          <TextField
-            label={t("field_name", "Name")}
-            inputProps={{ "controlId": "employee.family.name.input" }}
-            value={dicValues.strName}
-            onChange={(objEvent) => fnOnChange("strName", objEvent.target.value)}
-            error={Boolean(dicErrors.strName)}
-            helperText={dicErrors.strName}
-            controlId="employee.family.name.input"
-            fullWidth
-            required
-          />
-          <TextField
-            label={t("field_relationship", "Relationship")}
-            select
-            inputProps={{ "controlId": "employee.family.relationship.select" }}
-            value={dicValues.strRelationship}
-            onChange={(objEvent) => fnOnChange("strRelationship", objEvent.target.value as EmployeeFamilyDetailFormValues["strRelationship"])}
-            controlId="employee.family.relationship.select"
-            fullWidth
-          >
-            <MenuItem value="">{t("select_relationship", "Select Relationship")}</MenuItem>
-            {lstRelationships.map((strItem) => (
-              <MenuItem key={strItem} value={strItem}>{strItem}</MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            label={t("field_date_of_birth", "Date of Birth")}
-            type="date"
-            inputProps={{ "controlId": "employee.family.date-of-birth.input" }}
-            value={dicValues.dtDateOfBirth}
-            onChange={(objEvent) => fnOnChange("dtDateOfBirth", objEvent.target.value)}
-            InputLabelProps={{ shrink: true }}
-            controlId="employee.family.date-of-birth.input"
-            fullWidth
-          />
-          <TextField
-            label={t("field_gender", "Gender")}
-            select
-            inputProps={{ "controlId": "employee.family.gender.select" }}
-            value={dicValues.strGender}
-            onChange={(objEvent) => fnOnChange("strGender", objEvent.target.value as EmployeeFamilyDetailFormValues["strGender"])}
-            controlId="employee.family.gender.select"
-            fullWidth
-          >
-            <MenuItem value="">{t("select_gender", "Select Gender")}</MenuItem>
-            {lstGenders.map((strItem) => (
-              <MenuItem key={strItem} value={strItem}>{strItem}</MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            label={t("field_contact_number", "Contact Number")}
-            inputProps={{ "controlId": "employee.family.contact-number.input" }}
-            value={dicValues.strContactNumber}
-            onChange={(objEvent) => fnOnChange("strContactNumber", objEvent.target.value)}
-            error={Boolean(dicErrors.strContactNumber)}
-            helperText={dicErrors.strContactNumber}
-            controlId="employee.family.contact-number.input"
-            fullWidth
-          />
-          <TextField
-            label={t("field_occupation", "Occupation")}
-            inputProps={{ "controlId": "employee.family.occupation.input" }}
-            value={dicValues.strOccupation}
-            onChange={(objEvent) => fnOnChange("strOccupation", objEvent.target.value)}
-            controlId="employee.family.occupation.input"
-            fullWidth
-          />
-          <TextField
-            label={t("field_nominee_percentage", "Nominee Percentage")}
-            inputProps={{ "controlId": "employee.family.nominee-percentage.input" }}
-            value={dicValues.decNomineePercentage}
-            onChange={(objEvent) => fnOnChange("decNomineePercentage", objEvent.target.value)}
-            error={Boolean(dicErrors.decNomineePercentage)}
-            helperText={dicErrors.decNomineePercentage}
-            controlId="employee.family.nominee-percentage.input"
-            fullWidth
-            disabled={!dicValues.blnIsNominee}
-          />
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <FormControlLabel
-              control={<Checkbox checked={dicValues.blnIsDependent} onChange={(_, blnChecked) => fnOnChange("blnIsDependent", blnChecked)} inputProps={{ "controlId": "employee.family.dependent.checkbox" } as InputHTMLAttributes<HTMLInputElement>} />}
-              label={t("field_dependent", "Dependent")}
-            />
-            <FormControlLabel
-              control={<Checkbox checked={dicValues.blnIsNominee} onChange={(_, blnChecked) => fnOnChange("blnIsNominee", blnChecked)} inputProps={{ "controlId": "employee.family.nominee.checkbox" } as InputHTMLAttributes<HTMLInputElement>} />}
-              label={t("field_nominee", "Nominee")}
-            />
-          </Box>
-          <Box sx={{ gridColumn: { xs: "auto", md: "1 / -1" } }}>
-            <TextField
-              label={t("field_address", "Address")}
-              inputProps={{ "controlId": "employee.family.address.input" }}
-              value={dicValues.strAddress}
-              onChange={(objEvent) => fnOnChange("strAddress", objEvent.target.value)}
-              controlId="employee.family.address.input"
-              fullWidth
-              multiline
-              minRows={3}
-            />
-          </Box>
+    <Box className={styles.editor} data-controlid="employee.family.inline.editor">
+      <Box className={styles.formGrid}>
+        <Box className={styles.field}>
+          <label htmlFor="family-name">{label(t("field_name", "Full name"), true)}</label>
+          <TextField id="family-name" size="small" placeholder={t("family_name_placeholder", "Enter full name")} value={dicValues.strName} onChange={(event) => fnOnChange("strName", event.target.value)} error={Boolean(dicErrors.strName)} helperText={dicErrors.strName} inputProps={{ "data-controlid": "employee.family.name.input" }} sx={fieldSx} fullWidth />
         </Box>
-        {dicErrors.blnIsNominee ? (
-          <Stack sx={{ mt: 1 }}>
-            <span style={{ color: "#b91c1c", fontSize: "0.85rem" }}>{dicErrors.blnIsNominee}</span>
-          </Stack>
-        ) : null}
-      </DialogContent>
-      <DialogActions>
-        <Button className={styles.secondaryButton} onClick={fnOnClose} controlId="employee.family.cancel.button">{t("cancel", "Cancel")}</Button>
-        <Button className={styles.primaryButton} onClick={fnOnSubmit} disabled={blnSaving} controlId="employee.family.save.button">
-          {blnSaving ? t("saving", "Saving...") : strMode === "edit" ? t("update", "Update") : t("save", "Save")}
-        </Button>
-      </DialogActions>
-    </Dialog>
+        <Box className={styles.field}>
+          <label htmlFor="family-relationship">{label(t("field_relationship", "Relationship"), true)}</label>
+          <TextField id="family-relationship" select size="small" value={dicValues.strRelationship} onChange={(event) => fnOnChange("strRelationship", event.target.value as EmployeeFamilyDetailFormValues["strRelationship"])} error={Boolean(dicErrors.strRelationship)} helperText={dicErrors.strRelationship} inputProps={{ "data-controlid": "employee.family.relationship.select" }} sx={fieldSx} fullWidth SelectProps={{ displayEmpty: true }}>
+            <MenuItem value="" disabled>{t("select_relationship", "Select relationship")}</MenuItem>
+            {relationships.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
+          </TextField>
+        </Box>
+        <Box className={styles.field}>
+          <label htmlFor="family-dob">{label(t("field_date_of_birth", "Date of birth"), true)}</label>
+          <TextField id="family-dob" type="date" size="small" value={dicValues.dtDateOfBirth} onChange={(event) => fnOnChange("dtDateOfBirth", event.target.value)} error={Boolean(dicErrors.dtDateOfBirth)} helperText={dicErrors.dtDateOfBirth} inputProps={{ "data-controlid": "employee.family.date-of-birth.input" }} sx={fieldSx} fullWidth />
+        </Box>
+        <Box className={styles.field}>
+          <label htmlFor="family-gender">{label(t("field_gender", "Gender"), true)}</label>
+          <TextField id="family-gender" select size="small" value={dicValues.strGender} onChange={(event) => fnOnChange("strGender", event.target.value as EmployeeFamilyDetailFormValues["strGender"])} error={Boolean(dicErrors.strGender)} helperText={dicErrors.strGender} inputProps={{ "data-controlid": "employee.family.gender.select" }} sx={fieldSx} fullWidth SelectProps={{ displayEmpty: true }}>
+            <MenuItem value="" disabled>{t("select_gender", "Select gender")}</MenuItem>
+            {genders.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
+          </TextField>
+        </Box>
+        <Box className={styles.field}>
+          <label htmlFor="family-contact">{t("field_contact_number", "Contact number")}</label>
+          <TextField id="family-contact" size="small" placeholder={t("family_contact_placeholder", "Enter contact number")} value={dicValues.strContactNumber} onChange={(event) => fnOnChange("strContactNumber", event.target.value)} error={Boolean(dicErrors.strContactNumber)} helperText={dicErrors.strContactNumber} inputProps={{ "data-controlid": "employee.family.contact-number.input" }} sx={fieldSx} fullWidth />
+        </Box>
+        <Box className={styles.field}>
+          <label htmlFor="family-occupation">{t("field_occupation", "Occupation")}</label>
+          <TextField id="family-occupation" size="small" placeholder={t("family_occupation_placeholder", "Enter occupation")} value={dicValues.strOccupation} onChange={(event) => fnOnChange("strOccupation", event.target.value)} inputProps={{ "data-controlid": "employee.family.occupation.input" }} sx={fieldSx} fullWidth />
+        </Box>
+        <Box className={styles.toggleField}>
+          <label htmlFor="family-dependent">{t("field_dependent", "Dependent")}</label>
+          <Box className={styles.switchLine}><Switch id="family-dependent" size="small" checked={dicValues.blnIsDependent} onChange={(_, checked) => fnOnChange("blnIsDependent", checked)} inputProps={{ "data-controlid": "employee.family.dependent.checkbox" } as InputHTMLAttributes<HTMLInputElement>} /></Box>
+        </Box>
+        <Box className={styles.toggleField}>
+          <label htmlFor="family-nominee">{t("field_nominee", "Nominee")}</label>
+          <Box className={styles.switchLine}><Switch id="family-nominee" size="small" checked={dicValues.blnIsNominee} onChange={(_, checked) => fnOnChange("blnIsNominee", checked)} inputProps={{ "data-controlid": "employee.family.nominee.checkbox" } as InputHTMLAttributes<HTMLInputElement>} /></Box>
+        </Box>
+        <Box className={`${styles.field} ${styles.percentageField}`}>
+          <label htmlFor="family-percentage">{t("field_nominee_percentage", "Nominee percentage")}</label>
+          <TextField id="family-percentage" size="small" placeholder={t("family_percentage_placeholder", "Enter percentage")} value={dicValues.decNomineePercentage} onChange={(event) => fnOnChange("decNomineePercentage", event.target.value)} error={Boolean(dicErrors.decNomineePercentage || dicErrors.blnIsNominee)} helperText={dicErrors.decNomineePercentage || dicErrors.blnIsNominee || t("family_percentage_help", "Enabled when Nominee is selected.")} disabled={!dicValues.blnIsNominee} inputProps={{ "data-controlid": "employee.family.nominee-percentage.input", inputMode: "decimal" }} InputProps={{ endAdornment: <span className={styles.percentSign}>%</span> }} sx={fieldSx} fullWidth />
+        </Box>
+        <Box className={`${styles.field} ${styles.addressField}`}>
+          <label htmlFor="family-address">{t("field_address", "Address")}</label>
+          <TextField id="family-address" size="small" placeholder={t("family_address_placeholder", "Enter address (optional)")} value={dicValues.strAddress} onChange={(event) => fnOnChange("strAddress", event.target.value)} inputProps={{ "data-controlid": "employee.family.address.input" }} sx={fieldSx} fullWidth />
+        </Box>
+      </Box>
+      <Box className={styles.infoLine}>
+        <span className={styles.infoIcon}>i</span>
+        <span>{t("family_nominee_limit_help", "Total nominee allocation across all family members cannot exceed 100%.")}</span>
+      </Box>
+      <Box className={styles.formFooter}>
+        <Typography className={styles.requiredNote}>{t("family_required_note", "Required fields are marked")} <span className={styles.required}>*</span></Typography>
+        <Box className={styles.formActions}>
+          <Button variant="outlined" size="small" onClick={fnOnClose} data-controlid="employee.family.cancel.button">{t("cancel", "Cancel")}</Button>
+          <Button variant="contained" size="small" disableElevation onClick={fnOnSubmit} disabled={blnSaving} data-controlid="employee.family.save.button">{blnSaving ? t("saving", "Saving...") : strMode === "edit" ? t("update", "Update") : t("family_save_line", "Save line")}</Button>
+        </Box>
+      </Box>
+    </Box>
   );
 }

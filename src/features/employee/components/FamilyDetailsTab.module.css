@@ -1,0 +1,52 @@
+.root { color: #101d4b; }
+.heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.title { font-size: 16px !important; font-weight: 700 !important; line-height: 1.25 !important; color: #101d4b; }
+.subtitle { margin-top: 2px !important; font-size: 12px !important; color: #56709f; }
+.addButton { text-transform: none !important; border-radius: 5px !important; background: #edf4ff !important; color: #5d7cbb !important; box-shadow: none !important; font-size: 12px !important; }
+.addButton:hover { background: #dfebff !important; }
+.allocation { display: flex; align-items: center; gap: 12px; margin: 8px 0 12px; font-size: 11px; color: #5a71a6; }
+.allocation strong { color: #101d4b; white-space: nowrap; }
+.progress { width: 280px; max-width: 40vw; height: 12px; border: 1px solid #ccd8ea; border-radius: 20px; background: #e9eef7; overflow: hidden; }
+.progressFill { height: 100%; background: #4485f7; border-radius: inherit; transition: width .2s ease; }
+.tableShell { border: 1px solid #dbe6f7; border-radius: 7px; overflow: hidden; background: white; }
+.tableScroll { overflow-x: auto; }
+.tableHead, .summaryRow { display: grid; grid-template-columns: minmax(150px, 1.65fr) minmax(105px, 1.05fr) minmax(110px, 1.05fr) minmax(125px, 1.25fr) minmax(75px, .9fr) minmax(70px, .8fr) minmax(75px, .8fr); align-items: center; min-width: 760px; }
+.tableHead { padding: 8px 12px 7px; background: #f6f9ff; color: #152451; font-size: 11px; font-weight: 700; }
+.tableHead span, .summaryRow > span { padding: 0 5px; }
+.summaryRow { width: 100%; min-height: 31px; padding: 4px 12px; border: 0; background: #fff; color: #1b2a57; text-align: left; font: inherit; font-size: 11px; }
+button.summaryRow { cursor: pointer; }
+.activeBlock { border: 1px solid #4382ff; border-radius: 6px; margin: 0; overflow: hidden; }
+.activeBlock > .summaryRow { background: #eaf2ff; font-weight: 600; }
+.savedBlock { border-top: 1px solid #e5ecf7; }
+.savedBlock:hover > .summaryRow { background: #f7faff; }
+.nameCell { display: flex; align-items: center; gap: 3px; min-width: 0; }
+.nameCell > svg { color: #3269d6; margin-left: -5px; }
+.nameCell .MuiIconButton-root { padding: 1px; }
+.rowActions { display: flex; margin-left: auto; opacity: .65; }
+.rowActions button { padding: 2px; color: #5774ab; }
+.rowActions button:hover { opacity: 1; }
+.editor { background: linear-gradient(115deg, #f4f8ff, #eaf3ff 55%, #f6faff); }
+.formGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px 16px; padding: 11px 12px 7px; }
+.field { min-width: 0; }
+.field label, .toggleField label { display: block; margin-bottom: 3px; font-size: 11px; line-height: 1.25; font-weight: 700; color: #192b61; }
+.required { color: #ed3e45; }
+.switchLine { height: 36px; display: flex; align-items: center; }
+.switchLine :global(.MuiSwitch-root) { margin-left: -8px; }
+.percentageField { grid-column: 1; }
+.percentSign { color: #7788a7; font-size: 12px; }
+.addressField { grid-column: 2 / 5; }
+.infoLine { display: flex; align-items: center; gap: 5px; padding: 2px 12px 8px; font-size: 11px; color: #4f6ba3; }
+.infoIcon { display: inline-grid; place-items: center; width: 14px; height: 14px; border-radius: 50%; background: #7191c8; color: #fff; font-weight: 700; font-style: normal; font-size: 10px; }
+.formFooter { min-height: 38px; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 4px 10px 4px 12px; border-top: 1px solid #dce7f7; background: #fff; }
+.requiredNote { font-size: 11px !important; color: #5570aa; }
+.formActions { display: flex; gap: 6px; }
+.formActions button { min-width: 72px; min-height: 26px; padding: 2px 10px; border-radius: 4px; text-transform: none; font-size: 11px; }
+.emptyState { display: grid; justify-items: center; gap: 3px; padding: 8px 12px 12px; color: #607bad; font-size: 11px; }
+.emptyState p { font-size: 11px; }
+.emptyIcon { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #e8f0ff; color: #7798d0; }
+@media (max-width: 850px) { .formGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .percentageField, .addressField { grid-column: auto; grid-row: auto; } .addressField { grid-column: 1 / -1; } }
+@media (max-width: 500px) { .heading { align-items: stretch; flex-direction: column; } .addButton { align-self: flex-start; } .allocation { flex-wrap: wrap; } .progress { width: 100%; max-width: none; } .formGrid { grid-template-columns: 1fr; } .addressField { grid-column: auto; } }
+
+.toggleField { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.toggleField label { margin-bottom: 0; }
+.toggleField .switchLine :global(.MuiSwitch-root) { margin-left: 0; }

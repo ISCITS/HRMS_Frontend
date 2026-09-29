@@ -269,6 +269,7 @@ export const employeeService = {
       strEsiCode: dicValues.strEsiCode.trim() || null,
       strSsnNumber: dicValues.strSsnNumber.trim() || null,
       strPranNumber: dicValues.strPranNumber.trim() || null,
+      strPtRegistrationNumber: dicValues.strPtRegistrationNumber.trim() || null,
       blnPfApplicable: dicValues.blnPfApplicable,
       blnEsiApplicable: dicValues.blnEsiApplicable,
       blnPtApplicable: dicValues.blnPtApplicable

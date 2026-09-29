@@ -180,7 +180,7 @@ export default function EmployeeMasterListPanel() {
       id: String(dicEmployee.intID),
       details: <IconButton data-control-id={`employee.master-list.row.${dicEmployee.intID}.details.button`} aria-label={`${t("more_details", "More details")} ${dicEmployee.strFullName}`} size="small" onClick={() => setDicDrawerEmployee(dicEmployee)}><MoreHorizRoundedIcon fontSize="small" /></IconButton>,
       employeeCode: dicEmployee.strEmployeeCode,
-      fullName: <Link component={NextLink} href={`/employees/${blnCanEdit ? "edit" : "view"}/${dicEmployee.strRecordUUID}`} data-control-id={`employee.master-list.row.${dicEmployee.intID}.name.link`} underline="hover" sx={{ color: "#172554", fontSize: 13, fontWeight: 700, "&:hover": { color: "#1d4ed8" } }}>{dicEmployee.strFullName}</Link>,
+      fullName: <Link component={NextLink} href={`/employees/${blnCanEdit ? "edit" : "view"}/${dicEmployee.strRecordUUID}`} data-control-id={`employee.master-list.row.${dicEmployee.intID}.name.link`} underline="hover" sx={{ color: "inherit", cursor: "pointer", font: "inherit", textAlign: "left", "&:hover": { color: "#0066df", textDecoration: "underline" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}>{dicEmployee.strFullName}</Link>,
       fullNameSortValue: dicEmployee.strFullName,
       workEmail: dicEmployee.strWorkEmail || "-",
       mobileNumber: dicEmployee.strMobileNumber || "-",
@@ -197,7 +197,7 @@ export default function EmployeeMasterListPanel() {
   }), [blnCanEdit, lstFilteredEmployees, t]);
 
   const lstTableColumns = useMemo<CommonTableColumn<EmployeeTableRow>[]>(() => [
-    { field: "fullName", headerName: t("grid_employee_name", "Employee Name"), width: 160, sortAccessor: (dicRow) => dicRow.fullNameSortValue },
+    { field: "fullName", headerName: t("grid_employee_name", "Employee Name"), width: 220, sortAccessor: (dicRow) => dicRow.fullNameSortValue },
     { field: "employeeCode", headerName: t("grid_employee_code", dicConstant.employeeMaster.grid.employeeCode), width: 95 },
     { field: "department", headerName: t("grid_department", dicConstant.employeeMaster.grid.department), width: 105 },
     { field: "designation", headerName: t("grid_designation", dicConstant.employeeMaster.grid.designation), width: 125 },
@@ -273,7 +273,7 @@ export default function EmployeeMasterListPanel() {
             <IconButton data-control-id="employee.master-list.more-filters.close.button" aria-label={t("close", "Close")} size="small" onClick={closeMoreFilters}><ClearRoundedIcon fontSize="small" /></IconButton>
           </Box>
           <TextField data-control-id="employee.master-list.search.code.input" inputProps={{ "data-control-id": "employee.master-list.search.code.input" }} label={t("grid_employee_code", dicConstant.employeeMaster.grid.employeeCode)} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} size="small" fullWidth />
-          <CommonSearchableSelect controlId="employee.master-list.search.designation.select" label={t("field_designation", dicConstant.employeeMaster.fields.designation)} value={dicSearchDraft.designation === "All" ? "" : dicSearchDraft.designation} options={lstDesignationSelectOptions} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, designation: strValue === "" ? "All" : strValue }))} placeholder={t("all", "All")} fullWidth />
+          <CommonSearchableSelect controlId="employee.master-list.search.designation.select" label={t("field_designation", dicConstant.employeeMaster.fields.designation)} value={dicSearchDraft.designation === "All" ? "" : dicSearchDraft.designation} options={lstDesignationSelectOptions} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, designation: strValue === "" ? "All" : strValue }))} placeholder={t("all", "All")} size="small" fullWidth />
           <Box className={styles.employeeMoreFiltersActions}>
             <Button data-control-id="employee.master-list.more-filters.clear-all.button" className={styles.employeeMoreFiltersClear} onClick={() => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: "", designation: "All" }))}>{t("clear_all", "Clear all")}</Button>
             <Box className={styles.employeeMoreFiltersActionButtons}>
