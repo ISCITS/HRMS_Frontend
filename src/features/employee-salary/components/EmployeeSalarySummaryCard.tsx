@@ -117,8 +117,8 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
 
   if (blnSidebar) {
     return (
-      <Paper sx={{ height: "100%", minWidth: 0, borderRadius: "12px", border: "1px solid #dce7f5", p: { xs: 2, md: 2.25 }, boxShadow: "0 4px 18px rgba(31,61,110,0.04)", display: "flex", flexDirection: "column" }}>
-        <Typography sx={{ fontSize: "1rem", fontWeight: 800, color: "#172554", mb: 1.5 }}>{t("salary_summary_card_title", "Salary Summary")}</Typography>
+      <Paper sx={{ height: "100%", minWidth: 0, borderRadius: "12px", border: "1px solid #dce7f5", px: { xs: 2, md: 2.25 }, py: 1.25, boxShadow: "0 4px 18px rgba(31,61,110,0.04)", display: "flex", flexDirection: "column" }}>
+        <Typography sx={{ fontSize: "1rem", fontWeight: 800, color: "#172554", lineHeight: 1.2, mb: 1.5 }}>{t("salary_summary_card_title", "Salary Summary")}</Typography>
         {blnLoading ? (
           <Stack direction="row" spacing={1} alignItems="center" sx={{ flex: 1, color: "#64748b" }}>
             <CircularProgress size={16} />
