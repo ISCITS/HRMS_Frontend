@@ -2031,7 +2031,7 @@ export default function EmployeeEditorScreen({
               ) : null}
 
               {strVisibleActiveTab === "serviceContract" ? (
-                <Stack spacing={1.5} sx={{ bgcolor: "#fff" }}>
+                <Box sx={{ display: "grid", gap: 1.5, alignItems: "start", bgcolor: "#fff", gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" } }}>
                   {/* Each card keeps its existing form fields and can be opened independently. */}
                   <Box sx={{ bgcolor: "#fff", border: "1px solid #e2e8f0", borderRadius: "8px", boxShadow: "0 2px 8px rgba(15,23,42,0.04)", overflow: "hidden" }}>
                     <Button data-control-id="employee.editor.service.appointment.toggle" fullWidth aria-expanded={dicServiceSectionsOpen.appointment} aria-controls="employee-service-appointment" onClick={() => setDicServiceSectionsOpen((dicPrevious) => ({ ...dicPrevious, appointment: !dicPrevious.appointment }))} startIcon={<AssignmentTurnedInOutlinedIcon sx={{ color: "#405b94" }} />} endIcon={<ExpandMoreRoundedIcon sx={{ transform: dicServiceSectionsOpen.appointment ? "rotate(180deg)" : "none" }} />} sx={{ justifyContent: "flex-start", textTransform: "none", color: "#1e293b", fontWeight: 700, px: 2, py: 1.25, "& .MuiButton-endIcon": { ml: "auto" } }}>{t("section_appointment_joining", "Appointment & joining")}</Button>
@@ -2069,7 +2069,7 @@ export default function EmployeeEditorScreen({
                       </Box>
                     </Collapse>
                   </Box>
-                </Stack>
+                </Box>
               ) : null}
 
               {strVisibleActiveTab === "additionalEmployment" ? (
