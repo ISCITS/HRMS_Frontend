@@ -414,7 +414,7 @@
   flex-direction: column;
   overflow: hidden;
   padding: 10px;
-  min-height: 0;
+  min-height: 260px;
 }
 
 .detailPage {
@@ -441,6 +441,14 @@
   overflow-y: auto;
   scrollbar-gutter: stable;
   min-height: 0;
+}
+
+/* Use alongside .tableWrap when a DataTable needs a fixed scroll height (e.g. the run detail
+   page's Payslips panel) -- a same-file class beats an inline sx override reliably, while sx
+   alone races against CSS Modules injection order and loses (see .sectionBarTight above). */
+.tableWrapBounded {
+  max-height: 420px;
+  min-height: 300px;
 }
 
 .table {

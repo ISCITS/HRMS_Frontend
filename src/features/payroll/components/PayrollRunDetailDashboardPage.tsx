@@ -321,6 +321,7 @@ function DataTable<T>({
   strEmptyMessage,
   numMinWidth,
   objSx,
+  strWrapClassName,
 }: {
   lstColumns: DataTableColumn<T>[];
   lstRows: T[];
@@ -328,9 +329,13 @@ function DataTable<T>({
   strEmptyMessage: string;
   numMinWidth?: number;
   objSx?: Record<string, unknown>;
+  strWrapClassName?: string;
 }) {
   return (
-    <Box className={styles.tableWrap} sx={{ border: "1px solid #DCE4EF", borderRadius: "10px", ...objSx }}>
+    <Box
+      className={strWrapClassName ? `${styles.tableWrap} ${strWrapClassName}` : styles.tableWrap}
+      sx={{ border: "1px solid #DCE4EF", borderRadius: "10px", ...objSx }}
+    >
       <table className={styles.table} style={numMinWidth ? { minWidth: numMinWidth } : undefined}>
         {lstColumns.some((dicColumn) => dicColumn.numWidth) ? (
           <colgroup>
@@ -1505,7 +1510,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
             lstRows={lstPayslips}
             fnKey={(dicRow) => `${dicRow.intPayrollRunID}-${dicRow.intEmployeeID}`}
             strEmptyMessage={t("payslip_empty", "No processed payroll results are available for payslip generation.")}
-            objSx={{ maxHeight: 420, minHeight: 300 }}
+            strWrapClassName={styles.tableWrapBounded}
           />
         </Box>
         ) : null}
