@@ -318,7 +318,12 @@ export default function EmployeeMasterListPanel() {
               if (!dicEmployee) return;
               objRouter.push(`/employees/${blnCanEdit ? "edit" : "view"}/${dicEmployee.strRecordUUID}`);
             }}
-            getRowSx={() => ({ backgroundColor: "#fff", transition: "background-color 150ms ease", "&.MuiTableRow-hover:hover": { backgroundColor: "#f3f8ff" } })}
+            getRowSx={() => ({
+              backgroundColor: "#fff",
+              transition: "background-color 150ms ease",
+              "&.MuiTableRow-hover:hover": { backgroundColor: "#f3f8ff" },
+              "& td:first-of-type .MuiLink-root:hover": { textDecoration: "underline" }
+            })}
             sx={{ p: 0, boxShadow: "none", background: "transparent" }}
           />
         )}
