@@ -47,7 +47,7 @@ export default function CommonSearchableSelect<T extends CommonSearchableSelectO
   error = false,
   helperText,
   fullWidth = true,
-  size = "medium",
+  size = "small",
   showSearchIcon = true,
   className,
   sx,

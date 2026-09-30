@@ -149,12 +149,6 @@ export default function EmployeeMasterListPanel() {
   const blnCanExport = canDo("EMPLOYEE", "export");
   const blnReadOnly = isReadOnlyModule("EMPLOYEE");
 
-  const lstDepartmentOptions = useMemo(() => Array.from(new Set(
-    lstEmployees
-      .map((dicEmployee) => dicEmployee.strDepartmentName?.trim())
-      .filter((strDepartment): strDepartment is string => Boolean(strDepartment))
-  )).sort((strFirst, strSecond) => strFirst.localeCompare(strSecond)), [lstEmployees]);
-
   const lstDesignationOptions = useMemo(() => Array.from(new Set(
     lstEmployees
       .map((dicEmployee) => dicEmployee.strDesignationName?.trim())
@@ -166,9 +160,16 @@ export default function EmployeeMasterListPanel() {
     [lstDesignationOptions]
   );
 
+  const lstDepartmentSelectOptions = useMemo(() => Array.from(new Set(
+    lstEmployees
+      .map((dicEmployee) => dicEmployee.strDepartmentName?.trim())
+      .filter((strDepartment): strDepartment is string => Boolean(strDepartment))
+  )).sort((strFirst, strSecond) => strFirst.localeCompare(strSecond))
+    .map((strDepartment) => ({ intID: strDepartment, strLabel: strDepartment })), [lstEmployees]);
+
   const lstFilteredEmployees = useMemo(() => lstEmployees.filter((dicEmployee) => {
     const strSearch = dicSearchApplied.name.trim().toLowerCase();
-    const blnNameMatch = !strSearch || dicEmployee.strFullName.toLowerCase().includes(strSearch) || dicEmployee.strEmployeeCode.toLowerCase().includes(strSearch) || (dicEmployee.strDepartmentName ?? "").toLowerCase().includes(strSearch);
+    const blnNameMatch = !strSearch || dicEmployee.strFullName.toLowerCase().includes(strSearch) || dicEmployee.strEmployeeCode.toLowerCase().includes(strSearch);
     const blnCodeMatch = !dicSearchApplied.code || dicEmployee.strEmployeeCode.toLowerCase().includes(dicSearchApplied.code.toLowerCase());
     const blnDepartmentMatch = dicSearchApplied.department === "All" || dicEmployee.strDepartmentName?.trim() === dicSearchApplied.department;
     const blnDesignationMatch = dicSearchApplied.designation === "All" || dicEmployee.strDesignationName?.trim() === dicSearchApplied.designation;
@@ -180,7 +181,7 @@ export default function EmployeeMasterListPanel() {
       id: String(dicEmployee.intID),
       details: <IconButton data-control-id={`employee.master-list.row.${dicEmployee.intID}.details.button`} aria-label={`${t("more_details", "More details")} ${dicEmployee.strFullName}`} size="small" onClick={() => setDicDrawerEmployee(dicEmployee)}><MoreHorizRoundedIcon fontSize="small" /></IconButton>,
       employeeCode: dicEmployee.strEmployeeCode,
-      fullName: <Link component={NextLink} href={`/employees/${blnCanEdit ? "edit" : "view"}/${dicEmployee.strRecordUUID}`} data-control-id={`employee.master-list.row.${dicEmployee.intID}.name.link`} underline="hover" sx={{ color: "inherit", cursor: "pointer", font: "inherit", textAlign: "left", "&:hover": { color: "#0066df", textDecoration: "underline" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}>{dicEmployee.strFullName}</Link>,
+      fullName: <Link component={NextLink} href={`/employees/${blnCanEdit ? "edit" : "view"}/${dicEmployee.strRecordUUID}`} data-control-id={`employee.master-list.row.${dicEmployee.intID}.name.link`} underline="none" sx={{ color: "inherit", cursor: "pointer", font: "inherit", fontWeight: 500, textAlign: "left", "&:hover": { color: "#0066df", textDecoration: "underline" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}>{dicEmployee.strFullName}</Link>,
       fullNameSortValue: dicEmployee.strFullName,
       workEmail: dicEmployee.strWorkEmail || "-",
       mobileNumber: dicEmployee.strMobileNumber || "-",
@@ -197,27 +198,27 @@ export default function EmployeeMasterListPanel() {
   }), [blnCanEdit, lstFilteredEmployees, t]);
 
   const lstTableColumns = useMemo<CommonTableColumn<EmployeeTableRow>[]>(() => [
-    { field: "fullName", headerName: t("grid_employee_name", "Employee Name"), width: 220, sortAccessor: (dicRow) => dicRow.fullNameSortValue },
-    { field: "employeeCode", headerName: t("grid_employee_code", dicConstant.employeeMaster.grid.employeeCode), width: 95 },
-    { field: "department", headerName: t("grid_department", dicConstant.employeeMaster.grid.department), width: 105 },
-    { field: "designation", headerName: t("grid_designation", dicConstant.employeeMaster.grid.designation), width: 125 },
+    { field: "fullName", headerName: t("grid_employee_name", "Employee Name"), width: 200, sortAccessor: (dicRow) => dicRow.fullNameSortValue },
+    { field: "employeeCode", headerName: t("grid_employee_code", dicConstant.employeeMaster.grid.employeeCode), width: 130 },
+    { field: "department", headerName: t("grid_department", dicConstant.employeeMaster.grid.department), width: 130 },
+    { field: "designation", headerName: t("grid_designation", dicConstant.employeeMaster.grid.designation), width: 130 },
     {
       field: "joiningDate",
       headerName: t("grid_joining_date", dicConstant.employeeMaster.grid.joiningDate),
-      width: 95,
+      width: 130,
       sortAccessor: (dicRow) => dicRow.joiningDateSortValue
     },
-    { field: "workerType", headerName: t("grid_worker", "Worker Category"), width: 95 },
+    { field: "workerType", headerName: t("grid_worker", "Worker Category"), width: 130 },
     {
       field: "partialSave",
       headerName: t("grid_partial_save", "Profile Status"),
       sortable: true,
       sortAccessor: (dicRow) => dicRow.partialSaveSortValue,
       filterable: false,
-      width: 105
+      width: 130
     },
-    { field: "status", headerName: t("grid_status", dicConstant.employeeMaster.grid.status), sortAccessor: (dicRow) => dicRow.statusSortValue, filterable: false, width: 85 },
-    { field: "details", headerName: "", sortable: false, filterable: false, exportable: false, width: 40 }
+    { field: "status", headerName: t("grid_status", dicConstant.employeeMaster.grid.status), sortAccessor: (dicRow) => dicRow.statusSortValue, filterable: false, width: 130 },
+    { field: "details", headerName: "", sortable: false, filterable: false, exportable: false, width: 130 }
   ], [t]);
 
   return (
@@ -239,13 +240,9 @@ export default function EmployeeMasterListPanel() {
           </Typography>
         ) : null}
         <Box className={styles.employeeSearchRow} sx={{ alignItems: "end", "& .MuiButton-root": { height: "36px !important", minHeight: "36px !important", alignSelf: "flex-end" } }}>
-          <TextField aria-label={t("search_name_code_department", "Search by name, code or department...")} data-control-id="employee.master-list.search.name.input" inputProps={{ "data-control-id": "employee.master-list.search.name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={t("search_name_code_department", "Search by name, code or department...")} InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#6474a1" }} /></InputAdornment> }} sx={{ alignSelf: "end" }} fullWidth size="small" />
+          <TextField aria-label={t("search_name_code", "Search by name or code...")} data-control-id="employee.master-list.search.name.input" inputProps={{ "data-control-id": "employee.master-list.search.name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={t("search_name_code", "Search by name or code...")} InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#6474a1" }} /></InputAdornment> }} sx={{ alignSelf: "end" }} fullWidth size="small" />
           <Box className={styles.employeeSearchField}>
-            <Typography component="label" htmlFor="employee-search-department" sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{t("field_department", "Department")}</Typography>
-            <TextField id="employee-search-department" data-control-id="employee.master-list.search.department.select" select value={dicSearchDraft.department} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, department: objEvent.target.value }))} fullWidth size="small">
-              <MenuItem value="All">{t("select_department", "Select department")}</MenuItem>
-              {lstDepartmentOptions.map((strDepartment) => <MenuItem key={strDepartment} value={strDepartment}>{strDepartment}</MenuItem>)}
-            </TextField>
+            <CommonSearchableSelect controlId="employee.master-list.search.department.select" label={t("grid_department", dicConstant.employeeMaster.grid.department)} value={dicSearchDraft.department === "All" ? "" : dicSearchDraft.department} options={lstDepartmentSelectOptions} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, department: strValue === "" ? "All" : strValue }))} placeholder={t("all", "All")} size="small" fullWidth />
           </Box>
           <Box className={styles.employeeSearchField}>
             <Typography component="label" htmlFor="employee-search-status" sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{t("grid_status", "Status")}</Typography>

@@ -171,7 +171,6 @@ export default function DepartmentMasterPanel() {
     searchNamePlaceholder: t("search_name_placeholder"),
     searchCodePlaceholder: t("search_code_placeholder"),
     searchStatusPlaceholder: t("search_status_placeholder"),
-    bulkApplyingChanges: t("bulk_applying_changes"),
     bulkRowsSelected: t("bulk_rows_selected"),
     bulkActivate: t("bulk_activate"),
     bulkDeactivate: t("bulk_deactivate"),
@@ -657,7 +656,7 @@ export default function DepartmentMasterPanel() {
               disabled={!blnCanView && !blnCanEdit}
               data-control-id="department-master.list.row.name.button"
               onClick={() => openDialog(blnCanEdit ? "edit" : "view", dicDepartment)}
-              sx={{ color: "inherit", cursor: "pointer", fontSize: "inherit", fontWeight: 500, textAlign: "left", "&:hover": { color: "#0066df" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}>
+              sx={{ color: "#334155", cursor: "pointer", fontSize: "inherit", fontWeight: 500, textAlign: "left", "&:hover": { color: "#0066df", textDecoration: "underline" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}>
               {dicDepartment.name}
             </Link>
           ),
@@ -737,16 +736,11 @@ export default function DepartmentMasterPanel() {
             <MenuItem controlId="department-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
           </Box>
-          <Box className={styles.searchActions}><Button data-control-id="department-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
-          <Box className={styles.searchActions}><Button data-control-id="department-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
+          <Box className={styles.searchActions}><Button data-control-id="department-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }} disabled={blnSubmitting}>{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button data-control-id="department-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
         </Box>
 
-        {blnSubmitting ? (
-          <Box className={styles.bulkBar}>
-            <CircularProgress size={20} />
-            <Typography className={styles.bulkCount}>{dicDepartmentLabels.bulkApplyingChanges}</Typography>
-          </Box>
-        ) : lstSelectedIds.length > 0 && !blnReadOnly && (blnCanChangeStatus || blnCanDelete) ? (
+        {!blnSubmitting && lstSelectedIds.length > 0 && !blnReadOnly && (blnCanChangeStatus || blnCanDelete) ? (
           <Box className={styles.bulkBar}>
             <Typography className={styles.bulkCount}>{`${lstSelectedIds.length} ${dicDepartmentLabels.bulkRowsSelected}`}</Typography>
             {blnCanChangeStatus ? (
@@ -762,7 +756,7 @@ export default function DepartmentMasterPanel() {
         ) : null}
       </Box>
 
-      <Box className={styles.tableCard} sx={{ p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {!blnCanView && !blnRightsLoading && !blnLoading ? (
           <Box className={styles.emptyState}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", "Department access is not available for your user group.")}</Typography>
@@ -799,11 +793,17 @@ export default function DepartmentMasterPanel() {
             getRowSx={() => ({
               backgroundColor: "#fff",
               "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
-              "& td:nth-of-type(2):hover .MuiLink-root": { color: "#0066df" },
+              "& td:nth-of-type(2):hover .MuiLink-root": { color: "#0066df", textDecoration: "underline" },
             })}
             sx={{ p: 0, boxShadow: "none", background: "transparent" }}
           />
         )}
+        <BlockingLoader
+          blnOpen={blnSubmitting || blnLoading || blnRightsLoading}
+          strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing}
+          intZIndex={1400}
+          blnLocal
+        />
       </Box>
 
       <CommonMasterDialog
@@ -875,7 +875,7 @@ export default function DepartmentMasterPanel() {
         fullWidth={false}
         contentSx={{ overflowX: "hidden", overflowY: "auto", px: "20px", py: "12px", borderColor: "#e5edf5" }}
         nodeContent={
-          <Box sx={{ display: "grid", gap: "12px", "& .MuiOutlinedInput-root": { borderRadius: "6px", backgroundColor: "#fff", fontWeight: 400 }, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#cbd5e1" }, "& .MuiOutlinedInput-root.Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline": { borderColor: "#7896b0", borderWidth: 1 }, "& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline": { borderColor: "error.main" }, "& .MuiFormHelperText-root.Mui-error": { margin: "4px 14px 0px 0px" } }}>
+          <Box sx={{ display: "grid", gap: "12px", "& .MuiOutlinedInput-root": { borderRadius: "6px", backgroundColor: "#fff", fontWeight: 400 }, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#cbd5e1" }, "& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline": { borderColor: "error.main" }, "& .MuiFormHelperText-root.Mui-error": { margin: "4px 14px 0px 0px" } }}>
             <Box
               sx={{
                 display: "grid",
@@ -1011,12 +1011,6 @@ export default function DepartmentMasterPanel() {
         blnConfirmDisabled={blnSubmitting}
         onClose={closeConfirmDialog}
         onConfirm={executeConfirmedAction}
-      />
-
-      <BlockingLoader blnOpen={blnSubmitting || ((blnLoading || blnRightsLoading) && !blnDialogOpen)}
-        strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing}
-        intZIndex={1400}
-        blnLocal
       />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>

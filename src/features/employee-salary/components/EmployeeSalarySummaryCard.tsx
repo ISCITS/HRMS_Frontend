@@ -66,6 +66,8 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
         return !isCtcProvisionCategory(category) && category !== "deduction" && category !== "recovery" && !(category.includes("employer") && category.includes("contribution")) && !line.blnIsFlexiBenefit && !line.blnIsFlexiBasket;
       }).map(line => ({ strName: line.strComponentName || line.strComponentCode || "Component", decAmount: Number(line.decAmountMonthly || 0) * 12 }))
     : dicCalculationRows.grossAnnual;
+  const blnHasAssignedSalary = Boolean(objSalaryDetail?.objAssignedStructure);
+  const strSalaryUnassignedMessage = t("salary_summary_card_not_assigned", "Salary has not been assigned to the employee.");
   const dicCompactValueSx = {
     fontSize: "0.875rem",
     lineHeight: 1.43,
@@ -126,6 +128,8 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
           </Stack>
         ) : !objSalaryDetail ? (
           <Typography sx={{ flex: 1, color: "#64748b", fontSize: "0.8rem" }}>{t("salary_summary_card_unavailable", "Salary details are not available.")}</Typography>
+        ) : !blnHasAssignedSalary ? (
+          <Typography sx={{ flex: 1, color: "#64748b", fontSize: "0.8rem" }}>{strSalaryUnassignedMessage}</Typography>
         ) : (
           <Stack spacing={0.75} sx={{ flex: 1 }}>
             {[
@@ -141,12 +145,14 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
           </Stack>
         )}
         <Stack direction="row" alignItems="end" justifyContent="space-between" spacing={1} sx={{ mt: 1.5 }}>
-          <Box>
-            <Typography sx={{ color: "#64748b", fontSize: "var(--app-grid-row-font-size)" }}>{t("salary_summary_card_revised_on", "Salary Revised On")}</Typography>
-            <Typography sx={{ color: "#172554", fontSize: "var(--app-grid-row-font-size)", fontWeight: 700 }}>{formatSummaryDate(objSummary?.objCurrentSalarySnapshot?.dtEffectiveFrom)}</Typography>
-          </Box>
+          {blnHasAssignedSalary ? (
+            <Box>
+              <Typography sx={{ color: "#64748b", fontSize: "var(--app-grid-row-font-size)" }}>{t("salary_summary_card_revised_on", "Salary Revised On")}</Typography>
+              <Typography sx={{ color: "#172554", fontSize: "var(--app-grid-row-font-size)", fontWeight: 700 }}>{formatSummaryDate(objSummary?.objCurrentSalarySnapshot?.dtEffectiveFrom)}</Typography>
+            </Box>
+          ) : <Box />}
           {!blnHideOpenPageButton ? (
-            <Button controlId="employee-salary.summary.open-page.button" className={styles.primaryButton} variant="contained" endIcon={<ArrowForwardRoundedIcon />} onClick={openSalaryPage} disabled={!intEmployeeID} sx={{ minWidth: 0, px: 1.25, minHeight: 32, fontSize: "0.7rem", whiteSpace: "nowrap", borderRadius: "5px" }}>
+            <Button controlId="employee-salary.summary.open-page.button" className={styles.primaryButton} variant="contained" endIcon={<ArrowForwardRoundedIcon />} onClick={openSalaryPage} disabled={!intEmployeeID} sx={{ minWidth: 0, px: 1.25, minHeight: 32, fontSize: "0.7rem", whiteSpace: "nowrap", borderRadius: "5px", "& .MuiButton-endIcon svg": { color: "#fff" } }}>
               {t("salary_summary_card_open_page", "Open Salary Page")}
             </Button>
           ) : null}
@@ -172,6 +178,8 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
           </Stack>
         ) : !objSalaryDetail ? (
           <Typography sx={{ py: 0.8, color: "#64748b", typography: "caption" }}>{t("salary_summary_card_unavailable", "Salary details are not available.")}</Typography>
+        ) : !blnHasAssignedSalary ? (
+          <Typography sx={{ py: 0.8, color: "#64748b", typography: "caption" }}>{strSalaryUnassignedMessage}</Typography>
         ) : (
           <Stack spacing={0.9}>
             <Stack direction="row" spacing={0.9} alignItems="center" justifyContent="space-between">
@@ -251,6 +259,10 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
             <CircularProgress size={18} />
             <Typography>{t("salary_summary_card_loading", "Loading salary summary...")}</Typography>
           </Box>
+        ) : objSalaryDetail && !blnHasAssignedSalary ? (
+          <Typography sx={{ color: "#64748b", gridColumn: { md: "2 / 6" } }}>
+            {strSalaryUnassignedMessage}
+          </Typography>
         ) : (
           <>
             <Stack direction="row" spacing={1.1} alignItems="center">
@@ -279,7 +291,7 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
             endIcon={<ArrowForwardRoundedIcon />}
             onClick={openSalaryPage}
             disabled={!intEmployeeID}
-            sx={{ borderRadius: "12px", px: 2, minHeight: 40, whiteSpace: "nowrap", justifySelf: { md: "end" } }}
+            sx={{ borderRadius: "12px", px: 2, minHeight: 40, whiteSpace: "nowrap", justifySelf: { md: "end" }, "& .MuiButton-endIcon svg": { color: "#fff" } }}
           >
             {t("salary_summary_card_open_page", "Open Salary Page")}
           </Button>

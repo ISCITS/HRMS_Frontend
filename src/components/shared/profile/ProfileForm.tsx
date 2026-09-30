@@ -37,13 +37,6 @@ const dicInputSx = {
     "& .MuiOutlinedInput-notchedOutline": {
       borderColor: "#e2e8f0"
     },
-    "&.Mui-focused:not(.Mui-error)": {
-      backgroundColor: "#f8fafc",
-      boxShadow: "0 0 0 3px rgba(147,197,253,0.28)"
-    },
-    "&.Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline": {
-      borderColor: "#7896b0"
-    }
   }
 };
 

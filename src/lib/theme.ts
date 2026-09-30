@@ -102,8 +102,6 @@ export const getTheme = (mode: PaletteMode, preset: ThemePreset = "ocean") => {
   const strPrimary = mode === "light" ? dicPreset.lightPrimary : dicPreset.darkPrimary;
   const strSecondary = mode === "light" ? dicPreset.lightSecondary : dicPreset.darkSecondary;
   const strFieldLabel = mode === "light" ? "#334155" : "#cbd5e1";
-  const strFocusBorder = mode === "light" ? "#7896b0" : "#a8bfd5";
-  const strFocusRing = mode === "light" ? "rgba(147, 197, 253, 0.28)" : "rgba(147, 197, 253, 0.2)";
 
   return createTheme({
     palette: {
@@ -255,7 +253,7 @@ export const getTheme = (mode: PaletteMode, preset: ThemePreset = "ocean") => {
         styleOverrides: {
           root: {
             color: strFieldLabel,
-            "&.Mui-focused, &.Mui-error": {
+            "&.Mui-focused:not(.Mui-error)": {
               color: strFieldLabel
             }
           }
@@ -285,10 +283,10 @@ export const getTheme = (mode: PaletteMode, preset: ThemePreset = "ocean") => {
           root: {
             borderRadius: 12,
             "&.Mui-focused:not(.Mui-error)": {
-              boxShadow: `0 0 0 3px ${strFocusRing}`
+              boxShadow: "none"
             },
             "&.Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline": {
-              borderColor: strFocusBorder,
+              borderColor: strPrimary,
               borderWidth: 1
             },
             "&.Mui-error, &.Mui-error.Mui-focused": {

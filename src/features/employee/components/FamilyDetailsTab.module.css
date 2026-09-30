@@ -1,7 +1,7 @@
 .root { color: #101d4b; }
 .heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
-.title { font-size: 16px !important; font-weight: 700 !important; line-height: 1.25 !important; color: #101d4b; }
-.subtitle { margin-top: 2px !important; font-size: 12px !important; color: #56709f; }
+.title { font-size: 14px !important; font-weight: 700 !important; line-height: 1.35 !important; color: #172554; }
+.subtitle { margin-top: 2px !important; font-size: 11px !important; line-height: 1.45 !important; color: #64748b; }
 .addButton { text-transform: none !important; border-radius: 5px !important; background: #edf4ff !important; color: #5d7cbb !important; box-shadow: none !important; font-size: 12px !important; }
 .addButton:hover { background: #dfebff !important; }
 .allocation { display: flex; align-items: center; gap: 12px; margin: 8px 0 12px; font-size: 11px; color: #5a71a6; }

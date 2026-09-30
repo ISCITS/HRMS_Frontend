@@ -35,7 +35,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { DashboardHeaderModeContext } from "@/components/layout/DashboardHeaderModeContext";
 import BannerSearch from "@/components/layout/BannerSearch";
 import DynamicMenu from "@/components/navigation/DynamicMenu";
-import BlockingLoader, { BlockingLoaderViewportProvider } from "@/components/shared/BlockingLoader";
+import BlockingLoader, { BlockingLoaderViewportProvider, DottedLoader } from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { labelService } from "@/features/labels/services/labelService";
 import { resolveRouteModuleName } from "@/features/labels/utils/resolveRouteModuleName";
@@ -58,7 +58,7 @@ import { ApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { authApiService } from "@/services";
 
 const intDrawerWidth = 308;
-const intTopBarHeight = 55;
+const intTopBarHeight = 55.5;
 const intBannerHeight = 56;
 const intMenuZIndex = 1700;
 const intCollapsedMenuRailWidth = 60;
@@ -1038,6 +1038,18 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const blnLeavePlanEditorRoute = /^\/leave\/plans\/(?:new|\d+)$/.test(strLowerPathname);
   const blnLeaveAssignmentEditorRoute = /^\/leave\/plan-assignments\/\d+$/.test(strLowerPathname);
   const blnLeaveApprovalsRoute = strLowerPathname === "/leave/approvals" || strLowerPathname === "/hr/leave/requests-approvals";
+  const blnReferencedMasterRoute = [
+    "/grades",
+    "/cost-centers",
+    "/locations",
+    "/states",
+    "/countries",
+    "/banks",
+    "/employee-categories",
+    "/employee-function",
+    "/employment-type",
+    "/employee-type",
+  ].includes(strLowerPathname);
   const blnEmployeeReimbursementFormContext =
     Boolean(strLowerPathname.match(/^\/ess\/reimbursements(\/new|\/\d+(\/edit)?)?$/)) &&
     Boolean(objSearchParams.get("employee_id"));
@@ -1271,7 +1283,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     return (
       <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", backgroundColor: "#f8fafc" }}>
         <Stack spacing={2} alignItems="center">
-          <CircularProgress />
+          <DottedLoader />
           <Typography sx={{ color: "#64748b" }}>{tCommon("preparing_workspace", "Preparing your workspace...")}</Typography>
         </Stack>
       </Box>
@@ -1334,7 +1346,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           sx={{
             width: "100%",
             height: intBannerHeight,
-            mt: "7px",
+            // mt: "7px",
             display: "grid",
             placeItems: "center",
             flexShrink: 0,
@@ -1530,7 +1542,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
               <Box sx={{ flex: 1, minWidth: 0 }} />
 
-              {strPathname === "/employees" || strPathname === "/departments" || strPathname === "/designations" || blnEmployeeEditorRoute || blnDashboardRoute || blnEmployeeSalaryEditorRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute ? null : (
+              {strPathname === "/employees" || strPathname === "/departments" || strPathname === "/designations" || blnReferencedMasterRoute || blnEmployeeEditorRoute || blnDashboardRoute || blnEmployeeSalaryEditorRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute ? null : (
                 <Box
                   sx={{
                     display: "flex",

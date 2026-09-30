@@ -2,9 +2,11 @@
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, Checkbox, CircularProgress, MenuItem, Snackbar, Switch, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Checkbox, CircularProgress, InputAdornment, MenuItem, Snackbar, Switch, TextField, Tooltip, Typography } from "@mui/material";
 import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
 import { useRouter } from "next/navigation";
 
@@ -13,6 +15,7 @@ import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
+import MasterBreadcrumbs from "@/components/master/MasterBreadcrumbs";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -20,7 +23,7 @@ import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { authHelpers } from "@/lib/auth";
 import { type StateApiRecord, type StateFormOptionsApiRecord, masterApiService } from "@/services/master/MasterApiService";
-import { createInitialStateForm, stateService, toStateFormValues, type StateFormValues } from "@/features/employee/services/stateService";
+import { createEmptyStateTextRow, createInitialStateForm, stateService, toStateFormValues, type StateFormValues, type StateTextFormValue } from "@/features/employee/services/stateService";
 
 type Status = "Active" | "Inactive";
 type Mode = "add" | "edit" | "view";
@@ -60,6 +63,8 @@ export default function StateMasterPanel() {
   const [blnSubmitting, setBlnSubmitting] = useState(false);
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
+  const [dicTextTranslationLoading, setDicTextTranslationLoading] = useState<Record<string, boolean>>({});
+  const [dicLastTranslatedSourceByRow, setDicLastTranslatedSourceByRow] = useState<Record<string, string>>({});
 
   const dicCommonLabels = {
     cancel: t("cancel"),
@@ -83,14 +88,14 @@ export default function StateMasterPanel() {
     searchCodePlaceholder: t("search_code_placeholder"),
     searchStatusPlaceholder: t("search_status_placeholder"),
     tableCountry: t("table_country"),
-    tableName: t("table_name"),
-    tableCode: t("table_code"),
+    tableName: "State Name",
+    tableCode: "State Code",
     tableStatus: t("table_status"),
     tableActions: t("table_actions"),
     emptyMessage: t("empty_message"),
     fieldCountry: t("field_country"),
-    fieldName: t("field_name"),
-    fieldCode: t("field_code"),
+    fieldName: "State Name",
+    fieldCode: "State Code",
     fieldIsActive: t("field_is_active", "Is Active"),
     selectCountry: t("select_country"),
     saving: t("saving", "Saving..."),
@@ -135,6 +140,102 @@ export default function StateMasterPanel() {
   const blnReadOnly = isReadOnly();
   const blnCanChangeStatus = blnCanEdit;
   const intLanguageID = authHelpers.getLanguageID() ?? 1;
+  const intDefaultLanguageID = authHelpers.getLanguageID() ?? objFormOptions.lstLanguages[0]?.intID ?? 1;
+  const intSecondaryLanguageID = authHelpers.getSecondaryLanguageID();
+
+  function buildFixedLanguageRow(
+    intTargetLanguageID: number,
+    strStateName: string,
+    strStateCode: string,
+    lstExistingTexts: StateTextFormValue[],
+  ): StateTextFormValue {
+    const dicLanguage = objFormOptions.lstLanguages.find((dicItem) => dicItem.intID === intTargetLanguageID);
+    const dicExistingText = lstExistingTexts.find((dicText) => Number(dicText.intLanguageID) === intTargetLanguageID);
+    return {
+      ...createEmptyStateTextRow(),
+      ...dicExistingText,
+      intLanguageID: intTargetLanguageID,
+      strLanguageName: dicLanguage?.strLabel ?? dicExistingText?.strLanguageName ?? "",
+      strStateName,
+      strStateCode,
+    };
+  }
+
+  function ensureTenantLanguageRows(dicValues: StateFormValues) {
+    const dicDefaultRow = buildFixedLanguageRow(intDefaultLanguageID, dicValues.name, dicValues.code, dicValues.lstTexts);
+    if (!intSecondaryLanguageID) {
+      return { ...dicValues, lstTexts: [dicDefaultRow] };
+    }
+    const dicSecondaryExistingText = dicValues.lstTexts.find((dicText) => Number(dicText.intLanguageID) === intSecondaryLanguageID);
+    const dicSecondaryRow = buildFixedLanguageRow(
+      intSecondaryLanguageID,
+      dicSecondaryExistingText?.strStateName ?? "",
+      dicValues.code,
+      dicValues.lstTexts,
+    );
+    return { ...dicValues, lstTexts: [dicDefaultRow, dicSecondaryRow] };
+  }
+
+  function syncEnglishStateName(strStateName: string) {
+    setDicForm((dicPrevious) => {
+      const dicNext = ensureTenantLanguageRows(dicPrevious);
+      return {
+        ...dicNext,
+        lstTexts: dicNext.lstTexts.map((dicText, intIndex) => intIndex === 0 ? { ...dicText, strStateName } : dicText),
+      };
+    });
+  }
+
+  function syncStateCode(strStateCode: string) {
+    setDicForm((dicPrevious) => ({
+      ...dicPrevious,
+      lstTexts: dicPrevious.lstTexts.map((dicText) => ({ ...dicText, strStateCode })),
+    }));
+  }
+
+  function updateTextRow(strRowID: string, strField: keyof StateTextFormValue, objValue: string | number) {
+    setDicForm((dicPrevious) => ({
+      ...dicPrevious,
+      lstTexts: dicPrevious.lstTexts.map((dicText) => dicText.strRowID === strRowID ? { ...dicText, [strField]: objValue } : dicText),
+    }));
+  }
+
+  const lstVisibleTranslationRows = dicForm.lstTexts.filter((dicText) => Number(dicText.intLanguageID) !== intDefaultLanguageID);
+
+  async function translateTextRow(strRowID: string, intTargetLanguageID: number) {
+    const dicSelectedLanguage = objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === intTargetLanguageID);
+    const strSourceStateName = dicForm.name.trim();
+    if (!dicSelectedLanguage || intTargetLanguageID === intDefaultLanguageID || !strSourceStateName) {
+      return;
+    }
+    const dicCurrentRow = dicForm.lstTexts.find((dicText) => dicText.strRowID === strRowID);
+    if (dicCurrentRow?.strStateName.trim() && dicLastTranslatedSourceByRow[strRowID] === strSourceStateName) {
+      return;
+    }
+    setDicTextTranslationLoading((dicPrevious) => ({ ...dicPrevious, [strRowID]: true }));
+    try {
+      const strTranslatedName = await stateService.translateStateText(strSourceStateName, intDefaultLanguageID, intTargetLanguageID);
+      setDicForm((dicPrevious) => ({
+        ...dicPrevious,
+        lstTexts: dicPrevious.lstTexts.map((dicText) => dicText.strRowID === strRowID
+          ? { ...dicText, intLanguageID: intTargetLanguageID, strLanguageName: dicSelectedLanguage.strLabel, strStateName: strTranslatedName }
+          : dicText),
+      }));
+      setDicLastTranslatedSourceByRow((dicPrevious) => ({ ...dicPrevious, [strRowID]: strSourceStateName }));
+    } catch (objError) {
+      showToast(objError instanceof Error ? objError.message : dicLabels.requestFailed, "error");
+    } finally {
+      setDicTextTranslationLoading((dicPrevious) => ({ ...dicPrevious, [strRowID]: false }));
+    }
+  }
+
+  async function handleTranslateClick() {
+    const dicSecondaryRow = lstVisibleTranslationRows[0];
+    if (!dicSecondaryRow) {
+      return;
+    }
+    await translateTextRow(dicSecondaryRow.strRowID, Number(dicSecondaryRow.intLanguageID));
+  }
 
   async function loadData() {
     if (!canViewAny()) {
@@ -192,12 +293,12 @@ export default function StateMasterPanel() {
     setStrEditingId(dicRow?.id ?? "");
     setDicErrors({});
     if (!dicRow) {
-      setDicForm(createInitialStateForm());
+      setDicForm(ensureTenantLanguageRows(createInitialStateForm()));
       setBlnDialogOpen(true);
       return;
     }
     const dicDetail = await stateService.getState(Number(dicRow.id), intLanguageID);
-    setDicForm(toStateFormValues(dicDetail, objOptions));
+    setDicForm(ensureTenantLanguageRows(toStateFormValues(dicDetail, objOptions)));
     setBlnDialogOpen(true);
   }
 
@@ -244,9 +345,9 @@ export default function StateMasterPanel() {
     setBlnSubmitting(true);
     try {
       if (strMode === "add") {
-        await stateService.createState(dicForm);
+        await stateService.createState(ensureTenantLanguageRows(dicForm));
       } else {
-        await stateService.updateState(Number(strEditingId), dicForm);
+        await stateService.updateState(Number(strEditingId), ensureTenantLanguageRows(dicForm));
       }
       await loadData();
       closeDialog();
@@ -358,19 +459,30 @@ export default function StateMasterPanel() {
   ], [blnAllFilteredSelected, blnSomeFilteredSelected, dicLabels.tableActions, dicLabels.tableCode, dicLabels.tableCountry, dicLabels.tableName, dicLabels.tableStatus, lstFiltered.length]);
 
   return (
-    <Box className={styles.page}>
+    <Box className={`${styles.page} ${styles.referenceMasterPage}`}>
+      <MasterBreadcrumbs strCurrent="States" />
       <Box className={styles.topBar}>
         <Button controlId="state-master.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicLabels.backButton}</Button>
       </Box>
       <Box className={styles.controlsCard}>
         {strRightsError ? <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography> : null}
         {!blnRightsLoading && blnCanView && blnReadOnly ? <Typography sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>{t("read_only_mode", "You have view-only access for State.")}</Typography> : null}
-        <Box className={styles.searchRow}>
-          <TextField controlId="state-master.list.search-name.input" inputProps={{ "controlId": "state-master.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicLabels.searchNamePlaceholder} fullWidth />
-          <TextField controlId="state-master.list.search-code.input" inputProps={{ "controlId": "state-master.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicLabels.searchCodePlaceholder} fullWidth />
-          <TextField controlId="state-master.list.search-status.select" inputProps={{ "controlId": "state-master.list.search-status.select" }} select label={dicLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth><MenuItem controlId="state-master.list.search-status.all.option" value="All">All</MenuItem><MenuItem controlId="state-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem><MenuItem controlId="state-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem></TextField>
-          <Box className={styles.searchActions}><Button controlId="state-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
-          <Box className={styles.searchActions}><Button controlId="state-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
+        <Box className={styles.searchRow} sx={{ alignItems: "end", "& .MuiButton-root": { height: "36px !important", minHeight: "36px !important", alignSelf: "flex-end" } }}>
+          <Box><Typography component="label" htmlFor="state-master-search-name" sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{dicLabels.tableName}</Typography>
+            <TextField id="state-master-search-name" controlId="state-master.list.search-name.input" inputProps={{ "controlId": "state-master.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} fullWidth />
+          </Box>
+          <Box><Typography component="label" htmlFor="state-master-search-code" sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{dicLabels.tableCode}</Typography>
+            <TextField id="state-master-search-code" controlId="state-master.list.search-code.input" inputProps={{ "controlId": "state-master.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} fullWidth />
+          </Box>
+          <Box><Typography component="label" htmlFor="state-master-search-status" sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{dicLabels.tableStatus}</Typography>
+            <TextField id="state-master-search-status" controlId="state-master.list.search-status.select" inputProps={{ "controlId": "state-master.list.search-status.select" }} select value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} size="small" fullWidth>
+            <MenuItem value="All">All</MenuItem>
+            <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
+            <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
+          </TextField>
+          </Box>
+          <Box className={styles.searchActions}><Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnLoading || blnSubmitting} controlId="state-master.list.search.button">{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting} controlId="state-master.list.clear.button">{dicCommonLabels.clear}</Button></Box>
         </Box>
         {blnSubmitting ? (
           <Box className={styles.bulkBar}><CircularProgress size={20} /><Typography className={styles.bulkCount}>{t("bulk_applying_changes", "Applying changes...")}</Typography></Box>
@@ -382,7 +494,7 @@ export default function StateMasterPanel() {
         {!blnCanView && !blnRightsLoading && !blnLoading ? (
           <Box className={styles.emptyState}><Typography sx={{ fontWeight: 800, color: "#0f172a" }}>State access is not available for your user group.</Typography></Box>
         ) : (
-          <CommonTable columns={lstTableColumns} rows={lstTableRows} rowIdField="id" exportFileName="state-master" showExportOptions={blnCanExport} testIdPrefix="state-master.list" showPaginationSummary emptyMessage={dicLabels.emptyMessage} toolbarLeft={<Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>{blnCanAdd ? <Button controlId="state-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => void openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicLabels.addButton}</Button> : null}</Box>} getRowSx={(dicRow) => lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : undefined} sx={{ p: 0, boxShadow: "none", background: "transparent" }} />
+          <CommonTable columns={lstTableColumns.filter((dicColumn) => dicColumn.field !== "action")} rows={lstTableRows} rowIdField="id" exportFileName="state-master" showExportOptions={blnCanExport} testIdPrefix="state-master.list" showPaginationSummary hideRowClickHint onRowClick={(dicRow) => { const dicState = lstStates.find((dicItem) => dicItem.id === dicRow.id); if (dicState) void openDialog(blnCanEdit ? "edit" : "view", dicState); }} emptyMessage={dicLabels.emptyMessage} toolbarLeft={<Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>{blnCanAdd ? <Button controlId="state-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => void openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicLabels.addButton}</Button> : null}</Box>} getRowSx={(dicRow) => lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : undefined} sx={{ p: 0, boxShadow: "none", background: "transparent" }} />
         )}
       </Box>
       <CommonMasterDialog
@@ -395,10 +507,8 @@ export default function StateMasterPanel() {
         strPrimaryLabel={blnSubmitting ? dicLabels.saving : dicCommonLabels.save} 
         onPrimaryAction={saveState} blnPrimaryDisabled={blnSubmitting} 
         blnHidePrimary={strMode === "view"} 
-        paperClassName={styles.compactDialogPaper} 
+        paperClassName={styles.referenceMasterDialogPaper} 
         paperSx={{
-          width: "min(800px, calc(100vw - 32px))",
-          maxWidth: "800px",
           overflow: "hidden",
           m: 2,
         }}
@@ -413,7 +523,7 @@ export default function StateMasterPanel() {
         }
         contentSx={{ overflowX: "hidden", overflowY: "visible" }}
         nodeContent={
-          <Box sx={{ display: "grid", gap: 2, pt: 0.5 }}>
+          <Box sx={{ display: "grid", gap: 1.6, pt: 0.5, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" }, alignItems: "start" }}>
             <CommonSearchableSelect
               controlId="state-master.dialog.country.select"
               required
@@ -429,23 +539,74 @@ export default function StateMasterPanel() {
               error={Boolean(dicErrors.countryId)}
               helperText={dicErrors.countryId}
               fullWidth
+              sx={{
+                "& .MuiOutlinedInput-root": { minHeight: "56px !important" },
+                "& .MuiAutocomplete-input": { paddingBottom: "16.5px !important", paddingTop: "16.5px !important" },
+              }}
             />
             <TextField 
             controlId="state-master.dialog.name.input" 
             inputProps={{ "controlId": "state-master.dialog.name.input" }}
               required
               label={`${dicLabels.fieldName}`} value={dicForm.name} disabled={strMode === "view"}
-              onChange={(objEvent) => { setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value })); }} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth /><TextField controlId="state-master.dialog.code.input" inputProps={{ "controlId": "state-master.dialog.code.input" }}
+              onChange={(objEvent) => { const strValue = objEvent.target.value; setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined })); setDicForm((dicPrevious) => ({ ...dicPrevious, name: strValue })); syncEnglishStateName(strValue); }} error={Boolean(dicErrors.name)} helperText={dicErrors.name} fullWidth /><TextField controlId="state-master.dialog.code.input" inputProps={{ "controlId": "state-master.dialog.code.input" }}
                 required
                 label={`${dicLabels.fieldCode}`} 
                 value={dicForm.code} 
                 disabled={strMode === "view"}
                 onChange={(objEvent) => {
+                  const strValue = objEvent.target.value.toUpperCase();
                   setDicErrors((dicPrevious) => ({ ...dicPrevious, code: undefined }));
-                  setDicForm((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }));
+                  setDicForm((dicPrevious) => ({ ...dicPrevious, code: strValue }));
+                  syncStateCode(strValue);
                 }}
                 error={Boolean(dicErrors.code)} helperText={dicErrors.code} 
                 fullWidth />
+            {lstVisibleTranslationRows.length > 0 ? (
+              <Box sx={{ gridColumn: "1 / -1", border: "1px solid #e3edfc", borderRadius: "6px", overflow: "hidden", background: "#f7faff" }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap", p: 1, borderBottom: "1px solid #e3edfc", background: "#eff6ff" }}>
+                  <LanguageRoundedIcon sx={{ color: "#1473cf" }} />
+                  <Box sx={{ flex: 1, minWidth: 180 }}>
+                    <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>{t("language_translations", "Language Translations")}</Typography>
+                    <Typography sx={{ color: "#64748b", fontSize: "11px", mt: 0.25 }}>
+                      {t("language_translations_help", "Provide translated state names for the application languages you want to support.")}
+                    </Typography>
+                  </Box>
+                  <Tooltip title={t("translate_help", "Generate suggested translations using AI. Review before saving.")} arrow>
+                    <span>
+                      <Button className={styles.secondaryButton} variant="outlined" startIcon={<AutoAwesomeRoundedIcon />} onClick={() => void handleTranslateClick()} disabled={strMode === "view" || blnSubmitting || !dicForm.name.trim() || Boolean(dicTextTranslationLoading[lstVisibleTranslationRows[0]?.strRowID ?? ""])} sx={{ minHeight: 34, whiteSpace: "nowrap", background: "#fff" }}>
+                        {t("translate", "AI Translate")}
+                      </Button>
+                    </span>
+                  </Tooltip>
+                </Box>
+                <Box sx={{ display: "grid", gap: 1.5, p: 1 }}>
+                  {lstVisibleTranslationRows.map((dicText) => (
+                    <Box key={dicText.strRowID} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "minmax(100px, 0.3fr) minmax(0, 1fr)" }, alignItems: "center", gap: 1.5 }}>
+                      <Typography component="label" htmlFor={`state-translation-${dicText.strRowID}`} sx={{ fontSize: "12px", fontWeight: 600, color: "#0f172a" }}>
+                        {objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === Number(dicText.intLanguageID))?.strLabel ?? dicText.strLanguageName}
+                      </Typography>
+                      <TextField
+                        id={`state-translation-${dicText.strRowID}`}
+                        controlId="state-master.dialog.translated-name.input"
+                        placeholder={t("dialog_translated_name_placeholder", "Enter state name in {language}").replace("{language}", objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === Number(dicText.intLanguageID))?.strLabel ?? dicText.strLanguageName)}
+                        value={dicText.strStateName}
+                        inputProps={{ "controlId": "state-master.dialog.translated-name.input", "data-row-key": dicText.strRowID }}
+                        onChange={(objEvent) => updateTextRow(dicText.strRowID, "strStateName", objEvent.target.value)}
+                        disabled={strMode === "view"}
+                        sx={{ background: "#fff" }}
+                        InputProps={{
+                          endAdornment: dicTextTranslationLoading[dicText.strRowID] ? (
+                            <InputAdornment position="end"><CircularProgress size={18} sx={{ color: "#2563eb" }} /></InputAdornment>
+                          ) : undefined,
+                        }}
+                        fullWidth
+                      />
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            ) : null}
           </Box>
         }
       />

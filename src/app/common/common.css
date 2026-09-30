@@ -81,6 +81,41 @@
   --app-input-radius: 14px;
 }
 
+.app-dotted-loader-position {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 50%;
+}
+
+.app-dotted-loader-dot {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 11px;
+  height: 11px;
+  margin-left: -5.5px;
+  border-radius: 50%;
+  background-color: currentColor;
+  opacity: 0.12;
+  transform: scale(0.35);
+  transform-origin: center;
+  will-change: transform, opacity;
+  animation: app-dotted-loader-pulse 1s ease-in-out infinite;
+}
+
+@keyframes app-dotted-loader-pulse {
+  0%,
+  100% {
+    opacity: 0.12;
+    transform: scale(0.35);
+  }
+
+  40% {
+    opacity: 1;
+    transform: scale(1.35);
+  }
+}
+
 @media (max-width: 900px) {
   .app-theme {
     --app-card-radius: 18px;
@@ -261,12 +296,8 @@
   border-color: #cbd5e1;
 }
 
-.app-mui-text-field .MuiOutlinedInput-root.Mui-focused:not(.Mui-error) {
-  background-color: #f8fafc;
-}
-
 .app-mui-text-field .MuiOutlinedInput-root.Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline {
-  border-color: #7896b0;
+  border-color: var(--app-primary-color);
 }
 
 .app-mui-text-field .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline,
@@ -279,7 +310,7 @@
 }
 
 .app-mui-icon-button.MuiIconButton-root:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--app-primary-color);
   outline-offset: 2px;
 }
 
@@ -299,7 +330,7 @@
 }
 
 .app-mui-link-muted:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--app-primary-color);
   outline-offset: 3px;
   border-radius: 4px;
 }

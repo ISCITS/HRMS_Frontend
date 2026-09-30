@@ -215,14 +215,23 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
     return Boolean(objTarget.closest("button, input, a, label, select, textarea, [role='button'], [role='checkbox'], .MuiCheckbox-root, .MuiSwitch-root"));
   };
 
+  const hasActiveTextSelection = () => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+
+    const objSelection = window.getSelection();
+    return Boolean(objSelection && !objSelection.isCollapsed && objSelection.toString().trim().length > 0);
+  };
+
   const handleRowClick = (row: T, objEvent: MouseEvent<HTMLTableRowElement>) => {
-    if (!isInteractiveTarget(objEvent)) {
+    if (!isInteractiveTarget(objEvent) && !hasActiveTextSelection()) {
       onRowClick?.(row, objEvent);
     }
   };
 
   const handleRowDoubleClick = (row: T, objEvent: MouseEvent<HTMLTableRowElement>) => {
-    if (isInteractiveTarget(objEvent)) {
+    if (isInteractiveTarget(objEvent) || hasActiveTextSelection()) {
       return;
     }
 
@@ -522,7 +531,12 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
           <TableBody data-controlid={`${testIdPrefix}.table.body`}>
             {filteredAndSortedRows.length === 0 ? (
               <TableRow data-controlid={`${testIdPrefix}.table.empty-row`}>
-                <TableCell data-controlid={`${testIdPrefix}.table.empty-state`} colSpan={orderedColumns.length} align="center" sx={{ py: 4, color: "text.secondary" }}>
+                <TableCell
+                  data-controlid={`${testIdPrefix}.table.empty-state`}
+                  colSpan={orderedColumns.length}
+                  align="center"
+                  sx={{ py: 4, color: "#697586", textDecoration: "none !important" }}
+                >
                   {strResolvedEmptyMessage}
                 </TableCell>
               </TableRow>
@@ -547,6 +561,14 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                           borderBottom: "1px solid",
                           borderColor: "#edf1f6",
                           verticalAlign: "middle"
+                        },
+                        "& td:first-of-type .MuiLink-root": {
+                          color: "inherit",
+                          textDecoration: "none"
+                        },
+                        "&:hover td:first-of-type .MuiLink-root": {
+                          color: "#0066df",
+                          textDecoration: "none"
                         }
                       },
                       getRowSx?.(row) ?? {}

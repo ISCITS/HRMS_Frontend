@@ -303,6 +303,32 @@
     auto;
 }
 
+.costCenterSearchRow > div {
+  min-width: 0;
+}
+
+.costCenterSearchRow > div > :global(.MuiTypography-root) {
+  color: #111827;
+  line-height: 18px;
+  margin-bottom: 6px;
+}
+
+.costCenterSearchRow :global(.MuiOutlinedInput-root) {
+  background-color: #fff;
+  height: 36px;
+  min-height: 36px;
+}
+
+.costCenterSearchRow :global(.MuiOutlinedInput-input) {
+  padding-bottom: 8px;
+  padding-top: 8px;
+}
+
+.costCenterSearchRow :global(.MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline) {
+  border-color: var(--app-primary-color);
+  border-width: 1px;
+}
+
 .searchActions {
   display: flex;
   gap: 10px;
@@ -692,6 +718,305 @@
   max-width: 620px;
   width: min(92vw, 620px);
 }
+
+.referenceMasterPage .controlsCard {
+  border-radius: 10px;
+  box-shadow: none;
+  padding: 12px;
+}
+
+.referenceMasterPage .tableCard {
+  border-radius: 10px;
+  box-shadow: none;
+  padding: 0;
+}
+
+.referenceMasterPage .statusActive {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.referenceMasterPage .statusInactive {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.referenceMasterPage .searchRow {
+  align-items: end;
+}
+
+.referenceMasterPage .searchRow :global(.MuiInputBase-root) {
+  height: 36px;
+  min-height: 36px;
+}
+
+.referenceMasterPage .searchRow :global(.MuiInputBase-input) {
+  padding-bottom: 8px;
+  padding-top: 8px;
+}
+
+.referenceMasterPage .searchRow :global(.MuiButton-root) {
+  align-self: flex-end;
+  height: 36px;
+  min-height: 36px;
+}
+
+.referenceMasterDialogPaper.referenceMasterDialogPaper {
+  background:
+    linear-gradient(180deg, rgba(248, 251, 254, 0.98) 0%, rgba(255, 255, 255, 0.98) 52%, rgba(246, 250, 253, 0.98) 100%) !important;
+  border-radius: 10px !important;
+  margin: 16px;
+  max-width: 550px !important;
+  width: min(550px, calc(100vw - 32px)) !important;
+}
+
+.referenceMasterDialogPaper :global(.MuiDialogTitle-root) {
+  font-size: 16px;
+  font-weight: 700;
+  max-height: 50px;
+  padding: 10px 18px;
+}
+
+.referenceMasterDialogPaper :global(.MuiDialogContent-root) {
+  overflow-x: hidden;
+  overflow-y: auto !important;
+  padding: 12px 20px;
+}
+
+.referenceMasterDialogPaper :global(.MuiDialogActions-root) {
+  padding: 10px 20px;
+}
+
+.referenceMasterDialogPaper :global(.MuiOutlinedInput-root) {
+  background-color: #fff;
+  border-radius: 6px;
+}
+
+.referenceMasterDialogPaper :global(.MuiOutlinedInput-root:not(.MuiInputBase-multiline)) {
+  min-height: 40px;
+}
+
+.referenceMasterDialogPaper :global(.MuiOutlinedInput-root:not(.MuiInputBase-multiline) .MuiInputBase-input) {
+  padding-bottom: 9px;
+  padding-top: 9px;
+}
+
+.referenceMasterDialogPaper :global(.MuiButton-root) {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.referenceMasterDialogPaper .switchRow {
+  flex-wrap: nowrap;
+  gap: 8px;
+  min-height: auto;
+}
+
+.referenceMasterDialogPaper .switchLabel {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.referenceMasterDialogPaper .switchRow :global(.MuiSwitch-root) {
+  height: 22px !important;
+  overflow: visible !important;
+  padding: 0 !important;
+  width: 40px !important;
+}
+
+.referenceMasterDialogPaper .switchRow :global(.MuiSwitch-switchBase) {
+  color: #fff !important;
+  padding: 3px !important;
+}
+
+.referenceMasterDialogPaper .switchRow :global(.MuiSwitch-switchBase.Mui-checked) {
+  color: #fff !important;
+  transform: translateX(18px) !important;
+}
+
+.referenceMasterDialogPaper .switchRow :global(.MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track) {
+  background-color: #00b86b !important;
+  opacity: 1 !important;
+}
+
+.referenceMasterDialogPaper .switchRow :global(.MuiSwitch-thumb) {
+  height: 16px !important;
+  width: 16px !important;
+}
+
+.referenceMasterDialogPaper .switchRow :global(.MuiSwitch-track) {
+  background-color: #98a2b3 !important;
+  border-radius: 11px !important;
+  opacity: 1 !important;
+}
+
+.referenceTranslationHeader {
+  align-items: center !important;
+  background: #eff6ff;
+  border: 1px solid #e3edfc;
+  border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+  flex-wrap: nowrap !important;
+  gap: 12px !important;
+  padding: 8px;
+}
+
+.referenceTranslationHeader > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.referenceTranslationHeader > :first-child > :global(.MuiTypography-root:first-child) {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.referenceTranslationHeader > :first-child > :global(.MuiTypography-root:last-child) {
+  font-size: 11px;
+  line-height: 18px;
+  margin-top: 2px;
+}
+
+.referenceTranslationRows {
+  background: #f7faff;
+  border: 1px solid #e3edfc;
+  border-radius: 0 0 6px 6px;
+  padding: 8px;
+}
+
+.referenceTranslationRows > * {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+
+.referenceMasterPage .searchRow > :global(.MuiFormControl-root)::before {
+  color: #111827;
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  margin-bottom: 6px;
+}
+
+.referenceMasterPage .searchRow > :global(.MuiFormControl-root):nth-of-type(1)::before { content: "Name"; }
+.referenceMasterPage .searchRow > :global(.MuiFormControl-root):nth-of-type(2)::before { content: "Code"; }
+.bankMasterPage .searchRow > :global(.MuiFormControl-root):nth-of-type(1)::before { content: "Bank Name"; }
+.bankMasterPage .searchRow > :global(.MuiFormControl-root):nth-of-type(2)::before { content: "Bank Code"; }
+.referenceMasterPage .searchRow > :global(.MuiFormControl-root):nth-of-type(3)::before { content: "Status"; }
+.referenceMasterPage .searchRow > :global(.MuiFormControl-root) > :global(.MuiInputLabel-root) { display: none; }
+
+.referenceMasterPage .tableCard :global(tbody tr:not([data-controlid$=".table.empty-row"]):hover td:first-of-type) {
+  color: #0066df;
+  cursor: pointer;
+}
+
+.referenceMasterDialogPaper :global(.MuiFormControl-root > .MuiInputLabel-root) {
+  align-self: flex-start;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  margin-bottom: 4px;
+  max-width: 100%;
+  position: relative;
+  transform: none !important;
+}
+
+.referenceMasterDialogPaper :global(.MuiOutlinedInput-notchedOutline) { top: 0; }
+.referenceMasterDialogPaper :global(.MuiOutlinedInput-notchedOutline legend),
+.referenceMasterPage .searchRow :global(.MuiOutlinedInput-notchedOutline legend) {
+  display: none !important;
+  max-width: 0 !important;
+  padding: 0 !important;
+}
+.referenceMasterDialogPaper :global(.MuiFormHelperText-root) { margin-left: 0; }
+
+.referenceTranslationHeader::before {
+  color: #1473cf;
+  content: "◉";
+  font-size: 18px;
+}
+
+.referenceTranslationHeader :global(.MuiButton-root:first-of-type:not(:last-of-type)) { display: none; }
+
+/* Match the compact translation panel used by Department master. */
+.referenceTranslationHeader::before {
+  color: #1473cf;
+  content: "\1F310";
+  flex: 0 0 auto;
+  font-size: 19px;
+  line-height: 1;
+}
+
+.referenceTranslationHeader > :last-child {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.referenceTranslationHeader :global(.MuiButton-root:last-child) {
+  background: #fff !important;
+  border: 1px solid #9bbfea !important;
+  color: #1f5f9f !important;
+  min-height: 34px !important;
+  padding: 6px 12px !important;
+}
+
+.referenceTranslationHeader :global(.MuiButton-root:last-child)::before {
+  color: #1473cf;
+  content: "\2726";
+  font-size: 18px;
+  line-height: 1;
+  margin-right: 7px;
+}
+
+.referenceTranslationHeader :global(.MuiButton-root:last-child:hover) {
+  background: #f8fbff !important;
+  border-color: #6fa4de !important;
+}
+
+.referenceTranslationRows > * {
+  align-items: center !important;
+  column-gap: 14px !important;
+  grid-template-columns: minmax(100px, 0.3fr) minmax(0, 1fr) !important;
+}
+
+.referenceTranslationRows > *::before {
+  color: #0f172a;
+  content: "Hindi";
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.referenceTranslationRows > * > :global(.MuiFormControl-root:first-of-type),
+.referenceTranslationRows > * > :global(.MuiFormControl-root:last-of-type) { display: none; }
+
+.referenceTranslationRows > * > :global(.MuiFormControl-root:nth-of-type(2) > .MuiInputLabel-root) {
+  display: none;
+}
+
+.referenceTranslationRows > * > :global(.MuiFormControl-root:nth-of-type(2) .MuiOutlinedInput-notchedOutline legend) {
+  max-width: 0 !important;
+  padding: 0 !important;
+}
+
+@media (max-width: 599px) {
+  .referenceTranslationHeader {
+    align-items: flex-start !important;
+    flex-wrap: wrap !important;
+  }
+
+  .referenceTranslationHeader > :first-child {
+    min-width: calc(100% - 36px);
+  }
+
+  .referenceTranslationRows > * {
+    grid-template-columns: 1fr !important;
+  }
+}
+.referenceTranslationRows > * > :global(.MuiFormControl-root:nth-of-type(2) > .MuiInputLabel-root) { display: none; }
 
 .confirmDialogTitle {
   border-bottom: 1px solid var(--app-divider-color);

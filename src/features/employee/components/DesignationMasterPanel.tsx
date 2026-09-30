@@ -18,13 +18,14 @@ import {
   InputAdornment,
   Link,
   MenuItem,
+  Skeleton,
   Snackbar,
   Switch,
   TextField,
   Typography
 } from "@mui/material";
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
@@ -91,6 +92,55 @@ const dicEmptyForm = createInitialDesignationForm();
 const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
 const lstDefaultDesignations: DesignationRecord[] = [];
 const lstDesignationModuleCodes = ["DESIGNATION", "DESIGNATIONS"];
+const intDesignationSkeletonRows = 8;
+
+function DesignationGridSkeleton() {
+  return (
+    <Box
+      data-control-id="designation-master.list.skeleton"
+      sx={{
+        border: "1px solid #e8eef5",
+        borderRadius: "8px",
+        overflow: "hidden",
+        backgroundColor: "#fff",
+      }}
+    >
+      <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, px: 1.75, py: 1.25, flexWrap: "wrap" }}>
+        <Skeleton variant="rounded" width={142} height={36} />
+        <Box sx={{ display: "flex", gap: 1.25, alignItems: "center", flexWrap: "wrap" }}>
+          <Skeleton variant="rounded" width={64} height={36} />
+          <Skeleton variant="text" width={72} height={24} />
+          <Skeleton variant="rounded" width={116} height={32} />
+        </Box>
+      </Box>
+      <Box sx={{ minWidth: 980 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", bgcolor: "#edf3f9", borderTop: "1px solid #e8eef5", borderBottom: "1px solid #d9e3ee" }}>
+          {[0, 1, 2].map((intColumn) => (
+            <Box key={intColumn} sx={{ px: 2, py: 1 }}>
+              <Skeleton variant="text" width={intColumn === 2 ? 76 : 118} height={22} />
+            </Box>
+          ))}
+        </Box>
+        {Array.from({ length: intDesignationSkeletonRows }).map((_, intIndex) => (
+          <Box
+            key={intIndex}
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr 1fr",
+              borderBottom: "1px solid #edf1f6",
+              minHeight: 40,
+              alignItems: "center",
+            }}
+          >
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${62 + (intIndex % 3) * 8}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${36 + (intIndex % 2) * 10}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="rounded" width={72} height={22} /></Box>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+}
 
 // The API record includes backend naming; the panel works against a compact UI-facing record shape.
 function mapDesignationRecord(dicRecord: DesignationApiRecord): DesignationRecord {
@@ -114,6 +164,9 @@ export default function DesignationMasterPanel() {
   const [strEditingDesignationId, setStrEditingDesignationId] = useState("");
   const [dicForm, setDicForm] = useState<DesignationFormValues>(dicEmptyForm);
   const [dicErrors, setDicErrors] = useState<Partial<Record<"code" | "name", string>>>({});
+  const objNameInputRef = useRef<HTMLInputElement>(null);
+  const objCodeInputRef = useRef<HTMLInputElement>(null);
+  const strPendingErrorFocusRef = useRef<"name" | "code" | null>(null);
   const [dicTextTranslationLoading, setDicTextTranslationLoading] = useState<Record<string, boolean>>({});
   const [dicLastTranslatedSourceByRow, setDicLastTranslatedSourceByRow] = useState<Record<string, string>>({});
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
@@ -123,6 +176,7 @@ export default function DesignationMasterPanel() {
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
   const [dicRowLabelsByLanguageID, setDicRowLabelsByLanguageID] = useState<Record<number, Record<string, string>>>({});
+  const blnSearchPanelFrozen = blnLoading || blnRightsLoading || blnSubmitting;
 
   const dicCommonLabels = {
     cancel: t("cancel"),
@@ -408,8 +462,12 @@ export default function DesignationMasterPanel() {
       <Link component="button" type="button" underline="hover"
         disabled={!blnCanView && !blnCanEdit}
         data-control-id="designation-master.list.row.name.button"
-        onClick={() => openDialog(blnCanEdit ? "edit" : "view", dicDesignation)}
-        sx={{ color: "inherit", cursor: "pointer", fontSize: "inherit", fontWeight: 500, textAlign: "left", "&:hover": { color: "#0066df" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}>
+        onClick={() => {
+          const objSelection = window.getSelection();
+          if (objSelection && !objSelection.isCollapsed && objSelection.toString().trim()) return;
+          openDialog(blnCanEdit ? "edit" : "view", dicDesignation);
+        }}
+        sx={{ color: "#334155", cursor: "pointer", fontSize: "inherit", fontWeight: 500, textAlign: "left", userSelect: "text", WebkitUserSelect: "text", "&:hover": { color: "#0066df", textDecoration: "underline" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}>
         {dicDesignation.name}
       </Link>
     ),
@@ -503,6 +561,17 @@ export default function DesignationMasterPanel() {
     setDicForm((dicPrevious) => ensureTenantLanguageRows(dicPrevious));
   }, [intDefaultLanguageID, intSecondaryLanguageID, objFormOptions.lstLanguages.length]);
 
+  useEffect(() => {
+    if (!blnDialogOpen || strMode === "view") return;
+    const strField = strPendingErrorFocusRef.current;
+    strPendingErrorFocusRef.current = null;
+    if (strField === "code") {
+      objCodeInputRef.current?.focus();
+      return;
+    }
+    objNameInputRef.current?.focus();
+  }, [blnDialogOpen, dicErrors, strMode]);
+
   function openDialog(strNextMode: DesignationMode, dicDesignation?: DesignationRecord) {
     // Reuses one dialog for add, edit, and read-only view modes.
     setStrMode(strNextMode);
@@ -533,6 +602,7 @@ export default function DesignationMasterPanel() {
 
   function closeDialog() {
     // Closes the form dialog without changing persisted designation data.
+    strPendingErrorFocusRef.current = null;
     setBlnDialogOpen(false);
   }
 
@@ -598,6 +668,7 @@ export default function DesignationMasterPanel() {
       dicNextErrors.name = dicDesignationLabels.validationNameDuplicate;
     }
 
+    strPendingErrorFocusRef.current = dicNextErrors.name ? "name" : dicNextErrors.code ? "code" : null;
     setDicErrors(dicNextErrors);
     return Object.keys(dicNextErrors).length === 0;
   }
@@ -658,28 +729,33 @@ export default function DesignationMasterPanel() {
             {t("read_only_mode", "You have view-only access for Designation.")}
           </Typography>
         ) : null}
-        <Box className={styles.searchRow} sx={{ alignItems: "end", "& .MuiButton-root": { height: "36px !important", minHeight: "36px !important", alignSelf: "flex-end" } }}>
-          <Box><Typography component="label" htmlFor="designation-search-name" sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{dicDesignationLabels.tableName}</Typography>
-            <TextField id="designation-search-name" controlId="designation-master.list.search-name.input" inputProps={{ "controlId": "designation-master.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicDesignationLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} fullWidth />
-          </Box>
-          <Box><Typography component="label" htmlFor="designation-search-code" sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{dicDesignationLabels.tableCode}</Typography>
-            <TextField id="designation-search-code" controlId="designation-master.list.search-code.input" inputProps={{ "controlId": "designation-master.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicDesignationLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} fullWidth />
-          </Box>
-          <Box><Typography component="label" htmlFor="designation-search-status" sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{dicDesignationLabels.tableStatus}</Typography>
-            <TextField id="designation-search-status" controlId="designation-master.list.search-status.select" inputProps={{ "controlId": "designation-master.list.search-status.select" }} select value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} size="small" fullWidth>
+        <Box
+          className={styles.searchRow}
+          aria-busy={blnSearchPanelFrozen}
+          sx={{
+            alignItems: "end",
+            "& .MuiOutlinedInput-root": { borderRadius: "6px", backgroundColor: "#fff" },
+            "& .MuiOutlinedInput-notchedOutline": { borderColor: "#cbd5e1" },
+            "& .MuiButton-root": { height: "36px !important", minHeight: "36px !important", alignSelf: "flex-end" },
+          }}
+        >
+          <TextField id="designation-search-name" controlId="designation-master.list.search-name.input" inputProps={{ "controlId": "designation-master.list.search-name.input" }} label={dicDesignationLabels.tableName} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicDesignationLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnSearchPanelFrozen} fullWidth />
+          <TextField id="designation-search-code" controlId="designation-master.list.search-code.input" inputProps={{ "controlId": "designation-master.list.search-code.input" }} label={dicDesignationLabels.tableCode} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicDesignationLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnSearchPanelFrozen} fullWidth />
+          <TextField id="designation-search-status" controlId="designation-master.list.search-status.select" inputProps={{ "controlId": "designation-master.list.search-status.select" }} select label={dicDesignationLabels.tableStatus} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} size="small" disabled={blnSearchPanelFrozen} fullWidth>
             <MenuItem controlId="designation-master.list.search-status.all.option" value="All">All</MenuItem>
             <MenuItem controlId="designation-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
             <MenuItem controlId="designation-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
-          </Box>
-          <Box className={styles.searchActions}><Button data-control-id="designation-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
-          <Box className={styles.searchActions}><Button data-control-id="designation-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
+          <Box className={styles.searchActions}><Button data-control-id="designation-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }} disabled={blnSearchPanelFrozen}>{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button data-control-id="designation-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnSearchPanelFrozen}>{dicCommonLabels.clear}</Button></Box>
         </Box>
 
       </Box>
 
       <Box className={styles.tableCard} sx={{ p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
-        {!blnCanView && !blnRightsLoading && !blnLoading ? (
+        {(blnLoading || blnRightsLoading) && !blnDialogOpen ? (
+          <DesignationGridSkeleton />
+        ) : !blnCanView ? (
           <Box className={styles.emptyState}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>Designation access is not available for your user group.</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>Contact your administrator if you need designation visibility.</Typography>
@@ -706,7 +782,7 @@ export default function DesignationMasterPanel() {
             getRowSx={() => ({
               backgroundColor: "#fff",
               "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
-              "& td:first-of-type:hover .MuiLink-root": { color: "#0066df" },
+              "& td:first-of-type:hover .MuiLink-root": { color: "#0066df", textDecoration: "underline" },
             })}
             sx={{ p: 0, boxShadow: "none", background: "transparent" }}
           />
@@ -782,17 +858,16 @@ export default function DesignationMasterPanel() {
         fullWidth={false}
         contentSx={{ overflowX: "hidden", overflowY: "auto", px: "20px", py: "12px", borderColor: "#e5edf5" }}
         nodeContent={
-          <Box sx={{ display: "grid", gap: "12px", "& .MuiOutlinedInput-root": { borderRadius: "6px", backgroundColor: "#fff", fontWeight: 400 }, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#cbd5e1" }, "& .MuiOutlinedInput-root.Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline": { borderColor: "#7896b0", borderWidth: 1 }, "& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline": { borderColor: "error.main" }, "& .MuiFormHelperText-root.Mui-error": { margin: "4px 14px 0px 0px" } }}>
+          <Box sx={{ display: "grid", gap: "12px", "& .MuiOutlinedInput-root": { borderRadius: "6px", backgroundColor: "#fff", fontWeight: 400 }, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#cbd5e1" }, "& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline": { borderColor: "error.main" }, "& .MuiFormHelperText-root.Mui-error": { margin: "4px 14px 0px 0px" } }}>
             <Box
               sx={{
                 display: "grid",
                 columnGap: 1.6, rowGap: "12px",
                 gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
                 alignItems: "start",
-                "& .MuiInputLabel-root": { position: "relative", transform: "none", alignSelf: "flex-start", maxWidth: "100%", fontSize: "12px", fontWeight: 600, lineHeight: 1.5, mb: "4px" },
-                // External labels do not need the floating-label outline offset.
-                "& .MuiOutlinedInput-notchedOutline": { top: 0 },
-                "& .MuiOutlinedInput-notchedOutline legend": { display: "none" },
+                "& .MuiInputLabel-root": { fontSize: "12px", fontWeight: 600 },
+                "& .MuiInputLabel-root.MuiInputLabel-shrink": { backgroundColor: "#fff", px: 0 },
+                "& .MuiOutlinedInput-notchedOutline legend > span": { paddingRight: 0 },
               }}
             >
               {strMode === "add" ? (
@@ -800,19 +875,18 @@ export default function DesignationMasterPanel() {
                   <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>
                     {t("basic_information", "Basic Information")}
                   </Typography>
-                  <Typography sx={{ fontSize: "11px", color: "#64748b", mt: 0.25 }}>
+                  <Typography sx={{ fontSize: "11px", color: "#64748b", mt: 0.25, mb: 1 }}>
                     {t("basic_information_help", "Create a new designation for your organisation.")}
                   </Typography>
                 </Box>
               ) : null}
               <TextField
                 controlId="designation-master.dialog.name.input"
-
+                inputRef={objNameInputRef}
                 autoFocus={strMode !== "view"}
                 label={dicDesignationLabels.fieldName}
                 placeholder={t("dialog_name_placeholder", "Enter designation name")}
                 size="small"
-                InputLabelProps={{ shrink: true }}
                 required
                 value={dicForm.name}
                 inputProps={{ "controlId": "designation-master.dialog.name.input" }}
@@ -830,11 +904,10 @@ export default function DesignationMasterPanel() {
               />
               <TextField
                 controlId="designation-master.dialog.code.input"
-
+                inputRef={objCodeInputRef}
                 label={dicDesignationLabels.fieldCode}
                 placeholder={t("dialog_code_placeholder", "Enter designation code")}
                 size="small"
-                InputLabelProps={{ shrink: true }}
                 required
                 value={dicForm.code}
                 inputProps={{ "controlId": "designation-master.dialog.code.input" }}
@@ -920,7 +993,7 @@ export default function DesignationMasterPanel() {
         onConfirm={executeConfirmedAction}
       />
 
-      <BlockingLoader blnOpen={blnSubmitting || ((blnLoading || blnRightsLoading) && !blnDialogOpen)} strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
+      <BlockingLoader blnOpen={blnSubmitting} strLabel={dicCommonLabels.processing} intZIndex={1400} />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>

@@ -17,6 +17,8 @@ import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
 import AlternateEmailRoundedIcon from "@mui/icons-material/AlternateEmailRounded";
 import ContactEmergencyOutlinedIcon from "@mui/icons-material/ContactEmergencyOutlined";
+import PhoneOutlinedIcon from "@mui/icons-material/PhoneOutlined";
+import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
 import AccountBalanceOutlinedIcon from "@mui/icons-material/AccountBalanceOutlined";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
@@ -64,6 +66,7 @@ import { Fragment, useEffect, useMemo, useRef, useState, type ChangeEvent, type 
 import { handleSingleDialogActionEnter } from "@/components/common/dialogKeyboard";
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 import styles from "@/components/master/MasterScreen.module.css";
 import dicConstant from "@/constants/Constant.json";
 import FamilyDetailsTab from "@/features/employee/components/FamilyDetailsTab";
@@ -146,6 +149,92 @@ const dicEmployeeFieldGridSx = {
   "& .MuiFormLabel-asterisk": { color: strRequiredAsteriskColor },
 } as const;
 
+const intEmployeeTabCardSpacing = 1.5;
+const dicEmployeeTabCardTitleSx = { fontSize: 14, fontWeight: 700, lineHeight: 1.35, color: "#172554" } as const;
+const dicEmployeeTabCardSubtitleSx = { fontSize: 11, lineHeight: 1.45, color: "#64748b" } as const;
+const lstContactCountryCodes = ["+91", "+971", "+1", "+44", "+61"];
+
+const dicEmployeeTabsSx = {
+  minHeight: 52,
+  "& .MuiTabs-scroller": {
+    overflowY: "visible",
+  },
+  "& .MuiTabs-flexContainer": {
+    gap: 0.25,
+  },
+  "& .MuiTabs-indicator": {
+    height: 3,
+    borderRadius: "999px 999px 0 0",
+    bgcolor: "transparent",
+    transition: "left 260ms cubic-bezier(0.4, 0, 0.2, 1), width 260ms cubic-bezier(0.4, 0, 0.2, 1)",
+  },
+  "& .MuiTab-root": {
+    position: "relative",
+    minHeight: 52,
+    px: 1.75,
+    py: 0,
+    mx: 0.25,
+    borderRadius: "8px 8px 0 0",
+    overflow: "hidden",
+    color: "#475569",
+    fontSize: 13,
+    fontWeight: 600,
+    letterSpacing: 0,
+    textTransform: "none",
+    transition: "color 180ms ease, background-color 180ms ease, box-shadow 180ms ease",
+    "& .employee-tab-label": {
+      position: "relative",
+      display: "flex",
+      alignItems: "center",
+      height: "100%",
+    },
+    "& .employee-tab-label::after": {
+      content: '""',
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: 3,
+      borderRadius: "999px 999px 0 0",
+      bgcolor: "#5b8fba",
+      opacity: 0,
+      transition: "left 260ms cubic-bezier(0.4, 0, 0.2, 1), right 260ms cubic-bezier(0.4, 0, 0.2, 1), opacity 190ms ease, background-color 180ms ease",
+    },
+    "&:hover": {
+      color: "#215f91",
+      bgcolor: "#f3f4f6",
+      boxShadow: "inset 0 -1px 0 #d1d5db",
+    },
+    "&.Mui-selected": {
+      color: "#123f63",
+      bgcolor: "transparent",
+      fontWeight: 800,
+      "& .employee-tab-label::after": {
+        opacity: 1,
+      },
+    },
+    "&.Mui-selected:hover": {
+      color: "#0f3554",
+      bgcolor: "#f3f4f6",
+      boxShadow: "inset 0 -1px 0 #d1d5db",
+      "& .employee-tab-label::after": {
+        opacity: 1,
+        left: -14,
+        right: -14,
+      },
+    },
+    "&.Mui-focusVisible": {
+      bgcolor: "#f3f4f6",
+      outline: "2px solid #d1d5db",
+      outlineOffset: -2,
+    },
+    "&.Mui-selected.Mui-focusVisible": {
+      bgcolor: "transparent",
+      outlineColor: "#8fb9d8",
+    },
+  },
+} as const;
+
 const createEmployeeSwitchSx = (strCheckedColor: string) => ({
   width: 44,
   height: 24,
@@ -204,9 +293,7 @@ const lstPersonalOptionalFields: Array<{ strField: keyof EmployeeFormValues; str
 const lstEmploymentAssignmentFields: Array<{ strField: keyof EmployeeFormValues; strLabel: string; strType?: string }> = [
   { strField: "strEmployeeFunction", strLabel: "Employee Function" },
   { strField: "strFunctionalArea", strLabel: "Functional Area" },
-  { strField: "strEmployeeCategory", strLabel: "Employee Category" },
   { strField: "strJobType", strLabel: "Job Type" },
-  { strField: "strRestDay", strLabel: "Rest Day" },
   { strField: "strPaymentType", strLabel: "Payment Type" },
 ];
 
@@ -425,6 +512,9 @@ export default function EmployeeEditorScreen({
     [strMenuActionOverride]
   );
   const strDisplayEmployeeName = [dicBasicForm.strFirstName, dicBasicForm.strMiddleName, dicBasicForm.strLastName].filter(Boolean).join(" ").trim();
+  const strBreadcrumbCurrent = strMode === "add"
+    ? t("breadcrumb_add", "Add")
+    : strDisplayEmployeeName || t("breadcrumb_employee", "Employee");
   const strAuthenticatedAvatarUrl = useAuthenticatedAvatar(strEmployeeAvatarUrl);
 
   function getFooterActionConfig() {
@@ -1586,8 +1676,100 @@ export default function EmployeeEditorScreen({
         error={blnError}
         helperText={strHelperText}
         required={blnRequired}
+        getOptionLabel={(objOption) => objOption.strLabel}
         fullWidth
       />
+    );
+  }
+
+  function renderContactPhoneField({
+    strLabel,
+    strCountryCodeField,
+    strNumberField,
+    objIcon,
+    strIconColor,
+    strControlId,
+    refInput,
+  }: {
+    strLabel: string;
+    strCountryCodeField: keyof EmployeeFormValues;
+    strNumberField: keyof EmployeeFormValues;
+    objIcon: ReactNode;
+    strIconColor: string;
+    strControlId: string;
+    refInput?: RefObject<HTMLInputElement | null>;
+  }) {
+    const strCountryCodeValue = String(dicBasicForm[strCountryCodeField] || "+91");
+    const strNumberValue = String(dicBasicForm[strNumberField] ?? "");
+    const strNumberError = dicBasicErrors[strNumberField];
+
+    return (
+      <Box>
+        <Typography component="label" htmlFor={`${strControlId}.number`} sx={{ display: "block", mb: 0.5, color: "#334155", fontSize: 12, fontWeight: 600, lineHeight: 1.5 }}>
+          {strLabel}
+        </Typography>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: "32px 72px 1px minmax(0, 1fr)",
+            alignItems: "center",
+            minHeight: 38,
+            border: "1px solid",
+            borderColor: strNumberError ? "#d32f2f" : "#cbd5e1",
+            borderRadius: "6px",
+            bgcolor: blnViewOnly ? "#f8fafc" : "#fff",
+            transition: "border-color 160ms ease, box-shadow 160ms ease",
+            "&:focus-within": {
+              borderColor: strNumberError ? "#d32f2f" : "#1d5d96",
+              boxShadow: strNumberError ? "0 0 0 1px rgba(211, 47, 47, 0.16)" : "0 0 0 1px rgba(29, 93, 150, 0.16)",
+            },
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", color: strIconColor }}>
+            {objIcon}
+          </Box>
+          <TextField
+            select
+            variant="standard"
+            value={strCountryCodeValue}
+            disabled={blnViewOnly}
+            onChange={(objEvent) => updateBasicField(strCountryCodeField, objEvent.target.value as never)}
+            inputProps={{ "data-control-id": `${strControlId}.country-code.select`, "aria-label": `${strLabel} country code` }}
+            SelectProps={{ disableUnderline: true }}
+            sx={{
+              "& .MuiInputBase-root": { fontSize: 13, fontWeight: 700, color: "#1f2937" },
+              "& .MuiSelect-select": { py: 0, pr: "22px !important" },
+              "& .MuiSelect-icon": { right: 0, color: "#64748b", fontSize: 20 },
+            }}
+          >
+            {Array.from(new Set([strCountryCodeValue, ...lstContactCountryCodes].filter(Boolean))).map((strCountryCode) => (
+              <MenuItem key={strCountryCode} value={strCountryCode}>{strCountryCode}</MenuItem>
+            ))}
+          </TextField>
+          <Box sx={{ width: "1px", height: 22, bgcolor: "#e2e8f0" }} />
+          <TextField
+            id={`${strControlId}.number`}
+            variant="standard"
+            value={strNumberValue}
+            disabled={blnViewOnly}
+            inputRef={refInput}
+            onChange={(objEvent) => {
+              if (!dicBasicForm[strCountryCodeField]) {
+                updateBasicField(strCountryCodeField, strCountryCodeValue as never);
+              }
+              updateBasicField(strNumberField, sanitizeMobileNumberInput(objEvent.target.value) as never);
+            }}
+            InputProps={{ disableUnderline: true }}
+            inputProps={{ "data-control-id": `${strControlId}.number.input`, inputMode: "tel", pattern: "[0-9+\\- ]*" }}
+            sx={{
+              minWidth: 0,
+              "& .MuiInputBase-input": { py: 0, px: 1.25, color: "#1f2937", fontSize: 14, fontWeight: 500 },
+              "& .MuiInputBase-input.Mui-disabled": { WebkitTextFillColor: "#64748b" },
+            }}
+          />
+        </Box>
+        {strNumberError ? <Typography sx={{ mt: 0.5, color: "#d32f2f", fontSize: "0.75rem" }}>{strNumberError}</Typography> : null}
+      </Box>
     );
   }
 
@@ -1611,6 +1793,7 @@ export default function EmployeeEditorScreen({
         options={lstOptions}
         onChange={(objSelected) => fnOnChange(objSelected === "" ? "" : String(objSelected))}
         disabled={blnDisabled}
+        getOptionLabel={(objOption) => objOption.strLabel}
         fullWidth
       />
     );
@@ -1679,7 +1862,7 @@ export default function EmployeeEditorScreen({
           <Typography sx={{ color: "#64748b", fontSize: 11 }}>{t("qualification_required_fields", "Required fields are marked")} <Box component="span" sx={{ color: "#e44747" }}>*</Box></Typography>
           <Stack direction="row" spacing={0.75}>
             <Button size="small" variant="outlined" onClick={resetQualificationEditor} data-controlid="employee.editor.qualification.reset.button" sx={{ minWidth: 78, textTransform: "none", borderColor: "#7399ff" }}>{t("cancel", "Cancel")}</Button>
-            <Button size="small" variant="contained" onClick={handleQualificationSave} disabled={blnQualificationSaving} data-controlid="employee.editor.qualification.save.button" sx={{ minWidth: 85, textTransform: "none", bgcolor: "#2860e8" }}>{blnQualificationSaving ? t("saving", "Saving...") : t("qualification_save_line", "Save line")}</Button>
+            <Button size="small" variant="contained" onClick={handleQualificationSave} disabled={blnQualificationSaving} data-controlid="employee.editor.qualification.save.button" sx={{ minWidth: 85, textTransform: "none", bgcolor: "var(--app-primary-color)", "&:hover": { bgcolor: "var(--app-primary-hover-color, var(--app-primary-color))" } }}>{blnQualificationSaving ? t("saving", "Saving...") : t("qualification_save_line", "Save line")}</Button>
           </Stack>
         </Box>
       </Box>
@@ -1689,10 +1872,7 @@ export default function EmployeeEditorScreen({
   if (blnLoading || blnRightsLoading) {
     return (
       <Box sx={{ minHeight: "60vh", display: "grid", placeItems: "center" }}>
-        <Stack spacing={2} alignItems="center">
-          <CircularProgress />
-          <Typography sx={{ color: "#64748b" }}>{t("editor_loading", dicConstant.employeeMaster.editorLoading)}</Typography>
-        </Stack>
+        <DottedLoader />
       </Box>
     );
   }
@@ -1725,8 +1905,9 @@ export default function EmployeeEditorScreen({
             <Typography component="h1" sx={{ mt: 0.5, fontWeight: 800, color: "#1f2937", fontSize: "clamp(1.35rem, 1.9vw, 1.75rem)", lineHeight: 1.05 }}>{strPageTitleOverride}</Typography>
           ) : (
             <Breadcrumbs aria-label={t("employee_breadcrumb", "Employee breadcrumb")} separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ fontSize: 13, py: 0.5, ml: "3px" }}>
+              <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{t("breadcrumb_masters", "Masters")}</Typography>
               <Link component={NextLink} href="/employees" data-control-id="employee.editor.breadcrumb.employees.link" underline="hover" sx={{ color: "text.secondary", fontSize: "inherit" }}>{t("breadcrumb_employees", "Employees")}</Link>
-              <Typography component="h1" aria-current="page" sx={{ fontSize: "inherit", fontWeight: 700, color: "#172554" }}>{strMode === "add" ? t("breadcrumb_add", "Add") : strMode === "view" ? t("breadcrumb_view", "View") : t("breadcrumb_edit", "Edit")}</Typography>
+              <Typography component="h1" aria-current="page" sx={{ fontSize: "inherit", fontWeight: 700, color: "#172554" }}>{strBreadcrumbCurrent}</Typography>
             </Breadcrumbs>
           ) : null}
           {strLabelError ? (
@@ -1873,7 +2054,9 @@ export default function EmployeeEditorScreen({
                 <FormControlLabel value="nonWorker" control={<Radio size="small" disabled={blnViewOnly} inputProps={{ "data-control-id": "employee.editor.non-worker.radio" } as InputHTMLAttributes<HTMLInputElement>} />} label={t("field_non_worker", "Non-Worker")} sx={{ m: 0 }} disabled={blnViewOnly} />
               </RadioGroup>
             </Box>
-            <FormControlLabel labelPlacement="start" control={<ActiveStatusSwitch testId="employee.editor.employment-status.switch" blnIsActive={dicBasicForm.strEmploymentStatus === "Active"} onChange={(blnChecked) => updateBasicField("strEmploymentStatus", blnChecked ? "Active" : "Inactive")} disabled={blnViewOnly} sx={dicEmployeeActiveSwitchSx} />} label={t("field_employee_active", "Employee Active")} sx={{ m: 0, gap: 1, pr: 1, alignSelf: "center" }} disabled={blnViewOnly} />
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", pt: "19px" }}>
+              <FormControlLabel labelPlacement="start" control={<ActiveStatusSwitch testId="employee.editor.employment-status.switch" blnIsActive={dicBasicForm.strEmploymentStatus === "Active"} onChange={(blnChecked) => updateBasicField("strEmploymentStatus", blnChecked ? "Active" : "Inactive")} disabled={blnViewOnly} sx={dicEmployeeActiveSwitchSx} />} label={t("field_employee_active", "Employee Active")} sx={{ m: 0, gap: 1, pr: 1, alignSelf: "center" }} disabled={blnViewOnly} />
+            </Box>
           </Box>
         </Paper>
         {strMode !== "edit" ? <Paper sx={{ borderRadius: "12px", border: "1px solid #dce7f5", px: { xs: 2, md: 2.25 }, py: 1.25, boxShadow: "0 4px 18px rgba(31,61,110,0.04)" }}>
@@ -1915,40 +2098,41 @@ export default function EmployeeEditorScreen({
             onChange={(_, strNextValue) => setStrActiveTab(strNextValue)}
             variant="scrollable"
             scrollButtons="auto"
-            sx={{ minHeight: 48, "& .MuiTabs-indicator": { bgcolor: "#215f91", height: 3 } }}
+            sx={dicEmployeeTabsSx}
           >
             {lstVisibleTabOrder.map((strTabKey) => (
               <Tab
                 key={strTabKey}
                 value={strTabKey}
                 data-control-id={`employee.editor.${strTabKey}.tab`}
-                sx={{ textTransform: "none", minHeight: 48, py: 1.5, px: 1.75, fontSize: 13, letterSpacing: "0.02em", fontWeight: 500, color: "#475569", "&.Mui-selected": { color: "#215f91", fontWeight: 700 } }}
-                label={strTabKey === "basicInfo"
-                  ? t("tab_employment_info", "Employment Info")
-                  : strTabKey === "personalIdentification"
-                    ? t("tab_personal_identification", "Personal & Identification")
-                    : strTabKey === "serviceContract"
-                      ? t("tab_service_contract", "Service & Contract")
-                      : strTabKey === "additionalEmployment"
-                        ? t("tab_additional_employment", "Additional Employment Details")
-                        : strTabKey === "address"
-                          ? t("tab_contact_details", "Contact Details")
-                        : strTabKey === "bankDetails"
-                          ? t("tab_bank_details", dicConstant.employeeMaster.tabs.bankDetails)
-                          : strTabKey === "statutory"
-                            ? t("tab_statutory", dicConstant.employeeMaster.tabs.statutory)
-                            : strTabKey === "experience"
-                              ? t("tab_experience", dicConstant.employeeMaster.tabs.experience ?? "Experience")
-                              : strTabKey === "qualification"
-                                ? t("tab_qualification", dicConstant.employeeMaster.tabs.qualification ?? "Qualification")
-                                : t("tab_family_details", dicConstant.employeeMaster.tabs.familyDetails ?? "Family Details")}
+                label={<Box component="span" className="employee-tab-label">
+                  {strTabKey === "basicInfo"
+                    ? t("tab_employment_info", "Employment Info")
+                    : strTabKey === "personalIdentification"
+                      ? t("tab_personal_identification", "Personal & Identification")
+                      : strTabKey === "serviceContract"
+                        ? t("tab_service_contract", "Service & Contract")
+                        : strTabKey === "additionalEmployment"
+                          ? t("tab_additional_employment", "Additional Employment Details")
+                          : strTabKey === "address"
+                            ? t("tab_contact_details", "Contact Details")
+                          : strTabKey === "bankDetails"
+                            ? t("tab_bank_details", dicConstant.employeeMaster.tabs.bankDetails)
+                            : strTabKey === "statutory"
+                              ? t("tab_statutory", dicConstant.employeeMaster.tabs.statutory)
+                              : strTabKey === "experience"
+                                ? t("tab_experience", dicConstant.employeeMaster.tabs.experience ?? "Experience")
+                                : strTabKey === "qualification"
+                                  ? t("tab_qualification", dicConstant.employeeMaster.tabs.qualification ?? "Qualification")
+                                  : t("tab_family_details", dicConstant.employeeMaster.tabs.familyDetails ?? "Family Details")}
+                </Box>}
               />
             ))}
           </Tabs>
         </Box>
 
         <Box sx={{
-          p: strVisibleActiveTab === "statutory" ? 0 : { xs: 2, md: 2.25 },
+          p: 2,
           "& .MuiSwitch-root": {
             ...createEmployeeSwitchSx("#215f91"),
             flexShrink: 0,
@@ -1960,18 +2144,12 @@ export default function EmployeeEditorScreen({
           },
         }}>
           {(["basicInfo", "personalIdentification", "serviceContract", "additionalEmployment"] as TabKey[]).includes(strVisibleActiveTab) ? (
-            <Stack spacing={3}>
+            <Stack spacing={intEmployeeTabCardSpacing}>
               {strVisibleActiveTab === "basicInfo" ? <Box>
                 <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(3, minmax(0, 1fr))" }, ...dicEmployeeFieldGridSx }}>
                   <TextField data-control-id="employee.editor.date-of-joining.input" inputProps={{ "data-control-id": "employee.editor.date-of-joining.input" }} type="date" label={renderRequiredLabel(t("field_date_of_joining", dicConstant.employeeMaster.fields.dateOfJoining))} size="small" inputRef={dicFieldRefs.dtDateOfJoining} value={dicBasicForm.dtDateOfJoining} onChange={(objEvent) => updateBasicField("dtDateOfJoining", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfJoining)} helperText={dicBasicErrors.dtDateOfJoining} InputLabelProps={{ shrink: true }} disabled={blnViewOnly} fullWidth />
                   {renderSearchableSelectField(t("field_employment_type", dicConstant.employeeMaster.fields.employmentType), dicBasicForm.intEmploymentTypeID, (objValue) => updateBasicField("intEmploymentTypeID", objValue), objFormOptions?.lstEmploymentTypes ?? [], blnViewOnly, dicBasicErrors.intEmploymentTypeID, Boolean(dicBasicErrors.intEmploymentTypeID), true)}
-                  <Box sx={{ alignSelf: "start" }}>
-                    <Typography sx={{ fontSize: "12px", fontWeight: 600, lineHeight: 1.5, mb: "4px", color: "#334155" }}>{t("field_ess_enabled", dicConstant.employeeMaster.fields.essEnabled)}</Typography>
-                    <FormControlLabel labelPlacement="start" control={<Switch checked={dicBasicForm.blnIsEssEnabled} onChange={(_, blnChecked) => updateBasicField("blnIsEssEnabled", blnChecked)} disabled={blnViewOnly} inputProps={{ "data-control-id": "employee.editor.ess-enabled.switch" } as InputHTMLAttributes<HTMLInputElement>} />}
-                      label={dicBasicForm.blnIsEssEnabled ? t("yes", "Yes") : t("no", "No")}
-                      sx={{ m: 0 }}
-                    />
-                  </Box>
+                  {renderOptionalEmployeeField("strEmployeeCategory", t("field_employee_category", "Employee Category"))}
                   {renderSearchableSelectField(t("field_department", dicConstant.employeeMaster.fields.department), dicBasicForm.intDepartmentID, (objValue) => updateBasicField("intDepartmentID", objValue), objFormOptions?.lstDepartments ?? [], blnViewOnly)}
                   {renderSearchableSelectField(t("field_designation", dicConstant.employeeMaster.fields.designation), dicBasicForm.intDesignationID, (objValue) => updateBasicField("intDesignationID", objValue), objFormOptions?.lstDesignations ?? [], blnViewOnly)}
                   {renderSearchableSelectField(t("field_grade", dicConstant.employeeMaster.fields.grade), dicBasicForm.intGradeID, (objValue) => updateBasicField("intGradeID", objValue), objFormOptions?.lstGrades ?? [], blnViewOnly)}
@@ -1980,17 +2158,16 @@ export default function EmployeeEditorScreen({
                   {renderSearchableSelectField(t("field_payroll_group", dicConstant.employeeMaster.fields.payrollGroup), dicBasicForm.intPayrollGroupID, (objValue) => updateBasicField("intPayrollGroupID", objValue), objFormOptions?.lstPayrollGroups ?? [], blnViewOnly)}
                   {renderSearchableSelectField(t("field_manager", dicConstant.employeeMaster.fields.manager), dicBasicForm.intManagerEmployeeID, (objValue) => updateReportingManagerField(objValue), lstManagerOptions, blnViewOnly, dicBasicErrors.intManagerEmployeeID, Boolean(dicBasicErrors.intManagerEmployeeID), true)}
                   {renderSearchableSelectField(t("field_line_manager", "Line Manager"), dicBasicForm.intLineManagerEmployeeID, (objValue) => updateBasicField("intLineManagerEmployeeID", objValue || dicBasicForm.intManagerEmployeeID), lstManagerOptions, blnViewOnly, dicBasicErrors.intLineManagerEmployeeID, Boolean(dicBasicErrors.intLineManagerEmployeeID), true)}
-                  {renderSearchableSelectField(t("field_preferred_language", dicConstant.employeeMaster.fields.preferredLanguage), dicBasicForm.intPreferredLanguageID, (objValue) => updateBasicField("intPreferredLanguageID", objValue), objFormOptions?.lstLanguages ?? [], blnViewOnly)}
                   {lstEmploymentAssignmentFields.map((dicField) => renderOptionalEmployeeField(dicField.strField, dicField.strLabel, dicField.strType))}
                 </Box>
               </Box> : null}
 
               {strVisibleActiveTab === "personalIdentification" ? (
-                <Box sx={{ display: "grid", gap: 1.5, alignItems: "stretch", gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", lg: "1.05fr 0.95fr 1.4fr" } }}>
+                <Box sx={{ display: "grid", gap: intEmployeeTabCardSpacing, alignItems: "stretch", gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", lg: "1.05fr 0.95fr 1.4fr" } }}>
                   <Box sx={{ minWidth: 0, p: 2, border: "1px solid #e2e8f0", borderRadius: "12px", bgcolor: "#fff", boxShadow: "0 2px 10px rgba(15,23,42,0.04)", ...dicEmployeeFieldGridSx }}>
                     <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
                       <Box sx={{ width: 36, height: 36, display: "grid", placeItems: "center", borderRadius: "50%", bgcolor: "#eff6ff", color: "#31598f" }}><PersonOutlineRoundedIcon fontSize="small" /></Box>
-                      <Box><Typography sx={{ fontSize: 14, fontWeight: 700, color: "#172554" }}>{t("personal_profile", "Personal profile")}</Typography><Typography sx={{ fontSize: 11, color: "#64748b" }}>{t("personal_profile_subtitle", "Core personal information")}</Typography></Box>
+                      <Box><Typography sx={dicEmployeeTabCardTitleSx}>{t("personal_profile", "Personal profile")}</Typography><Typography sx={dicEmployeeTabCardSubtitleSx}>{t("personal_profile_subtitle", "Core personal information")}</Typography></Box>
                     </Stack>
                     <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
                       {renderSearchableSelectField(t("field_nationality", "Nationality"), dicBasicForm.intNationalityCountryID, (objValue) => updateBasicField("intNationalityCountryID", objValue), objFormOptions?.lstNationalities ?? [], blnViewOnly)}
@@ -2002,7 +2179,7 @@ export default function EmployeeEditorScreen({
                   <Box sx={{ minWidth: 0, p: 2, border: "1px solid #e2e8f0", borderRadius: "12px", bgcolor: "#fff", boxShadow: "0 2px 10px rgba(15,23,42,0.04)", ...dicEmployeeFieldGridSx }}>
                     <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
                       <Box sx={{ width: 36, height: 36, display: "grid", placeItems: "center", borderRadius: "50%", bgcolor: "#eff6ff", color: "#31598f" }}><GroupsOutlinedIcon fontSize="small" /></Box>
-                      <Box><Typography sx={{ fontSize: 14, fontWeight: 700, color: "#172554" }}>{t("family_information", "Family information")}</Typography><Typography sx={{ fontSize: 11, color: "#64748b" }}>{t("family_information_subtitle", "Family and relationship details")}</Typography></Box>
+                      <Box><Typography sx={dicEmployeeTabCardTitleSx}>{t("family_information", "Family information")}</Typography><Typography sx={dicEmployeeTabCardSubtitleSx}>{t("family_information_subtitle", "Family and relationship details")}</Typography></Box>
                     </Stack>
                     <Stack spacing={1.5}>
                       {lstPersonalOptionalFields.slice(5, 9).map((dicField) => renderOptionalEmployeeField(dicField.strField, dicField.strLabel, dicField.strType))}
@@ -2011,7 +2188,7 @@ export default function EmployeeEditorScreen({
                   <Box sx={{ minWidth: 0, p: 2, border: "1px solid #e2e8f0", borderRadius: "12px", bgcolor: "#fff", boxShadow: "0 2px 10px rgba(15,23,42,0.04)", gridColumn: { md: "span 2", lg: "auto" }, ...dicEmployeeFieldGridSx }}>
                     <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
                       <Box sx={{ width: 36, height: 36, display: "grid", placeItems: "center", borderRadius: "50%", bgcolor: "#eff6ff", color: "#31598f" }}><DescriptionOutlinedIcon fontSize="small" /></Box>
-                      <Box><Typography sx={{ fontSize: 14, fontWeight: 700, color: "#172554" }}>{t("identity_documents", "Identity documents")}</Typography><Typography sx={{ fontSize: 11, color: "#64748b" }}>{t("identity_documents_subtitle", "Passport and driving licence")}</Typography></Box>
+                      <Box><Typography sx={dicEmployeeTabCardTitleSx}>{t("identity_documents", "Identity documents")}</Typography><Typography sx={dicEmployeeTabCardSubtitleSx}>{t("identity_documents_subtitle", "Passport and driving licence")}</Typography></Box>
                     </Stack>
                     <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" } }}>
                       {lstPersonalOptionalFields.slice(9).map((dicField) => renderOptionalEmployeeField(dicField.strField, dicField.strLabel, dicField.strType))}
@@ -2031,7 +2208,7 @@ export default function EmployeeEditorScreen({
               ) : null}
 
               {strVisibleActiveTab === "serviceContract" ? (
-                <Box sx={{ display: "grid", gap: 1.5, alignItems: "start", bgcolor: "#fff", gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" } }}>
+                <Box sx={{ display: "grid", gap: intEmployeeTabCardSpacing, alignItems: "start", bgcolor: "#fff", gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" } }}>
                   {/* Each card keeps its existing form fields and can be opened independently. */}
                   <Box sx={{ bgcolor: "#fff", border: "1px solid #e2e8f0", borderRadius: "8px", boxShadow: "0 2px 8px rgba(15,23,42,0.04)", overflow: "hidden" }}>
                     <Button data-control-id="employee.editor.service.appointment.toggle" fullWidth aria-expanded={dicServiceSectionsOpen.appointment} aria-controls="employee-service-appointment" onClick={() => setDicServiceSectionsOpen((dicPrevious) => ({ ...dicPrevious, appointment: !dicPrevious.appointment }))} startIcon={<AssignmentTurnedInOutlinedIcon sx={{ color: "#405b94" }} />} endIcon={<ExpandMoreRoundedIcon sx={{ transform: dicServiceSectionsOpen.appointment ? "rotate(180deg)" : "none" }} />} sx={{ justifyContent: "flex-start", textTransform: "none", color: "#1e293b", fontWeight: 700, px: 2, py: 1.25, "& .MuiButton-endIcon": { ml: "auto" } }}>{t("section_appointment_joining", "Appointment & joining")}</Button>
@@ -2073,18 +2250,18 @@ export default function EmployeeEditorScreen({
               ) : null}
 
               {strVisibleActiveTab === "additionalEmployment" ? (
-                <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" }, alignItems: "stretch" }}>
+                <Box sx={{ display: "grid", gap: intEmployeeTabCardSpacing, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" }, alignItems: "stretch" }}>
                   {/* Keep the existing employee fields while grouping them like the reference layout. */}
                   <Box sx={{ minWidth: 0, p: 2, border: "1px solid #e2e8f0", borderRadius: "10px", bgcolor: "#fff", boxShadow: "0 2px 10px rgba(15,23,42,0.04)", ...dicEmployeeFieldGridSx }}>
-                    <Typography sx={{ fontSize: 16, fontWeight: 700, color: "#172554" }}>{t("section_employment_classification", "Employment classification")}</Typography>
-                    <Typography sx={{ fontSize: 12, color: "#64748b", mb: 2 }}>{t("employment_classification_subtitle", "Assignment and policy classification.")}</Typography>
+                    <Typography sx={dicEmployeeTabCardTitleSx}>{t("section_employment_classification", "Employment classification")}</Typography>
+                    <Typography sx={{ ...dicEmployeeTabCardSubtitleSx, mb: 2 }}>{t("employment_classification_subtitle", "Assignment and policy classification.")}</Typography>
                     <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" } }}>
                       {lstAdditionalEmploymentFields.map((dicField) => renderOptionalEmployeeField(dicField.strField, t(dicField.strTranslationKey, dicField.strLabel), dicField.strType))}
                     </Box>
                   </Box>
                   <Box sx={{ minWidth: 0, p: 2, border: "1px solid #e2e8f0", borderRadius: "10px", bgcolor: "#fff", boxShadow: "0 2px 10px rgba(15,23,42,0.04)", ...dicEmployeeFieldGridSx }}>
-                    <Typography sx={{ fontSize: 16, fontWeight: 700, color: "#172554" }}>{t("section_benefits_exceptions", "Benefits & exceptions")}</Typography>
-                    <Typography sx={{ fontSize: 12, color: "#64748b", mb: 2 }}>{t("benefits_exceptions_subtitle", "Employee-specific benefits and approvals.")}</Typography>
+                    <Typography sx={dicEmployeeTabCardTitleSx}>{t("section_benefits_exceptions", "Benefits & exceptions")}</Typography>
+                    <Typography sx={{ ...dicEmployeeTabCardSubtitleSx, mb: 2 }}>{t("benefits_exceptions_subtitle", "Employee-specific benefits and approvals.")}</Typography>
                     <Stack spacing={2}>
                       <FormControlLabel labelPlacement="start" control={<Switch checked={dicBasicForm.blnFlatGiven} onChange={(_, value) => updateBasicField("blnFlatGiven", value)} disabled={blnViewOnly} sx={dicEmployeeDetailSwitchSx} inputProps={{ "data-control-id": "employee.editor.flat-given.switch" } as InputHTMLAttributes<HTMLInputElement>} />} label={t("field_flat_given", "Flat given")} sx={{ ...dicEmployeeDetailSwitchLabelSx, justifyContent: "flex-start", alignSelf: "flex-start" }} />
                       <Box>
@@ -2094,7 +2271,7 @@ export default function EmployeeEditorScreen({
                     </Stack>
                   </Box>
                   <Box sx={{ gridColumn: { md: "1 / -1" }, minWidth: 0, p: 2, border: "1px solid #e2e8f0", borderRadius: "10px", bgcolor: "#fff", boxShadow: "0 2px 10px rgba(15,23,42,0.04)", ...dicEmployeeFieldGridSx }}>
-                    <Typography sx={{ fontSize: 16, fontWeight: 700, color: "#172554", mb: 1 }}>{t("field_employee_remark", "Employee remark")}</Typography>
+                    <Typography sx={{ ...dicEmployeeTabCardTitleSx, mb: 1 }}>{t("field_employee_remark", "Employee remark")}</Typography>
                     <TextField data-control-id="employee.editor.strEmployeeRemark.input" inputProps={{ "data-control-id": "employee.editor.strEmployeeRemark.input", maxLength: 500 }} placeholder={t("placeholder_employee_remark", "Enter remark (if any)")} value={dicBasicForm.strEmployeeRemark} onChange={(objEvent) => updateBasicField("strEmployeeRemark", objEvent.target.value)} disabled={blnViewOnly} multiline minRows={2} fullWidth />
                     <Typography sx={{ fontSize: 11, color: "#94a3b8", mt: 0.5 }}>{dicBasicForm.strEmployeeRemark.length} / 500</Typography>
                   </Box>
@@ -2104,44 +2281,57 @@ export default function EmployeeEditorScreen({
           ) : null}
 
           {strVisibleActiveTab === "address" ? (
-            <Box sx={{ display: "grid", gap: 2, alignItems: "stretch", gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" } }}>
+            <Box sx={{ display: "grid", gap: intEmployeeTabCardSpacing, alignItems: "stretch", gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" }, ...dicEmployeeFieldGridSx }}>
               {/* Each card follows the reference layout while keeping the existing employee fields. */}
-              <Box sx={{ p: { xs: 2, lg: 2.5 }, minWidth: 0, border: "1px solid #e6ebf3", borderRadius: "12px", bgcolor: "#fff", boxShadow: "0 4px 18px rgba(15,23,42,0.04)" }}>
-                <Stack direction="row" spacing={1.25} alignItems="flex-start" sx={{ mb: 2.5 }}>
+              <Box sx={{ p: 2, minWidth: 0, border: "1px solid #e6ebf3", borderRadius: "12px", bgcolor: "#fff", boxShadow: "0 4px 18px rgba(15,23,42,0.04)" }}>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
                   <Avatar sx={{ width: 36, height: 36, bgcolor: "#edf3ff", color: "#3458df" }}><AlternateEmailRoundedIcon sx={{ fontSize: 19 }} /></Avatar>
-                  <Box><Typography sx={{ fontWeight: 700, color: "#111b36" }}>{t("contact_work_personal_title", "Work & personal contact")}</Typography><Typography variant="caption" sx={{ color: "#74829a" }}>{t("contact_work_personal_description", "Your official and personal contact information.")}</Typography></Box>
+                  <Box><Typography sx={dicEmployeeTabCardTitleSx}>{t("contact_work_personal_title", "Work & personal contact")}</Typography><Typography sx={dicEmployeeTabCardSubtitleSx}>{t("contact_work_personal_description", "Your official and personal contact information.")}</Typography></Box>
                 </Stack>
                 <Stack spacing={2}>
                   <TextField size="small" data-control-id="employee.editor.work-email.input" inputProps={{ "data-control-id": "employee.editor.work-email.input" }} label={renderRequiredLabel(t("field_work_email", dicConstant.employeeMaster.fields.workEmail))} inputRef={dicFieldRefs.strWorkEmail} value={dicBasicForm.strWorkEmail} onChange={(objEvent) => updateBasicField("strWorkEmail", objEvent.target.value)} error={Boolean(dicBasicErrors.strWorkEmail)} helperText={dicBasicErrors.strWorkEmail} disabled={blnViewOnly} fullWidth />
                   <TextField size="small" data-control-id="employee.editor.personal-email.input" inputProps={{ "data-control-id": "employee.editor.personal-email.input" }} label={t("field_personal_email", dicConstant.employeeMaster.fields.personalEmail)} inputRef={dicFieldRefs.strPersonalEmail} value={dicBasicForm.strPersonalEmail} onChange={(objEvent) => updateBasicField("strPersonalEmail", objEvent.target.value)} error={Boolean(dicBasicErrors.strPersonalEmail)} helperText={dicBasicErrors.strPersonalEmail} disabled={blnViewOnly} fullWidth />
-                  <Box sx={{ display: "grid", gridTemplateColumns: "minmax(92px, 1fr) minmax(0, 2fr)", gap: 1 }}>
-                    {renderOptionalEmployeeField("strMobileCountryCode", t("field_mobile_country_code", "Mobile country code"))}
-                    <TextField size="small" data-control-id="employee.editor.mobile-number.input" inputProps={{ "data-control-id": "employee.editor.mobile-number.input", inputMode: "tel", pattern: "[0-9+\\- ]*" }} label={t("field_mobile_number", dicConstant.employeeMaster.fields.mobileNumber)} inputRef={dicFieldRefs.strMobileNumber} value={dicBasicForm.strMobileNumber} onChange={(objEvent) => updateBasicField("strMobileNumber", sanitizeMobileNumberInput(objEvent.target.value))} error={Boolean(dicBasicErrors.strMobileNumber)} helperText={dicBasicErrors.strMobileNumber} disabled={blnViewOnly} fullWidth />
-                  </Box>
-                  <Box sx={{ display: "grid", gridTemplateColumns: "minmax(92px, 1fr) minmax(0, 2fr)", gap: 1 }}>
-                    {renderOptionalEmployeeField("strWhatsappCountryCode", t("field_whatsapp_country_code", "WhatsApp country code"))}
-                    {renderOptionalEmployeeField("strWhatsappNumber", t("field_whatsapp_number", "WhatsApp number"))}
-                  </Box>
+                  {renderContactPhoneField({
+                    strLabel: t("field_mobile_number", dicConstant.employeeMaster.fields.mobileNumber),
+                    strCountryCodeField: "strMobileCountryCode",
+                    strNumberField: "strMobileNumber",
+                    objIcon: <PhoneOutlinedIcon sx={{ fontSize: 18 }} />,
+                    strIconColor: "#405b94",
+                    strControlId: "employee.editor.mobile",
+                    refInput: dicFieldRefs.strMobileNumber,
+                  })}
+                  {renderContactPhoneField({
+                    strLabel: t("field_whatsapp_number", "WhatsApp number"),
+                    strCountryCodeField: "strWhatsappCountryCode",
+                    strNumberField: "strWhatsappNumber",
+                    objIcon: <WhatsAppIcon sx={{ fontSize: 18 }} />,
+                    strIconColor: "#16a34a",
+                    strControlId: "employee.editor.whatsapp",
+                  })}
                 </Stack>
               </Box>
-              <Box sx={{ p: { xs: 2, lg: 2.5 }, minWidth: 0, border: "1px solid #e6ebf3", borderRadius: "12px", bgcolor: "#fff", boxShadow: "0 4px 18px rgba(15,23,42,0.04)" }}>
-                <Stack direction="row" spacing={1.25} alignItems="flex-start" sx={{ mb: 2.5 }}>
+              <Box sx={{ p: 2, minWidth: 0, border: "1px solid #e6ebf3", borderRadius: "12px", bgcolor: "#fff", boxShadow: "0 4px 18px rgba(15,23,42,0.04)" }}>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
                   <Avatar sx={{ width: 36, height: 36, bgcolor: "#edf3ff", color: "#3458df" }}><ContactEmergencyOutlinedIcon sx={{ fontSize: 19 }} /></Avatar>
-                  <Box><Typography sx={{ fontWeight: 700, color: "#111b36" }}>{t("contact_emergency_title", "Emergency contact")}</Typography><Typography variant="caption" sx={{ color: "#74829a" }}>{t("contact_emergency_description", "Details of a person to be contacted in case of emergency.")}</Typography></Box>
+                  <Box><Typography sx={dicEmployeeTabCardTitleSx}>{t("contact_emergency_title", "Emergency contact")}</Typography><Typography sx={dicEmployeeTabCardSubtitleSx}>{t("contact_emergency_description", "Details of a person to be contacted in case of emergency.")}</Typography></Box>
                 </Stack>
                 <Stack spacing={2}>
                   {renderOptionalEmployeeField("strEmergencyContactPerson", t("field_emergency_contact_person", "Emergency contact person"))}
-                  <Box sx={{ display: "grid", gridTemplateColumns: "minmax(92px, 1fr) minmax(0, 2fr)", gap: 1 }}>
-                    {renderOptionalEmployeeField("strEmergencyCountryCode", t("field_emergency_country_code", "Country code"))}
-                    {renderOptionalEmployeeField("strEmergencyMobileNumber", t("field_emergency_mobile_number", "Mobile number"))}
-                  </Box>
+                  {renderContactPhoneField({
+                    strLabel: t("field_emergency_mobile_number", "Mobile number"),
+                    strCountryCodeField: "strEmergencyCountryCode",
+                    strNumberField: "strEmergencyMobileNumber",
+                    objIcon: <PhoneOutlinedIcon sx={{ fontSize: 18 }} />,
+                    strIconColor: "#405b94",
+                    strControlId: "employee.editor.emergency-mobile",
+                  })}
                   {renderOptionalEmployeeField("strEmergencyEmail", t("field_emergency_email", "Email"))}
                 </Stack>
               </Box>
-              <Box sx={{ p: { xs: 2, lg: 2.5 }, minWidth: 0, border: "1px solid #e6ebf3", borderRadius: "12px", bgcolor: "#fff", boxShadow: "0 4px 18px rgba(15,23,42,0.04)" }}>
-                <Stack direction="row" spacing={1.25} alignItems="flex-start" sx={{ mb: 2.5 }}>
+              <Box sx={{ p: 2, minWidth: 0, border: "1px solid #e6ebf3", borderRadius: "12px", bgcolor: "#fff", boxShadow: "0 4px 18px rgba(15,23,42,0.04)" }}>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
                   <Avatar sx={{ width: 36, height: 36, bgcolor: "#edf3ff", color: "#3458df" }}><LocationOnOutlinedIcon sx={{ fontSize: 19 }} /></Avatar>
-                  <Box><Typography sx={{ fontWeight: 700, color: "#111b36" }}>{t("contact_address_title", "Address")}</Typography><Typography variant="caption" sx={{ color: "#74829a" }}>{t("contact_address_description", "Manage your address details.")}</Typography></Box>
+                  <Box><Typography sx={dicEmployeeTabCardTitleSx}>{t("contact_address_title", "Address")}</Typography><Typography sx={dicEmployeeTabCardSubtitleSx}>{t("contact_address_description", "Manage your address details.")}</Typography></Box>
                 </Stack>
                 {/* The API stores one address with a type; these buttons select that type. */}
                 <Box role="group" aria-label={t("field_address_type", dicConstant.employeeMaster.fields.addressType)} sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", mb: 2, p: 0.3, border: "1px solid #dce4f1", borderRadius: "7px", bgcolor: "#f7f9fd" }}>
@@ -2162,15 +2352,15 @@ export default function EmployeeEditorScreen({
           ) : null}
 
           {blnCanViewBankDetails && strVisibleActiveTab === "bankDetails" ? (
-            <Box sx={{ display: "grid", gap: 1.5, alignItems: "stretch", gridTemplateColumns: { xs: "1fr", md: "minmax(220px, 27%) minmax(0, 1fr)" } }}>
-              <Box sx={{ border: "1px solid #e0e7f0", borderRadius: "8px", bgcolor: "#fff", p: 1.5, minHeight: 330 }}>
+            <Box sx={{ display: "grid", gap: intEmployeeTabCardSpacing, alignItems: "stretch", gridTemplateColumns: { xs: "1fr", md: "minmax(220px, 27%) minmax(0, 1fr)" } }}>
+              <Box sx={{ border: "1px solid #e0e7f0", borderRadius: "8px", bgcolor: "#fff", p: 2, minHeight: 330 }}>
                 <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} sx={{ mb: 1.5 }}>
-                  <Typography sx={{ fontSize: 15, fontWeight: 700, color: "#1e293b" }}>{t("bank_accounts", "Bank accounts")}</Typography>
+                  <Typography sx={dicEmployeeTabCardTitleSx}>{t("bank_accounts", "Bank accounts")}</Typography>
                   {!blnViewOnly ? (
                     <Button
                       size="small"
                       variant="contained"
-                      startIcon={<AddRoundedIcon />}
+                      startIcon={<AddRoundedIcon sx={{ color: "#fff !important" }} />}
                       data-control-id="employee.editor.add-bank-account.button"
                       disabled={dicBankForm.blnSecondaryIsActive}
                       title={dicBankForm.blnSecondaryIsActive ? t("bank_account_limit", "A primary and a secondary bank account are already available.") : undefined}
@@ -2179,7 +2369,7 @@ export default function EmployeeEditorScreen({
                         setStrSelectedBankAccount("secondary");
                         setBlnBankAccountNumberVisible(false);
                       }}
-                      sx={{ textTransform: "none", whiteSpace: "nowrap", borderRadius: "5px", minWidth: 0, px: 1.1, fontSize: 11, bgcolor: "#3678ed" }}
+                      sx={{ textTransform: "none", whiteSpace: "nowrap", borderRadius: "5px", minWidth: 0, px: 1.1, fontSize: 11, "& .MuiButton-startIcon, & .MuiButton-startIcon .MuiSvgIcon-root": { color: "#fff" } }}
                     >
                       {t("add_bank_account", "Add bank account")}
                     </Button>
@@ -2191,8 +2381,8 @@ export default function EmployeeEditorScreen({
                 </Stack>
               </Box>
 
-              <Box sx={{ border: "1px solid #e0e7f0", borderRadius: "8px", bgcolor: "#fff", p: { xs: 1.75, sm: 2 }, minWidth: 0, minHeight: 330 }}>
-                <Typography sx={{ fontSize: 15, fontWeight: 700, color: "#1e293b", mb: 1.2 }}>
+              <Box sx={{ border: "1px solid #e0e7f0", borderRadius: "8px", bgcolor: "#fff", p: 2, minWidth: 0, minHeight: 330, ...dicEmployeeFieldGridSx }}>
+                <Typography sx={{ ...dicEmployeeTabCardTitleSx, mb: 1.2 }}>
                   {strSelectedBankAccount === "primary" ? t("primary_bank_account", "Primary bank account") : t("secondary_bank_account", "Secondary bank account")}
                 </Typography>
                 <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ xs: "flex-start", sm: "center" }} spacing={{ xs: 0.5, sm: 3 }} sx={{ pb: 1.5, mb: 1.75, borderBottom: "1px solid #e5eaf1" }}>
@@ -2217,7 +2407,7 @@ export default function EmployeeEditorScreen({
                 </Stack>
 
                 {strSelectedBankAccount === "primary" ? (
-                  <Box sx={{ display: "grid", columnGap: 2, rowGap: 1.5, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 165px), 1fr))", "& .MuiInputLabel-root": { fontSize: 12, fontWeight: 500, color: "#52627a" }, "& .MuiOutlinedInput-root": { borderRadius: "5px", bgcolor: "#fff" } }}>
+                  <Box sx={{ display: "grid", columnGap: 2, rowGap: 1.5, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 165px), 1fr))" }}>
                     {renderSearchableSelectField(t("field_bank", dicConstant.employeeMaster.fields.bank), dicBankForm.intBankID, (objValue) => updateBankField("intBankID", objValue), objFormOptions?.lstBanks ?? [], blnViewOnly, dicBankErrors.intBankID, Boolean(dicBankErrors.intBankID), true)}
                     <TextField size="small" label={t("field_branch_name", "Branch name")} value={dicBankForm.strBranchName} onChange={(objEvent) => updateBankField("strBranchName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
                     {renderLookupCodeSearchableField(t("field_account_type", "Account type"), dicBankForm.strAccountType, (strValue) => updateBankField("strAccountType", strValue), objFormOptions?.lstBankAccountTypes ?? [], blnViewOnly)}
@@ -2232,7 +2422,7 @@ export default function EmployeeEditorScreen({
                     </Stack>
                   </Box>
                 ) : (
-                  <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" }, "& .MuiInputLabel-root": { fontSize: 12, fontWeight: 500, color: "#52627a" }, "& .MuiOutlinedInput-root": { borderRadius: "5px", bgcolor: "#fff" } }}>
+                  <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" } }}>
                     {renderSearchableSelectField(t("field_secondary_bank", dicConstant.employeeMaster.fields.secondaryBank), dicBankForm.intSecondaryBankID, (objValue) => updateBankField("intSecondaryBankID", objValue), objFormOptions?.lstBanks ?? [], blnViewOnly, dicBankErrors.intSecondaryBankID, Boolean(dicBankErrors.intSecondaryBankID), true)}
                     <TextField size="small" data-control-id="employee.editor.secondary-account-holder-name.input" inputProps={{ "data-control-id": "employee.editor.secondary-account-holder-name.input" }} label={renderRequiredLabel(t("field_secondary_account_holder_name", dicConstant.employeeMaster.fields.secondaryAccountHolderName))} inputRef={dicFieldRefs.strSecondaryAccountHolderName} value={dicBankForm.strSecondaryAccountHolderName} onChange={(objEvent) => updateBankField("strSecondaryAccountHolderName", objEvent.target.value)} error={Boolean(dicBankErrors.strSecondaryAccountHolderName)} helperText={dicBankErrors.strSecondaryAccountHolderName} disabled={blnViewOnly} fullWidth />
                     <TextField size="small" type={blnBankAccountNumberVisible ? "text" : "password"} data-control-id="employee.editor.secondary-account-number.input" inputProps={{ "data-control-id": "employee.editor.secondary-account-number.input" }} label={renderRequiredLabel(t("field_secondary_account_number", dicConstant.employeeMaster.fields.secondaryAccountNumber))} inputRef={dicFieldRefs.strSecondaryAccountNumber} value={dicBankForm.strSecondaryAccountNumber} placeholder={dicBankAccountMasks.secondary || undefined} onChange={(objEvent) => updateBankField("strSecondaryAccountNumber", objEvent.target.value)} error={Boolean(dicBankErrors.strSecondaryAccountNumber)} helperText={dicBankErrors.strSecondaryAccountNumber} disabled={blnViewOnly} InputProps={{ endAdornment: <InputAdornment position="end"><IconButton size="small" aria-label={blnBankAccountNumberVisible ? t("hide_account_number", "Hide account number") : t("show_account_number", "Show account number")} onClick={() => setBlnBankAccountNumberVisible((blnPrevious) => !blnPrevious)} disabled={!dicBankForm.strSecondaryAccountNumber}>{blnBankAccountNumberVisible ? <VisibilityOffOutlinedIcon fontSize="small" /> : <VisibilityOutlinedIcon fontSize="small" />}</IconButton></InputAdornment> }} fullWidth />
@@ -2244,9 +2434,9 @@ export default function EmployeeEditorScreen({
           ) : null}
 
           {blnCanViewStatutoryDetails && strVisibleActiveTab === "statutory" ? (
-            <Stack spacing={2} sx={{ width: "100%", p: { xs: 1, sm: 2 }, bgcolor: "#fff" }}>
+            <Stack spacing={intEmployeeTabCardSpacing} sx={{ width: "100%", bgcolor: "#fff" }}>
               <Box sx={{ p: 2, border: "1px solid #dce4ef", borderRadius: "6px", bgcolor: "#fff", boxShadow: "0 3px 14px rgba(30, 58, 90, 0.04)", ...dicEmployeeFieldGridSx }}>
-                <Typography sx={{ mb: 1, fontSize: 16, fontWeight: 700, color: "#17233d" }}>{t("statutory_tax_identification", "Tax & national identification")}</Typography>
+                <Typography sx={{ ...dicEmployeeTabCardTitleSx, mb: 1 }}>{t("statutory_tax_identification", "Tax & national identification")}</Typography>
                 <Box sx={{ display: "grid", columnGap: 3, rowGap: 1.75, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(3, minmax(0, 1fr))" } }}>
                   <TextField size="small" data-control-id="employee.editor.pan-number.input" inputProps={{ "data-control-id": "employee.editor.pan-number.input" }} label={t("field_pan_number", dicConstant.employeeMaster.fields.panNumber)} value={dicStatutoryForm.strPanNumber} onChange={(objEvent) => updateStatutoryField("strPanNumber", objEvent.target.value.toUpperCase())} disabled={blnViewOnly} fullWidth />
                   <CommonSearchableSelect
@@ -2266,47 +2456,47 @@ export default function EmployeeEditorScreen({
                   <TextField size="small" label={t("field_ssn_number", "SSN number")} value={dicStatutoryForm.strSsnNumber} onChange={(objEvent) => updateStatutoryField("strSsnNumber", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
                 </Box>
               </Box>
-              <Box sx={{ display: "grid", gap: 1, alignItems: "stretch", gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" } }}>
+              <Box sx={{ display: "grid", gap: intEmployeeTabCardSpacing, alignItems: "stretch", gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" } }}>
                 <Stack spacing={1.25} sx={{ minWidth: 0, minHeight: 154, p: 2, border: "1px solid #dce4ef", borderRadius: "6px", bgcolor: "#fff", boxShadow: "0 3px 14px rgba(30, 58, 90, 0.04)", ...dicEmployeeFieldGridSx }}>
                   <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
-                    <Typography sx={{ fontSize: 15, fontWeight: 700, color: "#17233d" }}>{t("statutory_provident_fund", "Provident Fund (PF)")}</Typography>
+                    <Typography sx={dicEmployeeTabCardTitleSx}>{t("statutory_provident_fund", "Provident Fund (PF)")}</Typography>
                     <Stack direction="row" alignItems="center" spacing={0.75}>
                       <Typography sx={{ fontSize: 12, color: "#334155" }}>{dicStatutoryForm.blnPfApplicable ? t("on", "On") : t("off", "Off")}</Typography><Switch size="small" sx={dicEmployeeDetailSwitchSx} checked={dicStatutoryForm.blnPfApplicable} onChange={(_, blnChecked) => { updateStatutoryField("blnPfApplicable", blnChecked); if (!blnChecked) updateStatutoryField("strPfNumber", ""); }} disabled={blnViewOnly} inputProps={{ "aria-label": t("field_pf_applicable", "PF applicable") } as InputHTMLAttributes<HTMLInputElement>} />
                     </Stack>
                   </Stack>
-                  <Typography sx={{ fontSize: 11, color: "#64748b" }}>{t("statutory_pf_description", "Employee is covered under EPF.")}</Typography>
-                  {dicStatutoryForm.blnPfApplicable ? <TextField size="small" sx={{ mt: "auto !important" }} data-control-id="employee.editor.pf-number.input" inputProps={{ "data-control-id": "employee.editor.pf-number.input" }} label={renderRequiredLabel(t("field_pf_account_number", "PF account number"))} value={dicStatutoryForm.strPfNumber} onChange={(objEvent) => updateStatutoryField("strPfNumber", objEvent.target.value.toUpperCase())} error={Boolean(dicStatutoryErrors.strPfNumber)} helperText={dicStatutoryErrors.strPfNumber} disabled={blnViewOnly} fullWidth /> : null}
+                  <Typography sx={{ mb: 1.25, fontSize: 11, color: "#64748b" }}>{t("statutory_pf_description", "Employee is covered under EPF.")}</Typography>
+                  {dicStatutoryForm.blnPfApplicable ? <TextField size="small" data-control-id="employee.editor.pf-number.input" inputProps={{ "data-control-id": "employee.editor.pf-number.input" }} label={renderRequiredLabel(t("field_pf_account_number", "PF account number"))} value={dicStatutoryForm.strPfNumber} onChange={(objEvent) => updateStatutoryField("strPfNumber", objEvent.target.value.toUpperCase())} error={Boolean(dicStatutoryErrors.strPfNumber)} helperText={dicStatutoryErrors.strPfNumber} disabled={blnViewOnly} fullWidth /> : null}
                 </Stack>
                 <Stack spacing={1.25} sx={{ minWidth: 0, minHeight: 154, p: 2, border: "1px solid #dce4ef", borderRadius: "6px", bgcolor: "#fff", boxShadow: "0 3px 14px rgba(30, 58, 90, 0.04)", ...dicEmployeeFieldGridSx }}>
                   <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
-                    <Typography sx={{ fontSize: 15, fontWeight: 700, color: "#17233d" }}>ESI</Typography>
+                    <Typography sx={dicEmployeeTabCardTitleSx}>ESI</Typography>
                     <Stack direction="row" alignItems="center" spacing={0.75}>
                       <Typography sx={{ fontSize: 12, color: "#334155" }}>{dicStatutoryForm.blnEsiApplicable ? t("on", "On") : t("off", "Off")}</Typography><Switch size="small" sx={dicEmployeeDetailSwitchSx} checked={dicStatutoryForm.blnEsiApplicable} onChange={(_, blnChecked) => { updateStatutoryField("blnEsiApplicable", blnChecked); if (!blnChecked) updateStatutoryField("strEsiNumber", ""); }} disabled={blnViewOnly} inputProps={{ "aria-label": t("field_esi_applicable", "ESI applicable") } as InputHTMLAttributes<HTMLInputElement>} />
                     </Stack>
                   </Stack>
-                  <Typography sx={{ fontSize: 11, color: "#64748b" }}>{dicStatutoryForm.blnEsiApplicable ? t("statutory_esi_enabled_description", "Employee is covered under ESI.") : t("statutory_esi_description", "Not applicable for this employee.")}</Typography>
-                  {dicStatutoryForm.blnEsiApplicable ? <Stack spacing={1.25} sx={{ mt: "auto !important" }}><TextField size="small" data-control-id="employee.editor.esi-number.input" inputProps={{ "data-control-id": "employee.editor.esi-number.input" }} label={renderRequiredLabel(t("field_esi_number", dicConstant.employeeMaster.fields.esiNumber))} value={dicStatutoryForm.strEsiNumber} onChange={(objEvent) => updateStatutoryField("strEsiNumber", objEvent.target.value)} error={Boolean(dicStatutoryErrors.strEsiNumber)} helperText={dicStatutoryErrors.strEsiNumber} disabled={blnViewOnly} fullWidth /><TextField size="small" label={t("field_esi_code", "ESI code")} value={dicStatutoryForm.strEsiCode} onChange={(objEvent) => updateStatutoryField("strEsiCode", objEvent.target.value)} disabled={blnViewOnly} fullWidth /></Stack> : null}
+                  <Typography sx={{ mb: 1.25, fontSize: 11, color: "#64748b" }}>{dicStatutoryForm.blnEsiApplicable ? t("statutory_esi_enabled_description", "Employee is covered under ESI.") : t("statutory_esi_description", "Not applicable for this employee.")}</Typography>
+                  {dicStatutoryForm.blnEsiApplicable ? <Stack spacing={1.25}><TextField size="small" data-control-id="employee.editor.esi-number.input" inputProps={{ "data-control-id": "employee.editor.esi-number.input" }} label={renderRequiredLabel(t("field_esi_number", dicConstant.employeeMaster.fields.esiNumber))} value={dicStatutoryForm.strEsiNumber} onChange={(objEvent) => updateStatutoryField("strEsiNumber", objEvent.target.value)} error={Boolean(dicStatutoryErrors.strEsiNumber)} helperText={dicStatutoryErrors.strEsiNumber} disabled={blnViewOnly} fullWidth /><TextField size="small" label={t("field_esi_code", "ESI code")} value={dicStatutoryForm.strEsiCode} onChange={(objEvent) => updateStatutoryField("strEsiCode", objEvent.target.value)} disabled={blnViewOnly} fullWidth /></Stack> : null}
                 </Stack>
                 <Stack spacing={1.25} sx={{ minWidth: 0, minHeight: 154, p: 2, border: "1px solid #dce4ef", borderRadius: "6px", bgcolor: "#fff", boxShadow: "0 3px 14px rgba(30, 58, 90, 0.04)", ...dicEmployeeFieldGridSx }}>
                   <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
-                    <Typography sx={{ fontSize: 15, fontWeight: 700, color: "#17233d" }}>{t("statutory_professional_tax", "Professional Tax")}</Typography>
+                    <Typography sx={dicEmployeeTabCardTitleSx}>{t("statutory_professional_tax", "Professional Tax")}</Typography>
                     <Stack direction="row" alignItems="center" spacing={0.75}>
                       <Typography sx={{ fontSize: 12, color: "#334155" }}>{dicStatutoryForm.blnPtApplicable ? t("on", "On") : t("off", "Off")}</Typography><Switch size="small" sx={dicEmployeeDetailSwitchSx} checked={dicStatutoryForm.blnPtApplicable} onChange={(_, blnChecked) => updateStatutoryField("blnPtApplicable", blnChecked)} disabled={blnViewOnly} inputProps={{ "aria-label": t("field_pt_applicable", "Professional Tax applicable") } as InputHTMLAttributes<HTMLInputElement>} />
                     </Stack>
                   </Stack>
-                  <Typography sx={{ fontSize: 11, color: "#64748b" }}>{dicStatutoryForm.blnPtApplicable ? t("statutory_pt_description", "Employee is liable for Professional Tax.") : t("statutory_pt_disabled_description", "Not applicable for this employee.")}</Typography>
-                  {dicStatutoryForm.blnPtApplicable ? <TextField size="small" sx={{ mt: "auto !important" }} label={t("field_pt_registration", "Professional Tax registration")} value={dicStatutoryForm.strPtRegistrationNumber} onChange={(objEvent) => updateStatutoryField("strPtRegistrationNumber", objEvent.target.value.toUpperCase())} disabled={blnViewOnly} fullWidth /> : null}
+                  <Typography sx={{ mb: 1.25, fontSize: 11, color: "#64748b" }}>{dicStatutoryForm.blnPtApplicable ? t("statutory_pt_description", "Employee is liable for Professional Tax.") : t("statutory_pt_disabled_description", "Not applicable for this employee.")}</Typography>
+                  {dicStatutoryForm.blnPtApplicable ? <TextField size="small" label={t("field_pt_registration", "Professional Tax registration")} value={dicStatutoryForm.strPtRegistrationNumber} onChange={(objEvent) => updateStatutoryField("strPtRegistrationNumber", objEvent.target.value.toUpperCase())} disabled={blnViewOnly} fullWidth /> : null}
                 </Stack>
               </Box>
             </Stack>
           ) : null}
 
           {strVisibleActiveTab === "experience" ? (
-            <Stack spacing={2.5}>
+            <Stack spacing={intEmployeeTabCardSpacing}>
               <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ sm: "flex-start" }} justifyContent="space-between" spacing={1.5}>
                 <Box>
-                  <Typography sx={{ color: "#17243f", fontSize: 21, fontWeight: 700, lineHeight: 1.3 }}>{t("tab_experience", "Experience")}</Typography>
-                  <Typography sx={{ mt: 0.25, color: "#7a879d", fontSize: 12 }}>
+                  <Typography sx={dicEmployeeTabCardTitleSx}>{t("tab_experience", "Experience")}</Typography>
+                  <Typography sx={{ ...dicEmployeeTabCardSubtitleSx, mt: 0.25 }}>
                     {t("experience_career_history", "Career history and prior employment.")}
                   </Typography>
                 </Box>
@@ -2382,11 +2572,11 @@ export default function EmployeeEditorScreen({
           ) : null}
 
           {strVisibleActiveTab === "qualification" ? (
-            <Stack spacing={1.5}>
+            <Stack spacing={intEmployeeTabCardSpacing}>
               <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1}>
                 <Box>
-                  <Typography component="h2" sx={{ color: "#172554", fontSize: 18, fontWeight: 800 }}>{t("qualifications_heading", "Qualifications")}</Typography>
-                  <Typography sx={{ color: "#64748b", fontSize: 12 }}>{t("section_qualification_help", "Maintain academic qualifications, certifications, and the employee's highest qualification.")}</Typography>
+                  <Typography component="h2" sx={dicEmployeeTabCardTitleSx}>{t("qualifications_heading", "Qualifications")}</Typography>
+                  <Typography sx={dicEmployeeTabCardSubtitleSx}>{t("section_qualification_help", "Maintain academic qualifications, certifications, and the employee's highest qualification.")}</Typography>
                 </Box>
                 {!blnViewOnly ? <Button size="small" startIcon={<PostAddRoundedIcon />} onClick={handleAddQualificationClick} sx={{ bgcolor: "#eaf1ff", color: "#5572aa", textTransform: "none", alignSelf: "flex-start" }}>{t("add_qualification", "Add qualification")}</Button> : null}
               </Stack>

@@ -4,7 +4,7 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, MenuItem, Snackbar, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, InputAdornment, MenuItem, Snackbar, TextField, Typography } from "@mui/material";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
+import MasterBreadcrumbs from "@/components/master/MasterBreadcrumbs";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -70,6 +71,8 @@ export default function EmployeeAttributeMasterPanel({ config }: { config: Emplo
   const canEdit = canDoAny("edit");
   const canDelete = canDoAny("delete");
   const canExport = canDoAny("export");
+  const strNameLabel = `${config.singular} Name`;
+  const strCodeLabel = `${config.singular} Code`;
 
   function showToast(message: string, severity: "success" | "error" = "success") {
     setToast({ open: true, message, severity });
@@ -194,35 +197,45 @@ export default function EmployeeAttributeMasterPanel({ config }: { config: Emplo
   }));
   const columns: DataGridColumn<GridRow>[] = [
     { field: "action", headerName: label("table_actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 140 },
-    { field: "name", headerName: label("table_name", `${config.singular} Name`), width: 280 },
-    { field: "code", headerName: label("table_code", `${config.singular} Code`), width: 230 },
+    { field: "name", headerName: strNameLabel, width: 280 },
+    { field: "code", headerName: strCodeLabel, width: 230 },
     { field: "statusNode", headerName: label("table_status", "Status"), width: 140, sortAccessor: (row) => row.status },
   ];
 
-  return <Box className={styles.page}>
+  return <Box className={`${styles.page} ${styles.referenceMasterPage}`}>
+    <MasterBreadcrumbs strCurrent={config.plural} />
     <Box className={styles.topBar}><Button controlId={`${config.testId}.list.back.button`} className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => router.back()}>{label("back_button", "Back")}</Button></Box>
     <Box className={styles.controlsCard}>
       {rightsError ? <Typography sx={{ color: "#b45309", fontSize: ".85rem" }}>{rightsError}</Typography> : null}
       {!rightsLoading && canView && isReadOnly() ? <Typography sx={{ color: "#1d4ed8", fontSize: ".85rem", fontWeight: 700 }}>You have view-only access for {config.singular}.</Typography> : null}
-      <Box className={styles.searchRow}>
-        <TextField value={searchDraft.name} onChange={(event) => setSearchDraft((old) => ({ ...old, name: event.target.value }))} placeholder={`${config.singular} Name`} fullWidth />
-        <TextField value={searchDraft.code} onChange={(event) => setSearchDraft((old) => ({ ...old, code: event.target.value.toUpperCase() }))} placeholder={`${config.singular} Code`} fullWidth />
-        <TextField select label="Status" value={searchDraft.status} onChange={(event) => setSearchDraft((old) => ({ ...old, status: event.target.value as SearchForm["status"] }))} fullWidth>
+      <Box className={styles.searchRow} sx={{ alignItems: "end", "& .MuiButton-root": { height: "36px !important", minHeight: "36px !important", alignSelf: "flex-end" } }}>
+        <Box>
+          <Typography component="label" htmlFor={`${config.testId}-search-name`} sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{strNameLabel}</Typography>
+          <TextField id={`${config.testId}-search-name`} value={searchDraft.name} onChange={(event) => setSearchDraft((old) => ({ ...old, name: event.target.value }))} placeholder={strNameLabel} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} fullWidth />
+        </Box>
+        <Box>
+          <Typography component="label" htmlFor={`${config.testId}-search-code`} sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{strCodeLabel}</Typography>
+          <TextField id={`${config.testId}-search-code`} value={searchDraft.code} onChange={(event) => setSearchDraft((old) => ({ ...old, code: event.target.value.toUpperCase() }))} placeholder={strCodeLabel} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} fullWidth />
+        </Box>
+        <Box>
+          <Typography component="label" htmlFor={`${config.testId}-search-status`} sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>Status</Typography>
+          <TextField id={`${config.testId}-search-status`} select value={searchDraft.status} onChange={(event) => setSearchDraft((old) => ({ ...old, status: event.target.value as SearchForm["status"] }))} size="small" fullWidth>
           <MenuItem value="All">All</MenuItem><MenuItem value="Active">Active</MenuItem><MenuItem value="Inactive">Inactive</MenuItem>
-        </TextField>
+          </TextField>
+        </Box>
         <Box className={styles.searchActions}><Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setSearchApplied(searchDraft)}>Search</Button></Box>
         <Box className={styles.searchActions}><Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setSearchDraft(emptySearch); setSearchApplied(emptySearch); }}>Clear</Button></Box>
       </Box>
     </Box>
     <Box className={styles.tableCard}>
       {!canView && !rightsLoading && !loading ? <Box className={styles.emptyState}><Typography sx={{ fontWeight: 800 }}>{config.singular} access is not available for your user group.</Typography></Box> :
-        <CommonDataGrid columns={columns} rows={rows} rowIdField="id" defaultPageSize={20} pageSizeOptions={[10, 20, 50]} exportFileName={config.exportFileName} showExportOptions={canExport} showPaginationSummary emptyMessage={`No ${config.plural.toLowerCase()} found.`} testIdPrefix={`${config.testId}.list`} toolbarLeft={canAdd ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => void openDialog("add")}>Add {config.singular}</Button> : null} sx={{ p: 0, boxShadow: "none", background: "transparent" }} />}
+        <CommonDataGrid columns={columns.filter((column) => column.field !== "action")} rows={rows} rowIdField="id" defaultPageSize={20} pageSizeOptions={[10, 20, 50]} exportFileName={config.exportFileName} showExportOptions={canExport} showPaginationSummary hideRowClickHint onRowClick={(row) => { const item = records.find((entry) => entry.id === row.id); if (item) void openDialog(canEdit ? "edit" : "view", item); }} emptyMessage={`No ${config.plural.toLowerCase()} found.`} testIdPrefix={`${config.testId}.list`} toolbarLeft={canAdd ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => void openDialog("add")}>Add {config.singular}</Button> : null} sx={{ p: 0, boxShadow: "none", background: "transparent" }} />}
     </Box>
-    <CommonMasterDialog blnOpen={dialogOpen} onClose={() => setDialogOpen(false)} strTitle={`${mode === "add" ? "Add" : mode === "edit" ? "Edit" : "View"} ${config.singular}`} strSecondaryLabel={mode === "view" ? "Close" : "Cancel"} strPrimaryLabel={submitting ? "Saving..." : "Save"} onPrimaryAction={() => void save()} blnPrimaryDisabled={submitting} blnHidePrimary={mode === "view"} paperClassName={styles.compactDialogPaper}
+    <CommonMasterDialog blnOpen={dialogOpen} onClose={() => setDialogOpen(false)} strTitle={`${mode === "add" ? "Add" : mode === "edit" ? "Edit" : "View"} ${config.singular}`} strSecondaryLabel={mode === "view" ? "Close" : "Cancel"} strPrimaryLabel={submitting ? "Saving..." : "Save"} onPrimaryAction={() => void save()} blnPrimaryDisabled={submitting} blnHidePrimary={mode === "view"} paperClassName={styles.referenceMasterDialogPaper}
       nodeTitleAction={<Box className={styles.switchRow}><ActiveStatusSwitch testId={`${config.testId}.dialog.active.switch`} blnIsActive={form.status === "Active"} disabled={mode === "view"} onChange={(checked) => setForm((old) => ({ ...old, status: checked ? "Active" : "Inactive" }))} /><Typography className={styles.switchLabel}>Is Active</Typography></Box>}
       nodeContent={<Box sx={{ display: "grid", gap: 2, pt: .5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" } }}>
-        <TextField required label={`${config.singular} Name`} value={form.name} disabled={mode === "view"} onChange={(event) => { setForm((old) => ({ ...old, name: event.target.value })); setErrors((old) => ({ ...old, name: undefined })); }} error={Boolean(errors.name)} helperText={errors.name} fullWidth />
-        <TextField required label={`${config.singular} Code`} value={form.code} disabled={mode === "view"} onChange={(event) => { setForm((old) => ({ ...old, code: event.target.value.toUpperCase() })); setErrors((old) => ({ ...old, code: undefined })); }} error={Boolean(errors.code)} helperText={errors.code} fullWidth />
+        <TextField required label={strNameLabel} value={form.name} disabled={mode === "view"} onChange={(event) => { setForm((old) => ({ ...old, name: event.target.value })); setErrors((old) => ({ ...old, name: undefined })); }} error={Boolean(errors.name)} helperText={errors.name} fullWidth />
+        <TextField required label={strCodeLabel} value={form.code} disabled={mode === "view"} onChange={(event) => { setForm((old) => ({ ...old, code: event.target.value.toUpperCase() })); setErrors((old) => ({ ...old, code: undefined })); }} error={Boolean(errors.code)} helperText={errors.code} fullWidth />
       </Box>} />
     <CommonConfirmDialog blnOpen={Boolean(confirm)} strTitle={confirm?.title} strMessage={confirm?.message} strCancelLabel="Cancel" strConfirmLabel="Delete" blnConfirmDisabled={submitting} onClose={() => setConfirm(null)} onConfirm={() => void executeConfirmed()} />
     <BlockingLoader blnOpen={submitting || ((loading || rightsLoading) && !dialogOpen)} strLabel={loading || rightsLoading ? "Loading..." : "Processing..."} intZIndex={1400} />

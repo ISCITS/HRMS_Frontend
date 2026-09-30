@@ -80,8 +80,8 @@ export default function FamilyForm({ strMode, dicValues, dicErrors, blnSaving, f
       <Box className={styles.formFooter}>
         <Typography className={styles.requiredNote}>{t("family_required_note", "Required fields are marked")} <span className={styles.required}>*</span></Typography>
         <Box className={styles.formActions}>
-          <Button variant="outlined" size="small" onClick={fnOnClose} data-controlid="employee.family.cancel.button">{t("cancel", "Cancel")}</Button>
-          <Button variant="contained" size="small" disableElevation onClick={fnOnSubmit} disabled={blnSaving} data-controlid="employee.family.save.button">{blnSaving ? t("saving", "Saving...") : strMode === "edit" ? t("update", "Update") : t("family_save_line", "Save line")}</Button>
+          <Button variant="outlined" size="small" onClick={fnOnClose} data-controlid="employee.family.cancel.button" sx={{ minWidth: 78, textTransform: "none", borderColor: "#7399ff" }}>{t("cancel", "Cancel")}</Button>
+          <Button variant="contained" size="small" disableElevation onClick={fnOnSubmit} disabled={blnSaving} data-controlid="employee.family.save.button" sx={{ minWidth: 85, textTransform: "none", bgcolor: "var(--app-primary-color)", "&:hover": { bgcolor: "var(--app-primary-hover-color, var(--app-primary-color))" } }}>{blnSaving ? t("saving", "Saving...") : strMode === "edit" ? t("update", "Update") : t("family_save_line", "Save line")}</Button>
         </Box>
       </Box>
     </Box>
