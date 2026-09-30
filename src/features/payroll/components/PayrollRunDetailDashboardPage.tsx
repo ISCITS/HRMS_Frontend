@@ -17,6 +17,7 @@ import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
 import SummarizeRoundedIcon from "@mui/icons-material/SummarizeRounded";
 import TaskAltRoundedIcon from "@mui/icons-material/TaskAltRounded";
@@ -31,6 +32,7 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
+  InputAdornment,
   Menu,
   MenuItem,
   Stack,
@@ -485,6 +487,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
   const [objValidationSummary, setObjValidationSummary] = useState<PayrollValidationSummary | null>(null);
   const [objProcessSummary, setObjProcessSummary] = useState<PayrollProcessSummary | null>(null);
   const [lstPayslips, setLstPayslips] = useState<PayslipRunListRecord[]>([]);
+  const [strPayslipSearch, setStrPayslipSearch] = useState("");
   const [strPayslipPreviewHtml, setStrPayslipPreviewHtml] = useState("");
   const [intPreviewResultID, setIntPreviewResultID] = useState<number | null>(null);
   const [blnPayslipLoading, setBlnPayslipLoading] = useState(false);
@@ -1042,6 +1045,15 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     { strLabel: t("total_lop", "Total LOP Days"), strValue: String(objRun.dicSummary.decTotalLopDays ?? 0), objIcon: <CalendarMonthRoundedIcon sx={{ fontSize: 18 }} />, strTone: "amber" as Tone },
   ];
 
+  const strPayslipSearchNormalized = strPayslipSearch.trim().toLowerCase();
+  const lstFilteredPayslips = strPayslipSearchNormalized
+    ? lstPayslips.filter(
+        (dicPayslip) =>
+          dicPayslip.strEmployeeName.toLowerCase().includes(strPayslipSearchNormalized) ||
+          dicPayslip.strEmployeeCode.toLowerCase().includes(strPayslipSearchNormalized),
+      )
+    : lstPayslips;
+
   const lstValidationTableRows = lstValidationRows.map((dicIssue, intIndex) => {
     const strSeverity = dicIssue.strSeverity ?? (dicIssue.blnIsBlocking ? "BLOCKING" : "WARNING");
     const dicSeverityTone =
@@ -1471,6 +1483,22 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
               </Button>
             ) : null}
           </Box>
+          <TextField
+            value={strPayslipSearch}
+            onChange={(objEvent) => setStrPayslipSearch(objEvent.target.value)}
+            placeholder={t("payslip_search_placeholder", "Search by employee name or code")}
+            size="small"
+            fullWidth
+            sx={{ mb: 1 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchRoundedIcon sx={{ color: "#94a3b8", fontSize: 20 }} />
+                </InputAdornment>
+              ),
+            }}
+            controlId="payroll.run-detail.payslips.search.input"
+          />
           <DataTable<PayslipRunListRecord>
             lstColumns={[
               {
@@ -1507,9 +1535,13 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
                 ),
               },
             ]}
-            lstRows={lstPayslips}
+            lstRows={lstFilteredPayslips}
             fnKey={(dicRow) => `${dicRow.intPayrollRunID}-${dicRow.intEmployeeID}`}
-            strEmptyMessage={t("payslip_empty", "No processed payroll results are available for payslip generation.")}
+            strEmptyMessage={
+              strPayslipSearchNormalized
+                ? t("payslip_search_empty", "No employees match your search.")
+                : t("payslip_empty", "No processed payroll results are available for payslip generation.")
+            }
             strWrapClassName={styles.tableWrapBounded}
           />
         </Box>

@@ -458,12 +458,17 @@ export default function EmployeePayrollInputEditorPage({
     }
     const decLwpDays = parseOptionalDecimal(dicForm.strLwpDays) ?? 0;
     const decLopDays = parseOptionalDecimal(dicForm.strLopDays) ?? 0;
+    // A field is only usable as the denominator when it's a positive value - 0 is a valid
+    // outcome (e.g. payable days legitimately reaches 0 when LWP consumes the whole period)
+    // but not a valid period length, so it must fall through to the next candidate just like
+    // the backend's getManualLwpDenominator does (PayrollRepository.py).
     const decDenominator =
-      parseOptionalDecimal(dicForm.strPayableDays) ??
-      parseOptionalDecimal(dicForm.strWorkingDays) ??
-      parseOptionalDecimal(dicForm.strCalendarDays) ??
-      dicSelectedRun?.decCalendarDays ??
-      null;
+      [
+        parseOptionalDecimal(dicForm.strPayableDays),
+        parseOptionalDecimal(dicForm.strWorkingDays),
+        parseOptionalDecimal(dicForm.strCalendarDays),
+        dicSelectedRun?.decCalendarDays ?? null,
+      ].find((decCandidate) => decCandidate !== null && decCandidate > 0) ?? null;
     if (decDenominator !== null && decDenominator <= 0 && (decLwpDays > 0 || decLopDays > 0)) {
       return t("denominator_required", "A positive payroll-period denominator is required for LWP/LOP days.");
     }
