@@ -274,14 +274,16 @@
 }
 
 /* Shared typography for text inputs, autocomplete fields, and select values. */
-.app-theme .MuiInputBase-input,
-.app-theme .MuiAutocomplete-input,
-.app-theme .MuiSelect-select,
+.app-theme .MuiInputBase-input.MuiInputBase-input,
+.app-theme .MuiAutocomplete-input.MuiAutocomplete-input,
+.app-theme .MuiSelect-select.MuiSelect-select,
 .app-theme input:not([type='button']):not([type='submit']):not([type='reset']):not([type='checkbox']):not([type='radio']),
 .app-theme textarea,
 .app-theme select {
+  font-family: var(--app-font-family);
   font-size: var(--app-input-font-size);
   font-weight: var(--app-input-font-weight);
+  line-height: 1.45;
 }
 
 .app-mui-text-field .MuiFormLabel-asterisk {
@@ -290,7 +292,9 @@
 
 .app-mui-text-field .MuiInputLabel-root {
   color: var(--app-field-label-color);
-  transform: translate(14px, 11px) scale(1);
+  top: 0;
+  line-height: 1.45;
+  transform: translate(14px, 10px) scale(1) !important;
 }
 
 .app-mui-text-field .MuiInputLabel-root.Mui-focused:not(.Mui-error) {
@@ -302,17 +306,22 @@
 }
 
 .app-mui-text-field .MuiInputLabel-root.MuiInputLabel-shrink {
-  transform: translate(14px, -9px) scale(0.75);
+  top: 0;
+  transform: translate(14px, -9px) scale(0.75) !important;
   z-index: 1;
   padding: 0 3px;
   background-color: var(--app-surface-color, #ffffff);
 }
 
 .app-mui-text-field .MuiOutlinedInput-root {
-  min-height: 40px;
   border-radius: var(--app-input-radius);
   align-items: center;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.app-mui-text-field.app-mui-text-field--rounded .MuiOutlinedInput-root,
+.app-mui-text-field.app-mui-text-field--rounded .MuiOutlinedInput-notchedOutline {
+  border-radius: 9999px;
 }
 
 .app-mui-text-field .MuiOutlinedInput-input {

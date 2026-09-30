@@ -318,32 +318,6 @@
     auto;
 }
 
-.costCenterSearchRow > div {
-  min-width: 0;
-}
-
-.costCenterSearchRow > div > :global(.MuiTypography-root) {
-  color: #111827;
-  line-height: 18px;
-  margin-bottom: 6px;
-}
-
-.costCenterSearchRow :global(.MuiOutlinedInput-root) {
-  background-color: #fff;
-  height: 36px;
-  min-height: 36px;
-}
-
-.costCenterSearchRow :global(.MuiOutlinedInput-input) {
-  padding-bottom: 8px;
-  padding-top: 8px;
-}
-
-.costCenterSearchRow :global(.MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline) {
-  border-color: var(--app-primary-color);
-  border-width: 1px;
-}
-
 .searchActions {
   display: flex;
   gap: 10px;
@@ -923,6 +897,15 @@
 .referenceMasterPage .searchRow > :global(.MuiFormControl-root):nth-of-type(3)::before { content: "Status"; }
 .referenceMasterPage .searchRow > :global(.MuiFormControl-root) > :global(.MuiInputLabel-root) { display: none; }
 
+.referenceMasterPage .costCenterFloatingSearch > :global(.MuiFormControl-root)::before {
+  content: none;
+  display: none;
+}
+
+.referenceMasterPage .costCenterFloatingSearch > :global(.MuiFormControl-root) > :global(.MuiInputLabel-root) {
+  display: block;
+}
+
 .referenceMasterPage .tableCard :global(tbody tr:not([data-controlid$=".table.empty-row"]):hover td:first-of-type) {
   color: #0066df;
   cursor: pointer;
@@ -946,6 +929,12 @@
   display: none !important;
   max-width: 0 !important;
   padding: 0 !important;
+}
+
+.referenceMasterPage .costCenterFloatingSearch :global(.MuiOutlinedInput-notchedOutline legend) {
+  display: block !important;
+  max-width: none !important;
+  padding: 0 5px !important;
 }
 .referenceMasterDialogPaper :global(.MuiFormHelperText-root) { margin-left: 0; }
 

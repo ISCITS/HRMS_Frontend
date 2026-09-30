@@ -656,21 +656,19 @@ export default function GradeMasterPanel() {
           className={styles.searchRow}
           aria-busy={blnSearchPanelFrozen}
           sx={{
-            alignItems: "end",
-            "& .MuiOutlinedInput-root": { borderRadius: "6px", backgroundColor: "#fff" },
-            "& .MuiOutlinedInput-notchedOutline": { borderColor: "#cbd5e1" },
-            "& .MuiButton-root": { height: "36px !important", minHeight: "36px !important", alignSelf: "flex-end" },
+            alignItems: "center",
+            "& .MuiButton-root": { alignSelf: "center" },
           }}
         >
-          <TextField id="grade-search-name" controlId="grade-master.list.search-name.input" inputProps={{ "controlId": "grade-master.list.search-name.input" }} label={dicModuleLabels.tableName} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicModuleLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnSearchPanelFrozen} fullWidth />
-          <TextField id="grade-search-code" controlId="grade-master.list.search-code.input" inputProps={{ "controlId": "grade-master.list.search-code.input" }} label={dicModuleLabels.tableCode} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicModuleLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnSearchPanelFrozen} fullWidth />
-          <TextField id="grade-search-status" controlId="grade-master.list.search-status.select" inputProps={{ "controlId": "grade-master.list.search-status.select" }} select label={dicModuleLabels.tableStatus} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} size="small" disabled={blnSearchPanelFrozen} fullWidth>
+          <TextField className="app-mui-text-field" id="grade-search-name" controlId="grade-master.list.search-name.input" inputProps={{ "controlId": "grade-master.list.search-name.input" }} label={dicModuleLabels.tableName} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicModuleLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnSearchPanelFrozen} fullWidth />
+          <TextField className="app-mui-text-field" id="grade-search-code" controlId="grade-master.list.search-code.input" inputProps={{ "controlId": "grade-master.list.search-code.input" }} label={dicModuleLabels.tableCode} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicModuleLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnSearchPanelFrozen} fullWidth />
+          <TextField className="app-mui-text-field" id="grade-search-status" controlId="grade-master.list.search-status.select" inputProps={{ "controlId": "grade-master.list.search-status.select" }} select label={dicModuleLabels.tableStatus} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} size="small" disabled={blnSearchPanelFrozen} fullWidth>
             <MenuItem controlId="grade-master.list.search-status.all.option" value="All">All</MenuItem>
             <MenuItem controlId="grade-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
             <MenuItem controlId="grade-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions}><Button controlId="grade-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnSearchPanelFrozen}>{dicCommonLabels.search}</Button></Box>
-          <Box className={styles.searchActions}><Button controlId="grade-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnSearchPanelFrozen}>{dicCommonLabels.clear}</Button></Box>
+          <Box className={styles.searchActions}><Button data-control-id="grade-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnSearchPanelFrozen}>{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button data-control-id="grade-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnSearchPanelFrozen}>{dicCommonLabels.clear}</Button></Box>
         </Box>
       </Box>
 
@@ -683,7 +681,7 @@ export default function GradeMasterPanel() {
             <Typography sx={{ mt: 1, color: "#64748b" }}>Contact your administrator if you need grade visibility.</Typography>
           </Box>
         ) : (
-          <CommonDataGrid columns={lstTableColumns} rows={lstTableRows} rowIdField="id" defaultPageSize={20} pageSizeOptions={[10, 20, 50]} exportFileName={dicModuleLabels.exportFileName.replace(/\.(csv|pdf)$/i, "")} showExportOptions={blnCanExport} showPaginationSummary hideRowClickHint onRowClick={(dicRow) => { if (blnRightsLoading || blnLoading || blnSubmitting || (!blnCanEdit && !blnCanView)) return; const dicGrade = lstGrades.find((dicItem) => dicItem.id === dicRow.id); if (dicGrade) openDialog(blnCanEdit ? "edit" : "view", dicGrade); }} emptyMessage={dicModuleLabels.emptyMessage} testIdPrefix="grade-master.list" toolbarLeft={blnCanAdd ? <Button controlId="grade-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicModuleLabels.addButton}</Button> : null} getRowSx={() => ({ backgroundColor: "#fff", "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" }, "& td:first-of-type:hover .MuiLink-root": { color: "#0066df", textDecoration: "underline" } })} sx={{ p: 0, boxShadow: "none", background: "transparent" }} />
+          <CommonDataGrid columns={lstTableColumns} rows={lstTableRows} rowIdField="id" defaultPageSize={20} pageSizeOptions={[10, 20, 50]} exportFileName={dicModuleLabels.exportFileName.replace(/\.(csv|pdf)$/i, "")} showExportOptions={blnCanExport} showPaginationSummary hideRowClickHint onRowClick={(dicRow) => { if (blnRightsLoading || blnLoading || blnSubmitting || (!blnCanEdit && !blnCanView)) return; const dicGrade = lstGrades.find((dicItem) => dicItem.id === dicRow.id); if (dicGrade) openDialog(blnCanEdit ? "edit" : "view", dicGrade); }} emptyMessage={dicModuleLabels.emptyMessage} testIdPrefix="grade-master.list" toolbarLeft={blnCanAdd ? <Button data-control-id="grade-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicModuleLabels.addButton}</Button> : null} getRowSx={() => ({ backgroundColor: "#fff", "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" }, "& td:first-of-type:hover .MuiLink-root": { color: "#0066df", textDecoration: "underline" } })} sx={{ p: 0, boxShadow: "none", background: "transparent" }} />
         )}
       </Box>
 
@@ -721,16 +719,13 @@ export default function GradeMasterPanel() {
         nodeFooterStart={<Typography sx={{ color: "#64748b", fontSize: "11px" }}>{t("required_fields_hint", "Required fields are marked")} <Box component="span" sx={{ color: "#dc2626" }}>*</Box></Typography>}
         contentSx={{ overflowX: "hidden", overflowY: "auto", px: "20px", py: "12px", borderColor: "#e5edf5" }}
         nodeContent={
-          <Box sx={{ display: "grid", gap: "12px", "& .MuiOutlinedInput-root": { borderRadius: "6px", backgroundColor: "#fff", fontWeight: 400 }, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#cbd5e1" }, "& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline": { borderColor: "error.main" }, "& .MuiFormHelperText-root.Mui-error": { margin: "4px 14px 0px 0px" } }}>
+          <Box sx={{ display: "grid", gap: "12px" }}>
             <Box
               sx={{
                 display: "grid",
                 columnGap: 1.6, rowGap: "12px",
                 gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
                 alignItems: "start",
-                "& .MuiInputLabel-root": { fontSize: "12px", fontWeight: 600 },
-                "& .MuiInputLabel-root.MuiInputLabel-shrink": { backgroundColor: "#fff", px: 0 },
-                "& .MuiOutlinedInput-notchedOutline legend > span": { paddingRight: 0 },
               }}
             >
               {strMode === "add" ? (
@@ -744,6 +739,7 @@ export default function GradeMasterPanel() {
                 </Box>
               ) : null}
               <TextField
+                className="app-mui-text-field"
                 controlId="grade-master.dialog.name.input"
                 inputProps={{ "controlId": "grade-master.dialog.name.input" }}
                 inputRef={objNameInputRef}
@@ -761,10 +757,10 @@ export default function GradeMasterPanel() {
                 }}
                 error={Boolean(dicErrors.name)}
                 helperText={dicErrors.name}
-                sx={{ "& .MuiFormLabel-asterisk": { color: "#dc2626" } }}
                 fullWidth
               />
               <TextField
+                className="app-mui-text-field"
                 controlId="grade-master.dialog.code.input"
                 inputProps={{ "controlId": "grade-master.dialog.code.input" }}
                 inputRef={objCodeInputRef}
@@ -782,7 +778,6 @@ export default function GradeMasterPanel() {
                 }}
                 error={Boolean(dicErrors.code)}
                 helperText={dicErrors.code}
-                sx={{ "& .MuiFormLabel-asterisk": { color: "#dc2626" } }}
                 fullWidth
               />
             </Box>
@@ -820,6 +815,7 @@ export default function GradeMasterPanel() {
                         {objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === Number(dicText.intLanguageID))?.strLabel ?? dicText.strLanguageName}
                       </Typography>
                       <TextField
+                        className="app-mui-text-field"
                         id={`grade-translation-${dicText.strRowID}`}
                         controlId="grade-master.dialog.translated-name.input"
                         placeholder={t("dialog_translated_name_placeholder", "Enter grade name in {language}").replace("{language}", objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === Number(dicText.intLanguageID))?.strLabel ?? dicText.strLanguageName)}
@@ -827,7 +823,6 @@ export default function GradeMasterPanel() {
                         inputProps={{ "controlId": "grade-master.dialog.translated-name.input", "data-row-key": dicText.strRowID }}
                         onChange={(objEvent) => updateTextRow(dicText.strRowID, "strGradeName", objEvent.target.value)}
                         disabled={strMode === "view"}
-                        sx={{ background: "#fff" }}
                         InputProps={{
                           endAdornment: dicTextTranslationLoading[dicText.strRowID] ? (
                             <InputAdornment position="end"><CircularProgress size={18} sx={{ color: "#2563eb" }} /></InputAdornment>

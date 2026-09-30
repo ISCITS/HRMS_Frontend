@@ -733,15 +733,13 @@ export default function DesignationMasterPanel() {
           className={styles.searchRow}
           aria-busy={blnSearchPanelFrozen}
           sx={{
-            alignItems: "end",
-            "& .MuiOutlinedInput-root": { borderRadius: "6px", backgroundColor: "#fff" },
-            "& .MuiOutlinedInput-notchedOutline": { borderColor: "#cbd5e1" },
-            "& .MuiButton-root": { height: "36px !important", minHeight: "36px !important", alignSelf: "flex-end" },
+            alignItems: "center",
+            "& .MuiButton-root": { alignSelf: "center" },
           }}
         >
-          <TextField id="designation-search-name" controlId="designation-master.list.search-name.input" inputProps={{ "controlId": "designation-master.list.search-name.input" }} label={dicDesignationLabels.tableName} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicDesignationLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnSearchPanelFrozen} fullWidth />
-          <TextField id="designation-search-code" controlId="designation-master.list.search-code.input" inputProps={{ "controlId": "designation-master.list.search-code.input" }} label={dicDesignationLabels.tableCode} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicDesignationLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnSearchPanelFrozen} fullWidth />
-          <TextField id="designation-search-status" controlId="designation-master.list.search-status.select" inputProps={{ "controlId": "designation-master.list.search-status.select" }} select label={dicDesignationLabels.tableStatus} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} size="small" disabled={blnSearchPanelFrozen} fullWidth>
+          <TextField className="app-mui-text-field" id="designation-search-name" controlId="designation-master.list.search-name.input" inputProps={{ "controlId": "designation-master.list.search-name.input" }} label={dicDesignationLabels.tableName} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicDesignationLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnSearchPanelFrozen} fullWidth />
+          <TextField className="app-mui-text-field" id="designation-search-code" controlId="designation-master.list.search-code.input" inputProps={{ "controlId": "designation-master.list.search-code.input" }} label={dicDesignationLabels.tableCode} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicDesignationLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnSearchPanelFrozen} fullWidth />
+          <TextField className="app-mui-text-field" id="designation-search-status" controlId="designation-master.list.search-status.select" inputProps={{ "controlId": "designation-master.list.search-status.select" }} select label={dicDesignationLabels.tableStatus} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} size="small" disabled={blnSearchPanelFrozen} fullWidth>
             <MenuItem controlId="designation-master.list.search-status.all.option" value="All">All</MenuItem>
             <MenuItem controlId="designation-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
             <MenuItem controlId="designation-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
@@ -858,16 +856,13 @@ export default function DesignationMasterPanel() {
         fullWidth={false}
         contentSx={{ overflowX: "hidden", overflowY: "auto", px: "20px", py: "12px", borderColor: "#e5edf5" }}
         nodeContent={
-          <Box sx={{ display: "grid", gap: "12px", "& .MuiOutlinedInput-root": { borderRadius: "6px", backgroundColor: "#fff", fontWeight: 400 }, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#cbd5e1" }, "& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline": { borderColor: "error.main" }, "& .MuiFormHelperText-root.Mui-error": { margin: "4px 14px 0px 0px" } }}>
+          <Box sx={{ display: "grid", gap: "12px" }}>
             <Box
               sx={{
                 display: "grid",
                 columnGap: 1.6, rowGap: "12px",
                 gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
                 alignItems: "start",
-                "& .MuiInputLabel-root": { fontSize: "12px", fontWeight: 600 },
-                "& .MuiInputLabel-root.MuiInputLabel-shrink": { backgroundColor: "#fff", px: 0 },
-                "& .MuiOutlinedInput-notchedOutline legend > span": { paddingRight: 0 },
               }}
             >
               {strMode === "add" ? (
@@ -881,6 +876,7 @@ export default function DesignationMasterPanel() {
                 </Box>
               ) : null}
               <TextField
+                className="app-mui-text-field"
                 controlId="designation-master.dialog.name.input"
                 inputRef={objNameInputRef}
                 autoFocus={strMode !== "view"}
@@ -899,10 +895,10 @@ export default function DesignationMasterPanel() {
                 }}
                 error={Boolean(dicErrors.name)}
                 helperText={dicErrors.name}
-                sx={{ "& .MuiFormLabel-asterisk": { color: "#dc2626" } }}
                 fullWidth
               />
               <TextField
+                className="app-mui-text-field"
                 controlId="designation-master.dialog.code.input"
                 inputRef={objCodeInputRef}
                 label={dicDesignationLabels.fieldCode}
@@ -920,7 +916,6 @@ export default function DesignationMasterPanel() {
                 }}
                 error={Boolean(dicErrors.code)}
                 helperText={dicErrors.code}
-                sx={{ "& .MuiFormLabel-asterisk": { color: "#dc2626" } }}
                 fullWidth
               />
             </Box>
@@ -958,6 +953,7 @@ export default function DesignationMasterPanel() {
                         {objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === Number(dicText.intLanguageID))?.strLabel ?? dicText.strLanguageName}
                       </Typography>
                       <TextField
+                        className="app-mui-text-field"
                         id={`designation-translation-${dicText.strRowID}`}
                         controlId="designation-master.dialog.translated-name.input"
                         placeholder={t("dialog_translated_name_placeholder", "Enter designation name in {language}").replace("{language}", objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === Number(dicText.intLanguageID))?.strLabel ?? dicText.strLanguageName)}
@@ -965,7 +961,6 @@ export default function DesignationMasterPanel() {
                         inputProps={{ "controlId": "designation-master.dialog.translated-name.input", "data-row-key": dicText.strRowID }}
                         onChange={(objEvent) => updateTextRow(dicText.strRowID, "strDesignationName", objEvent.target.value)}
                         disabled={strMode === "view"}
-                        sx={{ background: "#fff" }}
                         InputProps={{
                           endAdornment: dicTextTranslationLoading[dicText.strRowID] ? (
                             <InputAdornment position="end"><CircularProgress size={18} sx={{ color: "#2563eb" }} /></InputAdornment>

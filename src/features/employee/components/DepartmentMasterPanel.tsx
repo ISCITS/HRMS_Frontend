@@ -802,9 +802,8 @@ export default function DepartmentMasterPanel() {
           className={styles.searchRow}
           aria-busy={blnSearchPanelFrozen}
           sx={{
-            alignItems: "end",
-            "& .app-mui-text-field .MuiOutlinedInput-root": { height: "40px", minHeight: "40px" },
-            "& .MuiButton-root": { height: "40px !important", minHeight: "40px !important", alignSelf: "flex-end" },
+            alignItems: "center",
+            "& .MuiButton-root": { alignSelf: "center" },
           }}
         >
           <TextField className="app-mui-text-field" id="department-search-name" controlId="department-master.list.search-name.input" inputProps={{ "controlId": "department-master.list.search-name.input" }} label={dicDepartmentLabels.tableName} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicDepartmentLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnSearchPanelFrozen} fullWidth />
@@ -969,7 +968,7 @@ export default function DepartmentMasterPanel() {
                   <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>
                     {t("basic_information", "Basic Information")}
                   </Typography>
-                  <Typography sx={{ fontSize: "11px", color: "#64748b", mt: 0.25 }}>
+                  <Typography sx={{ fontSize: "11px", color: "#64748b", mt: 0.25, mb: 1 }}>
                     {t("basic_information_help", "Create a new department for your organisation.")}
                   </Typography>
                 </Box>

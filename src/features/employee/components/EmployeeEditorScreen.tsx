@@ -149,6 +149,11 @@ const dicEmployeeInlineFieldSx = {
   ...dicEmployeeFieldGridSx,
   "& .MuiOutlinedInput-root": { borderRadius: "4px", backgroundColor: "#fff", fontSize: 13 },
   "& .MuiInputBase-input": { fontSize: "13px" },
+  "& .MuiInputLabel-root:not(.MuiInputLabel-shrink)": {
+    top: "50%",
+    lineHeight: 1.45,
+    transform: "translate(14px, -50%)",
+  },
   "& .MuiFormHelperText-root": { mx: 0 },
 } as const;
 
@@ -1892,8 +1897,38 @@ export default function EmployeeEditorScreen({
         <Box sx={{ px: 1.5, py: 0.7, borderTop: "1px solid #c7d7fc", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1 }}>
           <Typography sx={{ color: "#64748b", fontSize: 11 }}>{t("qualification_required_fields", "Required fields are marked")} <Box component="span" sx={{ color: "#e44747" }}>*</Box></Typography>
           <Stack direction="row" spacing={0.75}>
-            <Button size="small" variant="outlined" onClick={resetQualificationEditor} data-controlid="employee.editor.qualification.reset.button" sx={{ minWidth: 78, textTransform: "none", borderColor: "#7399ff" }}>{t("cancel", "Cancel")}</Button>
-            <Button size="small" variant="contained" onClick={handleQualificationSave} disabled={blnQualificationSaving} data-controlid="employee.editor.qualification.save.button" sx={{ minWidth: 85, textTransform: "none", bgcolor: "var(--app-primary-color)", "&:hover": { bgcolor: "var(--app-primary-hover-color, var(--app-primary-color))" } }}>{blnQualificationSaving ? t("saving", "Saving...") : t("qualification_save_line", "Save line")}</Button>
+            <Button
+              size="small"
+              className={styles.secondaryButton}
+              variant="outlined"
+              onClick={resetQualificationEditor}
+              data-controlid="employee.editor.qualification.reset.button"
+              sx={{ height: 32, minHeight: 32, py: 0, px: "12px !important", minWidth: 0, fontSize: "0.8125rem !important", whiteSpace: "nowrap", flexShrink: 0 }}
+            >
+              {t("cancel", "Cancel")}
+            </Button>
+            <Button
+              size="small"
+              className={styles.primaryButton}
+              variant="contained"
+              startIcon={<SaveRoundedIcon className="employeeSaveIcon" />}
+              onClick={handleQualificationSave}
+              disabled={blnQualificationSaving}
+              data-controlid="employee.editor.qualification.save.button"
+              sx={{
+                height: 32,
+                minHeight: 32,
+                py: 0,
+                px: "12px !important",
+                minWidth: 0,
+                fontSize: "0.8125rem !important",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+                "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } }
+              }}
+            >
+              {blnQualificationSaving ? t("saving", "Saving...") : t("qualification_save_line", "Save line")}
+            </Button>
           </Stack>
         </Box>
       </Box>
@@ -2078,15 +2113,15 @@ export default function EmployeeEditorScreen({
             <TextField className="app-mui-text-field" data-control-id="employee.editor.middle-name.input" inputProps={{ "data-control-id": "employee.editor.middle-name.input" }} label={t("field_middle_name", dicConstant.employeeMaster.fields.middleName)} placeholder={t("placeholder_middle_name", "Enter middle name")} size="small" value={dicBasicForm.strMiddleName} onChange={(objEvent) => updateBasicField("strMiddleName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
             <TextField className="app-mui-text-field" data-control-id="employee.editor.last-name.input" inputProps={{ "data-control-id": "employee.editor.last-name.input" }} label={t("field_last_name", dicConstant.employeeMaster.fields.lastName)} placeholder={t("placeholder_last_name", "Enter last name")} size="small" value={dicBasicForm.strLastName} onChange={(objEvent) => updateBasicField("strLastName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
             <TextField className="app-mui-text-field" data-control-id="employee.editor.date-of-birth.input" inputProps={{ "data-control-id": "employee.editor.date-of-birth.input" }} type="date" label={t("field_date_of_birth", dicConstant.employeeMaster.fields.dateOfBirth)} size="small" value={dicBasicForm.dtDateOfBirth} onChange={(objEvent) => updateBasicField("dtDateOfBirth", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfBirth)} helperText={dicBasicErrors.dtDateOfBirth} InputLabelProps={{ shrink: true }} disabled={blnViewOnly} fullWidth />
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, minHeight: 40, flexWrap: "wrap" }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, minHeight: 40, flexWrap: "nowrap", gridColumn: { sm: "1 / -1", md: "span 2" } }}>
               <Typography sx={{ fontSize: "12px", fontWeight: 600, lineHeight: 1.5, color: "#334155", whiteSpace: "nowrap" }}>{t("field_worker_status", "Worker Status")}</Typography>
-              <RadioGroup row value={dicBasicForm.blnIsWorker ? "worker" : "nonWorker"} onChange={(objEvent) => updateBasicField("blnIsWorker", objEvent.target.value === "worker")} sx={{ alignItems: "center" }}>
+              <RadioGroup row value={dicBasicForm.blnIsWorker ? "worker" : "nonWorker"} onChange={(objEvent) => updateBasicField("blnIsWorker", objEvent.target.value === "worker")} sx={{ alignItems: "center", flexWrap: "nowrap", "& .MuiFormControlLabel-label": { whiteSpace: "nowrap" } }}>
                 <FormControlLabel value="worker" control={<Radio size="small" disabled={blnViewOnly} inputProps={{ "data-control-id": "employee.editor.worker.radio" } as InputHTMLAttributes<HTMLInputElement>} />} label={t("field_worker", "Worker")} sx={{ m: 0, mr: 1 }} disabled={blnViewOnly} />
                 <FormControlLabel value="nonWorker" control={<Radio size="small" disabled={blnViewOnly} inputProps={{ "data-control-id": "employee.editor.non-worker.radio" } as InputHTMLAttributes<HTMLInputElement>} />} label={t("field_non_worker", "Non-Worker")} sx={{ m: 0 }} disabled={blnViewOnly} />
               </RadioGroup>
-            </Box>
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", pt: "19px" }}>
-              <FormControlLabel labelPlacement="start" control={<ActiveStatusSwitch testId="employee.editor.employment-status.switch" blnIsActive={dicBasicForm.strEmploymentStatus === "Active"} onChange={(blnChecked) => updateBasicField("strEmploymentStatus", blnChecked ? "Active" : "Inactive")} disabled={blnViewOnly} sx={dicEmployeeActiveSwitchSx} />} label={t("field_employee_active", "Employee Active")} sx={{ m: 0, gap: 1, pr: 1, alignSelf: "center" }} disabled={blnViewOnly} />
+              <Box sx={{ ml: "auto", display: "flex", alignItems: "center", justifyContent: "flex-end", flexShrink: 0 }}>
+                <FormControlLabel labelPlacement="start" control={<ActiveStatusSwitch testId="employee.editor.employment-status.switch" blnIsActive={dicBasicForm.strEmploymentStatus === "Active"} onChange={(blnChecked) => updateBasicField("strEmploymentStatus", blnChecked ? "Active" : "Inactive")} disabled={blnViewOnly} sx={dicEmployeeActiveSwitchSx} />} label={t("field_employee_active", "Employee Active")} sx={{ m: 0, gap: 1, pr: 1, "& .MuiFormControlLabel-label": { whiteSpace: "nowrap" } }} disabled={blnViewOnly} />
+              </Box>
             </Box>
           </Box>
         </Paper>
@@ -2390,7 +2425,7 @@ export default function EmployeeEditorScreen({
                   {!blnViewOnly ? (
                     <Button
                       size="small"
-                      variant="contained"
+                      className={styles.primaryButton}
                       startIcon={<AddRoundedIcon sx={{ color: "#fff !important" }} />}
                       data-control-id="employee.editor.add-bank-account.button"
                       disabled={dicBankForm.blnSecondaryIsActive}
@@ -2400,7 +2435,7 @@ export default function EmployeeEditorScreen({
                         setStrSelectedBankAccount("secondary");
                         setBlnBankAccountNumberVisible(false);
                       }}
-                      sx={{ textTransform: "none", whiteSpace: "nowrap", borderRadius: "5px", minWidth: 0, px: 1.1, fontSize: 11, "& .MuiButton-startIcon, & .MuiButton-startIcon .MuiSvgIcon-root": { color: "#fff" } }}
+                      sx={{ whiteSpace: "nowrap", minWidth: 0, px: 1.1, fontSize: 11, "& .MuiButton-startIcon, & .MuiButton-startIcon .MuiSvgIcon-root": { color: "#fff" } }}
                     >
                       {t("add_bank_account", "Add bank account")}
                     </Button>
@@ -2438,15 +2473,15 @@ export default function EmployeeEditorScreen({
                 </Stack>
 
                 {strSelectedBankAccount === "primary" ? (
-                  <Box sx={{ display: "grid", ...dicEmployeeInputGridGapSx, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 165px), 1fr))" }}>
+                  <Box sx={{ display: "grid", alignItems: "start", ...dicEmployeeInputGridGapSx, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 165px), 1fr))" }}>
                     {renderSearchableSelectField(t("field_bank", dicConstant.employeeMaster.fields.bank), dicBankForm.intBankID, (objValue) => updateBankField("intBankID", objValue), objFormOptions?.lstBanks ?? [], blnViewOnly, dicBankErrors.intBankID, Boolean(dicBankErrors.intBankID), true)}
                     <TextField size="small" label={t("field_branch_name", "Branch name")} value={dicBankForm.strBranchName} onChange={(objEvent) => updateBankField("strBranchName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
                     {renderLookupCodeSearchableField(t("field_account_type", "Account type"), dicBankForm.strAccountType, (strValue) => updateBankField("strAccountType", strValue), objFormOptions?.lstBankAccountTypes ?? [], blnViewOnly)}
                     <TextField size="small" data-control-id="employee.editor.account-holder-name.input" inputProps={{ "data-control-id": "employee.editor.account-holder-name.input" }} label={renderRequiredLabel(t("field_account_holder_name", dicConstant.employeeMaster.fields.accountHolderName))} inputRef={dicFieldRefs.strAccountHolderName} value={dicBankForm.strAccountHolderName} onChange={(objEvent) => updateBankField("strAccountHolderName", objEvent.target.value)} error={Boolean(dicBankErrors.strAccountHolderName)} helperText={dicBankErrors.strAccountHolderName} disabled={blnViewOnly} fullWidth />
                     <TextField size="small" type={blnBankAccountNumberVisible ? "text" : "password"} data-control-id="employee.editor.account-number.input" inputProps={{ "data-control-id": "employee.editor.account-number.input" }} label={renderRequiredLabel(t("field_account_number", dicConstant.employeeMaster.fields.accountNumber))} inputRef={dicFieldRefs.strAccountNumber} value={dicBankForm.strAccountNumber} placeholder={dicBankAccountMasks.primary || undefined} onChange={(objEvent) => updateBankField("strAccountNumber", objEvent.target.value)} error={Boolean(dicBankErrors.strAccountNumber)} helperText={dicBankErrors.strAccountNumber} disabled={blnViewOnly} InputProps={{ endAdornment: <InputAdornment position="end"><IconButton size="small" aria-label={blnBankAccountNumberVisible ? t("hide_account_number", "Hide account number") : t("show_account_number", "Show account number")} onClick={() => setBlnBankAccountNumberVisible((blnPrevious) => !blnPrevious)} disabled={!dicBankForm.strAccountNumber}>{blnBankAccountNumberVisible ? <VisibilityOffOutlinedIcon fontSize="small" /> : <VisibilityOutlinedIcon fontSize="small" />}</IconButton></InputAdornment> }} fullWidth />
-                    <TextField size="small" data-control-id="employee.editor.ifsc-code.input" inputProps={{ "data-control-id": "employee.editor.ifsc-code.input" }} label={t("field_ifsc_code", dicConstant.employeeMaster.fields.ifscCode)} value={dicBankForm.strIfscCode} onChange={(objEvent) => updateBankField("strIfscCode", objEvent.target.value.toUpperCase())} disabled={blnViewOnly} fullWidth />
-                    <TextField size="small" data-control-id="employee.editor.swift-code.input" inputProps={{ "data-control-id": "employee.editor.swift-code.input", maxLength: 20 }} label={t("field_swift_code", "SWIFT code")} value={dicBankForm.strSwiftCode} onChange={(objEvent) => updateBankField("strSwiftCode", objEvent.target.value.toUpperCase())} disabled={blnViewOnly} fullWidth />
-                    <TextField size="small" type="email" label={t("field_account_holder_email", "Account holder email")} value={dicBankForm.strAccountHolderEmail} onChange={(objEvent) => updateBankField("strAccountHolderEmail", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+                    <TextField className="app-mui-text-field" size="small" data-control-id="employee.editor.ifsc-code.input" inputProps={{ "data-control-id": "employee.editor.ifsc-code.input" }} label={t("field_ifsc_code", dicConstant.employeeMaster.fields.ifscCode)} value={dicBankForm.strIfscCode} onChange={(objEvent) => updateBankField("strIfscCode", objEvent.target.value.toUpperCase())} disabled={blnViewOnly} fullWidth />
+                    <TextField className="app-mui-text-field" size="small" data-control-id="employee.editor.swift-code.input" inputProps={{ "data-control-id": "employee.editor.swift-code.input", maxLength: 20 }} label={t("field_swift_code", "SWIFT code")} value={dicBankForm.strSwiftCode} onChange={(objEvent) => updateBankField("strSwiftCode", objEvent.target.value.toUpperCase())} disabled={blnViewOnly} fullWidth />
+                    <TextField className="app-mui-text-field" size="small" type="email" label={t("field_account_holder_email", "Account holder email")} value={dicBankForm.strAccountHolderEmail} onChange={(objEvent) => updateBankField("strAccountHolderEmail", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
                     <Stack direction="row" alignItems="center" spacing={1} sx={{ p: 1.2, borderRadius: "5px", bgcolor: "#eef5ff", color: "#47618e", minHeight: 40 }}>
                       <InfoOutlinedIcon sx={{ fontSize: 18, color: "#4785ee", flexShrink: 0 }} />
                       <Typography sx={{ fontSize: 11, lineHeight: 1.4 }}>{t("primary_payroll_credit_note", "Payroll credits are sent to the primary account.")}</Typography>
@@ -2584,8 +2619,38 @@ export default function EmployeeEditorScreen({
                   <Box sx={{ px: 1.5, py: 0.7, borderTop: "1px solid #c7d7fc", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1 }}>
                     <Typography sx={{ color: "#64748b", fontSize: 11 }}>{t("qualification_required_fields", "Required fields are marked")} <Box component="span" sx={{ color: "#e44747" }}>*</Box></Typography>
                     <Stack direction="row" spacing={0.75}>
-                      <Button size="small" variant="outlined" onClick={resetExperienceEditor} data-controlid="employee.editor.experience.reset.button" sx={{ minWidth: 78, textTransform: "none", borderColor: "#7399ff" }}>{t("cancel", "Cancel")}</Button>
-                      <Button size="small" variant="contained" onClick={handleExperienceSave} disabled={blnExperienceSaving} data-controlid="employee.editor.experience.save.button" sx={{ minWidth: 85, textTransform: "none", bgcolor: "var(--app-primary-color)", "&:hover": { bgcolor: "var(--app-primary-hover-color, var(--app-primary-color))" } }}>{blnExperienceSaving ? t("saving", "Saving...") : t("qualification_save_line", "Save line")}</Button>
+                      <Button
+                        size="small"
+                        className={styles.secondaryButton}
+                        variant="outlined"
+                        onClick={resetExperienceEditor}
+                        data-controlid="employee.editor.experience.reset.button"
+                        sx={{ height: 32, minHeight: 32, py: 0, px: "12px !important", minWidth: 0, fontSize: "0.8125rem !important", whiteSpace: "nowrap", flexShrink: 0 }}
+                      >
+                        {t("cancel", "Cancel")}
+                      </Button>
+                      <Button
+                        size="small"
+                        className={styles.primaryButton}
+                        variant="contained"
+                        startIcon={<SaveRoundedIcon className="employeeSaveIcon" />}
+                        onClick={handleExperienceSave}
+                        disabled={blnExperienceSaving}
+                        data-controlid="employee.editor.experience.save.button"
+                        sx={{
+                          height: 32,
+                          minHeight: 32,
+                          py: 0,
+                          px: "12px !important",
+                          minWidth: 0,
+                          fontSize: "0.8125rem !important",
+                          whiteSpace: "nowrap",
+                          flexShrink: 0,
+                          "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } }
+                        }}
+                      >
+                        {blnExperienceSaving ? t("saving", "Saving...") : t("qualification_save_line", "Save line")}
+                      </Button>
                     </Stack>
                   </Box>
                 </Box>

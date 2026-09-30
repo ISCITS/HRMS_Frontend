@@ -1,8 +1,10 @@
 "use client";
 
 import type { InputHTMLAttributes } from "react";
+import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import { Box, Button, MenuItem, Switch, TextField, Typography } from "@mui/material";
 import type { EmployeeFamilyDetailFormValues, FamilyGender, FamilyRelationship } from "@/features/employee/types";
+import buttonStyles from "@/components/master/MasterScreen.module.css";
 import styles from "./FamilyDetailsTab.module.css";
 
 type FamilyFormProps = {
@@ -24,6 +26,11 @@ export default function FamilyForm({ dicValues, dicErrors, blnSaving, fnOnClose,
     "& .MuiOutlinedInput-root": { bgcolor: "#fff", borderRadius: "4px", fontSize: 13 },
     "& .MuiInputBase-input": { fontSize: "13px" },
     "& .MuiInputBase-input::placeholder": { fontSize: "13px", opacity: 1, color: "#94a3b8" },
+    "& .MuiInputLabel-root:not(.MuiInputLabel-shrink)": {
+      top: "20px",
+      lineHeight: 1.45,
+      transform: "translate(14px, -50%)",
+    },
     "& .MuiFormLabel-asterisk": { color: "#dc2626" },
     "& .MuiFormHelperText-root": { mx: 0, mt: 0.5 },
   };
@@ -77,8 +84,38 @@ export default function FamilyForm({ dicValues, dicErrors, blnSaving, fnOnClose,
       <Box className={styles.formFooter}>
         <Typography className={styles.requiredNote}>{t("family_required_note", "Required fields are marked")} <span className={styles.required}>*</span></Typography>
         <Box className={styles.formActions}>
-          <Button variant="outlined" size="small" onClick={fnOnClose} data-controlid="employee.family.cancel.button" sx={{ minWidth: 78, textTransform: "none", borderColor: "#7399ff" }}>{t("cancel", "Cancel")}</Button>
-          <Button variant="contained" size="small" onClick={fnOnSubmit} disabled={blnSaving} data-controlid="employee.family.save.button" sx={{ minWidth: 85, textTransform: "none", bgcolor: "var(--app-primary-color)", "&:hover": { bgcolor: "var(--app-primary-hover-color, var(--app-primary-color))" } }}>{blnSaving ? t("saving", "Saving...") : t("qualification_save_line", "Save line")}</Button>
+          <Button
+            variant="outlined"
+            size="small"
+            className={buttonStyles.secondaryButton}
+            onClick={fnOnClose}
+            data-controlid="employee.family.cancel.button"
+            sx={{ height: 32, minHeight: 32, py: 0, px: "12px !important", minWidth: 0, fontSize: "0.8125rem !important", whiteSpace: "nowrap", flexShrink: 0 }}
+          >
+            {t("cancel", "Cancel")}
+          </Button>
+          <Button
+            variant="contained"
+            size="small"
+            className={buttonStyles.primaryButton}
+            startIcon={<SaveRoundedIcon />}
+            onClick={fnOnSubmit}
+            disabled={blnSaving}
+            data-controlid="employee.family.save.button"
+            sx={{
+              height: 32,
+              minHeight: 32,
+              py: 0,
+              px: "12px !important",
+              minWidth: 0,
+              fontSize: "0.8125rem !important",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+              "& .MuiButton-startIcon": { mr: 0.75, "& svg": { color: "#fff", fontSize: "1rem" } }
+            }}
+          >
+            {blnSaving ? t("saving", "Saving...") : t("qualification_save_line", "Save line")}
+          </Button>
         </Box>
       </Box>
     </Box>
