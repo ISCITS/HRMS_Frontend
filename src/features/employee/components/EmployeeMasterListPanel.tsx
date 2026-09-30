@@ -7,7 +7,7 @@ import MoreHorizRoundedIcon from "@mui/icons-material/MoreHorizRounded";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import ViewColumnRoundedIcon from "@mui/icons-material/ViewColumnRounded";
-import { Box, Breadcrumbs, Button, Checkbox, Drawer, IconButton, InputAdornment, Link, Menu, MenuItem, Popover, TextField, Typography } from "@mui/material";
+import { Box, Breadcrumbs, Button, Checkbox, Drawer, IconButton, InputAdornment, Link, Menu, MenuItem, Popover, Skeleton, TextField, Typography } from "@mui/material";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import NextLink from "next/link";
@@ -17,7 +17,6 @@ import AlertDialog from "@/Common/components/AlertDialog";
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import styles from "@/components/master/MasterScreen.module.css";
-import BlockingLoader from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";
 import { useEmployeeLabels } from "@/features/employee/hooks/useEmployeeLabels";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
@@ -26,7 +25,6 @@ import type { EmployeeListRecord, EmployeeStatus } from "@/features/employee/typ
 
 type SearchForm = {
   name: string;
-  code: string;
   department: string;
   designation: string;
   status: "All" | EmployeeStatus;
@@ -34,11 +32,11 @@ type SearchForm = {
 
 const dicEmptySearch: SearchForm = {
   name: "",
-  code: "",
   department: "All",
   designation: "All",
   status: "All",
 };
+const intEmployeeSkeletonRows = 8;
 
 type EmployeeTableRow = {
   id: string;
@@ -76,6 +74,60 @@ function getPartialSaveLabel(blnIsPartialSave: boolean, t: (strKey: string, strF
   return blnIsPartialSave ? t("profile_status_pending", "Pending") : t("profile_status_verified", "Verified");
 }
 
+function EmployeeGridSkeleton() {
+  return (
+    <Box
+      data-control-id="employee.master-list.skeleton"
+      sx={{
+        border: "1px solid #e8eef5",
+        borderRadius: "8px",
+        overflow: "hidden",
+        backgroundColor: "#fff",
+      }}
+    >
+      <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, px: 1.75, py: 1.25, flexWrap: "wrap" }}>
+        <Skeleton variant="rounded" width={142} height={36} />
+        <Box sx={{ display: "flex", gap: 1.25, alignItems: "center", flexWrap: "wrap" }}>
+          <Skeleton variant="rounded" width={64} height={36} />
+          <Skeleton variant="text" width={72} height={24} />
+          <Skeleton variant="rounded" width={116} height={32} />
+        </Box>
+      </Box>
+      <Box sx={{ minWidth: 980 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "1.25fr .8fr .9fr .9fr .8fr .8fr .8fr .7fr .45fr", bgcolor: "#edf3f9", borderTop: "1px solid #e8eef5", borderBottom: "1px solid #d9e3ee" }}>
+          {Array.from({ length: 9 }).map((_, intColumn) => (
+            <Box key={intColumn} sx={{ px: 2, py: 1 }}>
+              <Skeleton variant="text" width={intColumn === 8 ? 34 : 104} height={22} />
+            </Box>
+          ))}
+        </Box>
+        {Array.from({ length: intEmployeeSkeletonRows }).map((_, intIndex) => (
+          <Box
+            key={intIndex}
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "1.25fr .8fr .9fr .9fr .8fr .8fr .8fr .7fr .45fr",
+              borderBottom: "1px solid #edf1f6",
+              minHeight: 40,
+              alignItems: "center",
+            }}
+          >
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${60 + (intIndex % 3) * 8}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width="58%" height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${50 + (intIndex % 2) * 12}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${46 + (intIndex % 3) * 9}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width="66%" height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width="54%" height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="rounded" width={72} height={22} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="rounded" width={68} height={22} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="circular" width={24} height={24} /></Box>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+}
+
 export default function EmployeeMasterListPanel() {
   const objRouter = useRouter();
   const { strLabelError, t } = useEmployeeLabels();
@@ -93,11 +145,11 @@ export default function EmployeeMasterListPanel() {
     strMessage: "",
     strSeverity: "success" as "success" | "error",
   });
+  const blnSearchPanelFrozen = blnLoading || blnRightsLoading;
 
   function closeMoreFilters() {
     setDicSearchDraft((dicPrevious) => ({
       ...dicPrevious,
-      code: dicSearchApplied.code,
       designation: dicSearchApplied.designation,
     }));
     setObjMoreFiltersAnchor(null);
@@ -170,11 +222,10 @@ export default function EmployeeMasterListPanel() {
   const lstFilteredEmployees = useMemo(() => lstEmployees.filter((dicEmployee) => {
     const strSearch = dicSearchApplied.name.trim().toLowerCase();
     const blnNameMatch = !strSearch || dicEmployee.strFullName.toLowerCase().includes(strSearch) || dicEmployee.strEmployeeCode.toLowerCase().includes(strSearch);
-    const blnCodeMatch = !dicSearchApplied.code || dicEmployee.strEmployeeCode.toLowerCase().includes(dicSearchApplied.code.toLowerCase());
     const blnDepartmentMatch = dicSearchApplied.department === "All" || dicEmployee.strDepartmentName?.trim() === dicSearchApplied.department;
     const blnDesignationMatch = dicSearchApplied.designation === "All" || dicEmployee.strDesignationName?.trim() === dicSearchApplied.designation;
     const blnStatusMatch = dicSearchApplied.status === "All" || dicEmployee.strEmploymentStatus === dicSearchApplied.status;
-    return blnNameMatch && blnCodeMatch && blnDepartmentMatch && blnDesignationMatch && blnStatusMatch;
+    return blnNameMatch && blnDepartmentMatch && blnDesignationMatch && blnStatusMatch;
   }), [dicSearchApplied, lstEmployees]);
   const lstTableRows = useMemo<EmployeeTableRow[]>(() => lstFilteredEmployees.map((dicEmployee) => {
     return {
@@ -239,26 +290,28 @@ export default function EmployeeMasterListPanel() {
             {t("read_only_mode", "You have view-only access for Employee.")}
           </Typography>
         ) : null}
-        <Box className={styles.employeeSearchRow} sx={{ alignItems: "end", "& .MuiButton-root": { height: "36px !important", minHeight: "36px !important", alignSelf: "flex-end" } }}>
-          <TextField aria-label={t("search_name_code", "Search by name or code...")} data-control-id="employee.master-list.search.name.input" inputProps={{ "data-control-id": "employee.master-list.search.name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={t("search_name_code", "Search by name or code...")} InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#6474a1" }} /></InputAdornment> }} sx={{ alignSelf: "end" }} fullWidth size="small" />
+        <Box className={styles.employeeSearchRow} aria-busy={blnSearchPanelFrozen} sx={{ alignItems: "end", "& .MuiOutlinedInput-root": { borderRadius: "6px", backgroundColor: "#fff" }, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#cbd5e1" }, "& .MuiButton-root": { height: "36px !important", minHeight: "36px !important", alignSelf: "flex-end" } }}>
           <Box className={styles.employeeSearchField}>
-            <CommonSearchableSelect controlId="employee.master-list.search.department.select" label={t("grid_department", dicConstant.employeeMaster.grid.department)} value={dicSearchDraft.department === "All" ? "" : dicSearchDraft.department} options={lstDepartmentSelectOptions} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, department: strValue === "" ? "All" : strValue }))} placeholder={t("all", "All")} size="small" fullWidth />
+            <TextField className="app-mui-text-field" aria-label={t("search_name_code", "Search by name or code...")} data-control-id="employee.master-list.search.name.input" inputProps={{ "data-control-id": "employee.master-list.search.name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={t("search_name_code", "Search by name or code...")} InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnSearchPanelFrozen} fullWidth size="small" />
           </Box>
           <Box className={styles.employeeSearchField}>
-            <TextField id="employee-search-status" data-control-id="employee.master-list.search.status.select" inputProps={{ "data-control-id": "employee.master-list.search.status.select" }} select label={t("grid_status", "Status")} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth size="small" SelectProps={{ displayEmpty: true }}>
+            <CommonSearchableSelect className="app-mui-text-field" controlId="employee.master-list.search.department.select" label={t("grid_department", dicConstant.employeeMaster.grid.department)} value={dicSearchDraft.department === "All" ? "" : dicSearchDraft.department} options={lstDepartmentSelectOptions} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, department: strValue === "" ? "All" : strValue }))} placeholder={t("all", "All")} size="small" disabled={blnSearchPanelFrozen} fullWidth />
+          </Box>
+          <Box className={styles.employeeSearchField}>
+            <TextField className="app-mui-text-field" id="employee-search-status" data-control-id="employee.master-list.search.status.select" inputProps={{ "data-control-id": "employee.master-list.search.status.select" }} select label={t("grid_status", "Status")} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} disabled={blnSearchPanelFrozen} fullWidth size="small" SelectProps={{ displayEmpty: true }}>
               <MenuItem data-control-id="employee.master-list.search.status.all.option" value="All">{t("select_status", "Select status")}</MenuItem>
               <MenuItem data-control-id="employee.master-list.search.status.active.option" value="Active">{dicConstant.common.statusActive}</MenuItem>
               <MenuItem data-control-id="employee.master-list.search.status.inactive.option" value="Inactive">{dicConstant.common.statusInactive}</MenuItem>
             </TextField>
           </Box>
-          <Button data-control-id="employee.master-list.more-filters.button" className={styles.secondaryButton} startIcon={<FilterListRoundedIcon />} onClick={(objEvent) => setObjMoreFiltersAnchor(objEvent.currentTarget)} aria-expanded={Boolean(objMoreFiltersAnchor)}>{t("more_filters", "More filters")}{dicSearchDraft.code || dicSearchDraft.designation !== "All" ? " •" : ""}</Button>
+          <Button data-control-id="employee.master-list.more-filters.button" className={styles.secondaryButton} startIcon={<FilterListRoundedIcon />} onClick={(objEvent) => setObjMoreFiltersAnchor(objEvent.currentTarget)} aria-expanded={Boolean(objMoreFiltersAnchor)} disabled={blnSearchPanelFrozen}>{t("more_filters", "More filters")}{dicSearchDraft.designation !== "All" ? " •" : ""}</Button>
           <Box className={styles.searchActions}>
-            <Button controlId="employee.master-list.search.button" data-control-id="employee.master-list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }} disabled={blnLoading}>
+            <Button controlId="employee.master-list.search.button" data-control-id="employee.master-list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }} disabled={blnSearchPanelFrozen}>
               {t("search_button", dicConstant.common.search)}
             </Button>
           </Box>
           <Box className={styles.searchActions}>
-            <Button controlId="employee.master-list.clear.button" data-control-id="employee.master-list.clear.button" className={styles.secondaryButton} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading}>
+            <Button controlId="employee.master-list.clear.button" data-control-id="employee.master-list.clear.button" className={styles.secondaryButton} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnSearchPanelFrozen}>
               {t("clear_button", dicConstant.common.clear)}
             </Button>
           </Box>
@@ -268,10 +321,9 @@ export default function EmployeeMasterListPanel() {
             <Typography fontWeight={700}>{t("more_filters", "More filters")}</Typography>
             <IconButton data-control-id="employee.master-list.more-filters.close.button" aria-label={t("close", "Close")} size="small" onClick={closeMoreFilters}><ClearRoundedIcon fontSize="small" /></IconButton>
           </Box>
-          <TextField data-control-id="employee.master-list.search.code.input" inputProps={{ "data-control-id": "employee.master-list.search.code.input" }} label={t("grid_employee_code", dicConstant.employeeMaster.grid.employeeCode)} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} size="small" fullWidth />
-          <CommonSearchableSelect controlId="employee.master-list.search.designation.select" label={t("field_designation", dicConstant.employeeMaster.fields.designation)} value={dicSearchDraft.designation === "All" ? "" : dicSearchDraft.designation} options={lstDesignationSelectOptions} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, designation: strValue === "" ? "All" : strValue }))} placeholder={t("all", "All")} size="small" fullWidth />
+          <CommonSearchableSelect className="app-mui-text-field" controlId="employee.master-list.search.designation.select" label={t("field_designation", dicConstant.employeeMaster.fields.designation)} value={dicSearchDraft.designation === "All" ? "" : dicSearchDraft.designation} options={lstDesignationSelectOptions} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, designation: strValue === "" ? "All" : strValue }))} placeholder={t("all", "All")} size="small" fullWidth />
           <Box className={styles.employeeMoreFiltersActions}>
-            <Button data-control-id="employee.master-list.more-filters.clear-all.button" className={styles.employeeMoreFiltersClear} onClick={() => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: "", designation: "All" }))}>{t("clear_all", "Clear all")}</Button>
+            <Button data-control-id="employee.master-list.more-filters.clear-all.button" className={styles.employeeMoreFiltersClear} onClick={() => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, designation: "All" }))}>{t("clear_all", "Clear all")}</Button>
             <Box className={styles.employeeMoreFiltersActionButtons}>
               <Button data-control-id="employee.master-list.more-filters.cancel.button" className={styles.secondaryButton} onClick={closeMoreFilters}>{t("cancel", "Cancel")}</Button>
               <Button data-control-id="employee.master-list.more-filters.apply.button" className={styles.primaryButton} onClick={() => { setDicSearchApplied(dicSearchDraft); setObjMoreFiltersAnchor(null); }}>{t("apply", "Apply")}</Button>
@@ -282,7 +334,9 @@ export default function EmployeeMasterListPanel() {
       </Box>
 
       <Box className={styles.tableCard} sx={{ p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
-        {!blnCanView && !blnRightsLoading && !blnLoading ? (
+        {(blnLoading || blnRightsLoading) ? (
+          <EmployeeGridSkeleton />
+        ) : !blnCanView ? (
           <Box className={styles.emptyState}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", "Employee access is not available for your user group.")}</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>
@@ -294,6 +348,7 @@ export default function EmployeeMasterListPanel() {
             columns={lstTableColumns}
             rows={lstTableRows}
             minTableWidth={0}
+            wrapColumnHeaders={false}
             rowIdField="id"
             defaultPageSize={20}
             pageSizeOptions={[10, 20, 50]}
@@ -357,7 +412,6 @@ export default function EmployeeMasterListPanel() {
         rootTestId="employee.master-list.alert.dialog"
         closeButtonTestId="employee.master-list.alert.close.button"
       />
-      <BlockingLoader blnOpen={blnLoading || blnRightsLoading} strLabel="Loading..." intZIndex={1400} />
     </Box>
   );
 }

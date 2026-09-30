@@ -138,18 +138,22 @@ function maskBankAccountNumber(strAccountNumber: string, strSavedMask?: string |
   return strSavedMask || "••••";
 }
 
-// Match the Department add dialog: labels sit above compact, 14px inputs.
+// Match the standard salary-component outlined fields, with squarer corners.
 const dicEmployeeFieldGridSx = {
-  "& .MuiInputLabel-root": { position: "relative", transform: "none", alignSelf: "flex-start", maxWidth: "100%", fontSize: "12px", fontWeight: 600, lineHeight: 1.5, mb: "4px", color: "#334155" },
-  "& .MuiOutlinedInput-root": { borderRadius: "6px", minHeight: 38, backgroundColor: "#fff" },
-  "& .MuiOutlinedInput-notchedOutline": { top: 0, borderColor: "#cbd5e1" },
-  "& .MuiOutlinedInput-notchedOutline legend": { display: "none" },
-  "& .MuiInputBase-input": { fontSize: "14px", py: "8.5px" },
+  "& .MuiOutlinedInput-root": { borderRadius: "4px", backgroundColor: "#fff" },
   "& .MuiInputBase-input::placeholder": { fontSize: "13px", opacity: 1, color: "#94a3b8" },
   "& .MuiFormLabel-asterisk": { color: strRequiredAsteriskColor },
 } as const;
 
+const dicEmployeeInlineFieldSx = {
+  ...dicEmployeeFieldGridSx,
+  "& .MuiOutlinedInput-root": { borderRadius: "4px", backgroundColor: "#fff", fontSize: 13 },
+  "& .MuiInputBase-input": { fontSize: "13px" },
+  "& .MuiFormHelperText-root": { mx: 0 },
+} as const;
+
 const intEmployeeTabCardSpacing = 1.5;
+const dicEmployeeInputGridGapSx = { columnGap: 1.5, rowGap: 2.25 } as const;
 const dicEmployeeTabCardTitleSx = { fontSize: 14, fontWeight: 700, lineHeight: 1.35, color: "#172554" } as const;
 const dicEmployeeTabCardSubtitleSx = { fontSize: 11, lineHeight: 1.45, color: "#64748b" } as const;
 const lstContactCountryCodes = ["+91", "+971", "+1", "+44", "+61"];
@@ -1619,11 +1623,11 @@ export default function EmployeeEditorScreen({
     return (
       <TextField
         select
+        className="app-mui-text-field"
         data-control-id={strControlId}
         inputProps={strControlId ? { "data-control-id": strControlId } : undefined}
         label={objLabel}
         size="small"
-        SelectProps={{ displayEmpty: true }}
         inputRef={objInputRef}
         value={objValue}
         onChange={(objEvent) => fnOnChange((objEvent.target.value ? Number.isNaN(Number(objEvent.target.value)) ? objEvent.target.value : Number(objEvent.target.value) : "") as TValue)}
@@ -1704,8 +1708,36 @@ export default function EmployeeEditorScreen({
     const strNumberError = dicBasicErrors[strNumberField];
 
     return (
-      <Box>
-        <Typography component="label" htmlFor={`${strControlId}.number`} sx={{ display: "block", mb: 0.5, color: "#334155", fontSize: 12, fontWeight: 600, lineHeight: 1.5 }}>
+      <Box
+        data-has-value={Boolean(strNumberValue)}
+        sx={{
+          position: "relative",
+          "&:focus-within > .contact-phone-label, &[data-has-value='true'] > .contact-phone-label": {
+            top: 0,
+            transform: "translate(14px, -50%) scale(0.75)",
+            bgcolor: "#fff",
+          },
+        }}
+      >
+        <Typography
+          className="contact-phone-label"
+          component="label"
+          htmlFor={`${strControlId}.number`}
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: 0,
+            zIndex: 1,
+            px: "5px",
+            color: "rgba(15, 23, 42, 0.6)",
+            fontSize: 14,
+            lineHeight: 1,
+            transform: "translate(104px, -50%) scale(1)",
+            transformOrigin: "top left",
+            transition: "color 200ms cubic-bezier(0, 0, 0.2, 1), transform 200ms cubic-bezier(0, 0, 0.2, 1), top 200ms cubic-bezier(0, 0, 0.2, 1)",
+            pointerEvents: "none",
+          }}
+        >
           {strLabel}
         </Typography>
         <Box
@@ -1716,7 +1748,7 @@ export default function EmployeeEditorScreen({
             minHeight: 38,
             border: "1px solid",
             borderColor: strNumberError ? "#d32f2f" : "#cbd5e1",
-            borderRadius: "6px",
+            borderRadius: "4px",
             bgcolor: blnViewOnly ? "#f8fafc" : "#fff",
             transition: "border-color 160ms ease, box-shadow 160ms ease",
             "&:focus-within": {
@@ -1822,20 +1854,19 @@ export default function EmployeeEditorScreen({
     const objLabelSx = { mb: 0.5, color: "#14213d", fontSize: 12, fontWeight: 700 };
     const renderField = (strLabel: string, strField: keyof EmployeeQualificationFormValues, strPlaceholder: string, blnRequired = false) => (
       <Box key={strField} sx={{ minWidth: 0 }}>
-        <Typography component="label" htmlFor={`qualification-${strField}`} sx={objLabelSx}>
-          {strLabel}{blnRequired ? <Box component="span" sx={{ color: "#e44747" }}> *</Box> : null}
-        </Typography>
         <TextField
           id={`qualification-${strField}`}
           size="small"
           fullWidth
           select={strField === "intYearOfPassing"}
+          label={strLabel}
+          required={blnRequired}
           value={dicQualificationForm[strField]}
           onChange={(objEvent) => updateQualificationField(strField, strField === "intYearOfPassing" ? objEvent.target.value.replace(/[^0-9]/g, "").slice(0, 4) : objEvent.target.value)}
           placeholder={strPlaceholder}
           error={Boolean(dicQualificationErrors[strField])} helperText={dicQualificationErrors[strField]}
           inputProps={{ "data-controlid": `employee.editor.qualification.${({ strDegreeName: "degree-name", strSpecialization: "specialization", strInstitutionName: "institution-name", strUniversityName: "university-name", intYearOfPassing: "year-of-passing", strGradeOrPercentage: "grade-or-percentage", strCertificationNumber: "certification-number" } as Record<string, string>)[strField]}.input`, list: strField === "strDegreeName" ? "qualification-degree-options" : undefined }}
-          sx={{ "& .MuiOutlinedInput-root": { bgcolor: "#fff", borderRadius: "5px", fontSize: 13 }, "& .MuiOutlinedInput-input": { py: 0.9 }, "& .MuiFormHelperText-root": { mx: 0 } }}
+          sx={dicEmployeeInlineFieldSx}
         >
           {strField === "intYearOfPassing" ? [<MenuItem key="empty" value="" disabled>{strPlaceholder}</MenuItem>, ...Array.from({ length: new Date().getFullYear() - 1899 }, (_, intIndex) => new Date().getFullYear() - intIndex).map((intYear) => <MenuItem key={intYear} value={intYear}>{intYear}</MenuItem>)] : null}
         </TextField>
@@ -1853,7 +1884,7 @@ export default function EmployeeEditorScreen({
           {renderField(t("field_year_of_passing", "Year of passing"), "intYearOfPassing", t("qualification_select_year", "Select year"), true)}
           {renderField(t("field_grade_or_percentage", "Grade / Percentage"), "strGradeOrPercentage", t("qualification_enter_grade", "Enter grade or percentage"))}
           {renderField(t("field_certification_number", "Certification number"), "strCertificationNumber", t("qualification_enter_certificate", "Enter certificate number"))}
-          <Box sx={{ display: "flex", gap: 3, alignItems: "flex-start" }}>
+          <Box sx={{ display: "flex", gap: 3, alignItems: "center", alignSelf: "start", minHeight: 40, flexWrap: "wrap" }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}><Typography sx={{ ...objLabelSx, mb: 0 }}>{t("field_highest_qualification", "Highest qualification")}</Typography><Switch size="small" checked={dicQualificationForm.blnIsHighestQualification} onChange={(_, blnChecked) => updateQualificationField("blnIsHighestQualification", blnChecked)} inputProps={{ "data-controlid": "employee.editor.qualification.highest-qualification.switch" } as InputHTMLAttributes<HTMLInputElement>} sx={{ "& .MuiSwitch-switchBase.Mui-checked": { color: "#319045" }, "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { bgcolor: "#319045" } }} /></Box>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}><Typography sx={{ ...objLabelSx, mb: 0 }}>{t("field_qualification_active", "Active")}</Typography><ActiveStatusSwitch blnIsActive={dicQualificationForm.blnIsActive} onChange={(blnChecked) => updateQualificationField("blnIsActive", blnChecked)} inputProps={{ "data-controlid": "employee.editor.qualification.active.switch" } as InputHTMLAttributes<HTMLInputElement>} /></Box>
           </Box>
@@ -2016,7 +2047,7 @@ export default function EmployeeEditorScreen({
           <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", sm: "flex-start" }} spacing={1} sx={{ mb: 1.75 }}>
             <Box>
               <Typography sx={{ fontSize: "1rem", fontWeight: 800, color: "#172554", lineHeight: 1.2 }}>{t("basic_employee_details", "Basic Employee Details")}</Typography>
-              <Typography sx={{ fontSize: "0.75rem", color: "#64748b" }}>{t("basic_employee_details_subtitle", "Identity, category, and account status")}</Typography>
+              <Typography sx={{ fontSize: "0.75rem", color: "#64748b", mb: 1 }}>{t("basic_employee_details_subtitle", "Identity, category, and account status")}</Typography>
             </Box>
             <Stack direction="row" alignItems="flex-start" spacing={1} sx={{ alignSelf: { xs: "flex-end", sm: "auto" } }}>
               <Typography sx={{ fontSize: "0.7rem", color: "#64748b", whiteSpace: "nowrap" }}>{t("required_fields_legend", "Required fields are marked")} <Box component="span" sx={{ color: strRequiredAsteriskColor }}>*</Box></Typography>
@@ -2039,17 +2070,17 @@ export default function EmployeeEditorScreen({
             </Stack>
           </Stack>
           {strMode === "edit" && strAvatarError ? <Typography sx={{ mb: 1, color: "#b91c1c", fontSize: 12 }}>{strAvatarError}</Typography> : null}
-          <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "repeat(3, minmax(0, 1fr))" }, ...dicEmployeeFieldGridSx }}>
-            <TextField data-control-id="employee.editor.employee-code.input" inputProps={{ "data-control-id": "employee.editor.employee-code.input" }} label={renderRequiredLabel(t("field_employee_code", dicConstant.employeeMaster.fields.employeeCode))} placeholder={t("placeholder_employee_code", "Enter employee code")} size="small" inputRef={dicFieldRefs.strEmployeeCode} value={dicBasicForm.strEmployeeCode} onChange={(objEvent) => updateBasicField("strEmployeeCode", objEvent.target.value.toUpperCase())} error={Boolean(dicBasicErrors.strEmployeeCode)} helperText={dicBasicErrors.strEmployeeCode} disabled={blnViewOnly} fullWidth />
+          <Box sx={{ display: "grid", columnGap: 1.5, rowGap: 2.25, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "repeat(3, minmax(0, 1fr))" } }}>
+            <TextField className="app-mui-text-field" data-control-id="employee.editor.employee-code.input" inputProps={{ "data-control-id": "employee.editor.employee-code.input" }} label={renderRequiredLabel(t("field_employee_code", dicConstant.employeeMaster.fields.employeeCode))} placeholder={t("placeholder_employee_code", "Enter employee code")} size="small" inputRef={dicFieldRefs.strEmployeeCode} value={dicBasicForm.strEmployeeCode} onChange={(objEvent) => updateBasicField("strEmployeeCode", objEvent.target.value.toUpperCase())} error={Boolean(dicBasicErrors.strEmployeeCode)} helperText={dicBasicErrors.strEmployeeCode} disabled={blnViewOnly} fullWidth />
             {renderSelectField(t("field_title", dicConstant.employeeMaster.fields.title), dicBasicForm.strTitle, (objValue) => updateBasicField("strTitle", String(objValue)), objFormOptions?.lstTitles ?? [], blnViewOnly, undefined, false, undefined, "employee.editor.title.select", t("placeholder_title", "Select title"))}
             {renderSelectField(t("field_gender", dicConstant.employeeMaster.fields.gender), dicBasicForm.strGender, (objValue) => updateBasicField("strGender", String(objValue)), objFormOptions?.lstGenders ?? [], blnViewOnly, undefined, false, undefined, "employee.editor.gender.select", t("placeholder_gender", "Select gender"))}
-            <TextField data-control-id="employee.editor.first-name.input" inputProps={{ "data-control-id": "employee.editor.first-name.input" }} label={renderRequiredLabel(t("field_first_name", dicConstant.employeeMaster.fields.firstName))} placeholder={t("placeholder_first_name", "Enter first name")} size="small" inputRef={dicFieldRefs.strFirstName} value={dicBasicForm.strFirstName} onChange={(objEvent) => updateBasicField("strFirstName", objEvent.target.value)} error={Boolean(dicBasicErrors.strFirstName)} helperText={dicBasicErrors.strFirstName} disabled={blnViewOnly} fullWidth />
-            <TextField data-control-id="employee.editor.middle-name.input" inputProps={{ "data-control-id": "employee.editor.middle-name.input" }} label={t("field_middle_name", dicConstant.employeeMaster.fields.middleName)} placeholder={t("placeholder_middle_name", "Enter middle name")} size="small" value={dicBasicForm.strMiddleName} onChange={(objEvent) => updateBasicField("strMiddleName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
-            <TextField data-control-id="employee.editor.last-name.input" inputProps={{ "data-control-id": "employee.editor.last-name.input" }} label={t("field_last_name", dicConstant.employeeMaster.fields.lastName)} placeholder={t("placeholder_last_name", "Enter last name")} size="small" value={dicBasicForm.strLastName} onChange={(objEvent) => updateBasicField("strLastName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
-            <TextField data-control-id="employee.editor.date-of-birth.input" inputProps={{ "data-control-id": "employee.editor.date-of-birth.input" }} type="date" label={t("field_date_of_birth", dicConstant.employeeMaster.fields.dateOfBirth)} size="small" value={dicBasicForm.dtDateOfBirth} onChange={(objEvent) => updateBasicField("dtDateOfBirth", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfBirth)} helperText={dicBasicErrors.dtDateOfBirth} InputLabelProps={{ shrink: true }} disabled={blnViewOnly} fullWidth />
-            <Box>
-              <Typography sx={{ fontSize: "12px", fontWeight: 600, lineHeight: 1.5, color: "#334155", mb: "4px" }}>{t("field_worker_status", "Worker Status")}</Typography>
-              <RadioGroup row value={dicBasicForm.blnIsWorker ? "worker" : "nonWorker"} onChange={(objEvent) => updateBasicField("blnIsWorker", objEvent.target.value === "worker")}>
+            <TextField className="app-mui-text-field" data-control-id="employee.editor.first-name.input" inputProps={{ "data-control-id": "employee.editor.first-name.input" }} label={renderRequiredLabel(t("field_first_name", dicConstant.employeeMaster.fields.firstName))} placeholder={t("placeholder_first_name", "Enter first name")} size="small" inputRef={dicFieldRefs.strFirstName} value={dicBasicForm.strFirstName} onChange={(objEvent) => updateBasicField("strFirstName", objEvent.target.value)} error={Boolean(dicBasicErrors.strFirstName)} helperText={dicBasicErrors.strFirstName} disabled={blnViewOnly} fullWidth />
+            <TextField className="app-mui-text-field" data-control-id="employee.editor.middle-name.input" inputProps={{ "data-control-id": "employee.editor.middle-name.input" }} label={t("field_middle_name", dicConstant.employeeMaster.fields.middleName)} placeholder={t("placeholder_middle_name", "Enter middle name")} size="small" value={dicBasicForm.strMiddleName} onChange={(objEvent) => updateBasicField("strMiddleName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+            <TextField className="app-mui-text-field" data-control-id="employee.editor.last-name.input" inputProps={{ "data-control-id": "employee.editor.last-name.input" }} label={t("field_last_name", dicConstant.employeeMaster.fields.lastName)} placeholder={t("placeholder_last_name", "Enter last name")} size="small" value={dicBasicForm.strLastName} onChange={(objEvent) => updateBasicField("strLastName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
+            <TextField className="app-mui-text-field" data-control-id="employee.editor.date-of-birth.input" inputProps={{ "data-control-id": "employee.editor.date-of-birth.input" }} type="date" label={t("field_date_of_birth", dicConstant.employeeMaster.fields.dateOfBirth)} size="small" value={dicBasicForm.dtDateOfBirth} onChange={(objEvent) => updateBasicField("dtDateOfBirth", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfBirth)} helperText={dicBasicErrors.dtDateOfBirth} InputLabelProps={{ shrink: true }} disabled={blnViewOnly} fullWidth />
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, minHeight: 40, flexWrap: "wrap" }}>
+              <Typography sx={{ fontSize: "12px", fontWeight: 600, lineHeight: 1.5, color: "#334155", whiteSpace: "nowrap" }}>{t("field_worker_status", "Worker Status")}</Typography>
+              <RadioGroup row value={dicBasicForm.blnIsWorker ? "worker" : "nonWorker"} onChange={(objEvent) => updateBasicField("blnIsWorker", objEvent.target.value === "worker")} sx={{ alignItems: "center" }}>
                 <FormControlLabel value="worker" control={<Radio size="small" disabled={blnViewOnly} inputProps={{ "data-control-id": "employee.editor.worker.radio" } as InputHTMLAttributes<HTMLInputElement>} />} label={t("field_worker", "Worker")} sx={{ m: 0, mr: 1 }} disabled={blnViewOnly} />
                 <FormControlLabel value="nonWorker" control={<Radio size="small" disabled={blnViewOnly} inputProps={{ "data-control-id": "employee.editor.non-worker.radio" } as InputHTMLAttributes<HTMLInputElement>} />} label={t("field_non_worker", "Non-Worker")} sx={{ m: 0 }} disabled={blnViewOnly} />
               </RadioGroup>
@@ -2131,7 +2162,7 @@ export default function EmployeeEditorScreen({
           </Tabs>
         </Box>
 
-        <Box sx={{
+        <Box className="app-mui-text-field" sx={{
           p: 2,
           "& .MuiSwitch-root": {
             ...createEmployeeSwitchSx("#215f91"),
@@ -2146,7 +2177,7 @@ export default function EmployeeEditorScreen({
           {(["basicInfo", "personalIdentification", "serviceContract", "additionalEmployment"] as TabKey[]).includes(strVisibleActiveTab) ? (
             <Stack spacing={intEmployeeTabCardSpacing}>
               {strVisibleActiveTab === "basicInfo" ? <Box>
-                <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(3, minmax(0, 1fr))" }, ...dicEmployeeFieldGridSx }}>
+                <Box sx={{ display: "grid", ...dicEmployeeInputGridGapSx, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(3, minmax(0, 1fr))" }, ...dicEmployeeFieldGridSx }}>
                   <TextField data-control-id="employee.editor.date-of-joining.input" inputProps={{ "data-control-id": "employee.editor.date-of-joining.input" }} type="date" label={renderRequiredLabel(t("field_date_of_joining", dicConstant.employeeMaster.fields.dateOfJoining))} size="small" inputRef={dicFieldRefs.dtDateOfJoining} value={dicBasicForm.dtDateOfJoining} onChange={(objEvent) => updateBasicField("dtDateOfJoining", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfJoining)} helperText={dicBasicErrors.dtDateOfJoining} InputLabelProps={{ shrink: true }} disabled={blnViewOnly} fullWidth />
                   {renderSearchableSelectField(t("field_employment_type", dicConstant.employeeMaster.fields.employmentType), dicBasicForm.intEmploymentTypeID, (objValue) => updateBasicField("intEmploymentTypeID", objValue), objFormOptions?.lstEmploymentTypes ?? [], blnViewOnly, dicBasicErrors.intEmploymentTypeID, Boolean(dicBasicErrors.intEmploymentTypeID), true)}
                   {renderOptionalEmployeeField("strEmployeeCategory", t("field_employee_category", "Employee Category"))}
@@ -2169,7 +2200,7 @@ export default function EmployeeEditorScreen({
                       <Box sx={{ width: 36, height: 36, display: "grid", placeItems: "center", borderRadius: "50%", bgcolor: "#eff6ff", color: "#31598f" }}><PersonOutlineRoundedIcon fontSize="small" /></Box>
                       <Box><Typography sx={dicEmployeeTabCardTitleSx}>{t("personal_profile", "Personal profile")}</Typography><Typography sx={dicEmployeeTabCardSubtitleSx}>{t("personal_profile_subtitle", "Core personal information")}</Typography></Box>
                     </Stack>
-                    <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+                    <Box sx={{ display: "grid", ...dicEmployeeInputGridGapSx, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
                       {renderSearchableSelectField(t("field_nationality", "Nationality"), dicBasicForm.intNationalityCountryID, (objValue) => updateBasicField("intNationalityCountryID", objValue), objFormOptions?.lstNationalities ?? [], blnViewOnly)}
                       {renderSearchableSelectField(t("field_mother_tongue", "Mother Tongue"), dicBasicForm.intMotherTongueLanguageID, (objValue) => updateBasicField("intMotherTongueLanguageID", objValue), objFormOptions?.lstMotherTongues ?? [], blnViewOnly)}
                       {lstPersonalOptionalFields.slice(0, 2).map((dicField) => renderOptionalEmployeeField(dicField.strField, dicField.strLabel, dicField.strType))}
@@ -2190,7 +2221,7 @@ export default function EmployeeEditorScreen({
                       <Box sx={{ width: 36, height: 36, display: "grid", placeItems: "center", borderRadius: "50%", bgcolor: "#eff6ff", color: "#31598f" }}><DescriptionOutlinedIcon fontSize="small" /></Box>
                       <Box><Typography sx={dicEmployeeTabCardTitleSx}>{t("identity_documents", "Identity documents")}</Typography><Typography sx={dicEmployeeTabCardSubtitleSx}>{t("identity_documents_subtitle", "Passport and driving licence")}</Typography></Box>
                     </Stack>
-                    <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" } }}>
+                    <Box sx={{ display: "grid", ...dicEmployeeInputGridGapSx, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" } }}>
                       {lstPersonalOptionalFields.slice(9).map((dicField) => renderOptionalEmployeeField(dicField.strField, dicField.strLabel, dicField.strType))}
                     </Box>
                     <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, mt: 2, pt: 1.5, borderTop: "1px solid #e2e8f0" }}>
@@ -2214,13 +2245,13 @@ export default function EmployeeEditorScreen({
                     <Button data-control-id="employee.editor.service.appointment.toggle" fullWidth aria-expanded={dicServiceSectionsOpen.appointment} aria-controls="employee-service-appointment" onClick={() => setDicServiceSectionsOpen((dicPrevious) => ({ ...dicPrevious, appointment: !dicPrevious.appointment }))} startIcon={<AssignmentTurnedInOutlinedIcon sx={{ color: "#405b94" }} />} endIcon={<ExpandMoreRoundedIcon sx={{ transform: dicServiceSectionsOpen.appointment ? "rotate(180deg)" : "none" }} />} sx={{ justifyContent: "flex-start", textTransform: "none", color: "#1e293b", fontWeight: 700, px: 2, py: 1.25, "& .MuiButton-endIcon": { ml: "auto" } }}>{t("section_appointment_joining", "Appointment & joining")}</Button>
                     <Collapse in={dicServiceSectionsOpen.appointment} id="employee-service-appointment">
                       <Box sx={{ borderTop: "1px solid #e2e8f0", px: 2, pt: 1.5, pb: 2, ...dicEmployeeFieldGridSx }}>
-                        <Box sx={{ display: "grid", columnGap: 2, rowGap: 1.25, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" } }}>
+                        <Box sx={{ display: "grid", ...dicEmployeeInputGridGapSx, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" } }}>
                           {lstAppointmentJoiningFields.map((dicField) => renderOptionalEmployeeField(dicField.strField, t(`field_${dicField.strField}`, dicField.strLabel), dicField.strType))}
                         </Box>
                         <Box sx={{ mt: 1.5, pt: 1, borderTop: "1px solid #e2e8f0" }}>
                           <Button data-control-id="employee.editor.service.additional-appointment.toggle" fullWidth aria-expanded={dicServiceSectionsOpen.additionalAppointment} aria-controls="employee-service-additional-appointment" onClick={() => setDicServiceSectionsOpen((dicPrevious) => ({ ...dicPrevious, additionalAppointment: !dicPrevious.additionalAppointment }))} startIcon={<ExpandMoreRoundedIcon sx={{ color: "#405b94", transform: dicServiceSectionsOpen.additionalAppointment ? "rotate(180deg)" : "none" }} />} sx={{ justifyContent: "flex-start", textTransform: "none", color: "#334155", fontSize: 13, px: 0.25, py: 0.25 }}>{t("section_additional_appointment_details", "Additional appointment details")}</Button>
                           <Collapse in={dicServiceSectionsOpen.additionalAppointment} id="employee-service-additional-appointment">
-                            <Box sx={{ display: "grid", gap: 1.5, mt: 1, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" } }}>
+                            <Box sx={{ display: "grid", ...dicEmployeeInputGridGapSx, mt: 1, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" } }}>
                               {lstAdditionalAppointmentFields.map((dicField) => renderOptionalEmployeeField(dicField.strField, t(`field_${dicField.strField}`, dicField.strLabel)))}
                             </Box>
                           </Collapse>
@@ -2232,7 +2263,7 @@ export default function EmployeeEditorScreen({
                   <Box sx={{ bgcolor: "#fff", border: "1px solid #e2e8f0", borderRadius: "8px", boxShadow: "0 2px 8px rgba(15,23,42,0.04)", overflow: "hidden" }}>
                     <Button data-control-id="employee.editor.service.probation.toggle" fullWidth aria-expanded={dicServiceSectionsOpen.probation} aria-controls="employee-service-probation" onClick={() => setDicServiceSectionsOpen((dicPrevious) => ({ ...dicPrevious, probation: !dicPrevious.probation }))} startIcon={<GppGoodOutlinedIcon sx={{ color: "#405b94" }} />} endIcon={<ExpandMoreRoundedIcon sx={{ transform: dicServiceSectionsOpen.probation ? "rotate(180deg)" : "none" }} />} sx={{ justifyContent: "flex-start", textTransform: "none", color: "#1e293b", fontWeight: 700, px: 2, py: 1.25, "& .MuiButton-endIcon": { ml: "auto" } }}>{t("section_probation_confirmation", "Probation & confirmation")}</Button>
                     <Collapse in={dicServiceSectionsOpen.probation} id="employee-service-probation">
-                      <Box sx={{ display: "grid", columnGap: 2, rowGap: 1.25, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" }, borderTop: "1px solid #e2e8f0", px: 2, pt: 1.5, pb: 2, ...dicEmployeeFieldGridSx }}>
+                      <Box sx={{ display: "grid", ...dicEmployeeInputGridGapSx, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" }, borderTop: "1px solid #e2e8f0", px: 2, pt: 1.5, pb: 2, ...dicEmployeeFieldGridSx }}>
                         {lstProbationConfirmationFields.map((dicField) => renderOptionalEmployeeField(dicField.strField, t(`field_${dicField.strField}`, dicField.strLabel), dicField.strType))}
                       </Box>
                     </Collapse>
@@ -2240,7 +2271,7 @@ export default function EmployeeEditorScreen({
                   <Box sx={{ bgcolor: "#fff", border: "1px solid #e2e8f0", borderRadius: "8px", boxShadow: "0 2px 8px rgba(15,23,42,0.04)", overflow: "hidden" }}>
                     <Button data-control-id="employee.editor.service.contract.toggle" fullWidth aria-expanded={dicServiceSectionsOpen.contract} aria-controls="employee-service-contract" onClick={() => setDicServiceSectionsOpen((dicPrevious) => ({ ...dicPrevious, contract: !dicPrevious.contract }))} startIcon={<DescriptionOutlinedIcon sx={{ color: "#405b94" }} />} endIcon={<ExpandMoreRoundedIcon sx={{ transform: dicServiceSectionsOpen.contract ? "rotate(180deg)" : "none" }} />} sx={{ justifyContent: "flex-start", textTransform: "none", color: "#1e293b", fontWeight: 700, px: 2, py: 1.25, "& .MuiButton-endIcon": { ml: "auto" } }}>{t("section_contract_service_period", "Contract / service period")}</Button>
                     <Collapse in={dicServiceSectionsOpen.contract} id="employee-service-contract">
-                      <Box sx={{ display: "grid", columnGap: 2, rowGap: 1.25, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" }, borderTop: "1px solid #e2e8f0", px: 2, pt: 1.5, pb: 2, ...dicEmployeeFieldGridSx }}>
+                      <Box sx={{ display: "grid", ...dicEmployeeInputGridGapSx, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" }, borderTop: "1px solid #e2e8f0", px: 2, pt: 1.5, pb: 2, ...dicEmployeeFieldGridSx }}>
                         {lstContractServiceFields.map((dicField) => renderOptionalEmployeeField(dicField.strField, t(`field_${dicField.strField}`, dicField.strLabel), dicField.strType))}
                         <TextField data-control-id="employee.editor.date-of-exit.input" inputProps={{ "data-control-id": "employee.editor.date-of-exit.input" }} type="date" label={t("field_date_of_exit", dicConstant.employeeMaster.fields.dateOfExit)} size="small" value={dicBasicForm.dtDateOfExit} onChange={(objEvent) => updateBasicField("dtDateOfExit", objEvent.target.value)} error={Boolean(dicBasicErrors.dtDateOfExit)} helperText={dicBasicErrors.dtDateOfExit} InputLabelProps={{ shrink: true }} disabled={blnViewOnly || dicBasicForm.strEmploymentStatus === "Active"} fullWidth />
                       </Box>
@@ -2255,7 +2286,7 @@ export default function EmployeeEditorScreen({
                   <Box sx={{ minWidth: 0, p: 2, border: "1px solid #e2e8f0", borderRadius: "10px", bgcolor: "#fff", boxShadow: "0 2px 10px rgba(15,23,42,0.04)", ...dicEmployeeFieldGridSx }}>
                     <Typography sx={dicEmployeeTabCardTitleSx}>{t("section_employment_classification", "Employment classification")}</Typography>
                     <Typography sx={{ ...dicEmployeeTabCardSubtitleSx, mb: 2 }}>{t("employment_classification_subtitle", "Assignment and policy classification.")}</Typography>
-                    <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" } }}>
+                    <Box sx={{ display: "grid", ...dicEmployeeInputGridGapSx, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" } }}>
                       {lstAdditionalEmploymentFields.map((dicField) => renderOptionalEmployeeField(dicField.strField, t(dicField.strTranslationKey, dicField.strLabel), dicField.strType))}
                     </Box>
                   </Box>
@@ -2272,7 +2303,7 @@ export default function EmployeeEditorScreen({
                   </Box>
                   <Box sx={{ gridColumn: { md: "1 / -1" }, minWidth: 0, p: 2, border: "1px solid #e2e8f0", borderRadius: "10px", bgcolor: "#fff", boxShadow: "0 2px 10px rgba(15,23,42,0.04)", ...dicEmployeeFieldGridSx }}>
                     <Typography sx={{ ...dicEmployeeTabCardTitleSx, mb: 1 }}>{t("field_employee_remark", "Employee remark")}</Typography>
-                    <TextField data-control-id="employee.editor.strEmployeeRemark.input" inputProps={{ "data-control-id": "employee.editor.strEmployeeRemark.input", maxLength: 500 }} placeholder={t("placeholder_employee_remark", "Enter remark (if any)")} value={dicBasicForm.strEmployeeRemark} onChange={(objEvent) => updateBasicField("strEmployeeRemark", objEvent.target.value)} disabled={blnViewOnly} multiline minRows={2} fullWidth />
+                    <TextField data-control-id="employee.editor.strEmployeeRemark.input" inputProps={{ "data-control-id": "employee.editor.strEmployeeRemark.input", maxLength: 500 }} label={t("field_employee_remark", "Employee remark")} placeholder={t("placeholder_employee_remark", "Enter remark (if any)")} value={dicBasicForm.strEmployeeRemark} onChange={(objEvent) => updateBasicField("strEmployeeRemark", objEvent.target.value)} disabled={blnViewOnly} multiline minRows={2} fullWidth />
                     <Typography sx={{ fontSize: 11, color: "#94a3b8", mt: 0.5 }}>{dicBasicForm.strEmployeeRemark.length} / 500</Typography>
                   </Box>
                 </Box>
@@ -2339,7 +2370,7 @@ export default function EmployeeEditorScreen({
                     <Button key={strType} data-control-id={`employee.editor.address-type.${strType.toLowerCase()}.button`} size="small" disabled={blnViewOnly} aria-pressed={dicAddressForm.strAddressType === strType} onClick={() => updateAddressField("strAddressType", strType)} sx={{ textTransform: "none", fontSize: 12, bgcolor: dicAddressForm.strAddressType === strType ? "#eaf1ff" : "transparent", color: dicAddressForm.strAddressType === strType ? "#2c55c7" : "#5f6d83", border: dicAddressForm.strAddressType === strType ? "1px solid #bcd0fc" : "1px solid transparent", "&:hover": { bgcolor: "#eaf1ff" } }}>{t(`address_type_${strType.toLowerCase()}`, `${strType} address`)}</Button>
                   ))}
                 </Box>
-                <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+                <Box sx={{ display: "grid", ...dicEmployeeInputGridGapSx, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
                   <TextField size="small" data-control-id="employee.editor.address-line1.input" inputProps={{ "data-control-id": "employee.editor.address-line1.input" }} label={renderRequiredLabel(t("field_address_line1", dicConstant.employeeMaster.fields.addressLine1))} inputRef={dicFieldRefs.strAddressLine1} value={dicAddressForm.strAddressLine1} onChange={(objEvent) => updateAddressField("strAddressLine1", objEvent.target.value)} error={Boolean(dicAddressErrors.strAddressLine1)} helperText={dicAddressErrors.strAddressLine1} disabled={blnViewOnly} fullWidth />
                   <TextField size="small" data-control-id="employee.editor.address-line2.input" inputProps={{ "data-control-id": "employee.editor.address-line2.input" }} label={t("field_address_line2", dicConstant.employeeMaster.fields.addressLine2)} value={dicAddressForm.strAddressLine2} onChange={(objEvent) => updateAddressField("strAddressLine2", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
                   <TextField size="small" data-control-id="employee.editor.city.input" inputProps={{ "data-control-id": "employee.editor.city.input" }} label={t("field_city", dicConstant.employeeMaster.fields.cityName)} value={dicAddressForm.strCityName} onChange={(objEvent) => updateAddressField("strCityName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
@@ -2407,7 +2438,7 @@ export default function EmployeeEditorScreen({
                 </Stack>
 
                 {strSelectedBankAccount === "primary" ? (
-                  <Box sx={{ display: "grid", columnGap: 2, rowGap: 1.5, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 165px), 1fr))" }}>
+                  <Box sx={{ display: "grid", ...dicEmployeeInputGridGapSx, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 165px), 1fr))" }}>
                     {renderSearchableSelectField(t("field_bank", dicConstant.employeeMaster.fields.bank), dicBankForm.intBankID, (objValue) => updateBankField("intBankID", objValue), objFormOptions?.lstBanks ?? [], blnViewOnly, dicBankErrors.intBankID, Boolean(dicBankErrors.intBankID), true)}
                     <TextField size="small" label={t("field_branch_name", "Branch name")} value={dicBankForm.strBranchName} onChange={(objEvent) => updateBankField("strBranchName", objEvent.target.value)} disabled={blnViewOnly} fullWidth />
                     {renderLookupCodeSearchableField(t("field_account_type", "Account type"), dicBankForm.strAccountType, (strValue) => updateBankField("strAccountType", strValue), objFormOptions?.lstBankAccountTypes ?? [], blnViewOnly)}
@@ -2422,7 +2453,7 @@ export default function EmployeeEditorScreen({
                     </Stack>
                   </Box>
                 ) : (
-                  <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" } }}>
+                  <Box sx={{ display: "grid", ...dicEmployeeInputGridGapSx, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" } }}>
                     {renderSearchableSelectField(t("field_secondary_bank", dicConstant.employeeMaster.fields.secondaryBank), dicBankForm.intSecondaryBankID, (objValue) => updateBankField("intSecondaryBankID", objValue), objFormOptions?.lstBanks ?? [], blnViewOnly, dicBankErrors.intSecondaryBankID, Boolean(dicBankErrors.intSecondaryBankID), true)}
                     <TextField size="small" data-control-id="employee.editor.secondary-account-holder-name.input" inputProps={{ "data-control-id": "employee.editor.secondary-account-holder-name.input" }} label={renderRequiredLabel(t("field_secondary_account_holder_name", dicConstant.employeeMaster.fields.secondaryAccountHolderName))} inputRef={dicFieldRefs.strSecondaryAccountHolderName} value={dicBankForm.strSecondaryAccountHolderName} onChange={(objEvent) => updateBankField("strSecondaryAccountHolderName", objEvent.target.value)} error={Boolean(dicBankErrors.strSecondaryAccountHolderName)} helperText={dicBankErrors.strSecondaryAccountHolderName} disabled={blnViewOnly} fullWidth />
                     <TextField size="small" type={blnBankAccountNumberVisible ? "text" : "password"} data-control-id="employee.editor.secondary-account-number.input" inputProps={{ "data-control-id": "employee.editor.secondary-account-number.input" }} label={renderRequiredLabel(t("field_secondary_account_number", dicConstant.employeeMaster.fields.secondaryAccountNumber))} inputRef={dicFieldRefs.strSecondaryAccountNumber} value={dicBankForm.strSecondaryAccountNumber} placeholder={dicBankAccountMasks.secondary || undefined} onChange={(objEvent) => updateBankField("strSecondaryAccountNumber", objEvent.target.value)} error={Boolean(dicBankErrors.strSecondaryAccountNumber)} helperText={dicBankErrors.strSecondaryAccountNumber} disabled={blnViewOnly} InputProps={{ endAdornment: <InputAdornment position="end"><IconButton size="small" aria-label={blnBankAccountNumberVisible ? t("hide_account_number", "Hide account number") : t("show_account_number", "Show account number")} onClick={() => setBlnBankAccountNumberVisible((blnPrevious) => !blnPrevious)} disabled={!dicBankForm.strSecondaryAccountNumber}>{blnBankAccountNumberVisible ? <VisibilityOffOutlinedIcon fontSize="small" /> : <VisibilityOutlinedIcon fontSize="small" />}</IconButton></InputAdornment> }} fullWidth />
@@ -2464,7 +2495,7 @@ export default function EmployeeEditorScreen({
                       <Typography sx={{ fontSize: 12, color: "#334155" }}>{dicStatutoryForm.blnPfApplicable ? t("on", "On") : t("off", "Off")}</Typography><Switch size="small" sx={dicEmployeeDetailSwitchSx} checked={dicStatutoryForm.blnPfApplicable} onChange={(_, blnChecked) => { updateStatutoryField("blnPfApplicable", blnChecked); if (!blnChecked) updateStatutoryField("strPfNumber", ""); }} disabled={blnViewOnly} inputProps={{ "aria-label": t("field_pf_applicable", "PF applicable") } as InputHTMLAttributes<HTMLInputElement>} />
                     </Stack>
                   </Stack>
-                  <Typography sx={{ mb: 1.25, fontSize: 11, color: "#64748b" }}>{t("statutory_pf_description", "Employee is covered under EPF.")}</Typography>
+                  <Typography sx={{ pb: 1.5, fontSize: 11, color: "#64748b" }}>{t("statutory_pf_description", "Employee is covered under EPF.")}</Typography>
                   {dicStatutoryForm.blnPfApplicable ? <TextField size="small" data-control-id="employee.editor.pf-number.input" inputProps={{ "data-control-id": "employee.editor.pf-number.input" }} label={renderRequiredLabel(t("field_pf_account_number", "PF account number"))} value={dicStatutoryForm.strPfNumber} onChange={(objEvent) => updateStatutoryField("strPfNumber", objEvent.target.value.toUpperCase())} error={Boolean(dicStatutoryErrors.strPfNumber)} helperText={dicStatutoryErrors.strPfNumber} disabled={blnViewOnly} fullWidth /> : null}
                 </Stack>
                 <Stack spacing={1.25} sx={{ minWidth: 0, minHeight: 154, p: 2, border: "1px solid #dce4ef", borderRadius: "6px", bgcolor: "#fff", boxShadow: "0 3px 14px rgba(30, 58, 90, 0.04)", ...dicEmployeeFieldGridSx }}>
@@ -2474,7 +2505,7 @@ export default function EmployeeEditorScreen({
                       <Typography sx={{ fontSize: 12, color: "#334155" }}>{dicStatutoryForm.blnEsiApplicable ? t("on", "On") : t("off", "Off")}</Typography><Switch size="small" sx={dicEmployeeDetailSwitchSx} checked={dicStatutoryForm.blnEsiApplicable} onChange={(_, blnChecked) => { updateStatutoryField("blnEsiApplicable", blnChecked); if (!blnChecked) updateStatutoryField("strEsiNumber", ""); }} disabled={blnViewOnly} inputProps={{ "aria-label": t("field_esi_applicable", "ESI applicable") } as InputHTMLAttributes<HTMLInputElement>} />
                     </Stack>
                   </Stack>
-                  <Typography sx={{ mb: 1.25, fontSize: 11, color: "#64748b" }}>{dicStatutoryForm.blnEsiApplicable ? t("statutory_esi_enabled_description", "Employee is covered under ESI.") : t("statutory_esi_description", "Not applicable for this employee.")}</Typography>
+                  <Typography sx={{ pb: 1.5, fontSize: 11, color: "#64748b" }}>{dicStatutoryForm.blnEsiApplicable ? t("statutory_esi_enabled_description", "Employee is covered under ESI.") : t("statutory_esi_description", "Not applicable for this employee.")}</Typography>
                   {dicStatutoryForm.blnEsiApplicable ? <Stack spacing={1.25}><TextField size="small" data-control-id="employee.editor.esi-number.input" inputProps={{ "data-control-id": "employee.editor.esi-number.input" }} label={renderRequiredLabel(t("field_esi_number", dicConstant.employeeMaster.fields.esiNumber))} value={dicStatutoryForm.strEsiNumber} onChange={(objEvent) => updateStatutoryField("strEsiNumber", objEvent.target.value)} error={Boolean(dicStatutoryErrors.strEsiNumber)} helperText={dicStatutoryErrors.strEsiNumber} disabled={blnViewOnly} fullWidth /><TextField size="small" label={t("field_esi_code", "ESI code")} value={dicStatutoryForm.strEsiCode} onChange={(objEvent) => updateStatutoryField("strEsiCode", objEvent.target.value)} disabled={blnViewOnly} fullWidth /></Stack> : null}
                 </Stack>
                 <Stack spacing={1.25} sx={{ minWidth: 0, minHeight: 154, p: 2, border: "1px solid #dce4ef", borderRadius: "6px", bgcolor: "#fff", boxShadow: "0 3px 14px rgba(30, 58, 90, 0.04)", ...dicEmployeeFieldGridSx }}>
@@ -2484,7 +2515,7 @@ export default function EmployeeEditorScreen({
                       <Typography sx={{ fontSize: 12, color: "#334155" }}>{dicStatutoryForm.blnPtApplicable ? t("on", "On") : t("off", "Off")}</Typography><Switch size="small" sx={dicEmployeeDetailSwitchSx} checked={dicStatutoryForm.blnPtApplicable} onChange={(_, blnChecked) => updateStatutoryField("blnPtApplicable", blnChecked)} disabled={blnViewOnly} inputProps={{ "aria-label": t("field_pt_applicable", "Professional Tax applicable") } as InputHTMLAttributes<HTMLInputElement>} />
                     </Stack>
                   </Stack>
-                  <Typography sx={{ mb: 1.25, fontSize: 11, color: "#64748b" }}>{dicStatutoryForm.blnPtApplicable ? t("statutory_pt_description", "Employee is liable for Professional Tax.") : t("statutory_pt_disabled_description", "Not applicable for this employee.")}</Typography>
+                  <Typography sx={{ pb: 1.5, fontSize: 11, color: "#64748b" }}>{dicStatutoryForm.blnPtApplicable ? t("statutory_pt_description", "Employee is liable for Professional Tax.") : t("statutory_pt_disabled_description", "Not applicable for this employee.")}</Typography>
                   {dicStatutoryForm.blnPtApplicable ? <TextField size="small" label={t("field_pt_registration", "Professional Tax registration")} value={dicStatutoryForm.strPtRegistrationNumber} onChange={(objEvent) => updateStatutoryField("strPtRegistrationNumber", objEvent.target.value.toUpperCase())} disabled={blnViewOnly} fullWidth /> : null}
                 </Stack>
               </Box>
@@ -2520,38 +2551,30 @@ export default function EmployeeEditorScreen({
                     <ExpandMoreRoundedIcon sx={{ fontSize: 17, color: "#215f91" }} />
                     <Typography sx={{ color: "#172554", fontSize: 12, fontWeight: 700 }}>{intEditingExperienceID ? t("edit_experience", "Edit experience") : t("new_experience", "New experience")}</Typography>
                   </Stack>
-                  <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" }, gap: 1.5, p: 1.5 }}>
+                  <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" }, ...dicEmployeeInputGridGapSx, p: 1.5 }}>
                     <Box sx={{ minWidth: 0 }}>
-                      <Typography component="label" htmlFor="experience-company_name" sx={{ mb: 0.5, color: "#14213d", fontSize: 12, fontWeight: 700 }}>{t("field_company_name", "Company Name")}<Box component="span" sx={{ color: "#e44747" }}> *</Box></Typography>
-                      <TextField id="experience-company_name" size="small" data-controlid="employee.editor.experience.company-name.input" inputProps={{ "data-controlid": "employee.editor.experience.company-name.input" }} value={dicExperienceForm.strCompanyName} onChange={(objEvent) => updateExperienceField("strCompanyName", objEvent.target.value)} error={Boolean(dicExperienceErrors.strCompanyName)} helperText={dicExperienceErrors.strCompanyName} inputRef={dicExperienceFieldRefs.strCompanyName} placeholder={t("field_company_name", "Company Name")} sx={{ "& .MuiOutlinedInput-root": { bgcolor: "#fff", borderRadius: "5px", fontSize: 13 }, "& .MuiOutlinedInput-input": { py: 0.9 }, "& .MuiFormHelperText-root": { mx: 0 } }} fullWidth />
+                      <TextField id="experience-company_name" size="small" data-controlid="employee.editor.experience.company-name.input" inputProps={{ "data-controlid": "employee.editor.experience.company-name.input" }} label={t("field_company_name", "Company Name")} required value={dicExperienceForm.strCompanyName} onChange={(objEvent) => updateExperienceField("strCompanyName", objEvent.target.value)} error={Boolean(dicExperienceErrors.strCompanyName)} helperText={dicExperienceErrors.strCompanyName} inputRef={dicExperienceFieldRefs.strCompanyName} placeholder={t("field_company_name", "Company Name")} sx={dicEmployeeInlineFieldSx} fullWidth />
                     </Box>
                     <Box sx={{ minWidth: 0 }}>
-                      <Typography component="label" htmlFor="experience-job_title" sx={{ mb: 0.5, color: "#14213d", fontSize: 12, fontWeight: 700 }}>{t("field_job_title", "Job Title")}<Box component="span" sx={{ color: "#e44747" }}> *</Box></Typography>
-                      <TextField id="experience-job_title" size="small" data-controlid="employee.editor.experience.job-title.input" inputProps={{ "data-controlid": "employee.editor.experience.job-title.input" }} value={dicExperienceForm.strJobTitle} onChange={(objEvent) => updateExperienceField("strJobTitle", objEvent.target.value)} error={Boolean(dicExperienceErrors.strJobTitle)} helperText={dicExperienceErrors.strJobTitle} inputRef={dicExperienceFieldRefs.strJobTitle} placeholder={t("field_job_title", "Job Title")} sx={{ "& .MuiOutlinedInput-root": { bgcolor: "#fff", borderRadius: "5px", fontSize: 13 }, "& .MuiOutlinedInput-input": { py: 0.9 }, "& .MuiFormHelperText-root": { mx: 0 } }} fullWidth />
+                      <TextField id="experience-job_title" size="small" data-controlid="employee.editor.experience.job-title.input" inputProps={{ "data-controlid": "employee.editor.experience.job-title.input" }} label={t("field_job_title", "Job Title")} required value={dicExperienceForm.strJobTitle} onChange={(objEvent) => updateExperienceField("strJobTitle", objEvent.target.value)} error={Boolean(dicExperienceErrors.strJobTitle)} helperText={dicExperienceErrors.strJobTitle} inputRef={dicExperienceFieldRefs.strJobTitle} placeholder={t("field_job_title", "Job Title")} sx={dicEmployeeInlineFieldSx} fullWidth />
                     </Box>
                     <Box sx={{ minWidth: 0 }}>
-                      <Typography component="label" htmlFor="experience-from_date" sx={{ mb: 0.5, color: "#14213d", fontSize: 12, fontWeight: 700 }}>{t("field_from_date", "From Date")}<Box component="span" sx={{ color: "#e44747" }}> *</Box></Typography>
-                      <TextField id="experience-from_date" size="small" type="date" data-controlid="employee.editor.experience.from-date.input" inputProps={{ "data-controlid": "employee.editor.experience.from-date.input" }} value={dicExperienceForm.dtFromDate} onChange={(objEvent) => updateExperienceField("dtFromDate", objEvent.target.value)} error={Boolean(dicExperienceErrors.dtFromDate)} helperText={dicExperienceErrors.dtFromDate} inputRef={dicExperienceFieldRefs.dtFromDate} InputLabelProps={{ shrink: true }} sx={{ "& .MuiOutlinedInput-root": { bgcolor: "#fff", borderRadius: "5px", fontSize: 13 }, "& .MuiOutlinedInput-input": { py: 0.9 }, "& .MuiFormHelperText-root": { mx: 0 } }} fullWidth />
+                      <TextField id="experience-from_date" size="small" type="date" data-controlid="employee.editor.experience.from-date.input" inputProps={{ "data-controlid": "employee.editor.experience.from-date.input" }} label={t("field_from_date", "From Date")} required value={dicExperienceForm.dtFromDate} onChange={(objEvent) => updateExperienceField("dtFromDate", objEvent.target.value)} error={Boolean(dicExperienceErrors.dtFromDate)} helperText={dicExperienceErrors.dtFromDate} inputRef={dicExperienceFieldRefs.dtFromDate} InputLabelProps={{ shrink: true }} sx={dicEmployeeInlineFieldSx} fullWidth />
                     </Box>
                     <Box sx={{ minWidth: 0 }}>
-                      <Typography component="label" htmlFor="experience-to_date" sx={{ mb: 0.5, color: "#14213d", fontSize: 12, fontWeight: 700 }}>{t("field_to_date", "To Date")}</Typography>
-                      <TextField id="experience-to_date" size="small" type="date" data-controlid="employee.editor.experience.to-date.input" inputProps={{ "data-controlid": "employee.editor.experience.to-date.input" }} value={dicExperienceForm.dtToDate} onChange={(objEvent) => updateExperienceField("dtToDate", objEvent.target.value)} error={Boolean(dicExperienceErrors.dtToDate)} helperText={dicExperienceErrors.dtToDate} inputRef={dicExperienceFieldRefs.dtToDate} InputLabelProps={{ shrink: true }} sx={{ "& .MuiOutlinedInput-root": { bgcolor: "#fff", borderRadius: "5px", fontSize: 13 }, "& .MuiOutlinedInput-input": { py: 0.9 }, "& .MuiFormHelperText-root": { mx: 0 } }} fullWidth />
+                      <TextField id="experience-to_date" size="small" type="date" data-controlid="employee.editor.experience.to-date.input" inputProps={{ "data-controlid": "employee.editor.experience.to-date.input" }} label={t("field_to_date", "To Date")} value={dicExperienceForm.dtToDate} onChange={(objEvent) => updateExperienceField("dtToDate", objEvent.target.value)} error={Boolean(dicExperienceErrors.dtToDate)} helperText={dicExperienceErrors.dtToDate} inputRef={dicExperienceFieldRefs.dtToDate} InputLabelProps={{ shrink: true }} sx={dicEmployeeInlineFieldSx} fullWidth />
                     </Box>
                     <Box sx={{ minWidth: 0 }}>
-                      <Typography component="label" htmlFor="experience-total_years" sx={{ mb: 0.5, color: "#14213d", fontSize: 12, fontWeight: 700 }}>{t("field_total_years", "Total Years")}</Typography>
-                      <TextField id="experience-total_years" size="small" data-controlid="employee.editor.experience.total-years.input" inputProps={{ "data-controlid": "employee.editor.experience.total-years.input" }} value={dicExperienceForm.decTotalYears} onChange={(objEvent) => updateExperienceField("decTotalYears", objEvent.target.value)} placeholder={t("field_total_years", "Total Years")} sx={{ "& .MuiOutlinedInput-root": { bgcolor: "#fff", borderRadius: "5px", fontSize: 13 }, "& .MuiOutlinedInput-input": { py: 0.9 }, "& .MuiFormHelperText-root": { mx: 0 } }} fullWidth />
+                      <TextField id="experience-total_years" size="small" data-controlid="employee.editor.experience.total-years.input" inputProps={{ "data-controlid": "employee.editor.experience.total-years.input" }} label={t("field_total_years", "Total Years")} value={dicExperienceForm.decTotalYears} onChange={(objEvent) => updateExperienceField("decTotalYears", objEvent.target.value)} placeholder={t("field_total_years", "Total Years")} sx={dicEmployeeInlineFieldSx} fullWidth />
                     </Box>
                     <Box sx={{ minWidth: 0 }}>
-                      <Typography component="label" htmlFor="experience-last_drawn_salary" sx={{ mb: 0.5, color: "#14213d", fontSize: 12, fontWeight: 700 }}>{t("field_last_drawn_salary", "Last Drawn Salary")}</Typography>
-                      <TextField id="experience-last_drawn_salary" size="small" data-controlid="employee.editor.experience.last-drawn-salary.input" inputProps={{ "data-controlid": "employee.editor.experience.last-drawn-salary.input" }} value={dicExperienceForm.decLastDrawnSalary} onChange={(objEvent) => updateExperienceField("decLastDrawnSalary", objEvent.target.value)} error={Boolean(dicExperienceErrors.decLastDrawnSalary)} helperText={dicExperienceErrors.decLastDrawnSalary} inputRef={dicExperienceFieldRefs.decLastDrawnSalary} placeholder={t("field_last_drawn_salary", "Last Drawn Salary")} sx={{ "& .MuiOutlinedInput-root": { bgcolor: "#fff", borderRadius: "5px", fontSize: 13 }, "& .MuiOutlinedInput-input": { py: 0.9 }, "& .MuiFormHelperText-root": { mx: 0 } }} fullWidth />
+                      <TextField id="experience-last_drawn_salary" size="small" data-controlid="employee.editor.experience.last-drawn-salary.input" inputProps={{ "data-controlid": "employee.editor.experience.last-drawn-salary.input" }} label={t("field_last_drawn_salary", "Last Drawn Salary")} value={dicExperienceForm.decLastDrawnSalary} onChange={(objEvent) => updateExperienceField("decLastDrawnSalary", objEvent.target.value)} error={Boolean(dicExperienceErrors.decLastDrawnSalary)} helperText={dicExperienceErrors.decLastDrawnSalary} inputRef={dicExperienceFieldRefs.decLastDrawnSalary} placeholder={t("field_last_drawn_salary", "Last Drawn Salary")} sx={dicEmployeeInlineFieldSx} fullWidth />
                     </Box>
                     <Box sx={{ minWidth: 0 }}>
-                      <Typography component="label" htmlFor="experience-reason_for_leaving" sx={{ mb: 0.5, color: "#14213d", fontSize: 12, fontWeight: 700 }}>{t("field_reason_for_leaving", "Reason For Leaving")}</Typography>
-                      <TextField id="experience-reason_for_leaving" size="small" data-controlid="employee.editor.experience.reason-for-leaving.input" inputProps={{ "data-controlid": "employee.editor.experience.reason-for-leaving.input" }} value={dicExperienceForm.strReasonForLeaving} onChange={(objEvent) => updateExperienceField("strReasonForLeaving", objEvent.target.value)} placeholder={t("field_reason_for_leaving", "Reason For Leaving")} sx={{ "& .MuiOutlinedInput-root": { bgcolor: "#fff", borderRadius: "5px", fontSize: 13 }, "& .MuiOutlinedInput-input": { py: 0.9 }, "& .MuiFormHelperText-root": { mx: 0 } }} fullWidth />
+                      <TextField id="experience-reason_for_leaving" size="small" data-controlid="employee.editor.experience.reason-for-leaving.input" inputProps={{ "data-controlid": "employee.editor.experience.reason-for-leaving.input" }} label={t("field_reason_for_leaving", "Reason For Leaving")} value={dicExperienceForm.strReasonForLeaving} onChange={(objEvent) => updateExperienceField("strReasonForLeaving", objEvent.target.value)} placeholder={t("field_reason_for_leaving", "Reason For Leaving")} sx={dicEmployeeInlineFieldSx} fullWidth />
                     </Box>
                     <Box sx={{ minWidth: 0 }}>
-                      <Typography component="label" htmlFor="experience-responsibilities" sx={{ mb: 0.5, color: "#14213d", fontSize: 12, fontWeight: 700 }}>{t("field_responsibilities", "Responsibilities")}</Typography>
-                      <TextField id="experience-responsibilities" size="small" data-controlid="employee.editor.experience.responsibilities.input" inputProps={{ "data-controlid": "employee.editor.experience.responsibilities.input" }} value={dicExperienceForm.strResponsibilities} onChange={(objEvent) => updateExperienceField("strResponsibilities", objEvent.target.value)} placeholder={t("field_responsibilities", "Responsibilities")} sx={{ "& .MuiOutlinedInput-root": { bgcolor: "#fff", borderRadius: "5px", fontSize: 13 }, "& .MuiOutlinedInput-input": { py: 0.9 }, "& .MuiFormHelperText-root": { mx: 0 } }} fullWidth />
+                      <TextField id="experience-responsibilities" size="small" data-controlid="employee.editor.experience.responsibilities.input" inputProps={{ "data-controlid": "employee.editor.experience.responsibilities.input" }} label={t("field_responsibilities", "Responsibilities")} value={dicExperienceForm.strResponsibilities} onChange={(objEvent) => updateExperienceField("strResponsibilities", objEvent.target.value)} placeholder={t("field_responsibilities", "Responsibilities")} sx={dicEmployeeInlineFieldSx} fullWidth />
                     </Box>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                       <Typography sx={{ color: "#14213d", fontSize: 12, fontWeight: 700 }}>{t("field_experience_active", "Active")}</Typography>
@@ -2562,7 +2585,7 @@ export default function EmployeeEditorScreen({
                     <Typography sx={{ color: "#64748b", fontSize: 11 }}>{t("qualification_required_fields", "Required fields are marked")} <Box component="span" sx={{ color: "#e44747" }}>*</Box></Typography>
                     <Stack direction="row" spacing={0.75}>
                       <Button size="small" variant="outlined" onClick={resetExperienceEditor} data-controlid="employee.editor.experience.reset.button" sx={{ minWidth: 78, textTransform: "none", borderColor: "#7399ff" }}>{t("cancel", "Cancel")}</Button>
-                      <Button size="small" variant="contained" onClick={handleExperienceSave} disabled={blnExperienceSaving} data-controlid="employee.editor.experience.save.button" sx={{ minWidth: 85, textTransform: "none", bgcolor: "#2860e8" }}>{blnExperienceSaving ? t("saving", "Saving...") : t("qualification_save_line", "Save line")}</Button>
+                      <Button size="small" variant="contained" onClick={handleExperienceSave} disabled={blnExperienceSaving} data-controlid="employee.editor.experience.save.button" sx={{ minWidth: 85, textTransform: "none", bgcolor: "var(--app-primary-color)", "&:hover": { bgcolor: "var(--app-primary-hover-color, var(--app-primary-color))" } }}>{blnExperienceSaving ? t("saving", "Saving...") : t("qualification_save_line", "Save line")}</Button>
                     </Stack>
                   </Box>
                 </Box>

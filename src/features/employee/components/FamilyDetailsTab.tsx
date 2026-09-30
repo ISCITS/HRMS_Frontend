@@ -247,7 +247,6 @@ export default function FamilyDetailsTab({
             data-controlid="employee.family.add.button"
             className={styles.addButton}
             size="small"
-            variant="contained"
             startIcon={<PostAddRoundedIcon />}
             onClick={openAddDialog}
           >

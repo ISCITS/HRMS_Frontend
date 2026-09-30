@@ -163,6 +163,21 @@
   min-width: 0;
 }
 
+.employeeSearchRow :global(.MuiInputBase-root) {
+  height: 36px;
+  min-height: 36px;
+}
+
+.employeeSearchRow :global(.MuiInputBase-input) {
+  padding-bottom: 8px;
+  padding-top: 8px;
+}
+
+.employeeSearchRow :global(.MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline) {
+  border-color: var(--app-primary-color);
+  border-width: 1px;
+}
+
 .employeeStatusVerified,
 .employeeStatusActive {
   background: #dff3e5;

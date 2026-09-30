@@ -128,6 +128,8 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   const [rowsPerPage, setRowsPerPage] = useState(defaultPageSize);
   const strExportExcelLabel = t("export_excel", dicConstant.common.exportExcel);
   const strExportPdfLabel = t("export_pdf", dicConstant.common.exportPdf);
+  const strRowsPerPageLabel = t("rows_per_page", dicConstant.common.rowsPerPage);
+  const strPerPageLabel = t("per_page", "per Page");
   const strPaginationSeparator = t("pagination_separator", dicConstant.common.paginationSeparator);
   const strRowDoubleClickHint = t("row_double_click_tooltip", "Double-click on a row to open details");
   const strResolvedEmptyMessage = emptyMessage || t("empty_message", dicConstant.commonDataGrid.emptyMessage);
@@ -414,12 +416,15 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                   className={styles.rowsPerPageSelect}
                   select
                   size="small"
+                  label={strPerPageLabel}
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{ "aria-label": strRowsPerPageLabel }}
                   value={String(rowsPerPage)}
                   onChange={(event) => {
                     setRowsPerPage(parseInt(event.target.value, 10));
                     setPage(0);
                   }}
-                  sx={{ width: 64, flexShrink: 0 }}
+                  sx={{ width: 80, flexShrink: 0 }}
                 >
                   {pageSizeOptions.map((intOption) => (
                     <MenuItem key={intOption} value={String(intOption)} data-controlid={`${testIdPrefix}.rows-per-page.${intOption}.option`}>
@@ -442,7 +447,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                 size="small"
                 color="primary"
                 shape="rounded"
-                sx={{ "& .MuiPaginationItem-root": { border: "1px solid #e2e8f0", borderRadius: "5px" }, "& .Mui-selected": { bgcolor: "#0066ee !important", color: "#fff" } }}
+                sx={{ "& .MuiPaginationItem-root": { border: "1px solid #e2e8f0", borderRadius: "5px" }, "& .Mui-selected": {  color: "#fff" } }}
               />
             </Stack>
           ) : null}

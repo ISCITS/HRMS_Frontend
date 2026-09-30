@@ -19,6 +19,7 @@ import {
   IconButton,
   Tooltip,
   MenuItem,
+  Skeleton,
   Snackbar,
   Switch,
   TextField,
@@ -89,6 +90,57 @@ const dicEmptyForm = createInitialDepartmentForm();
 const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
 const lstDefaultDepartments: DepartmentRecord[] = [];
 const lstDepartmentModuleCodes = ["DEPARTMENT", "DEPARTMENTS", "MASTER_DEPARTMENT"];
+const intDepartmentSkeletonRows = 8;
+
+function DepartmentGridSkeleton() {
+  return (
+    <Box
+      data-control-id="department-master.list.skeleton"
+      sx={{
+        border: "1px solid #e8eef5",
+        borderRadius: "8px",
+        overflow: "hidden",
+        backgroundColor: "#fff",
+      }}
+    >
+      <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, px: 1.75, py: 1.25, flexWrap: "wrap" }}>
+        <Skeleton variant="rounded" width={142} height={36} />
+        <Box sx={{ display: "flex", gap: 1.25, alignItems: "center", flexWrap: "wrap" }}>
+          <Skeleton variant="rounded" width={64} height={36} />
+          <Skeleton variant="text" width={72} height={24} />
+          <Skeleton variant="rounded" width={116} height={32} />
+        </Box>
+      </Box>
+      <Box sx={{ minWidth: 800 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "48px 1fr 1fr 0.8fr 0.8fr", bgcolor: "#edf3f9", borderTop: "1px solid #e8eef5", borderBottom: "1px solid #d9e3ee" }}>
+          {[0, 1, 2, 3, 4].map((intColumn) => (
+            <Box key={intColumn} sx={{ px: 2, py: 1 }}>
+              <Skeleton variant="text" width={intColumn === 0 ? 18 : intColumn === 3 ? 76 : 118} height={22} />
+            </Box>
+          ))}
+        </Box>
+        {Array.from({ length: intDepartmentSkeletonRows }).map((_, intIndex) => (
+          <Box
+            key={intIndex}
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "48px 1fr 1fr 0.8fr 0.8fr",
+              borderBottom: "1px solid #edf1f6",
+              minHeight: 40,
+              alignItems: "center",
+            }}
+          >
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="rounded" width={18} height={18} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${62 + (intIndex % 3) * 8}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${36 + (intIndex % 2) * 10}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="rounded" width={72} height={22} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={42} height={20} /></Box>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+}
 
 // The API returns backend field names; the UI keeps a smaller view model for rendering and form state.
 function mapDepartmentRecord(dicRecord: DepartmentApiRecord): DepartmentRecord {
@@ -232,8 +284,9 @@ export default function DepartmentMasterPanel() {
     strDepartmentName: string,
     strDepartmentCode: string,
     lstExistingTexts: DepartmentTextFormValue[],
+    dicOptions: DepartmentFormOptions = objFormOptions,
   ): DepartmentTextFormValue {
-    const dicLanguage = objFormOptions.lstLanguages.find((dicItem) => dicItem.intID === intLanguageID);
+    const dicLanguage = dicOptions.lstLanguages.find((dicItem) => dicItem.intID === intLanguageID);
     const dicExistingText = lstExistingTexts.find((dicText) => Number(dicText.intLanguageID) === intLanguageID);
     return {
       ...createEmptyDepartmentTextRow(),
@@ -245,12 +298,16 @@ export default function DepartmentMasterPanel() {
     };
   }
 
-  function ensureTenantLanguageRows(dicValues: DepartmentFormValues) {
+  function ensureTenantLanguageRows(
+    dicValues: DepartmentFormValues,
+    dicOptions: DepartmentFormOptions = objFormOptions,
+  ) {
     const dicDefaultRow = buildFixedLanguageRow(
       intDefaultLanguageID,
       dicValues.name,
       dicValues.code,
       dicValues.lstTexts,
+      dicOptions,
     );
     if (!intSecondaryLanguageID) {
       return {
@@ -266,6 +323,7 @@ export default function DepartmentMasterPanel() {
       dicSecondaryExistingText?.strDepartmentName ?? "",
       dicValues.code,
       dicValues.lstTexts,
+      dicOptions,
     );
     return {
       ...dicValues,
@@ -411,6 +469,15 @@ export default function DepartmentMasterPanel() {
     };
   }, []);
 
+  async function ensureDepartmentFormOptionsLoaded() {
+    if (objFormOptions.lstLanguages.length > 0) {
+      return objFormOptions;
+    }
+    const dicOptions = await departmentService.getDepartmentFormOptions();
+    setObjFormOptions(dicOptions);
+    return dicOptions;
+  }
+
   useEffect(() => {
     if (objFormOptions.lstLanguages.length === 0) {
       return;
@@ -440,6 +507,7 @@ export default function DepartmentMasterPanel() {
   const blnCanExport = canDoDepartmentAction("export");
   const blnReadOnly = isDepartmentReadOnly();
   const blnCanChangeStatus = blnCanEdit;
+  const blnSearchPanelFrozen = blnLoading || blnSubmitting || blnRightsLoading;
 
   useEffect(() => {
     if (!blnDialogOpen || strMode === "view") return;
@@ -471,17 +539,19 @@ export default function DepartmentMasterPanel() {
     setDicErrors({});
     setDicTextTranslationLoading({});
     setDicLastTranslatedSourceByRow({});
-    if (!dicDepartment) {
-      setDicForm(ensureTenantLanguageRows(createInitialDepartmentForm()));
-      setBlnDialogOpen(true);
-      return;
-    }
     blnOpeningDepartmentRef.current = true;
     setBlnSubmitting(true);
-    departmentService.getDepartment(Number(dicDepartment.id))
-      .then((dicRecord) => {
-        setDicForm(ensureTenantLanguageRows(toDepartmentFormValues(dicRecord, objFormOptions)));
-        setBlnDialogOpen(true);
+    ensureDepartmentFormOptionsLoaded()
+      .then((dicOptions) => {
+        if (!dicDepartment) {
+          setDicForm(ensureTenantLanguageRows(createInitialDepartmentForm(), dicOptions));
+          setBlnDialogOpen(true);
+          return;
+        }
+        return departmentService.getDepartment(Number(dicDepartment.id)).then((dicRecord) => {
+          setDicForm(ensureTenantLanguageRows(toDepartmentFormValues(dicRecord, dicOptions), dicOptions));
+          setBlnDialogOpen(true);
+        });
       })
       .catch((objError) => showToast(objError instanceof Error ? objError.message : dicDepartmentLabels.requestFailed, "error"))
       .finally(() => {
@@ -652,11 +722,17 @@ export default function DepartmentMasterPanel() {
           select: <Checkbox inputProps={{ "controlId": "department-master.list.row.select.checkbox", "data-row-key": String(dicDepartment.id) } as InputHTMLAttributes<HTMLInputElement>} checked={blnSelected} onChange={() => toggleSelection(dicDepartment.id)} />,
           nameText: dicDepartment.name,
           name: (
-            <Link component="button" type="button" underline="hover"
+            <Link component="button" type="button" underline="none"
               disabled={!blnCanView && !blnCanEdit}
               data-control-id="department-master.list.row.name.button"
-              onClick={() => openDialog(blnCanEdit ? "edit" : "view", dicDepartment)}
-              sx={{ color: "#334155", cursor: "pointer", fontSize: "inherit", fontWeight: 500, textAlign: "left", "&:hover": { color: "#0066df", textDecoration: "underline" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}>
+              onClick={(objEvent) => {
+                if (window.getSelection()?.toString()) {
+                  objEvent.stopPropagation();
+                  return;
+                }
+                openDialog(blnCanEdit ? "edit" : "view", dicDepartment);
+              }}
+              sx={{ color: "#334155", cursor: "pointer", fontSize: "inherit", fontWeight: 500, textAlign: "left", textUnderlineOffset: "3px", userSelect: "text", WebkitUserSelect: "text", "&:hover": { color: "#0066df", textDecoration: "underline" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}>
               {dicDepartment.name}
             </Link>
           ),
@@ -722,22 +798,24 @@ export default function DepartmentMasterPanel() {
             {t("read_only_mode", "You have view-only access for Department.")}
           </Typography>
         ) : null}
-        <Box className={styles.searchRow} sx={{ alignItems: "end", "& .MuiButton-root": { height: "36px !important", minHeight: "36px !important", alignSelf: "flex-end" } }}>
-          <Box><Typography component="label" htmlFor="department-search-name" sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{dicDepartmentLabels.tableName}</Typography>
-            <TextField id="department-search-name" controlId="department-master.list.search-name.input" inputProps={{ "controlId": "department-master.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicDepartmentLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} fullWidth />
-          </Box>
-          <Box><Typography component="label" htmlFor="department-search-code" sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{dicDepartmentLabels.tableCode}</Typography>
-            <TextField id="department-search-code" controlId="department-master.list.search-code.input" inputProps={{ "controlId": "department-master.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicDepartmentLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} fullWidth />
-          </Box>
-          <Box><Typography component="label" htmlFor="department-search-status" sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{dicDepartmentLabels.tableStatus}</Typography>
-            <TextField id="department-search-status" controlId="department-master.list.search-status.select" inputProps={{ "controlId": "department-master.list.search-status.select" }} select value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} size="small" fullWidth>
+        <Box
+          className={styles.searchRow}
+          aria-busy={blnSearchPanelFrozen}
+          sx={{
+            alignItems: "end",
+            "& .app-mui-text-field .MuiOutlinedInput-root": { height: "40px", minHeight: "40px" },
+            "& .MuiButton-root": { height: "40px !important", minHeight: "40px !important", alignSelf: "flex-end" },
+          }}
+        >
+          <TextField className="app-mui-text-field" id="department-search-name" controlId="department-master.list.search-name.input" inputProps={{ "controlId": "department-master.list.search-name.input" }} label={dicDepartmentLabels.tableName} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicDepartmentLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnSearchPanelFrozen} fullWidth />
+          <TextField className="app-mui-text-field" id="department-search-code" controlId="department-master.list.search-code.input" inputProps={{ "controlId": "department-master.list.search-code.input" }} label={dicDepartmentLabels.tableCode} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicDepartmentLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnSearchPanelFrozen} fullWidth />
+          <TextField className="app-mui-text-field" id="department-search-status" controlId="department-master.list.search-status.select" inputProps={{ "controlId": "department-master.list.search-status.select" }} select label={dicDepartmentLabels.tableStatus} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} size="small" disabled={blnSearchPanelFrozen} fullWidth>
             <MenuItem controlId="department-master.list.search-status.all.option" value="All">All</MenuItem>
             <MenuItem controlId="department-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
             <MenuItem controlId="department-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
-          </Box>
-          <Box className={styles.searchActions}><Button data-control-id="department-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }} disabled={blnSubmitting}>{dicCommonLabels.search}</Button></Box>
-          <Box className={styles.searchActions}><Button data-control-id="department-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
+          <Box className={styles.searchActions}><Button data-control-id="department-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }} disabled={blnSearchPanelFrozen}>{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button data-control-id="department-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnSearchPanelFrozen}>{dicCommonLabels.clear}</Button></Box>
         </Box>
 
         {!blnSubmitting && lstSelectedIds.length > 0 && !blnReadOnly && (blnCanChangeStatus || blnCanDelete) ? (
@@ -757,7 +835,9 @@ export default function DepartmentMasterPanel() {
       </Box>
 
       <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
-        {!blnCanView && !blnRightsLoading && !blnLoading ? (
+        {(blnLoading || blnRightsLoading) && !blnDialogOpen ? (
+          <DepartmentGridSkeleton />
+        ) : !blnCanView ? (
           <Box className={styles.emptyState}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", "Department access is not available for your user group.")}</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>
@@ -793,14 +873,14 @@ export default function DepartmentMasterPanel() {
             getRowSx={() => ({
               backgroundColor: "#fff",
               "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
-              "& td:nth-of-type(2):hover .MuiLink-root": { color: "#0066df", textDecoration: "underline" },
+              "&.MuiTableRow-hover:hover td:first-of-type .MuiLink-root": { textDecoration: "underline" },
             })}
             sx={{ p: 0, boxShadow: "none", background: "transparent" }}
           />
         )}
         <BlockingLoader
-          blnOpen={blnSubmitting || blnLoading || blnRightsLoading}
-          strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing}
+          blnOpen={blnSubmitting}
+          strLabel={dicCommonLabels.processing}
           intZIndex={1400}
           blnLocal
         />
@@ -875,17 +955,13 @@ export default function DepartmentMasterPanel() {
         fullWidth={false}
         contentSx={{ overflowX: "hidden", overflowY: "auto", px: "20px", py: "12px", borderColor: "#e5edf5" }}
         nodeContent={
-          <Box sx={{ display: "grid", gap: "12px", "& .MuiOutlinedInput-root": { borderRadius: "6px", backgroundColor: "#fff", fontWeight: 400 }, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#cbd5e1" }, "& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline": { borderColor: "error.main" }, "& .MuiFormHelperText-root.Mui-error": { margin: "4px 14px 0px 0px" } }}>
+          <Box sx={{ display: "grid", gap: "12px" }}>
             <Box
               sx={{
                 display: "grid",
                 columnGap: 1.6, rowGap: "12px",
                 gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
                 alignItems: "start",
-                "& .MuiInputLabel-root": { position: "relative", transform: "none", alignSelf: "flex-start", maxWidth: "100%", fontSize: "12px", fontWeight: 600, lineHeight: 1.5, mb: "4px" },
-                // External labels do not need the floating-label outline offset.
-                "& .MuiOutlinedInput-notchedOutline": { top: 0 },
-                "& .MuiOutlinedInput-notchedOutline legend": { display: "none" },
               }}
             >
               {strMode === "add" ? (
@@ -899,13 +975,13 @@ export default function DepartmentMasterPanel() {
                 </Box>
               ) : null}
               <TextField
+                className="app-mui-text-field"
                 controlId="department-master.dialog.name.input"
                 inputRef={objNameInputRef}
                 autoFocus={strMode !== "view"}
                 label={dicDepartmentLabels.fieldName}
                 placeholder={t("dialog_name_placeholder", "Enter department name")}
                 size="small"
-                InputLabelProps={{ shrink: true }}
                 required
                 value={dicForm.name}
                 inputProps={{ "controlId": "department-master.dialog.name.input" }}
@@ -918,16 +994,15 @@ export default function DepartmentMasterPanel() {
                 }}
                 error={Boolean(dicErrors.name)}
                 helperText={dicErrors.name}
-                sx={{ "& .MuiFormLabel-asterisk": { color: "#dc2626" } }}
                 fullWidth
               />
               <TextField
+                className="app-mui-text-field"
                 controlId="department-master.dialog.code.input"
                 inputRef={objCodeInputRef}
                 label={dicDepartmentLabels.fieldCode}
                 placeholder={t("dialog_code_placeholder", "Enter department code")}
                 size="small"
-                InputLabelProps={{ shrink: true }}
                 required
                 value={dicForm.code}
                 inputProps={{ "controlId": "department-master.dialog.code.input" }}
@@ -940,7 +1015,6 @@ export default function DepartmentMasterPanel() {
                 }}
                 error={Boolean(dicErrors.code)}
                 helperText={dicErrors.code}
-                sx={{ "& .MuiFormLabel-asterisk": { color: "#dc2626" } }}
                 fullWidth
               />
             </Box>
@@ -978,6 +1052,7 @@ export default function DepartmentMasterPanel() {
                         {objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === Number(dicText.intLanguageID))?.strLabel ?? dicText.strLanguageName}
                       </Typography>
                       <TextField
+                        className="app-mui-text-field"
                         id={`department-translation-${dicText.strRowID}`}
                         controlId="department-master.dialog.translated-name.input"
                         placeholder={t("dialog_translated_name_placeholder", "Enter department name in {language}").replace("{language}", objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === Number(dicText.intLanguageID))?.strLabel ?? dicText.strLanguageName)}
@@ -985,7 +1060,6 @@ export default function DepartmentMasterPanel() {
                         inputProps={{ "controlId": "department-master.dialog.translated-name.input", "data-row-key": dicText.strRowID }}
                         onChange={(objEvent) => updateTextRow(dicText.strRowID, "strDepartmentName", objEvent.target.value)}
                         disabled={strMode === "view"}
-                        sx={{ background: "#fff" }}
                         InputProps={{
                           endAdornment: dicTextTranslationLoading[dicText.strRowID] ? (
                             <InputAdornment position="end"><CircularProgress size={18} sx={{ color: "#2563eb" }} /></InputAdornment>
