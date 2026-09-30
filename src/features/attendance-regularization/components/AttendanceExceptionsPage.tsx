@@ -26,6 +26,7 @@ import LookupChip, {
   lookupLabel,
 } from "@/features/attendance-regularization/components/LookupChip";
 import CommonDataGrid, { type DataGridColumn } from "@/components/ui/CommonDataGrid";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import styles from "@/components/master/MasterScreen.module.css";
@@ -445,31 +446,23 @@ export default function AttendanceExceptionsPage() {
             />
           </Grid>
           <Grid item xs={12} sm={6} md={2} lg={1.3}>
-            <TextField
-              data-control-id="attendance-exceptions.type.select"
+            <CommonSearchableSelect
+              controlId="attendance-exceptions.type.select"
               fullWidth
-              select
               label={t("type", "Type")}
+              placeholder={t("all", "All")}
               value={objFilters.strExceptionTypeCode ?? ""}
-              onChange={(objEvent) =>
+              onChange={(intValue) =>
                 setObjFilters((objValue) => ({
                   ...objValue,
-                  strExceptionTypeCode: objEvent.target.value || undefined,
+                  strExceptionTypeCode: intValue || undefined,
                 }))
               }
-              SelectProps={{ displayEmpty: true }}
-              InputLabelProps={{ shrink: true }}
-            >
-              <MenuItem value="">{t("all", "All")}</MenuItem>
-              {lstTypes.map((objOption) => (
-                <MenuItem
-                  key={objOption.strValueCode}
-                  value={objOption.strValueCode}
-                >
-                  {objOption.strDisplayName}
-                </MenuItem>
-              ))}
-            </TextField>
+              options={lstTypes.map((objOption) => ({
+                intID: objOption.strValueCode,
+                strLabel: objOption.strDisplayName,
+              }))}
+            />
           </Grid>
           <Grid item xs={12} sm={6} md={2} lg={1.3}>
             <TextField
@@ -835,44 +828,38 @@ export default function AttendanceExceptionsPage() {
         <DialogContent>
           {objDialog?.strAction === "create-request" ? (
             <Stack spacing={2} sx={{ mt: 1 }}>
-              <TextField
-                data-control-id="attendance-exceptions.request.type.select"
-                select
+              <CommonSearchableSelect
+                controlId="attendance-exceptions.request.type.select"
                 required
                 label={t("request_type", "Request Type")}
                 value={objRequestDraft.strRequestTypeCode}
-                onChange={(objEvent) =>
+                onChange={(intValue) =>
                   setObjRequestDraft((objValue) => ({
                     ...objValue,
-                    strRequestTypeCode: objEvent.target.value,
+                    strRequestTypeCode: intValue,
                   }))
                 }
-              >
-                {lstRequestTypes.map((objOption) => (
-                  <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>
-                    {objOption.strDisplayName}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                data-control-id="attendance-exceptions.request.status.select"
-                select
+                options={lstRequestTypes.map((objOption) => ({
+                  intID: objOption.strValueCode,
+                  strLabel: objOption.strDisplayName,
+                }))}
+              />
+              <CommonSearchableSelect
+                controlId="attendance-exceptions.request.status.select"
                 required
                 label={t("proposed_status", "Proposed Status")}
                 value={objRequestDraft.strProposedStatus}
-                onChange={(objEvent) =>
+                onChange={(intValue) =>
                   setObjRequestDraft((objValue) => ({
                     ...objValue,
-                    strProposedStatus: objEvent.target.value,
+                    strProposedStatus: intValue,
                   }))
                 }
-              >
-                {lstAttendanceStatuses.map((objOption) => (
-                  <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>
-                    {objOption.strDisplayName}
-                  </MenuItem>
-                ))}
-              </TextField>
+                options={lstAttendanceStatuses.map((objOption) => ({
+                  intID: objOption.strValueCode,
+                  strLabel: objOption.strDisplayName,
+                }))}
+              />
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                 <TextField
                   data-control-id="attendance-exceptions.request.in-time.input"

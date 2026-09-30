@@ -52,7 +52,7 @@ export type PayrollRunOption = PayrollSelectOption & {
   blnIsLocked: boolean;
 };
 
-export type PayrollRunScopeType = "All" | "SelectedEmployee";
+export type PayrollRunScopeType = "All" | "SelectedEmployee" | "EmployeeGroup";
 
 export type PayrollRunStatus =
   | "DRAFT"
@@ -148,6 +148,8 @@ export type PayrollRunRecord = {
   intScopedEmployeeID: number | null;
   strScopedEmployeeName?: string | null;
   strScopedEmployeeCode?: string | null;
+  lstScopedEmployeeGroup?: PayrollSelectOption[];
+  intScopedEmployeeCount?: number | null;
   dtPayrollMonth: string;
   strRunStatus: PayrollRunStatus;
   intRunTypeID: number | null;
@@ -190,6 +192,7 @@ export type PayrollRunFormValues = {
   strScopeType: PayrollRunScopeType;
   strProcessFor: "AllEmployees" | "SelectedEmployees" | "PayrollGroup";
   intScopedEmployeeID: number | "";
+  lstScopedEmployeeIDs: number[];
   dtPayrollMonth: string;
   strRunStatus: PayrollRunStatus;
   blnIsLocked: boolean;
@@ -952,6 +955,14 @@ export type TaxCessRuleRecord = {
   decCessAmount: number;
 };
 
+export type VariablePayProjectedIncomeBreakdownRow = {
+  strComponentCode: string | null;
+  strComponentName: string | null;
+  decMonthlyBaseAmount: number;
+  intRemainingMonths: number;
+  decProjectedAmount: number;
+};
+
 export type TaxCalculationDetailRecord = {
   intResultID: number;
   strEmployeeCode: string;
@@ -961,6 +972,11 @@ export type TaxCalculationDetailRecord = {
   strRegimeTypeCode: string | null;
   decGrossTaxableIncomeYtd: number;
   decProjectedTaxableIncome: number;
+  /** How much of decProjectedTaxableIncome comes from Separate-Payroll components (e.g. an
+   * Allocation-Based Incentive) configured to project their remaining CTC/base entitlement into
+   * annual tax ahead of actually being paid. 0 when no such component applies. */
+  decVariablePayProjectedIncome: number;
+  lstVariablePayProjectedIncomeBreakdown: VariablePayProjectedIncomeBreakdownRow[];
   dicExemptions: {
     decTotalAmount: number;
     lstItems: TaxDeclarationItemRecord[];

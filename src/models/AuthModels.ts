@@ -98,6 +98,7 @@ export type EmployeeAvatarSummary = {
   strEmployeeCode?: string | null;
   strFullName?: string | null;
   strProfilePhotoUrl?: string | null;
+  strDesignationName?: string | null;
 };
 
 export type PortalCode = "ESS" | "HRMS";
@@ -182,6 +183,7 @@ export type SsoMfaBackupCodeVerifyRequest = {
 };
 
 export type CurrentUserContext = {
+  objCompany?: { strCompanyName: string; strLogoUrl?: string | null } | null;
   objTenant: TenantSummary;
   objUser: UserSummary;
   objEmployee?: EmployeeAvatarSummary | null;

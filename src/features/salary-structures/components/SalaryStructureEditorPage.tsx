@@ -1,6 +1,7 @@
 "use client";
 
 import { isCtcProvisionCategory } from "@/lib/salaryCategories";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
@@ -2337,26 +2338,22 @@ export default function SalaryStructureEditorPage({
                       />
                     </td>
                     <td style={{ paddingBottom: 4, paddingTop: 4, verticalAlign: "top" }}>
-                      <TextField
-                        select
-                        size="small"
+                      <CommonSearchableSelect
+                        label=""
                         value={dicLine.intBasisComponentID}
-                        onChange={(objEvent) => updateLineRow(dicLine.strRowID, "intBasisComponentID", parseOptionalSelectNumber(objEvent.target.value))}
+                        options={dicForm.lstComponents
+                          .filter((dicBasis) => dicBasis.strRowID !== dicLine.strRowID && dicBasis.intSalaryComponentID !== "")
+                          .map((dicBasis) => ({
+                            intID: Number(dicBasis.intSalaryComponentID),
+                            strLabel: dicBasis.strComponentName,
+                            strCode: dicBasis.strComponentCode,
+                          }))}
+                        onChange={(intValue) => updateLineRow(dicLine.strRowID, "intBasisComponentID", intValue)}
+                        placeholder={t("none", "None")}
                         disabled={blnFieldDisabled || normalizeSelectToken(dicLine.strValueSource) !== "percentage"}
                         controlId="salary-structures.editor.line.basis-component.select"
-                        inputProps={buildInputTestIdProps("salary-structures.editor.line.basis-component.select", { "data-row-key": dicLine.strRowID })}
-                        SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.line.basis-component.select", { "data-row-key": dicLine.strRowID }) }}
                         sx={{ minWidth: 188 }}
-                      >
-                        <MenuItem value="" controlId="salary-structures.editor.line.basis-component.none.option">{t("none", "None")}</MenuItem>
-                        {dicForm.lstComponents
-                          .filter((dicBasis) => dicBasis.strRowID !== dicLine.strRowID && dicBasis.intSalaryComponentID !== "")
-                          .map((dicBasis) => (
-                            <MenuItem key={dicBasis.strRowID} value={Number(dicBasis.intSalaryComponentID)} controlId={`salary-structures.editor.line.basis-component.${normalizeSelectToken(dicBasis.strComponentCode || dicBasis.strComponentName)}.option`}>
-                              {dicBasis.strComponentCode ? `${dicBasis.strComponentCode} - ${dicBasis.strComponentName}` : dicBasis.strComponentName}
-                            </MenuItem>
-                          ))}
-                      </TextField>
+                      />
                     </td>
                     <td style={{ paddingBottom: 4, paddingTop: 4, verticalAlign: "top" }}>
                       {(() => {
@@ -2649,24 +2646,16 @@ export default function SalaryStructureEditorPage({
                                       {getFlexiComponentIcon(dicFlexiComponent?.strLabel || dicMapping.strFlexiComponentName || "")}
                                     </Box>
                                     {blnShowComponentSelect ? (
-                                      <TextField
-                                        select
-                                        size="small"
+                                      <CommonSearchableSelect
+                                        label=""
                                         value={dicMapping.intFlexiComponentID}
-                                        onChange={(objEvent) => updateFlexiMappingRow(dicLine.strRowID, dicMapping.strRowID, "intFlexiComponentID", objEvent.target.value)}
+                                        options={lstFlexiEligibleComponents}
+                                        onChange={(intValue) => updateFlexiMappingRow(dicLine.strRowID, dicMapping.strRowID, "intFlexiComponentID", intValue)}
+                                        placeholder={t("select_component", "Select Component")}
                                         disabled={blnFieldDisabled}
                                         controlId="salary-structures.editor.flexi-mapping.component.select"
-                                        inputProps={buildInputTestIdProps("salary-structures.editor.flexi-mapping.component.select", { "data-row-key": dicMapping.strRowID })}
-                                        SelectProps={{ SelectDisplayProps: buildSelectDisplayTestIdProps("salary-structures.editor.flexi-mapping.component.select", { "data-row-key": dicMapping.strRowID }) }}
                                         sx={{ minWidth: 200, "& .MuiSelect-select": { fontSize: "0.84rem" } }}
-                                      >
-                                        <MenuItem value="" controlId="salary-structures.editor.flexi-mapping.component.none.option">{t("select_component", "Select Component")}</MenuItem>
-                                        {lstFlexiEligibleComponents.map((dicOption) => (
-                                          <MenuItem key={dicOption.intID} value={dicOption.intID} controlId={`salary-structures.editor.flexi-mapping.component.${normalizeSelectToken(dicOption.strCode || dicOption.strLabel)}.option`}>
-                                            {dicOption.strLabel}
-                                          </MenuItem>
-                                        ))}
-                                      </TextField>
+                                      />
                                     ) : (
                                       <TextField
                                         size="small"

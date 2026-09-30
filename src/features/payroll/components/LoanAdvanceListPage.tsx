@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { MenuItem as AuthMenuItem } from "@/models/AuthModels";
 
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -303,13 +304,21 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
       <TextField fullWidth select size="small" label={t("filter_request_type", "Request Type")} value={dicFilters.request_type} onChange={(e) => setDicFilters((d) => ({ ...d, request_type: e.target.value }))} SelectProps={{ MenuProps: objSelectMenuProps }}>
         {["All", "loan", "advance"].map((strValue) => <MenuItem key={strValue} value={strValue}>{strValue === "All" ? t("all", "All") : t(`type_${strValue}`, strValue)}</MenuItem>)}
       </TextField>
-      <TextField fullWidth select size="small" label={t("filter_category", "Category")} value={dicFilters.category_id} onChange={(e) => setDicFilters((d) => ({ ...d, category_id: e.target.value }))} SelectProps={{ MenuProps: objSelectMenuProps }}>
-        <MenuItem value="">{t("all_categories", "All categories")}</MenuItem>
-        {lstCategories.map((objCategory) => <MenuItem key={objCategory.intID} value={String(objCategory.intID)}>{t(toLabelKey(objCategory.strCategoryName), objCategory.strCategoryName)}</MenuItem>)}
-      </TextField>
-      <TextField fullWidth select size="small" label={t("filter_status", "Status")} value={dicFilters.status} onChange={(e) => setDicFilters((d) => ({ ...d, status: e.target.value }))} SelectProps={{ MenuProps: objSelectMenuProps }}>
-        {lstStatuses.map((strStatus) => <MenuItem key={strStatus} value={strStatus}>{strStatus === "All" ? t("all", "All") : t(`status_${strStatus}`, strStatus.replaceAll("_", " "))}</MenuItem>)}
-      </TextField>
+      <CommonSearchableSelect
+        fullWidth
+        label={t("filter_category", "Category")}
+        value={dicFilters.category_id ? Number(dicFilters.category_id) : ""}
+        options={lstCategories.map((objCategory) => ({ intID: objCategory.intID, strLabel: t(toLabelKey(objCategory.strCategoryName), objCategory.strCategoryName) }))}
+        onChange={(intValue) => setDicFilters((d) => ({ ...d, category_id: intValue === "" ? "" : String(intValue) }))}
+        placeholder={t("all_categories", "All categories")}
+      />
+      <CommonSearchableSelect
+        fullWidth
+        label={t("filter_status", "Status")}
+        value={dicFilters.status}
+        options={lstStatuses.map((strStatus) => ({ intID: strStatus, strLabel: strStatus === "All" ? t("all", "All") : t(`status_${strStatus}`, strStatus.replaceAll("_", " ")) }))}
+        onChange={(strValue) => setDicFilters((d) => ({ ...d, status: strValue || "All" }))}
+      />
       <TextField fullWidth size="small" type="date" label={t("filter_date_from", "Date From")} InputLabelProps={{ shrink: true }} value={dicFilters.date_from} onChange={(e) => setDicFilters((d) => ({ ...d, date_from: e.target.value }))} />
       <TextField fullWidth size="small" type="date" label={t("filter_date_to", "Date To")} InputLabelProps={{ shrink: true }} value={dicFilters.date_to} onChange={(e) => setDicFilters((d) => ({ ...d, date_to: e.target.value }))} />
       {objFilterActions}

@@ -14,7 +14,6 @@ import {
   Divider,
   IconButton,
   InputAdornment,
-  MenuItem,
   Stack,
   TextField,
   Typography
@@ -24,6 +23,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import * as yup from "yup";
 
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import { useChangePassword } from "@/features/change-password/hooks/useChangePassword";
 import { changePasswordService } from "@/features/change-password/services/changePasswordService";
 import type { ChangePasswordFormValues, PasswordResetEmployeeOption } from "@/features/change-password/types/ChangePasswordTypes";
@@ -163,6 +163,13 @@ export default function ChangePasswordForm({
   const objSelectedEmployee = lstEmployees.find(
     (objEmployee) => objEmployee.intEmployeeID === Number(strEmployeeID)
   );
+  const lstEmployeeSelectOptions = useMemo(
+    () => lstEmployees.map((objEmployee) => ({
+      intID: String(objEmployee.intEmployeeID),
+      strLabel: `${objEmployee.strEmployeeCode} - ${objEmployee.strEmployeeName}${isCurrentEmployee(objEmployee) ? " (You)" : ""}`
+    })),
+    [lstEmployees, objCurrentEmployeeIdentity]
+  );
   const blnSelectedEmployeeIsCurrentUser = blnAdminResetMode
     && isCurrentEmployee(objSelectedEmployee);
   const blnRequireCurrentPassword = !blnAdminResetMode || blnSelectedEmployeeIsCurrentUser;
@@ -291,25 +298,19 @@ export default function ChangePasswordForm({
           <Typography sx={{ display: "block", mb: 1, color: "#0f172a", fontSize: "0.95rem", fontWeight: 600 }}>
             Employee
           </Typography>
-          <TextField
-            select
+          <CommonSearchableSelect
+            label=""
+            placeholder="Select an employee"
             fullWidth
             value={strEmployeeID}
+            options={lstEmployeeSelectOptions}
             disabled={blnLoadingEmployees || blnSubmitting}
-            onChange={(objEvent) => setStrEmployeeID(objEvent.target.value)}
-            inputProps={{ "data-controlid": "change-password.employee.select" }}
+            onChange={(strValue) => setStrEmployeeID(strValue ? String(strValue) : "")}
+            controlId="change-password.employee.select"
             helperText={blnLoadingEmployees
               ? "Loading employees..."
               : (!lstEmployees.length ? "No employees are available for this company." : undefined)}
-          >
-            <MenuItem value="" disabled>Select an employee</MenuItem>
-            {lstEmployees.map((objEmployee) => (
-              <MenuItem key={objEmployee.intEmployeeID} value={String(objEmployee.intEmployeeID)}>
-                {objEmployee.strEmployeeCode} - {objEmployee.strEmployeeName}
-                {isCurrentEmployee(objEmployee) ? " (You)" : ""}
-              </MenuItem>
-            ))}
-          </TextField>
+          />
         </Box>
       ) : null}
       {blnRequireCurrentPassword ? (

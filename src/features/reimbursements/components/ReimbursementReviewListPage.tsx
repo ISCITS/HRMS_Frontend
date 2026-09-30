@@ -296,7 +296,7 @@ export default function ReimbursementReviewListPage() {
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      { field: "action", headerName: "Action", align: "center", sortable: false, filterable: false, exportable: false, width: 110 },
+      { field: "action", headerName: "Action", sortable: false, filterable: false, exportable: false, width: 110 },
       { field: "strClaimReference", headerName: "Claim Ref #", filterable: false, width: 150, sortAccessor: (objRow) => String(objRow.strClaimReferenceSort) },
       { field: "strClaimTitle", headerName: "Claim Purpose", width: 220 },
       { field: "strEmployee", headerName: "Employee", width: 230 },
@@ -376,7 +376,7 @@ export default function ReimbursementReviewListPage() {
     <Box className={styles.page}>
       <Box className={styles.controlsCard}>
         <Stack spacing={1.1}>
-          <Stack direction="row" spacing={1} flexWrap="nowrap" alignItems="center" useFlexGap sx={{ overflowX: "auto", pb: 0.5 }}>
+          <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center" useFlexGap sx={{ pt: 1, pb: 0.5, rowGap: 2, "& > .MuiTextField-root, & > .MuiAutocomplete-root": { flex: "1 1 200px" } }}>
             <TextField select size="small" label="Status" value={dicFilters.strStatus} onChange={(objEvent) => setDicFilters({ ...dicFilters, strStatus: objEvent.target.value })} sx={{ minWidth: 160 }} controlId="reimbursements.review-list.status.select">
               <MenuItem value="">All statuses</MenuItem>
               {lstClaimStatuses.map((strStatus) => <MenuItem key={strStatus} value={strStatus}>{strStatus.replaceAll("_", " ")}</MenuItem>)}
@@ -389,7 +389,7 @@ export default function ReimbursementReviewListPage() {
               isOptionEqualToValue={(objA, objB) => objA.strValue === objB.strValue}
               onChange={(_e, objOption) => setDicFilters({ ...dicFilters, intEmployeeID: objOption?.strValue ?? "" })}
               sx={{ minWidth: 210 }}
-              renderInput={(params) => <TextField {...params} label="Employee" placeholder="Search employee..."
+              renderInput={(params) => <TextField {...params} InputLabelProps={{ shrink: true }} label="Employee" placeholder="Search employee..."
                 InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />}
             />
             <TextField size="small" type="month" label="Claim month" InputLabelProps={{ shrink: true }} value={dicFilters.strClaimMonth} onChange={(objEvent) => setDicFilters({ ...dicFilters, strClaimMonth: objEvent.target.value })} sx={{ minWidth: 150 }} />
@@ -401,7 +401,7 @@ export default function ReimbursementReviewListPage() {
               isOptionEqualToValue={(objA, objB) => objA.strValue === objB.strValue}
               onChange={(_e, objOption) => setDicFilters({ ...dicFilters, strSearchText: objOption?.strValue ?? "" })}
               sx={{ minWidth: 240 }}
-              renderInput={(params) => <TextField {...params} label="Claim search" placeholder="Search claims..."
+              renderInput={(params) => <TextField {...params} InputLabelProps={{ shrink: true }} label="Claim search" placeholder="Search claims..."
                 InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />}
             />
             <TextField select size="small" label="Proof pending" value={dicFilters.strProofPending} onChange={(objEvent) => setDicFilters({ ...dicFilters, strProofPending: objEvent.target.value })} sx={{ minWidth: 150 }}>
@@ -422,7 +422,7 @@ export default function ReimbursementReviewListPage() {
               isOptionEqualToValue={(objA, objB) => objA.strValue === objB.strValue}
               onChange={(_e, objOption) => setDicFilters({ ...dicFilters, strDepartment: objOption?.strValue ?? "" })}
               sx={{ minWidth: 170 }}
-              renderInput={(params) => <TextField {...params} label="Department" placeholder="Search department..."
+              renderInput={(params) => <TextField {...params} InputLabelProps={{ shrink: true }} label="Department" placeholder="Search department..."
                 InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />}
             />
             <Autocomplete
@@ -433,7 +433,7 @@ export default function ReimbursementReviewListPage() {
               isOptionEqualToValue={(objA, objB) => objA.strValue === objB.strValue}
               onChange={(_e, objOption) => setDicFilters({ ...dicFilters, strLocation: objOption?.strValue ?? "" })}
               sx={{ minWidth: 170 }}
-              renderInput={(params) => <TextField {...params} label="Location" placeholder="Search location..."
+              renderInput={(params) => <TextField {...params} InputLabelProps={{ shrink: true }} label="Location" placeholder="Search location..."
                 InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />}
             />
             <Box className={styles.searchActions} sx={{ flexShrink: 0, ml: "auto" }}>
@@ -489,7 +489,7 @@ export default function ReimbursementReviewListPage() {
             getOptionLabel={(objOption) => objOption.strLabel}
             isOptionEqualToValue={(objA, objB) => objA.strValue === objB.strValue}
             onChange={(_e, objOption) => { setStrCreateEmployeeID(objOption?.strValue ?? ""); setStrCreateError(""); }}
-            renderInput={(params) => <TextField {...params} label="Employee" placeholder="Search employee..." error={Boolean(strCreateError)} helperText={strCreateError || " "} controlId="reimbursements.review-list.create.employee.select"
+            renderInput={(params) => <TextField {...params} InputLabelProps={{ shrink: true }} label="Employee" placeholder="Search employee..." error={Boolean(strCreateError)} helperText={strCreateError || " "} controlId="reimbursements.review-list.create.employee.select"
               InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />}
           />
         </DialogContent>

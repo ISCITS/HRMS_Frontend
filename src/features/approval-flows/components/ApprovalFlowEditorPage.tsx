@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import CommonEditModeBanner from "@/Common/components/CommonEditModeBanner";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
@@ -391,34 +392,24 @@ export default function ApprovalFlowEditorPage({ intApprovalFlowID }: ApprovalFl
             <Typography sx={{ fontWeight: 700, color: "#0f172a", mb: 1 }}>Leave Calendar</Typography>
             <Typography sx={{ color: "#64748b", fontSize: "0.82rem", mb: 1.25 }}>Leave Year Starts On</Typography>
             <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
-              <TextField
-                select
+              <CommonSearchableSelect
                 label="Day"
-                size="small"
-                value={String(Math.min(intLeaveYearDay, intMaxLeaveYearDay))}
-                onChange={(objEvent) => setIntLeaveYearDay(Number(objEvent.target.value))}
+                value={Math.min(intLeaveYearDay, intMaxLeaveYearDay)}
+                options={lstLeaveYearDayOptions.map((intOption) => ({ intID: intOption, strLabel: String(intOption).padStart(2, "0") }))}
+                onChange={(intValue) => setIntLeaveYearDay(intValue === "" ? 1 : Number(intValue))}
                 disabled={blnReadOnly}
                 sx={{ minWidth: 110 }}
                 controlId="approval-flow-editor.leave-calendar.day.select"
-              >
-                {lstLeaveYearDayOptions.map((intOption) => (
-                  <MenuItem key={intOption} value={String(intOption)}>{String(intOption).padStart(2, "0")}</MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                select
+              />
+              <CommonSearchableSelect
                 label="Month"
-                size="small"
-                value={String(intLeaveYearMonth)}
-                onChange={(objEvent) => setIntLeaveYearMonth(Number(objEvent.target.value))}
+                value={intLeaveYearMonth}
+                options={lstMonths.map((strName, intIndex) => ({ intID: intIndex + 1, strLabel: strName }))}
+                onChange={(intValue) => setIntLeaveYearMonth(intValue === "" ? 1 : Number(intValue))}
                 disabled={blnReadOnly}
-                sx={{ minWidth: 160 }}
+                sx={{ minWidth: 200 }}
                 controlId="approval-flow-editor.leave-calendar.month.select"
-              >
-                {lstMonths.map((strName, intIndex) => (
-                  <MenuItem key={strName} value={String(intIndex + 1)}>{strName}</MenuItem>
-                ))}
-              </TextField>
+              />
               <Chip label={`Starts on ${strLeaveYearStartPreview}`} color="primary" variant="outlined" />
             </Stack>
           </Box>

@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { MenuItem as AuthMenuItem } from "@/models/AuthModels";
 
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import FileUploadPanel from "@/components/shared/files/FileUploadPanel";
 import LoanAdvanceStatusBadge from "@/features/payroll/components/LoanAdvanceStatusBadge";
@@ -680,10 +681,16 @@ export default function LoanAdvanceDetailPage({ strLoanAdvanceID, strMode = "pay
                   <MenuItem value="loan">{t("type_loan", "Loan")}</MenuItem>
                   <MenuItem value="advance">{t("type_advance", "Advance")}</MenuItem>
                 </TextField>
-                <TextField required select size="small" label={t("field_category", "Category")} value={dicValues.intCategoryID} error={Boolean(getFieldError("intCategoryID"))} helperText={getFieldError("intCategoryID") || " "} disabled={blnReadonly} onChange={(e) => updateValue("intCategoryID", e.target.value ? Number(e.target.value) : "")}>
-                  <MenuItem value="">{t("select_category", "Select category")}</MenuItem>
-                  {lstFilteredCategories.map((objCategory) => <MenuItem key={objCategory.intID} value={objCategory.intID}>{t(toLabelKey(objCategory.strCategoryName), objCategory.strCategoryName)}</MenuItem>)}
-                </TextField>
+                <CommonSearchableSelect
+                  required
+                  label={t("field_category", "Category")}
+                  value={dicValues.intCategoryID}
+                  options={lstFilteredCategories.map((objCategory) => ({ intID: objCategory.intID, strLabel: t(toLabelKey(objCategory.strCategoryName), objCategory.strCategoryName) }))}
+                  error={Boolean(getFieldError("intCategoryID"))}
+                  helperText={getFieldError("intCategoryID") || " "}
+                  disabled={blnReadonly}
+                  onChange={(intValue) => updateValue("intCategoryID", intValue)}
+                />
                 <TextField required size="small" type="date" label={t("field_request_date", "Request Date")} InputLabelProps={{ shrink: true }} value={dicValues.dtRequestDate} error={Boolean(getFieldError("dtRequestDate"))} helperText={getFieldError("dtRequestDate") || " "} disabled={blnReadonly} onChange={(e) => updateValue("dtRequestDate", e.target.value)} />
                 <TextField required size="small" label={t("field_requested_amount", "Requested Amount")} value={dicValues.decRequestedAmount} error={Boolean(getFieldError("decRequestedAmount"))} helperText={getFieldError("decRequestedAmount") || " "} disabled={blnReadonly} onChange={(e) => updateValue("decRequestedAmount", e.target.value)} />
                 <TextField required size="small" type="month" label={t("field_recovery_start_month", "Recovery Start Month")} InputLabelProps={{ shrink: true }} value={(dicValues.dtRecoveryStartMonth || "").slice(0, 7)} error={Boolean(getFieldError("dtRecoveryStartMonth"))} helperText={getFieldError("dtRecoveryStartMonth") || " "} disabled={blnReadonly} onChange={(e) => updateValue("dtRecoveryStartMonth", `${e.target.value}-01`)} />
@@ -748,13 +755,15 @@ export default function LoanAdvanceDetailPage({ strLoanAdvanceID, strMode = "pay
         <DialogTitle>{objActionDialog?.strTitle}</DialogTitle>
         <DialogContent sx={{ display: "grid", gap: 1.4, pt: "12px !important" }}>
           {objActionDialog?.blnNeedsScheduleRow ? (
-            <TextField select size="small" label={t("field_installment", "Installment")} value={dicActionValues.intScheduleID} onChange={(e) => updateActionSchedule(e.target.value)}>
-              {lstDirectActionSchedules.map((objSchedule) => (
-                <MenuItem key={objSchedule.intID} value={String(objSchedule.intID)}>
-                  {t("schedule_no", "No.")} {objSchedule.intInstallmentNo} - {formatDate(objSchedule.dtPayrollMonth).slice(0, 7)} - {formatCurrency(objSchedule.decTotalDueAmount)}
-                </MenuItem>
-              ))}
-            </TextField>
+            <CommonSearchableSelect
+              label={t("field_installment", "Installment")}
+              value={dicActionValues.intScheduleID}
+              options={lstDirectActionSchedules.map((objSchedule) => ({
+                intID: String(objSchedule.intID),
+                strLabel: `${t("schedule_no", "No.")} ${objSchedule.intInstallmentNo} - ${formatDate(objSchedule.dtPayrollMonth).slice(0, 7)} - ${formatCurrency(objSchedule.decTotalDueAmount)}`,
+              }))}
+              onChange={(strValue) => updateActionSchedule(String(strValue))}
+            />
           ) : null}
           {objActionDialog?.blnNeedsManualRecovery ? (
             <>

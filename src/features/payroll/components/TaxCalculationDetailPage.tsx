@@ -296,6 +296,46 @@ export default function TaxCalculationDetailPage({ strResultID, blnPayslipScreen
         <SummaryMetric strLabel="Total Tax Liability" strValue={formatCurrency(objDetail.decTotalTaxLiability)} objIcon={<PaymentsOutlinedIcon fontSize="small" />} />
       </Box>
 
+      {objDetail.lstVariablePayProjectedIncomeBreakdown.length ? (
+        <SectionCard
+          strTitle="Variable Pay Projected Income"
+          objIcon={<AccountBalanceWalletOutlinedIcon sx={{ color: "#b45309" }} />}
+          strSubtitle="Separate-Payroll components (e.g. an Allocation-Based Incentive) configured to project their remaining CTC/base entitlement into this run's annual tax - added here even before the actual amount is calculated and paid through a Separate Payroll run, so this month's TDS is not understated."
+        >
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 800, color: "#475569" }}>Component</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 800, color: "#475569" }}>Monthly Base Amount</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 800, color: "#475569" }}>Remaining Months</TableCell>
+                <TableCell sx={{ fontWeight: 800, color: "#475569" }}>Calculation</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 800, color: "#475569" }}>Projected Contribution</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {objDetail.lstVariablePayProjectedIncomeBreakdown.map((objRow, intIndex) => (
+                <TableRow key={`variable-pay-projection-${objRow.strComponentCode ?? intIndex}`}>
+                  <TableCell>{objRow.strComponentName || objRow.strComponentCode || "-"}</TableCell>
+                  <TableCell align="right">{formatCurrency(objRow.decMonthlyBaseAmount)}</TableCell>
+                  <TableCell align="right">{objRow.intRemainingMonths}</TableCell>
+                  <TableCell sx={{ color: "#64748b", fontSize: "0.76rem", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
+                    {formatCurrency(objRow.decMonthlyBaseAmount)} x {objRow.intRemainingMonths}
+                  </TableCell>
+                  <TableCell align="right">{formatCurrency(objRow.decProjectedAmount)}</TableCell>
+                </TableRow>
+              ))}
+              <TableRow>
+                <TableCell colSpan={4} sx={{ fontWeight: 900 }}>Total Variable Pay Projected Income</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 900 }}>{formatCurrency(objDetail.decVariablePayProjectedIncome)}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+          <FormulaLine
+            strFormula={`Projected Taxable Income (${formatCurrency(objDetail.decProjectedTaxableIncome)}) already includes this Variable Pay Projected Income (${formatCurrency(objDetail.decVariablePayProjectedIncome)}) - it is not added again anywhere else.`}
+          />
+        </SectionCard>
+      ) : null}
+
       <SectionCard strTitle="Exemptions" objIcon={<ReceiptLongOutlinedIcon sx={{ color: "#2563eb" }} />} strSubtitle="Income excluded from tax based on your approved declarations (e.g. HRA, LTA).">
         <DeclarationItemsTable lstItems={objDetail.dicExemptions.lstItems} decTotal={objDetail.dicExemptions.decTotalAmount} strTotalLabel="Total Exemptions" />
       </SectionCard>

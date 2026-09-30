@@ -386,7 +386,7 @@ export default function HrItDeclarationListPage() {
     { field: "intProofPendingCount", headerName: t("IT_DECLARATION_PROOF_PENDING", "Proof Pending"), align: "right", width: 140 },
     { field: "strStatus", headerName: t("IT_DECLARATION_STATUS", "Status"), filterable: false, width: 150, sortAccessor: (objRow) => String(objRow.strStatusSort) },
     { field: "strLastUpdated", headerName: t("IT_DECLARATION_LAST_UPDATED", "Last Updated"), width: 150, sortAccessor: (objRow) => String(objRow.strLastUpdatedSort) },
-    { field: "action", headerName: t("IT_DECLARATION_ACTION", "Action"), align: "center", sortable: false, filterable: false, exportable: false, width: 110 },
+    { field: "action", headerName: t("IT_DECLARATION_ACTION", "Action"), sortable: false, filterable: false, exportable: false, width: 110 },
   ];
 
   return (

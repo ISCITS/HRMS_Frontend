@@ -7,13 +7,13 @@ import {
   Alert,
   Box,
   Button,
-  MenuItem,
   TextField,
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -28,6 +28,7 @@ type SearchForm = {
   strSearchMonth: string;
   strSearchGroup: string;
   strStatus: "All" | "DRAFT" | "VALIDATED" | "PROCESSED" | "FINALIZED" | "CANCELLED";
+  strRunType: string;
 };
 
 const dicEmptySearch: SearchForm = {
@@ -35,7 +36,26 @@ const dicEmptySearch: SearchForm = {
   strSearchMonth: "",
   strSearchGroup: "",
   strStatus: "All",
+  strRunType: "All",
 };
+
+// REGULAR/VARIABLE_PAY are the two run types the user actually creates via the New Payroll Run
+// form ("Regular Payroll" / "Seprate Payroll"); anything else is labeled generically so a future
+// run type (e.g. off-cycle, final settlement) still shows up as a usable filter option.
+function getRunTypeFilterLabel(strRunTypeCode: string): string {
+  const dicLabels: Record<string, string> = {
+    REGULAR: "Regular Payroll",
+    VARIABLE_PAY: "Separate Payroll",
+  };
+  return (
+    dicLabels[strRunTypeCode] ??
+    strRunTypeCode
+      .toLowerCase()
+      .split("_")
+      .map((strWord) => strWord.charAt(0).toUpperCase() + strWord.slice(1))
+      .join(" ")
+  );
+}
 const lstPayrollRunModuleCodes = ["PAYROLL_RUN", "PAYROLL_RUNS", "PAYROLL_PROCESS", "PAYROLL_PROCESSES"];
 
 function formatMonth(strDate: string) {
@@ -79,6 +99,23 @@ export default function PayrollRunListPage() {
   const blnCanView = canViewAny() || canDoAny("list");
   const blnCanAdd = canDoAny("add");
   const blnCanExport = canDoAny("export");
+  const lstStatusOptions = useMemo(() => ([
+    { intID: "All", strLabel: t("status_all", "All") },
+    { intID: "DRAFT", strLabel: t("status_draft", "Draft") },
+    { intID: "VALIDATED", strLabel: t("status_validated", "Validated") },
+    { intID: "PROCESSED", strLabel: t("status_processed", "Processed") },
+    { intID: "FINALIZED", strLabel: t("status_finalized", "Finalized") },
+    { intID: "CANCELLED", strLabel: t("status_cancelled", "Cancelled") },
+  ]), [t]);
+  const lstRunTypeOptions = useMemo(() => {
+    const setRunTypeCodes = new Set(lstRuns.map((dicRun) => dicRun.strRunTypeCode).filter(Boolean));
+    return [
+      { intID: "All", strLabel: t("run_type_all", "All") },
+      ...Array.from(setRunTypeCodes)
+        .sort()
+        .map((strRunTypeCode) => ({ intID: strRunTypeCode, strLabel: getRunTypeFilterLabel(strRunTypeCode) })),
+    ];
+  }, [lstRuns, t]);
 
   async function loadRuns(objFilters: SearchForm = dicSearchApplied) {
     if (!blnCanView) {
@@ -128,7 +165,10 @@ export default function PayrollRunListPage() {
       const blnStatusMatch =
         dicSearchApplied.strStatus === "All" ||
         dicRow.strRunStatus === dicSearchApplied.strStatus;
-      return blnSearchMatch && blnMonthMatch && blnGroupMatch && blnStatusMatch;
+      const blnRunTypeMatch =
+        dicSearchApplied.strRunType === "All" ||
+        dicRow.strRunTypeCode === dicSearchApplied.strRunType;
+      return blnSearchMatch && blnMonthMatch && blnGroupMatch && blnStatusMatch && blnRunTypeMatch;
     });
   }, [dicSearchApplied, lstRuns]);
 
@@ -220,26 +260,32 @@ export default function PayrollRunListPage() {
             placeholder={t("group_placeholder", "Search payroll group")}
             fullWidth
           />
-          <TextField
+          <CommonSearchableSelect
             controlId="payroll-runs.list.search-status.select"
-            select
             label={t("status", "Status")}
             value={dicSearchDraft.strStatus}
-            onChange={(objEvent) =>
+            options={lstStatusOptions}
+            onChange={(value) =>
               setDicSearchDraft((dicPrevious) => ({
                 ...dicPrevious,
-                strStatus: objEvent.target.value as SearchForm["strStatus"],
+                strStatus: (value || "All") as SearchForm["strStatus"],
               }))
             }
             fullWidth
-          >
-            <MenuItem value="All">{t("status_all", "All")}</MenuItem>
-            <MenuItem value="DRAFT">{t("status_draft", "Draft")}</MenuItem>
-            <MenuItem value="VALIDATED">{t("status_validated", "Validated")}</MenuItem>
-            <MenuItem value="PROCESSED">{t("status_processed", "Processed")}</MenuItem>
-            <MenuItem value="FINALIZED">{t("status_finalized", "Finalized")}</MenuItem>
-            <MenuItem value="CANCELLED">{t("status_cancelled", "Cancelled")}</MenuItem>
-          </TextField>
+          />
+          <CommonSearchableSelect
+            controlId="payroll-runs.list.search-run-type.select"
+            label={t("run_type", "Run Type")}
+            value={dicSearchDraft.strRunType}
+            options={lstRunTypeOptions}
+            onChange={(value) =>
+              setDicSearchDraft((dicPrevious) => ({
+                ...dicPrevious,
+                strRunType: value || "All",
+              }))
+            }
+            fullWidth
+          />
           <Box className={styles.searchActions}>
             <Button
               controlId="payroll-runs.list.search.button"

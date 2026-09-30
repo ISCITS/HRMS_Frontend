@@ -164,7 +164,7 @@ export default function TaxSlabMaintenancePage({ strTaxRegimeID, blnEmbedded, on
     { field: "fixedTax", headerName: t("fixed_tax_amount", "Fixed Tax Amount"), width: 120, align: "right", sortable: false },
     { field: "displayOrder", headerName: t("display_order", "Display Order"), width: 95, align: "right", sortable: false },
     { field: "active", headerName: t("active", "Active"), width: 75, align: "center", sortable: false },
-    { field: "action", headerName: t("action", "Action"), width: 60, align: "center", sortable: false, exportable: false },
+    { field: "action", headerName: t("action", "Action"), width: 60, sortable: false, exportable: false },
   ];
 
   const lstTableRows: Record<string, ReactNode>[] = lstSlabs.map((dicLine) => ({

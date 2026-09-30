@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
@@ -11,8 +11,8 @@ import {
   CircularProgress,
   InputAdornment,
   MenuItem,
+  Skeleton,
   Snackbar,
-  Switch,
   TextField,
   Typography
 } from "@mui/material";
@@ -22,6 +22,7 @@ import { useRouter } from "next/navigation";
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
+import MasterBreadcrumbs from "@/components/master/MasterBreadcrumbs";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -84,6 +85,55 @@ const dicEmptyForm = createInitialCostCenterForm();
 const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
 const lstDefaultCostCenters: CostCenterRecord[] = [];
 const lstCostCenterModuleCodes = ["COST_CENTER", "COSTCENTER", "COST_CENTRE"];
+const intCostCenterSkeletonRows = 8;
+
+function CostCenterGridSkeleton() {
+  return (
+    <Box
+      data-control-id="cost-center-master.list.skeleton"
+      sx={{
+        border: "1px solid #e8eef5",
+        borderRadius: "8px",
+        overflow: "hidden",
+        backgroundColor: "#fff",
+      }}
+    >
+      <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, px: 1.75, py: 1.25, flexWrap: "wrap" }}>
+        <Skeleton variant="rounded" width={142} height={36} />
+        <Box sx={{ display: "flex", gap: 1.25, alignItems: "center", flexWrap: "wrap" }}>
+          <Skeleton variant="rounded" width={64} height={36} />
+          <Skeleton variant="text" width={72} height={24} />
+          <Skeleton variant="rounded" width={116} height={32} />
+        </Box>
+      </Box>
+      <Box sx={{ minWidth: 760 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 0.7fr 0.55fr", bgcolor: "#edf3f9", borderTop: "1px solid #e8eef5", borderBottom: "1px solid #d9e3ee" }}>
+          {[0, 1, 2].map((intColumn) => (
+            <Box key={intColumn} sx={{ px: 2, py: 1 }}>
+              <Skeleton variant="text" width={intColumn === 2 ? 76 : 118} height={22} />
+            </Box>
+          ))}
+        </Box>
+        {Array.from({ length: intCostCenterSkeletonRows }).map((_, intIndex) => (
+          <Box
+            key={intIndex}
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "1fr 0.7fr 0.55fr",
+              borderBottom: "1px solid #edf1f6",
+              minHeight: 40,
+              alignItems: "center",
+            }}
+          >
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${62 + (intIndex % 3) * 8}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${36 + (intIndex % 2) * 10}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="rounded" width={72} height={22} /></Box>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+}
 
 // The API record includes backend naming; the panel works against a compact UI-facing record shape.
 function mapCostCenterRecord(dicRecord: CostCenterApiRecord): CostCenterRecord {
@@ -152,8 +202,8 @@ export default function CostCenterMasterPanel() {
     bulkDeactivate: t("bulk_deactivate"),
     bulkDelete: t("bulk_delete"),
     emptyMessage: t("empty_message"),
-    tableName: t("table_name"),
-    tableCode: t("table_code"),
+    tableName: "Cost Center Name",
+    tableCode: "Cost Center Code",
     tableStatus: t("table_status"),
     tableActions: t("table_actions"),
     saveSuccess: t("save_success"),
@@ -184,8 +234,8 @@ export default function CostCenterMasterPanel() {
     confirmDeleteMessage: t("confirm_delete_message"),
     confirmActivateMessage: t("confirm_activate_message"),
     confirmDeactivateMessage: t("confirm_deactivate_message"),
-    fieldName: t("field_name"),
-    fieldCode: t("field_code"),
+    fieldName: "Cost Center Name",
+    fieldCode: "Cost Center Code",
     fieldStatus: t("field_status"),
     fieldIsActive: t("field_is_active", "Is Active"),
     saving: t("saving", "Saving..."),
@@ -625,7 +675,8 @@ export default function CostCenterMasterPanel() {
   }
 
   return (
-    <Box className={styles.page}>
+    <Box className={`${styles.page} ${styles.referenceMasterPage}`}>
+      <MasterBreadcrumbs strCurrent={dicModuleLabels.pageTitle} />
       <Box className={styles.topBar}>
         <Button controlId="cost-center-master.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicModuleLabels.backButton}</Button>
       </Box>
@@ -639,27 +690,29 @@ export default function CostCenterMasterPanel() {
             {t("read_only_mode", "You have view-only access for Cost Center.")}
           </Typography>
         ) : null}
-        <Box className={styles.searchRow}>
-          <TextField controlId="cost-center-master.list.search-name.input" inputProps={{ "controlId": "cost-center-master.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicModuleLabels.searchNamePlaceholder} fullWidth />
-          <TextField controlId="cost-center-master.list.search-code.input" inputProps={{ "controlId": "cost-center-master.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicModuleLabels.searchCodePlaceholder} fullWidth />
-          <TextField controlId="cost-center-master.list.search-status.select" inputProps={{ "controlId": "cost-center-master.list.search-status.select" }} select label={dicModuleLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
+        <Box className={`${styles.searchRow} ${styles.costCenterFloatingSearch}`} sx={{ alignItems: "center", "& .MuiButton-root": { alignSelf: "center" } }}>
+          <TextField className="app-mui-text-field" id="cost-center-master-search-name" controlId="cost-center-master.list.search-name.input" inputProps={{ "controlId": "cost-center-master.list.search-name.input" }} label={dicModuleLabels.tableName} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicModuleLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnLoading || blnSubmitting || blnRightsLoading} fullWidth />
+          <TextField className="app-mui-text-field" id="cost-center-master-search-code" controlId="cost-center-master.list.search-code.input" inputProps={{ "controlId": "cost-center-master.list.search-code.input" }} label={dicModuleLabels.tableCode} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicModuleLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnLoading || blnSubmitting || blnRightsLoading} fullWidth />
+          <TextField className="app-mui-text-field" id="cost-center-master-search-status" controlId="cost-center-master.list.search-status.select" inputProps={{ "controlId": "cost-center-master.list.search-status.select" }} select label={dicModuleLabels.tableStatus} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} size="small" disabled={blnLoading || blnSubmitting || blnRightsLoading} fullWidth>
             <MenuItem controlId="cost-center-master.list.search-status.all.option" value="All">All</MenuItem>
             <MenuItem controlId="cost-center-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
             <MenuItem controlId="cost-center-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions}><Button controlId="cost-center-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
-          <Box className={styles.searchActions}><Button controlId="cost-center-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
+          <Box className={styles.searchActions}><Button controlId="cost-center-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button controlId="cost-center-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.clear}</Button></Box>
         </Box>
       </Box>
 
       <Box className={styles.tableCard}>
-        {!blnCanView && !blnRightsLoading && !blnLoading ? (
+        {(blnLoading || blnRightsLoading) && !blnDialogOpen ? (
+          <CostCenterGridSkeleton />
+        ) : !blnCanView ? (
           <Box className={styles.emptyState}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>Cost Center access is not available for your user group.</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>Contact your administrator if you need cost center visibility.</Typography>
           </Box>
         ) : (
-          <CommonDataGrid columns={lstTableColumns} rows={lstTableRows} rowIdField="id" defaultPageSize={20} pageSizeOptions={[10, 20, 50]} exportFileName={dicModuleLabels.exportFileName.replace(/\.(csv|pdf)$/i, "")} showExportOptions={blnCanExport} showPaginationSummary emptyMessage={dicModuleLabels.emptyMessage} testIdPrefix="cost-center-master.list" toolbarLeft={blnCanAdd ? <Button controlId="cost-center-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicModuleLabels.addButton}</Button> : null} sx={{ p: 0, boxShadow: "none", background: "transparent" }} />
+          <CommonDataGrid columns={lstTableColumns.filter((dicColumn) => dicColumn.field !== "action")} rows={lstTableRows} rowIdField="id" defaultPageSize={20} pageSizeOptions={[10, 20, 50]} exportFileName={dicModuleLabels.exportFileName.replace(/\.(csv|pdf)$/i, "")} showExportOptions={blnCanExport} showPaginationSummary hideRowClickHint onRowClick={(dicRow) => { const dicCostCenter = lstCostCenters.find((dicItem) => dicItem.id === dicRow.id); if (dicCostCenter) openDialog(blnCanEdit ? "edit" : "view", dicCostCenter); }} emptyMessage={dicModuleLabels.emptyMessage} testIdPrefix="cost-center-master.list" toolbarLeft={blnCanAdd ? <Button controlId="cost-center-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicModuleLabels.addButton}</Button> : null} sx={{ p: 0, boxShadow: "none", background: "transparent" }} />
         )}
       </Box>
 
@@ -675,35 +728,38 @@ export default function CostCenterMasterPanel() {
         onPrimaryAction={saveCostCenter}
         blnPrimaryDisabled={blnSubmitting}
         blnHidePrimary={strMode === "view"}
-        paperClassName={styles.compactDialogPaper}
-        titleSx={{ px: 2.25, py: 1.25, fontSize: "1rem", maxHeight: 50 }}
+        paperClassName={styles.referenceMasterDialogPaper}
+        titleSx={{ px: 2.25, py: 1.25, fontSize: "16px", fontWeight: 700, maxHeight: 50 }}
         paperSx={{
-          width: "min(800px, calc(100vw - 32px)) !important",
-          maxWidth: "800px !important",
           overflow: "hidden",
           m: 2,
+          "& .MuiButton-root": { fontSize: "12px !important", fontWeight: "600 !important" },
         }} 
         nodeTitleAction={
           <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
-              <Typography className={styles.switchLabel}>{dicModuleLabels.fieldIsActive}</Typography>
               <ActiveStatusSwitch testId="cost-center-master.dialog.active.switch" blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
+              <Typography className={styles.switchLabel}>{dicModuleLabels.fieldIsActive}</Typography>
           </Box>
         }
-        contentSx={{ overflowX: "hidden", overflowY: "visible" }}
+        contentSx={{ overflowX: "hidden", overflowY: "auto", px: "20px", py: "12px", borderColor: "#e5edf5" }}
         nodeContent={
-          <Box sx={{ display: "grid", gap: 2, pt: 0.5 }}>
+          <Box sx={{ display: "grid", gap: "12px" }}>
             <Box
               sx={{
                 display: "grid",
-                gap: 1.6,
-                gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                columnGap: 1.6,
+                rowGap: "12px",
+                gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
                 alignItems: "start",
               }}
             >
               <TextField
+                className="app-mui-text-field"
                 required
                 controlId="cost-center-master.dialog.name.input"
                 label={`${dicModuleLabels.fieldName}`}
+                placeholder={t("dialog_name_placeholder", "Enter cost center name")}
+                size="small"
                 value={dicForm.name}
                 inputProps={{ "controlId": "cost-center-master.dialog.name.input" }}
                 disabled={strMode === "view"}
@@ -718,9 +774,12 @@ export default function CostCenterMasterPanel() {
                 fullWidth
               />
               <TextField
+                className="app-mui-text-field"
                 required
                 controlId="cost-center-master.dialog.code.input"
                 label={`${dicModuleLabels.fieldCode}`}
+                placeholder={t("dialog_code_placeholder", "Enter cost center code")}
+                size="small"
                 value={dicForm.code}
                 inputProps={{ "controlId": "cost-center-master.dialog.code.input" }}
                 disabled={strMode === "view"}
@@ -738,9 +797,9 @@ export default function CostCenterMasterPanel() {
 
             {intSecondaryLanguageID ? (
             <>
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1.25, flexWrap: "wrap" }}>
+            <Box className={styles.referenceTranslationHeader} sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1.25, flexWrap: "wrap" }}>
               <Box>
-                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("multilingual_text", "Multilingual Text")}</Typography>
+                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("language_translations", "Language Translations")}</Typography>
                 <Typography sx={{ color: "#64748b", fontSize: "0.86rem", mt: 0.25 }}>
                   {t("multilingual_text_help", "Add translated cost center names for supported languages.")}
                 </Typography>
@@ -770,8 +829,8 @@ export default function CostCenterMasterPanel() {
               </Box>
             </Box>
 
-            <Box sx={{ display: "grid", gap: 1.2 }}>
-              {dicForm.lstTexts.map((dicText, intIndex) => (
+            <Box className={styles.referenceTranslationRows} sx={{ display: "grid", gap: 1.2 }}>
+              {dicForm.lstTexts.filter((dicText) => Number(dicText.intLanguageID) === intSecondaryLanguageID).map((dicText) => (
                 <Box
                   key={dicText.strRowID}
                   sx={{
@@ -789,9 +848,11 @@ export default function CostCenterMasterPanel() {
                   }}
                 >
                   <TextField
+                    className="app-mui-text-field"
                     controlId="cost-center-master.dialog.language.select"
                     select
                     label={getRowLabel(dicText.intLanguageID, "language", t("language", "Language"))}
+                    size="small"
                     value={dicText.intLanguageID}
                     inputProps={{ "controlId": "cost-center-master.dialog.language.select", "data-row-key": dicText.strRowID }}
                     InputLabelProps={{ shrink: true }}
@@ -814,19 +875,18 @@ export default function CostCenterMasterPanel() {
                     ))}
                   </TextField>
                   <TextField
+                    className="app-mui-text-field"
                     controlId="cost-center-master.dialog.translated-name.input"
                     label={getRowLabel(dicText.intLanguageID, "field_name", dicModuleLabels.fieldName)}
+                    placeholder={t("dialog_translated_name_placeholder", "Enter cost centre name in {language}").replace("{language}", objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === Number(dicText.intLanguageID))?.strLabel ?? dicText.strLanguageName)}
+                    size="small"
                     value={dicText.strCostCenterName}
                     inputProps={{ "controlId": "cost-center-master.dialog.translated-name.input", "data-row-key": dicText.strRowID }}
                     onChange={(objEvent) => {
                       const strValue = objEvent.target.value;
                       updateTextRow(dicText.strRowID, "strCostCenterName", strValue);
-                      if (intIndex === 0) {
-                        setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined }));
-                        setDicForm((dicPrevious) => ({ ...dicPrevious, name: strValue }));
-                      }
                     }}
-                    disabled={strMode === "view" || intIndex === 0}
+                    disabled={strMode === "view"}
                     InputProps={{
                       endAdornment: dicTextTranslationLoading[dicText.strRowID]
                         ? (
@@ -839,8 +899,10 @@ export default function CostCenterMasterPanel() {
                     fullWidth
                   />
                   <TextField
+                    className="app-mui-text-field"
                     controlId="cost-center-master.dialog.translated-code.input"
                     label={getRowLabel(dicText.intLanguageID, "field_code", dicModuleLabels.fieldCode)}
+                    size="small"
                     value={dicText.strCostCenterCode}
                     inputProps={{ "controlId": "cost-center-master.dialog.translated-code.input", "data-row-key": dicText.strRowID }}
                     disabled
@@ -867,7 +929,7 @@ export default function CostCenterMasterPanel() {
         onConfirm={executeConfirmedAction}
       />
 
-      <BlockingLoader blnOpen={blnSubmitting || ((blnLoading || blnRightsLoading) && !blnDialogOpen)} strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
+      <BlockingLoader blnOpen={blnSubmitting} strLabel={dicCommonLabels.processing} intZIndex={1400} blnLocal />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>

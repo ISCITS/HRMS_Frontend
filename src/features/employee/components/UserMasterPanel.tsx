@@ -29,6 +29,7 @@ import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -879,8 +880,8 @@ export default function UserMasterPanel() {
         blnHidePrimary={strMode === "view"}
         nodeTitleAction={
           <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
-            <Typography className={styles.switchLabel}>{dicModuleLabels.fieldStatus}</Typography>
             <ActiveStatusSwitch testId="user-master.dialog.status.switch" blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setFormField("status", blnChecked ? "Active" : "Inactive")} />
+            <Typography className={styles.switchLabel}>{dicModuleLabels.fieldStatus}</Typography>
           </Box>
         }
         titleSx={{ px: 2.25, py: 1.25, fontSize: "1rem", maxHeight: 50 }}
@@ -1069,26 +1070,18 @@ export default function UserMasterPanel() {
               />
             </Box>
 
-            <TextField
-              select
+            <CommonSearchableSelect
+              controlId="user-master.dialog.hrms-user-group.select"
               label={dicModuleLabels.fieldHrmsUserGroup}
-              inputProps={{ "data-controlid": "user-master.dialog.hrms-user-group.select" }}
-              value={String(dicForm.hrmsUserGroupID)}
-              onChange={(objEvent) => setFormField("hrmsUserGroupID", objEvent.target.value ? Number(objEvent.target.value) : "")}
+              value={dicForm.hrmsUserGroupID}
+              options={lstHrmsGroupOptions}
+              onChange={(intValue) => setFormField("hrmsUserGroupID", intValue)}
               error={Boolean(dicErrors.hrmsUserGroupID)}
               helperText={dicErrors.hrmsUserGroupID}
               disabled={strMode === "view" || !dicForm.hrmsAccessEnabled}
               fullWidth
               required={dicForm.hrmsAccessEnabled}
-              SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.hrms-user-group.select" } as HTMLAttributes<HTMLDivElement> }}
-            >
-              <MenuItem value="" data-controlid="user-master.dialog.hrms-user-group.select.option">{dicModuleLabels.optionSelect}</MenuItem>
-              {lstHrmsGroupOptions.map((objGroup) => (
-                <MenuItem key={objGroup.intID} value={String(objGroup.intID)} data-controlid={`user-master.dialog.hrms-user-group.${normalizeSelectToken(objGroup.strCode || objGroup.strLabel)}.option`}>
-                  {objGroup.strCode ? `${objGroup.strCode} - ${objGroup.strLabel}` : objGroup.strLabel}
-                </MenuItem>
-              ))}
-            </TextField>
+            />
 
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <Typography sx={{ fontWeight: 400, color: "#0f172a" }}>{dicModuleLabels.fieldEssAccess}</Typography>
@@ -1104,26 +1097,18 @@ export default function UserMasterPanel() {
               </Tooltip>
             </Box>
 
-            <TextField
-              select
+            <CommonSearchableSelect
+              controlId="user-master.dialog.ess-user-group.select"
               label={dicModuleLabels.fieldEssUserGroup}
-              inputProps={{ "data-controlid": "user-master.dialog.ess-user-group.select" }}
-              value={String(dicForm.essUserGroupID)}
-              onChange={(objEvent) => setFormField("essUserGroupID", objEvent.target.value ? Number(objEvent.target.value) : "")}
+              value={dicForm.essUserGroupID}
+              options={lstEssGroupOptions}
+              onChange={(intValue) => setFormField("essUserGroupID", intValue)}
               error={Boolean(dicErrors.essUserGroupID)}
               helperText={dicErrors.essUserGroupID}
               disabled={strMode === "view" || !dicForm.essAccessEnabled}
               fullWidth
               required={dicForm.essAccessEnabled}
-              SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.ess-user-group.select" } as HTMLAttributes<HTMLDivElement> }}
-            >
-              <MenuItem value="" data-controlid="user-master.dialog.ess-user-group.select.option">{dicModuleLabels.optionSelect}</MenuItem>
-              {lstEssGroupOptions.map((objGroup) => (
-                <MenuItem key={objGroup.intID} value={String(objGroup.intID)} data-controlid={`user-master.dialog.ess-user-group.${normalizeSelectToken(objGroup.strCode || objGroup.strLabel)}.option`}>
-                  {objGroup.strCode ? `${objGroup.strCode} - ${objGroup.strLabel}` : objGroup.strLabel}
-                </MenuItem>
-              ))}
-            </TextField>
+            />
 
           </Box>
         </Box>}

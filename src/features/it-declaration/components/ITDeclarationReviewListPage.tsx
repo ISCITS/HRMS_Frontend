@@ -151,7 +151,7 @@ export default function ITDeclarationReviewListPage() {
   );
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      { field: "action", headerName: t("IT_DECLARATION_REVIEW_ACTIONS", "Actions"), align: "center", sortable: false, filterable: false, exportable: false, width: 110 },
+      { field: "action", headerName: t("IT_DECLARATION_REVIEW_ACTIONS", "Actions"), sortable: false, filterable: false, exportable: false, width: 110 },
       { field: "strEmployeeCode", headerName: t("IT_DECLARATION_REVIEW_EMPLOYEE_CODE", "Employee Code"), width: 140 },
       { field: "strEmployeeName", headerName: t("IT_DECLARATION_REVIEW_EMPLOYEE_NAME", "Employee Name"), width: 220 },
       { field: "strFinancialYearCode", headerName: t("IT_DECLARATION_REVIEW_FINANCIAL_YEAR", "Financial Year"), width: 150 },

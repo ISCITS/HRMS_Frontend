@@ -26,6 +26,7 @@ import type { InputHTMLAttributes } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import { handleSingleDialogActionEnter } from "@/Common/utils/dialogKeyboard";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/components/master/MasterScreen.module.css";
@@ -301,26 +302,19 @@ export default function EmployeeMasterPanel() {
   }
 
   function renderOptionField(strLabel: string, strField: keyof EmployeeFormValues, lstOptions: Array<{ intID: number; strLabel: string; strCode?: string }>, blnDisabled = false) {
+    const strControlId = `employee.master.dialog.${String(strField).replace(/^int/, "").replace(/^str/, "").replace(/^dt/, "").replace(/^bln/, "").replace(/[A-Z]/g, (strChar) => `-${strChar.toLowerCase()}`).replace(/^-/, "")}.select`;
     return (
-        <TextField
-        controlId={`employee.master.dialog.${String(strField).replace(/^int/, "").replace(/^str/, "").replace(/^dt/, "").replace(/^bln/, "").replace(/[A-Z]/g, (strChar) => `-${strChar.toLowerCase()}`).replace(/^-/, "")}.select`}
-        inputProps={{ "controlId": `employee.master.dialog.${String(strField).replace(/^int/, "").replace(/^str/, "").replace(/^dt/, "").replace(/^bln/, "").replace(/[A-Z]/g, (strChar) => `-${strChar.toLowerCase()}`).replace(/^-/, "")}.select` }}
-        select
+      <CommonSearchableSelect
+        controlId={strControlId}
         label={strLabel}
-        value={dicForm[strField]}
+        value={dicForm[strField] as number | ""}
+        options={lstOptions}
         disabled={blnDisabled || strMode === "view"}
-        onChange={(objEvent) => updateField(strField, (objEvent.target.value ? Number(objEvent.target.value) : "") as EmployeeFormValues[typeof strField])}
+        onChange={(intValue) => updateField(strField, intValue as EmployeeFormValues[typeof strField])}
         error={Boolean(dicErrors[strField])}
         helperText={dicErrors[strField]}
         fullWidth
-      >
-        <MenuItem value="">Select</MenuItem>
-        {lstOptions.map((dicOption) => (
-          <MenuItem key={dicOption.intID} value={dicOption.intID}>
-            {dicOption.strCode ? `${dicOption.strCode} - ${dicOption.strLabel}` : dicOption.strLabel}
-          </MenuItem>
-        ))}
-      </TextField>
+      />
     );
   }
 

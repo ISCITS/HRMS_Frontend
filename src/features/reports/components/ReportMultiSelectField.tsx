@@ -49,6 +49,7 @@ export default function ReportMultiSelectField({
         <TextField
           {...objParams}
           label={label}
+          InputLabelProps={{ shrink: true }}
           placeholder={splitValue(value).length ? "Search..." : placeholder || "Search..."}
           fullWidth
           inputProps={{ ...objParams.inputProps, "data-controlid": controlId }}

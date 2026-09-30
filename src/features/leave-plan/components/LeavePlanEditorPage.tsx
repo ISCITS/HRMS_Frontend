@@ -7,7 +7,7 @@ import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import { yupResolver } from "@hookform/resolvers/yup";
 import {
   Alert, Box, Button, Checkbox, CircularProgress,
-  Chip, FormControlLabel, IconButton, MenuItem, Paper, Snackbar, Stack, Table, TableBody, TableCell,
+  Chip, FormControlLabel, IconButton, Paper, Snackbar, Stack, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, TextField, Typography,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
@@ -17,6 +17,7 @@ import * as yup from "yup";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import CommonEditModeBanner from "@/Common/components/CommonEditModeBanner";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import styles from "@/components/master/MasterScreen.module.css";
 import { useLeavePlanEditor } from "@/features/leave-plan/hooks/useLeavePlanEditor";
 import type { LeavePlanItem, LeavePlanSaveRequest, LeavePlanText, LeavePolicyOption } from "@/features/leave-plan/types/LeavePlanTypes";
@@ -122,6 +123,8 @@ export default function LeavePlanEditorPage({ strMode, strPlanID, strReturnTo }:
   const strEffectiveFrom = useWatch({ control, name: "dtEffectiveFrom" });
   // Whether each Leave Type permits a negative balance — gates the plan's Negative Balance Limit column.
   const dicTypeAllowNeg = useMemo(() => Object.fromEntries(lstLeaveTypes.map((objType) => [objType.intID, Boolean(objType.blnAllowNegativeBalance)])), [lstLeaveTypes]);
+  // CommonSearchableSelect expects {intID, strLabel, strCode?}; LeaveTypeOption carries strTypeCode/strTypeName instead.
+  const lstLeaveTypeSelectOptions = useMemo(() => lstLeaveTypes.map((objType) => ({ ...objType, strLabel: objType.strTypeName, strCode: objType.strTypeCode })), [lstLeaveTypes]);
   const lstWatchedItems = useWatch({ control, name: "lstItems" });
   const lstWatchedTexts = useWatch({ control, name: "lstText" });
   const blnCanManage = canDo("LEAVE_PLANS", "EDIT") || canDo("LEAVE_PLANS", "ADD") || canDo("LEAVE_PLANS", "LEAVE_MANAGE");
@@ -310,7 +313,7 @@ export default function LeavePlanEditorPage({ strMode, strPlanID, strReturnTo }:
                 return <TableRow key={objField.id}>
                   {/* Leave Type: equal fixed width; selecting one resolves the inherited entitlement and clamps
                       the negative limit. Policy is resolved on the server (not shown). */}
-                  <TableCell><Controller name={`lstItems.${intIndex}.intLeaveTypeID`} control={control} render={({ field }) => <TextField select size="small" value={field.value || ""} onChange={async (objEvent) => { const intValue = Number(objEvent.target.value); field.onChange(intValue); objForm.setValue(`lstItems.${intIndex}.intLeavePolicyID`, null); objForm.setValue(`lstItems.${intIndex}.blnIsEntitlementOverride`, false); objForm.setValue(`lstItems.${intIndex}.strOverrideReason`, null); const lstLoaded = await loadPolicies(intValue, strEffectiveFrom); const decInherited = resolveInheritedEntitlement(lstLoaded, strEffectiveFrom || new Date().toISOString().slice(0, 10)); objForm.setValue(`lstItems.${intIndex}.decBaseEntitlementSnapshot`, decInherited); objForm.setValue(`lstItems.${intIndex}.decAnnualEntitlement`, decInherited, { shouldValidate: true }); if (!dicTypeAllowNeg[intValue]) objForm.setValue(`lstItems.${intIndex}.decNegativeBalanceLimit`, 0); }} error={Boolean(errors.lstItems?.[intIndex]?.intLeaveTypeID)} inputProps={{ "data-control-id": `leave-plan.editor.item.${intIndex}.leave-type.select` }} sx={{ width: 200 }}><MenuItem value="" data-control-id={`leave-plan.editor.item.${intIndex}.leave-type.empty.option`}>{t("select_leave_type", "Select Leave Type")}</MenuItem>{lstLeaveTypes.map((objType) => <MenuItem key={objType.intID} value={objType.intID} data-control-id={`leave-plan.editor.item.${intIndex}.leave-type.${objType.intID}.option`}>{objType.strTypeCode} - {objType.strTypeName}</MenuItem>)}</TextField>} /></TableCell>
+                  <TableCell><Controller name={`lstItems.${intIndex}.intLeaveTypeID`} control={control} render={({ field }) => <CommonSearchableSelect label="" placeholder={t("select_leave_type", "Select Leave Type")} value={field.value || ""} options={lstLeaveTypeSelectOptions} onChange={async (intOption) => { const intValue = intOption === "" ? 0 : Number(intOption); field.onChange(intValue); objForm.setValue(`lstItems.${intIndex}.intLeavePolicyID`, null); objForm.setValue(`lstItems.${intIndex}.blnIsEntitlementOverride`, false); objForm.setValue(`lstItems.${intIndex}.strOverrideReason`, null); const lstLoaded = await loadPolicies(intValue, strEffectiveFrom); const decInherited = resolveInheritedEntitlement(lstLoaded, strEffectiveFrom || new Date().toISOString().slice(0, 10)); objForm.setValue(`lstItems.${intIndex}.decBaseEntitlementSnapshot`, decInherited); objForm.setValue(`lstItems.${intIndex}.decAnnualEntitlement`, decInherited, { shouldValidate: true }); if (!dicTypeAllowNeg[intValue]) objForm.setValue(`lstItems.${intIndex}.decNegativeBalanceLimit`, 0); }} error={Boolean(errors.lstItems?.[intIndex]?.intLeaveTypeID)} controlId={`leave-plan.editor.item.${intIndex}.leave-type.select`} fullWidth={false} sx={{ width: 200 }} />} /></TableCell>
                   {/* Annual Entitlement: read-only (inherited) unless override is enabled. */}
                   <TableCell><Controller name={`lstItems.${intIndex}.decAnnualEntitlement`} control={control} render={({ field }) => <TextField {...field} type="number" size="small" disabled={!blnOverride} inputProps={{ "data-control-id": `leave-plan.editor.item.${intIndex}.annual-entitlement.input`, min: 0, step: .5 }} onChange={(objEvent) => field.onChange(Number(objEvent.target.value))} sx={{ width: 110 }} helperText={blnOverride ? t("entitlement_overridden", "Overridden") : undefined} />} /></TableCell>
                   {/* Override toggle: turning it off restores the inherited value and clears the reason. */}
@@ -337,7 +340,7 @@ export default function LeavePlanEditorPage({ strMode, strPlanID, strReturnTo }:
           {fieldError("lstText") ? <Typography color="error" variant="caption" sx={{ display: "block", mb: 1 }}>{fieldError("lstText")}</Typography> : null}
           <Box>
             <Box sx={{ display: "grid", gap: 1.5 }}>{objTexts.fields.map((objField, intIndex) => <Box key={objField.id} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "220px 1fr 2fr auto" }, gap: 1 }}>
-              <Controller name={`lstText.${intIndex}.intLanguageID`} control={control} render={({ field }) => <TextField {...field} select size="small" label={t("language", "Language")} inputProps={{ "data-control-id": `leave-plan.editor.translation.${intIndex}.language.select` }} onChange={(objEvent) => field.onChange(Number(objEvent.target.value))}>{objLanguages.lstLanguages.map((objLanguage) => <MenuItem key={objLanguage.intID} value={objLanguage.intID} data-control-id={`leave-plan.editor.translation.${intIndex}.language.${objLanguage.intID}.option`}>{objLanguage.strLabel}</MenuItem>)}</TextField>} />
+              <Controller name={`lstText.${intIndex}.intLanguageID`} control={control} render={({ field }) => <CommonSearchableSelect label={t("language", "Language")} value={field.value || ""} options={objLanguages.lstLanguages} onChange={(intOption) => field.onChange(intOption === "" ? 0 : Number(intOption))} controlId={`leave-plan.editor.translation.${intIndex}.language.select`} />} />
               <Controller name={`lstText.${intIndex}.strPlanName`} control={control} render={({ field }) => <TextField {...field} size="small" label={t("translation_plan_name", "Translated Plan Name")} inputProps={{ "data-control-id": `leave-plan.editor.translation.${intIndex}.name.input`, maxLength: 150 }} />} />
               <Controller name={`lstText.${intIndex}.strDescription`} control={control} render={({ field }) => <TextField {...field} size="small" label={t("translation_description", "Translated Description")} inputProps={{ "data-control-id": `leave-plan.editor.translation.${intIndex}.description.input`, maxLength: 500 }} />} />
               {!blnReadOnly ? <IconButton onClick={() => objTexts.remove(intIndex)} disabled={Number(objForm.getValues(`lstText.${intIndex}.intLanguageID`)) === objLanguages.intDefaultLanguageID} data-control-id={`leave-plan.editor.translation.${intIndex}.delete.button`}><DeleteOutlineRoundedIcon /></IconButton> : null}

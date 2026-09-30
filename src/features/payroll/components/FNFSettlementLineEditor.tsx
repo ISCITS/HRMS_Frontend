@@ -4,9 +4,12 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, Switch, TextField, Typography } from "@mui/material";
 import { useEffect, useState, type InputHTMLAttributes } from "react";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import type { FNFLineFormValues, FNFRecoveryType, FNFSettlementLineRecord } from "@/features/payroll/types";
 
 const dicEmptyLine: FNFLineFormValues = { strLineType: "EARNING", strRecoveryType: "", strLineCode: "", strLineName: "", decActualAmount: "0", decAmount: "0", blnIsManualOverride: true, strOverrideReason: "", strRemarks: "" };
+
+const lstRecoveryTypeOptions = ["NOTICE", "LOAN", "ADVANCE", "ASSET", "EXCESS_SALARY", "OTHER"].map((strType) => ({ intID: strType, strLabel: strType }));
 
 export default function FNFSettlementLineEditor({ blnOpen, objLine, onClose, onSave }: { blnOpen: boolean; objLine?: FNFSettlementLineRecord | null; onClose: () => void; onSave: (dicValues: FNFLineFormValues) => Promise<void> }) {
   const [dicForm, setDicForm] = useState<FNFLineFormValues>(dicEmptyLine);
@@ -60,9 +63,15 @@ export default function FNFSettlementLineEditor({ blnOpen, objLine, onClose, onS
             {["EARNING", "DEDUCTION", "RECOVERY", "STATUTORY", "TAX"].map((strType) => <MenuItem key={strType} value={strType}>{strType}</MenuItem>)}
           </TextField>
           {dicForm.strLineType === "RECOVERY" ? (
-            <TextField controlId="payroll.fnf.line-editor.recovery-type.select" required select label="Recovery Type" value={dicForm.strRecoveryType} onChange={(e) => setDicForm((d) => ({ ...d, strRecoveryType: e.target.value as FNFRecoveryType }))} fullWidth>
-              {["NOTICE", "LOAN", "ADVANCE", "ASSET", "EXCESS_SALARY", "OTHER"].map((strType) => <MenuItem key={strType} value={strType}>{strType}</MenuItem>)}
-            </TextField>
+            <CommonSearchableSelect
+              controlId="payroll.fnf.line-editor.recovery-type.select"
+              required
+              label="Recovery Type"
+              value={dicForm.strRecoveryType || ""}
+              options={lstRecoveryTypeOptions}
+              onChange={(value) => setDicForm((d) => ({ ...d, strRecoveryType: (value || "") as FNFRecoveryType }))}
+              fullWidth
+            />
           ) : null}
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
             <TextField required label="Line Code" value={dicForm.strLineCode} onChange={(e) => setDicForm((d) => ({ ...d, strLineCode: e.target.value }))} fullWidth />

@@ -1,29 +1,36 @@
-﻿"use client";
+"use client";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
+import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
+import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
+  Breadcrumbs,
+  IconButton,
+  Tooltip,
   Box,
   Button,
   CircularProgress,
   InputAdornment,
+  Link,
   MenuItem,
+  Skeleton,
   Snackbar,
   Switch,
   TextField,
   Typography
 } from "@mui/material";
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
-import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import CommonDataGrid, { type DataGridColumn } from "@/components/ui/CommonDataGrid";
@@ -55,8 +62,8 @@ type DesignationRecord = {
 
 type DesignationTableRow = {
   id: string;
-  action: ReactNode;
-  name: string;
+  name: ReactNode;
+  nameText: string;
   code: string;
   status: ReactNode;
   statusSortValue: string;
@@ -85,6 +92,55 @@ const dicEmptyForm = createInitialDesignationForm();
 const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
 const lstDefaultDesignations: DesignationRecord[] = [];
 const lstDesignationModuleCodes = ["DESIGNATION", "DESIGNATIONS"];
+const intDesignationSkeletonRows = 8;
+
+function DesignationGridSkeleton() {
+  return (
+    <Box
+      data-control-id="designation-master.list.skeleton"
+      sx={{
+        border: "1px solid #e8eef5",
+        borderRadius: "8px",
+        overflow: "hidden",
+        backgroundColor: "#fff",
+      }}
+    >
+      <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, px: 1.75, py: 1.25, flexWrap: "wrap" }}>
+        <Skeleton variant="rounded" width={142} height={36} />
+        <Box sx={{ display: "flex", gap: 1.25, alignItems: "center", flexWrap: "wrap" }}>
+          <Skeleton variant="rounded" width={64} height={36} />
+          <Skeleton variant="text" width={72} height={24} />
+          <Skeleton variant="rounded" width={116} height={32} />
+        </Box>
+      </Box>
+      <Box sx={{ minWidth: 980 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", bgcolor: "#edf3f9", borderTop: "1px solid #e8eef5", borderBottom: "1px solid #d9e3ee" }}>
+          {[0, 1, 2].map((intColumn) => (
+            <Box key={intColumn} sx={{ px: 2, py: 1 }}>
+              <Skeleton variant="text" width={intColumn === 2 ? 76 : 118} height={22} />
+            </Box>
+          ))}
+        </Box>
+        {Array.from({ length: intDesignationSkeletonRows }).map((_, intIndex) => (
+          <Box
+            key={intIndex}
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr 1fr",
+              borderBottom: "1px solid #edf1f6",
+              minHeight: 40,
+              alignItems: "center",
+            }}
+          >
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${62 + (intIndex % 3) * 8}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${36 + (intIndex % 2) * 10}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="rounded" width={72} height={22} /></Box>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+}
 
 // The API record includes backend naming; the panel works against a compact UI-facing record shape.
 function mapDesignationRecord(dicRecord: DesignationApiRecord): DesignationRecord {
@@ -98,7 +154,7 @@ function mapDesignationRecord(dicRecord: DesignationApiRecord): DesignationRecor
 
 // Designation master screen: handles backend-backed CRUD, search, bulk actions, export, and view/edit dialogs.
 export default function DesignationMasterPanel() {
-  const objRouter = useRouter();
+
   const { t } = useModuleLabels("designation");
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly } = useModuleActionAccess(lstDesignationModuleCodes);
   const [lstDesignations, setLstDesignations] = useState<DesignationRecord[]>(lstDefaultDesignations);
@@ -108,6 +164,9 @@ export default function DesignationMasterPanel() {
   const [strEditingDesignationId, setStrEditingDesignationId] = useState("");
   const [dicForm, setDicForm] = useState<DesignationFormValues>(dicEmptyForm);
   const [dicErrors, setDicErrors] = useState<Partial<Record<"code" | "name", string>>>({});
+  const objNameInputRef = useRef<HTMLInputElement>(null);
+  const objCodeInputRef = useRef<HTMLInputElement>(null);
+  const strPendingErrorFocusRef = useRef<"name" | "code" | null>(null);
   const [dicTextTranslationLoading, setDicTextTranslationLoading] = useState<Record<string, boolean>>({});
   const [dicLastTranslatedSourceByRow, setDicLastTranslatedSourceByRow] = useState<Record<string, string>>({});
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
@@ -117,6 +176,7 @@ export default function DesignationMasterPanel() {
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
   const [dicRowLabelsByLanguageID, setDicRowLabelsByLanguageID] = useState<Record<number, Record<string, string>>>({});
+  const blnSearchPanelFrozen = blnLoading || blnRightsLoading || blnSubmitting;
 
   const dicCommonLabels = {
     cancel: t("cancel"),
@@ -372,6 +432,8 @@ export default function DesignationMasterPanel() {
     }
   }
 
+  const lstVisibleTranslationRows = dicForm.lstTexts.filter((dicText) => Number(dicText.intLanguageID) !== intDefaultLanguageID);
+
   async function handleTranslateClick() {
     const dicSecondaryRow = dicForm.lstTexts[1];
     if (!dicSecondaryRow) {
@@ -395,18 +457,29 @@ export default function DesignationMasterPanel() {
 
   const lstTableRows: DesignationTableRow[] = lstFilteredDesignations.map((dicDesignation) => ({
     id: dicDesignation.id,
-    action: <CommonRowActions testIdPrefix="designation-master.list.row" rowKey={dicDesignation.id} blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} onView={() => openDialog("view", dicDesignation)} onEdit={() => openDialog("edit", dicDesignation)} onDelete={() => deleteDesignation(dicDesignation.id)} />,
-    name: dicDesignation.name,
+    nameText: dicDesignation.name,
+    name: (
+      <Link component="button" type="button" underline="hover"
+        disabled={!blnCanView && !blnCanEdit}
+        data-control-id="designation-master.list.row.name.button"
+        onClick={() => {
+          const objSelection = window.getSelection();
+          if (objSelection && !objSelection.isCollapsed && objSelection.toString().trim()) return;
+          openDialog(blnCanEdit ? "edit" : "view", dicDesignation);
+        }}
+        sx={{ color: "#334155", cursor: "pointer", fontSize: "inherit", fontWeight: 500, textAlign: "left", userSelect: "text", WebkitUserSelect: "text", "&:hover": { color: "#0066df", textDecoration: "underline" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}>
+        {dicDesignation.name}
+      </Link>
+    ),
     code: dicDesignation.code,
-    status: <span className={`${styles.statusPill} ${dicDesignation.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicDesignation.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span>,
+    status: <span className={styles.statusPill} style={{ background: dicDesignation.status === "Active" ? "#dcfce7" : "#fee2e2", color: dicDesignation.status === "Active" ? "#15803d" : "#dc2626" }}>{dicDesignation.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span>,
     statusSortValue: dicDesignation.status
   }));
 
   const lstTableColumns: DataGridColumn<DesignationTableRow>[] = [
-    { field: "action", headerName: dicDesignationLabels.tableActions, sortable: false, filterable: false, exportable: false, width: 140 },
-    { field: "name", headerName: dicDesignationLabels.tableName, width: 260 },
-    { field: "code", headerName: dicDesignationLabels.tableCode, width: 180 },
-    { field: "status", headerName: dicDesignationLabels.tableStatus, width: 140, sortAccessor: (dicRow) => dicRow.statusSortValue }
+    { field: "name", headerName: dicDesignationLabels.tableName, sortAccessor: (dicRow) => dicRow.nameText },
+    { field: "code", headerName: dicDesignationLabels.tableCode },
+    { field: "status", headerName: dicDesignationLabels.tableStatus, sortAccessor: (dicRow) => dicRow.statusSortValue }
   ];
 
   useEffect(() => {
@@ -488,6 +561,17 @@ export default function DesignationMasterPanel() {
     setDicForm((dicPrevious) => ensureTenantLanguageRows(dicPrevious));
   }, [intDefaultLanguageID, intSecondaryLanguageID, objFormOptions.lstLanguages.length]);
 
+  useEffect(() => {
+    if (!blnDialogOpen || strMode === "view") return;
+    const strField = strPendingErrorFocusRef.current;
+    strPendingErrorFocusRef.current = null;
+    if (strField === "code") {
+      objCodeInputRef.current?.focus();
+      return;
+    }
+    objNameInputRef.current?.focus();
+  }, [blnDialogOpen, dicErrors, strMode]);
+
   function openDialog(strNextMode: DesignationMode, dicDesignation?: DesignationRecord) {
     // Reuses one dialog for add, edit, and read-only view modes.
     setStrMode(strNextMode);
@@ -518,6 +602,7 @@ export default function DesignationMasterPanel() {
 
   function closeDialog() {
     // Closes the form dialog without changing persisted designation data.
+    strPendingErrorFocusRef.current = null;
     setBlnDialogOpen(false);
   }
 
@@ -583,6 +668,7 @@ export default function DesignationMasterPanel() {
       dicNextErrors.name = dicDesignationLabels.validationNameDuplicate;
     }
 
+    strPendingErrorFocusRef.current = dicNextErrors.name ? "name" : dicNextErrors.code ? "code" : null;
     setDicErrors(dicNextErrors);
     return Object.keys(dicNextErrors).length === 0;
   }
@@ -629,11 +715,12 @@ export default function DesignationMasterPanel() {
 
   return (
     <Box className={styles.page}>
-      <Box className={styles.topBar}>
-        <Button controlId="designation-master.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicDesignationLabels.backButton}</Button>
-      </Box>
+      <Breadcrumbs aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ fontSize: 13, py: 0.5, ml: "3px" }}>
+        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{t("breadcrumb_masters", "Masters")}</Typography>
+        <Typography component="h1" aria-current="page" sx={{ fontSize: "inherit", fontWeight: 700, color: "#243b53" }}>{t("breadcrumb_designations", "Designations")}</Typography>
+      </Breadcrumbs>
 
-      <Box className={styles.controlsCard}>
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {strRightsError ? (
           <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography>
         ) : null}
@@ -642,33 +729,72 @@ export default function DesignationMasterPanel() {
             {t("read_only_mode", "You have view-only access for Designation.")}
           </Typography>
         ) : null}
-        <Box className={styles.searchRow}>
-          <TextField controlId="designation-master.list.search-name.input" inputProps={{ "controlId": "designation-master.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicDesignationLabels.searchNamePlaceholder} fullWidth />
-          <TextField controlId="designation-master.list.search-code.input" inputProps={{ "controlId": "designation-master.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicDesignationLabels.searchCodePlaceholder} fullWidth />
-          <TextField controlId="designation-master.list.search-status.select" inputProps={{ "controlId": "designation-master.list.search-status.select" }} select label={dicDesignationLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
+        <Box
+          className={styles.searchRow}
+          aria-busy={blnSearchPanelFrozen}
+          sx={{
+            alignItems: "center",
+            "& .MuiButton-root": { alignSelf: "center" },
+          }}
+        >
+          <TextField className="app-mui-text-field" id="designation-search-name" controlId="designation-master.list.search-name.input" inputProps={{ "controlId": "designation-master.list.search-name.input" }} label={dicDesignationLabels.tableName} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicDesignationLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnSearchPanelFrozen} fullWidth />
+          <TextField className="app-mui-text-field" id="designation-search-code" controlId="designation-master.list.search-code.input" inputProps={{ "controlId": "designation-master.list.search-code.input" }} label={dicDesignationLabels.tableCode} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicDesignationLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnSearchPanelFrozen} fullWidth />
+          <TextField className="app-mui-text-field" id="designation-search-status" controlId="designation-master.list.search-status.select" inputProps={{ "controlId": "designation-master.list.search-status.select" }} select label={dicDesignationLabels.tableStatus} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} size="small" disabled={blnSearchPanelFrozen} fullWidth>
             <MenuItem controlId="designation-master.list.search-status.all.option" value="All">All</MenuItem>
             <MenuItem controlId="designation-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
             <MenuItem controlId="designation-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions}><Button controlId="designation-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
-          <Box className={styles.searchActions}><Button controlId="designation-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
+          <Box className={styles.searchActions}><Button data-control-id="designation-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }} disabled={blnSearchPanelFrozen}>{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button data-control-id="designation-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnSearchPanelFrozen}>{dicCommonLabels.clear}</Button></Box>
         </Box>
+
       </Box>
 
-      <Box className={styles.tableCard}>
-        {!blnCanView && !blnRightsLoading && !blnLoading ? (
+      <Box className={styles.tableCard} sx={{ p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        {(blnLoading || blnRightsLoading) && !blnDialogOpen ? (
+          <DesignationGridSkeleton />
+        ) : !blnCanView ? (
           <Box className={styles.emptyState}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>Designation access is not available for your user group.</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>Contact your administrator if you need designation visibility.</Typography>
           </Box>
         ) : (
-          <CommonDataGrid columns={lstTableColumns} rows={lstTableRows} rowIdField="id" defaultPageSize={20} pageSizeOptions={[10, 20, 50]} exportFileName={dicDesignationLabels.exportFileName.replace(/\.(csv|pdf)$/i, "")} showExportOptions={blnCanExport} showPaginationSummary emptyMessage={dicDesignationLabels.emptyMessage} testIdPrefix="designation-master.list" toolbarLeft={blnCanAdd ? <Button controlId="designation-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicDesignationLabels.addButton}</Button> : null} sx={{ p: 0, boxShadow: "none", background: "transparent" }} />
+          <CommonDataGrid
+            hideRowClickHint
+            columns={lstTableColumns}
+            rows={lstTableRows}
+            rowIdField="id"
+            defaultPageSize={20}
+            pageSizeOptions={[10, 20, 50]}
+            exportFileName={dicDesignationLabels.exportFileName.replace(/\.(csv|pdf)$/i, "")}
+            showExportOptions={blnCanExport}
+            showPaginationSummary
+            emptyMessage={dicDesignationLabels.emptyMessage}
+            testIdPrefix="designation-master.list"
+            toolbarLeft={blnCanAdd ? <Button controlId="designation-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicDesignationLabels.addButton}</Button> : null}
+            onRowClick={(dicRow) => {
+              if (blnRightsLoading || blnLoading || blnSubmitting || (!blnCanEdit && !blnCanView)) return;
+              const dicDesignation = lstDesignations.find((dicItem) => dicItem.id === dicRow.id);
+              if (dicDesignation) openDialog(blnCanEdit ? "edit" : "view", dicDesignation);
+            }}
+            getRowSx={() => ({
+              backgroundColor: "#fff",
+              "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
+              "& td:first-of-type:hover .MuiLink-root": { color: "#0066df", textDecoration: "underline" },
+            })}
+            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+          />
         )}
       </Box>
 
       <CommonMasterDialog
         blnOpen={blnDialogOpen}
         onClose={closeDialog}
+        onDialogClose={(_, strReason) => {
+          if (strReason !== "backdropClick") {
+            closeDialog();
+          }
+        }}
         rootTestId="designation-master.dialog"
         cancelButtonTestId="designation-master.dialog.cancel.button"
         primaryButtonTestId="designation-master.dialog.save.button"
@@ -678,35 +804,86 @@ export default function DesignationMasterPanel() {
         onPrimaryAction={saveDesignation}
         blnPrimaryDisabled={blnSubmitting}
         blnHidePrimary={strMode === "view"}
-        paperClassName={styles.compactDialogPaper}
         nodeTitleAction={
           <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
-              <Typography className={styles.switchLabel}>{dicDesignationLabels.fieldIsActive}</Typography>
-              <ActiveStatusSwitch testId="designation-master.dialog.active.switch" blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
-         </Box>
+            <ActiveStatusSwitch
+              testId="designation-master.dialog.active.switch"
+              blnIsActive={dicForm.status === "Active"}
+              disabled={strMode === "view"}
+              sx={{
+                width: 40,
+                height: 22,
+                p: 0,
+                overflow: "visible",
+                "& .MuiSwitch-switchBase": {
+                  p: "3px",
+                  color: "#fff",
+                  transitionDuration: "180ms",
+                  "&.Mui-checked": {
+                    transform: "translateX(18px)",
+                    color: "#fff",
+                    "& + .MuiSwitch-track": { backgroundColor: "#00b86b", opacity: 1 },
+                  },
+                  "&.Mui-disabled": { color: "#fff", opacity: 0.7 },
+                },
+                "& .MuiSwitch-thumb": {
+                  width: 16,
+                  height: 16,
+                  boxShadow: "0 1px 3px rgba(15, 23, 42, 0.2)",
+                },
+                "& .MuiSwitch-track": {
+                  borderRadius: "11px",
+                  backgroundColor: "#98a2b3",
+                  opacity: 1,
+                  transition: "background-color 180ms",
+                },
+              }}
+              onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))}
+            />
+            <Typography className={styles.switchLabel} sx={{ fontSize: "12px !important", fontWeight: "600 !important", whiteSpace: "nowrap" }}>
+              {dicCommonLabels.statusActive}
+            </Typography>
+            <IconButton aria-label={dicCommonLabels.close} onClick={closeDialog} size="small" sx={{ ml: 1, color: "#94a3b8" }}>
+              <CloseRoundedIcon fontSize="small" />
+            </IconButton>
+          </Box>
         }
-        titleSx={{ px: 2.25, py: 1.25, fontSize: "1rem", maxHeight: 50 }}
-        paperSx={{
-          width: "min(800px, calc(100vw - 32px)) !important",
-          maxWidth: "800px !important",
-          overflow: "hidden",
-          m: 2,
-        }}
-        contentSx={{ overflowX: "hidden", overflowY: "visible" }}
+        nodeFooterStart={<Typography sx={{ color: "#64748b", fontSize: "11px" }}>{t("required_fields_hint", "Required fields are marked")} <Box component="span" sx={{ color: "#dc2626" }}>*</Box></Typography>}
+        titleSx={{ px: 2.25, py: 1.25, fontSize: "16px", fontWeight: 700, maxHeight: 50 }}
+        paperClassName={styles.designationDialogPaper}
+        paperSx={{ "& .MuiButton-root": { fontSize: "12px !important", fontWeight: "600 !important" } }}
+        maxWidth={false}
+        fullWidth={false}
+        contentSx={{ overflowX: "hidden", overflowY: "auto", px: "20px", py: "12px", borderColor: "#e5edf5" }}
         nodeContent={
-          <Box sx={{ display: "grid", gap: 2, pt: 0.5 }}>
+          <Box sx={{ display: "grid", gap: "12px" }}>
             <Box
               sx={{
                 display: "grid",
-                gap: 1.6,
-                gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                columnGap: 1.6, rowGap: "12px",
+                gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
                 alignItems: "start",
               }}
             >
+              {strMode === "add" ? (
+                <Box sx={{ gridColumn: "1 / -1" }}>
+                  <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>
+                    {t("basic_information", "Basic Information")}
+                  </Typography>
+                  <Typography sx={{ fontSize: "11px", color: "#64748b", mt: 0.25, mb: 1 }}>
+                    {t("basic_information_help", "Create a new designation for your organisation.")}
+                  </Typography>
+                </Box>
+              ) : null}
               <TextField
-                required
+                className="app-mui-text-field"
                 controlId="designation-master.dialog.name.input"
-                label={`${dicDesignationLabels.fieldName}`}
+                inputRef={objNameInputRef}
+                autoFocus={strMode !== "view"}
+                label={dicDesignationLabels.fieldName}
+                placeholder={t("dialog_name_placeholder", "Enter designation name")}
+                size="small"
+                required
                 value={dicForm.name}
                 inputProps={{ "controlId": "designation-master.dialog.name.input" }}
                 disabled={strMode === "view"}
@@ -721,9 +898,13 @@ export default function DesignationMasterPanel() {
                 fullWidth
               />
               <TextField
-                required
+                className="app-mui-text-field"
                 controlId="designation-master.dialog.code.input"
-                label={`${dicDesignationLabels.fieldCode}`}
+                inputRef={objCodeInputRef}
+                label={dicDesignationLabels.fieldCode}
+                placeholder={t("dialog_code_placeholder", "Enter designation code")}
+                size="small"
+                required
                 value={dicForm.code}
                 inputProps={{ "controlId": "designation-master.dialog.code.input" }}
                 disabled={strMode === "view"}
@@ -739,122 +920,59 @@ export default function DesignationMasterPanel() {
               />
             </Box>
 
-            {intSecondaryLanguageID ? (
-            <>
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1.25, flexWrap: "wrap" }}>
-              <Box>
-                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("multilingual_text", "Multilingual Text")}</Typography>
-                <Typography sx={{ color: "#64748b", fontSize: "0.86rem", mt: 0.25 }}>
-                  {t("multilingual_text_help", "Add translated designation names for supported languages.")}
-                </Typography>
-              </Box>
-              <Box sx={{ display: "flex", gap: 1.1, alignItems: "center", ml: "auto" }}>
-                <Button controlId="designation-master.dialog.add-language.button" className={styles.secondaryButton} startIcon={<AddRoundedIcon />} disabled sx={{ minHeight: 34 }}>
-                  {t("add_language", "Add Language")}
-                </Button>
-                <Button
-                  controlId="designation-master.dialog.translate.button"
-                  className={styles.primaryButton}
-                  onClick={() => void handleTranslateClick()}
-                  disabled={strMode === "view" || blnSubmitting || dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]}
-                  sx={{
-                    minWidth: 108,
-                    minHeight: 34,
-                    boxShadow: "none",
-                    "&:hover": { boxShadow: "none" },
-                  }}
-                >
-                  {dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""] ? (
-                    <CircularProgress size={18} sx={{ color: "#ffffff" }} />
-                  ) : (
-                    t("translate", "AI Translate")
-                  )}
-                </Button>
-              </Box>
-            </Box>
-
-            <Box sx={{ display: "grid", gap: 1.2 }}>
-              {dicForm.lstTexts.map((dicText, intIndex) => (
-                <Box
-                  key={dicText.strRowID}
-                  sx={{
-                    display: "grid",
-                    gap: 1.2,
-                    gridTemplateColumns: {
-                      xs: "1fr",
-                      md: "minmax(0, 0.95fr) minmax(0, 1.35fr) minmax(0, 0.95fr)",
-                    },
-                    alignItems: "start",
-                    border: "1px solid rgba(203,213,225,0.8)",
-                    borderRadius: "16px",
-                    p: 1.2,
-                    background: "#f8fafc",
-                  }}
-                >
-                  <TextField
-                    controlId="designation-master.dialog.language.select"
-                    select
-                    label={getRowLabel(dicText.intLanguageID, "language", t("language", "Language"))}
-                    value={dicText.intLanguageID}
-                    inputProps={{ "controlId": "designation-master.dialog.language.select", "data-row-key": dicText.strRowID }}
-                    InputLabelProps={{ shrink: true }}
-                    SelectProps={{
-                      displayEmpty: true,
-                      renderValue: (objValue) => {
-                        const intSelectedLanguageID = Number(objValue);
-                        return (
-                          objFormOptions.lstLanguages.find(
-                            (dicLanguage) => dicLanguage.intID === intSelectedLanguageID,
-                          )?.strLabel ?? dicText.strLanguageName ?? ""
-                        );
-                      },
-                    }}
-                    disabled
-                    fullWidth
-                  >
-                    {objFormOptions.lstLanguages.map((dicLanguage) => (
-                      <MenuItem controlId="designation-master.dialog.language.option" data-option-key={dicLanguage.intID} key={dicLanguage.intID} value={dicLanguage.intID}>{dicLanguage.strLabel}</MenuItem>
-                    ))}
-                  </TextField>
-                  <TextField
-                    controlId="designation-master.dialog.translated-name.input"
-                    label={getRowLabel(dicText.intLanguageID, "field_name", dicDesignationLabels.fieldName)}
-                    value={dicText.strDesignationName}
-                    inputProps={{ "controlId": "designation-master.dialog.translated-name.input", "data-row-key": dicText.strRowID }}
-                    onChange={(objEvent) => {
-                      const strValue = objEvent.target.value;
-                      updateTextRow(dicText.strRowID, "strDesignationName", strValue);
-                      if (intIndex === 0) {
-                        setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined }));
-                        setDicForm((dicPrevious) => ({ ...dicPrevious, name: strValue }));
-                      }
-                    }}
-                    disabled={strMode === "view" || intIndex === 0}
-                    InputProps={{
-                      endAdornment: dicTextTranslationLoading[dicText.strRowID]
-                        ? (
-                            <InputAdornment position="end">
-                              <CircularProgress size={18} sx={{ color: "#2563eb" }} />
-                            </InputAdornment>
-                          )
-                        : undefined,
-                    }}
-                    fullWidth
-                  />
-                  <TextField
-                    controlId="designation-master.dialog.translated-code.input"
-                    label={getRowLabel(dicText.intLanguageID, "field_code", dicDesignationLabels.fieldCode)}
-                    value={dicText.strDesignationCode}
-                    inputProps={{ "controlId": "designation-master.dialog.translated-code.input", "data-row-key": dicText.strRowID }}
-                    disabled
-                    fullWidth
-                  />
+            {lstVisibleTranslationRows.length > 0 ? (
+              <Box sx={{ border: "1px solid #e3edfc", borderRadius: "6px", overflow: "hidden", background: "#f7faff" }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap", p: 1, borderBottom: "1px solid #e3edfc", background: "#eff6ff" }}>
+                  <LanguageRoundedIcon sx={{ color: "#1473cf" }} />
+                  <Box sx={{ flex: 1, minWidth: 180 }}>
+                    <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>{t("language_translations", "Language Translations")}</Typography>
+                    <Typography sx={{ color: "#64748b", fontSize: "11px", mt: 0.25 }}>
+                      {t("language_translations_help", "Provide translated designation names for the application languages you want to support.")}
+                    </Typography>
+                  </Box>
+                  <Tooltip title={t("translate_help", "Generate suggested translations using AI. Review before saving.")} arrow>
+                    <span>
+                      <Button
+                        controlId="designation-master.dialog.translate.button"
+                        className={styles.secondaryButton}
+                        variant="outlined"
+                        startIcon={<AutoAwesomeRoundedIcon />}
+                        onClick={() => void handleTranslateClick()}
+                        disabled={strMode === "view" || blnSubmitting || !dicForm.name.trim() || Boolean(dicTextTranslationLoading[lstVisibleTranslationRows[0]?.strRowID ?? ""])}
+                        sx={{ minHeight: 34, whiteSpace: "nowrap", background: "#fff" }}
+                      >
+                        {t("translate", "AI Translate")}
+                      </Button>
+                    </span>
+                  </Tooltip>
                 </Box>
-              ))}
-            </Box>
-            </>
+                <Box sx={{ display: "grid", gap: 1.5, p: 1 }}>
+                  {lstVisibleTranslationRows.map((dicText) => (
+                    <Box key={dicText.strRowID} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "minmax(100px, 0.3fr) minmax(0, 1fr)" }, alignItems: "center", gap: 1.5 }}>
+                      <Typography component="label" htmlFor={`designation-translation-${dicText.strRowID}`} sx={{ fontSize: "12px", fontWeight: 600, color: "#0f172a" }}>
+                        {objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === Number(dicText.intLanguageID))?.strLabel ?? dicText.strLanguageName}
+                      </Typography>
+                      <TextField
+                        className="app-mui-text-field"
+                        id={`designation-translation-${dicText.strRowID}`}
+                        controlId="designation-master.dialog.translated-name.input"
+                        placeholder={t("dialog_translated_name_placeholder", "Enter designation name in {language}").replace("{language}", objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === Number(dicText.intLanguageID))?.strLabel ?? dicText.strLanguageName)}
+                        value={dicText.strDesignationName}
+                        inputProps={{ "controlId": "designation-master.dialog.translated-name.input", "data-row-key": dicText.strRowID }}
+                        onChange={(objEvent) => updateTextRow(dicText.strRowID, "strDesignationName", objEvent.target.value)}
+                        disabled={strMode === "view"}
+                        InputProps={{
+                          endAdornment: dicTextTranslationLoading[dicText.strRowID] ? (
+                            <InputAdornment position="end"><CircularProgress size={18} sx={{ color: "#2563eb" }} /></InputAdornment>
+                          ) : undefined,
+                        }}
+                        fullWidth
+                      />
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
             ) : null}
-
           </Box>
         }
       />
@@ -870,7 +988,7 @@ export default function DesignationMasterPanel() {
         onConfirm={executeConfirmedAction}
       />
 
-      <BlockingLoader blnOpen={blnSubmitting || ((blnLoading || blnRightsLoading) && !blnDialogOpen)} strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
+      <BlockingLoader blnOpen={blnSubmitting} strLabel={dicCommonLabels.processing} intZIndex={1400} />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>

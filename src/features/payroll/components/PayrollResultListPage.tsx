@@ -405,17 +405,20 @@ export default function PayrollResultListPage({
         dicRow.strPayrollRunRecordUUID ?? String(dicRow.intPayrollRunID),
         dicRow.intEmployeeID
       );
-      const intPayslipID =
-        dicRow.intPayslipID ??
-        dicPayslip.intPayslipID ??
-        (blnPayslipScreen
-          ? null
-          : (
-              await payslipService.generatePayslip(
-                dicRow.strPayrollRunRecordUUID ?? String(dicRow.intPayrollRunID),
-                dicRow.intEmployeeID
-              )
-            ).intPayslipID);
+      // A reprocess since the last generated payslip leaves that persisted document
+      // stale - getPayslipPreview flags this with blnGenerated:false (no persisted
+      // document matches the current result version). Don't trust the row's cached
+      // intPayslipID in that case; regenerate instead where this screen allows it.
+      const intPayslipID = dicPayslip.blnGenerated
+        ? dicPayslip.intPayslipID ?? dicRow.intPayslipID
+        : blnPayslipScreen
+        ? dicRow.intPayslipID ?? dicPayslip.intPayslipID
+        : (
+            await payslipService.generatePayslip(
+              dicRow.strPayrollRunRecordUUID ?? String(dicRow.intPayrollRunID),
+              dicRow.intEmployeeID
+            )
+          ).intPayslipID;
       if (!intPayslipID) {
         setStrError(t("payslip_not_generated", "Payslip could not be generated for this employee."));
         return;
@@ -660,10 +663,10 @@ export default function PayrollResultListPage({
           <Box
             sx={{
               display: "flex",
-              flexWrap: "nowrap",
+              flexWrap: "wrap",
               gap: 1.2,
               alignItems: "center",
-              overflowX: "auto",
+              pt: 1, rowGap: 2,
               pb: 0.5,
               "& > .MuiTextField-root, & > .MuiFormControl-root": { flex: "1 1 180px", minWidth: 170 },
             }}
@@ -677,6 +680,8 @@ export default function PayrollResultListPage({
                     strSearchEmployee: objEvent.target.value,
                   }))
                 }
+                label={t("employee", "Employee")}
+                InputLabelProps={{ shrink: true }}
                 placeholder={t("employee_search_placeholder", "Search by employee code or name")}
                 fullWidth
                 InputProps={{
@@ -695,6 +700,8 @@ export default function PayrollResultListPage({
                     strSearchRun: objEvent.target.value,
                   }))
                 }
+                label={t("payroll_run", "Payroll Run")}
+                InputLabelProps={{ shrink: true }}
                 placeholder={t("run_search_placeholder", "Search by payroll run")}
                 fullWidth
                 InputProps={{

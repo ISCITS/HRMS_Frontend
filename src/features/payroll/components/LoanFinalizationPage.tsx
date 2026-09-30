@@ -354,7 +354,7 @@ export default function LoanFinalizationPage() {
         exportable: false,
         width: 44,
       },
-      { field: "rowActions", headerName: t("table_actions", "Actions"), align: "center", sortable: false, filterable: false, exportable: false, width: 120 },
+      { field: "rowActions", headerName: t("table_actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 120 },
       { field: "employeeCode", headerName: t("table_employee_code", "Employee Code"), width: 110 },
       { field: "employeeName", headerName: t("table_employee_name", "Employee Name"), width: 150 },
       { field: "loanNumber", headerName: t("table_loan_no", "Loan/Advance No."), width: 120 },

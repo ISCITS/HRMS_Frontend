@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
@@ -788,30 +789,24 @@ export default function EssDeclarationCategoryMasterPanel({
                 disabled={blnDialogReadOnly}
                 size="small"
               />
-              <TextField
-                select
+              <CommonSearchableSelect
                 label={dicLabels.fieldDeclarationKind}
                 required
                 value={dicForm.declarationKind}
-                onChange={(objEvent) => {
+                options={
+                  dicForm.declarationKind && !lstDeclarationKindTypes.some((dicOption) => dicOption.strKindCode === dicForm.declarationKind)
+                    ? [...lstDeclarationKindTypes.map((dicOption) => ({ intID: dicOption.strKindCode, strLabel: dicOption.strKindName })), { intID: dicForm.declarationKind, strLabel: dicForm.declarationKind }]
+                    : lstDeclarationKindTypes.map((dicOption) => ({ intID: dicOption.strKindCode, strLabel: dicOption.strKindName }))
+                }
+                onChange={(strValue) => {
                   setDicErrors((dicPrevious) => ({ ...dicPrevious, declarationKind: undefined }));
-                  setDicForm((dicPrevious) => ({ ...dicPrevious, declarationKind: objEvent.target.value }));
+                  setDicForm((dicPrevious) => ({ ...dicPrevious, declarationKind: String(strValue) }));
                 }}
                 error={Boolean(dicErrors.declarationKind)}
                 helperText={dicErrors.declarationKind || strDeclarationKindTypeError}
                 fullWidth
                 disabled={blnDialogReadOnly || blnDeclarationKindTypeLoading}
-                size="small"
-              >
-                {lstDeclarationKindTypes.map((dicOption) => (
-                  <MenuItem key={dicOption.strKindCode} value={dicOption.strKindCode}>
-                    {dicOption.strKindName}
-                  </MenuItem>
-                ))}
-                {dicForm.declarationKind && !lstDeclarationKindTypes.some((dicOption) => dicOption.strKindCode === dicForm.declarationKind) ? (
-                  <MenuItem value={dicForm.declarationKind}>{dicForm.declarationKind}</MenuItem>
-                ) : null}
-              </TextField>
+              />
               <FormControl
                 required
                 error={Boolean(dicErrors.applicableRegime)}
@@ -984,10 +979,14 @@ export default function EssDeclarationCategoryMasterPanel({
         >
           <TextField size="small" inputProps={{ "data-testid": "ess-declaration-category.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicLabels.searchNamePlaceholder} fullWidth />
           <TextField size="small" inputProps={{ "data-testid": "ess-declaration-category.list.search-section.input" }} value={dicSearchDraft.section} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, section: objEvent.target.value }))} placeholder={dicLabels.searchSectionPlaceholder} fullWidth />
-          <TextField size="small" inputProps={{ "data-testid": "ess-declaration-category.list.search-kind.select" }} select label={dicLabels.searchDeclarationKindPlaceholder} value={dicSearchDraft.declarationKind} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, declarationKind: objEvent.target.value }))} fullWidth>
-            <MenuItem value="All">{dicCommonLabels.all}</MenuItem>
-            {lstDeclarationKindTypes.map((dicKind) => <MenuItem key={dicKind.strKindCode} value={dicKind.strKindCode}>{dicKind.strKindName}</MenuItem>)}
-          </TextField>
+          <CommonSearchableSelect
+            controlId="ess-declaration-category.list.search-kind.select"
+            label={dicLabels.searchDeclarationKindPlaceholder}
+            value={dicSearchDraft.declarationKind}
+            options={[{ intID: "All", strLabel: dicCommonLabels.all }, ...lstDeclarationKindTypes.map((dicKind) => ({ intID: dicKind.strKindCode, strLabel: dicKind.strKindName }))]}
+            onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, declarationKind: strValue ? String(strValue) : "All" }))}
+            fullWidth
+          />
           <TextField size="small" inputProps={{ "data-testid": "ess-declaration-category.list.search-status.select" }} select label={dicLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
             <MenuItem data-testid="ess-declaration-category.list.search-status.all.option" value="All">{dicCommonLabels.all}</MenuItem>
             <MenuItem data-testid="ess-declaration-category.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>

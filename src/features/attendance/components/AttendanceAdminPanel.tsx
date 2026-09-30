@@ -15,7 +15,6 @@ import {
   DialogTitle,
   FormControlLabel,
   Grid,
-  MenuItem,
   Paper,
   Snackbar,
   Stack,
@@ -26,6 +25,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -330,9 +330,14 @@ export default function AttendanceAdminPanel() {
           <Grid container spacing={1.5} sx={{ mt: 0 }}>
             <Grid item xs={12} sm={6}><TextField controlId="attendance.roster.employee.input" label="Employee ID" type="number" fullWidth size="small" value={objRosterForm.intEmployeeID} onChange={(e) => setObjRosterForm((p) => ({ ...p, intEmployeeID: e.target.value }))} /></Grid>
             <Grid item xs={12} sm={6}>
-              <TextField controlId="attendance.roster.shift.select" label="Shift" select fullWidth size="small" value={objRosterForm.intShiftID || ""} onChange={(e) => setObjRosterForm((p) => ({ ...p, intShiftID: Number(e.target.value) }))}>
-                {lstShifts.map((objShift) => (<MenuItem key={objShift.intID} value={objShift.intID}>{objShift.strShiftName}</MenuItem>))}
-              </TextField>
+              <CommonSearchableSelect
+                controlId="attendance.roster.shift.select"
+                label="Shift"
+                fullWidth
+                value={objRosterForm.intShiftID || ""}
+                options={lstShifts.map((objShift) => ({ intID: objShift.intID, strLabel: objShift.strShiftName }))}
+                onChange={(intValue) => setObjRosterForm((p) => ({ ...p, intShiftID: intValue === "" ? 0 : intValue }))}
+              />
             </Grid>
             <Grid item xs={12} sm={6}><TextField controlId="attendance.roster.effective.input" label="Effective From" type="date" fullWidth size="small" InputLabelProps={{ shrink: true }} value={objRosterForm.dtEffectiveFrom} onChange={(e) => setObjRosterForm((p) => ({ ...p, dtEffectiveFrom: e.target.value }))} /></Grid>
             <Grid item xs={12}>

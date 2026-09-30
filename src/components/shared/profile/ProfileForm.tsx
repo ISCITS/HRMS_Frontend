@@ -28,7 +28,7 @@ const dicInputSx = {
   "& .MuiInputLabel-root": {
     fontSize: 14,
     fontWeight: 500,
-    color: "#64748b"
+    color: "#334155"
   },
   "& .MuiOutlinedInput-root": {
     minHeight: 52,
@@ -37,13 +37,6 @@ const dicInputSx = {
     "& .MuiOutlinedInput-notchedOutline": {
       borderColor: "#e2e8f0"
     },
-    "&.Mui-focused": {
-      backgroundColor: "#f8fafc",
-      boxShadow: "0 0 0 3px rgba(37,99,235,0.2)"
-    },
-    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-      borderColor: "#2563eb"
-    }
   }
 };
 

@@ -1,5 +1,6 @@
 import { appConfig } from "@/config";
 import { AuthStorageKey, AuthStoragePrefix } from "@/Common/enums/AppEnums";
+import { withBasePath } from "@/lib/basePath";
 
 let blnSessionExpiryRedirectInProgress = false;
 const strLanguageChangedEventName = "hrms:language-changed";
@@ -223,7 +224,10 @@ export const authHelpers = {
     // visit to "/") returns the user to their tenant login page rather than the
     // generic email-only one.
     this.clearSession(true);
-    window.location.replace(strSessionExpiredUrl);
+    // window.location.replace is a raw browser navigation: unlike next/link or
+    // the router, it does not know about Next's basePath, so it must be added
+    // explicitly here.
+    window.location.replace(withBasePath(strSessionExpiredUrl));
   },
   resetSessionExpiryRedirect() {
     blnSessionExpiryRedirectInProgress = false;

@@ -17,6 +17,7 @@ import {
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import masterStyles from "@/components/master/MasterScreen.module.css";
 import payrollStyles from "@/features/payroll/components/PayrollScreen.module.css";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -101,8 +102,8 @@ export default function PayrollRunEditorPage() {
     if (!dicForm.dtPayrollMonth) {
       return t("payroll_month_required", "Payroll month is required.");
     }
-    if (dicForm.strScopeType === "SelectedEmployee" && !dicForm.intScopedEmployeeID) {
-      return t("scoped_employee_required", "Employee is required for selected employee payroll run.");
+    if (dicForm.strScopeType === "SelectedEmployee" && dicForm.lstScopedEmployeeIDs.length === 0) {
+      return t("scoped_employee_required", "At least one employee is required for a selected employee payroll run.");
     }
     if (blnIsVariablePayRun && !dicForm.intVariablePayTypeID) {
       return t("variable_pay_type_required", "Variable Pay Type is required for a Variable Pay run.");
@@ -297,31 +298,19 @@ export default function PayrollRunEditorPage() {
               gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
             }}
           >
-            <TextField
-              select
+            <CommonSearchableSelect
+              controlId="payroll.run-editor.payroll-cycle.select"
               label={t("payroll_cycle", "Payroll Schedule")}
               value={dicForm.intPayrollCycleID}
-              controlId="payroll.run-editor.payroll-cycle.select"
-              onChange={(objEvent) =>
-                updateField(
-                  "intPayrollCycleID",
-                  objEvent.target.value ? Number(objEvent.target.value) : ""
-                )
-              }
+              options={objOptions?.lstPayrollCycles ?? []}
+              onChange={(intValue) => updateField("intPayrollCycleID", intValue)}
               disabled={blnFieldDisabled}
               fullWidth
               helperText={t(
                 "payroll_cycle_help",
                 "Select the payroll schedule that defines the employee group, payroll frequency and payroll cut-off day for this payroll run."
               )}
-            >
-              <MenuItem value="">{t("select_payroll_cycle", "Select payroll schedule")}</MenuItem>
-              {(objOptions?.lstPayrollCycles ?? []).map((dicCycle) => (
-                <MenuItem key={dicCycle.intID} value={dicCycle.intID}>
-                  {dicCycle.strCode} - {dicCycle.strLabel}
-                </MenuItem>
-              ))}
-            </TextField>
+            />
             <TextField
               label={t("run_name", "Payroll Run")}
               value={dicForm.strRunName}
@@ -342,7 +331,9 @@ export default function PayrollRunEditorPage() {
                   strProcessFor: objEvent.target.value as PayrollRunFormValues["strProcessFor"],
                   strScopeType:
                     objEvent.target.value === "SelectedEmployees" ? "SelectedEmployee" : "All",
-                  intScopedEmployeeID: objEvent.target.value === "SelectedEmployees" ? dicPrevious.intScopedEmployeeID : "",
+                  intScopedEmployeeID: "",
+                  lstScopedEmployeeIDs:
+                    objEvent.target.value === "SelectedEmployees" ? dicPrevious.lstScopedEmployeeIDs : [],
                 }))
               }
               disabled={blnFieldDisabled}
@@ -363,19 +354,28 @@ export default function PayrollRunEditorPage() {
             ) : null}
             {dicForm.strProcessFor === "SelectedEmployees" ? (
               <Autocomplete
+                multiple
                 options={objOptions?.lstEmployees ?? []}
-                value={(objOptions?.lstEmployees ?? []).find((dicEmployee) => dicEmployee.intID === dicForm.intScopedEmployeeID) ?? null}
+                value={(objOptions?.lstEmployees ?? []).filter((dicEmployee) =>
+                  dicForm.lstScopedEmployeeIDs.includes(dicEmployee.intID)
+                )}
                 getOptionLabel={(dicEmployee) => `${dicEmployee.strCode} - ${dicEmployee.strLabel}`}
                 isOptionEqualToValue={(dicA, dicB) => dicA.intID === dicB.intID}
-                onChange={(_objEvent, dicSelected) => updateField("intScopedEmployeeID", dicSelected ? dicSelected.intID : "")}
+                onChange={(_objEvent, lstSelected) =>
+                  updateField("lstScopedEmployeeIDs", lstSelected.map((dicEmployee) => dicEmployee.intID))
+                }
                 disabled={blnFieldDisabled || dicForm.strScopeType !== "SelectedEmployee"}
                 fullWidth
                 renderInput={(objParams) => (
                   <TextField
                     {...objParams}
-                    label={t("scope_employee", "Employee")}
+                    label={t("scope_employee", "Employee(s)")}
                     placeholder={t("search_employee", "Search employee...")}
                     controlId="payroll.run-editor.employee.select"
+                    helperText={t(
+                      "scope_employee_help",
+                      "Pick one employee for a single ad-hoc run, or several for a group run."
+                    )}
                     InputProps={{
                       ...objParams.InputProps,
                       startAdornment: (
@@ -399,51 +399,35 @@ export default function PayrollRunEditorPage() {
               controlId="payroll.run-editor.payroll-month.input"
               fullWidth
             />
-            <TextField
-              select
+            <CommonSearchableSelect
+              controlId="payroll.run-editor.run-type.select"
               label={t("run_type", "Run Type")}
               value={dicForm.intRunTypeID}
-              controlId="payroll.run-editor.run-type.select"
-              onChange={(objEvent) =>
+              options={(objOptions?.lstPayrollRunTypeLookups ?? []).map((dicOption) => ({
+                intID: dicOption.intID,
+                strLabel: dicOption.strValueCode === "VARIABLE_PAY" ? "Seprate Payroll" : dicOption.strDisplayName,
+              }))}
+              onChange={(intValue) =>
                 setDicForm((dicPrevious) => ({
                   ...dicPrevious,
-                  intRunTypeID: objEvent.target.value ? Number(objEvent.target.value) : "",
+                  intRunTypeID: intValue,
                 }))
               }
               disabled={blnFieldDisabled}
               fullWidth
-              helperText={t("run_type_help", "Regular Payroll runs normal salary; Variable Pay processes Monthly Variable Pay amounts only.")}
-            >
-              <MenuItem value="">{t("select_run_type", "Select run type")}</MenuItem>
-              {(objOptions?.lstPayrollRunTypeLookups ?? []).map((dicOption) => (
-                <MenuItem key={dicOption.intID} value={dicOption.intID}>
-                  {dicOption.strDisplayName}
-                </MenuItem>
-              ))}
-            </TextField>
+              helperText={t("run_type_help", "Regular Payroll runs normal salary; Seprate Payroll processes Monthly Variable Pay amounts only.")}
+            />
             {blnIsVariablePayRun ? (
-              <TextField
-                select
+              <CommonSearchableSelect
+                controlId="payroll.run-editor.variable-pay-type.select"
                 required
                 label={t("variable_pay_type", "Variable Pay Type")}
                 value={dicForm.intVariablePayTypeID}
-                controlId="payroll.run-editor.variable-pay-type.select"
-                onChange={(objEvent) =>
-                  updateField(
-                    "intVariablePayTypeID",
-                    objEvent.target.value ? Number(objEvent.target.value) : ""
-                  )
-                }
+                options={(objOptions?.lstVariablePayTypes ?? []).map((dicOption) => ({ intID: dicOption.intID, strLabel: dicOption.strDisplayName }))}
+                onChange={(intValue) => updateField("intVariablePayTypeID", intValue)}
                 disabled={blnFieldDisabled}
                 fullWidth
-              >
-                <MenuItem value="">{t("select_variable_pay_type", "Select Variable Pay Type")}</MenuItem>
-                {(objOptions?.lstVariablePayTypes ?? []).map((dicOption) => (
-                  <MenuItem key={dicOption.intID} value={dicOption.intID}>
-                    {dicOption.strDisplayName}
-                  </MenuItem>
-                ))}
-              </TextField>
+              />
             ) : null}
             {blnIsVariablePayRun ? (
               <TextField

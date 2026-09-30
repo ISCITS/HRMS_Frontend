@@ -21,7 +21,7 @@
         "paginationSeparator": "of"
     },
     "appShell": {
-        "brand": "HRMS",
+        "brand": "NavHR",
         "title": "Human Resource Management System",
         "logout": "Logout",
         "logoutDialogTitle": "Confirm Logout",
@@ -207,6 +207,7 @@
             "locationRequired": "Location is required.",
             "reportingManagerRequired": "Reporting Manager is required.",
             "lineManagerRequired": "Line Manager is required.",
+            "workEmailRequired": "Work Email is required.",
             "workEmailInvalid": "Enter a valid work email address.",
             "personalEmailInvalid": "Enter a valid personal email address.",
             "mobileNumberInvalid": "Mobile Number can contain digits, spaces, plus, and hyphen only.",
@@ -401,7 +402,38 @@
             "statusRequired": "Status is required."
         }
     },
-    "designations": {
+    "employeeCategories": {
+    "pageTitle": "Employee Category",
+    "addButton": "Add Employee Category",
+    "backButton": "Back",
+    "editButton": "Edit",
+    "saveEmployeeCategory": "Save",
+    "updateEmployeeCategory": "Update Employee Category",
+    "dialogAddTitle": "Add Employee Category",
+    "dialogEditTitle": "Edit Employee Category",
+    "helperText": "Manage employee category codes, names, and status.",
+    "fields": {
+      "code": "Employee Category Code",
+      "name": "Employee Category Name",
+      "status": "Status"
+    },
+    "grid": {
+      "code": "Employee Category Code",
+      "name": "Employee Category Name",
+      "status": "Status",
+      "action": "Action"
+    },
+    "validation": {
+      "codeRequired": "Employee Category Code is required.",
+      "codeFormat": "Code must be 2-50 chars, uppercase letters, numbers, spaces, slash, ampersand, hyphen, or underscore.",
+      "codeDuplicate": "Employee Category Code already exists.",
+      "nameRequired": "Employee Category Name is required.",
+      "nameMin": "Employee Category Name must be at least 3 characters.",
+      "nameDuplicate": "Employee Category Name already exists.",
+      "statusRequired": "Status is required."
+    }
+  },
+  "designations": {
         "pageTitle": "Designation",
         "addButton": "Add Designation",
         "backButton": "Back",

@@ -7,12 +7,8 @@ import {
   Checkbox,
   CircularProgress,
   FormControlLabel,
-  InputLabel,
-  ListItemText,
   MenuItem,
-  OutlinedInput,
   Paper,
-  Select,
   Snackbar,
   Stack,
   Step,
@@ -25,6 +21,8 @@ import type { InputHTMLAttributes } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import CommonSearchableMultiSelect from "@/Common/components/CommonSearchableMultiSelect";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import type {
   TenantExistingDatabaseOnboardingRequest,
   TenantOnboardingFormOptions,
@@ -457,18 +455,35 @@ export default function TenantOnboardingPage() {
           <TextField controlId="tenant.onboarding.basic.contact-person-name.input" inputProps={{ "controlId": "tenant.onboarding.basic.contact-person-name.input" }} label="Contact Person Name" value={objForm.basic.strContactPersonName} onChange={(e) => setField("basic.strContactPersonName", e.target.value)} error={Boolean(dicErrors["basic.strContactPersonName"])} helperText={dicErrors["basic.strContactPersonName"]} fullWidth />
           <TextField controlId="tenant.onboarding.basic.contact-email-address.input" inputProps={{ "controlId": "tenant.onboarding.basic.contact-email-address.input" }} label="Contact Email Address" value={objForm.basic.strContactEmailAddress} onChange={(e) => setField("basic.strContactEmailAddress", e.target.value)} error={Boolean(dicErrors["basic.strContactEmailAddress"])} helperText={dicErrors["basic.strContactEmailAddress"]} fullWidth />
           <TextField controlId="tenant.onboarding.basic.contact-mobile-number.input" inputProps={{ "controlId": "tenant.onboarding.basic.contact-mobile-number.input" }} label="Contact Mobile Number" value={objForm.basic.strContactMobileNumber} onChange={(e) => setField("basic.strContactMobileNumber", e.target.value)} error={Boolean(dicErrors["basic.strContactMobileNumber"])} helperText={dicErrors["basic.strContactMobileNumber"]} fullWidth />
-          <TextField controlId="tenant.onboarding.basic.default-language.select" inputProps={{ "controlId": "tenant.onboarding.basic.default-language.select" }} select label="Default Language *" value={objForm.basic.intDefaultLanguageID === "" ? "" : String(objForm.basic.intDefaultLanguageID)} onChange={(e) => setField("basic.intDefaultLanguageID", e.target.value ? Number(e.target.value) : "")} error={Boolean(dicErrors["basic.intDefaultLanguageID"])} helperText={dicErrors["basic.intDefaultLanguageID"]} fullWidth>
-            <MenuItem value="">Select language</MenuItem>
-            {(objFormOptions?.lstLanguages ?? []).map((dicOption) => <MenuItem key={dicOption.intID} value={String(dicOption.intID)}>{dicOption.strLabel}</MenuItem>)}
-          </TextField>
-          <TextField controlId="tenant.onboarding.basic.secondary-language.select" inputProps={{ "controlId": "tenant.onboarding.basic.secondary-language.select" }} select label="Secondary Language" value={objForm.basic.intSecondaryLanguageID === "" ? "" : String(objForm.basic.intSecondaryLanguageID)} onChange={(e) => setField("basic.intSecondaryLanguageID", e.target.value ? Number(e.target.value) : "")} fullWidth>
-            <MenuItem value="">None</MenuItem>
-            {(objFormOptions?.lstLanguages ?? []).map((dicOption) => <MenuItem key={dicOption.intID} value={String(dicOption.intID)}>{dicOption.strLabel}</MenuItem>)}
-          </TextField>
-          <TextField controlId="tenant.onboarding.basic.default-country.select" inputProps={{ "controlId": "tenant.onboarding.basic.default-country.select" }} select label="Default Country" value={objForm.basic.intDefaultCountryID === "" ? "" : String(objForm.basic.intDefaultCountryID)} onChange={(e) => setField("basic.intDefaultCountryID", e.target.value ? Number(e.target.value) : "")} fullWidth>
-            <MenuItem value="">None</MenuItem>
-            {(objFormOptions?.lstCountries ?? []).map((dicOption) => <MenuItem key={dicOption.intID} value={String(dicOption.intID)}>{dicOption.strLabel}</MenuItem>)}
-          </TextField>
+          <CommonSearchableSelect
+            controlId="tenant.onboarding.basic.default-language.select"
+            label="Default Language *"
+            placeholder="Select language"
+            value={objForm.basic.intDefaultLanguageID}
+            options={objFormOptions?.lstLanguages ?? []}
+            onChange={(intValue) => setField("basic.intDefaultLanguageID", intValue)}
+            error={Boolean(dicErrors["basic.intDefaultLanguageID"])}
+            helperText={dicErrors["basic.intDefaultLanguageID"]}
+            fullWidth
+          />
+          <CommonSearchableSelect
+            controlId="tenant.onboarding.basic.secondary-language.select"
+            label="Secondary Language"
+            placeholder="None"
+            value={objForm.basic.intSecondaryLanguageID}
+            options={objFormOptions?.lstLanguages ?? []}
+            onChange={(intValue) => setField("basic.intSecondaryLanguageID", intValue)}
+            fullWidth
+          />
+          <CommonSearchableSelect
+            controlId="tenant.onboarding.basic.default-country.select"
+            label="Default Country"
+            placeholder="None"
+            value={objForm.basic.intDefaultCountryID}
+            options={objFormOptions?.lstCountries ?? []}
+            onChange={(intValue) => setField("basic.intDefaultCountryID", intValue)}
+            fullWidth
+          />
         </Box>
       </Stack>
     );
@@ -575,36 +590,15 @@ export default function TenantOnboardingPage() {
           </Stack>
         ) : null}
         <Box>
-          <InputLabel id="tenant-onboarding-modules-label" sx={{ mb: 1 }}>Modules</InputLabel>
-          <Select
+          <CommonSearchableMultiSelect
             controlId="tenant.onboarding.datastore.modules.select"
-            labelId="tenant-onboarding-modules-label"
-            multiple
-            value={objForm.datastore.lstModuleIDs.map(String)}
-            onChange={(objEvent) => {
-              const lstSelectedValues = objEvent.target.value as string[];
-              setField("datastore.lstModuleIDs", lstSelectedValues.map((strValue) => Number(strValue)));
-            }}
-            input={<OutlinedInput />}
-            renderValue={(lstSelectedValues) => {
-              const lstResolvedValues = lstSelectedValues as string[];
-              const lstLabels = lstResolvedValues
-                .map((strValue) => objFormOptions?.lstModules.find((dicOption) => String(dicOption.intID) === strValue)?.strLabel)
-                .filter(Boolean);
-              return lstLabels.length > 0 ? lstLabels.join(", ") : "Select modules";
-            }}
+            label="Modules"
+            placeholder="Select modules"
+            value={objForm.datastore.lstModuleIDs}
+            options={objFormOptions?.lstModules ?? []}
+            onChange={(lstValues) => setField("datastore.lstModuleIDs", lstValues as number[])}
             fullWidth
-          >
-            {(objFormOptions?.lstModules ?? []).map((dicOption) => {
-              const blnChecked = objForm.datastore.lstModuleIDs.includes(dicOption.intID);
-              return (
-                <MenuItem key={dicOption.intID} value={String(dicOption.intID)} controlId="tenant.onboarding.datastore.modules.option" data-option-key={dicOption.intID}>
-                  <Checkbox checked={blnChecked} inputProps={{ "controlId": "tenant.onboarding.datastore.modules.checkbox", "data-option-key": dicOption.intID } as InputHTMLAttributes<HTMLInputElement>} />
-                  <ListItemText primary={dicOption.strLabel} secondary={dicOption.strCode ?? undefined} />
-                </MenuItem>
-              );
-            })}
-          </Select>
+          />
         </Box>
         <FormControlLabel control={<Checkbox checked={objForm.datastore.blnIsActive} onChange={(_, blnChecked) => setField("datastore.blnIsActive", blnChecked)} inputProps={{ "controlId": "tenant.onboarding.datastore.active.checkbox" } as InputHTMLAttributes<HTMLInputElement>} />} label="Datastore active" />
         {objForm.datastore.blnUseExistingDatabase ? renderInitialAdminSection() : null}

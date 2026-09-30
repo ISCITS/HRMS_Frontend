@@ -22,11 +22,7 @@ import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useEmployeeSalaryLabels } from "@/features/employee-salary/hooks/useEmployeeSalaryLabels";
 import { employeeSalaryService } from "@/features/employee-salary/services/employeeSalaryService";
-import { calculateEmployeeSalaryBaseSummaryMetrics } from "@/features/employee-salary/utils/employeeSalarySummary";
-import type {
-  EmployeeSalaryDetailRecord,
-  EmployeeSalaryListRecord
-} from "@/features/employee-salary/types";
+import type { EmployeeSalaryListRecord } from "@/features/employee-salary/types";
 
 type SearchForm = {
   strName: string;
@@ -60,33 +56,6 @@ function formatDate(strDate: string | null) {
     month: "short",
     year: "numeric"
   }).format(new Date(strDate));
-}
-
-function getCalculatedDisplayAmounts(objDetail: EmployeeSalaryDetailRecord) {
-  const dicBaseSummaryMetrics = calculateEmployeeSalaryBaseSummaryMetrics(objDetail);
-
-  return {
-    decCtcAnnual: dicBaseSummaryMetrics.decAnnualCtc,
-    decGrossMonthly: dicBaseSummaryMetrics.decGrossMonthly
-  };
-}
-
-async function enrichEmployeeSalaryRow(dicRow: EmployeeSalaryListRecord) {
-  if (dicRow.strSalaryStatus !== "Assigned") {
-    return dicRow;
-  }
-
-  try {
-    const objDetail = await employeeSalaryService.getEmployeeSalaryDetail(dicRow.intEmployeeID);
-    const dicDisplayAmounts = getCalculatedDisplayAmounts(objDetail);
-    return {
-      ...dicRow,
-      decCtcAnnual: dicDisplayAmounts.decCtcAnnual,
-      decGrossMonthly: dicDisplayAmounts.decGrossMonthly
-    };
-  } catch {
-    return dicRow;
-  }
 }
 
 const dicEmptySearch: SearchForm = { strName: "", strCode: "", strStatus: "All" };
@@ -126,8 +95,9 @@ export default function EmployeeSalaryListPage() {
     }
     setBlnLoading(true);
     try {
-      const lstEmployeeSalaryRows = await employeeSalaryService.getEmployeeSalaries();
-      setLstEmployeeSalaries(await Promise.all(lstEmployeeSalaryRows.map(enrichEmployeeSalaryRow)));
+      // CTC Annual / Gross Monthly arrive pre-computed by the list API with the same rules as
+      // the detail summary card, so no per-row detail request is needed.
+      setLstEmployeeSalaries(await employeeSalaryService.getEmployeeSalaries());
     } catch (objError) {
       showToast(objError instanceof Error ? objError.message : "Unable to load employee salary records.", "error");
     } finally {

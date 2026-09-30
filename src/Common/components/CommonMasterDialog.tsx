@@ -1,6 +1,7 @@
 "use client";
 
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle } from "@mui/material";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Typography } from "@mui/material";
 import type { ReactNode } from "react";
 import type { DialogProps } from "@mui/material";
 import type { SxProps, Theme } from "@mui/material/styles";
@@ -13,6 +14,7 @@ type CommonMasterDialogProps = {
   strTitle: string;
   nodeContent: ReactNode;
   nodeTitleAction?: ReactNode;
+  nodeFooterStart?: ReactNode;
   titleSx?: SxProps<Theme>;
   strSecondaryLabel: string;
   onClose: () => void;
@@ -43,6 +45,7 @@ export default function CommonMasterDialog({
   strTitle,
   nodeContent,
   nodeTitleAction,
+  nodeFooterStart,
   titleSx,
   strSecondaryLabel,
   onClose,
@@ -68,14 +71,28 @@ export default function CommonMasterDialog({
   const strRootControlId = rootTestId ?? rootControlId;
   const strCancelButtonControlId = cancelButtonTestId ?? cancelButtonControlId;
   const strPrimaryButtonControlId = primaryButtonTestId ?? primaryButtonControlId;
+  const blnDepartmentReferenceLayout = paperClassName === masterStyles.referenceMasterDialogPaper;
+  function handlePrimaryAction() {
+    onPrimaryAction?.();
+    if (blnDepartmentReferenceLayout) {
+      window.setTimeout(() => {
+        const objDialog = document.querySelector(`[data-control-id="${strRootControlId}"]`);
+        objDialog?.querySelector<HTMLElement>(".Mui-error input, .Mui-error textarea, input[aria-invalid='true'], textarea[aria-invalid='true']")?.focus();
+      }, 0);
+    }
+  }
   return (
     <Dialog
       data-control-id={strRootControlId}
       open={blnOpen}
-      onClose={onDialogClose ?? (() => onClose())}
+      onClose={onDialogClose ?? ((_, strReason) => {
+        if (!blnDepartmentReferenceLayout || strReason !== "backdropClick") {
+          onClose();
+        }
+      })}
       onKeyDown={handleSingleDialogActionEnter}
-      fullWidth={fullWidth}
-      maxWidth={maxWidth}
+      fullWidth={blnDepartmentReferenceLayout ? false : fullWidth}
+      maxWidth={blnDepartmentReferenceLayout ? false : maxWidth}
       PaperProps={{ className: paperClassName, sx: paperSx }}
     >
       <DialogTitle
@@ -99,14 +116,24 @@ export default function CommonMasterDialog({
             {nodeTitleAction}
           </Box>
         ) : null}
+        {blnDepartmentReferenceLayout ? (
+          <IconButton aria-label="Close" onClick={onClose} size="small" sx={{ ml: nodeTitleAction ? 0.5 : "auto", color: "#94a3b8" }}>
+            <CloseRoundedIcon fontSize="small" />
+          </IconButton>
+        ) : null}
       </DialogTitle>
       <DialogContent dividers sx={contentSx}>{nodeContent}</DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
+        {nodeFooterStart ? <Box sx={{ mr: "auto" }}>{nodeFooterStart}</Box> : blnDepartmentReferenceLayout ? (
+          <Typography sx={{ mr: "auto", color: "#64748b", fontSize: "11px" }}>
+            Required fields are marked <Box component="span" sx={{ color: "#dc2626" }}>*</Box>
+          </Typography>
+        ) : null}
         <Button data-control-id={strCancelButtonControlId} className={strSecondaryButtonClassName} onClick={onClose}>
           {strSecondaryLabel}
         </Button>
         {!blnHidePrimary && strPrimaryLabel && onPrimaryAction ? (
-          <Button data-control-id={strPrimaryButtonControlId} className={strPrimaryButtonClassName} onClick={onPrimaryAction} disabled={blnPrimaryDisabled}>
+          <Button data-control-id={strPrimaryButtonControlId} className={strPrimaryButtonClassName} onClick={handlePrimaryAction} disabled={blnPrimaryDisabled}>
             {strPrimaryLabel}
           </Button>
         ) : null}

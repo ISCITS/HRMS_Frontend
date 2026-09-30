@@ -37,6 +37,7 @@ import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
 import { useRouter } from "next/navigation";
 
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -123,9 +124,8 @@ const objFieldSx = {
     "&:hover fieldset": {
       borderColor: "#94a3b8",
     },
-    "&.Mui-focused fieldset": {
-      borderColor: "#2563eb",
-      boxShadow: "0 0 0 3px rgba(37, 99, 235, 0.12)",
+    "&.Mui-focused:not(.Mui-error) fieldset": {
+      borderColor: "#7896b0",
     },
   },
   "& .MuiInputBase-input": {
@@ -143,6 +143,9 @@ const objFieldSx = {
     lineHeight: 1.35,
     marginLeft: 2,
     marginTop: "4px",
+  },
+  "& .MuiFormHelperText-root.Mui-error": {
+    color: "#ef4444",
   },
 };
 
@@ -455,12 +458,17 @@ export default function EmployeePayrollInputEditorPage({
     }
     const decLwpDays = parseOptionalDecimal(dicForm.strLwpDays) ?? 0;
     const decLopDays = parseOptionalDecimal(dicForm.strLopDays) ?? 0;
+    // A field is only usable as the denominator when it's a positive value - 0 is a valid
+    // outcome (e.g. payable days legitimately reaches 0 when LWP consumes the whole period)
+    // but not a valid period length, so it must fall through to the next candidate just like
+    // the backend's getManualLwpDenominator does (PayrollRepository.py).
     const decDenominator =
-      parseOptionalDecimal(dicForm.strPayableDays) ??
-      parseOptionalDecimal(dicForm.strWorkingDays) ??
-      parseOptionalDecimal(dicForm.strCalendarDays) ??
-      dicSelectedRun?.decCalendarDays ??
-      null;
+      [
+        parseOptionalDecimal(dicForm.strPayableDays),
+        parseOptionalDecimal(dicForm.strWorkingDays),
+        parseOptionalDecimal(dicForm.strCalendarDays),
+        dicSelectedRun?.decCalendarDays ?? null,
+      ].find((decCandidate) => decCandidate !== null && decCandidate > 0) ?? null;
     if (decDenominator !== null && decDenominator <= 0 && (decLwpDays > 0 || decLopDays > 0)) {
       return t("denominator_required", "A positive payroll-period denominator is required for LWP/LOP days.");
     }
@@ -599,29 +607,16 @@ export default function EmployeePayrollInputEditorPage({
   const lstAdjustmentRows = dicForm.lstLines.map((dicLine) => ({
     id: dicLine.intTempID,
     strComponent: (
-      <TextField
-        select
+      <CommonSearchableSelect
+        label=""
         value={dicLine.intSalaryComponentID}
-        onChange={(objEvent) => updateLine(dicLine.intTempID, "intSalaryComponentID", parseSelectNumber(objEvent.target.value))}
+        options={objOptions?.lstSalaryComponents ?? []}
+        onChange={(intValue) => updateLine(dicLine.intTempID, "intSalaryComponentID", intValue)}
         disabled={blnFormLocked}
         fullWidth
-        size="small"
+        placeholder={t("select_component", "Select component")}
         sx={objFieldSx}
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <StorageRoundedIcon sx={{ color: "#94a3b8", fontSize: 18 }} />
-            </InputAdornment>
-          ),
-        }}
-      >
-        <MenuItem value="">{t("select_component", "Select component")}</MenuItem>
-        {(objOptions?.lstSalaryComponents ?? []).map((dicComponent) => (
-          <MenuItem key={dicComponent.intID} value={dicComponent.intID}>
-            {dicComponent.strLabel}
-          </MenuItem>
-        ))}
-      </TextField>
+      />
     ),
     strCategory: (
       <TextField

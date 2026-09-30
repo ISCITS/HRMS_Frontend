@@ -1,9 +1,32 @@
-import { buildEmployeeSalaryCalculationRows, calculateEmployeeSalaryBaseSummaryMetrics } from "./employeeSalarySummary";
+import { buildEmployeeSalaryCalculationRows, calculateEmployeeSalaryBaseSummaryMetrics, getEmployeeSalaryApplicableLines } from "./employeeSalarySummary";
 
 const component = (strComponentName: string, strComponentCategory: string, decAmountMonthly: number) => ({
   strComponentName, strComponentCategory, decAmountMonthly,
   decAmountAnnual: decAmountMonthly * 12, blnIncludedInCtc: true,
 });
+
+for (const gross of [20000, 20999.99, 21000, 21000.01, 22000]) {
+  const source = { lstComponentLines: [
+    component("Basic", "Earning", gross),
+    component("Employee ESIC", "Deduction", 150),
+    component("Employer ESIC", "Employer Contribution", 650),
+    component("Employee PF", "Deduction", 1200),
+    component("Employer PF", "Employer Contribution", 1200),
+  ] };
+  const lines = getEmployeeSalaryApplicableLines(source);
+  const summary = calculateEmployeeSalaryBaseSummaryMetrics(source);
+  const rows = buildEmployeeSalaryCalculationRows(source);
+  const esiApplies = gross <= 21000;
+  const net = summary.decGrossMonthly - lines.filter(line => line.strComponentCategory === "Deduction")
+    .reduce((total, line) => total + line.decAmountMonthly, 0);
+  if (lines.length !== (esiApplies ? 5 : 3) || net !== gross - 1200 - (esiApplies ? 150 : 0)) {
+    throw new Error(`Incorrect ESIC visibility/net for gross ${gross}`);
+  }
+  if (summary.decAnnualCtc !== (gross + 1200 + (esiApplies ? 650 : 0)) * 12 ||
+      rows.ctcAnnual.some(row => row.strName === "Employer ESIC") !== esiApplies) {
+    throw new Error(`Incorrect ESIC CTC for gross ${gross}`);
+  }
+}
 
 for (const category of ["CTC_PROVISION", "CTC Provision", "ctc-provision"]) {
   const source = {

@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import CommonRowActions from "@/components/master/CommonRowActions";
@@ -80,6 +81,10 @@ export default function LeaveTypesPanel() {
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
 
   const lstCategoryOptions = objLookups.LEAVE_CATEGORY ?? [];
+  const lstCategorySelectOptions = useMemo(
+    () => [{ intID: "All", strLabel: "All Categories" }, ...lstCategoryOptions.map((objOption) => ({ intID: objOption.strValueCode, strLabel: objOption.strDisplayName }))],
+    [lstCategoryOptions],
+  );
 
   function labelOf(strDomain: string, strCode: string | null | undefined): string {
     if (!strCode) return "-";
@@ -266,22 +271,14 @@ export default function LeaveTypesPanel() {
             placeholder="Search leave type code"
             fullWidth
           />
-          <TextField
+          <CommonSearchableSelect
             controlId="leave.search.category.select"
-            select
-            size="small"
             label="Category"
             value={dicSearchDraft.category}
-            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, category: objEvent.target.value }))}
+            options={lstCategorySelectOptions}
+            onChange={(strValue) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, category: strValue === "" ? "All" : String(strValue) }))}
             fullWidth
-          >
-            <MenuItem value="All">All Categories</MenuItem>
-            {lstCategoryOptions.map((objOption) => (
-              <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>
-                {objOption.strDisplayName}
-              </MenuItem>
-            ))}
-          </TextField>
+          />
           <TextField
             controlId="leave.search.paid.select"
             select

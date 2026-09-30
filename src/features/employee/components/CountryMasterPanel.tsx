@@ -15,6 +15,7 @@ import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { runFrontendAction } from "@/Common/utils/apiErrorHandler";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
+import MasterBreadcrumbs from "@/components/master/MasterBreadcrumbs";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -96,8 +97,8 @@ export default function CountryMasterPanel() {
     searchNamePlaceholder: t("search_name_placeholder"),
     searchCodePlaceholder: t("search_code_placeholder"),
     searchStatusPlaceholder: t("search_status_placeholder"),
-    tableName: t("table_name"),
-    tableCode: t("table_code"),
+    tableName: "Country Name",
+    tableCode: "Country Code",
     tableCurrency: t("table_currency"),
     tablePhoneCode: t("table_phone_code"),
     tableStatus: t("table_status"),
@@ -106,8 +107,8 @@ export default function CountryMasterPanel() {
     dialogAddTitle: t("dialog_add_title"),
     dialogEditTitle: t("dialog_edit_title"),
     dialogViewTitle: t("dialog_view_title"),
-    fieldName: t("field_name"),
-    fieldCode: t("field_code"),
+    fieldName: "Country Name",
+    fieldCode: "Country Code",
     fieldCurrencyCode: t("field_currency_code"),
     fieldPhoneCode: t("field_phone_code"),
     fieldStatus: t("field_status"),
@@ -593,7 +594,8 @@ export default function CountryMasterPanel() {
   }
 
   return (
-    <Box className={styles.page}>
+    <Box className={`${styles.page} ${styles.referenceMasterPage}`}>
+      <MasterBreadcrumbs strCurrent="Countries" />
       <Box className={styles.topBar}>
         <Button className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()} controlId="country-master.back.button">
           {dicModuleLabels.backButton}
@@ -608,24 +610,22 @@ export default function CountryMasterPanel() {
           </Typography>
         ) : null}
 
-        <Box className={styles.searchRow}>
-          <TextField value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicModuleLabels.searchNamePlaceholder} fullWidth controlId="country-master.search.name.input" />
-          <TextField value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicModuleLabels.searchCodePlaceholder} fullWidth controlId="country-master.search.code.input" />
-          <TextField select label={dicModuleLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth controlId="country-master.search.status.select">
+        <Box className={styles.searchRow} sx={{ alignItems: "end", "& .MuiButton-root": { height: "36px !important", minHeight: "36px !important", alignSelf: "flex-end" } }}>
+          <Box><Typography component="label" htmlFor="country-master-search-name" sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{dicModuleLabels.tableName}</Typography>
+            <TextField id="country-master-search-name" value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicModuleLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} fullWidth controlId="country-master.search.name.input" />
+          </Box>
+          <Box><Typography component="label" htmlFor="country-master-search-code" sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{dicModuleLabels.tableCode}</Typography>
+            <TextField id="country-master-search-code" value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicModuleLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} fullWidth controlId="country-master.search.code.input" />
+          </Box>
+          <Box><Typography component="label" htmlFor="country-master-search-status" sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{dicModuleLabels.tableStatus}</Typography>
+            <TextField id="country-master-search-status" select value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} size="small" fullWidth controlId="country-master.search.status.select">
             <MenuItem value="All">All</MenuItem>
             <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
             <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions}>
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnLoading || blnSubmitting} controlId="country-master.search.button">
-              {dicCommonLabels.search}
-            </Button>
           </Box>
-          <Box className={styles.searchActions}>
-            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting} controlId="country-master.clear.button">
-              {dicCommonLabels.clear}
-            </Button>
-          </Box>
+          <Box className={styles.searchActions}><Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnLoading || blnSubmitting} controlId="country-master.search.button">{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting} controlId="country-master.clear.button">{dicCommonLabels.clear}</Button></Box>
         </Box>
 
         {lstSelectedIds.length > 0 && !blnReadOnly && (blnCanChangeStatus || blnCanDelete) ? (
@@ -646,7 +646,7 @@ export default function CountryMasterPanel() {
           </Box>
         ) : (
           <CommonTable
-            columns={lstTableColumns}
+            columns={lstTableColumns.filter((dicColumn) => dicColumn.field !== "rowActions")}
             rows={lstTableRows}
             rowIdField="id"
             emptyMessage={dicModuleLabels.emptyMessage}
@@ -654,6 +654,11 @@ export default function CountryMasterPanel() {
             showExportOptions={blnCanExport}
             testIdPrefix="country-master.list"
             showPaginationSummary
+            hideRowClickHint
+            onRowClick={(dicRow) => {
+              const dicCountry = lstCountries.find((dicItem) => dicItem.id === dicRow.id);
+              if (dicCountry) void openDialog(blnCanEdit ? "edit" : "view", dicCountry);
+            }}
             toolbarLeft={(
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
                 {blnCanAdd ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => void openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading} controlId="country-master.add.button">{dicModuleLabels.addButton}</Button> : null}
@@ -677,24 +682,22 @@ export default function CountryMasterPanel() {
         rootTestId="country-master.dialog"
         cancelButtonTestId="country-master.dialog.cancel.button"
         primaryButtonTestId="country-master.dialog.primary.button"
-        paperClassName={styles.compactDialogPaper}
+        paperClassName={styles.referenceMasterDialogPaper}
         paperSx={{
-          width: "min(800px, calc(100vw - 32px)) !important",
-          maxWidth: "800px !important",
           overflow: "hidden",
           m: 2,
         }}
         contentSx={{ overflowX: "hidden", overflowY: "visible" }}
         nodeTitleAction={
           <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
-            <Typography className={styles.switchLabel}>{dicModuleLabels.fieldIsActive}</Typography>
             <ActiveStatusSwitch blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} testId="country-master.dialog.status.switch" />
+            <Typography className={styles.switchLabel}>{dicModuleLabels.fieldIsActive}</Typography>
           </Box>
         }
          titleSx={{ px: 2.25, py: 1.25, fontSize: "1rem", maxHeight: 50 }}
         nodeContent={(
           <Box sx={{ display: "grid", gap: 2, pt: 0.5 }}>
-            <Box sx={{ display: "grid", gap: 1.6, gridTemplateColumns: { xs: "1fr", md: "repeat(4, minmax(0, 1fr))" }, alignItems: "start" }}>
+            <Box sx={{ display: "grid", gap: 1.6, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" }, alignItems: "start" }}>
               <TextField
                 required
                 label={`${dicModuleLabels.fieldName}`}
@@ -754,9 +757,9 @@ export default function CountryMasterPanel() {
 
             {intSecondaryLanguageID ? (
             <>
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1.25, flexWrap: "wrap" }}>
+            <Box className={styles.referenceTranslationHeader} sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1.25, flexWrap: "wrap" }}>
               <Box>
-                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("multilingual_text", "Multilingual Text")}</Typography>
+                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("language_translations", "Language Translations")}</Typography>
                 <Typography sx={{ color: "#64748b", fontSize: "0.86rem", mt: 0.25 }}>
                   {t("multilingual_text_help", "Add translated country names for supported languages.")}
                 </Typography>
@@ -781,8 +784,8 @@ export default function CountryMasterPanel() {
               </Box>
             </Box>
 
-            <Box sx={{ display: "grid", gap: 1.2 }}>
-              {dicForm.lstTexts.map((dicText, intIndex) => (
+            <Box className={styles.referenceTranslationRows} sx={{ display: "grid", gap: 1.2 }}>
+              {dicForm.lstTexts.filter((dicText) => Number(dicText.intLanguageID) === intSecondaryLanguageID).map((dicText) => (
                 <Box
                   key={dicText.strRowID}
                   sx={{
@@ -818,16 +821,13 @@ export default function CountryMasterPanel() {
                   </TextField>
                   <TextField
                     label={getRowLabel(dicText.intLanguageID, "field_name", dicModuleLabels.fieldName)}
+                    placeholder={t("dialog_translated_name_placeholder", "Enter country name in {language}").replace("{language}", objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === Number(dicText.intLanguageID))?.strLabel ?? dicText.strLanguageName)}
                     value={dicText.strCountryName}
                     onChange={(objEvent) => {
                       const strValue = objEvent.target.value;
                       updateTextRow(dicText.strRowID, "strCountryName", strValue);
-                      if (intIndex === 0) {
-                        setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined }));
-                        setDicForm((dicPrevious) => ({ ...dicPrevious, name: strValue }));
-                      }
                     }}
-                    disabled={strMode === "view" || intIndex === 0}
+                    disabled={strMode === "view"}
                     controlId="country-master.dialog.translation.name.input"
                     InputProps={{
                       endAdornment: dicTextTranslationLoading[dicText.strRowID]

@@ -31,6 +31,7 @@ import type {
 } from "@/features/payroll-cycles/types";
 import { setPayrollScheduleSelectedID } from "@/features/payroll-cycles/utils/payrollScheduleRouteState";
 import CommonEditModeBanner from "@/Common/components/CommonEditModeBanner";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 type PayrollCycleEditorPageProps = {
@@ -353,23 +354,18 @@ export default function PayrollCycleEditorPage({
               ))}
             </TextField>
 
-            <TextField
+            <CommonSearchableSelect
               label={t("payroll_group")}
-              inputProps={{ "controlId": "payroll-cycles.editor.payroll-group.select" }}
+              controlId="payroll-cycles.editor.payroll-group.select"
               required
-              select
               value={dicForm.intPayrollGroupID}
-              onChange={(objEvent) => updateField("intPayrollGroupID", objEvent.target.value ? Number(objEvent.target.value) : "")}
+              options={objFormOptions?.lstPayrollGroups ?? []}
+              getOptionLabel={(dicOption) => `${dicOption.strLabel}${dicOption.strCode ? ` (${dicOption.strCode})` : ""}`}
+              onChange={(intValue) => updateField("intPayrollGroupID", intValue)}
               disabled={blnFieldDisabled}
               helperText={t("payroll_group_help")}
               fullWidth
-            >
-              {(objFormOptions?.lstPayrollGroups ?? []).map((dicOption) => (
-                <MenuItem key={dicOption.intID} value={dicOption.intID}>
-                  {dicOption.strLabel}{dicOption.strCode ? ` (${dicOption.strCode})` : ""}
-                </MenuItem>
-              ))}
-            </TextField>
+            />
           </Box>
         </Stack>
       </Paper>

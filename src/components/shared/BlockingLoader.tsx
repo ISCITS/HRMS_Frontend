@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, type ReactNode, useContext } from "react";
-import { Backdrop, Box, CircularProgress, Stack, Typography } from "@mui/material";
+import { Backdrop, Box, Stack, Typography } from "@mui/material";
 import { createPortal } from "react-dom";
 
 type BlockingLoaderProps = {
@@ -33,6 +33,36 @@ export function BlockingLoaderViewportProvider({
   );
 }
 
+export function DottedLoader() {
+  return (
+    <Box
+      aria-hidden="true"
+      className="app-dotted-loader"
+      sx={{
+        position: "relative",
+        width: 64,
+        height: 64,
+        color: "var(--app-primary-color, #1d5d96)",
+      }}
+    >
+      {Array.from({ length: 10 }, (_, intIndex) => (
+        <Box
+          key={intIndex}
+          className="app-dotted-loader-position"
+          sx={{ transform: `rotate(${intIndex * 36}deg)` }}
+        >
+          <Box
+            className="app-dotted-loader-dot"
+            style={{ animationDelay: `${intIndex * -0.1}s` }}
+          />
+        </Box>
+      ))}
+    </Box>
+  );
+}
+
+export const WindowsCircularLoader = DottedLoader;
+
 export default function BlockingLoader({
   blnOpen,
   strLabel = "Loading...",
@@ -51,13 +81,7 @@ export default function BlockingLoader({
         borderRadius: "20px",
       }}
     >
-      <CircularProgress
-        size={36}
-        thickness={4.4}
-        sx={{
-          color: "#2563eb",
-        }}
-      />
+      <DottedLoader />
       <Typography
         sx={{
           fontWeight: 500,

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { appRoutes } from "@/config";
 import { authHelpers } from "@/lib/auth";
 
+// req.nextUrl.pathname and every req.nextUrl.clone() redirect below already
+// exclude/re-apply the configured Next.js basePath automatically, so this file
+// only ever deals in logical, base-path-agnostic routes.
 export function middleware(req: NextRequest) {
   const strPathname = req.nextUrl.pathname;
   const strAuthCookie = req.cookies.get(authHelpers.cookieName)?.value ?? "";

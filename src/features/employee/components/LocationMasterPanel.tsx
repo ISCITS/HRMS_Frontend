@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
@@ -21,7 +21,9 @@ import { useRouter } from "next/navigation";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
+import MasterBreadcrumbs from "@/components/master/MasterBreadcrumbs";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -160,8 +162,8 @@ export default function LocationMasterPanel() {
     bulkDeactivate: t("bulk_deactivate"),
     bulkDelete: t("bulk_delete"),
     emptyMessage: t("empty_message"),
-    tableName: t("table_name"),
-    tableCode: t("table_code"),
+    tableName: "Location Name",
+    tableCode: "Location Code",
     tableStatus: t("table_status"),
     tableActions: t("table_actions"),
     saveSuccess: t("save_success"),
@@ -192,8 +194,8 @@ export default function LocationMasterPanel() {
     confirmDeleteMessage: t("confirm_delete_message"),
     confirmActivateMessage: t("confirm_activate_message"),
     confirmDeactivateMessage: t("confirm_deactivate_message"),
-    fieldName: t("field_name"),
-    fieldCode: t("field_code"),
+    fieldName: "Location Name",
+    fieldCode: "Location Code",
     fieldStatus: t("field_status"),
     fieldIsActive: t("field_is_active", "Is Active"),
     saving: t("saving", "Saving..."),
@@ -649,7 +651,8 @@ export default function LocationMasterPanel() {
   }
 
   return (
-    <Box className={styles.page}>
+    <Box className={`${styles.page} ${styles.referenceMasterPage}`}>
+      <MasterBreadcrumbs strCurrent={dicModuleLabels.pageTitle} />
       <Box className={styles.topBar}>
         <Button controlId="location-master.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicModuleLabels.backButton}</Button>
       </Box>
@@ -663,14 +666,20 @@ export default function LocationMasterPanel() {
             {t("read_only_mode", "You have view-only access for Location.")}
           </Typography>
         ) : null}
-        <Box className={styles.searchRow}>
-          <TextField controlId="location-master.list.search-name.input" inputProps={{ "controlId": "location-master.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicModuleLabels.searchNamePlaceholder} fullWidth />
-          <TextField controlId="location-master.list.search-code.input" inputProps={{ "controlId": "location-master.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicModuleLabels.searchCodePlaceholder} fullWidth />
-          <TextField controlId="location-master.list.search-status.select" inputProps={{ "controlId": "location-master.list.search-status.select" }} select label={dicModuleLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
+        <Box className={styles.searchRow} sx={{ alignItems: "end", "& .MuiButton-root": { height: "36px !important", minHeight: "36px !important", alignSelf: "flex-end" } }}>
+          <Box><Typography component="label" htmlFor="location-master-search-name" sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{dicModuleLabels.tableName}</Typography>
+            <TextField id="location-master-search-name" controlId="location-master.list.search-name.input" inputProps={{ "controlId": "location-master.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicModuleLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} fullWidth />
+          </Box>
+          <Box><Typography component="label" htmlFor="location-master-search-code" sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{dicModuleLabels.tableCode}</Typography>
+            <TextField id="location-master-search-code" controlId="location-master.list.search-code.input" inputProps={{ "controlId": "location-master.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicModuleLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} fullWidth />
+          </Box>
+          <Box><Typography component="label" htmlFor="location-master-search-status" sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{dicModuleLabels.tableStatus}</Typography>
+            <TextField id="location-master-search-status" controlId="location-master.list.search-status.select" inputProps={{ "controlId": "location-master.list.search-status.select" }} select value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} size="small" fullWidth>
             <MenuItem controlId="location-master.list.search-status.all.option" value="All">All</MenuItem>
             <MenuItem controlId="location-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
             <MenuItem controlId="location-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
+          </Box>
           <Box className={styles.searchActions}><Button controlId="location-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
           <Box className={styles.searchActions}><Button controlId="location-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
         </Box>
@@ -683,7 +692,7 @@ export default function LocationMasterPanel() {
             <Typography sx={{ mt: 1, color: "#64748b" }}>Contact your administrator if you need location visibility.</Typography>
           </Box>
         ) : (
-          <CommonDataGrid columns={lstTableColumns} rows={lstTableRows} rowIdField="id" defaultPageSize={20} pageSizeOptions={[10, 20, 50]} exportFileName={dicModuleLabels.exportFileName.replace(/\.(csv|pdf)$/i, "")} showExportOptions={blnCanExport} showPaginationSummary emptyMessage={dicModuleLabels.emptyMessage} testIdPrefix="location-master.list" toolbarLeft={blnCanAdd ? <Button controlId="location-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicModuleLabels.addButton}</Button> : null} sx={{ p: 0, boxShadow: "none", background: "transparent" }} />
+          <CommonDataGrid columns={lstTableColumns.filter((dicColumn) => dicColumn.field !== "action")} rows={lstTableRows} rowIdField="id" defaultPageSize={20} pageSizeOptions={[10, 20, 50]} exportFileName={dicModuleLabels.exportFileName.replace(/\.(csv|pdf)$/i, "")} showExportOptions={blnCanExport} showPaginationSummary hideRowClickHint onRowClick={(dicRow) => { const dicLocation = lstLocations.find((dicItem) => dicItem.id === dicRow.id); if (dicLocation) openDialog(blnCanEdit ? "edit" : "view", dicLocation); }} emptyMessage={dicModuleLabels.emptyMessage} testIdPrefix="location-master.list" toolbarLeft={blnCanAdd ? <Button controlId="location-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicModuleLabels.addButton}</Button> : null} sx={{ p: 0, boxShadow: "none", background: "transparent" }} />
         )}
       </Box>
 
@@ -696,19 +705,17 @@ export default function LocationMasterPanel() {
         onPrimaryAction={saveLocation}
         blnPrimaryDisabled={blnSubmitting}
         blnHidePrimary={strMode === "view"}
-        paperClassName={styles.compactDialogPaper}
+        paperClassName={styles.referenceMasterDialogPaper}
         contentSx={{ overflowX: "hidden", overflowY: "visible" }}
         titleSx={{ px: 2.25, py: 1.25, fontSize: "1rem", maxHeight: 50 }}
         paperSx={{
-          width: "min(800px, calc(100vw - 32px)) !important",
-          maxWidth: "800px !important",
           overflow: "hidden",
           m: 2,
         }} 
         nodeTitleAction={
           <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
-            <Typography className={styles.switchLabel}>{dicModuleLabels.fieldIsActive}</Typography>
             <ActiveStatusSwitch blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
+            <Typography className={styles.switchLabel}>{dicModuleLabels.fieldIsActive}</Typography>
           </Box>
         } 
         nodeContent={
@@ -717,7 +724,7 @@ export default function LocationMasterPanel() {
               sx={{
                 display: "grid",
                 gap: 1.6,
-                gridTemplateColumns: { xs: "1fr", md: "repeat(4, minmax(0, 1fr))" },
+                gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
                 alignItems: "start",
               }}
             >
@@ -751,21 +758,19 @@ export default function LocationMasterPanel() {
                 helperText={dicErrors.code}
                 fullWidth
               />
-              <TextField
+              <CommonSearchableSelect
                 label={dicModuleLabels.fieldState}
-                select
-                value={dicForm.intStateID === "" ? "" : String(dicForm.intStateID)}
-                onChange={(objEvent) => setDicForm((dicPrevious) => ({ ...dicPrevious, intStateID: objEvent.target.value ? Number(objEvent.target.value) : "" }))}
+                value={dicForm.intStateID}
+                options={objFormOptions.lstStates}
+                getOptionLabel={(dicState) => `${dicState.strLabel}${dicState.strCode ? ` (${dicState.strCode})` : ""}`}
+                onChange={(intValue) => setDicForm((dicPrevious) => ({ ...dicPrevious, intStateID: intValue }))}
                 fullWidth
                 disabled={strMode === "view"}
-              >
-                <MenuItem value="">{dicModuleLabels.selectState}</MenuItem>
-                {objFormOptions.lstStates.map((dicState) => (
-                  <MenuItem key={dicState.intID} value={String(dicState.intID)}>
-                    {dicState.strLabel}{dicState.strCode ? ` (${dicState.strCode})` : ""}
-                  </MenuItem>
-                ))}
-              </TextField>
+                sx={{
+                  "& .MuiOutlinedInput-root": { minHeight: "56px !important" },
+                  "& .MuiAutocomplete-input": { paddingBottom: "16.5px !important", paddingTop: "16.5px !important" },
+                }}
+              />
               <TextField
                 label={dicModuleLabels.fieldCity}
                 value={dicForm.strCityName}
@@ -783,9 +788,9 @@ export default function LocationMasterPanel() {
 
             {intSecondaryLanguageID ? (
             <>
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1.25, flexWrap: "wrap" }}>
+            <Box className={styles.referenceTranslationHeader} sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1.25, flexWrap: "wrap" }}>
               <Box>
-                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("multilingual_text", "Multilingual Text")}</Typography>
+                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("language_translations", "Language Translations")}</Typography>
                 <Typography sx={{ color: "#64748b", fontSize: "0.86rem", mt: 0.25 }}>
                   {t("multilingual_text_help", "Add translated location names for supported languages.")}
                 </Typography>
@@ -814,8 +819,8 @@ export default function LocationMasterPanel() {
               </Box>
             </Box>
 
-            <Box sx={{ display: "grid", gap: 1.2 }}>
-              {dicForm.lstTexts.map((dicText, intIndex) => (
+            <Box className={styles.referenceTranslationRows} sx={{ display: "grid", gap: 1.2 }}>
+              {dicForm.lstTexts.filter((dicText) => Number(dicText.intLanguageID) === intSecondaryLanguageID).map((dicText) => (
                 <Box
                   key={dicText.strRowID}
                   sx={{
@@ -857,16 +862,13 @@ export default function LocationMasterPanel() {
                   </TextField>
                   <TextField
                     label={getRowLabel(dicText.intLanguageID, "field_name", dicModuleLabels.fieldName)}
+                    placeholder={t("dialog_translated_name_placeholder", "Enter location name in {language}").replace("{language}", objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === Number(dicText.intLanguageID))?.strLabel ?? dicText.strLanguageName)}
                     value={dicText.strLocationName}
                     onChange={(objEvent) => {
                       const strValue = objEvent.target.value;
                       updateTextRow(dicText.strRowID, "strLocationName", strValue);
-                      if (intIndex === 0) {
-                        setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined }));
-                        setDicForm((dicPrevious) => ({ ...dicPrevious, name: strValue }));
-                      }
                     }}
-                    disabled={strMode === "view" || intIndex === 0}
+                    disabled={strMode === "view"}
                     InputProps={{
                       endAdornment: dicTextTranslationLoading[dicText.strRowID]
                         ? (

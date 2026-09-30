@@ -5,6 +5,7 @@ import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded";
 import ErrorOutlineRoundedIcon from "@mui/icons-material/ErrorOutlineRounded";
 import GroupRoundedIcon from "@mui/icons-material/GroupRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
@@ -16,6 +17,7 @@ import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
 import SummarizeRoundedIcon from "@mui/icons-material/SummarizeRounded";
 import TaskAltRoundedIcon from "@mui/icons-material/TaskAltRounded";
@@ -30,6 +32,7 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
+  InputAdornment,
   Menu,
   MenuItem,
   Stack,
@@ -39,7 +42,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { type MouseEvent, type ReactNode, useEffect, useState } from "react";
+import { type MouseEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -54,12 +57,15 @@ import { payslipService } from "@/features/payroll/services/payslipService";
 import { payrollRunService } from "@/features/payroll/services/payrollRunService";
 import { attendancePayrollService } from "@/features/payroll/services/attendancePayrollService";
 import { variablePayService } from "@/features/variable-pay/services/variablePayService";
+import PayrollRunVariablePayTab from "@/features/variable-pay-calculation/components/PayrollRunVariablePayTab";
 import type {
   PayslipRunListRecord,
+  PayslipPreviewRecord,
   PayrollProcessSummary,
   PayrollResultDetailRecord,
   PayrollResultListRecord,
   PayrollRunDetailRecord,
+  PayrollValidationResultRecord,
   PayrollValidationSummary,
   AttendanceValidateRunResult,
 } from "@/features/payroll/types";
@@ -317,6 +323,7 @@ function DataTable<T>({
   strEmptyMessage,
   numMinWidth,
   objSx,
+  strWrapClassName,
 }: {
   lstColumns: DataTableColumn<T>[];
   lstRows: T[];
@@ -324,9 +331,13 @@ function DataTable<T>({
   strEmptyMessage: string;
   numMinWidth?: number;
   objSx?: Record<string, unknown>;
+  strWrapClassName?: string;
 }) {
   return (
-    <Box className={styles.tableWrap} sx={{ border: "1px solid #DCE4EF", borderRadius: "10px", ...objSx }}>
+    <Box
+      className={strWrapClassName ? `${styles.tableWrap} ${strWrapClassName}` : styles.tableWrap}
+      sx={{ border: "1px solid #DCE4EF", borderRadius: "10px", ...objSx }}
+    >
       <table className={styles.table} style={numMinWidth ? { minWidth: numMinWidth } : undefined}>
         {lstColumns.some((dicColumn) => dicColumn.numWidth) ? (
           <colgroup>
@@ -476,6 +487,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
   const [objValidationSummary, setObjValidationSummary] = useState<PayrollValidationSummary | null>(null);
   const [objProcessSummary, setObjProcessSummary] = useState<PayrollProcessSummary | null>(null);
   const [lstPayslips, setLstPayslips] = useState<PayslipRunListRecord[]>([]);
+  const [strPayslipSearch, setStrPayslipSearch] = useState("");
   const [strPayslipPreviewHtml, setStrPayslipPreviewHtml] = useState("");
   const [intPreviewResultID, setIntPreviewResultID] = useState<number | null>(null);
   const [blnPayslipLoading, setBlnPayslipLoading] = useState(false);
@@ -489,8 +501,10 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
   const [objActionsAnchor, setObjActionsAnchor] = useState<null | HTMLElement>(null);
   const [objAttendanceValidationResult, setObjAttendanceValidationResult] = useState<AttendanceValidateRunResult | null>(null);
   const [blnAttendanceBlockedFilterActive, setBlnAttendanceBlockedFilterActive] = useState(false);
-  const [strActiveTab, setStrActiveTab] = useState<"run" | "valid" | "review">("run");
+  const [strActiveTab, setStrActiveTab] = useState<"run" | "valid" | "review" | "variablePay" | "declaration">("run");
+  const refDefaultedTabForRunID = useRef<number | null>(null);
   const [lstRunResults, setLstRunResults] = useState<PayrollResultListRecord[]>([]);
+  const [lstVariablePayValidationIssues, setLstVariablePayValidationIssues] = useState<PayrollValidationResultRecord[]>([]);
   const [objResultLinesRecord, setObjResultLinesRecord] = useState<PayrollResultDetailRecord | null>(null);
   const [blnResultLinesLoading, setBlnResultLinesLoading] = useState(false);
   const blnCanView = canViewAny() || canDoAny("list");
@@ -518,6 +532,15 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
       const dicRun = await payrollRunService.getPayrollRunById(strRunID);
       setObjRun(dicRun);
       setBlnIsLocked(dicRun.blnIsLocked);
+      // Land on the Declaration tab by default for a Separate Payroll run - declare the entity
+      // adjustments first, then move to Variable Pay/Run Summary/Validation. Only applies the
+      // default once per run (not on every refresh after a Calculate/Approve action).
+      if (refDefaultedTabForRunID.current !== dicRun.intID) {
+        refDefaultedTabForRunID.current = dicRun.intID;
+        if (dicRun.strRunTypeCode === "VARIABLE_PAY") {
+          setStrActiveTab("declaration");
+        }
+      }
       if (["PROCESSED", "FINALIZED"].includes(dicRun.strRunStatus) && dicRun.strRunTypeCode !== "VARIABLE_PAY") {
         setLstPayslips(await payslipService.getRunPayslips(strRunID));
         try {
@@ -722,11 +745,6 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     }
   }
 
-  function goToMonthlyVariablePay() {
-    handleCloseActions();
-    objRouter.push(`/payroll/monthly-variable-pay?runId=${objRun?.intID ?? ""}`);
-  }
-
   function viewBlockedAttendanceEmployees() {
     if (!objAttendanceValidationResult || objAttendanceValidationResult.intBlockedCount <= 0) {
       return;
@@ -851,22 +869,49 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     }
   }
 
+  async function resolveFreshPayslipID(
+    dicRow: PayslipRunListRecord
+  ): Promise<{ intPayslipID: number | null; strPayslipRecordUUID: string | null; dicPayslip: PayslipPreviewRecord | null }> {
+    if (!dicRow.intPayslipID) {
+      const dicPayslip = await generatePayslip(dicRow);
+      return {
+        intPayslipID: dicPayslip?.intPayslipID ?? null,
+        strPayslipRecordUUID: dicPayslip?.strPayslipRecordUUID ?? null,
+        dicPayslip: dicPayslip ?? null,
+      };
+    }
+    // A payslip already exists for this row, but a reprocess since it was generated can
+    // leave that persisted document stale. getPayslipPreview flags this with
+    // blnGenerated:false (no persisted document matches the current result version) -
+    // regenerate in that case instead of silently reusing yesterday's snapshot.
+    const dicPreview = await payslipService.getPayslipPreview(strRunID, dicRow.intEmployeeID);
+    if (dicPreview.blnGenerated) {
+      return {
+        intPayslipID: dicPreview.intPayslipID ?? dicRow.intPayslipID,
+        strPayslipRecordUUID: dicPreview.strPayslipRecordUUID ?? null,
+        dicPayslip: dicPreview,
+      };
+    }
+    const dicPayslip = await generatePayslip(dicRow);
+    return {
+      intPayslipID: dicPayslip?.intPayslipID ?? null,
+      strPayslipRecordUUID: dicPayslip?.strPayslipRecordUUID ?? null,
+      dicPayslip: dicPayslip ?? null,
+    };
+  }
+
   async function viewPayslip(dicRow: PayslipRunListRecord) {
     setBlnPayslipLoading(true);
     setStrActionLoaderLabel(t("opening_payslip", "Opening payslip preview..."));
     setStrError("");
     try {
-      let intPayslipID = dicRow.intPayslipID;
-      let dicPayslip = intPayslipID
-        ? await payslipService.getPayslipPreview(strRunID, dicRow.intEmployeeID)
-        : await generatePayslip(dicRow);
-      intPayslipID = dicPayslip?.intPayslipID ?? intPayslipID;
+      const { intPayslipID, strPayslipRecordUUID, dicPayslip } = await resolveFreshPayslipID(dicRow);
       if (!intPayslipID) {
         setStrError(t("payslip_not_generated", "Payslip could not be generated for this employee."));
         return;
       }
       setIntPreviewResultID(dicPayslip?.dicFooter?.intPayrollResultID ?? null);
-      setStrPayslipPreviewHtml(await payslipService.getDownloadHtml(dicPayslip?.strPayslipRecordUUID ?? String(intPayslipID)));
+      setStrPayslipPreviewHtml(await payslipService.getDownloadHtml(strPayslipRecordUUID ?? String(intPayslipID)));
       setBlnPayslipDialogOpen(true);
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to load payslip preview.");
@@ -884,17 +929,11 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     setStrActionLoaderLabel(blnPrint ? t("preparing_print", "Preparing print view...") : t("preparing_download", "Preparing download..."));
     setStrError("");
     try {
-      let intPayslipID = dicRow.intPayslipID;
-      let strPayslipUUID = dicRow.strPayslipRecordUUID ?? null;
-      if (!intPayslipID) {
-        const dicPayslip = await generatePayslip(dicRow);
-        intPayslipID = dicPayslip?.intPayslipID ?? null;
-        strPayslipUUID = dicPayslip?.strPayslipRecordUUID ?? strPayslipUUID;
-      }
+      const { intPayslipID, strPayslipRecordUUID } = await resolveFreshPayslipID(dicRow);
       if (!intPayslipID) {
         return;
       }
-      const strHtml = await payslipService.getDownloadHtml(strPayslipUUID ?? String(intPayslipID));
+      const strHtml = await payslipService.getDownloadHtml(strPayslipRecordUUID ?? String(intPayslipID));
       if (blnPrint) {
         printPayslipHtml(strHtml);
       } else {
@@ -965,7 +1004,10 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     );
   }
 
-  const lstAllValidationRows = objValidationSummary?.lstIssues ?? objRun.lstValidationResults;
+  const lstAllValidationRows = [
+    ...(objValidationSummary?.lstIssues ?? objRun.lstValidationResults),
+    ...(objRun.strRunTypeCode === "VARIABLE_PAY" ? lstVariablePayValidationIssues : []),
+  ];
   const setAttendanceBlockingCodes = new Set(["PAY_ATT_MISSING_DAY", "PAY_ATT_NO_POLICY", "PAY_ATT_BLOCKING_EXCEPTION"]);
   const lstValidationRows = blnAttendanceBlockedFilterActive
     ? lstAllValidationRows.filter(
@@ -1002,6 +1044,15 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     { strLabel: t("total_lwp", "Total LWP Days"), strValue: String(objRun.dicSummary.decTotalLwpDays ?? 0), objIcon: <CalendarMonthRoundedIcon sx={{ fontSize: 18 }} />, strTone: "amber" as Tone },
     { strLabel: t("total_lop", "Total LOP Days"), strValue: String(objRun.dicSummary.decTotalLopDays ?? 0), objIcon: <CalendarMonthRoundedIcon sx={{ fontSize: 18 }} />, strTone: "amber" as Tone },
   ];
+
+  const strPayslipSearchNormalized = strPayslipSearch.trim().toLowerCase();
+  const lstFilteredPayslips = strPayslipSearchNormalized
+    ? lstPayslips.filter(
+        (dicPayslip) =>
+          dicPayslip.strEmployeeName.toLowerCase().includes(strPayslipSearchNormalized) ||
+          dicPayslip.strEmployeeCode.toLowerCase().includes(strPayslipSearchNormalized),
+      )
+    : lstPayslips;
 
   const lstValidationTableRows = lstValidationRows.map((dicIssue, intIndex) => {
     const strSeverity = dicIssue.strSeverity ?? (dicIssue.blnIsBlocking ? "BLOCKING" : "WARNING");
@@ -1040,6 +1091,30 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
           <Button
             size="small"
             onClick={() => objRouter.push(`/payroll/inputs?runId=${objRun?.intID ?? ""}${dicIssue.intEmployeeID ? `&employeeId=${dicIssue.intEmployeeID}` : ""}`)}
+            controlId="payroll.run-detail.validation.fix-link.button"
+            data-row-key={`${dicIssue.strValidationCode}-${dicIssue.intEmployeeID ?? "run"}-${intIndex}`}
+            sx={{ minWidth: 0, fontSize: "0.76rem", fontWeight: 800 }}
+          >
+            {t("fix", "Fix")}
+          </Button>
+        ) : dicIssue.objNavigationTarget?.strEntityName === "tblemployee_tax_ytd" ? (
+          <Button
+            size="small"
+            onClick={() =>
+              objRouter.push(
+                `/payroll/employee-monthly-tax?${dicIssue.intEmployeeID ? `employeeId=${dicIssue.intEmployeeID}&` : ""}financialYearCode=${objValidationSummary?.strFinancialYearCode ?? ""}`,
+              )
+            }
+            controlId="payroll.run-detail.validation.fix-link.button"
+            data-row-key={`${dicIssue.strValidationCode}-${dicIssue.intEmployeeID ?? "run"}-${intIndex}`}
+            sx={{ minWidth: 0, fontSize: "0.76rem", fontWeight: 800 }}
+          >
+            {t("fix", "Fix")}
+          </Button>
+        ) : dicIssue.objNavigationTarget?.strEntityName === "variable_pay_tab" ? (
+          <Button
+            size="small"
+            onClick={() => setStrActiveTab("variablePay")}
             controlId="payroll.run-detail.validation.fix-link.button"
             data-row-key={`${dicIssue.strValidationCode}-${dicIssue.intEmployeeID ?? "run"}-${intIndex}`}
             sx={{ minWidth: 0, fontSize: "0.76rem", fontWeight: 800 }}
@@ -1215,6 +1290,26 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
           sx={{ borderBottom: "1px solid #DCE4EF", minHeight: 46, px: { xs: 1, md: 1.5 } }}
           data-controlid="payroll.run-detail.tabs"
         >
+          {objRun.strRunTypeCode === "VARIABLE_PAY" ? (
+            <Tab
+              value="declaration"
+              label={t("declaration_tab", "Declaration")}
+              icon={<EditNoteRoundedIcon sx={{ fontSize: 18 }} />}
+              iconPosition="start"
+              sx={{ fontSize: "0.82rem", fontWeight: 800, minHeight: 46, textTransform: "none" }}
+              data-controlid="payroll.run-detail.tab.declaration.button"
+            />
+          ) : null}
+          {objRun.strRunTypeCode === "VARIABLE_PAY" ? (
+            <Tab
+              value="variablePay"
+              label={t("variable_pay_tab", "Variable Pay")}
+              icon={<PaidRoundedIcon sx={{ fontSize: 18 }} />}
+              iconPosition="start"
+              sx={{ fontSize: "0.82rem", fontWeight: 800, minHeight: 46, textTransform: "none" }}
+              data-controlid="payroll.run-detail.tab.variable-pay.button"
+            />
+          ) : null}
           <Tab
             value="run"
             label={t("summary_title", "Run Summary")}
@@ -1310,7 +1405,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
                 <>
                   <Button
                     className={styles.secondaryButton}
-                    onClick={goToMonthlyVariablePay}
+                    onClick={() => setStrActiveTab("variablePay")}
                     startIcon={<PaidRoundedIcon sx={{ fontSize: 16 }} />}
                     sx={{ height: 32, minHeight: 32 }}
                     controlId="payroll.run-detail.open-variable-pay-inputs.button"
@@ -1388,6 +1483,22 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
               </Button>
             ) : null}
           </Box>
+          <TextField
+            value={strPayslipSearch}
+            onChange={(objEvent) => setStrPayslipSearch(objEvent.target.value)}
+            placeholder={t("payslip_search_placeholder", "Search by employee name or code")}
+            size="small"
+            fullWidth
+            sx={{ mb: 1 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchRoundedIcon sx={{ color: "#94a3b8", fontSize: 20 }} />
+                </InputAdornment>
+              ),
+            }}
+            controlId="payroll.run-detail.payslips.search.input"
+          />
           <DataTable<PayslipRunListRecord>
             lstColumns={[
               {
@@ -1424,10 +1535,14 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
                 ),
               },
             ]}
-            lstRows={lstPayslips}
+            lstRows={lstFilteredPayslips}
             fnKey={(dicRow) => `${dicRow.intPayrollRunID}-${dicRow.intEmployeeID}`}
-            strEmptyMessage={t("payslip_empty", "No processed payroll results are available for payslip generation.")}
-            objSx={{ maxHeight: 420, minHeight: 300 }}
+            strEmptyMessage={
+              strPayslipSearchNormalized
+                ? t("payslip_search_empty", "No employees match your search.")
+                : t("payslip_empty", "No processed payroll results are available for payslip generation.")
+            }
+            strWrapClassName={styles.tableWrapBounded}
           />
         </Box>
         ) : null}
@@ -1496,6 +1611,14 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
             testIdPrefix="payroll.run-detail.review-results"
           />
         </Box>
+        ) : null}
+        {(strActiveTab === "variablePay" || strActiveTab === "declaration") && objRun.strRunTypeCode === "VARIABLE_PAY" ? (
+          <PayrollRunVariablePayTab
+            intPayrollRunID={objRun.intID}
+            strView={strActiveTab === "declaration" ? "declaration" : "grid"}
+            onRunRefreshNeeded={() => loadRun(false)}
+            onValidationIssuesChanged={setLstVariablePayValidationIssues}
+          />
         ) : null}
         </Box>
       </Box>

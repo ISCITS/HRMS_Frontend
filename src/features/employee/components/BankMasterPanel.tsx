@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
@@ -26,6 +26,7 @@ import { useRouter } from "next/navigation";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import { handleSingleDialogActionEnter } from "@/Common/utils/dialogKeyboard";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
+import MasterBreadcrumbs from "@/components/master/MasterBreadcrumbs";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -154,8 +155,8 @@ export default function BankMasterPanel() {
     bulkDeactivate: t("bulk_deactivate"),
     bulkDelete: t("bulk_delete"),
     emptyMessage: t("empty_message"),
-    tableName: t("table_name"),
-    tableCode: t("table_code"),
+    tableName: "Bank Name",
+    tableCode: "Bank Code",
     tableStatus: t("table_status"),
     tableActions: t("table_actions"),
     saveSuccess: t("save_success"),
@@ -186,8 +187,8 @@ export default function BankMasterPanel() {
     confirmDeleteMessage: t("confirm_delete_message"),
     confirmActivateMessage: t("confirm_activate_message"),
     confirmDeactivateMessage: t("confirm_deactivate_message"),
-    fieldName: t("field_name"),
-    fieldCode: t("field_code"),
+    fieldName: "Bank Name",
+    fieldCode: "Bank Code",
     fieldStatus: t("field_status"),
     fieldIsActive: t("field_is_active", "Is Active"),
     saving: t("saving", "Saving..."),
@@ -639,7 +640,8 @@ export default function BankMasterPanel() {
   }
 
   return (
-    <Box className={styles.page}>
+    <Box className={`${styles.page} ${styles.referenceMasterPage} ${styles.bankMasterPage}`}>
+      <MasterBreadcrumbs strCurrent={dicBankLabels.pageTitle} />
       <Box className={styles.topBar}>
         <Button controlId="bank-master.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicBankLabels.backButton}</Button>
       </Box>
@@ -653,14 +655,20 @@ export default function BankMasterPanel() {
             {t("read_only_mode", "You have view-only access for Bank.")}
           </Typography>
         ) : null}
-        <Box className={styles.searchRow}>
-          <TextField controlId="bank-master.list.search-name.input" inputProps={{ controlId: "bank-master.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicBankLabels.searchNamePlaceholder} fullWidth />
-          <TextField controlId="bank-master.list.search-code.input" inputProps={{ controlId: "bank-master.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicBankLabels.searchCodePlaceholder} fullWidth />
-          <TextField controlId="bank-master.list.search-status.select" inputProps={{ controlId: "bank-master.list.search-status.select" }} select label={dicBankLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
+        <Box className={styles.searchRow} sx={{ alignItems: "end", "& .MuiButton-root": { height: "36px !important", minHeight: "36px !important", alignSelf: "flex-end" } }}>
+          <Box><Typography component="label" htmlFor="bank-master-search-name" sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{dicBankLabels.tableName}</Typography>
+            <TextField id="bank-master-search-name" controlId="bank-master.list.search-name.input" inputProps={{ "controlId": "bank-master.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicBankLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} fullWidth />
+          </Box>
+          <Box><Typography component="label" htmlFor="bank-master-search-code" sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{dicBankLabels.tableCode}</Typography>
+            <TextField id="bank-master-search-code" controlId="bank-master.list.search-code.input" inputProps={{ "controlId": "bank-master.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicBankLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} fullWidth />
+          </Box>
+          <Box><Typography component="label" htmlFor="bank-master-search-status" sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{dicBankLabels.tableStatus}</Typography>
+            <TextField id="bank-master-search-status" controlId="bank-master.list.search-status.select" inputProps={{ "controlId": "bank-master.list.search-status.select" }} select value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} size="small" fullWidth>
             <MenuItem controlId="bank-master.list.search-status.all.option" value="All">All</MenuItem>
             <MenuItem controlId="bank-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
             <MenuItem controlId="bank-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
+          </Box>
           <Box className={styles.searchActions}><Button controlId="bank-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
           <Box className={styles.searchActions}><Button controlId="bank-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
         </Box>
@@ -674,7 +682,7 @@ export default function BankMasterPanel() {
           </Box>
         ) : (
           <CommonDataGrid
-            columns={lstTableColumns}
+            columns={lstTableColumns.filter((dicColumn) => dicColumn.field !== "action")}
             rows={lstTableRows}
             rowIdField="id"
             defaultPageSize={20}
@@ -682,6 +690,11 @@ export default function BankMasterPanel() {
             exportFileName={dicBankLabels.exportFileName.replace(/\.(csv|pdf)$/i, "")}
             showExportOptions={blnCanExport}
             showPaginationSummary
+            hideRowClickHint
+            onRowClick={(dicRow) => {
+              const dicBank = lstBanks.find((dicItem) => dicItem.id === dicRow.id);
+              if (dicBank) openDialog(blnCanEdit ? "edit" : "view", dicBank);
+            }}
             emptyMessage={dicBankLabels.emptyMessage}
             testIdPrefix="bank-master.list"
             toolbarLeft={blnCanAdd ? (
@@ -703,10 +716,8 @@ export default function BankMasterPanel() {
         onPrimaryAction={saveBank}
         blnPrimaryDisabled={blnSubmitting}
         blnHidePrimary={strMode === "view"}
-        paperClassName={styles.compactDialogPaper}
+        paperClassName={styles.referenceMasterDialogPaper}
         paperSx={{
-              width: "min(800px, calc(100vw - 32px)) !important",
-              maxWidth: "800px !important",
               overflow: "hidden",
               m: 2,
             }}  
@@ -714,8 +725,8 @@ export default function BankMasterPanel() {
         titleSx={{ px: 2.25, py: 1.25, fontSize: "1rem", maxHeight: 50 }}
         nodeTitleAction={
           <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
-              <Typography className={styles.switchLabel}>{dicBankLabels.fieldIsActive}</Typography>
               <ActiveStatusSwitch blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
+              <Typography className={styles.switchLabel}>{dicBankLabels.fieldIsActive}</Typography>
           </Box>
         }
         nodeContent={
@@ -768,9 +779,9 @@ export default function BankMasterPanel() {
 
             {intSecondaryLanguageID ? (
             <>
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1.25, flexWrap: "wrap" }}>
+            <Box className={styles.referenceTranslationHeader} sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1.25, flexWrap: "wrap" }}>
               <Box>
-                <Typography controlId="bank-master.dialog.multilingual.title" sx={{ fontWeight: 800, color: "#0f172a" }}>{t("multilingual_text", "Multilingual Text")}</Typography>
+                <Typography controlId="bank-master.dialog.multilingual.title" sx={{ fontWeight: 800, color: "#0f172a" }}>{t("language_translations", "Language Translations")}</Typography>
                 <Typography controlId="bank-master.dialog.multilingual.help" sx={{ color: "#64748b", fontSize: "0.86rem", mt: 0.25 }}>
                   {t("multilingual_text_help", "Add translated bank names for supported languages.")}
                 </Typography>
@@ -800,8 +811,8 @@ export default function BankMasterPanel() {
               </Box>
             </Box>
 
-            <Box sx={{ display: "grid", gap: 1.2 }}>
-              {dicForm.lstTexts.map((dicText, intIndex) => (
+            <Box className={styles.referenceTranslationRows} sx={{ display: "grid", gap: 1.2 }}>
+              {dicForm.lstTexts.filter((dicText) => Number(dicText.intLanguageID) === intSecondaryLanguageID).map((dicText) => (
                 <Box
                   key={dicText.strRowID}
                   controlId="bank-master.dialog.language-row"
@@ -848,17 +859,14 @@ export default function BankMasterPanel() {
                   <TextField
                     controlId="bank-master.dialog.translated-name.input"
                     label={getRowLabel(dicText.intLanguageID, "field_name", dicBankLabels.fieldName)}
+                    placeholder={t("dialog_translated_name_placeholder", "Enter bank name in {language}").replace("{language}", objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === Number(dicText.intLanguageID))?.strLabel ?? dicText.strLanguageName)}
                     value={dicText.strBankName}
                     inputProps={{ controlId: "bank-master.dialog.translated-name.input", "data-row-key": dicText.strRowID }}
                     onChange={(objEvent) => {
                       const strValue = objEvent.target.value;
                       updateTextRow(dicText.strRowID, "strBankName", strValue);
-                      if (intIndex === 0) {
-                        setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined }));
-                        setDicForm((dicPrevious) => ({ ...dicPrevious, name: strValue }));
-                      }
                     }}
-                    disabled={strMode === "view" || intIndex === 0}
+                    disabled={strMode === "view"}
                     InputProps={{
                       endAdornment: dicTextTranslationLoading[dicText.strRowID]
                         ? (
