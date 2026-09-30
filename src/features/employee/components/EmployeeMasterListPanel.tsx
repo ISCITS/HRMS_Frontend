@@ -245,12 +245,11 @@ export default function EmployeeMasterListPanel() {
             <CommonSearchableSelect controlId="employee.master-list.search.department.select" label={t("grid_department", dicConstant.employeeMaster.grid.department)} value={dicSearchDraft.department === "All" ? "" : dicSearchDraft.department} options={lstDepartmentSelectOptions} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, department: strValue === "" ? "All" : strValue }))} placeholder={t("all", "All")} size="small" fullWidth />
           </Box>
           <Box className={styles.employeeSearchField}>
-            <Typography component="label" htmlFor="employee-search-status" sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{t("grid_status", "Status")}</Typography>
-          <TextField id="employee-search-status" data-control-id="employee.master-list.search.status.select" inputProps={{ "data-control-id": "employee.master-list.search.status.select" }} select value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth size="small" SelectProps={{ displayEmpty: true }}>
+            <TextField id="employee-search-status" data-control-id="employee.master-list.search.status.select" inputProps={{ "data-control-id": "employee.master-list.search.status.select" }} select label={t("grid_status", "Status")} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth size="small" SelectProps={{ displayEmpty: true }}>
               <MenuItem data-control-id="employee.master-list.search.status.all.option" value="All">{t("select_status", "Select status")}</MenuItem>
               <MenuItem data-control-id="employee.master-list.search.status.active.option" value="Active">{dicConstant.common.statusActive}</MenuItem>
               <MenuItem data-control-id="employee.master-list.search.status.inactive.option" value="Inactive">{dicConstant.common.statusInactive}</MenuItem>
-          </TextField>
+            </TextField>
           </Box>
           <Button data-control-id="employee.master-list.more-filters.button" className={styles.secondaryButton} startIcon={<FilterListRoundedIcon />} onClick={(objEvent) => setObjMoreFiltersAnchor(objEvent.currentTarget)} aria-expanded={Boolean(objMoreFiltersAnchor)}>{t("more_filters", "More filters")}{dicSearchDraft.code || dicSearchDraft.designation !== "All" ? " •" : ""}</Button>
           <Box className={styles.searchActions}>
