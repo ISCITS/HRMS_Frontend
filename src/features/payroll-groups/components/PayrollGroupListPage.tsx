@@ -4,12 +4,15 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import {
   Alert,
   Box,
   Breadcrumbs,
   Button,
+  IconButton,
   InputAdornment,
+  Link,
   MenuItem,
   Snackbar,
   Skeleton,
@@ -20,7 +23,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
-import CommonRowActions from "@/components/master/CommonRowActions";
+import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -108,6 +111,7 @@ export default function PayrollGroupListPage() {
   });
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
   const objEditorRef = useRef<PayrollGroupEditorHandle>(null);
+  const [objActiveState, setObjActiveState] = useState({ blnIsActive: true, blnDisabled: true });
 
   function openGroupEditor(strMode: DialogMode, dicRow?: PayrollGroupListRecord) {
     setDicDialog({
@@ -166,17 +170,26 @@ export default function PayrollGroupListPage() {
     () =>
       lstFilteredRows.map((dicRow) => ({
         id: dicRow.intID,
-        action: (
-          <CommonRowActions
-            testIdPrefix="payroll-groups.list.row"
-            rowKey={dicRow.intID}
-            blnCanView={blnCanView}
-            blnCanEdit={blnCanEdit}
-            onView={() => openGroupEditor("view", dicRow)}
-            onEdit={blnCanEdit ? () => openGroupEditor("edit", dicRow) : undefined}
-          />
+        strPayrollGroupNameText: dicRow.strPayrollGroupName,
+        strPayrollGroupName: (
+          <Link
+            component="button"
+            type="button"
+            underline="none"
+            disabled={!blnCanView && !blnCanEdit}
+            data-control-id="payroll-groups.list.row.name.button"
+            onClick={(objEvent) => {
+              if (window.getSelection()?.toString()) {
+                objEvent.stopPropagation();
+                return;
+              }
+              openGroupEditor(blnCanEdit ? "edit" : "view", dicRow);
+            }}
+            sx={{ color: "#334155", cursor: "pointer", fontSize: "inherit", fontWeight: 500, textAlign: "left", textUnderlineOffset: "3px", userSelect: "text", WebkitUserSelect: "text", "&:hover": { color: "#0066df", textDecoration: "underline" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}
+          >
+            {dicRow.strPayrollGroupName}
+          </Link>
         ),
-        strPayrollGroupName: dicRow.strPayrollGroupName,
         strDescription: dicRow.strDescription || "-",
         blnIsActive: (
           <span className={`${styles.statusPill} ${dicRow.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
@@ -190,8 +203,7 @@ export default function PayrollGroupListPage() {
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 110 },
-      { field: "strPayrollGroupName", headerName: t("payroll_group_name", "Payroll Group Name") },
+      { field: "strPayrollGroupName", headerName: t("payroll_group_name", "Payroll Group Name"), sortAccessor: (row) => row.strPayrollGroupNameText },
       { field: "strDescription", headerName: t("description", "Description"), width: 260 },
       { field: "blnIsActive", headerName: t("status", "Status"), sortable: false, filterable: false, width: 130 },
     ],
@@ -227,6 +239,7 @@ export default function PayrollGroupListPage() {
           aria-busy={blnSearchPanelFrozen}
           sx={{
             alignItems: "center",
+            "&&": { gridTemplateColumns: { xs: "1fr", md: "minmax(220px, 1.2fr) minmax(150px, 0.7fr) auto auto 1fr" } },
             "& .MuiButton-root": { alignSelf: "center" },
           }}
         >
@@ -320,6 +333,7 @@ export default function PayrollGroupListPage() {
             getRowSx={() => ({
               backgroundColor: "#fff",
               "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
+              "&.MuiTableRow-hover:hover td:first-of-type .MuiLink-root": { textDecoration: "underline" },
             })}
             sx={{ p: 0, boxShadow: "none", background: "transparent" }}
           />
@@ -349,15 +363,46 @@ export default function PayrollGroupListPage() {
         strPrimaryLabel={t("group_save", "Save")}
         onPrimaryAction={() => objEditorRef.current?.save()}
         blnHidePrimary={dicDialog.strMode === "view" || !blnCanEdit}
-        paperClassName={styles.compactDialogPaper}
-        paperSx={{
-          width: "min(920px, calc(100vw - 32px)) !important",
-          maxWidth: "920px !important",
-          overflow: "hidden",
-          m: 2,
-          "& .MuiButton-root": { fontSize: "12px !important", fontWeight: "600 !important" }
-        }}
-        contentSx={{ overflowX: "hidden", overflowY: "auto", px: "20px", py: "12px", maxHeight: "calc(100vh - 190px)", borderColor: "#e5edf5" }}
+        nodeTitleAction={
+          <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
+            <ActiveStatusSwitch
+              testId="payroll-groups.dialog.active.switch"
+              blnIsActive={objActiveState.blnIsActive}
+              disabled={objActiveState.blnDisabled}
+              sx={{
+                width: 40,
+                height: 22,
+                p: 0,
+                overflow: "visible",
+                "& .MuiSwitch-switchBase": {
+                  p: "3px",
+                  color: "#fff",
+                  transitionDuration: "180ms",
+                  "&.Mui-checked": {
+                    transform: "translateX(18px)",
+                    color: "#fff",
+                    "& + .MuiSwitch-track": { backgroundColor: "#00b86b", opacity: 1 },
+                  },
+                  "&.Mui-disabled": { color: "#fff", opacity: 0.7 },
+                },
+                "& .MuiSwitch-thumb": { width: 16, height: 16, boxShadow: "0 1px 3px rgba(15, 23, 42, 0.2)" },
+                "& .MuiSwitch-track": { borderRadius: "11px", backgroundColor: "#98a2b3", opacity: 1, transition: "background-color 180ms" },
+              }}
+              onChange={(blnChecked) => objEditorRef.current?.setActive(blnChecked)}
+            />
+            <Typography className={styles.switchLabel} sx={{ fontSize: "12px !important", fontWeight: "600 !important", whiteSpace: "nowrap" }}>
+              {t("active", "Active")}
+            </Typography>
+            <IconButton aria-label={t("close", "Close")} onClick={closeGroupEditor} size="small" sx={{ ml: 1, color: "#94a3b8" }}>
+              <CloseRoundedIcon fontSize="small" />
+            </IconButton>
+          </Box>
+        }
+        paperClassName={styles.departmentDialogPaper}
+        maxWidth={false}
+        fullWidth={false}
+        paperSx={{ "& .MuiButton-root": { fontSize: "12px !important", fontWeight: "600 !important" } }}
+        contentSx={{ overflowX: "hidden", overflowY: "auto", px: "20px", py: "12px", borderColor: "#e5edf5" }}
         titleSx={{ px: 2.25, py: 1.25, fontSize: "16px", fontWeight: 700, maxHeight: 50 }}
         nodeFooterStart={<Typography sx={{ color: "#64748b", fontSize: "11px" }}>{t("required_fields_hint", "Required fields are marked")} <Box component="span" sx={{ color: "#dc2626" }}>*</Box></Typography>}
         nodeContent={
@@ -367,6 +412,7 @@ export default function PayrollGroupListPage() {
               strMode={dicDialog.strMode}
               strPayrollGroupID={dicDialog.strPayrollGroupID}
               blnEmbedded
+              onActiveStateChange={setObjActiveState}
               onClose={closeGroupEditor}
               onSaved={(dicSavedRecord) => {
                 closeGroupEditor();
