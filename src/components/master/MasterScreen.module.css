@@ -681,7 +681,7 @@
 .dialogPaper {
   background:
     linear-gradient(180deg, rgba(248, 251, 254, 0.98) 0%, rgba(255, 255, 255, 0.98) 52%, rgba(246, 250, 253, 0.98) 100%) !important;
-  border-radius: 30px !important;
+  border-radius: 10px !important;
   max-width: 1215px;
   width: min(90vw, 1215px);
 }
@@ -689,7 +689,7 @@
 .dialogPaperDapartment {
   background:
     linear-gradient(180deg, rgba(248, 251, 254, 0.98) 0%, rgba(255, 255, 255, 0.98) 52%, rgba(246, 250, 253, 0.98) 100%) !important;
-  border-radius: 30px !important;
+  border-radius: 10px !important;
   max-width: 900px;
   width: min(90vw, 900px);
 }
