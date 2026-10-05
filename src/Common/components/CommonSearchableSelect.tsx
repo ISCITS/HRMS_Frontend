@@ -67,7 +67,15 @@ export default function CommonSearchableSelect<T extends CommonSearchableSelectO
       fullWidth={fullWidth}
       size={size}
       className={className}
-      sx={sx}
+      sx={[
+        {
+          "& .MuiAutocomplete-popupIndicator svg": {
+            fontSize: 28,
+            color: "var(--app-primary-color)"
+          }
+        },
+        ...(Array.isArray(sx) ? sx : sx ? [sx] : [])
+      ]}
       renderInput={(objParams) => (
         <TextField
           {...objParams}
@@ -83,7 +91,7 @@ export default function CommonSearchableSelect<T extends CommonSearchableSelectO
             ...objParams.InputProps,
             startAdornment: (
               <>
-                {showSearchIcon ? <SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} /> : null}
+                {showSearchIcon ? <SearchRoundedIcon sx={{ color: "var(--app-primary-color)", fontSize: 24, ml: 0.5, mr: -0.5 }} /> : null}
                 {objParams.InputProps.startAdornment}
               </>
             ),

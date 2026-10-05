@@ -1542,7 +1542,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
               <Box sx={{ flex: 1, minWidth: 0 }} />
 
-              {strPathname === "/employees" || strPathname === "/departments" || strPathname === "/designations" || blnReferencedMasterRoute || blnEmployeeEditorRoute || blnDashboardRoute || blnEmployeeSalaryEditorRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute ? null : (
+              {strPathname === "/employees" || strPathname === "/departments" || strPathname === "/designations" || strPathname === "/settings" || strPathname === "/profile/change-password" || blnReferencedMasterRoute || blnEmployeeEditorRoute || blnDashboardRoute || blnEmployeeSalaryEditorRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute ? null : (
                 <Box
                   sx={{
                     display: "flex",

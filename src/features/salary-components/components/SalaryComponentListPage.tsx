@@ -405,7 +405,29 @@ export default function SalaryComponentListPage() {
           </Typography>
         ) : null}
 
-        <Box className={styles.searchRow}>
+        <Box
+          className={styles.searchRow}
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: "6px",
+              backgroundColor: "#fff",
+            },
+            "& .MuiOutlinedInput-notchedOutline": {
+              borderColor: "#cbd5e1",
+            },
+            "& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline": {
+              borderColor: "#94a3b8",
+            },
+            "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": {
+              borderColor: "var(--app-primary-color)",
+              borderWidth: 1,
+            },
+            "& .MuiOutlinedInput-root:focus-within .MuiOutlinedInput-notchedOutline": {
+              borderColor: "var(--app-primary-color)",
+              borderWidth: 1,
+            },
+          }}
+        >
           <TextField
             data-controlid="salary-components.list.search-name.input"
             inputProps={{ "data-controlid": "salary-components.list.search-name.input" }}
