@@ -287,12 +287,23 @@
   display: grid;
   gap: 10px;
   grid-template-columns:
-    minmax(200px, 1fr)
-    minmax(200px, 1fr)
-    minmax(200px, 1fr)
+    minmax(240px, 1.25fr)
+    minmax(220px, 1fr)
     minmax(150px, 0.7fr)
-    auto
     auto;
+}
+
+.userSearchRow > * {
+  min-width: 0;
+}
+
+.userSearchRow .searchActions {
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.userSearchRow .searchActions > button {
+  white-space: nowrap;
 }
 
 .taxRegimeSearchRow {

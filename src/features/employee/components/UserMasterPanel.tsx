@@ -14,7 +14,9 @@ import {
   Checkbox,
   IconButton,
   InputAdornment,
+  Link,
   MenuItem,
+  Skeleton,
   Snackbar,
   Switch,
   TextField,
@@ -31,7 +33,6 @@ import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
-import CommonRowActions from "@/components/master/CommonRowActions";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
@@ -80,14 +81,15 @@ type UserRecord = {
 type UserTableRow = {
   id: string;
   select: ReactNode;
-  rowActions: ReactNode;
-  loginName: string;
+  loginName: ReactNode;
+  loginNameText: string;
   loginId: string;
   email: string;
   mobile: string;
   employeeName: string;
   userGroupName: string;
   status: ReactNode;
+  statusSortValue: string;
 };
 
 type UserForm = {
@@ -152,6 +154,61 @@ const dicEmptyForm: UserForm = {
 const dicEmptySearch: SearchForm = { code: "", name: "", employeeName: "", status: "All" };
 const objSelectAllCheckboxInputProps = { "data-controlid": "user-master.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>;
 const lstDefaultUsers: UserRecord[] = [];
+const intUserSkeletonRows = 8;
+
+function UserGridSkeleton() {
+  return (
+    <Box
+      data-control-id="user-master.list.skeleton"
+      sx={{
+        border: "1px solid #e8eef5",
+        borderRadius: "8px",
+        overflow: "hidden",
+        backgroundColor: "#fff",
+      }}
+    >
+      <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, px: 1.75, py: 1.25, flexWrap: "wrap" }}>
+        <Skeleton variant="rounded" width={112} height={36} />
+        <Box sx={{ display: "flex", gap: 1.25, alignItems: "center", flexWrap: "wrap" }}>
+          <Skeleton variant="rounded" width={64} height={36} />
+          <Skeleton variant="text" width={72} height={24} />
+          <Skeleton variant="rounded" width={116} height={32} />
+        </Box>
+      </Box>
+      <Box sx={{ minWidth: 1180 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "48px 1fr 0.9fr 1.2fr 0.8fr 1fr 1fr 0.7fr", bgcolor: "#edf3f9", borderTop: "1px solid #e8eef5", borderBottom: "1px solid #d9e3ee" }}>
+          {[0, 1, 2, 3, 4, 5, 6, 7].map((intColumn) => (
+            <Box key={intColumn} sx={{ px: 2, py: 1 }}>
+              <Skeleton variant="text" width={intColumn === 0 ? 18 : intColumn === 7 ? 76 : 118} height={22} />
+            </Box>
+          ))}
+        </Box>
+        {Array.from({ length: intUserSkeletonRows }).map((_, intIndex) => (
+          <Box
+            key={intIndex}
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "48px 1fr 0.9fr 1.2fr 0.8fr 1fr 1fr 0.7fr",
+              borderBottom: "1px solid #edf1f6",
+              minHeight: 40,
+              alignItems: "center",
+            }}
+          >
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="rounded" width={18} height={18} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${58 + (intIndex % 3) * 8}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${46 + (intIndex % 2) * 12}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${66 + (intIndex % 2) * 8}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={92} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${48 + (intIndex % 3) * 10}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${42 + (intIndex % 2) * 10}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="rounded" width={72} height={22} /></Box>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+}
+
 function normalizeSelectToken(strValue: string) {
   return strValue.trim().toLowerCase().replace(/[\s_-]+/g, "");
 }
@@ -380,11 +437,13 @@ export default function UserMasterPanel() {
   }, [blnRightsLoading]);
 
   const lstFilteredUsers = useMemo(() => lstUsers.filter((dicUser) => {
-    const blnCodeMatch = !dicSearchApplied.code || dicUser.loginName.toLowerCase().includes(dicSearchApplied.code.toLowerCase());
-    const blnNameMatch = !dicSearchApplied.name || dicUser.email.toLowerCase().includes(dicSearchApplied.name.toLowerCase());
+    const strLoginOrEmailSearch = dicSearchApplied.code.toLowerCase();
+    const blnLoginOrEmailMatch = !strLoginOrEmailSearch ||
+      dicUser.loginName.toLowerCase().includes(strLoginOrEmailSearch) ||
+      dicUser.email.toLowerCase().includes(strLoginOrEmailSearch);
     const blnEmployeeMatch = !dicSearchApplied.employeeName || dicUser.employeeName.toLowerCase().includes(dicSearchApplied.employeeName.toLowerCase());
     const blnStatusMatch = dicSearchApplied.status === "All" || dicUser.status === dicSearchApplied.status;
-    return blnCodeMatch && blnNameMatch && blnEmployeeMatch && blnStatusMatch;
+    return blnLoginOrEmailMatch && blnEmployeeMatch && blnStatusMatch;
   }), [dicSearchApplied, lstUsers]);
 
   const blnAllVisibleSelected = lstFilteredUsers.length > 0 && lstFilteredUsers.every((dicUser) => lstSelectedIds.includes(dicUser.id));
@@ -395,6 +454,7 @@ export default function UserMasterPanel() {
   const blnCanDelete = canDoAny("delete");
   const blnCanExport = canDoAny("export");
   const blnReadOnly = isReadOnly();
+  const blnSearchPanelFrozen = blnRightsLoading || blnLoading || blnSubmitting;
   const blnShowOtpOnlyOption =
     (objFormOptions.objMfaPolicy?.blnUserMfaToggleVisible ?? false)
     && !(objFormOptions.objMfaPolicy?.blnUserMfaToggleDisabled ?? false);
@@ -418,30 +478,38 @@ export default function UserMasterPanel() {
         onChange={() => toggleSelection(dicUser.id)}
       />
     ),
-    rowActions: (
-      <CommonRowActions
-        testIdPrefix="user-master.list.row"
-        rowKey={dicUser.id}
-        blnCanView
-        blnCanEdit={blnCanEdit}
-        blnCanDelete={blnCanDelete}
-        onView={() => { void openDialog("view", dicUser); }}
-        onEdit={() => { void openDialog("edit", dicUser); }}
-        onDelete={() => deleteUser(dicUser.id)}
-      />
+    loginNameText: dicUser.loginName,
+    loginName: (
+      <Link
+        component="button"
+        type="button"
+        underline="none"
+        disabled={!blnCanView && !blnCanEdit}
+        data-controlid="user-master.list.row.login-name.button"
+        onClick={(objEvent) => {
+          if (window.getSelection()?.toString()) {
+            objEvent.stopPropagation();
+            return;
+          }
+          void openDialog(blnCanEdit ? "edit" : "view", dicUser);
+        }}
+        sx={{ color: "#334155", cursor: "pointer", fontSize: "inherit", fontWeight: 500, textAlign: "left", textUnderlineOffset: "3px", userSelect: "text", WebkitUserSelect: "text", "&:hover": { color: "#0066df", textDecoration: "underline" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}
+      >
+        {dicUser.loginName}
+      </Link>
     ),
-    loginName: dicUser.loginName,
     loginId: dicUser.loginId || "-",
     email: dicUser.email,
     mobile: dicUser.mobile || "-",
     employeeName: dicUser.employeeName || "-",
     userGroupName: dicUser.userGroupName || "-",
     status: (
-      <span className={`${styles.statusPill} ${dicUser.status === "Active" ? styles.statusActive : styles.statusInactive}`}>
+      <span className={styles.statusPill} style={{ background: dicUser.status === "Active" ? "#dcfce7" : "#fee2e2", color: dicUser.status === "Active" ? "#15803d" : "#dc2626" }}>
         {dicUser.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}
       </span>
     ),
-  })), [blnCanDelete, blnCanEdit, dicCommonLabels.statusActive, dicCommonLabels.statusInactive, lstFilteredUsers, lstSelectedIds]);
+    statusSortValue: dicUser.status,
+  })), [blnCanEdit, blnCanView, dicCommonLabels.statusActive, dicCommonLabels.statusInactive, lstFilteredUsers, lstSelectedIds]);
   const lstTableColumns = useMemo<CommonTableColumn<UserTableRow>[]>(() => [
     {
       field: "select",
@@ -451,15 +519,14 @@ export default function UserMasterPanel() {
       filterable: false,
       exportable: false,
     },
-    { field: "rowActions", headerName: dicModuleLabels.tableActions, width: 140, sortable: false, filterable: false, exportable: false },
-    { field: "loginName", headerName: dicModuleLabels.tableLoginName },
+    { field: "loginName", headerName: dicModuleLabels.tableLoginName, sortAccessor: (dicRow) => dicRow.loginNameText },
     { field: "loginId", headerName: dicModuleLabels.tableLoginId },
     { field: "email", headerName: dicModuleLabels.tableEmail },
     { field: "mobile", headerName: dicModuleLabels.tableMobile },
     { field: "employeeName", headerName: dicModuleLabels.tableLinkedEmployee },
     { field: "userGroupName", headerName: dicModuleLabels.tableUserGroup },
-    { field: "status", headerName: dicModuleLabels.tableStatus, sortable: false, filterable: false },
-  ], [blnAllVisibleSelected, blnSomeVisibleSelected, dicModuleLabels.tableActions, dicModuleLabels.tableEmail, dicModuleLabels.tableLinkedEmployee, dicModuleLabels.tableLoginId, dicModuleLabels.tableLoginName, dicModuleLabels.tableMobile, dicModuleLabels.tableStatus, dicModuleLabels.tableUserGroup]);
+    { field: "status", headerName: dicModuleLabels.tableStatus, filterable: false, sortAccessor: (dicRow) => dicRow.statusSortValue },
+  ], [blnAllVisibleSelected, blnSomeVisibleSelected, dicModuleLabels.tableEmail, dicModuleLabels.tableLinkedEmployee, dicModuleLabels.tableLoginId, dicModuleLabels.tableLoginName, dicModuleLabels.tableMobile, dicModuleLabels.tableStatus, dicModuleLabels.tableUserGroup]);
 
   async function openDialog(strNextMode: UserMode, dicUser?: UserRecord) {
     let objResolvedFormOptions = objFormOptions;
@@ -751,58 +818,64 @@ export default function UserMasterPanel() {
     });
   }
 
-  function deleteUser(strUserId: string) {
-    openConfirmDialog({
-      strTitle: dicModuleLabels.confirmDeleteTitle,
-      strMessage: dicModuleLabels.confirmDeleteMessage,
-      strConfirmLabel: dicCommonLabels.delete,
-      fnOnConfirm: async () => {
-        await masterApiService.bulkUserDelete([Number(strUserId)]);
-        await loadData();
-        showToast(dicModuleLabels.deleteSuccess);
-      }
-    });
-  }
-
   return (
-    <Box className={styles.page}>
+    <Box className={styles.page} sx={{ position: "relative" }}>
       <Box className={styles.topBar}>
         <Button data-controlid="user-master.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/dashboard")}>
           {dicModuleLabels.backButton}
         </Button>
       </Box>
 
-      <Box className={styles.controlsCard}>
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {strRightsError ? <Alert severity="warning" sx={{ mb: 2 }}>{strRightsError}</Alert> : null}
         {blnReadOnly ? <Alert severity="info" sx={{ mb: 2 }}>You have read-only access to this screen.</Alert> : null}
-        <Box className={styles.userSearchRow}>
+        <Box
+          className={`${styles.searchRow} ${styles.userSearchRow}`}
+          aria-busy={blnSearchPanelFrozen}
+          sx={{
+            alignItems: "center",
+            "& .MuiButton-root": { alignSelf: "center" },
+          }}
+        >
           <TextField
-            inputProps={{ "data-controlid": "user-master.list.search.login-id.input" }}
+            className="app-mui-text-field"
+            id="user-search-login-id"
+            controlId="user-master.list.search.login-id.input"
+            inputProps={{ "data-controlid": "user-master.list.search.login-id.input", "controlId": "user-master.list.search.login-id.input" }}
+            label={t("search_login_or_email_label", "Search by login name or email")}
             value={dicSearchDraft.code}
-            placeholder={dicModuleLabels.searchCodePlaceholder}
+            placeholder={t("search_login_or_email_placeholder", "Enter login name or email")}
+            size="small"
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }}
+            disabled={blnSearchPanelFrozen}
             fullWidth
             onChange={(objEvent) => setDicSearchDraft((objPrevious) => ({ ...objPrevious, code: objEvent.target.value }))}
           />
           <TextField
-            inputProps={{ "data-controlid": "user-master.list.search.name.input" }}
-            value={dicSearchDraft.name}
-            placeholder={dicModuleLabels.searchNamePlaceholder}
-            fullWidth
-            onChange={(objEvent) => setDicSearchDraft((objPrevious) => ({ ...objPrevious, name: objEvent.target.value }))}
-          />
-          <TextField
-            inputProps={{ "data-controlid": "user-master.list.search.employee.input" }}
+            className="app-mui-text-field"
+            id="user-search-employee"
+            controlId="user-master.list.search.employee.input"
+            inputProps={{ "data-controlid": "user-master.list.search.employee.input", "controlId": "user-master.list.search.employee.input" }}
+            label={dicModuleLabels.tableLinkedEmployee}
             value={dicSearchDraft.employeeName}
             placeholder={dicModuleLabels.searchEmployeePlaceholder}
+            size="small"
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }}
+            disabled={blnSearchPanelFrozen}
             fullWidth
             onChange={(objEvent) => setDicSearchDraft((objPrevious) => ({ ...objPrevious, employeeName: objEvent.target.value }))}
           />
           <TextField
+            className="app-mui-text-field"
+            id="user-search-status"
+            controlId="user-master.list.search.status.select"
             select
             SelectProps={{ native: false }}
-            inputProps={{ "data-controlid": "user-master.list.search.status.select" }}
-            label={dicModuleLabels.searchStatusPlaceholder}
+            inputProps={{ "data-controlid": "user-master.list.search.status.select", "controlId": "user-master.list.search.status.select" }}
+            label={dicModuleLabels.tableStatus}
             value={dicSearchDraft.status}
+            size="small"
+            disabled={blnSearchPanelFrozen}
             fullWidth
             onChange={(objEvent) => setDicSearchDraft((objPrevious) => ({ ...objPrevious, status: objEvent.target.value as SearchForm["status"] }))}
           >
@@ -811,51 +884,66 @@ export default function UserMasterPanel() {
             <MenuItem data-controlid="user-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
-            <Button data-controlid="user-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }}>
+            <Button data-controlid="user-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }} disabled={blnSearchPanelFrozen}>
               {dicCommonLabels.search}
             </Button>
-          </Box>
-          <Box className={styles.searchActions}>
-            <Button data-controlid="user-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }}>
+            <Button data-controlid="user-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnSearchPanelFrozen}>
               {dicCommonLabels.clear}
             </Button>
           </Box>
         </Box>
 
-        {lstSelectedIds.length > 0 && (blnCanEdit || blnCanDelete) ? (
+        {!blnSubmitting && lstSelectedIds.length > 0 && !blnReadOnly && (blnCanEdit || blnCanDelete) ? (
           <Box className={styles.bulkBar}>
             <Typography className={styles.bulkCount}>{lstSelectedIds.length} {dicModuleLabels.bulkRowsSelected}</Typography>
-            {blnCanEdit ? <Button data-controlid="user-master.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")}>{dicModuleLabels.bulkActivate}</Button> : null}
-            {blnCanEdit ? <Button data-controlid="user-master.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")}>{dicModuleLabels.bulkDeactivate}</Button> : null}
-            {blnCanDelete ? <Button data-controlid="user-master.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete}>{dicModuleLabels.bulkDelete}</Button> : null}
+            {blnCanEdit ? <Button data-controlid="user-master.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicModuleLabels.bulkActivate}</Button> : null}
+            {blnCanEdit ? <Button data-controlid="user-master.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicModuleLabels.bulkDeactivate}</Button> : null}
+            {blnCanDelete ? <Button data-controlid="user-master.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicModuleLabels.bulkDelete}</Button> : null}
           </Box>
         ) : null}
       </Box>
 
-      <Box className={styles.tableCard}>
-        <Box className={styles.tableWrap}>
-          {!blnCanView ? (
+      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        {(blnLoading || blnRightsLoading) && !blnDialogOpen ? (
+          <UserGridSkeleton />
+        ) : !blnCanView ? (
             <Box className={styles.emptyState}>
               <Typography>You do not have permission to view this screen.</Typography>
             </Box>
-          ) : (
-            <CommonTable
-              columns={lstTableColumns}
-              rows={lstTableRows}
-              rowIdField="id"
-              emptyMessage={dicModuleLabels.emptyMessage}
-              exportFileName="user-master"
-              showExportOptions={blnCanExport}
-              showPaginationSummary
-              testIdPrefix="user-master.list"
-              withPaper={false}
-              toolbarLeft={
-                blnCanAdd ? <Button data-controlid="user-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => { void openDialog("add"); }} disabled={blnRightsLoading || blnLoading || blnSubmitting}>{dicModuleLabels.addButton}</Button> : null
-              }
-              getRowSx={(dicRow) => lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : undefined}
-            />
-          )}
-        </Box>
+        ) : (
+          <CommonTable
+            columns={lstTableColumns}
+            rows={lstTableRows}
+            rowIdField="id"
+            emptyMessage={dicModuleLabels.emptyMessage}
+            exportFileName="user-master"
+            showExportOptions={blnCanExport}
+            showPaginationSummary
+            hideRowClickHint
+            testIdPrefix="user-master.list"
+            minTableWidth={1180}
+            toolbarLeft={
+              blnCanAdd ? <Button data-controlid="user-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => { void openDialog("add"); }} disabled={blnRightsLoading || blnLoading || blnSubmitting}>{dicModuleLabels.addButton}</Button> : null
+            }
+            onRowClick={(dicRow) => {
+              if (blnRightsLoading || blnLoading || blnSubmitting || (!blnCanEdit && !blnCanView)) return;
+              const dicUser = lstUsers.find((dicItem) => dicItem.id === dicRow.id);
+              if (dicUser) void openDialog(blnCanEdit ? "edit" : "view", dicUser);
+            }}
+            getRowSx={(dicRow) => ({
+              backgroundColor: lstSelectedIds.includes(dicRow.id) ? "rgba(37, 99, 235, 0.08)" : "#fff",
+              "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
+              "&.MuiTableRow-hover:hover td:first-of-type .MuiLink-root": { textDecoration: "underline" },
+            })}
+            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+          />
+        )}
+        <BlockingLoader
+          blnOpen={blnSubmitting}
+          strLabel={dicCommonLabels.processing}
+          intZIndex={1400}
+          blnLocal
+        />
       </Box>
 
       <CommonMasterDialog
