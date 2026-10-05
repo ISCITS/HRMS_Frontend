@@ -1,36 +1,38 @@
 "use client";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
   Box,
+  Breadcrumbs,
   Button,
   CircularProgress,
+  IconButton,
   InputAdornment,
+  Link,
   MenuItem,
+  Skeleton,
   Snackbar,
-  Switch,
   TextField,
+  Tooltip,
   Typography
 } from "@mui/material";
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
-import MasterBreadcrumbs from "@/components/master/MasterBreadcrumbs";
-import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
-import CommonDataGrid, { type DataGridColumn } from "@/components/ui/CommonDataGrid";
 import dicConstant from "@/constants/Constant.json";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
-import { labelService } from "@/features/labels/services/labelService";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { authHelpers } from "@/lib/auth";
@@ -56,8 +58,8 @@ type EmployeeCategoryRecord = {
 
 type EmployeeCategoryTableRow = {
   id: string;
-  action: ReactNode;
-  name: string;
+  name: ReactNode;
+  nameText: string;
   code: string;
   status: ReactNode;
   statusSortValue: string;
@@ -67,13 +69,6 @@ type SearchForm = {
   code: string;
   name: string;
   status: "All" | EmployeeCategoryStatus;
-};
-
-type ConfirmDialogState = {
-  strTitle: string;
-  strMessage: string;
-  strConfirmLabel: string;
-  fnOnConfirm: () => Promise<void>;
 };
 
 type ToastState = {
@@ -86,6 +81,55 @@ const dicEmptyForm = createInitialEmployeeCategoryForm();
 const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
 const lstDefaultEmployeeCategories: EmployeeCategoryRecord[] = [];
 const lstEmployeeCategoryModuleCodes = ["EMPLOYEE_CATEGORY", "EMPLOYEE_CATEGORIES"];
+const intEmployeeCategorySkeletonRows = 8;
+
+function EmployeeCategoryGridSkeleton() {
+  return (
+    <Box
+      data-control-id="employee-category-master.list.skeleton"
+      sx={{
+        border: "1px solid #e8eef5",
+        borderRadius: "8px",
+        overflow: "hidden",
+        backgroundColor: "#fff",
+      }}
+    >
+      <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, px: 1.75, py: 1.25, flexWrap: "wrap" }}>
+        <Skeleton variant="rounded" width={178} height={36} />
+        <Box sx={{ display: "flex", gap: 1.25, alignItems: "center", flexWrap: "wrap" }}>
+          <Skeleton variant="rounded" width={64} height={36} />
+          <Skeleton variant="text" width={72} height={24} />
+          <Skeleton variant="rounded" width={116} height={32} />
+        </Box>
+      </Box>
+      <Box sx={{ minWidth: 760 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 0.8fr", bgcolor: "#edf3f9", borderTop: "1px solid #e8eef5", borderBottom: "1px solid #d9e3ee" }}>
+          {[0, 1, 2].map((intColumn) => (
+            <Box key={intColumn} sx={{ px: 2, py: 1 }}>
+              <Skeleton variant="text" width={intColumn === 2 ? 76 : 148} height={22} />
+            </Box>
+          ))}
+        </Box>
+        {Array.from({ length: intEmployeeCategorySkeletonRows }).map((_, intIndex) => (
+          <Box
+            key={intIndex}
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr 0.8fr",
+              borderBottom: "1px solid #edf1f6",
+              minHeight: 40,
+              alignItems: "center",
+            }}
+          >
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${58 + (intIndex % 3) * 8}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${38 + (intIndex % 2) * 10}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="rounded" width={72} height={22} /></Box>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+}
 
 // The API record includes backend naming; the panel works against a compact UI-facing record shape.
 function mapEmployeeCategoryRecord(dicRecord: EmployeeCategoryApiRecord): EmployeeCategoryRecord {
@@ -99,7 +143,6 @@ function mapEmployeeCategoryRecord(dicRecord: EmployeeCategoryApiRecord): Employ
 
 // EmployeeCategory master screen: handles backend-backed CRUD, search, bulk actions, export, and view/edit dialogs.
 export default function EmployeeCategoryMasterPanel() {
-  const objRouter = useRouter();
   const { t: translateLabel } = useModuleLabels("employee_category");
   const fallbackLabels: Record<string, string> = {
     dialog_view_title: "View Employee Category",
@@ -130,15 +173,16 @@ export default function EmployeeCategoryMasterPanel() {
   const [strEditingEmployeeCategoryId, setStrEditingEmployeeCategoryId] = useState("");
   const [dicForm, setDicForm] = useState<EmployeeCategoryFormValues>(dicEmptyForm);
   const [dicErrors, setDicErrors] = useState<Partial<Record<"code" | "name", string>>>({});
+  const objNameInputRef = useRef<HTMLInputElement>(null);
+  const objCodeInputRef = useRef<HTMLInputElement>(null);
+  const strPendingErrorFocusRef = useRef<"name" | "code" | null>(null);
   const [dicTextTranslationLoading, setDicTextTranslationLoading] = useState<Record<string, boolean>>({});
   const [dicLastTranslatedSourceByRow, setDicLastTranslatedSourceByRow] = useState<Record<string, string>>({});
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSubmitting, setBlnSubmitting] = useState(false);
-  const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
-  const [dicRowLabelsByLanguageID, setDicRowLabelsByLanguageID] = useState<Record<number, Record<string, string>>>({});
 
   const dicCommonLabels = {
     cancel: t("cancel"),
@@ -250,7 +294,6 @@ export default function EmployeeCategoryMasterPanel() {
   const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
-  const blnCanDelete = canDoAny("delete");
   const blnCanExport = canDoAny("export");
   const blnReadOnly = isReadOnly();
   const intDefaultLanguageID = authHelpers.getLanguageID() ?? objFormOptions.lstLanguages[0]?.intID ?? 1;
@@ -292,18 +335,6 @@ export default function EmployeeCategoryMasterPanel() {
       ...dicValues,
       lstTexts: [dicDefaultRow, ...lstOtherTexts],
     };
-  }
-
-  function addLanguageRow() {
-    setDicForm((dicPrevious) => {
-      const dicLanguage = objFormOptions.lstLanguages.find((dicOption) =>
-        !dicPrevious.lstTexts.some((dicText) => Number(dicText.intLanguageID) === dicOption.intID));
-      if (!dicLanguage) return dicPrevious;
-      return {
-        ...dicPrevious,
-        lstTexts: [...dicPrevious.lstTexts, buildFixedLanguageRow(dicLanguage.intID, "", dicPrevious.code, [])],
-      };
-    });
   }
 
   function syncEnglishEmployeeCategoryName(strEmployeeCategoryName: string) {
@@ -417,18 +448,39 @@ export default function EmployeeCategoryMasterPanel() {
 
   const lstTableRows: EmployeeCategoryTableRow[] = lstFilteredEmployeeCategories.map((dicEmployeeCategory) => ({
     id: dicEmployeeCategory.id,
-    action: <CommonRowActions testIdPrefix="employee-category-master.list.row" rowKey={dicEmployeeCategory.id} blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} onView={() => openDialog("view", dicEmployeeCategory)} onEdit={() => openDialog("edit", dicEmployeeCategory)} onDelete={() => deleteEmployeeCategory(dicEmployeeCategory.id)} />,
-    name: dicEmployeeCategory.name,
+    name: (
+      <Link
+        component="button"
+        type="button"
+        underline="none"
+        disabled={!blnCanView && !blnCanEdit}
+        data-control-id="employee-category-master.list.row.name.button"
+        onClick={(objEvent) => {
+          if (window.getSelection()?.toString()) {
+            objEvent.stopPropagation();
+            return;
+          }
+          openDialog(blnCanEdit ? "edit" : "view", dicEmployeeCategory);
+        }}
+        sx={{ color: "#334155", cursor: "pointer", fontSize: "inherit", fontWeight: 500, textAlign: "left", textUnderlineOffset: "3px", userSelect: "text", WebkitUserSelect: "text", "&:hover": { color: "#0066df", textDecoration: "underline" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}
+      >
+        {dicEmployeeCategory.name}
+      </Link>
+    ),
+    nameText: dicEmployeeCategory.name,
     code: dicEmployeeCategory.code,
-    status: <span className={`${styles.statusPill} ${dicEmployeeCategory.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicEmployeeCategory.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span>,
+    status: (
+      <span className={styles.statusPill} style={{ background: dicEmployeeCategory.status === "Active" ? "#dcfce7" : "#fee2e2", color: dicEmployeeCategory.status === "Active" ? "#15803d" : "#dc2626" }}>
+        {dicEmployeeCategory.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}
+      </span>
+    ),
     statusSortValue: dicEmployeeCategory.status
   }));
 
-  const lstTableColumns: DataGridColumn<EmployeeCategoryTableRow>[] = [
-    { field: "action", headerName: dicEmployeeCategoryLabels.tableActions, sortable: false, filterable: false, exportable: false, width: 140 },
-    { field: "name", headerName: dicEmployeeCategoryLabels.tableName, width: 260 },
-    { field: "code", headerName: dicEmployeeCategoryLabels.tableCode, width: 230 },
-    { field: "status", headerName: dicEmployeeCategoryLabels.tableStatus, width: 140, sortAccessor: (dicRow) => dicRow.statusSortValue }
+  const lstTableColumns: CommonTableColumn<EmployeeCategoryTableRow>[] = [
+    { field: "name", headerName: dicEmployeeCategoryLabels.tableName, sortAccessor: (dicRow) => dicRow.nameText },
+    { field: "code", headerName: dicEmployeeCategoryLabels.tableCode },
+    { field: "status", headerName: dicEmployeeCategoryLabels.tableStatus, sortAccessor: (dicRow) => dicRow.statusSortValue }
   ];
 
   useEffect(() => {
@@ -447,73 +499,33 @@ export default function EmployeeCategoryMasterPanel() {
   }
 
   useEffect(() => {
-    let blnMounted = true;
-    const lstLanguageIDs = Array.from(
-      new Set(
-        dicForm.lstTexts
-          .map((dicText) => Number(dicText.intLanguageID))
-          .filter((intLanguageID) => Number.isFinite(intLanguageID) && intLanguageID > 0),
-      ),
-    );
-    const lstLanguageIDsToLoad = lstLanguageIDs.filter(
-      (intLanguageID) => !dicRowLabelsByLanguageID[intLanguageID],
-    );
-    if (lstLanguageIDsToLoad.length === 0) {
-      return () => {
-        blnMounted = false;
-      };
-    }
-
-    async function loadRowLabels() {
-      const lstResponses = await Promise.all(
-        lstLanguageIDsToLoad.map(async (intLanguageID) => {
-          const objResponse = await labelService.getModuleLabels(intLanguageID, "employee_category");
-          return {
-            intLanguageID,
-            dicLabels: objResponse.labels ?? {},
-          };
-        }),
-      );
-      if (!blnMounted) {
-        return;
-      }
-      setDicRowLabelsByLanguageID((dicPrevious) => {
-        const dicNext = { ...dicPrevious };
-        for (const { intLanguageID, dicLabels } of lstResponses) {
-          dicNext[intLanguageID] = dicLabels;
-        }
-        return dicNext;
-      });
-    }
-
-    loadRowLabels().catch(() => undefined);
-    return () => {
-      blnMounted = false;
-    };
-  }, [dicForm.lstTexts, dicRowLabelsByLanguageID]);
-
-  function getRowLabel(intLanguageID: number | "", strKey: string, strFallback: string) {
-    const intResolvedLanguageID = Number(intLanguageID);
-    if (Number.isFinite(intResolvedLanguageID) && intResolvedLanguageID > 0) {
-      const dicLabels = dicRowLabelsByLanguageID[intResolvedLanguageID];
-      if (dicLabels?.[strKey]) {
-        return dicLabels[strKey];
-      }
-    }
-    return strFallback;
-  }
-
-  useEffect(() => {
     if (objFormOptions.lstLanguages.length === 0) {
       return;
     }
     setDicForm((dicPrevious) => ensureTenantLanguageRows(dicPrevious));
   }, [intDefaultLanguageID, intSecondaryLanguageID, objFormOptions.lstLanguages.length]);
 
+  useEffect(() => {
+    if (!blnDialogOpen || strMode === "view") {
+      return;
+    }
+    const intTimer = window.setTimeout(() => {
+      const strField = strPendingErrorFocusRef.current;
+      strPendingErrorFocusRef.current = null;
+      if (strField === "code") {
+        objCodeInputRef.current?.focus();
+        return;
+      }
+      objNameInputRef.current?.focus();
+    }, 0);
+    return () => window.clearTimeout(intTimer);
+  }, [blnDialogOpen, dicErrors, strMode]);
+
   function openDialog(strNextMode: EmployeeCategoryMode, dicEmployeeCategory?: EmployeeCategoryRecord) {
     // Reuses one dialog for add, edit, and read-only view modes.
     setStrMode(strNextMode);
     setStrEditingEmployeeCategoryId(dicEmployeeCategory?.id ?? "");
+    strPendingErrorFocusRef.current = null;
     setDicErrors({});
     setDicTextTranslationLoading({});
     setDicLastTranslatedSourceByRow({});
@@ -540,6 +552,7 @@ export default function EmployeeCategoryMasterPanel() {
 
   function closeDialog() {
     // Closes the form dialog without changing persisted employeeCategory data.
+    strPendingErrorFocusRef.current = null;
     setBlnDialogOpen(false);
   }
 
@@ -551,32 +564,6 @@ export default function EmployeeCategoryMasterPanel() {
   function closeToast() {
     // Hides the current snackbar notification.
     setObjToast((objPrevious) => ({ ...objPrevious, blnOpen: false }));
-  }
-
-  function openConfirmDialog(objDialog: ConfirmDialogState) {
-    // Stores a deferred callback so one confirmation dialog can handle multiple action types.
-    setObjConfirmDialog(objDialog);
-  }
-
-  function closeConfirmDialog() {
-    // Clears the confirmation state after cancel or completion.
-    setObjConfirmDialog(null);
-  }
-
-  async function executeConfirmedAction() {
-    // Row toggles, bulk actions, deletes, and form reset all share one confirmation path.
-    if (!objConfirmDialog) {
-      return;
-    }
-    setBlnSubmitting(true);
-    try {
-      await objConfirmDialog.fnOnConfirm();
-    } catch (objError) {
-      showToast(objError instanceof Error ? objError.message : dicEmployeeCategoryLabels.requestFailed, "error");
-    } finally {
-      setBlnSubmitting(false);
-      closeConfirmDialog();
-    }
   }
 
   function validateForm() {
@@ -605,6 +592,7 @@ export default function EmployeeCategoryMasterPanel() {
       dicNextErrors.name = dicEmployeeCategoryLabels.validationNameDuplicate;
     }
 
+    strPendingErrorFocusRef.current = dicNextErrors.name ? "name" : dicNextErrors.code ? "code" : null;
     setDicErrors(dicNextErrors);
     return Object.keys(dicNextErrors).length === 0;
   }
@@ -631,32 +619,28 @@ export default function EmployeeCategoryMasterPanel() {
         closeDialog();
         showToast(strMode === "add" ? dicEmployeeCategoryLabels.saveSuccess : dicEmployeeCategoryLabels.updateSuccess);
       })
-      .catch((objError) => showToast(objError instanceof Error ? objError.message : dicEmployeeCategoryLabels.requestFailed, "error"))
+      .catch((objError) => {
+        const strMessage = objError instanceof Error ? objError.message : dicEmployeeCategoryLabels.requestFailed;
+        const blnCodeError = /employee category code/i.test(strMessage) && !/employee category name/i.test(strMessage);
+        const blnNameError = /employee category name/i.test(strMessage) && !/employee category code/i.test(strMessage);
+        if (blnCodeError || blnNameError) {
+          strPendingErrorFocusRef.current = blnCodeError ? "code" : "name";
+          setDicErrors({ [blnCodeError ? "code" : "name"]: strMessage });
+        } else {
+          showToast(strMessage, "error");
+        }
+      })
       .finally(() => setBlnSubmitting(false));
   }
 
-  function deleteEmployeeCategory(strEmployeeCategoryId: string) {
-    // Deletes a single row by reusing the same backend bulk-delete endpoint.
-    openConfirmDialog({
-      strTitle: dicEmployeeCategoryLabels.confirmDeleteTitle,
-      strMessage: dicEmployeeCategoryLabels.confirmDeleteMessage,
-      strConfirmLabel: dicEmployeeCategoryLabels.confirmDeleteLabel,
-      fnOnConfirm: async () => {
-        await masterApiService.bulkEmployeeCategoryDelete([Number(strEmployeeCategoryId)]);
-        await loadEmployeeCategories();
-        showToast(dicEmployeeCategoryLabels.deleteSuccess);
-      }
-    });
-  }
-
   return (
-    <Box className={`${styles.page} ${styles.referenceMasterPage}`}>
-      <MasterBreadcrumbs strCurrent={dicEmployeeCategoryLabels.pageTitle} />
-      <Box className={styles.topBar}>
-        <Button controlId="employee-category-master.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicEmployeeCategoryLabels.backButton}</Button>
-      </Box>
+    <Box className={styles.page} sx={{ position: "relative" }}>
+      <Breadcrumbs aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ fontSize: 13, py: 0.5, ml: "3px" }}>
+        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{t("breadcrumb_masters", "Masters")}</Typography>
+        <Typography component="h1" aria-current="page" sx={{ fontSize: "inherit", fontWeight: 700, color: "#243b53" }}>{t("breadcrumb_employee_categories", "Employee Categories")}</Typography>
+      </Breadcrumbs>
 
-      <Box className={styles.controlsCard}>
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {strRightsError ? (
           <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography>
         ) : null}
@@ -665,34 +649,74 @@ export default function EmployeeCategoryMasterPanel() {
             {t("read_only_mode", "You have view-only access for Employee Category.")}
           </Typography>
         ) : null}
-        <Box className={styles.searchRow} sx={{ alignItems: "end", "& .MuiButton-root": { height: "36px !important", minHeight: "36px !important", alignSelf: "flex-end" } }}>
-          <Box><Typography component="label" htmlFor="employee-category-master-search-name" sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{dicEmployeeCategoryLabels.tableName}</Typography>
-            <TextField id="employee-category-master-search-name" controlId="employee-category-master.list.search-name.input" inputProps={{ "controlId": "employee-category-master.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicEmployeeCategoryLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} fullWidth />
-          </Box>
-          <Box><Typography component="label" htmlFor="employee-category-master-search-code" sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{dicEmployeeCategoryLabels.tableCode}</Typography>
-            <TextField id="employee-category-master-search-code" controlId="employee-category-master.list.search-code.input" inputProps={{ "controlId": "employee-category-master.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicEmployeeCategoryLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} fullWidth />
-          </Box>
-          <Box><Typography component="label" htmlFor="employee-category-master-search-status" sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{dicEmployeeCategoryLabels.tableStatus}</Typography>
-            <TextField id="employee-category-master-search-status" controlId="employee-category-master.list.search-status.select" inputProps={{ "controlId": "employee-category-master.list.search-status.select" }} select value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} size="small" fullWidth>
+        <Box
+          className={styles.searchRow}
+          aria-busy={blnLoading || blnRightsLoading || blnSubmitting}
+          sx={{
+            alignItems: "center",
+            "& .MuiButton-root": { alignSelf: "center" },
+          }}
+        >
+          <TextField className="app-mui-text-field" id="employee-category-master-search-name" controlId="employee-category-master.list.search-name.input" inputProps={{ "controlId": "employee-category-master.list.search-name.input" }} label={dicEmployeeCategoryLabels.tableName} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicEmployeeCategoryLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnLoading || blnRightsLoading || blnSubmitting} fullWidth />
+          <TextField className="app-mui-text-field" id="employee-category-master-search-code" controlId="employee-category-master.list.search-code.input" inputProps={{ "controlId": "employee-category-master.list.search-code.input" }} label={dicEmployeeCategoryLabels.tableCode} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicEmployeeCategoryLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnLoading || blnRightsLoading || blnSubmitting} fullWidth />
+          <TextField className="app-mui-text-field" id="employee-category-master-search-status" controlId="employee-category-master.list.search-status.select" inputProps={{ "controlId": "employee-category-master.list.search-status.select" }} select label={dicEmployeeCategoryLabels.tableStatus} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} size="small" disabled={blnLoading || blnRightsLoading || blnSubmitting} fullWidth>
             <MenuItem controlId="employee-category-master.list.search-status.all.option" value="All">All</MenuItem>
             <MenuItem controlId="employee-category-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
             <MenuItem controlId="employee-category-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
-          </Box>
-          <Box className={styles.searchActions}><Button controlId="employee-category-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
-          <Box className={styles.searchActions}><Button controlId="employee-category-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
+          <Box className={styles.searchActions}><Button data-control-id="employee-category-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnLoading || blnRightsLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button data-control-id="employee-category-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnRightsLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
         </Box>
       </Box>
 
-      <Box className={styles.tableCard}>
-        {!blnCanView && !blnRightsLoading && !blnLoading ? (
+      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        {(blnLoading || blnRightsLoading) && !blnDialogOpen ? (
+          <EmployeeCategoryGridSkeleton />
+        ) : !blnCanView ? (
           <Box className={styles.emptyState}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>EmployeeCategory access is not available for your user group.</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>Contact your administrator if you need employee category visibility.</Typography>
           </Box>
         ) : (
-          <CommonDataGrid columns={lstTableColumns.filter((dicColumn) => dicColumn.field !== "action")} rows={lstTableRows} rowIdField="id" defaultPageSize={20} pageSizeOptions={[10, 20, 50]} exportFileName={dicEmployeeCategoryLabels.exportFileName.replace(/\.(csv|pdf)$/i, "")} showExportOptions={blnCanExport} showPaginationSummary hideRowClickHint onRowClick={(dicRow) => { const dicCategory = lstEmployeeCategories.find((dicItem) => dicItem.id === dicRow.id); if (dicCategory) openDialog(blnCanEdit ? "edit" : "view", dicCategory); }} emptyMessage={dicEmployeeCategoryLabels.emptyMessage} testIdPrefix="employee-category-master.list" toolbarLeft={blnCanAdd ? <Button controlId="employee-category-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicEmployeeCategoryLabels.addButton}</Button> : null} sx={{ p: 0, boxShadow: "none", background: "transparent" }} />
+          <CommonTable
+            columns={lstTableColumns}
+            rows={lstTableRows}
+            rowIdField="id"
+            exportFileName={dicEmployeeCategoryLabels.exportFileName}
+            showExportOptions={blnCanExport}
+            testIdPrefix="employee-category-master.list"
+            showPaginationSummary
+            hideRowClickHint
+            onRowClick={(dicRow) => {
+              if (blnRightsLoading || blnLoading || blnSubmitting || (!blnCanEdit && !blnCanView)) return;
+              const dicCategory = lstEmployeeCategories.find((dicItem) => dicItem.id === dicRow.id);
+              if (dicCategory) openDialog(blnCanEdit ? "edit" : "view", dicCategory);
+            }}
+            minTableWidth={760}
+            emptyMessage={dicEmployeeCategoryLabels.emptyMessage}
+            toolbarLeft={(
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+                {blnCanAdd ? (
+                  <Button data-control-id="employee-category-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+                    {dicEmployeeCategoryLabels.addButton}
+                  </Button>
+                ) : null}
+              </Box>
+            )}
+            getRowSx={() => ({
+              backgroundColor: "#fff",
+              "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
+              "&.MuiTableRow-hover:hover td:first-of-type .MuiLink-root": { textDecoration: "underline" },
+            })}
+            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+          />
         )}
+        <BlockingLoader
+          blnOpen={blnSubmitting}
+          strLabel={dicCommonLabels.processing}
+          intZIndex={1400}
+          blnLocal
+        />
       </Box>
 
       <CommonMasterDialog
@@ -707,33 +731,85 @@ export default function EmployeeCategoryMasterPanel() {
         onPrimaryAction={saveEmployeeCategory}
         blnPrimaryDisabled={blnSubmitting}
         blnHidePrimary={strMode === "view"}
-        paperClassName={styles.referenceMasterDialogPaper}
         nodeTitleAction={
           <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
-              <ActiveStatusSwitch testId="employee-category-master.dialog.active.switch" blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
-              <Typography className={styles.switchLabel}>{dicEmployeeCategoryLabels.fieldIsActive}</Typography>
-         </Box>
+            <ActiveStatusSwitch
+              testId="employee-category-master.dialog.active.switch"
+              blnIsActive={dicForm.status === "Active"}
+              disabled={strMode === "view"}
+              sx={{
+                width: 40,
+                height: 22,
+                p: 0,
+                overflow: "visible",
+                "& .MuiSwitch-switchBase": {
+                  p: "3px",
+                  color: "#fff",
+                  transitionDuration: "180ms",
+                  "&.Mui-checked": {
+                    transform: "translateX(18px)",
+                    color: "#fff",
+                    "& + .MuiSwitch-track": { backgroundColor: "#00b86b", opacity: 1 },
+                  },
+                  "&.Mui-disabled": { color: "#fff", opacity: 0.7 },
+                },
+                "& .MuiSwitch-thumb": {
+                  width: 16,
+                  height: 16,
+                  boxShadow: "0 1px 3px rgba(15, 23, 42, 0.2)",
+                },
+                "& .MuiSwitch-track": {
+                  borderRadius: "11px",
+                  backgroundColor: "#98a2b3",
+                  opacity: 1,
+                  transition: "background-color 180ms",
+                },
+              }}
+              onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))}
+            />
+            <Typography className={styles.switchLabel} sx={{ fontSize: "12px !important", fontWeight: "600 !important", whiteSpace: "nowrap" }}>{dicCommonLabels.statusActive}</Typography>
+            <IconButton aria-label={dicCommonLabels.close} onClick={closeDialog} size="small" sx={{ ml: 1, color: "#94a3b8" }}>
+              <CloseRoundedIcon fontSize="small" />
+            </IconButton>
+          </Box>
         }
-        titleSx={{ px: 2.25, py: 1.25, fontSize: "1rem", maxHeight: 50 }}
-        paperSx={{
-          overflow: "hidden",
-          m: 2,
-        }}
-        contentSx={{ overflowX: "hidden", overflowY: "visible" }}
+        nodeFooterStart={<Typography sx={{ color: "#64748b", fontSize: "11px" }}>{t("required_fields_hint", "Required fields are marked")} <Box component="span" sx={{ color: "#dc2626" }}>*</Box></Typography>}
+        titleSx={{ px: 2.25, py: 1.25, fontSize: "16px", fontWeight: 700, maxHeight: 50 }}
+        paperClassName={styles.departmentDialogPaper}
+        paperSx={{ "& .MuiButton-root": { fontSize: "12px !important", fontWeight: "600 !important" } }}
+        maxWidth={false}
+        fullWidth={false}
+        contentSx={{ overflowX: "hidden", overflowY: "auto", px: "20px", py: "12px", borderColor: "#e5edf5" }}
         nodeContent={
-          <Box sx={{ display: "grid", gap: 2, pt: 0.5 }}>
+          <Box sx={{ display: "grid", gap: "12px" }}>
             <Box
               sx={{
                 display: "grid",
-                gap: 1.6,
-                gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                columnGap: 1.6,
+                rowGap: "12px",
+                gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
                 alignItems: "start",
               }}
             >
+              {strMode === "add" ? (
+                <Box sx={{ gridColumn: "1 / -1" }}>
+                  <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>
+                    {t("basic_information", "Basic Information")}
+                  </Typography>
+                  <Typography sx={{ fontSize: "11px", color: "#64748b", mt: 0.25, mb: 1 }}>
+                    {t("basic_information_help", "Create a new employee category for your organisation.")}
+                  </Typography>
+                </Box>
+              ) : null}
               <TextField
+                className="app-mui-text-field"
                 required
                 controlId="employee-category-master.dialog.name.input"
-                label={`${dicEmployeeCategoryLabels.fieldName}`}
+                inputRef={objNameInputRef}
+                autoFocus={strMode !== "view"}
+                label={dicEmployeeCategoryLabels.fieldName}
+                placeholder={t("dialog_name_placeholder", "Enter employee category name")}
+                size="small"
                 value={dicForm.name}
                 inputProps={{ "controlId": "employee-category-master.dialog.name.input" }}
                 disabled={strMode === "view"}
@@ -748,9 +824,13 @@ export default function EmployeeCategoryMasterPanel() {
                 fullWidth
               />
               <TextField
+                className="app-mui-text-field"
                 required
                 controlId="employee-category-master.dialog.code.input"
-                label={`${dicEmployeeCategoryLabels.fieldCode}`}
+                inputRef={objCodeInputRef}
+                label={dicEmployeeCategoryLabels.fieldCode}
+                placeholder={t("dialog_code_placeholder", "Enter employee category code")}
+                size="small"
                 value={dicForm.code}
                 inputProps={{ "controlId": "employee-category-master.dialog.code.input" }}
                 disabled={strMode === "view"}
@@ -766,133 +846,67 @@ export default function EmployeeCategoryMasterPanel() {
               />
             </Box>
 
-            <>
-            <Box className={styles.referenceTranslationHeader} sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1.25, flexWrap: "wrap" }}>
-              <Box>
-                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("language_translations", "Language Translations")}</Typography>
-                <Typography sx={{ color: "#64748b", fontSize: "0.86rem", mt: 0.25 }}>
-                  {t("multilingual_text_help", "Add translated employee category names for supported languages.")}
-                </Typography>
-              </Box>
-              <Box sx={{ display: "flex", gap: 1.1, alignItems: "center", ml: "auto" }}>
-                <Button controlId="employee-category-master.dialog.add-language.button" className={styles.secondaryButton} startIcon={<AddRoundedIcon />} onClick={addLanguageRow} disabled={strMode === "view" || blnSubmitting || !objFormOptions.lstLanguages.some((dicLanguage) => !dicForm.lstTexts.some((dicText) => Number(dicText.intLanguageID) === dicLanguage.intID))} sx={{ minHeight: 34 }}>
-                  {t("add_language", "Add Language")}
-                </Button>
-                <Button
-                  controlId="employee-category-master.dialog.translate.button"
-                  className={styles.primaryButton}
-                  onClick={() => void handleTranslateClick()}
-                  disabled={strMode === "view" || blnSubmitting || dicForm.lstTexts.length < 2 || !dicForm.name.trim() || Object.values(dicTextTranslationLoading).some(Boolean)}
-                  sx={{
-                    minWidth: 108,
-                    minHeight: 34,
-                    boxShadow: "none",
-                    "&:hover": { boxShadow: "none" },
-                  }}
-                >
-                  {Object.values(dicTextTranslationLoading).some(Boolean) ? (
-                    <CircularProgress size={18} sx={{ color: "#ffffff" }} />
-                  ) : (
-                    t("translate", "AI Translate")
-                  )}
-                </Button>
-              </Box>
-            </Box>
-
-            <Box className={styles.referenceTranslationRows} sx={{ display: "grid", gap: 1.2 }}>
-              {dicForm.lstTexts.filter((dicText) => Number(dicText.intLanguageID) === intSecondaryLanguageID).map((dicText) => (
-                <Box
-                  key={dicText.strRowID}
-                  sx={{
-                    display: "grid",
-                    gap: 1.2,
-                    gridTemplateColumns: {
-                      xs: "1fr",
-                      md: "minmax(0, 0.95fr) minmax(0, 1.35fr) minmax(0, 0.95fr)",
-                    },
-                    alignItems: "start",
-                    border: "1px solid rgba(203,213,225,0.8)",
-                    borderRadius: "16px",
-                    p: 1.2,
-                    background: "#f8fafc",
-                  }}
-                >
-                  <TextField
-                    controlId="employee-category-master.dialog.language.select"
-                    select
-                    label={getRowLabel(dicText.intLanguageID, "language", t("language", "Language"))}
-                    value={dicText.intLanguageID}
-                    inputProps={{ "controlId": "employee-category-master.dialog.language.select", "data-row-key": dicText.strRowID }}
-                    InputLabelProps={{ shrink: true }}
-                    SelectProps={{
-                      displayEmpty: true,
-                      renderValue: (objValue) => {
-                        const intSelectedLanguageID = Number(objValue);
-                        return (
-                          objFormOptions.lstLanguages.find(
-                            (dicLanguage) => dicLanguage.intID === intSelectedLanguageID,
-                          )?.strLabel ?? dicText.strLanguageName ?? ""
-                        );
-                      },
-                    }}
-                    disabled
-                    fullWidth
-                  >
-                    {objFormOptions.lstLanguages.map((dicLanguage) => (
-                      <MenuItem controlId="employee-category-master.dialog.language.option" data-option-key={dicLanguage.intID} key={dicLanguage.intID} value={dicLanguage.intID}>{dicLanguage.strLabel}</MenuItem>
-                    ))}
-                  </TextField>
-                  <TextField
-                    controlId="employee-category-master.dialog.translated-name.input"
-                    label={getRowLabel(dicText.intLanguageID, "field_name", dicEmployeeCategoryLabels.fieldName)}
-                    placeholder={t("dialog_translated_name_placeholder", "Enter employee category name in {language}").replace("{language}", objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === Number(dicText.intLanguageID))?.strLabel ?? dicText.strLanguageName)}
-                    value={dicText.strEmployeeCategoryName}
-                    inputProps={{ "controlId": "employee-category-master.dialog.translated-name.input", "data-row-key": dicText.strRowID }}
-                    onChange={(objEvent) => {
-                      const strValue = objEvent.target.value;
-                      updateTextRow(dicText.strRowID, "strEmployeeCategoryName", strValue);
-                    }}
-                    disabled={strMode === "view"}
-                    InputProps={{
-                      endAdornment: dicTextTranslationLoading[dicText.strRowID]
-                        ? (
-                            <InputAdornment position="end">
-                              <CircularProgress size={18} sx={{ color: "#2563eb" }} />
-                            </InputAdornment>
-                          )
-                        : undefined,
-                    }}
-                    fullWidth
-                  />
-                  <TextField
-                    controlId="employee-category-master.dialog.translated-code.input"
-                    label={getRowLabel(dicText.intLanguageID, "field_code", dicEmployeeCategoryLabels.fieldCode)}
-                    value={dicText.strEmployeeCategoryCode}
-                    inputProps={{ "controlId": "employee-category-master.dialog.translated-code.input", "data-row-key": dicText.strRowID }}
-                    disabled
-                    fullWidth
-                  />
+            {dicForm.lstTexts.filter((dicText) => Number(dicText.intLanguageID) === intSecondaryLanguageID).length > 0 ? (
+              <Box sx={{ border: "1px solid #e3edfc", borderRadius: "6px", overflow: "hidden", background: "#f7faff" }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap", p: 1, borderBottom: "1px solid #e3edfc", background: "#eff6ff" }}>
+                  <LanguageRoundedIcon sx={{ color: "#1473cf" }} />
+                  <Box sx={{ flex: 1, minWidth: 180 }}>
+                    <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>{t("language_translations", "Language Translations")}</Typography>
+                    <Typography sx={{ color: "#64748b", fontSize: "11px", mt: 0.25 }}>
+                      {t("multilingual_text_help", "Add translated employee category names for supported languages.")}
+                    </Typography>
+                  </Box>
+                  <Tooltip title={t("translate_help", "Generate suggested translations using AI. Review before saving.")} arrow>
+                    <span>
+                      <Button
+                        controlId="employee-category-master.dialog.translate.button"
+                        className={styles.secondaryButton}
+                        variant="outlined"
+                        startIcon={Object.values(dicTextTranslationLoading).some(Boolean) ? undefined : <AutoAwesomeRoundedIcon />}
+                        onClick={() => void handleTranslateClick()}
+                        disabled={strMode === "view" || blnSubmitting || dicForm.lstTexts.length < 2 || !dicForm.name.trim() || Object.values(dicTextTranslationLoading).some(Boolean)}
+                        sx={{ minHeight: 34, whiteSpace: "nowrap", background: "#fff" }}
+                      >
+                        {Object.values(dicTextTranslationLoading).some(Boolean) ? (
+                          <CircularProgress size={18} sx={{ color: "#2563eb" }} />
+                        ) : (
+                          t("translate", "AI Translate")
+                        )}
+                      </Button>
+                    </span>
+                  </Tooltip>
                 </Box>
-              ))}
-            </Box>
-            </>
+                <Box sx={{ display: "grid", gap: 1.5, p: 1 }}>
+                  {dicForm.lstTexts.filter((dicText) => Number(dicText.intLanguageID) === intSecondaryLanguageID).map((dicText) => (
+                    <Box key={dicText.strRowID} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "minmax(100px, 0.3fr) minmax(0, 1fr)" }, alignItems: "center", gap: 1.5 }}>
+                      <Typography component="label" htmlFor={`employee-category-translation-${dicText.strRowID}`} sx={{ fontSize: "12px", fontWeight: 600, color: "#0f172a" }}>
+                        {objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === Number(dicText.intLanguageID))?.strLabel ?? dicText.strLanguageName}
+                      </Typography>
+                      <TextField
+                        className="app-mui-text-field"
+                        id={`employee-category-translation-${dicText.strRowID}`}
+                        controlId="employee-category-master.dialog.translated-name.input"
+                        placeholder={t("dialog_translated_name_placeholder", "Enter employee category name in {language}").replace("{language}", objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === Number(dicText.intLanguageID))?.strLabel ?? dicText.strLanguageName)}
+                        value={dicText.strEmployeeCategoryName}
+                        inputProps={{ "controlId": "employee-category-master.dialog.translated-name.input", "data-row-key": dicText.strRowID }}
+                        onChange={(objEvent) => updateTextRow(dicText.strRowID, "strEmployeeCategoryName", objEvent.target.value)}
+                        disabled={strMode === "view"}
+                        InputProps={{
+                          endAdornment: dicTextTranslationLoading[dicText.strRowID] ? (
+                            <InputAdornment position="end"><CircularProgress size={18} sx={{ color: "#2563eb" }} /></InputAdornment>
+                          ) : undefined,
+                        }}
+                        fullWidth
+                      />
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            ) : null}
 
           </Box>
         }
       />
-
-      <CommonConfirmDialog
-        blnOpen={Boolean(objConfirmDialog)}
-        strTitle={objConfirmDialog?.strTitle}
-        strMessage={objConfirmDialog?.strMessage}
-        strCancelLabel={dicCommonLabels.cancel}
-        strConfirmLabel={objConfirmDialog?.strConfirmLabel ?? dicEmployeeCategoryLabels.confirmButton}
-        blnConfirmDisabled={blnSubmitting}
-        onClose={closeConfirmDialog}
-        onConfirm={executeConfirmedAction}
-      />
-
-      <BlockingLoader blnOpen={blnSubmitting || ((blnLoading || blnRightsLoading) && !blnDialogOpen)} strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>

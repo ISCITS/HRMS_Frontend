@@ -319,6 +319,11 @@
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+.app-mui-text-field .MuiInputBase-root.Mui-focused:not(.Mui-error),
+.app-mui-text-field .MuiOutlinedInput-root.Mui-focused:not(.Mui-error) {
+  box-shadow: var(--app-field-focus-ring);
+}
+
 .app-mui-text-field.app-mui-text-field--rounded .MuiOutlinedInput-root,
 .app-mui-text-field.app-mui-text-field--rounded .MuiOutlinedInput-notchedOutline {
   border-radius: 9999px;
@@ -327,6 +332,19 @@
 .app-mui-text-field .MuiOutlinedInput-input {
   padding: 10px 14px;
   color: #111936;
+}
+
+.app-mui-text-field .MuiSelect-select.MuiOutlinedInput-input {
+  padding-right: 32px;
+}
+
+.app-mui-text-field .MuiSelect-icon {
+  color: var(--app-field-label-color);
+  transition: color 0.2s ease;
+}
+
+.app-mui-text-field .MuiInputBase-root.Mui-focused:not(.Mui-error) .MuiSelect-icon {
+  color: var(--app-field-focus-color);
 }
 
 .app-mui-text-field .MuiOutlinedInput-input.MuiInputBase-inputAdornedStart {
@@ -345,13 +363,10 @@
   border-color: var(--app-field-hover-border-color);
 }
 
+.app-mui-text-field .MuiInputBase-root.Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline,
 .app-mui-text-field .MuiOutlinedInput-root.Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline {
   border-color: var(--app-field-focus-color);
   border-width: 1px;
-}
-
-.app-mui-text-field .MuiOutlinedInput-root.Mui-focused:not(.Mui-error) {
-  box-shadow: var(--app-field-focus-ring);
 }
 
 .app-mui-text-field .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline,

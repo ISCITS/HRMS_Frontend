@@ -13,6 +13,7 @@ const config: EmployeeAttributeMasterConfig = {
   update: (id, form) => masterApiService.updateEmploymentType(id, { strEmploymentTypeCode: form.code, strEmploymentTypeName: form.name, blnIsActive: form.status === "Active" }),
   setStatus: (ids, active) => masterApiService.bulkEmploymentTypeStatus(ids, active),
   remove: (ids) => masterApiService.bulkEmploymentTypeDelete(ids),
+  hideGridLoadingOverlay: true,
 };
 
 export default function EmploymentTypeMasterPanel() { return <EmployeeAttributeMasterPanel config={config} />; }
