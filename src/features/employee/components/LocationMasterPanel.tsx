@@ -1,36 +1,36 @@
 "use client";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
   Box,
   Button,
   CircularProgress,
+  IconButton,
   InputAdornment,
+  Link,
   MenuItem,
   Snackbar,
-  Switch,
   TextField,
+  Tooltip,
   Typography
 } from "@mui/material";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
-import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import MasterBreadcrumbs from "@/components/master/MasterBreadcrumbs";
-import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
-import CommonDataGrid, { type DataGridColumn } from "@/components/ui/CommonDataGrid";
 import dicConstant from "@/constants/Constant.json";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
-import { labelService } from "@/features/labels/services/labelService";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { authHelpers } from "@/lib/auth";
@@ -59,8 +59,8 @@ type LocationRecord = {
 
 type LocationTableRow = {
   id: string;
-  action: ReactNode;
-  name: string;
+  nameText: string;
+  name: ReactNode;
   code: string;
   state: string;
   city: string;
@@ -72,13 +72,6 @@ type SearchForm = {
   code: string;
   name: string;
   status: "All" | LocationStatus;
-};
-
-type ConfirmDialogState = {
-  strTitle: string;
-  strMessage: string;
-  strConfirmLabel: string;
-  fnOnConfirm: () => Promise<void>;
 };
 
 type ToastState = {
@@ -107,7 +100,6 @@ function mapLocationRecord(dicRecord: LocationApiRecord): LocationRecord {
 
 // Location master screen: handles backend-backed CRUD, search, bulk actions, export, and view/edit dialogs.
 export default function LocationMasterPanel() {
-  const objRouter = useRouter();
   const { t } = useModuleLabels("location");
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly } = useModuleActionAccess(lstLocationModuleCodes);
   const [lstLocations, setLstLocations] = useState<LocationRecord[]>(lstDefaultLocations);
@@ -117,15 +109,16 @@ export default function LocationMasterPanel() {
   const [strEditingLocationId, setStrEditingLocationId] = useState("");
   const [dicForm, setDicForm] = useState<LocationFormValues>(dicEmptyForm);
   const [dicErrors, setDicErrors] = useState<Partial<Record<"code" | "name" | "strCityName", string>>>({});
+  const objNameInputRef = useRef<HTMLInputElement>(null);
+  const objCodeInputRef = useRef<HTMLInputElement>(null);
+  const objCityInputRef = useRef<HTMLInputElement>(null);
   const [dicTextTranslationLoading, setDicTextTranslationLoading] = useState<Record<string, boolean>>({});
   const [dicLastTranslatedSourceByRow, setDicLastTranslatedSourceByRow] = useState<Record<string, string>>({});
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSubmitting, setBlnSubmitting] = useState(false);
-  const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
-  const [dicRowLabelsByLanguageID, setDicRowLabelsByLanguageID] = useState<Record<number, Record<string, string>>>({});
 
   const dicCommonLabels = {
     cancel: t("cancel"),
@@ -165,7 +158,6 @@ export default function LocationMasterPanel() {
     tableName: "Location Name",
     tableCode: "Location Code",
     tableStatus: t("table_status"),
-    tableActions: t("table_actions"),
     saveSuccess: t("save_success"),
     updateSuccess: t("update_success"),
     requestFailed: t("request_failed"),
@@ -413,22 +405,43 @@ export default function LocationMasterPanel() {
 
   const lstTableRows: LocationTableRow[] = lstFilteredLocations.map((dicLocation) => ({
     id: dicLocation.id,
-    action: <CommonRowActions testIdPrefix="location-master.list.row" rowKey={dicLocation.id} blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} onView={() => openDialog("view", dicLocation)} onEdit={() => openDialog("edit", dicLocation)} onDelete={() => deleteLocation(dicLocation.id)} />,
-    name: dicLocation.name,
+    nameText: dicLocation.name,
+    name: (
+      <Link
+        component="button"
+        type="button"
+        underline="none"
+        disabled={!blnCanView && !blnCanEdit}
+        data-control-id="location-master.list.row.name.button"
+        onClick={(objEvent) => {
+          if (window.getSelection()?.toString()) {
+            objEvent.stopPropagation();
+            return;
+          }
+          openDialog(blnCanEdit ? "edit" : "view", dicLocation);
+        }}
+        sx={{ color: "#334155", cursor: "pointer", fontSize: "inherit", fontWeight: 500, textAlign: "left", textUnderlineOffset: "3px", userSelect: "text", WebkitUserSelect: "text", "&:hover": { color: "#0066df", textDecoration: "underline" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}
+      >
+        {dicLocation.name}
+      </Link>
+    ),
     code: dicLocation.code,
     state: dicLocation.strStateName || "-",
     city: dicLocation.strCityName || "-",
-    status: <span className={`${styles.statusPill} ${dicLocation.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicLocation.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span>,
+    status: (
+      <span className={styles.statusPill} style={{ background: dicLocation.status === "Active" ? "#dcfce7" : "#fee2e2", color: dicLocation.status === "Active" ? "#15803d" : "#dc2626" }}>
+        {dicLocation.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}
+      </span>
+    ),
     statusSortValue: dicLocation.status
   }));
 
-  const lstTableColumns: DataGridColumn<LocationTableRow>[] = [
-    { field: "action", headerName: dicModuleLabels.tableActions, sortable: false, filterable: false, exportable: false, width: 140 },
-    { field: "name", headerName: dicModuleLabels.tableName, width: 240 },
-    { field: "code", headerName: dicModuleLabels.tableCode, width: 160 },
-    { field: "state", headerName: dicModuleLabels.fieldState, width: 180 },
-    { field: "city", headerName: dicModuleLabels.fieldCity, width: 180 },
-    { field: "status", headerName: dicModuleLabels.tableStatus, width: 140, sortAccessor: (dicRow) => dicRow.statusSortValue }
+  const lstTableColumns: CommonTableColumn<LocationTableRow>[] = [
+    { field: "name", headerName: dicModuleLabels.tableName, sortAccessor: (dicRow) => dicRow.nameText },
+    { field: "code", headerName: dicModuleLabels.tableCode },
+    { field: "state", headerName: dicModuleLabels.fieldState },
+    { field: "city", headerName: dicModuleLabels.fieldCity },
+    { field: "status", headerName: dicModuleLabels.tableStatus, sortable: false, filterable: false, sortAccessor: (dicRow) => dicRow.statusSortValue }
   ];
 
   useEffect(() => {
@@ -444,63 +457,6 @@ export default function LocationMasterPanel() {
     const dicOptions = await locationService.getLocationFormOptions();
     setObjFormOptions(dicOptions);
     return dicOptions;
-  }
-
-  useEffect(() => {
-    let blnMounted = true;
-    const lstLanguageIDs = Array.from(
-      new Set(
-        dicForm.lstTexts
-          .map((dicText) => Number(dicText.intLanguageID))
-          .filter((intLanguageID) => Number.isFinite(intLanguageID) && intLanguageID > 0),
-      ),
-    );
-    const lstLanguageIDsToLoad = lstLanguageIDs.filter(
-      (intLanguageID) => !dicRowLabelsByLanguageID[intLanguageID],
-    );
-    if (lstLanguageIDsToLoad.length === 0) {
-      return () => {
-        blnMounted = false;
-      };
-    }
-
-    async function loadRowLabels() {
-      const lstResponses = await Promise.all(
-        lstLanguageIDsToLoad.map(async (intLanguageID) => {
-          const objResponse = await labelService.getModuleLabels(intLanguageID, "location");
-          return {
-            intLanguageID,
-            dicLabels: objResponse.labels ?? {},
-          };
-        }),
-      );
-      if (!blnMounted) {
-        return;
-      }
-      setDicRowLabelsByLanguageID((dicPrevious) => {
-        const dicNext = { ...dicPrevious };
-        for (const { intLanguageID, dicLabels } of lstResponses) {
-          dicNext[intLanguageID] = dicLabels;
-        }
-        return dicNext;
-      });
-    }
-
-    loadRowLabels().catch(() => undefined);
-    return () => {
-      blnMounted = false;
-    };
-  }, [dicForm.lstTexts, dicRowLabelsByLanguageID]);
-
-  function getRowLabel(intLanguageID: number | "", strKey: string, strFallback: string) {
-    const intResolvedLanguageID = Number(intLanguageID);
-    if (Number.isFinite(intResolvedLanguageID) && intResolvedLanguageID > 0) {
-      const dicLabels = dicRowLabelsByLanguageID[intResolvedLanguageID];
-      if (dicLabels?.[strKey]) {
-        return dicLabels[strKey];
-      }
-    }
-    return strFallback;
   }
 
   useEffect(() => {
@@ -551,32 +507,6 @@ export default function LocationMasterPanel() {
     setObjToast((objPrevious) => ({ ...objPrevious, blnOpen: false }));
   }
 
-  function openConfirmDialog(objDialog: ConfirmDialogState) {
-    // Stores a deferred callback so one confirmation dialog can handle multiple action types.
-    setObjConfirmDialog(objDialog);
-  }
-
-  function closeConfirmDialog() {
-    // Clears the confirmation state after cancel or completion.
-    setObjConfirmDialog(null);
-  }
-
-  async function executeConfirmedAction() {
-    // Row toggles, bulk actions, deletes, and form reset all share one confirmation path.
-    if (!objConfirmDialog) {
-      return;
-    }
-    setBlnSubmitting(true);
-    try {
-      await objConfirmDialog.fnOnConfirm();
-    } catch (objError) {
-      showToast(objError instanceof Error ? objError.message : dicModuleLabels.requestFailed, "error");
-    } finally {
-      setBlnSubmitting(false);
-      closeConfirmDialog();
-    }
-  }
-
   function validateForm() {
     const dicNextErrors: Partial<Record<"code" | "name" | "strCityName", string>> = {};
     const strCode = dicForm.code.trim().toUpperCase();
@@ -608,7 +538,23 @@ export default function LocationMasterPanel() {
     }
 
     setDicErrors(dicNextErrors);
-    return Object.keys(dicNextErrors).length === 0;
+    const lstErrorKeys = Object.keys(dicNextErrors) as Array<keyof typeof dicNextErrors>;
+    if (lstErrorKeys.length > 0) {
+      window.setTimeout(() => {
+        if (dicNextErrors.name) {
+          objNameInputRef.current?.focus();
+          return;
+        }
+        if (dicNextErrors.code) {
+          objCodeInputRef.current?.focus();
+          return;
+        }
+        if (dicNextErrors.strCityName) {
+          objCityInputRef.current?.focus();
+        }
+      }, 0);
+    }
+    return lstErrorKeys.length === 0;
   }
 
   function saveLocation() {
@@ -637,27 +583,11 @@ export default function LocationMasterPanel() {
       .finally(() => setBlnSubmitting(false));
   }
 
-  function deleteLocation(strLocationId: string) {
-    openConfirmDialog({
-      strTitle: dicModuleLabels.confirmDeleteTitle,
-      strMessage: dicModuleLabels.confirmDeleteMessage,
-      strConfirmLabel: dicCommonLabels.delete,
-      fnOnConfirm: async () => {
-        await masterApiService.bulkLocationDelete([Number(strLocationId)]);
-        await loadLocations();
-        showToast(dicModuleLabels.deleteSuccess);
-      }
-    });
-  }
-
   return (
-    <Box className={`${styles.page} ${styles.referenceMasterPage}`}>
+    <Box className={styles.page} sx={{ position: "relative" }}>
       <MasterBreadcrumbs strCurrent={dicModuleLabels.pageTitle} />
-      <Box className={styles.topBar}>
-        <Button controlId="location-master.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicModuleLabels.backButton}</Button>
-      </Box>
 
-      <Box className={styles.controlsCard}>
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {strRightsError ? (
           <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography>
         ) : null}
@@ -666,71 +596,173 @@ export default function LocationMasterPanel() {
             {t("read_only_mode", "You have view-only access for Location.")}
           </Typography>
         ) : null}
-        <Box className={styles.searchRow} sx={{ alignItems: "end", "& .MuiButton-root": { height: "36px !important", minHeight: "36px !important", alignSelf: "flex-end" } }}>
-          <Box><Typography component="label" htmlFor="location-master-search-name" sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{dicModuleLabels.tableName}</Typography>
-            <TextField id="location-master-search-name" controlId="location-master.list.search-name.input" inputProps={{ "controlId": "location-master.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicModuleLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} fullWidth />
-          </Box>
-          <Box><Typography component="label" htmlFor="location-master-search-code" sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{dicModuleLabels.tableCode}</Typography>
-            <TextField id="location-master-search-code" controlId="location-master.list.search-code.input" inputProps={{ "controlId": "location-master.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicModuleLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} fullWidth />
-          </Box>
-          <Box><Typography component="label" htmlFor="location-master-search-status" sx={{ display: "block", mb: 0.75, fontSize: 12, fontWeight: 600 }}>{dicModuleLabels.tableStatus}</Typography>
-            <TextField id="location-master-search-status" controlId="location-master.list.search-status.select" inputProps={{ "controlId": "location-master.list.search-status.select" }} select value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} size="small" fullWidth>
+        <Box
+          className={styles.searchRow}
+          aria-busy={blnLoading || blnSubmitting || blnRightsLoading}
+          sx={{
+            alignItems: "center",
+            "& .MuiButton-root": { alignSelf: "center" },
+          }}
+        >
+          <TextField className="app-mui-text-field" id="location-master-search-name" controlId="location-master.list.search-name.input" inputProps={{ "controlId": "location-master.list.search-name.input" }} label={dicModuleLabels.tableName} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicModuleLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnLoading || blnSubmitting || blnRightsLoading} fullWidth />
+          <TextField className="app-mui-text-field" id="location-master-search-code" controlId="location-master.list.search-code.input" inputProps={{ "controlId": "location-master.list.search-code.input" }} label={dicModuleLabels.tableCode} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicModuleLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnLoading || blnSubmitting || blnRightsLoading} fullWidth />
+          <TextField className="app-mui-text-field" id="location-master-search-status" controlId="location-master.list.search-status.select" inputProps={{ "controlId": "location-master.list.search-status.select" }} select label={dicModuleLabels.tableStatus} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} size="small" disabled={blnLoading || blnSubmitting || blnRightsLoading} fullWidth>
             <MenuItem controlId="location-master.list.search-status.all.option" value="All">All</MenuItem>
             <MenuItem controlId="location-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
             <MenuItem controlId="location-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
-          </Box>
-          <Box className={styles.searchActions}><Button controlId="location-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
-          <Box className={styles.searchActions}><Button controlId="location-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
+          <Box className={styles.searchActions}><Button controlId="location-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button controlId="location-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.clear}</Button></Box>
         </Box>
       </Box>
 
-      <Box className={styles.tableCard}>
+      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {!blnCanView && !blnRightsLoading && !blnLoading ? (
           <Box className={styles.emptyState}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>Location access is not available for your user group.</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>Contact your administrator if you need location visibility.</Typography>
           </Box>
         ) : (
-          <CommonDataGrid columns={lstTableColumns.filter((dicColumn) => dicColumn.field !== "action")} rows={lstTableRows} rowIdField="id" defaultPageSize={20} pageSizeOptions={[10, 20, 50]} exportFileName={dicModuleLabels.exportFileName.replace(/\.(csv|pdf)$/i, "")} showExportOptions={blnCanExport} showPaginationSummary hideRowClickHint onRowClick={(dicRow) => { const dicLocation = lstLocations.find((dicItem) => dicItem.id === dicRow.id); if (dicLocation) openDialog(blnCanEdit ? "edit" : "view", dicLocation); }} emptyMessage={dicModuleLabels.emptyMessage} testIdPrefix="location-master.list" toolbarLeft={blnCanAdd ? <Button controlId="location-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicModuleLabels.addButton}</Button> : null} sx={{ p: 0, boxShadow: "none", background: "transparent" }} />
+          <CommonTable
+            columns={lstTableColumns}
+            rows={lstTableRows}
+            rowIdField="id"
+            exportFileName={dicModuleLabels.exportFileName.replace(/\.(csv|pdf)$/i, "")}
+            showExportOptions={blnCanExport}
+            testIdPrefix="location-master.list"
+            showPaginationSummary
+            hideRowClickHint
+            onRowClick={(dicRow) => {
+              if (blnRightsLoading || blnLoading || blnSubmitting || (!blnCanEdit && !blnCanView)) return;
+              const dicLocation = lstLocations.find((dicItem) => dicItem.id === dicRow.id);
+              if (dicLocation) openDialog(blnCanEdit ? "edit" : "view", dicLocation);
+            }}
+            minTableWidth={800}
+            emptyMessage={dicModuleLabels.emptyMessage}
+            toolbarLeft={(
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+                {blnCanAdd ? (
+                  <Button controlId="location-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+                    {dicModuleLabels.addButton}
+                  </Button>
+                ) : null}
+              </Box>
+            )}
+            getRowSx={() => ({
+              backgroundColor: "#fff",
+              "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
+              "&.MuiTableRow-hover:hover td:first-of-type .MuiLink-root": { textDecoration: "underline" },
+            })}
+            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+          />
         )}
+        <BlockingLoader
+          blnOpen={blnSubmitting}
+          strLabel={dicCommonLabels.processing}
+          intZIndex={1400}
+          blnLocal
+        />
       </Box>
 
       <CommonMasterDialog
         blnOpen={blnDialogOpen}
         onClose={closeDialog}
+        onDialogClose={(_, strReason) => {
+          if (strReason !== "backdropClick") {
+            closeDialog();
+          }
+        }}
+        rootTestId="location-master.dialog"
+        cancelButtonTestId="location-master.dialog.cancel.button"
+        primaryButtonTestId="location-master.dialog.save.button"
         strTitle={strMode === "add" ? dicModuleLabels.dialogAddTitle : strMode === "edit" ? dicModuleLabels.dialogEditTitle : dicModuleLabels.dialogViewTitle}
         strSecondaryLabel={strMode === "view" ? dicCommonLabels.close : dicCommonLabels.cancel}
         strPrimaryLabel={blnSubmitting ? dicModuleLabels.saving : dicCommonLabels.save}
         onPrimaryAction={saveLocation}
         blnPrimaryDisabled={blnSubmitting}
         blnHidePrimary={strMode === "view"}
-        paperClassName={styles.referenceMasterDialogPaper}
-        contentSx={{ overflowX: "hidden", overflowY: "visible" }}
-        titleSx={{ px: 2.25, py: 1.25, fontSize: "1rem", maxHeight: 50 }}
-        paperSx={{
-          overflow: "hidden",
-          m: 2,
-        }} 
         nodeTitleAction={
           <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
-            <ActiveStatusSwitch blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
-            <Typography className={styles.switchLabel}>{dicModuleLabels.fieldIsActive}</Typography>
+            <ActiveStatusSwitch
+              testId="location-master.dialog.active.switch"
+              blnIsActive={dicForm.status === "Active"}
+              disabled={strMode === "view"}
+              sx={{
+                width: 40,
+                height: 22,
+                p: 0,
+                overflow: "visible",
+                "& .MuiSwitch-switchBase": {
+                  p: "3px",
+                  color: "#fff",
+                  transitionDuration: "180ms",
+                  "&.Mui-checked": {
+                    transform: "translateX(18px)",
+                    color: "#fff",
+                    "& + .MuiSwitch-track": { backgroundColor: "#00b86b", opacity: 1 },
+                  },
+                  "&.Mui-disabled": { color: "#fff", opacity: 0.7 },
+                },
+                "& .MuiSwitch-thumb": {
+                  width: 16,
+                  height: 16,
+                  boxShadow: "0 1px 3px rgba(15, 23, 42, 0.2)",
+                },
+                "& .MuiSwitch-track": {
+                  borderRadius: "11px",
+                  backgroundColor: "#98a2b3",
+                  opacity: 1,
+                  transition: "background-color 180ms",
+                },
+              }}
+              onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))}
+            />
+            <Typography className={styles.switchLabel} sx={{ fontSize: "12px !important", fontWeight: "600 !important", whiteSpace: "nowrap" }}>
+              {dicCommonLabels.statusActive}
+            </Typography>
+            <IconButton aria-label={dicCommonLabels.close} onClick={closeDialog} size="small" sx={{ ml: 1, color: "#94a3b8" }}>
+              <CloseRoundedIcon fontSize="small" />
+            </IconButton>
           </Box>
-        } 
+        }
+        nodeFooterStart={<Typography sx={{ color: "#64748b", fontSize: "11px" }}>{t("required_fields_hint", "Required fields are marked")} <Box component="span" sx={{ color: "#dc2626" }}>*</Box></Typography>}
+        titleSx={{ px: 2.25, py: 1.25, fontSize: "16px", fontWeight: 700, maxHeight: 50 }}
+        paperClassName={styles.departmentDialogPaper}
+        paperSx={{ "& .MuiButton-root": { fontSize: "12px !important", fontWeight: "600 !important" } }}
+        maxWidth={false}
+        fullWidth={false}
+        contentSx={{ overflowX: "hidden", overflowY: "auto", px: "20px", py: "12px", borderColor: "#e5edf5" }}
         nodeContent={
-          <Box sx={{ display: "grid", gap: 2, pt: 0.5 }}>
+          <Box sx={{ display: "grid", gap: "12px" }}>
             <Box
               sx={{
                 display: "grid",
-                gap: 1.6,
+                columnGap: 1.6,
+                rowGap: "12px",
                 gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
                 alignItems: "start",
               }}
             >
+              {strMode === "add" ? (
+                <Box sx={{ gridColumn: "1 / -1" }}>
+                  <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>
+                    {t("basic_information", "Basic Information")}
+                  </Typography>
+                  <Typography sx={{ fontSize: "11px", color: "#64748b", mt: 0.25, mb: 1 }}>
+                    {t("basic_information_help", "Create a new location for your organisation.")}
+                  </Typography>
+                </Box>
+              ) : null}
               <TextField
+                className="app-mui-text-field"
+                controlId="location-master.dialog.name.input"
+                inputProps={{ "controlId": "location-master.dialog.name.input" }}
+                inputRef={objNameInputRef}
+                autoFocus={strMode !== "view"}
+                size="small"
                 required
-                label={`${dicModuleLabels.fieldName}`}
+                label={dicModuleLabels.fieldName}
+                placeholder={t("dialog_name_placeholder", "Enter location name")}
                 value={dicForm.name}
                 disabled={strMode === "view"}
                 onChange={(objEvent) => {
@@ -744,8 +776,14 @@ export default function LocationMasterPanel() {
                 fullWidth
               />
               <TextField
+                className="app-mui-text-field"
+                controlId="location-master.dialog.code.input"
+                inputProps={{ "controlId": "location-master.dialog.code.input" }}
+                inputRef={objCodeInputRef}
+                size="small"
                 required
-                label={`${dicModuleLabels.fieldCode}`}
+                label={dicModuleLabels.fieldCode}
+                placeholder={t("dialog_code_placeholder", "Enter location code")}
                 value={dicForm.code}
                 disabled={strMode === "view"}
                 onChange={(objEvent) => {
@@ -759,20 +797,61 @@ export default function LocationMasterPanel() {
                 fullWidth
               />
               <CommonSearchableSelect
+                className="app-mui-text-field"
+                controlId="location-master.dialog.state.select"
                 label={dicModuleLabels.fieldState}
                 value={dicForm.intStateID}
                 options={objFormOptions.lstStates}
                 getOptionLabel={(dicState) => `${dicState.strLabel}${dicState.strCode ? ` (${dicState.strCode})` : ""}`}
+                placeholder={dicModuleLabels.selectState}
                 onChange={(intValue) => setDicForm((dicPrevious) => ({ ...dicPrevious, intStateID: intValue }))}
                 fullWidth
                 disabled={strMode === "view"}
                 sx={{
-                  "& .MuiOutlinedInput-root": { minHeight: "56px !important" },
-                  "& .MuiAutocomplete-input": { paddingBottom: "16.5px !important", paddingTop: "16.5px !important" },
+                  "& .MuiInputLabel-root": {
+                    transform: "translate(14px, 10px) scale(1) !important",
+                  },
+                  "& .MuiInputLabel-root.MuiInputLabel-shrink": {
+                    transform: "translate(14px, -9px) scale(0.75) !important",
+                  },
+                  "& .MuiInputBase-root": {
+                    boxSizing: "border-box",
+                    minHeight: "40px !important",
+                  },
+                  "& .MuiOutlinedInput-root.MuiAutocomplete-inputRoot": {
+                    alignItems: "center",
+                    boxSizing: "border-box",
+                    minHeight: "40px !important",
+                    padding: "0 40px 0 14px !important",
+                  },
+                  "& .MuiOutlinedInput-root.MuiAutocomplete-inputRoot .MuiAutocomplete-input": {
+                    boxSizing: "border-box",
+                    minWidth: 0,
+                    padding: "10px 0 !important",
+                  },
+                  "& .MuiOutlinedInput-root.MuiAutocomplete-inputRoot > .MuiSvgIcon-root": {
+                    color: "#94a3b8",
+                    flexShrink: 0,
+                    margin: "0 8px 0 0",
+                  },
+                  "& .MuiAutocomplete-endAdornment": {
+                    right: "10px !important",
+                  },
+                  "& .MuiAutocomplete-popupIndicator": {
+                    color: "#64748b",
+                    height: "28px",
+                    width: "28px",
+                  },
                 }}
               />
               <TextField
+                className="app-mui-text-field"
+                controlId="location-master.dialog.city.input"
+                inputProps={{ "controlId": "location-master.dialog.city.input" }}
+                inputRef={objCityInputRef}
+                size="small"
                 label={dicModuleLabels.fieldCity}
+                placeholder={t("dialog_city_placeholder", "Enter city")}
                 value={dicForm.strCityName}
                 disabled={strMode === "view"}
                 onChange={(objEvent) => {
@@ -787,127 +866,64 @@ export default function LocationMasterPanel() {
             </Box>
 
             {intSecondaryLanguageID ? (
-            <>
-            <Box className={styles.referenceTranslationHeader} sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1.25, flexWrap: "wrap" }}>
-              <Box>
-                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("language_translations", "Language Translations")}</Typography>
-                <Typography sx={{ color: "#64748b", fontSize: "0.86rem", mt: 0.25 }}>
-                  {t("multilingual_text_help", "Add translated location names for supported languages.")}
-                </Typography>
-              </Box>
-              <Box sx={{ display: "flex", gap: 1.1, alignItems: "center", ml: "auto" }}>
-                <Button className={styles.secondaryButton} startIcon={<AddRoundedIcon />} disabled sx={{ minHeight: 34 }}>
-                  {t("add_language", "Add Language")}
-                </Button>
-                <Button
-                  className={styles.primaryButton}
-                  onClick={() => void handleTranslateClick()}
-                  disabled={strMode === "view" || blnSubmitting || dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]}
-                  sx={{
-                    minWidth: 108,
-                    minHeight: 34,
-                    boxShadow: "none",
-                    "&:hover": { boxShadow: "none" },
-                  }}
-                >
-                  {dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""] ? (
-                    <CircularProgress size={18} sx={{ color: "#ffffff" }} />
-                  ) : (
-                    t("translate", "AI Translate")
-                  )}
-                </Button>
-              </Box>
-            </Box>
-
-            <Box className={styles.referenceTranslationRows} sx={{ display: "grid", gap: 1.2 }}>
-              {dicForm.lstTexts.filter((dicText) => Number(dicText.intLanguageID) === intSecondaryLanguageID).map((dicText) => (
-                <Box
-                  key={dicText.strRowID}
-                  sx={{
-                    display: "grid",
-                    gap: 1.2,
-                    gridTemplateColumns: {
-                      xs: "1fr",
-                      md: "minmax(0, 0.95fr) minmax(0, 1.35fr) minmax(0, 0.95fr)",
-                    },
-                    alignItems: "start",
-                    border: "1px solid rgba(203,213,225,0.8)",
-                    borderRadius: "16px",
-                    p: 1.2,
-                    background: "#f8fafc",
-                  }}
-                >
-                  <TextField
-                    select
-                    label={getRowLabel(dicText.intLanguageID, "language", t("language", "Language"))}
-                    value={dicText.intLanguageID}
-                    InputLabelProps={{ shrink: true }}
-                    SelectProps={{
-                      displayEmpty: true,
-                      renderValue: (objValue) => {
-                        const intSelectedLanguageID = Number(objValue);
-                        return (
-                          objFormOptions.lstLanguages.find(
-                            (dicLanguage) => dicLanguage.intID === intSelectedLanguageID,
-                          )?.strLabel ?? dicText.strLanguageName ?? ""
-                        );
-                      },
-                    }}
-                    disabled
-                    fullWidth
-                  >
-                    {objFormOptions.lstLanguages.map((dicLanguage) => (
-                      <MenuItem key={dicLanguage.intID} value={dicLanguage.intID}>{dicLanguage.strLabel}</MenuItem>
-                    ))}
-                  </TextField>
-                  <TextField
-                    label={getRowLabel(dicText.intLanguageID, "field_name", dicModuleLabels.fieldName)}
-                    placeholder={t("dialog_translated_name_placeholder", "Enter location name in {language}").replace("{language}", objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === Number(dicText.intLanguageID))?.strLabel ?? dicText.strLanguageName)}
-                    value={dicText.strLocationName}
-                    onChange={(objEvent) => {
-                      const strValue = objEvent.target.value;
-                      updateTextRow(dicText.strRowID, "strLocationName", strValue);
-                    }}
-                    disabled={strMode === "view"}
-                    InputProps={{
-                      endAdornment: dicTextTranslationLoading[dicText.strRowID]
-                        ? (
-                            <InputAdornment position="end">
-                              <CircularProgress size={18} sx={{ color: "#2563eb" }} />
-                            </InputAdornment>
-                          )
-                        : undefined,
-                    }}
-                    fullWidth
-                  />
-                  <TextField
-                    label={getRowLabel(dicText.intLanguageID, "field_code", dicModuleLabels.fieldCode)}
-                    value={dicText.strLocationCode}
-                    disabled
-                    fullWidth
-                  />
+              <Box sx={{ border: "1px solid #e3edfc", borderRadius: "6px", overflow: "hidden", background: "#f7faff" }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap", p: 1, borderBottom: "1px solid #e3edfc", background: "#eff6ff" }}>
+                  <LanguageRoundedIcon sx={{ color: "#1473cf" }} />
+                  <Box sx={{ flex: 1, minWidth: 180 }}>
+                    <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>{t("language_translations", "Language Translations")}</Typography>
+                    <Typography sx={{ color: "#64748b", fontSize: "11px", mt: 0.25 }}>
+                      {t("language_translations_help", "Provide translated location names for the application languages you want to support.")}
+                    </Typography>
+                  </Box>
+                  <Tooltip title={t("translate_help", "Generate suggested translations using AI. Review before saving.")} arrow>
+                    <span>
+                      <Button
+                        controlId="location-master.dialog.translate.button"
+                        className={styles.secondaryButton}
+                        variant="outlined"
+                        startIcon={<AutoAwesomeRoundedIcon />}
+                        onClick={() => void handleTranslateClick()}
+                        disabled={strMode === "view" || blnSubmitting || !dicForm.name.trim() || Boolean(dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""])}
+                        sx={{ minHeight: 34, whiteSpace: "nowrap", background: "#fff" }}
+                      >
+                        {t("translate", "AI Translate")}
+                      </Button>
+                    </span>
+                  </Tooltip>
                 </Box>
-              ))}
-            </Box>
-            </>
+                <Box sx={{ display: "grid", gap: 1.5, p: 1 }}>
+                  {dicForm.lstTexts.filter((dicText) => Number(dicText.intLanguageID) === intSecondaryLanguageID).map((dicText) => (
+                    <Box key={dicText.strRowID} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "minmax(100px, 0.3fr) minmax(0, 1fr)" }, alignItems: "center", gap: 1.5 }}>
+                      <Typography component="label" htmlFor={`location-translation-${dicText.strRowID}`} sx={{ fontSize: "12px", fontWeight: 600, color: "#0f172a" }}>
+                        {objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === Number(dicText.intLanguageID))?.strLabel ?? dicText.strLanguageName}
+                      </Typography>
+                      <TextField
+                        className="app-mui-text-field"
+                        id={`location-translation-${dicText.strRowID}`}
+                        controlId="location-master.dialog.translated-name.input"
+                        placeholder={t("dialog_translated_name_placeholder", "Enter location name in {language}").replace("{language}", objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === Number(dicText.intLanguageID))?.strLabel ?? dicText.strLanguageName)}
+                        value={dicText.strLocationName}
+                        inputProps={{ "controlId": "location-master.dialog.translated-name.input", "data-row-key": dicText.strRowID }}
+                        onChange={(objEvent) => updateTextRow(dicText.strRowID, "strLocationName", objEvent.target.value)}
+                        disabled={strMode === "view"}
+                        InputProps={{
+                          endAdornment: dicTextTranslationLoading[dicText.strRowID] ? (
+                            <InputAdornment position="end"><CircularProgress size={18} sx={{ color: "#2563eb" }} /></InputAdornment>
+                          ) : undefined,
+                        }}
+                        fullWidth
+                      />
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
             ) : null}
 
           </Box>
         }
       />
 
-      <CommonConfirmDialog
-        blnOpen={Boolean(objConfirmDialog)}
-        strTitle={objConfirmDialog?.strTitle}
-        strMessage={objConfirmDialog?.strMessage}
-        strCancelLabel={dicCommonLabels.cancel}
-        strConfirmLabel={objConfirmDialog?.strConfirmLabel ?? dicModuleLabels.confirmButton}
-        blnConfirmDisabled={blnSubmitting}
-        onClose={closeConfirmDialog}
-        onConfirm={executeConfirmedAction}
-      />
-
-      <BlockingLoader blnOpen={blnSubmitting || ((blnLoading || blnRightsLoading) && !blnDialogOpen)} strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
+      <BlockingLoader blnOpen={(blnLoading || blnRightsLoading) && !blnDialogOpen} strLabel={dicCommonLabels.loading} intZIndex={1400} />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>

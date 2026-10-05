@@ -1,22 +1,22 @@
 "use client";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
   Box,
+  Breadcrumbs,
   Button,
-  CircularProgress,
+  InputAdornment,
   MenuItem,
   Snackbar,
-  Stack,
+  Skeleton,
   TextField,
   Typography
 } from "@mui/material";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
@@ -43,9 +43,58 @@ type ToastState = {
 
 const lstPayrollGroupModuleCodes = ["PAYROLL_GROUP", "PAYROLL_GROUPS", "MASTER_PAYROLL_GROUP"];
 const dicEmptySearch: SearchForm = { strName: "", strStatus: "All" };
+const intPayrollGroupSkeletonRows = 8;
+
+function PayrollGroupGridSkeleton() {
+  return (
+    <Box
+      data-control-id="payroll-groups.list.skeleton"
+      sx={{
+        border: "1px solid #e8eef5",
+        borderRadius: "8px",
+        overflow: "hidden",
+        backgroundColor: "#fff",
+      }}
+    >
+      <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, px: 1.75, py: 1.25, flexWrap: "wrap" }}>
+        <Skeleton variant="rounded" width={164} height={36} />
+        <Box sx={{ display: "flex", gap: 1.25, alignItems: "center", flexWrap: "wrap" }}>
+          <Skeleton variant="rounded" width={64} height={36} />
+          <Skeleton variant="text" width={72} height={24} />
+          <Skeleton variant="rounded" width={116} height={32} />
+        </Box>
+      </Box>
+      <Box sx={{ minWidth: 800 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "110px 1fr 1.2fr 130px", bgcolor: "#edf3f9", borderTop: "1px solid #e8eef5", borderBottom: "1px solid #d9e3ee" }}>
+          {[0, 1, 2, 3].map((intColumn) => (
+            <Box key={intColumn} sx={{ px: 2, py: 1 }}>
+              <Skeleton variant="text" width={intColumn === 0 ? 64 : intColumn === 3 ? 76 : 138} height={22} />
+            </Box>
+          ))}
+        </Box>
+        {Array.from({ length: intPayrollGroupSkeletonRows }).map((_, intIndex) => (
+          <Box
+            key={intIndex}
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "110px 1fr 1.2fr 130px",
+              borderBottom: "1px solid #edf1f6",
+              minHeight: 40,
+              alignItems: "center",
+            }}
+          >
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="rounded" width={76} height={24} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${58 + (intIndex % 3) * 9}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${42 + (intIndex % 2) * 14}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="rounded" width={72} height={22} /></Box>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+}
 
 export default function PayrollGroupListPage() {
-  const objRouter = useRouter();
   const { t } = useModuleLabels("payroll-groups");
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly } = useModuleActionAccess(lstPayrollGroupModuleCodes);
   const [lstGroups, setLstGroups] = useState<PayrollGroupListRecord[]>([]);
@@ -101,6 +150,7 @@ export default function PayrollGroupListPage() {
   const blnCanEdit = canDoAny("edit");
   const blnCanExport = canDoAny("export");
   const blnReadOnly = isReadOnly();
+  const blnSearchPanelFrozen = blnLoading || blnRightsLoading || !blnCanView;
 
   const lstFilteredRows = useMemo(() => {
     return lstGroups.filter((dicRow) => {
@@ -156,49 +206,63 @@ export default function PayrollGroupListPage() {
     setObjToast((objPrevious) => ({ ...objPrevious, blnOpen: false }));
   }
 
-  if (blnLoading || blnRightsLoading) {
-    return (
-      <Box sx={{ minHeight: 360, display: "grid", placeItems: "center" }}>
-        <Stack spacing={1.5} alignItems="center">
-          <CircularProgress />
-          <Typography sx={{ color: "#64748b" }}>{t("group_loading_list", "Loading payroll groups...")}</Typography>
-        </Stack>
-      </Box>
-    );
-  }
-
-  if (!blnCanView) {
-    return (
-      <Box className={styles.emptyState}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
-          {t("group_access_denied", "You do not have access to Payroll Groups.")}
-        </Typography>
-        <Typography sx={{ mt: 1, color: "#64748b" }}>
-          {t("group_access_denied_help", "Contact your administrator if you believe this is a mistake.")}
-        </Typography>
-        {strRightsError ? <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography> : null}
-      </Box>
-    );
-  }
-
   return (
-    <Box className={styles.page}>
-      <Box className={styles.topBar}>
-        <Button controlId="payroll-groups.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>
-          {t("back_button", "Back")}
-        </Button>
-      </Box>
+    <Box className={styles.page} sx={{ position: "relative" }}>
+      <Breadcrumbs aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ fontSize: 13, py: 0.5, ml: "3px" }}>
+        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{t("breadcrumb_masters", "Masters")}</Typography>
+        <Typography component="h1" aria-current="page" sx={{ fontSize: "inherit", fontWeight: 700, color: "#243b53" }}>{t("breadcrumb_payroll_groups", "Payroll Groups")}</Typography>
+      </Breadcrumbs>
 
-      <Box className={styles.controlsCard}>
-        <Box className={styles.searchRow}>
-          <TextField controlId="payroll-groups.list.name.input" label={t("payroll_group_name", "Payroll Group Name")} value={dicSearchDraft.strName} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strName: objEvent.target.value }))} size="small" />
-          <TextField controlId="payroll-groups.list.search-status.select" inputProps={{ "controlId": "payroll-groups.list.search-status.select" }} select label={t("status", "Status")} value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} size="small">
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        {strRightsError ? (
+          <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography>
+        ) : null}
+        {!blnRightsLoading && blnCanView && blnReadOnly ? (
+          <Typography sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>
+            {t("group_read_only_mode", "You have view-only access to Payroll Groups.")}
+          </Typography>
+        ) : null}
+        <Box
+          className={styles.searchRow}
+          aria-busy={blnSearchPanelFrozen}
+          sx={{
+            alignItems: "center",
+            "& .MuiButton-root": { alignSelf: "center" },
+          }}
+        >
+          <TextField
+            className="app-mui-text-field"
+            id="payroll-groups-search-name"
+            controlId="payroll-groups.list.name.input"
+            inputProps={{ "controlId": "payroll-groups.list.name.input" }}
+            label={t("payroll_group_name", "Payroll Group Name")}
+            value={dicSearchDraft.strName}
+            onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strName: objEvent.target.value }))}
+            placeholder={t("search_name_placeholder", "Search payroll group name")}
+            size="small"
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }}
+            disabled={blnSearchPanelFrozen}
+            fullWidth
+          />
+          <TextField
+            className="app-mui-text-field"
+            id="payroll-groups-search-status"
+            controlId="payroll-groups.list.search-status.select"
+            inputProps={{ "controlId": "payroll-groups.list.search-status.select" }}
+            select
+            label={t("status", "Status")}
+            value={dicSearchDraft.strStatus}
+            onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))}
+            size="small"
+            disabled={blnSearchPanelFrozen}
+            fullWidth
+          >
             <MenuItem value="All">{t("all", "All")}</MenuItem>
             <MenuItem value="Active">{t("active", "Active")}</MenuItem>
             <MenuItem value="Inactive">{t("inactive", "Inactive")}</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
-            <Button controlId="payroll-groups.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }}>
+            <Button controlId="payroll-groups.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }} disabled={blnSearchPanelFrozen}>
               {t("search", "Search")}
             </Button>
           </Box>
@@ -211,6 +275,7 @@ export default function PayrollGroupListPage() {
                 setDicSearchDraft(dicEmptySearch);
                 setDicSearchApplied(dicEmptySearch);
               }}
+              disabled={blnSearchPanelFrozen}
             >
               {t("clear", "Clear")}
             </Button>
@@ -218,31 +283,61 @@ export default function PayrollGroupListPage() {
         </Box>
       </Box>
 
-      {blnReadOnly ? <Alert severity="info">{t("group_read_only_mode", "You have view-only access to Payroll Groups.")}</Alert> : null}
-
-      <Box className={styles.tableCard}>
-        <BlockingLoader blnOpen={blnSubmitting} strLabel={t("group_processing", "Processing...")} />
-        <CommonTable
-          columns={lstTableColumns}
-          rows={lstTableRows}
-          rowIdField="id"
-          exportFileName="payroll_groups"
-          showExportOptions={blnCanExport}
-          testIdPrefix="payroll-groups.list"
-          showPaginationSummary
-          emptyMessage={t("group_no_records", "No payroll groups found.")}
-          toolbarLeft={blnCanAdd ? (
-            <Button controlId="payroll-groups.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openGroupEditor("add")} disabled={blnLoading || blnRightsLoading}>
-              {t("group_add_button", "Add Payroll Group")}
-            </Button>
-          ) : undefined}
-          sx={{ p: 0, boxShadow: "none", background: "transparent" }}
-        />
+      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        {(blnLoading || blnRightsLoading) && !dicDialog.blnOpen ? (
+          <PayrollGroupGridSkeleton />
+        ) : !blnCanView ? (
+          <Box className={styles.emptyState}>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
+              {t("group_access_denied", "You do not have access to Payroll Groups.")}
+            </Typography>
+            <Typography sx={{ mt: 1, color: "#64748b" }}>
+              {t("group_access_denied_help", "Contact your administrator if you believe this is a mistake.")}
+            </Typography>
+          </Box>
+        ) : (
+          <CommonTable
+            columns={lstTableColumns}
+            rows={lstTableRows}
+            rowIdField="id"
+            exportFileName="payroll_groups"
+            showExportOptions={blnCanExport}
+            testIdPrefix="payroll-groups.list"
+            showPaginationSummary
+            hideRowClickHint
+            onRowClick={(dicRow) => {
+              if (blnRightsLoading || blnLoading || blnSubmitting || (!blnCanEdit && !blnCanView)) return;
+              const dicGroup = lstGroups.find((dicItem) => dicItem.intID === dicRow.id);
+              if (dicGroup) openGroupEditor(blnCanEdit ? "edit" : "view", dicGroup);
+            }}
+            minTableWidth={800}
+            emptyMessage={t("group_no_records", "No payroll groups found.")}
+            toolbarLeft={blnCanAdd ? (
+              <Button controlId="payroll-groups.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openGroupEditor("add")} disabled={blnLoading || blnRightsLoading}>
+                {t("group_add_button", "Add Payroll Group")}
+              </Button>
+            ) : undefined}
+            getRowSx={() => ({
+              backgroundColor: "#fff",
+              "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
+            })}
+            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+          />
+        )}
+        <BlockingLoader blnOpen={blnSubmitting} strLabel={t("group_processing", "Processing...")} intZIndex={1400} blnLocal />
       </Box>
 
       <CommonMasterDialog
         blnOpen={dicDialog.blnOpen}
         onClose={closeGroupEditor}
+        onDialogClose={(_, strReason) => {
+          if (strReason !== "backdropClick") {
+            closeGroupEditor();
+          }
+        }}
+        rootTestId="payroll-groups.dialog"
+        cancelButtonTestId="payroll-groups.dialog.cancel.button"
+        primaryButtonTestId="payroll-groups.dialog.save.button"
         strTitle={
           dicDialog.strMode === "add"
             ? t("group_add_title", "Add Payroll Group")
@@ -259,10 +354,12 @@ export default function PayrollGroupListPage() {
           width: "min(920px, calc(100vw - 32px)) !important",
           maxWidth: "920px !important",
           overflow: "hidden",
-          m: 2
+          m: 2,
+          "& .MuiButton-root": { fontSize: "12px !important", fontWeight: "600 !important" }
         }}
-        contentSx={{ overflowX: "hidden", overflowY: "auto", maxHeight: "calc(100vh - 190px)" }}
-        titleSx={{ px: 2.25, py: 1.25, fontSize: "1rem", maxHeight: 58 }}
+        contentSx={{ overflowX: "hidden", overflowY: "auto", px: "20px", py: "12px", maxHeight: "calc(100vh - 190px)", borderColor: "#e5edf5" }}
+        titleSx={{ px: 2.25, py: 1.25, fontSize: "16px", fontWeight: 700, maxHeight: 50 }}
+        nodeFooterStart={<Typography sx={{ color: "#64748b", fontSize: "11px" }}>{t("required_fields_hint", "Required fields are marked")} <Box component="span" sx={{ color: "#dc2626" }}>*</Box></Typography>}
         nodeContent={
           dicDialog.blnOpen ? (
             <PayrollGroupEditorPage
