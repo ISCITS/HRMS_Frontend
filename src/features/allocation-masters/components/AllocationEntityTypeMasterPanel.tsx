@@ -1,21 +1,25 @@
 "use client";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, MenuItem, Snackbar, TextField, Typography } from "@mui/material";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { Alert, Box, Breadcrumbs, Button, IconButton, InputAdornment, Link, MenuItem, Snackbar, TextField, Typography } from "@mui/material";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
-import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
+import {
+  AllocationGridSkeleton,
+  dicActiveSwitchSx,
+  focusField,
+} from "@/features/allocation-masters/components/allocationMasterUi";
 import {
   allocationMasterService,
   createInitialAllocationEntityTypeForm,
@@ -49,7 +53,8 @@ const dicEmptySearch: SearchForm = { strCode: "", strName: "", strStatus: "All" 
 // Allocation Entity Type master (e.g. "Unit", "Region") - the grouping dimension whose
 // entities an Allocation-Based salary component is split across.
 export default function AllocationEntityTypeMasterPanel() {
-  const objRouter = useRouter();
+  const objNameRef = useRef<HTMLDivElement>(null);
+  const objCodeRef = useRef<HTMLDivElement>(null);
   const { t } = useModuleLabels("allocation-entity-type", "Unable to load Allocation Entity Type labels.");
   const objAccess = useModuleActionAccess(lstEntityTypeModuleCodes);
 
@@ -68,6 +73,7 @@ export default function AllocationEntityTypeMasterPanel() {
   const blnCanView = objAccess.canViewAny();
   const blnCanAdd = objAccess.canDoAny("add");
   const blnCanEdit = objAccess.canDoAny("edit");
+  const blnSearchPanelFrozen = blnLoading || blnSubmitting || objAccess.blnLoading;
 
   function showToast(strMessage: string, strSeverity: ToastState["strSeverity"] = "success") {
     setObjToast({ blnOpen: true, strMessage, strSeverity });
@@ -155,6 +161,12 @@ export default function AllocationEntityTypeMasterPanel() {
     }
 
     setDicErrors(dicNextErrors);
+    // Send the user straight to the first field that needs fixing.
+    if (dicNextErrors.strTypeName) {
+      focusField(objNameRef.current);
+    } else if (dicNextErrors.strTypeCode) {
+      focusField(objCodeRef.current);
+    }
     return Object.keys(dicNextErrors).length === 0;
   }
 
@@ -190,18 +202,28 @@ export default function AllocationEntityTypeMasterPanel() {
     () =>
       lstFiltered.map((dicRecord) => ({
         id: String(dicRecord.intID),
-        action: (
-          <CommonRowActions
-            testIdPrefix="allocation-entity-type.list.row"
-            rowKey={dicRecord.intID}
-            blnCanView={blnCanView}
-            blnCanEdit={blnCanEdit}
-            onView={() => openDialog("view", dicRecord)}
-            onEdit={() => openDialog("edit", dicRecord)}
-          />
+        strTypeNameText: dicRecord.strTypeName,
+        strTypeName: (
+          <Link
+            component="button"
+            type="button"
+            underline="none"
+            disabled={!blnCanView && !blnCanEdit}
+            data-control-id="allocation-entity-type.list.row.name.button"
+            onClick={(objEvent) => {
+              if (window.getSelection()?.toString()) {
+                objEvent.stopPropagation();
+                return;
+              }
+              openDialog(blnCanEdit ? "edit" : "view", dicRecord);
+            }}
+            sx={{ color: "#334155", cursor: "pointer", fontSize: "inherit", fontWeight: 500, textAlign: "left", textUnderlineOffset: "3px", userSelect: "text", WebkitUserSelect: "text", "&:hover": { color: "#0066df", textDecoration: "underline" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}
+          >
+            {dicRecord.strTypeName}
+          </Link>
         ),
         strTypeCode: dicRecord.strTypeCode,
-        strTypeName: dicRecord.strTypeName,
+        strStatusText: dicRecord.blnIsActive ? "Active" : "Inactive",
         strDescription: dicRecord.strDescription ?? "-",
         intDisplayOrder: dicRecord.intDisplayOrder,
         strStatus: (
@@ -217,37 +239,23 @@ export default function AllocationEntityTypeMasterPanel() {
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      {
-        field: "action",
-        headerName: t("table_actions", "Actions"),
-        sortable: false,
-        filterable: false,
-        exportable: false,
-        width: 130,
-      },
+      { field: "strTypeName", headerName: t("table_name", "Type Name"), sortAccessor: (row) => row.strTypeNameText },
       { field: "strTypeCode", headerName: t("table_code", "Type Code") },
-      { field: "strTypeName", headerName: t("table_name", "Type Name") },
       { field: "strDescription", headerName: t("table_description", "Description") },
       { field: "intDisplayOrder", headerName: t("table_display_order", "Display Order"), width: 130 },
-      { field: "strStatus", headerName: t("table_status", "Status"), sortable: false, filterable: false, width: 130 },
+      { field: "strStatus", headerName: t("table_status", "Status"), filterable: false, width: 130, sortAccessor: (row) => row.strStatusText },
     ],
     [t],
   );
 
   return (
     <Box className={styles.page} sx={{ position: "relative" }}>
-      <Box className={styles.topBar}>
-        <Button
-          data-control-id="allocation-entity-type.list.back.button"
-          className={styles.backButton}
-          startIcon={<ArrowBackRoundedIcon />}
-          onClick={() => objRouter.back()}
-        >
-          {t("back_button", "Back")}
-        </Button>
-      </Box>
+      <Breadcrumbs aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ fontSize: 13, py: 0.5, ml: "3px" }}>
+        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{t("breadcrumb_masters", "Masters")}</Typography>
+        <Typography component="h1" aria-current="page" sx={{ fontSize: "inherit", fontWeight: 700, color: "#243b53" }}>{t("breadcrumb_allocation_entity_types", "Allocation Entity Types")}</Typography>
+      </Breadcrumbs>
 
-      <Box className={styles.controlsCard}>
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {objAccess.strError ? (
           <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{objAccess.strError}</Typography>
         ) : null}
@@ -257,26 +265,44 @@ export default function AllocationEntityTypeMasterPanel() {
           </Typography>
         ) : null}
 
-        <Box className={styles.searchRow}>
+        <Box
+          className={styles.searchRow}
+          aria-busy={blnSearchPanelFrozen}
+          sx={{ alignItems: "center", "& .MuiButton-root": { alignSelf: "center" } }}
+        >
           <TextField
+            className="app-mui-text-field"
+            id="allocation-entity-type-search-name"
             inputProps={{ controlId: "allocation-entity-type.list.search-name.input" }}
+            label={t("table_name", "Type Name")}
             value={dicSearchDraft.strName}
             onChange={(objEvent) =>
               setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strName: objEvent.target.value }))
             }
             placeholder={t("search_name_placeholder", "Search by Type Name")}
+            size="small"
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }}
+            disabled={blnSearchPanelFrozen}
             fullWidth
           />
           <TextField
+            className="app-mui-text-field"
+            id="allocation-entity-type-search-code"
             inputProps={{ controlId: "allocation-entity-type.list.search-code.input" }}
+            label={t("table_code", "Type Code")}
             value={dicSearchDraft.strCode}
             onChange={(objEvent) =>
               setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strCode: objEvent.target.value.toUpperCase() }))
             }
             placeholder={t("search_code_placeholder", "Search by Type Code")}
+            size="small"
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }}
+            disabled={blnSearchPanelFrozen}
             fullWidth
           />
           <TextField
+            className="app-mui-text-field"
+            id="allocation-entity-type-search-status"
             select
             inputProps={{ controlId: "allocation-entity-type.list.search-status.select" }}
             label={t("search_status_placeholder", "Status")}
@@ -287,6 +313,8 @@ export default function AllocationEntityTypeMasterPanel() {
                 strStatus: objEvent.target.value as SearchForm["strStatus"],
               }))
             }
+            size="small"
+            disabled={blnSearchPanelFrozen}
             fullWidth
           >
             <MenuItem value="All">{t("status_all", "All")}</MenuItem>
@@ -299,7 +327,7 @@ export default function AllocationEntityTypeMasterPanel() {
               className={styles.primaryButton}
               startIcon={<SearchRoundedIcon />}
               onClick={() => setDicSearchApplied(dicSearchDraft)}
-              disabled={blnLoading || blnSubmitting}
+              disabled={blnSearchPanelFrozen}
             >
               {t("search", "Search")}
             </Button>
@@ -313,7 +341,7 @@ export default function AllocationEntityTypeMasterPanel() {
                 setDicSearchDraft(dicEmptySearch);
                 setDicSearchApplied(dicEmptySearch);
               }}
-              disabled={blnLoading || blnSubmitting}
+              disabled={blnSearchPanelFrozen}
             >
               {t("clear", "Clear")}
             </Button>
@@ -321,8 +349,10 @@ export default function AllocationEntityTypeMasterPanel() {
         </Box>
       </Box>
 
-      <Box className={styles.tableCard}>
-        {!blnCanView && !objAccess.blnLoading && !blnLoading ? (
+      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        {(blnLoading || objAccess.blnLoading) && !blnDialogOpen ? (
+          <AllocationGridSkeleton strControlId="allocation-entity-type.list.skeleton" intColumns={5} />
+        ) : !blnCanView ? (
           <Box className={styles.emptyState}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
               {t("access_denied", "Allocation Entity Type access is not available for your user group.")}
@@ -335,6 +365,12 @@ export default function AllocationEntityTypeMasterPanel() {
             rowIdField="id"
             testIdPrefix="allocation-entity-type.list"
             showPaginationSummary
+            hideRowClickHint
+            onRowClick={(dicRow) => {
+              if (objAccess.blnLoading || blnLoading || blnSubmitting || !blnCanView) return;
+              const dicRecord = lstEntityTypes.find((dicItem) => String(dicItem.intID) === dicRow.id);
+              if (dicRecord) openDialog(blnCanEdit ? "edit" : "view", dicRecord);
+            }}
             emptyMessage={t("empty_message", "No Allocation Entity Types found.")}
             toolbarLeft={
               blnCanAdd ? (
@@ -349,14 +385,23 @@ export default function AllocationEntityTypeMasterPanel() {
                 </Button>
               ) : null
             }
+            getRowSx={() => ({
+              backgroundColor: "#fff",
+              "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
+              "&.MuiTableRow-hover:hover td:first-of-type .MuiLink-root": { textDecoration: "underline" },
+            })}
             sx={{ p: 0, boxShadow: "none", background: "transparent" }}
           />
         )}
+        <BlockingLoader blnOpen={blnSubmitting} strLabel={t("processing", "Processing...")} intZIndex={1400} blnLocal />
       </Box>
 
       <CommonMasterDialog
         blnOpen={blnDialogOpen}
         onClose={() => setBlnDialogOpen(false)}
+        onDialogClose={(_, strReason) => {
+          if (strReason !== "backdropClick") setBlnDialogOpen(false);
+        }}
         rootTestId="allocation-entity-type.dialog"
         cancelButtonTestId="allocation-entity-type.dialog.cancel.button"
         primaryButtonTestId="allocation-entity-type.dialog.save.button"
@@ -372,32 +417,57 @@ export default function AllocationEntityTypeMasterPanel() {
         onPrimaryAction={saveEntityType}
         blnPrimaryDisabled={blnSubmitting}
         blnHidePrimary={strMode === "view" || !(strMode === "add" ? blnCanAdd : blnCanEdit)}
+        paperClassName={styles.departmentDialogPaper}
+        maxWidth={false}
+        fullWidth={false}
+        paperSx={{ "& .MuiButton-root": { fontSize: "12px !important", fontWeight: "600 !important" } }}
+        titleSx={{ px: 2.25, py: 1.25, fontSize: "16px", fontWeight: 700, maxHeight: 50 }}
+        contentSx={{ overflowX: "hidden", overflowY: "auto", px: "20px", py: "12px", borderColor: "#e5edf5" }}
+        nodeFooterStart={<Typography sx={{ color: "#64748b", fontSize: "11px" }}>{t("required_fields_hint", "Required fields are marked")} <Box component="span" sx={{ color: "#dc2626" }}>*</Box></Typography>}
         nodeTitleAction={
           <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
             <ActiveStatusSwitch
               testId="allocation-entity-type.dialog.active.switch"
               blnIsActive={dicForm.blnIsActive}
               disabled={strMode === "view"}
+              sx={dicActiveSwitchSx}
               onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, blnIsActive: blnChecked }))}
             />
-            <Typography className={styles.switchLabel} sx={{ fontSize: "0.95rem", whiteSpace: "nowrap" }}>
-              {t("field_is_active", "Is Active")}
+            <Typography className={styles.switchLabel} sx={{ fontSize: "12px !important", fontWeight: "600 !important", whiteSpace: "nowrap" }}>
+              {t("status_active", "Active")}
             </Typography>
+            <IconButton aria-label={t("close", "Close")} onClick={() => setBlnDialogOpen(false)} size="small" sx={{ ml: 1, color: "#94a3b8" }}>
+              <CloseRoundedIcon fontSize="small" />
+            </IconButton>
           </Box>
         }
         nodeContent={
-          <Box sx={{ display: "grid", gap: 2, pt: 0.5 }}>
+          <Box sx={{ display: "grid", gap: "12px" }}>
             <Box
               sx={{
                 display: "grid",
-                gap: 1.6,
+                columnGap: 1.6,
+                rowGap: "12px",
                 gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
                 alignItems: "start",
               }}
             >
+              {strMode === "add" ? (
+                <Box sx={{ gridColumn: "1 / -1" }}>
+                  <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>{t("basic_information", "Basic Information")}</Typography>
+                  <Typography sx={{ fontSize: "11px", color: "#64748b", mt: 0.25, mb: 1 }}>
+                    {t("basic_information_help", "Create a new allocation entity type.")}
+                  </Typography>
+                </Box>
+              ) : null}
               <TextField
+                className="app-mui-text-field"
+                ref={objNameRef}
                 label={t("field_name", "Type Name")}
+                placeholder={t("dialog_name_placeholder", "Enter type name")}
+                size="small"
                 required
+                autoFocus={strMode !== "view"}
                 value={dicForm.strTypeName}
                 inputProps={{ controlId: "allocation-entity-type.dialog.name.input" }}
                 disabled={strMode === "view"}
@@ -408,11 +478,14 @@ export default function AllocationEntityTypeMasterPanel() {
                 }}
                 error={Boolean(dicErrors.strTypeName)}
                 helperText={dicErrors.strTypeName}
-                sx={{ "& .MuiFormLabel-asterisk": { color: "#dc2626" } }}
                 fullWidth
               />
               <TextField
+                className="app-mui-text-field"
+                ref={objCodeRef}
                 label={t("field_code", "Type Code")}
+                placeholder={t("dialog_code_placeholder", "Enter type code")}
+                size="small"
                 required
                 value={dicForm.strTypeCode}
                 inputProps={{ controlId: "allocation-entity-type.dialog.code.input" }}
@@ -424,42 +497,40 @@ export default function AllocationEntityTypeMasterPanel() {
                 }}
                 error={Boolean(dicErrors.strTypeCode)}
                 helperText={dicErrors.strTypeCode}
-                sx={{ "& .MuiFormLabel-asterisk": { color: "#dc2626" } }}
+                fullWidth
+              />
+              <Box sx={{ gridColumn: "1 / -1" }}>
+                <TextField
+                  className="app-mui-text-field"
+                  label={t("field_description", "Description")}
+                  size="small"
+                  value={dicForm.strDescription}
+                  inputProps={{ controlId: "allocation-entity-type.dialog.description.input" }}
+                  disabled={strMode === "view"}
+                  onChange={(objEvent) =>
+                    setDicForm((dicPrevious) => ({ ...dicPrevious, strDescription: objEvent.target.value }))
+                  }
+                  multiline
+                  minRows={2}
+                  fullWidth
+                />
+              </Box>
+              <TextField
+                className="app-mui-text-field"
+                label={t("field_display_order", "Display Order")}
+                type="number"
+                size="small"
+                value={dicForm.strDisplayOrder}
+                inputProps={{ controlId: "allocation-entity-type.dialog.display-order.input", min: 0 }}
+                disabled={strMode === "view"}
+                onChange={(objEvent) =>
+                  setDicForm((dicPrevious) => ({ ...dicPrevious, strDisplayOrder: objEvent.target.value }))
+                }
                 fullWidth
               />
             </Box>
-            <TextField
-              label={t("field_description", "Description")}
-              value={dicForm.strDescription}
-              inputProps={{ controlId: "allocation-entity-type.dialog.description.input" }}
-              disabled={strMode === "view"}
-              onChange={(objEvent) =>
-                setDicForm((dicPrevious) => ({ ...dicPrevious, strDescription: objEvent.target.value }))
-              }
-              multiline
-              minRows={2}
-              fullWidth
-            />
-            <TextField
-              label={t("field_display_order", "Display Order")}
-              type="number"
-              value={dicForm.strDisplayOrder}
-              inputProps={{ controlId: "allocation-entity-type.dialog.display-order.input", min: 0 }}
-              disabled={strMode === "view"}
-              onChange={(objEvent) =>
-                setDicForm((dicPrevious) => ({ ...dicPrevious, strDisplayOrder: objEvent.target.value }))
-              }
-              sx={{ maxWidth: 220 }}
-            />
           </Box>
         }
-      />
-
-      <BlockingLoader
-        blnOpen={blnSubmitting || ((blnLoading || objAccess.blnLoading) && !blnDialogOpen)}
-        strLabel={blnLoading || objAccess.blnLoading ? t("loading", "Loading...") : t("processing", "Processing...")}
-        intZIndex={1400}
-        blnLocal
       />
 
       <Snackbar
