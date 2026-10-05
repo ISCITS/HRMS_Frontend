@@ -191,6 +191,7 @@ export default function PayrollGroupListPage() {
           </Link>
         ),
         strDescription: dicRow.strDescription || "-",
+        strStatusText: dicRow.blnIsActive ? "Active" : "Inactive",
         blnIsActive: (
           <span className={`${styles.statusPill} ${dicRow.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
             {dicRow.blnIsActive ? t("active", "Active") : t("inactive", "Inactive")}
@@ -205,7 +206,7 @@ export default function PayrollGroupListPage() {
     () => [
       { field: "strPayrollGroupName", headerName: t("payroll_group_name", "Payroll Group Name"), sortAccessor: (row) => row.strPayrollGroupNameText },
       { field: "strDescription", headerName: t("description", "Description"), width: 260 },
-      { field: "blnIsActive", headerName: t("status", "Status"), sortable: false, filterable: false, width: 130 },
+      { field: "blnIsActive", headerName: t("status", "Status"), filterable: false, width: 130, sortAccessor: (row) => row.strStatusText },
     ],
     [t]
   );

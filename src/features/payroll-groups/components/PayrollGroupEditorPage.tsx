@@ -437,7 +437,7 @@ const PayrollGroupEditorPage = forwardRef<PayrollGroupEditorHandle, PayrollGroup
             <Box sx={{ display: "grid", gap: 1.5, p: 1 }}>
               {dicForm.lstTexts.slice(1).map((dicText, intOffset) => {
                 const intIndex = intOffset + 1;
-                const strLanguageLabel = (objFormOptions?.lstLanguages ?? []).find((dicLanguage) => dicLanguage.intID === Number(dicText.intLanguageID))?.strLabel ?? dicText.strLanguageName;
+                const strLanguageLabel = (objFormOptions?.lstLanguages ?? []).find((dicLanguage) => dicLanguage.intID === Number(dicText.intLanguageID))?.strLabel ?? dicText.strLanguageName ?? "";
                 return (
                   <Box key={dicText.intLanguageID || intIndex} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "minmax(100px, 0.3fr) minmax(0, 1fr)" }, alignItems: "center", gap: 1.5 }}>
                     <Typography component="label" htmlFor={`payroll-group-translation-${intIndex}`} sx={{ fontSize: "12px", fontWeight: 600, color: "#0f172a" }}>
