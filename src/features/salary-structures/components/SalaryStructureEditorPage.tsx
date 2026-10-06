@@ -5,6 +5,7 @@ import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import FlightTakeoffRoundedIcon from "@mui/icons-material/FlightTakeoffRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
@@ -18,6 +19,10 @@ import {
   Box,
   Button,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControlLabel,
   InputAdornment,
   IconButton,
@@ -42,6 +47,7 @@ import {
   createEmptyFlexiMappingRow,
   createEmptyLineRow,
   createEmptyTextRow,
+  createCloneForm,
   createInitialSalaryStructureForm,
   normalizeSalaryStructureFlexiRole,
   salaryStructureService,
@@ -49,6 +55,8 @@ import {
 } from "@/features/salary-structures/services/salaryStructureService";
 import { authHelpers } from "@/lib/auth";
 import type {
+  SalaryStructureCloneValues,
+  SalaryStructureDetailRecord,
   SalaryStructureFormOptions,
   SalaryStructureFormValues,
   SalaryStructureFlexiMappingFormValue,
@@ -426,12 +434,18 @@ export default function SalaryStructureEditorPage({
   const [dicLastTranslatedSourceByRow, setDicLastTranslatedSourceByRow] = useState<Record<string, string>>({});
   const [strAddModeFlexiHostRowID, setStrAddModeFlexiHostRowID] = useState("");
   const [dicActiveAmountInput, setDicActiveAmountInput] = useState<{ strInputID: string; strValue: string } | null>(null);
+  const [blnCloneOpen, setBlnCloneOpen] = useState(false);
+  const [objCloneSource, setObjCloneSource] = useState<SalaryStructureDetailRecord | null>(null);
+  const [dicCloneForm, setDicCloneForm] = useState<SalaryStructureCloneValues | null>(null);
+  const [blnCloneSaving, setBlnCloneSaving] = useState(false);
+  const [strCloneError, setStrCloneError] = useState("");
   const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
   const blnReadOnly = strMode === "edit" && blnCanView && !blnCanEdit;
   const blnCanLoadWorkspace = strMode === "add" ? blnCanAdd : blnCanView;
   const blnCanSave = strMode === "add" ? blnCanAdd : blnCanEdit;
+  const blnCanClone = strMode === "edit" && blnCanAdd && Boolean(strSalaryStructureID);
   useEffect(() => {
     const objContainer = objTableScrollRef.current;
     const objTable = objComponentTableRef.current;
@@ -1607,6 +1621,73 @@ export default function SalaryStructureEditorPage({
     return "";
   }
 
+  function closeCloneDialog() {
+    if (blnCloneSaving) {
+      return;
+    }
+    setBlnCloneOpen(false);
+    setStrCloneError("");
+  }
+
+  function updateCloneField<K extends keyof SalaryStructureCloneValues>(key: K, value: SalaryStructureCloneValues[K]) {
+    setStrCloneError("");
+    setDicCloneForm((dicPrev) => {
+      if (!dicPrev) {
+        return dicPrev;
+      }
+      const dicNext = {
+        ...dicPrev,
+        [key]: value
+      };
+      if (key === "strStructureName") {
+        return {
+          ...dicNext,
+          lstTexts: dicPrev.lstTexts.map((dicText, intIndex) => intIndex === 0
+            ? { ...dicText, strStructureName: String(value) }
+            : dicText)
+        };
+      }
+      return dicNext;
+    });
+  }
+
+  async function handleCloneOpen() {
+    if (!strSalaryStructureID) {
+      return;
+    }
+    setStrCloneError("");
+    try {
+      const dicDetail = await salaryStructureService.getSalaryStructureById(strSalaryStructureID);
+      setObjCloneSource(dicDetail);
+      setDicCloneForm(createCloneForm(dicDetail));
+      setBlnCloneOpen(true);
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to load salary structure for clone.");
+    }
+  }
+
+  async function handleCloneSave() {
+    if (!objCloneSource || !dicCloneForm) {
+      return;
+    }
+    if (!dicCloneForm.strStructureCode.trim() || !dicCloneForm.strStructureName.trim() || !dicCloneForm.dtEffectiveFrom) {
+      setStrCloneError("New structure code, new structure name, and effective from date are required.");
+      return;
+    }
+    setStrCloneError("");
+    setBlnCloneSaving(true);
+    try {
+      const dicRecord = await salaryStructureService.cloneSalaryStructure(objCloneSource.strRecordUUID, dicCloneForm);
+      setBlnCloneOpen(false);
+      setStrCloneError("");
+      objRouter.push(`/salary-structures/edit/${dicRecord.strRecordUUID}`);
+    } catch (objError) {
+      setStrCloneError(objError instanceof Error ? objError.message : "Unable to clone salary structure.");
+    } finally {
+      setBlnCloneSaving(false);
+    }
+  }
+
   async function handleSave() {
     if (!blnCanSave) {
       return;
@@ -1752,6 +1833,7 @@ export default function SalaryStructureEditorPage({
   }
 
   return (
+    <>
     <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
       <Paper
         sx={{
@@ -1809,6 +1891,34 @@ export default function SalaryStructureEditorPage({
               >
                 {t("back_button", "Back")}
               </Button>
+              {blnCanClone ? (
+                <Button
+                  className={styles.secondaryButton}
+                  startIcon={<ContentCopyRoundedIcon />}
+                  onClick={() => void handleCloneOpen()}
+                  disabled={blnLoading || blnRightsLoading || blnSaving || blnCloneSaving}
+                  {...getAutomationProps("salary-structures.editor.clone.button")}
+                  sx={{
+                    borderRadius: "14px",
+                    height: 34,
+                    minHeight: 34,
+                    py: 0,
+                    px: 2.25,
+                    minWidth: 132,
+                    fontSize: "0.9rem",
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                    "& .MuiButton-startIcon": {
+                      mr: 0.75,
+                      "& svg": {
+                        fontSize: "1rem"
+                      }
+                    }
+                  }}
+                >
+                  {t("clone_button", "Copy Structure")}
+                </Button>
+              ) : null}
               <Button
                 className={styles.primaryButton}
                 startIcon={<SaveRoundedIcon />}
@@ -2856,5 +2966,84 @@ export default function SalaryStructureEditorPage({
       </Paper>
       ) : null}
     </Stack>
+    <Dialog open={blnCloneOpen} onClose={closeCloneDialog} fullWidth maxWidth="md" data-controlid="salary-structures.editor.clone.dialog">
+      <DialogTitle>{t("clone_salary_structure", "Copy Structure")}</DialogTitle>
+      <DialogContent>
+        {dicCloneForm ? (
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <Typography sx={{ color: "#64748b", fontSize: "0.92rem" }}>
+              {t("clone_salary_structure_help", "Create a new structure by copying component configuration and multilingual text from the selected structure.")}
+            </Typography>
+            <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" } }}>
+              <TextField
+                label={t("new_structure_code", "New Structure Code")}
+                value={dicCloneForm.strStructureCode}
+                onChange={(objEvent) => updateCloneField("strStructureCode", objEvent.target.value.toUpperCase())}
+                disabled={blnCloneSaving}
+                fullWidth
+                required
+                error={Boolean(strCloneError) && !dicCloneForm.strStructureCode.trim()}
+                helperText={Boolean(strCloneError) && !dicCloneForm.strStructureCode.trim() ? strCloneError : " "}
+                data-controlid="salary-structures.editor.clone.structure-code.input"
+                inputProps={{ "data-controlid": "salary-structures.editor.clone.structure-code.input" }}
+              />
+              <TextField
+                label={t("new_structure_name", "New Structure Name")}
+                value={dicCloneForm.strStructureName}
+                onChange={(objEvent) => updateCloneField("strStructureName", objEvent.target.value)}
+                disabled={blnCloneSaving}
+                fullWidth
+                required
+                error={Boolean(strCloneError) && !dicCloneForm.strStructureName.trim()}
+                helperText={Boolean(strCloneError) && !dicCloneForm.strStructureName.trim() ? strCloneError : " "}
+                data-controlid="salary-structures.editor.clone.structure-name.input"
+                inputProps={{ "data-controlid": "salary-structures.editor.clone.structure-name.input" }}
+              />
+              <TextField
+                label={t("effective_from", "Effective From")}
+                type="date"
+                value={dicCloneForm.dtEffectiveFrom}
+                onChange={(objEvent) => updateCloneField("dtEffectiveFrom", objEvent.target.value)}
+                InputLabelProps={{ shrink: true }}
+                disabled={blnCloneSaving}
+                fullWidth
+                error={Boolean(strCloneError) && !dicCloneForm.dtEffectiveFrom}
+                helperText={Boolean(strCloneError) && !dicCloneForm.dtEffectiveFrom ? strCloneError : " "}
+                data-controlid="salary-structures.editor.clone.effective-from.input"
+                inputProps={{ "data-controlid": "salary-structures.editor.clone.effective-from.input" }}
+              />
+              <TextField
+                label={t("effective_to", "Effective To")}
+                type="date"
+                value={dicCloneForm.dtEffectiveTo}
+                onChange={(objEvent) => updateCloneField("dtEffectiveTo", objEvent.target.value)}
+                InputLabelProps={{ shrink: true }}
+                disabled={blnCloneSaving}
+                fullWidth
+                data-controlid="salary-structures.editor.clone.effective-to.input"
+                inputProps={{ "data-controlid": "salary-structures.editor.clone.effective-to.input" }}
+              />
+            </Box>
+            {strCloneError && dicCloneForm.strStructureCode.trim() && dicCloneForm.strStructureName.trim() && dicCloneForm.dtEffectiveFrom ? (
+              <Typography sx={{ color: "#d32f2f", fontSize: "0.8rem", mt: -0.5 }}>
+                {strCloneError}
+              </Typography>
+            ) : null}
+            {objCloneSource ? (
+              <Alert severity="info">
+                {t("clone_source", "Clone source")}: {objCloneSource.strStructureName}
+              </Alert>
+            ) : null}
+          </Stack>
+        ) : null}
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2.5 }}>
+        <Button data-controlid="salary-structures.editor.clone.cancel.button" className={styles.secondaryButton} onClick={closeCloneDialog} disabled={blnCloneSaving}>{t("cancel_button", "Cancel")}</Button>
+        <Button data-controlid="salary-structures.editor.clone.confirm.button" className={styles.primaryButton} variant="contained" onClick={handleCloneSave} disabled={blnCloneSaving}>
+          {blnCloneSaving ? t("cloning", "Copying...") : t("clone_button", "Copy Structure")}
+        </Button>
+      </DialogActions>
+    </Dialog>
+    </>
   );
 }

@@ -5,6 +5,7 @@ import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
@@ -12,6 +13,7 @@ import {
   Alert,
   Autocomplete,
   Box,
+  Breadcrumbs,
   Button,
   Checkbox,
   IconButton,
@@ -402,6 +404,7 @@ export default function UserMasterPanel() {
     confirmBulkDeactivateTitle: t("confirm_bulk_deactivate_title"),
     confirmBulkDeactivateMessage: t("confirm_bulk_deactivate_message"),
   };
+  const strBreadcrumbParent = t("breadcrumb_administration", "Administration");
 
   async function loadData() {
     if (!canViewAny()) {
@@ -882,6 +885,11 @@ export default function UserMasterPanel() {
           {dicModuleLabels.backButton}
         </Button>
       </Box>
+
+      <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />}>
+        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{strBreadcrumbParent}</Typography>
+        <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{dicModuleLabels.pageTitle}</Typography>
+      </Breadcrumbs>
 
       <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {strRightsError ? <Alert severity="warning" sx={{ mb: 2 }}>{strRightsError}</Alert> : null}
