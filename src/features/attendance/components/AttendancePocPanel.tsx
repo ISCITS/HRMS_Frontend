@@ -389,7 +389,7 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
   const blnCanView = ["view", "read", "list", "attendance_view"].some((strAction) => setManagementActions.has(strAction));
   const blnCanManage = ["manage", "add", "create", "edit", "update", "delete", "save", "attendance_manage"].some((strAction) => setManagementActions.has(strAction));
   const blnCanOverride = ["override", "attendance_correction"].some((strAction) => setManagementActions.has(strAction));
-  if (blnRightsLoading) return <BlockingLoader blnOpen strLabel={t("loading", "Loading...")} />;
+  if (blnRightsLoading) return <Box className={styles.page}><MasterBreadcrumbs strSection={t("breadcrumb_attendance", "Attendance")} strTitle={strView === "policy" ? t("breadcrumb_policies", "Attendance Policies") : t("breadcrumb_daily_attendance", "Daily Attendance")} /><MasterGridSkeleton strControlId={`attendance.${strView}.list.skeleton`} intColumns={strView === "policy" ? 7 : 9} /></Box>;
   if (!blnCanView) return <Alert severity="warning">{t("permission_denied", "Attendance Management access is not available for your user group. Sign in with an HR or Administrator account.")}</Alert>;
   const nodeActionLoader = <BlockingLoader blnOpen={blnActionWorking} strLabel={t("working", "Please wait...")} />;
   const blnReadOnly = !blnCanManage;

@@ -27,7 +27,7 @@ import { useModuleActionAccess } from "@/features/security/hooks/useModuleAction
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import styles from "@/components/master/MasterScreen.module.css";
-import { dicMasterRowSx, MasterBreadcrumbs } from "@/components/master/MasterListUi";
+import { dicMasterRowSx, MasterBreadcrumbs, MasterGridSkeleton } from "@/components/master/MasterListUi";
 
 export default function AttendanceImportPanel() {
   const { t } = useModuleLabels("attendance", "Unable to load attendance labels.");
@@ -53,7 +53,7 @@ export default function AttendanceImportPanel() {
   const [strError, setStrError] = useState<string | null>(null);
   const [objCommitResult, setObjCommitResult] = useState<AttendanceImportCommitResult | null>(null);
 
-  if (objAccess.blnLoading) return <BlockingLoader blnOpen strLabel={t("loading", "Loading...")} />;
+  if (objAccess.blnLoading) return <Box className={styles.page}><MasterBreadcrumbs strSection={t("breadcrumb_attendance", "Attendance")} strTitle={t("import_attendance_title", "Import Attendance")} /><MasterGridSkeleton strControlId="attendance.import.skeleton" intColumns={7} /></Box>;
   if (!objAccess.canViewAny())
     return (
       <Alert severity="warning">

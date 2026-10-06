@@ -24,6 +24,7 @@ import {
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
+import { MasterGridSkeleton } from "@/components/master/MasterListUi";
 import { useLeaveApprovals } from "@/features/leave/hooks/useLeaveApprovals";
 import { useLeaveWorkflowPermissions } from "@/features/leave/hooks/useLeaveWorkflowPermissions";
 import { leaveService } from "@/features/leave/services/leaveService";
@@ -207,7 +208,7 @@ export default function EssLeaveApprovalsPanel() {
   }
 
   if (blnRightsLoading) {
-    return <Box sx={{ p: 2 }}><LinearProgress /></Box>;
+    return <MasterGridSkeleton strControlId="ess.leave.approvals.skeleton" intColumns={7} />;
   }
   if (!blnCanView) {
     return <Box sx={{ p: 3 }}><Alert severity="warning">{t("access_denied", "Leave approval access is not available for your user group.")}</Alert></Box>;

@@ -241,7 +241,7 @@ export default function RegularizationRequestsPage({ blnEssManagerMode = false }
     setStrStatus("");
   }
 
-  if (blnRightsLoading) return <BlockingLoader blnOpen strLabel={t("loading", "Loading...")} />;
+  if (blnRightsLoading) return <Box className={styles.page}><MasterBreadcrumbs strSection={t("breadcrumb_attendance", "Attendance")} strTitle={blnEssManagerMode ? t("breadcrumb_regularization_approvals", "Regularization Approvals") : t("breadcrumb_regularization_requests", "Regularization Requests")} /><MasterGridSkeleton strControlId="regularization-requests.list.skeleton" intColumns={5} /></Box>;
   if (!canViewAny()) return <Alert severity="warning">{t("access_denied", "Regularization Requests access is not available.")}</Alert>;
   const blnCanCreateOnBehalf = !blnEssManagerMode && canDoAny("ATT_REG_REQUEST_CREATE_ON_BEHALF");
   const lstTableRows = lstRequests.map((objRequest) => ({
