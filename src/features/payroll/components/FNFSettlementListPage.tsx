@@ -9,7 +9,7 @@ import { ReactNode, useEffect, useMemo, useState } from "react";
 
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
-import { MasterAddColumnsControl, MasterBreadcrumbs, MasterGridSkeleton, dicMasterRowSx, onSearchEnter, type MasterOptionalColumn } from "@/components/master/MasterListUi";
+import { MasterAddColumnsControl, MasterBreadcrumbs, MasterGridSkeleton, MasterMoreFilters, dicMasterRowSx, onSearchEnter, type MasterOptionalColumn } from "@/components/master/MasterListUi";
 import styles from "@/components/master/MasterScreen.module.css";
 import FNFStatusBadge from "@/features/payroll/components/FNFStatusBadge";
 import { fnfSettlementService } from "@/features/payroll/services/fnfSettlementService";
@@ -20,6 +20,17 @@ import { formatCurrency } from "@/features/payroll/components/FNFSettlementPanel
 const lstModuleCodes = ["PAYROLL_FNF_SETTLEMENTS", "PAYROLL_FNF", "FNF_SETTLEMENTS"];
 const lstStatuses: Array<"All" | FNFSettlementStatus> = ["All", "draft", "calculated", "under_review", "released", "approved", "locked", "paid", "recovered", "cancelled"];
 const dicEmptyFilters = { employee_code: "", department: "", settlement_month: "", status: "All", exit_type: "", lwd_from: "", lwd_to: "", payable_type: "All" };
+type FNFFilters = typeof dicEmptyFilters;
+// Filters that live in the "More filters" popover; Cancel/Clear all only touch these.
+const lstMoreFilterKeys = ["department", "payable_type", "exit_type", "lwd_from", "lwd_to"] as const;
+
+function restoreMoreFilters(dicCurrent: FNFFilters, dicSource: FNFFilters): FNFFilters {
+  const dicNext = { ...dicCurrent };
+  lstMoreFilterKeys.forEach((strKey) => {
+    dicNext[strKey] = dicSource[strKey];
+  });
+  return dicNext;
+}
 
 type OptionalColumnKey = "exitType" | "addedOn" | "lastModifiedOn";
 const lstOptionalColumns: MasterOptionalColumn<OptionalColumnKey>[] = [
@@ -56,6 +67,7 @@ export default function FNFSettlementListPage() {
   const [strError, setStrError] = useState("");
   const [dicFilters, setDicFilters] = useState(dicEmptyFilters);
   const [lstVisibleOptionalColumns, setLstVisibleOptionalColumns] = useState<OptionalColumnKey[]>([]);
+  const [dicMoreFiltersSnapshot, setDicMoreFiltersSnapshot] = useState<FNFFilters | null>(null);
   const blnHasViewRight = canViewAny() || canDoAny("view");
   const blnCanView = blnHasViewRight || canDoAny("edit");
   const blnCanCreate = canDoAny("create") || canDoAny("add");
@@ -156,7 +168,7 @@ export default function FNFSettlementListPage() {
       <MasterBreadcrumbs strSection="Employee Services" strTitle="Full & Final Settlement" />
 
       <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
-        <Box className={styles.multiFilterSearchRow} aria-busy={blnBusy} onKeyDown={onSearchEnter(() => { if (!blnBusy) void loadRows(); })}>
+        <Box className={styles.compactSearchRow} aria-busy={blnBusy} onKeyDown={onSearchEnter(() => { if (!blnBusy) void loadRows(); })}>
           <Autocomplete
             size="small"
             options={lstEmployeeOptions}
@@ -169,21 +181,39 @@ export default function FNFSettlementListPage() {
             renderInput={(params) => <TextField {...params} className="app-mui-text-field" label="Employee Code" placeholder="Search employee..." inputProps={{ ...params.inputProps, "controlId": "payroll.fnf-settlements.employee-code.input" }} controlId="payroll.fnf-settlements.employee-code.input"
               InputProps={{ ...params.InputProps, startAdornment: (<><InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment>{params.InputProps.startAdornment}</>) }} />}
           />
-          <TextField className="app-mui-text-field" size="small" label="Department" disabled={blnBusy} inputProps={{ "controlId": "payroll.fnf-settlements.department.input" }} value={dicFilters.department} onChange={(e) => setDicFilters((d) => ({ ...d, department: e.target.value }))} controlId="payroll.fnf-settlements.department.input" />
-          <TextField className="app-mui-text-field" size="small" type="month" label="Settlement Month" disabled={blnBusy} inputProps={{ "controlId": "payroll.fnf-settlements.month.input" }} InputLabelProps={{ shrink: true }} value={dicFilters.settlement_month} onChange={(e) => setDicFilters((d) => ({ ...d, settlement_month: e.target.value }))} controlId="payroll.fnf-settlements.month.input" />
           <CommonSearchableSelect
+            className="app-mui-text-field"
+            size="small"
+            fullWidth
+            disabled={blnBusy}
             controlId="payroll.fnf-settlements.status.select"
             label="Status"
             value={dicFilters.status}
             options={lstStatuses.map((s) => ({ intID: s as string, strLabel: s }))}
             onChange={(strValue) => setDicFilters((d) => ({ ...d, status: strValue || "All" }))}
           />
-          <TextField className="app-mui-text-field" size="small" select label="Payable / Recoverable" disabled={blnBusy} value={dicFilters.payable_type} onChange={(e) => setDicFilters((d) => ({ ...d, payable_type: e.target.value }))} controlId="payroll.fnf-settlements.payable-type.select">{["All", "payable", "recoverable"].map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}</TextField>
-          <TextField className="app-mui-text-field" size="small" label="Exit Type" disabled={blnBusy} inputProps={{ "controlId": "payroll.fnf-settlements.exit-type.input" }} value={dicFilters.exit_type} onChange={(e) => setDicFilters((d) => ({ ...d, exit_type: e.target.value }))} controlId="payroll.fnf-settlements.exit-type.input" />
-          <TextField className="app-mui-text-field" size="small" type="date" label="LWD From" disabled={blnBusy} inputProps={{ "controlId": "payroll.fnf-settlements.lwd-from.input" }} InputLabelProps={{ shrink: true }} value={dicFilters.lwd_from} onChange={(e) => setDicFilters((d) => ({ ...d, lwd_from: e.target.value }))} controlId="payroll.fnf-settlements.lwd-from.input" />
-          <TextField className="app-mui-text-field" size="small" type="date" label="LWD To" disabled={blnBusy} inputProps={{ "controlId": "payroll.fnf-settlements.lwd-to.input" }} InputLabelProps={{ shrink: true }} value={dicFilters.lwd_to} onChange={(e) => setDicFilters((d) => ({ ...d, lwd_to: e.target.value }))} controlId="payroll.fnf-settlements.lwd-to.input" />
+          <TextField className="app-mui-text-field" size="small" type="month" label="Settlement Month" disabled={blnBusy} inputProps={{ "controlId": "payroll.fnf-settlements.month.input" }} InputLabelProps={{ shrink: true }} value={dicFilters.settlement_month} onChange={(e) => setDicFilters((d) => ({ ...d, settlement_month: e.target.value }))} controlId="payroll.fnf-settlements.month.input" />
+          <MasterMoreFilters
+            strControlPrefix="payroll.fnf-settlements"
+            blnHasActiveFilters={dicFilters.department !== "" || dicFilters.payable_type !== "All" || dicFilters.exit_type !== "" || dicFilters.lwd_from !== "" || dicFilters.lwd_to !== ""}
+            blnDisabled={blnBusy}
+            onOpen={() => setDicMoreFiltersSnapshot(dicFilters)}
+            onCancel={() => {
+              if (dicMoreFiltersSnapshot) setDicFilters((d) => restoreMoreFilters(d, dicMoreFiltersSnapshot));
+            }}
+            onClearAll={() => setDicFilters((d) => restoreMoreFilters(d, dicEmptyFilters))}
+            onApply={() => void loadRows()}
+          >
+            <TextField className="app-mui-text-field" fullWidth size="small" label="Department" disabled={blnBusy} inputProps={{ "controlId": "payroll.fnf-settlements.department.input" }} value={dicFilters.department} onChange={(e) => setDicFilters((d) => ({ ...d, department: e.target.value }))} controlId="payroll.fnf-settlements.department.input" />
+            <TextField className="app-mui-text-field" fullWidth size="small" select label="Payable / Recoverable" disabled={blnBusy} value={dicFilters.payable_type} onChange={(e) => setDicFilters((d) => ({ ...d, payable_type: e.target.value }))} controlId="payroll.fnf-settlements.payable-type.select">{["All", "payable", "recoverable"].map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}</TextField>
+            <TextField className="app-mui-text-field" fullWidth size="small" label="Exit Type" disabled={blnBusy} inputProps={{ "controlId": "payroll.fnf-settlements.exit-type.input" }} value={dicFilters.exit_type} onChange={(e) => setDicFilters((d) => ({ ...d, exit_type: e.target.value }))} controlId="payroll.fnf-settlements.exit-type.input" />
+            <TextField className="app-mui-text-field" fullWidth size="small" type="date" label="LWD From" disabled={blnBusy} inputProps={{ "controlId": "payroll.fnf-settlements.lwd-from.input" }} InputLabelProps={{ shrink: true }} value={dicFilters.lwd_from} onChange={(e) => setDicFilters((d) => ({ ...d, lwd_from: e.target.value }))} controlId="payroll.fnf-settlements.lwd-from.input" />
+            <TextField className="app-mui-text-field" fullWidth size="small" type="date" label="LWD To" disabled={blnBusy} inputProps={{ "controlId": "payroll.fnf-settlements.lwd-to.input" }} InputLabelProps={{ shrink: true }} value={dicFilters.lwd_to} onChange={(e) => setDicFilters((d) => ({ ...d, lwd_to: e.target.value }))} controlId="payroll.fnf-settlements.lwd-to.input" />
+          </MasterMoreFilters>
           <Box className={styles.searchActions}>
             <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => loadRows()} disabled={blnBusy} controlId="payroll.fnf-settlements.search.button">Search</Button>
+          </Box>
+          <Box className={styles.searchActions}>
             <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => setDicFilters(dicEmptyFilters)} disabled={blnBusy} controlId="payroll.fnf-settlements.clear.button">Clear</Button>
           </Box>
         </Box>

@@ -6,11 +6,10 @@ import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
-import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import { yupResolver } from "@hookform/resolvers/yup";
 import {
-  Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Grid, MenuItem, Paper,
+  Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Grid, Link, MenuItem, Paper,
   IconButton, Stack, Tab, Tabs, TextField, Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
@@ -20,7 +19,8 @@ import type { Resolver } from "react-hook-form";
 import * as yup from "yup";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
-import { MasterGridSkeleton } from "@/components/master/MasterListUi";
+import { MasterAddColumnsControl, MasterBreadcrumbs, MasterGridSkeleton, dicMasterRowSx, type MasterOptionalColumn } from "@/components/master/MasterListUi";
+import styles from "@/components/master/MasterScreen.module.css";
 import CommonDataGrid, { type DataGridColumn } from "@/components/ui/CommonDataGrid";
 import FileRowActions from "@/components/shared/files/FileRowActions";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -36,6 +36,8 @@ import { WORK_HOLIDAY_ACTION_ALIASES as dicActionAliases } from "@/features/work
 import { WORK_HOLIDAY_MODULE_CODES as lstModuleCodes } from "@/features/work-on-holiday/types/WorkHolidayTypes";
 
 type WorkHolidayGridRow = Record<string, ReactNode> & { intID: number };
+type OptionalColumnKey = "dayType" | "currentApprover";
+const dicTableCardSx = { position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" } as const;
 
 const strTabStorageKey = "hrms:work-on-holiday:ess-tab";
 const objSecondaryActionSx = {
@@ -100,6 +102,7 @@ export default function EssWorkHolidayPage() {
   const [objSubmitRequest, setObjSubmitRequest] = useState<WorkHolidayRequest | null>(null);
   const [lstEarned, setLstEarned] = useState<WorkHolidayEarnedCompOff[]>([]);
   const [objEditingRequest, setObjEditingRequest] = useState<WorkHolidayRequest | null>(null);
+  const [lstVisibleOptionalColumns, setLstVisibleOptionalColumns] = useState<OptionalColumnKey[]>([]);
   const { objList, blnLoading, strError: strListError, reload } = useWorkHolidayList("my", undefined, 1, 100, blnCanView);
   const { objDetail, blnLoading: blnDetailLoading, loadDetail, setObjDetail } = useWorkHolidayDetail();
 
@@ -298,14 +301,18 @@ export default function EssWorkHolidayPage() {
     }
   }
 
+  const lstOptionalColumns: MasterOptionalColumn<OptionalColumnKey>[] = [
+    { strKey: "dayType", strLabel: t("day_type", "Day Type") },
+    { strKey: "currentApprover", strLabel: t("current_approver", "Current Approver") },
+  ];
   const lstColumns: DataGridColumn<WorkHolidayGridRow>[] = [
-    { field: "action", headerName: t("actions", "Actions"), width: 126, sortable: false, filterable: false, exportable: false },
-    { field: "strRequestNumber", headerName: t("request_number", "Request Number"), width: 170 },
+    { field: "strRequestNumber", headerName: t("request_number", "Request Number"), width: 170, filterable: false, sortAccessor: (objRow) => String(objRow.strRequestNumberSort) },
     { field: "dtWorkDate", headerName: t("work_date", "Work Date"), width: 130 },
-    { field: "strDayTypeCode", headerName: t("day_type", "Day Type"), width: 130 },
+    ...(lstVisibleOptionalColumns.includes("dayType") ? [{ field: "strDayTypeCode", headerName: t("day_type", "Day Type"), width: 130 } as DataGridColumn<WorkHolidayGridRow>] : []),
     { field: "strRequestedOutcomeCode", headerName: t("requested_benefit", "Requested Benefit"), width: 170 },
-    { field: "strBusinessStatus", headerName: t("status", "Status"), width: 200 },
-    { field: "strCurrentApproverName", headerName: t("current_approver", "Current Approver"), width: 180 },
+    { field: "strBusinessStatus", headerName: t("status", "Status"), width: 200, filterable: false, sortAccessor: (objRow) => String(objRow.strBusinessStatusSort) },
+    ...(lstVisibleOptionalColumns.includes("currentApprover") ? [{ field: "strCurrentApproverName", headerName: t("current_approver", "Current Approver"), width: 180 } as DataGridColumn<WorkHolidayGridRow>] : []),
+    { field: "action", headerName: t("actions", "Actions"), width: 90, sortable: false, filterable: false, exportable: false },
   ];
   const lstRows: WorkHolidayGridRow[] = objList.lstItems.map((objRequest) => {
     const blnEditable = ["DRAFT", "SENT_BACK"].includes(objRequest.strRequestStatus);
@@ -329,35 +336,46 @@ export default function EssWorkHolidayPage() {
     return {
     intID: objRequest.intID,
     action: (
-      <span style={{ display: "inline-grid", gridTemplateColumns: "28px 28px", columnGap: 8, alignItems: "center", justifyContent: "center", width: 72, height: 28, lineHeight: 0, verticalAlign: "middle" }}>
-        <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 28, height: 28 }}>
-          <IconButton data-control-id={`work-on-holiday.my.${objRequest.intID}.view.button`} aria-label={t("view", "View")} color="primary" size="small" onClick={() => void loadDetail(objRequest.intID)} sx={{ p: 0.25 }}>
-            <VisibilityRoundedIcon fontSize="small" />
-          </IconButton>
-        </span>
-        <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 28, height: 28 }}>
-          {objSecondaryAction}
-        </span>
+      <span onClick={(objEvent) => objEvent.stopPropagation()} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 28, height: 28 }}>
+        {objSecondaryAction}
       </span>
     ),
-    strRequestNumber: objRequest.strRequestNumber ?? "—",
+    strRequestNumber: (
+      <Link
+        className="app-master-first-column-link"
+        component="button"
+        type="button"
+        underline="none"
+        data-control-id={`work-on-holiday.my.${objRequest.intID}.view.link`}
+        onClick={(objEvent) => {
+          objEvent.stopPropagation();
+          void loadDetail(objRequest.intID);
+        }}
+      >
+        {objRequest.strRequestNumber ?? "—"}
+      </Link>
+    ),
+    strRequestNumberSort: objRequest.strRequestNumber ?? "",
     dtWorkDate: objRequest.dtWorkDate,
     strDayTypeCode: t(`day_type_${objRequest.strDayTypeCode.toLowerCase()}`, objRequest.strDayTypeCode),
     strRequestedOutcomeCode: t(`outcome_${objRequest.strRequestedOutcomeCode.toLowerCase()}`, objRequest.strRequestedOutcomeCode),
     strBusinessStatus: <Chip size="small" label={getWorkHolidayBusinessStatus(objRequest, t)} />,
+    strBusinessStatusSort: getWorkHolidayBusinessStatus(objRequest, t),
     strCurrentApproverName: objRequest.strCurrentApproverName ?? (objRequest.intCurrentApproverUserID ? t("assigned_approver", "Assigned Approver") : "—"),
     };
   });
 
-  if (blnRightsLoading) return <Box data-control-id="work-on-holiday.ess.rights-loading.container"><MasterGridSkeleton strControlId="work-on-holiday.ess.skeleton" intColumns={8} /></Box>;
+  const nodeBreadcrumbs = <MasterBreadcrumbs strSection={t("breadcrumb_leave", "Leave")} strTitle={t("breadcrumb_work_on_holiday", "Work on Holiday")} />;
+  if (blnRightsLoading) return <Stack spacing={1.5} data-control-id="work-on-holiday.ess.rights-loading.container">{nodeBreadcrumbs}<MasterGridSkeleton strControlId="work-on-holiday.ess.skeleton" intColumns={6} /></Stack>;
   if (!blnCanView && !blnCanCreate) return <Alert data-control-id="work-on-holiday.ess.unauthorized.alert" severity="warning">{strRightsError || t("unauthorized", "Work on Holiday access is not available. Ask your administrator to assign the ESS Work on Holiday rights.")}</Alert>;
   return (
     <Stack spacing={2}>
+      {nodeBreadcrumbs}
       {strNotice ? <Alert data-control-id="work-on-holiday.ess.success.alert" severity="success" onClose={() => setStrNotice("")}>{strNotice}</Alert> : null}
       {strError || strListError ? <Alert data-control-id="work-on-holiday.ess.error.alert" severity="error">{strError || strListError}</Alert> : null}
-      <Paper><Tabs value={intTab} onChange={changeTab} variant="scrollable" aria-label={t("ess_tabs", "Work on Holiday sections")}><Tab data-control-id="work-on-holiday.ess.new.tab" label={t("tab_new_request", "New Request")} disabled={!blnCanCreate} /><Tab data-control-id="work-on-holiday.ess.my.tab" label={t("tab_my_requests", "My Requests")} /><Tab data-control-id="work-on-holiday.ess.earned.tab" label={t("tab_earned_comp_off", "Earned Comp-Off")} /></Tabs></Paper>
+      <Paper sx={{ borderRadius: "10px", boxShadow: "none", border: "1px solid #e8eef5" }}><Tabs value={intTab} onChange={changeTab} variant="scrollable" aria-label={t("ess_tabs", "Work on Holiday sections")}><Tab data-control-id="work-on-holiday.ess.new.tab" label={t("tab_new_request", "New Request")} disabled={!blnCanCreate} /><Tab data-control-id="work-on-holiday.ess.my.tab" label={t("tab_my_requests", "My Requests")} /><Tab data-control-id="work-on-holiday.ess.earned.tab" label={t("tab_earned_comp_off", "Earned Comp-Off")} /></Tabs></Paper>
       {intTab === 0 ? (
-        <Paper sx={{ p: { xs: 2, md: 3 } }}>
+        <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: "10px", boxShadow: "none", border: "1px solid #e8eef5" }}>
           {objEditingRequest ? (
             <Button
               data-control-id="work-on-holiday.ess.back-to-my-requests.button"
@@ -398,14 +416,14 @@ export default function EssWorkHolidayPage() {
             <Box sx={{ width: "100%" }}>
               <Grid container spacing={2}>
                 <Grid item xs={12}><Stack direction="row" flexWrap="wrap" useFlexGap gap={2}>
-                  <Box sx={{ width: { xs: "100%", sm: 230 } }}><Controller name="dtWorkDate" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.date.input" fullWidth size="small" type="date" label={t("eligible_date", "Eligible Date")} InputLabelProps={{ shrink: true }} error={Boolean(errors.dtWorkDate)} helperText={errors.dtWorkDate?.message} />} /></Box>
-                  <Box sx={{ width: { xs: "100%", sm: 280 } }}><Controller name="strRequestedOutcomeCode" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.outcome.select" select fullWidth size="small" label={t("requested_benefit", "Requested Benefit")}>{["ATTENDANCE_CREDIT", "COMPOFF", "BOTH"].map((strCode) => <MenuItem data-control-id={`work-on-holiday.ess.outcome.${strCode.toLowerCase()}.option`} key={strCode} value={strCode}>{t(`outcome_${strCode.toLowerCase()}`, strCode)}</MenuItem>)}</TextField>} /></Box>
+                  <Box sx={{ width: { xs: "100%", sm: 230 } }}><Controller name="dtWorkDate" control={control} render={({ field }) => <TextField {...field} className="app-mui-text-field" data-control-id="work-on-holiday.ess.date.input" fullWidth size="small" type="date" label={t("eligible_date", "Eligible Date")} InputLabelProps={{ shrink: true }} error={Boolean(errors.dtWorkDate)} helperText={errors.dtWorkDate?.message} />} /></Box>
+                  <Box sx={{ width: { xs: "100%", sm: 280 } }}><Controller name="strRequestedOutcomeCode" control={control} render={({ field }) => <TextField {...field} className="app-mui-text-field" data-control-id="work-on-holiday.ess.outcome.select" select fullWidth size="small" label={t("requested_benefit", "Requested Benefit")}>{["ATTENDANCE_CREDIT", "COMPOFF", "BOTH"].map((strCode) => <MenuItem data-control-id={`work-on-holiday.ess.outcome.${strCode.toLowerCase()}.option`} key={strCode} value={strCode}>{t(`outcome_${strCode.toLowerCase()}`, strCode)}</MenuItem>)}</TextField>} /></Box>
                   {["COMPOFF", "BOTH"].includes(strOutcome) ? (
-                    <Box sx={{ width: { xs: "100%", sm: 180 } }}><Controller name="decRequestedCreditDays" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.credit-days.input" fullWidth size="small" label={t("expected_credit", "Expected Credit")} InputProps={{ readOnly: true }} />} /></Box>
+                    <Box sx={{ width: { xs: "100%", sm: 180 } }}><Controller name="decRequestedCreditDays" control={control} render={({ field }) => <TextField {...field} className="app-mui-text-field" data-control-id="work-on-holiday.ess.credit-days.input" fullWidth size="small" label={t("expected_credit", "Expected Credit")} InputProps={{ readOnly: true }} />} /></Box>
                   ) : null}
-                  <Box sx={{ width: { xs: "calc(50% - 8px)", sm: 190 } }}><Controller name="tmPlannedStartTime" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.planned-start.input" fullWidth size="small" type="time" label="Start Time" InputLabelProps={{ shrink: true }} error={Boolean(errors.tmPlannedStartTime)} helperText={errors.tmPlannedStartTime?.message} />} /></Box>
-                  <Box sx={{ width: { xs: "calc(50% - 8px)", sm: 190 } }}><Controller name="tmPlannedEndTime" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.planned-end.input" fullWidth size="small" type="time" label="End Time" InputLabelProps={{ shrink: true }} error={Boolean(errors.tmPlannedEndTime)} inputProps={{ min: strMinimumEndTime }} helperText={strMinimumEndTime ? t("end_after_start_hint", `Must be after ${strStart}`) : errors.tmPlannedEndTime?.message} />} /></Box>
-                  <Box sx={{ width: { xs: "calc(50% - 8px)", sm: 220 } }}><Controller name="decRequestedHours" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.requested-hours.input" fullWidth size="small" type="number" label={t("calculated_hours", "Calculated Requested Hours")} InputProps={{ readOnly: true }} />} /></Box>
+                  <Box sx={{ width: { xs: "calc(50% - 8px)", sm: 190 } }}><Controller name="tmPlannedStartTime" control={control} render={({ field }) => <TextField {...field} className="app-mui-text-field" data-control-id="work-on-holiday.ess.planned-start.input" fullWidth size="small" type="time" label="Start Time" InputLabelProps={{ shrink: true }} error={Boolean(errors.tmPlannedStartTime)} helperText={errors.tmPlannedStartTime?.message} />} /></Box>
+                  <Box sx={{ width: { xs: "calc(50% - 8px)", sm: 190 } }}><Controller name="tmPlannedEndTime" control={control} render={({ field }) => <TextField {...field} className="app-mui-text-field" data-control-id="work-on-holiday.ess.planned-end.input" fullWidth size="small" type="time" label="End Time" InputLabelProps={{ shrink: true }} error={Boolean(errors.tmPlannedEndTime)} inputProps={{ min: strMinimumEndTime }} helperText={strMinimumEndTime ? t("end_after_start_hint", `Must be after ${strStart}`) : errors.tmPlannedEndTime?.message} />} /></Box>
+                  <Box sx={{ width: { xs: "calc(50% - 8px)", sm: 220 } }}><Controller name="decRequestedHours" control={control} render={({ field }) => <TextField {...field} className="app-mui-text-field" data-control-id="work-on-holiday.ess.requested-hours.input" fullWidth size="small" type="number" label={t("calculated_hours", "Calculated Requested Hours")} InputProps={{ readOnly: true }} />} /></Box>
                   <Box sx={{ width: { xs: "100%", sm: objAttachment ? 320 : 180 } }}>
                     {objAttachment ? (
                       <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={0.8} sx={{ border: "1px solid #dbe3ef", borderRadius: "8px", px: 1, height: 40, minWidth: 0 }}>
@@ -430,16 +448,49 @@ export default function EssWorkHolidayPage() {
                     )}
                   </Box>
                 </Stack></Grid>
-                <Grid item xs={12}><Controller name="strWorkReason" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.reason.input" fullWidth size="small" multiline minRows={2} label={t("reason", "Reason")} error={Boolean(errors.strWorkReason)} helperText={errors.strWorkReason?.message} />} /></Grid>
-                <Grid item xs={12}><Controller name="strWorkDescription" control={control} render={({ field }) => <TextField {...field} data-control-id="work-on-holiday.ess.description.input" fullWidth size="small" multiline minRows={3} label={t("work_description", "Work Description")} />} /></Grid>
+                <Grid item xs={12}><Controller name="strWorkReason" control={control} render={({ field }) => <TextField {...field} className="app-mui-text-field" data-control-id="work-on-holiday.ess.reason.input" fullWidth size="small" multiline minRows={2} label={t("reason", "Reason")} error={Boolean(errors.strWorkReason)} helperText={errors.strWorkReason?.message} />} /></Grid>
+                <Grid item xs={12}><Controller name="strWorkDescription" control={control} render={({ field }) => <TextField {...field} className="app-mui-text-field" data-control-id="work-on-holiday.ess.description.input" fullWidth size="small" multiline minRows={3} label={t("work_description", "Work Description")} />} /></Grid>
               </Grid>
               <Divider sx={{ my: 2 }} /><Stack direction={{ xs: "column", sm: "row" }} justifyContent="flex-end" gap={1}><Button data-control-id="work-on-holiday.ess.clear.button" type="button" variant="outlined" startIcon={<ClearRoundedIcon />} disabled={blnSaving} onClick={clearRequestForm} sx={objSecondaryActionSx}>{t("clear", "Clear")}</Button><Button data-control-id="work-on-holiday.ess.save-draft.button" variant="outlined" disabled={blnSaving} onClick={handleSubmit((objValues) => saveAndSubmit(objValues, false))} sx={objSecondaryActionSx}>{objEditingRequest ? t("update_draft", "Update Draft") : t("save_draft", "Save Draft")}</Button><Button data-control-id="work-on-holiday.ess.submit.button" type="submit" variant="contained" disabled={blnSaving} sx={{ backgroundColor: "var(--app-primary-color)", "&:hover": { backgroundColor: "var(--app-primary-hover-color, #164d7c)" } }}>{blnSaving ? <CircularProgress size={20} color="inherit" /> : (objEditingRequest?.strRequestStatus === "SENT_BACK" ? t("resubmit", "Resubmit") : t("submit", "Submit"))}</Button></Stack>
             </Box>
           </Box>
         </Paper>
       ) : null}
-      {intTab === 1 ? <Box sx={{ position: "relative" }}>{blnLoading ? <MasterGridSkeleton strControlId="work-on-holiday.ess.my-requests.skeleton" intColumns={8} /> : <CommonDataGrid columns={lstColumns} rows={lstRows} rowIdField="intID" showExportOptions showPaginationSummary defaultPageSize={20} pageSizeOptions={[20, 50, 100]} exportFileName="work_on_holiday_my_requests" testIdPrefix="work-on-holiday-my" emptyMessage={t("empty_my_requests", "No requests found.")} getRowSx={() => ({ height: 62 })} />}</Box> : null}
-      {intTab === 2 ? <CommonDataGrid columns={[
+      {intTab === 1 ? (
+        <Box className={styles.tableCard} sx={dicTableCardSx}>
+          {blnLoading ? (
+            <MasterGridSkeleton strControlId="work-on-holiday.my.skeleton" intColumns={6} />
+          ) : (
+            <CommonDataGrid
+              columns={lstColumns}
+              rows={lstRows}
+              rowIdField="intID"
+              showExportOptions
+              showPaginationSummary
+              defaultPageSize={20}
+              pageSizeOptions={[20, 50, 100]}
+              exportFileName="work_on_holiday_my_requests"
+              testIdPrefix="work-on-holiday-my"
+              emptyMessage={t("empty_my_requests", "No requests found.")}
+              toolbarAfterExport={(
+                <MasterAddColumnsControl
+                  strControlPrefix="work-on-holiday.my"
+                  strButtonLabel={t("add_columns", "Add columns")}
+                  lstColumns={lstOptionalColumns}
+                  lstVisibleKeys={lstVisibleOptionalColumns}
+                  onChange={setLstVisibleOptionalColumns}
+                />
+              )}
+              onRowClick={(objRow) => void loadDetail(objRow.intID)}
+              hideRowClickHint
+              minTableWidth={900}
+              getRowSx={() => dicMasterRowSx}
+              sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+            />
+          )}
+        </Box>
+      ) : null}
+      {intTab === 2 ? <Box className={styles.tableCard} sx={dicTableCardSx}><CommonDataGrid columns={[
         { field: "strRequestNumber", headerName: t("source_request", "Source Request") },
         { field: "dtWorkDate", headerName: t("work_date", "Work Date") },
         { field: "decCreditedDays", headerName: t("credited_days", "Credited Days") },
@@ -454,7 +505,7 @@ export default function EssWorkHolidayPage() {
         dtCreditDate: formatDisplayDate(objEarned.dtCreditDate),
         dtExpiryDate: formatDisplayDate(objEarned.dtExpiryDate),
         strStatus: t(`earned_status_${objEarned.strStatus.toLowerCase()}`, objEarned.strStatus === "REVERSED" ? "Reversed" : "Available"),
-      }))} rowIdField="intID" showExportOptions exportFileName="earned_comp_off" testIdPrefix="work-on-holiday-earned" emptyMessage={t("empty_earned", "No earned Comp-Off entries found.")} /> : null}
+      }))} rowIdField="intID" showExportOptions exportFileName="earned_comp_off" testIdPrefix="work-on-holiday-earned" emptyMessage={t("empty_earned", "No earned Comp-Off entries found.")} getRowSx={() => dicMasterRowSx} sx={{ p: 0, boxShadow: "none", background: "transparent" }} /></Box> : null}
       <WorkHolidayDetailDrawer objDetail={objDetail} blnOpen={Boolean(objDetail)} blnLoading={blnDetailLoading} blnBusinessStatus fnOnClose={() => setObjDetail(null)} fnOnRefresh={async () => { if (objDetail) await loadDetail(objDetail.intID); await reload(); }} fnOnConflict={(strMessage) => setStrError(`${t("concurrency_conflict", "This request changed. The latest record has been loaded.")} ${strMessage}`)} />
       <CommonConfirmDialog
         rootControlId="work-on-holiday.submit.dialog"

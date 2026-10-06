@@ -1318,25 +1318,26 @@
   align-items: center;
 }
 
-/* Search row for list screens with many filters: fields wrap into equal cells, Search/Clear sit in the last cell. */
-.multiFilterSearchRow {
+/* One-line search row for list screens that move secondary filters into "More filters":
+   up to three fields, then More filters / Search / Clear. */
+.compactSearchRow {
   align-items: center;
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: minmax(220px, 1.3fr) minmax(200px, 1.1fr) minmax(150px, 0.8fr) auto auto auto;
 }
 
-.multiFilterSearchRow > :global(.MuiFormControl-root),
-.multiFilterSearchRow > :global(.MuiAutocomplete-root) {
+.compactSearchRow > * {
   min-width: 0;
 }
 
-.multiFilterSearchRow .searchActions {
-  align-items: center;
-  justify-content: flex-end;
-}
-
-.multiFilterSearchRow :global(.MuiButton-root) {
+.compactSearchRow :global(.MuiButton-root) {
   align-self: center;
   white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .compactSearchRow {
+    grid-template-columns: 1fr 1fr;
+  }
 }

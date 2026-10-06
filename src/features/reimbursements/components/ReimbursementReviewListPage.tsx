@@ -8,7 +8,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
-import { MasterAddColumnsControl, MasterBreadcrumbs, MasterGridSkeleton, dicMasterRowSx, onSearchEnter, type MasterOptionalColumn } from "@/components/master/MasterListUi";
+import { MasterAddColumnsControl, MasterBreadcrumbs, MasterGridSkeleton, MasterMoreFilters, dicMasterRowSx, onSearchEnter, type MasterOptionalColumn } from "@/components/master/MasterListUi";
 import styles from "@/components/master/MasterScreen.module.css";
 import { employeeService } from "@/features/employee/services/employeeService";
 import type { EmployeeFormOptions, EmployeeListRecord, EmployeeLookupOption } from "@/features/employee/types";
@@ -117,6 +117,17 @@ function getClaimLocationName(objClaim: ReimbursementClaimDto, mapEmployees: Map
   return normalizeFilterValue(objClaim.strLocationName || (objClaim.intEmployeeID ? mapEmployees.get(objClaim.intEmployeeID)?.strLocationName : ""));
 }
 
+// Filters that live in the "More filters" popover; Cancel/Clear all only touch these.
+const lstMoreFilterKeys = ["strClaimMonth", "strProofPending", "strPayrollStatus", "strDepartment", "strLocation"] as const;
+
+function restoreMoreFilters(dicCurrent: PayrollReimbursementFilters, dicSource: PayrollReimbursementFilters): PayrollReimbursementFilters {
+  const dicNext = { ...dicCurrent };
+  lstMoreFilterKeys.forEach((strKey) => {
+    dicNext[strKey] = dicSource[strKey];
+  });
+  return dicNext;
+}
+
 const nodeSearchAdornment = <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment>;
 
 function getPaymentStatusLabel(objClaim: ReimbursementClaimDto) {
@@ -143,6 +154,7 @@ export default function ReimbursementReviewListPage() {
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
   const [lstVisibleOptionalColumns, setLstVisibleOptionalColumns] = useState<OptionalColumnKey[]>([]);
+  const [dicMoreFiltersSnapshot, setDicMoreFiltersSnapshot] = useState<PayrollReimbursementFilters | null>(null);
   const blnEmployeeReimbursementContext =
     strPathname?.toLowerCase() === "/payroll/employee-reimbursement" ||
     objSearchParams.get("source") === "employee-reimbursement";
@@ -388,7 +400,7 @@ export default function ReimbursementReviewListPage() {
     <Box className={styles.page} data-controlid="reimbursements.review-list.page">
       <MasterBreadcrumbs strSection="Employee Services" strTitle={blnEmployeeReimbursementContext ? "Employee Reimbursements" : "Review Reimbursements"} />
       <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
-        <Box className={styles.multiFilterSearchRow} aria-busy={blnBusy} onKeyDown={onSearchEnter(() => { if (!blnBusy) void loadClaims(); })}>
+        <Box className={styles.compactSearchRow} aria-busy={blnBusy} onKeyDown={onSearchEnter(() => { if (!blnBusy) void loadClaims(); })}>
           <Autocomplete
             size="small"
             options={lstClaimOptions}
@@ -413,39 +425,55 @@ export default function ReimbursementReviewListPage() {
             <MenuItem value="">All statuses</MenuItem>
             {lstClaimStatuses.map((strStatus) => <MenuItem key={strStatus} value={strStatus}>{strStatus.replaceAll("_", " ")}</MenuItem>)}
           </TextField>
-          <TextField className="app-mui-text-field" size="small" type="month" label="Claim month" InputLabelProps={{ shrink: true }} value={dicFilters.strClaimMonth} onChange={(objEvent) => setDicFilters({ ...dicFilters, strClaimMonth: objEvent.target.value })} disabled={blnBusy} />
-          <TextField className="app-mui-text-field" select size="small" label="Proof pending" value={dicFilters.strProofPending} onChange={(objEvent) => setDicFilters({ ...dicFilters, strProofPending: objEvent.target.value })} disabled={blnBusy}>
-            <MenuItem value="">Any</MenuItem>
-            <MenuItem value="yes">Yes</MenuItem>
-            <MenuItem value="no">No</MenuItem>
-          </TextField>
-          <TextField className="app-mui-text-field" select size="small" label="Payroll status" value={dicFilters.strPayrollStatus} onChange={(objEvent) => setDicFilters({ ...dicFilters, strPayrollStatus: objEvent.target.value })} disabled={blnBusy} controlId="reimbursements.review-list.payroll-status.select">
-            <MenuItem value="">Any</MenuItem>
-            <MenuItem value="in_payroll">In payroll</MenuItem>
-            <MenuItem value="not_in_payroll">Not in payroll</MenuItem>
-          </TextField>
-          <Autocomplete
-            size="small"
-            options={lstDepartmentOptions}
-            value={lstDepartmentOptions.find((objOption) => objOption.strValue === dicFilters.strDepartment) ?? null}
-            getOptionLabel={(objOption) => objOption.strLabel}
-            isOptionEqualToValue={(objA, objB) => objA.strValue === objB.strValue}
-            onChange={(_e, objOption) => setDicFilters({ ...dicFilters, strDepartment: objOption?.strValue ?? "" })}
-            disabled={blnBusy}
-            renderInput={(params) => <TextField {...params} className="app-mui-text-field" label="Department" placeholder="Search department..." InputProps={{ ...params.InputProps, startAdornment: (<>{nodeSearchAdornment}{params.InputProps.startAdornment}</>) }} />}
-          />
-          <Autocomplete
-            size="small"
-            options={lstLocationOptions}
-            value={lstLocationOptions.find((objOption) => objOption.strValue === dicFilters.strLocation) ?? null}
-            getOptionLabel={(objOption) => objOption.strLabel}
-            isOptionEqualToValue={(objA, objB) => objA.strValue === objB.strValue}
-            onChange={(_e, objOption) => setDicFilters({ ...dicFilters, strLocation: objOption?.strValue ?? "" })}
-            disabled={blnBusy}
-            renderInput={(params) => <TextField {...params} className="app-mui-text-field" label="Location" placeholder="Search location..." InputProps={{ ...params.InputProps, startAdornment: (<>{nodeSearchAdornment}{params.InputProps.startAdornment}</>) }} />}
-          />
+          <MasterMoreFilters
+            strControlPrefix="reimbursements.review-list"
+            blnHasActiveFilters={lstMoreFilterKeys.some((strKey) => Boolean(dicFilters[strKey]))}
+            blnDisabled={blnBusy}
+            onOpen={() => setDicMoreFiltersSnapshot(dicFilters)}
+            onCancel={() => {
+              if (dicMoreFiltersSnapshot) setDicFilters(restoreMoreFilters(dicFilters, dicMoreFiltersSnapshot));
+            }}
+            onClearAll={() => setDicFilters(restoreMoreFilters(dicFilters, createInitialPayrollReimbursementFilters()))}
+            onApply={() => void loadClaims()}
+          >
+            <TextField className="app-mui-text-field" fullWidth size="small" type="month" label="Claim month" InputLabelProps={{ shrink: true }} value={dicFilters.strClaimMonth} onChange={(objEvent) => setDicFilters({ ...dicFilters, strClaimMonth: objEvent.target.value })} disabled={blnBusy} />
+            <TextField className="app-mui-text-field" fullWidth select size="small" label="Proof pending" value={dicFilters.strProofPending} onChange={(objEvent) => setDicFilters({ ...dicFilters, strProofPending: objEvent.target.value })} disabled={blnBusy}>
+              <MenuItem value="">Any</MenuItem>
+              <MenuItem value="yes">Yes</MenuItem>
+              <MenuItem value="no">No</MenuItem>
+            </TextField>
+            <TextField className="app-mui-text-field" fullWidth select size="small" label="Payroll status" value={dicFilters.strPayrollStatus} onChange={(objEvent) => setDicFilters({ ...dicFilters, strPayrollStatus: objEvent.target.value })} disabled={blnBusy} controlId="reimbursements.review-list.payroll-status.select">
+              <MenuItem value="">Any</MenuItem>
+              <MenuItem value="in_payroll">In payroll</MenuItem>
+              <MenuItem value="not_in_payroll">Not in payroll</MenuItem>
+            </TextField>
+            <Autocomplete
+              fullWidth
+              size="small"
+              options={lstDepartmentOptions}
+              value={lstDepartmentOptions.find((objOption) => objOption.strValue === dicFilters.strDepartment) ?? null}
+              getOptionLabel={(objOption) => objOption.strLabel}
+              isOptionEqualToValue={(objA, objB) => objA.strValue === objB.strValue}
+              onChange={(_e, objOption) => setDicFilters({ ...dicFilters, strDepartment: objOption?.strValue ?? "" })}
+              disabled={blnBusy}
+              renderInput={(params) => <TextField {...params} className="app-mui-text-field" fullWidth label="Department" placeholder="Search department..." InputProps={{ ...params.InputProps, startAdornment: (<>{nodeSearchAdornment}{params.InputProps.startAdornment}</>) }} />}
+            />
+            <Autocomplete
+              fullWidth
+              size="small"
+              options={lstLocationOptions}
+              value={lstLocationOptions.find((objOption) => objOption.strValue === dicFilters.strLocation) ?? null}
+              getOptionLabel={(objOption) => objOption.strLabel}
+              isOptionEqualToValue={(objA, objB) => objA.strValue === objB.strValue}
+              onChange={(_e, objOption) => setDicFilters({ ...dicFilters, strLocation: objOption?.strValue ?? "" })}
+              disabled={blnBusy}
+              renderInput={(params) => <TextField {...params} className="app-mui-text-field" fullWidth label="Location" placeholder="Search location..." InputProps={{ ...params.InputProps, startAdornment: (<>{nodeSearchAdornment}{params.InputProps.startAdornment}</>) }} />}
+            />
+          </MasterMoreFilters>
           <Box className={styles.searchActions}>
             <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => void loadClaims()} disabled={blnBusy} controlId="reimbursements.review-list.search.button">Search</Button>
+          </Box>
+          <Box className={styles.searchActions}>
             <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} disabled={blnBusy} controlId="reimbursements.review-list.clear.button">Clear</Button>
           </Box>
         </Box>

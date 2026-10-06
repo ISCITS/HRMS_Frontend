@@ -230,3 +230,81 @@ export function MasterAddColumnsControl<TKey extends string>({
     </>
   );
 }
+
+type MasterMoreFiltersProps = {
+  strControlPrefix: string;
+  blnHasActiveFilters: boolean;
+  blnDisabled?: boolean;
+  strButtonLabel?: string;
+  strTitle?: string;
+  strClearAllLabel?: string;
+  strCancelLabel?: string;
+  strApplyLabel?: string;
+  // Called when the popover opens, so the screen can snapshot the values Cancel restores.
+  onOpen?: () => void;
+  onCancel: () => void;
+  onClearAll: () => void;
+  onApply: () => void;
+  children: ReactNode;
+};
+
+// "More filters" button + popover (matches the Employee master): secondary filters live in the
+// popover so the main search row stays one line. The button shows a dot while any of them is set.
+export function MasterMoreFilters({
+  strControlPrefix,
+  blnHasActiveFilters,
+  blnDisabled = false,
+  strButtonLabel = "More filters",
+  strTitle = "More filters",
+  strClearAllLabel = "Clear all",
+  strCancelLabel = "Cancel",
+  strApplyLabel = "Apply",
+  onOpen,
+  onCancel,
+  onClearAll,
+  onApply,
+  children,
+}: MasterMoreFiltersProps) {
+  const [objAnchor, setObjAnchor] = useState<HTMLElement | null>(null);
+
+  function cancel() {
+    onCancel();
+    setObjAnchor(null);
+  }
+
+  return (
+    <>
+      <Button
+        data-controlid={`${strControlPrefix}.more-filters.button`}
+        className={styles.secondaryButton}
+        startIcon={<FilterListRoundedIcon />}
+        onClick={(objEvent) => { onOpen?.(); setObjAnchor(objEvent.currentTarget); }}
+        aria-expanded={Boolean(objAnchor)}
+        disabled={blnDisabled}
+        sx={{ whiteSpace: "nowrap" }}
+      >
+        {strButtonLabel}{blnHasActiveFilters ? " •" : ""}
+      </Button>
+      <Popover
+        open={Boolean(objAnchor)}
+        anchorEl={objAnchor}
+        onClose={cancel}
+        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+        PaperProps={{ className: styles.employeeMoreFilters, "data-controlid": `${strControlPrefix}.more-filters.popover` } as object}
+      >
+        <Box className={styles.employeeMoreFiltersHeader}>
+          <Typography fontWeight={700}>{strTitle}</Typography>
+          <IconButton data-controlid={`${strControlPrefix}.more-filters.close.button`} aria-label="Close" size="small" onClick={cancel}><ClearRoundedIcon fontSize="small" /></IconButton>
+        </Box>
+        {children}
+        <Box className={styles.employeeMoreFiltersActions}>
+          <Button data-controlid={`${strControlPrefix}.more-filters.clear-all.button`} className={styles.employeeMoreFiltersClear} onClick={onClearAll}>{strClearAllLabel}</Button>
+          <Box className={styles.employeeMoreFiltersActionButtons}>
+            <Button data-controlid={`${strControlPrefix}.more-filters.cancel.button`} className={styles.secondaryButton} onClick={cancel}>{strCancelLabel}</Button>
+            <Button data-controlid={`${strControlPrefix}.more-filters.apply.button`} className={styles.primaryButton} onClick={() => { onApply(); setObjAnchor(null); }}>{strApplyLabel}</Button>
+          </Box>
+        </Box>
+      </Popover>
+    </>
+  );
+}
