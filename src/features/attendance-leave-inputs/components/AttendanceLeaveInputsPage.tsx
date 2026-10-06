@@ -461,6 +461,7 @@ export default function AttendanceLeaveInputsPage() {
               testIdPrefix="attendance-leave-inputs.list"
               showPaginationSummary
               hideRowClickHint
+              minTableWidth={1150}
               onRowClick={(dicRow) => {
                 const strUUID = String(dicRow.strInputRecordUUID ?? "");
                 if (strUUID) objRouter.push(`/payroll/inputs/${strUUID}/edit`);

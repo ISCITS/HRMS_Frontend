@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
@@ -235,8 +235,8 @@ export default function WorkHolidayRequestsPage({ blnEssManagerMode = false }: {
             alignItems: "center",
             "&&": {
               gridTemplateColumns: ["all", "history"].includes(strSelectedTab)
-                ? { xs: "1fr", md: "minmax(240px, 1.2fr) minmax(180px, .6fr) auto auto 1fr" }
-                : { xs: "1fr", md: "minmax(240px, 1.2fr) auto auto 1fr" },
+                ? { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "minmax(240px, 1.2fr) minmax(180px, .6fr) auto auto 1fr" }
+                : { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "minmax(240px, 1.2fr) auto auto 1fr" },
             },
             "& .MuiButton-root": { alignSelf: "center" },
           }}
@@ -267,6 +267,7 @@ export default function WorkHolidayRequestsPage({ blnEssManagerMode = false }: {
           exportFileName="work_on_holiday_requests"
           testIdPrefix="work-on-holiday-workbench"
           hideRowClickHint
+          minTableWidth={1250}
           getRowSx={() => dicMasterRowSxAnyColumn}
           onRowClick={(objRow) => { if (blnCanView) void openRequestDetail(Number(objRow.intID)); }}
           withPaper={false}

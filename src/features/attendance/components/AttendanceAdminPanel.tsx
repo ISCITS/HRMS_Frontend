@@ -254,7 +254,7 @@ export default function AttendanceAdminPanel() {
           </Box>
 
           <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
-            <Box className={styles.searchRow} sx={{ alignItems: "center", "&&": { gridTemplateColumns: { xs: "1fr", md: "220px 1fr" } } }}>
+            <Box className={styles.searchRow} sx={{ alignItems: "center", "&&": { gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "220px 1fr" } } }}>
               <TextField className="app-mui-text-field" controlId="attendance.muster.date.input" label="Muster Date" type="date" size="small" InputLabelProps={{ shrink: true }} value={strMusterDate}
                 onChange={(objEvent) => { setStrMusterDate(objEvent.target.value); void loadMuster(objEvent.target.value); }} fullWidth />
             </Box>
@@ -279,7 +279,7 @@ export default function AttendanceAdminPanel() {
             <Typography sx={{ fontSize: "11px", color: "#64748b", mt: 0.25, mb: 1.25 }}>
               Merge holidays, weekly-offs, approved leave and punches into one status per day.
             </Typography>
-            <Box className={styles.searchRow} sx={{ alignItems: "center", "&&": { gridTemplateColumns: { xs: "1fr", md: "minmax(180px, 0.6fr) minmax(180px, 0.6fr) auto 1fr" } }, "& .MuiButton-root": { alignSelf: "center" } }}>
+            <Box className={styles.searchRow} sx={{ alignItems: "center", "&&": { gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "minmax(180px, 0.6fr) minmax(180px, 0.6fr) auto 1fr" } }, "& .MuiButton-root": { alignSelf: "center" } }}>
               <TextField className="app-mui-text-field" controlId="attendance.reconcile.employee.input" label="Employee ID" type="number" size="small" fullWidth value={objReconcile.intEmployeeID} onChange={(e) => setObjReconcile((p) => ({ ...p, intEmployeeID: e.target.value }))} />
               <TextField className="app-mui-text-field" controlId="attendance.reconcile.period.input" label="Month" type="month" size="small" fullWidth InputLabelProps={{ shrink: true }} value={objReconcile.strPeriod} onChange={(e) => setObjReconcile((p) => ({ ...p, strPeriod: e.target.value }))} />
               <Button controlId="attendance.reconcile.run.button" className={styles.primaryButton} onClick={doReconcile} disabled={blnReconciling}>{blnReconciling ? "Reconciling..." : "Run Reconcile"}</Button>
