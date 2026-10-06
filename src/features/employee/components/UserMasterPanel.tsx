@@ -1108,16 +1108,6 @@ export default function UserMasterPanel() {
           px: "20px",
           py: "12px",
           borderColor: "#e5edf5",
-          "& .app-mui-text-field .MuiOutlinedInput-root, & .MuiAutocomplete-root .MuiOutlinedInput-root": {
-            backgroundColor: "#fff",
-            borderRadius: "6px",
-            minHeight: 36,
-          },
-          "& .app-mui-text-field .MuiOutlinedInput-input, & .MuiAutocomplete-root .MuiOutlinedInput-input": {
-            paddingTop: "7.5px",
-            paddingBottom: "7.5px",
-          },
-          "& .app-mui-text-field .MuiSelect-select.MuiOutlinedInput-input": { paddingTop: "7.5px", paddingBottom: "7.5px" },
           "& .MuiFormLabel-asterisk": { color: "var(--app-field-error-color)" },
           "& .MuiAutocomplete-popupIndicator svg": { color: "var(--app-primary-color)", fontSize: 18 },
           "& .MuiIconButton-root svg": { color: "var(--app-primary-color)" },
@@ -1268,7 +1258,7 @@ export default function UserMasterPanel() {
                 alignItems: "start",
               }}
             >
-              <Box sx={{ display: "grid", gap: "4px" }}>
+              <Box sx={{ display: "grid" }}>
                 <TextField
                   className="app-mui-text-field"
                   size="small"
@@ -1292,7 +1282,7 @@ export default function UserMasterPanel() {
                     )
                   }}
                 />
-                <Box sx={{ display: "grid", gap: "4px", mt: dicErrors.password ? "-2px" : 0 }}>
+                <Box sx={{ display: "grid", gap: "6px", mt: "6px" }}>
                   <Box sx={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr)) auto", gap: 0.5, alignItems: "center" }}>
                     {[0, 1, 2, 3].map((intIndex) => (
                       <Box
@@ -1349,13 +1339,14 @@ export default function UserMasterPanel() {
           <Box
             sx={{
               display: "grid",
-              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-              gap: "12px",
+              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" , mt: "1"},
+              gap: "15px",
               alignItems: "center",
             }}
           >
             <TextField
               className="app-mui-text-field"
+              sx={{ mt: 1 }}
               size="small"
               select
               label={dicModuleLabels.fieldPreferredLanguage}
@@ -1399,7 +1390,7 @@ export default function UserMasterPanel() {
           ) : null}
 
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2, alignItems: "center" }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, justifyContent: "space-between" }}>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr) auto", md: "minmax(120px, 164px) auto" }, alignItems: "center", gap: 1 }}>
               <Typography sx={{ fontWeight: 400, color: "#0f172a" }}>{dicModuleLabels.fieldHrmsAccess}</Typography>
               <Switch
                 inputProps={{ "data-controlid": "user-master.dialog.hrms-access.switch" } as InputHTMLAttributes<HTMLInputElement>}
@@ -1421,9 +1412,10 @@ export default function UserMasterPanel() {
               fullWidth
               required={dicForm.hrmsAccessEnabled}
               className="app-mui-text-field"
+              searchIconSize={18}
             />
 
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, justifyContent: "space-between" }}>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr) auto", md: "minmax(120px, 164px) auto" }, alignItems: "center", gap: 1 }}>
               <Typography sx={{ fontWeight: 400, color: "#0f172a" }}>{dicModuleLabels.fieldEssAccess}</Typography>
               <Tooltip title={blnEssAccessDisabled && strMode !== "view" ? dicModuleLabels.validationEssRequiresEmployee : ""} arrow>
                 <span>
@@ -1449,6 +1441,7 @@ export default function UserMasterPanel() {
               fullWidth
               required={dicForm.essAccessEnabled}
               className="app-mui-text-field"
+              searchIconSize={18}
             />
 
           </Box>

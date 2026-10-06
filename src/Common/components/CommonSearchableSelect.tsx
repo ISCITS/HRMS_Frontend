@@ -25,6 +25,7 @@ type CommonSearchableSelectProps<T extends CommonSearchableSelectOption> = {
   fullWidth?: boolean;
   size?: "small" | "medium";
   showSearchIcon?: boolean;
+  searchIconSize?: number;
   className?: string;
   sx?: SxProps<Theme>;
   getOptionLabel?: (option: T) => string;
@@ -49,6 +50,7 @@ export default function CommonSearchableSelect<T extends CommonSearchableSelectO
   fullWidth = true,
   size = "small",
   showSearchIcon = true,
+  searchIconSize = 24,
   className,
   sx,
   getOptionLabel,
@@ -91,7 +93,7 @@ export default function CommonSearchableSelect<T extends CommonSearchableSelectO
             ...objParams.InputProps,
             startAdornment: (
               <>
-                {showSearchIcon ? <SearchRoundedIcon sx={{ color: "var(--app-primary-color)", fontSize: 24, ml: 0.5, mr: -0.5 }} /> : null}
+                {showSearchIcon ? <SearchRoundedIcon sx={{ color: "var(--app-primary-color)", fontSize: searchIconSize, ml: 0.5, mr: -0.5 }} /> : null}
                 {objParams.InputProps.startAdornment}
               </>
             ),
