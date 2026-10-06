@@ -2,16 +2,14 @@
 
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Autocomplete, Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Autocomplete, Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, InputAdornment, Link, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import { MasterAddColumnsControl, MasterBreadcrumbs, MasterGridSkeleton, dicMasterRowSx, onSearchEnter, type MasterOptionalColumn } from "@/components/master/MasterListUi";
 import styles from "@/components/master/MasterScreen.module.css";
-import BlockingLoader from "@/components/shared/BlockingLoader";
 import { employeeService } from "@/features/employee/services/employeeService";
 import type { EmployeeFormOptions, EmployeeListRecord, EmployeeLookupOption } from "@/features/employee/types";
 import ReimbursementStatusBadge from "@/features/reimbursements/components/ReimbursementStatusBadge";
@@ -26,6 +24,12 @@ const lstClaimStatuses = ["submitted", "resubmitted", "under_review", "approved"
 const lstReimbursementReviewModuleCodes = ["REIMBURSEMENT_REVIEW", "REIMBURSEMENTS_REVIEW", "PAYROLL_REIMBURSEMENT", "PAYROLL_REIMBURSEMENTS"];
 const lstEssReimbursementModuleCodes = ["ESS_REIMBURSEMENT", "ESS_REIMBURSEMENTS", "REIMBURSEMENT", "REIMBURSEMENTS"];
 const lstCreateEssReimbursementModuleCodes = [...lstEssReimbursementModuleCodes, ...lstReimbursementReviewModuleCodes];
+type OptionalColumnKey = "department" | "location" | "paymentStatus";
+const lstOptionalColumns: MasterOptionalColumn<OptionalColumnKey>[] = [
+  { strKey: "department", strLabel: "Department" },
+  { strKey: "location", strLabel: "Location" },
+  { strKey: "paymentStatus", strLabel: "Payment Status" },
+];
 type FilterOption = {
   strValue: string;
   strLabel: string;
@@ -113,6 +117,8 @@ function getClaimLocationName(objClaim: ReimbursementClaimDto, mapEmployees: Map
   return normalizeFilterValue(objClaim.strLocationName || (objClaim.intEmployeeID ? mapEmployees.get(objClaim.intEmployeeID)?.strLocationName : ""));
 }
 
+const nodeSearchAdornment = <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment>;
+
 function getPaymentStatusLabel(objClaim: ReimbursementClaimDto) {
   if (objClaim.strSettlementMode === "finance") {
     return ["paid", "settled"].includes(objClaim.strFinanceStatus || "") ? "Finance Settled" : "Finance Pending";
@@ -136,10 +142,12 @@ export default function ReimbursementReviewListPage() {
   const [strCreateError, setStrCreateError] = useState("");
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
+  const [lstVisibleOptionalColumns, setLstVisibleOptionalColumns] = useState<OptionalColumnKey[]>([]);
   const blnEmployeeReimbursementContext =
     strPathname?.toLowerCase() === "/payroll/employee-reimbursement" ||
     objSearchParams.get("source") === "employee-reimbursement";
   const blnCanView = canViewAny() || canDoAny("list") || canDoAny("review");
+  const blnBusy = blnLoading || blnRightsLoading || blnCreateRightsLoading || blnEssRightsLoading;
   const blnCanCreateEssReimbursement = canCreateEssAny("create") || canCreateEssAny("add") || canCreateEssAny("ess_reimbursement_create");
   function hasEssPermissionCode(strPermissionCode: string) {
     const strNormalizedPermissionCode = strPermissionCode.trim().toLowerCase();
@@ -243,40 +251,22 @@ export default function ReimbursementReviewListPage() {
     () =>
       lstFilteredClaims.map((objClaim) => ({
         id: objClaim.intID,
-        action: blnEmployeeReimbursementContext ? (
-          <Stack direction="row" spacing={0.6} justifyContent="center" flexWrap="wrap" useFlexGap>
-            {blnCanViewEssReimbursement ? (
-              <IconButton
-                size="small"
-                onClick={() => objRouter.push(getEssReimbursementRoute(objClaim, "view"))}
-                aria-label="Open reimbursement claim"
-                controlId="reimbursements.review-list.row.ess.view.button"
-                data-row-key={objClaim.intID}
-              >
-                <OpenInNewRoundedIcon fontSize="small" />
-              </IconButton>
-            ) : null}
-            {blnCanEditEssReimbursement && canEditReimbursementClaim(objClaim.strClaimStatus) ? (
-              <IconButton size="small" onClick={() => objRouter.push(getEssReimbursementRoute(objClaim, "edit"))} aria-label="Edit reimbursement claim" controlId="reimbursements.review-list.row.ess.edit.button" data-row-key={objClaim.intID}><EditRoundedIcon fontSize="small" /></IconButton>
-            ) : null}
-          </Stack>
-        ) : (
-          <Box sx={{ display: "flex", justifyContent: "center" }}>
-            <IconButton
-              size="small"
-              onClick={() => objRouter.push(`/payroll/reimbursements/${objClaim.strRecordUUID}`)}
-              aria-label="Open reimbursement claim"
-              controlId="reimbursements.review-list.row.view.button"
-              data-row-key={objClaim.intID}
-            >
-              <OpenInNewRoundedIcon fontSize="small" />
-            </IconButton>
-          </Box>
-        ),
+        strClaimRoute: getClaimOpenRoute(objClaim),
         strClaimReference: (
-          <Typography sx={{ fontWeight: 900, color: "#0f172a", fontSize: "0.88rem" }}>
+          <Link
+            className="app-master-first-column-link"
+            component="button"
+            type="button"
+            underline="none"
+            controlId="reimbursements.review-list.row.claim.link"
+            data-row-key={objClaim.intID}
+            onClick={(objEvent) => {
+              objEvent.stopPropagation();
+              openClaim(objClaim);
+            }}
+          >
             {getClaimReferenceNumber(objClaim) || "-"}
-          </Typography>
+          </Link>
         ),
         strClaimReferenceSort: getClaimReferenceNumber(objClaim) || "",
         strClaimTitle: objClaim.strClaimTitle || "",
@@ -289,6 +279,8 @@ export default function ReimbursementReviewListPage() {
         decClaimedAmountSort: Number(objClaim.decClaimedAmount ?? 0),
         decApprovedAmount: formatCurrency(objClaim.decApprovedAmount),
         decApprovedAmountSort: Number(objClaim.decApprovedAmount ?? 0),
+        strDepartment: getClaimDepartmentName(objClaim, mapEmployees) || "-",
+        strLocation: getClaimLocationName(objClaim, mapEmployees) || "-",
         strPaymentStatus: getPaymentStatusLabel(objClaim),
       })),
     [blnCanEditEssReimbursement, blnCanViewEssReimbursement, blnEmployeeReimbursementContext, lstFilteredClaims, mapEmployees, objRouter]
@@ -296,7 +288,6 @@ export default function ReimbursementReviewListPage() {
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      { field: "action", headerName: "Action", sortable: false, filterable: false, exportable: false, width: 110 },
       { field: "strClaimReference", headerName: "Claim Ref #", filterable: false, width: 150, sortAccessor: (objRow) => String(objRow.strClaimReferenceSort) },
       { field: "strClaimTitle", headerName: "Claim Purpose", width: 220 },
       { field: "strEmployee", headerName: "Employee", width: 230 },
@@ -326,9 +317,11 @@ export default function ReimbursementReviewListPage() {
         width: 180,
         sortAccessor: (objRow) => objRow.decApprovedAmountSort,
       },
-      { field: "strPaymentStatus", headerName: "Payment Status", width: 160 },
+      ...(lstVisibleOptionalColumns.includes("department") ? [{ field: "strDepartment", headerName: "Department", width: 170 } as CommonTableColumn<(typeof lstTableRows)[number]>] : []),
+      ...(lstVisibleOptionalColumns.includes("location") ? [{ field: "strLocation", headerName: "Location", width: 170 } as CommonTableColumn<(typeof lstTableRows)[number]>] : []),
+      ...(lstVisibleOptionalColumns.includes("paymentStatus") ? [{ field: "strPaymentStatus", headerName: "Payment Status", width: 160 } as CommonTableColumn<(typeof lstTableRows)[number]>] : []),
     ],
-    []
+    [lstVisibleOptionalColumns]
   );
 
   function clearFilters() {
@@ -372,91 +365,104 @@ export default function ReimbursementReviewListPage() {
       : `/ess/reimbursements/${objClaim.intID}${strEmployeeQuery}`;
   }
 
+  // Same rule as the Salary Component list: the link/row opens edit when the user may edit the
+  // claim, otherwise view. In the HR review queue there is only the review detail page.
+  function getClaimOpenRoute(objClaim: ReimbursementClaimDto) {
+    if (!blnEmployeeReimbursementContext) {
+      return `/payroll/reimbursements/${objClaim.strRecordUUID}`;
+    }
+    if (blnCanEditEssReimbursement && canEditReimbursementClaim(objClaim.strClaimStatus)) {
+      return getEssReimbursementRoute(objClaim, "edit");
+    }
+    return blnCanViewEssReimbursement ? getEssReimbursementRoute(objClaim, "view") : "";
+  }
+
+  function openClaim(objClaim: ReimbursementClaimDto) {
+    const strRoute = getClaimOpenRoute(objClaim);
+    if (strRoute) {
+      objRouter.push(strRoute);
+    }
+  }
+
   return (
-    <Box className={styles.page}>
-      <Box className={styles.controlsCard}>
-        <Stack spacing={1.1}>
-          <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center" useFlexGap sx={{ pt: 1, pb: 0.5, rowGap: 2, "& > .MuiTextField-root, & > .MuiAutocomplete-root": { flex: "1 1 200px" } }}>
-            <TextField select size="small" label="Status" value={dicFilters.strStatus} onChange={(objEvent) => setDicFilters({ ...dicFilters, strStatus: objEvent.target.value })} sx={{ minWidth: 160 }} controlId="reimbursements.review-list.status.select">
-              <MenuItem value="">All statuses</MenuItem>
-              {lstClaimStatuses.map((strStatus) => <MenuItem key={strStatus} value={strStatus}>{strStatus.replaceAll("_", " ")}</MenuItem>)}
-            </TextField>
-            <Autocomplete
-              size="small"
-              options={lstEmployeeOptions}
-              value={lstEmployeeOptions.find((objOption) => objOption.strValue === dicFilters.intEmployeeID) ?? null}
-              getOptionLabel={(objOption) => objOption.strLabel}
-              isOptionEqualToValue={(objA, objB) => objA.strValue === objB.strValue}
-              onChange={(_e, objOption) => setDicFilters({ ...dicFilters, intEmployeeID: objOption?.strValue ?? "" })}
-              sx={{ minWidth: 210 }}
-              renderInput={(params) => <TextField {...params} InputLabelProps={{ shrink: true }} label="Employee" placeholder="Search employee..."
-                InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />}
-            />
-            <TextField size="small" type="month" label="Claim month" InputLabelProps={{ shrink: true }} value={dicFilters.strClaimMonth} onChange={(objEvent) => setDicFilters({ ...dicFilters, strClaimMonth: objEvent.target.value })} sx={{ minWidth: 150 }} />
-            <Autocomplete
-              size="small"
-              options={lstClaimOptions}
-              value={lstClaimOptions.find((objOption) => objOption.strValue === dicFilters.strSearchText) ?? null}
-              getOptionLabel={(objOption) => objOption.strLabel}
-              isOptionEqualToValue={(objA, objB) => objA.strValue === objB.strValue}
-              onChange={(_e, objOption) => setDicFilters({ ...dicFilters, strSearchText: objOption?.strValue ?? "" })}
-              sx={{ minWidth: 240 }}
-              renderInput={(params) => <TextField {...params} InputLabelProps={{ shrink: true }} label="Claim search" placeholder="Search claims..."
-                InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />}
-            />
-            <TextField select size="small" label="Proof pending" value={dicFilters.strProofPending} onChange={(objEvent) => setDicFilters({ ...dicFilters, strProofPending: objEvent.target.value })} sx={{ minWidth: 150 }}>
-              <MenuItem value="">Any</MenuItem>
-              <MenuItem value="yes">Yes</MenuItem>
-              <MenuItem value="no">No</MenuItem>
-            </TextField>
-            <TextField select size="small" label="Payroll status" value={dicFilters.strPayrollStatus} onChange={(objEvent) => setDicFilters({ ...dicFilters, strPayrollStatus: objEvent.target.value })} sx={{ minWidth: 160 }} controlId="reimbursements.review-list.payroll-status.select">
-              <MenuItem value="">Any</MenuItem>
-              <MenuItem value="in_payroll">In payroll</MenuItem>
-              <MenuItem value="not_in_payroll">Not in payroll</MenuItem>
-            </TextField>
-            <Autocomplete
-              size="small"
-              options={lstDepartmentOptions}
-              value={lstDepartmentOptions.find((objOption) => objOption.strValue === dicFilters.strDepartment) ?? null}
-              getOptionLabel={(objOption) => objOption.strLabel}
-              isOptionEqualToValue={(objA, objB) => objA.strValue === objB.strValue}
-              onChange={(_e, objOption) => setDicFilters({ ...dicFilters, strDepartment: objOption?.strValue ?? "" })}
-              sx={{ minWidth: 170 }}
-              renderInput={(params) => <TextField {...params} InputLabelProps={{ shrink: true }} label="Department" placeholder="Search department..."
-                InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />}
-            />
-            <Autocomplete
-              size="small"
-              options={lstLocationOptions}
-              value={lstLocationOptions.find((objOption) => objOption.strValue === dicFilters.strLocation) ?? null}
-              getOptionLabel={(objOption) => objOption.strLabel}
-              isOptionEqualToValue={(objA, objB) => objA.strValue === objB.strValue}
-              onChange={(_e, objOption) => setDicFilters({ ...dicFilters, strLocation: objOption?.strValue ?? "" })}
-              sx={{ minWidth: 170 }}
-              renderInput={(params) => <TextField {...params} InputLabelProps={{ shrink: true }} label="Location" placeholder="Search location..."
-                InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />}
-            />
-            <Box className={styles.searchActions} sx={{ flexShrink: 0, ml: "auto" }}>
-              <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => void loadClaims()} controlId="reimbursements.review-list.search.button">Search</Button>
-              <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} controlId="reimbursements.review-list.clear.button">Clear</Button>
-            </Box>
-          </Stack>
-        </Stack>
+    <Box className={styles.page} data-controlid="reimbursements.review-list.page">
+      <MasterBreadcrumbs strSection="Employee Services" strTitle={blnEmployeeReimbursementContext ? "Employee Reimbursements" : "Review Reimbursements"} />
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        <Box className={styles.multiFilterSearchRow} aria-busy={blnBusy} onKeyDown={onSearchEnter(() => { if (!blnBusy) void loadClaims(); })}>
+          <Autocomplete
+            size="small"
+            options={lstClaimOptions}
+            value={lstClaimOptions.find((objOption) => objOption.strValue === dicFilters.strSearchText) ?? null}
+            getOptionLabel={(objOption) => objOption.strLabel}
+            isOptionEqualToValue={(objA, objB) => objA.strValue === objB.strValue}
+            onChange={(_e, objOption) => setDicFilters({ ...dicFilters, strSearchText: objOption?.strValue ?? "" })}
+            disabled={blnBusy}
+            renderInput={(params) => <TextField {...params} className="app-mui-text-field" label="Claim search" placeholder="Search claims..." InputProps={{ ...params.InputProps, startAdornment: (<>{nodeSearchAdornment}{params.InputProps.startAdornment}</>) }} />}
+          />
+          <Autocomplete
+            size="small"
+            options={lstEmployeeOptions}
+            value={lstEmployeeOptions.find((objOption) => objOption.strValue === dicFilters.intEmployeeID) ?? null}
+            getOptionLabel={(objOption) => objOption.strLabel}
+            isOptionEqualToValue={(objA, objB) => objA.strValue === objB.strValue}
+            onChange={(_e, objOption) => setDicFilters({ ...dicFilters, intEmployeeID: objOption?.strValue ?? "" })}
+            disabled={blnBusy}
+            renderInput={(params) => <TextField {...params} className="app-mui-text-field" label="Employee" placeholder="Search employee..." InputProps={{ ...params.InputProps, startAdornment: (<>{nodeSearchAdornment}{params.InputProps.startAdornment}</>) }} />}
+          />
+          <TextField className="app-mui-text-field" select size="small" label="Status" value={dicFilters.strStatus} onChange={(objEvent) => setDicFilters({ ...dicFilters, strStatus: objEvent.target.value })} disabled={blnBusy} controlId="reimbursements.review-list.status.select">
+            <MenuItem value="">All statuses</MenuItem>
+            {lstClaimStatuses.map((strStatus) => <MenuItem key={strStatus} value={strStatus}>{strStatus.replaceAll("_", " ")}</MenuItem>)}
+          </TextField>
+          <TextField className="app-mui-text-field" size="small" type="month" label="Claim month" InputLabelProps={{ shrink: true }} value={dicFilters.strClaimMonth} onChange={(objEvent) => setDicFilters({ ...dicFilters, strClaimMonth: objEvent.target.value })} disabled={blnBusy} />
+          <TextField className="app-mui-text-field" select size="small" label="Proof pending" value={dicFilters.strProofPending} onChange={(objEvent) => setDicFilters({ ...dicFilters, strProofPending: objEvent.target.value })} disabled={blnBusy}>
+            <MenuItem value="">Any</MenuItem>
+            <MenuItem value="yes">Yes</MenuItem>
+            <MenuItem value="no">No</MenuItem>
+          </TextField>
+          <TextField className="app-mui-text-field" select size="small" label="Payroll status" value={dicFilters.strPayrollStatus} onChange={(objEvent) => setDicFilters({ ...dicFilters, strPayrollStatus: objEvent.target.value })} disabled={blnBusy} controlId="reimbursements.review-list.payroll-status.select">
+            <MenuItem value="">Any</MenuItem>
+            <MenuItem value="in_payroll">In payroll</MenuItem>
+            <MenuItem value="not_in_payroll">Not in payroll</MenuItem>
+          </TextField>
+          <Autocomplete
+            size="small"
+            options={lstDepartmentOptions}
+            value={lstDepartmentOptions.find((objOption) => objOption.strValue === dicFilters.strDepartment) ?? null}
+            getOptionLabel={(objOption) => objOption.strLabel}
+            isOptionEqualToValue={(objA, objB) => objA.strValue === objB.strValue}
+            onChange={(_e, objOption) => setDicFilters({ ...dicFilters, strDepartment: objOption?.strValue ?? "" })}
+            disabled={blnBusy}
+            renderInput={(params) => <TextField {...params} className="app-mui-text-field" label="Department" placeholder="Search department..." InputProps={{ ...params.InputProps, startAdornment: (<>{nodeSearchAdornment}{params.InputProps.startAdornment}</>) }} />}
+          />
+          <Autocomplete
+            size="small"
+            options={lstLocationOptions}
+            value={lstLocationOptions.find((objOption) => objOption.strValue === dicFilters.strLocation) ?? null}
+            getOptionLabel={(objOption) => objOption.strLabel}
+            isOptionEqualToValue={(objA, objB) => objA.strValue === objB.strValue}
+            onChange={(_e, objOption) => setDicFilters({ ...dicFilters, strLocation: objOption?.strValue ?? "" })}
+            disabled={blnBusy}
+            renderInput={(params) => <TextField {...params} className="app-mui-text-field" label="Location" placeholder="Search location..." InputProps={{ ...params.InputProps, startAdornment: (<>{nodeSearchAdornment}{params.InputProps.startAdornment}</>) }} />}
+          />
+          <Box className={styles.searchActions}>
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => void loadClaims()} disabled={blnBusy} controlId="reimbursements.review-list.search.button">Search</Button>
+            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} disabled={blnBusy} controlId="reimbursements.review-list.clear.button">Clear</Button>
+          </Box>
+        </Box>
       </Box>
 
       {strRightsError ? <Alert severity="warning" sx={{ borderRadius: "8px" }}>{strRightsError}</Alert> : null}
       {strError ? <Alert severity="error" sx={{ borderRadius: "8px" }}>{strError}</Alert> : null}
-      <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnCreateRightsLoading || blnEssRightsLoading} strLabel="Loading reimbursement review queue..." />
 
-      {!blnCanView ? (
-        <Paper sx={{ borderRadius: "8px", border: "1px solid #dbe3ef", p: 3 }}>
-          <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>Reimbursement review access is not available for your user group.</Typography>
-          <Typography sx={{ mt: 1, color: "#64748b" }}>Contact your administrator if you need reimbursement review visibility.</Typography>
-        </Paper>
-      ) : null}
-
-      {blnCanView ? (
-        <Box className={styles.tableCard}>
+      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        {blnBusy ? (
+          <MasterGridSkeleton strControlId="reimbursements.review-list.skeleton" intColumns={7} />
+        ) : !blnCanView ? (
+          <Box className={styles.emptyState} data-controlid="reimbursements.review-list.access-denied.state">
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>Reimbursement review access is not available for your user group.</Typography>
+            <Typography sx={{ mt: 1, color: "#64748b" }}>Contact your administrator if you need reimbursement review visibility.</Typography>
+          </Box>
+        ) : (
           <CommonTable
             columns={lstTableColumns}
             rows={lstTableRows}
@@ -469,14 +475,22 @@ export default function ReimbursementReviewListPage() {
                 ) : null}
               </Stack>
             )}
-            minTableWidth={blnEmployeeReimbursementContext ? 1180 : 980}
+            toolbarAfterExport={(
+              <MasterAddColumnsControl strControlPrefix="reimbursements.review-list" lstColumns={lstOptionalColumns} lstVisibleKeys={lstVisibleOptionalColumns} onChange={setLstVisibleOptionalColumns} />
+            )}
+            onRowClick={(objRow) => {
+              if (objRow.strClaimRoute) objRouter.push(String(objRow.strClaimRoute));
+            }}
+            hideRowClickHint
+            getRowSx={() => dicMasterRowSx}
+            minTableWidth={1100}
             emptyMessage="No reimbursement claims found."
             testIdPrefix="reimbursements.review-list"
             withPaper={false}
             sx={{ p: 0, boxShadow: "none", background: "transparent" }}
           />
-        </Box>
-      ) : null}
+        )}
+      </Box>
       <Dialog open={blnCreateDialogOpen} onClose={() => setBlnCreateDialogOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Add Reimbursement</DialogTitle>
         <DialogContent>

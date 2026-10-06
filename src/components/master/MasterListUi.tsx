@@ -1,8 +1,11 @@
 "use client";
 
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
-import { Box, Breadcrumbs, Skeleton, Typography } from "@mui/material";
-import type { KeyboardEvent } from "react";
+import ViewColumnRoundedIcon from "@mui/icons-material/ViewColumnRounded";
+import { Box, Breadcrumbs, Button, Checkbox, Menu, MenuItem, Skeleton, Typography } from "@mui/material";
+import { useState, type KeyboardEvent } from "react";
+
+import styles from "@/components/master/MasterScreen.module.css";
 
 // Shared building blocks for list screens styled like the Department master:
 // breadcrumb header, skeleton grid and the compact search-row grid.
@@ -109,3 +112,59 @@ export const dicMasterRowSxAnyColumn = {
   "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
   "&.MuiTableRow-hover:hover td .MuiLink-root": { textDecoration: "underline", color: "#0066df" },
 } as const;
+
+export type MasterOptionalColumn<TKey extends string> = {
+  strKey: TKey;
+  strLabel: string;
+};
+
+type MasterAddColumnsControlProps<TKey extends string> = {
+  strControlPrefix: string;
+  lstColumns: MasterOptionalColumn<TKey>[];
+  lstVisibleKeys: TKey[];
+  onChange: (lstVisibleKeys: TKey[]) => void;
+  strButtonLabel?: string;
+  blnDisabled?: boolean;
+};
+
+// "Add columns" button for the grid toolbar (pass as CommonTable's toolbarAfterExport). Optional
+// columns stay hidden until ticked here, same as the Salary Component list.
+export function MasterAddColumnsControl<TKey extends string>({
+  strControlPrefix,
+  lstColumns,
+  lstVisibleKeys,
+  onChange,
+  strButtonLabel = "Add columns",
+  blnDisabled = false,
+}: MasterAddColumnsControlProps<TKey>) {
+  const [objAnchor, setObjAnchor] = useState<HTMLElement | null>(null);
+  const strButtonId = `${strControlPrefix.replace(/\./g, "-")}-add-columns-button`;
+
+  function toggleColumn(strKey: TKey) {
+    onChange(lstVisibleKeys.includes(strKey) ? lstVisibleKeys.filter((strVisible) => strVisible !== strKey) : [...lstVisibleKeys, strKey]);
+  }
+
+  return (
+    <>
+      <Button
+        id={strButtonId}
+        data-controlid={`${strControlPrefix}.add-columns.button`}
+        className={styles.secondaryButton}
+        startIcon={<ViewColumnRoundedIcon />}
+        onClick={(objEvent) => setObjAnchor(objEvent.currentTarget)}
+        disabled={blnDisabled}
+        sx={{ borderRadius: "8px !important", minHeight: "36px !important" }}
+      >
+        {strButtonLabel}
+      </Button>
+      <Menu anchorEl={objAnchor} open={Boolean(objAnchor)} onClose={() => setObjAnchor(null)} MenuListProps={{ "aria-labelledby": strButtonId }}>
+        {lstColumns.map((objColumn) => (
+          <MenuItem key={objColumn.strKey} data-controlid={`${strControlPrefix}.add-columns.${objColumn.strKey}.option`} onClick={() => toggleColumn(objColumn.strKey)}>
+            <Checkbox size="small" checked={lstVisibleKeys.includes(objColumn.strKey)} inputProps={{ "aria-label": objColumn.strLabel }} sx={{ p: 0.5, mr: 1 }} />
+            {objColumn.strLabel}
+          </MenuItem>
+        ))}
+      </Menu>
+    </>
+  );
+}
