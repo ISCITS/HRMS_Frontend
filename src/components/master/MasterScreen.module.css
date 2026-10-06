@@ -144,6 +144,47 @@
   grid-template-columns: minmax(220px, 1.2fr) minmax(220px, 1.2fr) minmax(150px, 0.7fr) auto auto;
 }
 
+.loanAdvanceSearchRow {
+  grid-template-columns:
+    minmax(260px, 1.45fr)
+    minmax(260px, 1.45fr)
+    minmax(170px, 0.9fr)
+    minmax(140px, 0.72fr)
+    minmax(140px, 0.72fr)
+    118px
+    104px
+    104px !important;
+  min-width: 1280px;
+}
+
+.loanAdvanceSearchRow > * {
+  min-width: 0;
+}
+
+.loanAdvanceSearchRow .searchActions {
+  width: 100%;
+}
+
+.loanAdvanceSearchRow :global(.MuiButton-root) {
+  width: 100%;
+}
+
+.loanAdvanceFilterButton {
+  font-size: 0.78rem !important;
+  min-height: 32px !important;
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+}
+
+.loanAdvanceFilterButton :global(.MuiButton-startIcon) {
+  margin-left: -2px;
+  margin-right: 4px;
+}
+
+.loanAdvanceFilterButton :global(.MuiSvgIcon-root) {
+  font-size: 1.05rem;
+}
+
 .employeeSearchRow {
   align-items: stretch;
   display: grid;

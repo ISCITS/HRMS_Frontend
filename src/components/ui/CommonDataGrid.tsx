@@ -10,6 +10,7 @@ import {
   MenuItem,
   Pagination,
   Paper,
+  Skeleton,
   SxProps,
   Stack,
   Table,
@@ -76,6 +77,8 @@ export type CommonDataGridProps<T extends Record<string, ReactNode>> = {
   testIdPrefix?: string;
   hideRowClickHint?: boolean;
   wrapColumnHeaders?: boolean;
+  loading?: boolean;
+  skeletonRowCount?: number;
 };
 
 // Renders a generic client-side data grid with filter, sort, pagination, and optional export.
@@ -102,7 +105,9 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   sx,
   testIdPrefix = "common-data-grid",
   hideRowClickHint = false,
-  wrapColumnHeaders = true
+  wrapColumnHeaders = true,
+  loading = false,
+  skeletonRowCount
 }: CommonDataGridProps<T>) {
   const { t } = useModuleLabels("common_data_grid");
   /*
@@ -133,6 +138,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   const strPaginationSeparator = t("pagination_separator", dicConstant.common.paginationSeparator);
   const strRowDoubleClickHint = t("row_double_click_tooltip", "Double-click on a row to open details");
   const strResolvedEmptyMessage = emptyMessage || t("empty_message", dicConstant.commonDataGrid.emptyMessage);
+  const intSkeletonRowCount = skeletonRowCount ?? Math.min(Math.max(rowsPerPage, 1), 10);
   const orderedColumns = useMemo(() => {
     const getColumnPriority = (column: DataGridColumn<T>) => {
       const strField = String(column.field);
@@ -533,8 +539,42 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
               })}
             </TableRow>
           </TableHead>
-          <TableBody data-controlid={`${testIdPrefix}.table.body`}>
-            {filteredAndSortedRows.length === 0 ? (
+          <TableBody data-controlid={`${testIdPrefix}.table.body`} aria-busy={loading || undefined}>
+            {loading ? (
+              Array.from({ length: intSkeletonRowCount }).map((_, intRow) => (
+                <TableRow
+                  key={`skeleton-${intRow}`}
+                  data-controlid={`${testIdPrefix}.table.skeleton-row`}
+                  sx={{
+                    height: 40,
+                    "& td": {
+                      borderBottom: "1px solid",
+                      borderColor: "#edf1f6",
+                      verticalAlign: "middle"
+                    }
+                  }}
+                >
+                  {orderedColumns.map((column, intColumn) => {
+                    const strField = String(column.field);
+                    const blnIsActionColumn = strField === "action" || strField === "rowActions";
+                    const strAlign = column.align ?? "left";
+                    const strSkeletonWidth = blnIsActionColumn ? "68px" : `${46 + ((intRow + intColumn) % 3) * 14}%`;
+                    return (
+                      <TableCell
+                        key={`skeleton-${intRow}-${strField}`}
+                        align={strAlign}
+                        data-controlid={`${testIdPrefix}.table.skeleton.${strField}.cell`}
+                        sx={{ px: 2, py: 0.75 }}
+                      >
+                        <Box sx={{ display: "flex", justifyContent: strAlign === "right" ? "flex-end" : strAlign === "center" ? "center" : "flex-start" }}>
+                          <Skeleton variant={blnIsActionColumn ? "rounded" : "text"} width={strSkeletonWidth} height={blnIsActionColumn ? 24 : 20} />
+                        </Box>
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              ))
+            ) : filteredAndSortedRows.length === 0 ? (
               <TableRow data-controlid={`${testIdPrefix}.table.empty-row`}>
                 <TableCell
                   data-controlid={`${testIdPrefix}.table.empty-state`}

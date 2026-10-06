@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Alert, Autocomplete, Box, Button, CircularProgress, MenuItem, TextField, Typography } from "@mui/material";
+import { Alert, Autocomplete, Box, Breadcrumbs, Button, CircularProgress, MenuItem, TextField, Typography } from "@mui/material";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import PictureAsPdfRoundedIcon from "@mui/icons-material/PictureAsPdfRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import type { EmployeeListRecord } from "@/features/employee/types";
 import { ctcReportService, type CtcDocument } from "@/features/reports/services/ctcReportService";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
 import { hasCtcAction } from "@/features/reports/utils/ctcAccess";
-import screen from "@/features/payroll/components/PayrollScreen.module.css";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
+import screen from "@/components/master/MasterScreen.module.css";
 import styles from "./CtcFormatReportPage.module.css";
 
 type Statement = { document: CtcDocument; employee: EmployeeListRecord };
@@ -31,6 +33,7 @@ export default function CtcFormatReportPage() {
   const generation = useRef(0);
 
   useEffect(() => {
+    if (access.blnLoading) return;
     if (!canView) { setEmployees([]); setStatement(null); return; }
     let active = true;
     setLoading(true); setError("");
@@ -39,9 +42,10 @@ export default function CtcFormatReportPage() {
       .catch(reason => { if (active) { setEmployees([]); setStatement(null); setError(reason instanceof Error ? reason.message : "Unable to load employees."); } })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; generation.current += 1; };
-  }, [canView, reload]);
+  }, [access.blnLoading, canView, reload]);
 
   const eligible = employees.filter(row => type === "All" || (row.blnIsWorker ? "Worker" : "Non-Worker") === type);
+  const binding = access.blnLoading || loading;
   const busy = generating || !!downloading;
   async function generate() {
     if (!canView || !selected || busy) return;
@@ -70,42 +74,44 @@ export default function CtcFormatReportPage() {
     } finally { setDownloading(null); }
   }
 
-  if (access.blnLoading) return <Box sx={{ p: 3 }}><CircularProgress aria-label="Loading access rights" /></Box>;
-  if (!canView) return <Alert severity="warning">Employee Salary view access is required to view CTC statements.</Alert>;
+  if (!access.blnLoading && !canView) return <Alert severity="warning">Employee Salary view access is required to view CTC statements.</Alert>;
 
   return <Box className={screen.page}>
-    <Box component="form" className={screen.controlsCard} onSubmit={event => { event.preventDefault(); void generate(); }}>
-      <Box className={`${screen.reportSearchPanelRow} ${styles.filterRow}`}>
-        <Box className={screen.reportSearchField} sx={{ flex: "0 1 240px" }}>
-          <TextField fullWidth select label="Worker / Non-Worker" value={type} disabled={busy || loading} onChange={event => { setType(event.target.value); setSelected(null); setStatement(null); }} data-testid="ctc.filter.type">
+    <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />}>
+      <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>Reports</Typography>
+      <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">CTC Format</Typography>
+    </Breadcrumbs>
+
+    <Box component="form" className={screen.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }} onSubmit={event => { event.preventDefault(); void generate(); }}>
+      <Box className={`${screen.searchRow} ${styles.filterRow}`}>
+        <TextField className="app-mui-text-field" fullWidth select size="small" label="Worker / Non-Worker" value={type} disabled={busy || binding} onChange={event => { setType(event.target.value); setSelected(null); setStatement(null); }} data-testid="ctc.filter.type">
             {["All", "Worker", "Non-Worker"].map(option => <MenuItem key={option} value={option}>{option}</MenuItem>)}
-          </TextField>
-        </Box>
-        <Box className={`${screen.reportSearchField} ${styles.employeeField}`}>
-          <Autocomplete options={eligible} value={selected} loading={loading} disabled={busy || loading}
+        </TextField>
+        <Box className={styles.employeeField}>
+          <Autocomplete options={eligible} value={selected} disabled={busy || binding}
             isOptionEqualToValue={(a, b) => a.strRecordUUID === b.strRecordUUID}
             getOptionLabel={row => `${row.strEmployeeCode} - ${row.strFullName}`}
             onChange={(_, value) => { setSelected(value); setStatement(null); }}
             noOptionsText={employees.length === 0 ? "No employees available for your access scope." : "No matching employees."}
-            renderInput={params => <TextField {...params} label="Employee Name" required placeholder={loading ? "Loading employees..." : "Search employee..."} data-testid="ctc.filter.employee"
+            renderInput={params => <TextField {...params} className="app-mui-text-field" size="small" label="Employee Name" required placeholder={binding ? "Loading employees..." : "Search employee..."} data-testid="ctc.filter.employee"
               InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />} />
         </Box>
-        <Box className={screen.searchActions} sx={{ ml: "auto" }}>
-          <Button type="submit" className={screen.primaryButton} startIcon={generating ? <CircularProgress size={16} color="inherit" /> : <SearchRoundedIcon />} disabled={!selected || loading || busy} data-testid="ctc.generate">Search</Button>
-          <Button className={screen.secondaryButton} startIcon={<ClearRoundedIcon />} disabled={busy} onClick={() => { setType("All"); setSelected(null); setStatement(null); setError(""); }}>Clear</Button>
+        <Box className={screen.searchActions}>
+          <Button type="submit" size="small" className={screen.primaryButton} startIcon={generating ? <CircularProgress size={16} color="inherit" /> : <SearchRoundedIcon />} disabled={!selected || binding || busy} data-testid="ctc.generate" sx={{ minHeight: "30px !important", px: "8px !important" }}>Search</Button>
+          <Button size="small" className={screen.secondaryButton} startIcon={<ClearRoundedIcon />} disabled={busy || binding} onClick={() => { setType("All"); setSelected(null); setStatement(null); setError(""); }} sx={{ minHeight: "30px !important", px: "8px !important" }}>Clear</Button>
         </Box>
       </Box>
     </Box>
     {error && <Alert severity="error" action={<Button color="inherit" disabled={busy} onClick={() => setReload(value => value + 1)}>Retry</Button>}>{error}</Alert>}
-    {!error && !loading && employees.length === 0 && (
+    {!error && !binding && employees.length === 0 && (
       <Alert severity="info">
-        No employees are available in the Employee Name list. This usually means your Employee Salary access scope is set to "Self" or "Team" but your login isn't linked to an employee record — ask an administrator to either link your account to an employee or grant a broader (Team/All) CTC access scope.
+        No employees are available in the Employee Name list. This usually means your Employee Salary access scope is set to "Self" or "Team" but your login isn't linked to an employee record - ask an administrator to either link your account to an employee or grant a broader (Team/All) CTC access scope.
       </Alert>
     )}
-    {!error && !loading && employees.length > 0 && eligible.length === 0 && (
+    {!error && !binding && employees.length > 0 && eligible.length === 0 && (
       <Alert severity="info">No {type} employees found. Try a different Worker / Non-Worker filter.</Alert>
     )}
-    <Box className={screen.tableCard}>
+    <Box className={screen.tableCard} sx={{ position: "relative", p: "10px !important", borderRadius: "10px !important", boxShadow: "none" }}>
       <Box className={styles.toolbar}>
         <Typography fontWeight={700}>CTC Statement</Typography>
         {canExport && <Box className={styles.downloads}>
@@ -116,8 +122,7 @@ export default function CtcFormatReportPage() {
       {statement?.document.warnings.map((warning, index) => <Alert severity="warning" key={index} sx={{ mb: 1 }}>{warning}</Alert>)}
       <Box className={styles.preview}>
         {!statement ? <Box className={styles.empty}>
-          {generating || loading ? <CircularProgress size={24} /> : null}
-          <Typography color="text.secondary">{loading ? "Loading employees..." : generating ? "Preparing CTC statement..." : "Select an employee and search to generate the CTC statement."}</Typography>
+          {binding || generating ? <DottedLoader /> : <Typography color="text.secondary">Select an employee and search to generate the CTC statement.</Typography>}
         </Box> : <table className={styles.worksheet} aria-label="CTC statement matching the Excel template">
           <colgroup>{statement.document.widths.map((width, index) => <col key={index} style={{ width: `${width / statement.document.widths.reduce((a, b) => a + b, 0) * 100}%` }} />)}</colgroup>
           <tbody>{statement.document.rows.map((row, rowIndex) => <tr key={rowIndex}>{row.map((cell, cellIndex) => <td key={cellIndex} colSpan={cell.span} style={{ fontWeight: cell.bold ? 700 : 400, background: cell.background, color: cell.color || undefined, textAlign: cell.align, borderStyle: cell.borders.map(border => border ? "solid" : "none").join(" ") }}>{cell.text}</td>)}</tr>)}</tbody>
