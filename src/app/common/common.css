@@ -22,8 +22,8 @@
   --app-field-label-color: #1d2a44;
   --app-field-border-color: #8a97b1;
   --app-field-hover-border-color: #6f7f9e;
-  --app-field-focus-color: #1f6fff;
-  --app-field-focus-ring: 0 0 0 5px rgba(31, 111, 255, 0.1);
+  --app-field-focus-color: #5f8fd8;
+  --app-field-focus-ring: 0 0 0 2px rgba(95, 143, 216, 0.16);
   --app-field-error-color: #ff2b2b;
   --app-input-font-size: 0.875rem;
   --app-input-font-weight: 400;
@@ -292,9 +292,9 @@
 
 .app-mui-text-field .MuiInputLabel-root {
   color: var(--app-field-label-color);
-  top: 0;
+  top: 50%;
   line-height: 1.45;
-  transform: translate(14px, 10px) scale(1) !important;
+  transform: translate(14px, -50%) scale(1) !important;
 }
 
 .app-mui-text-field .MuiInputLabel-root.Mui-focused:not(.Mui-error) {
@@ -320,8 +320,10 @@
 }
 
 .app-mui-text-field .MuiInputBase-root.Mui-focused:not(.Mui-error),
-.app-mui-text-field .MuiOutlinedInput-root.Mui-focused:not(.Mui-error) {
-  box-shadow: var(--app-field-focus-ring);
+.app-mui-text-field .MuiOutlinedInput-root.Mui-focused:not(.Mui-error),
+.app-mui-text-field .MuiInputBase-root:focus-within:not(.Mui-error),
+.app-mui-text-field .MuiOutlinedInput-root:focus-within:not(.Mui-error) {
+  box-shadow: var(--app-field-focus-ring) !important;
 }
 
 .app-mui-text-field.app-mui-text-field--rounded .MuiOutlinedInput-root,
@@ -364,9 +366,11 @@
 }
 
 .app-mui-text-field .MuiInputBase-root.Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline,
-.app-mui-text-field .MuiOutlinedInput-root.Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline {
-  border-color: var(--app-field-focus-color);
-  border-width: 1px;
+.app-mui-text-field .MuiOutlinedInput-root.Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline,
+.app-mui-text-field .MuiInputBase-root:focus-within:not(.Mui-error) .MuiOutlinedInput-notchedOutline,
+.app-mui-text-field .MuiOutlinedInput-root:focus-within:not(.Mui-error) .MuiOutlinedInput-notchedOutline {
+  border-color: var(--app-field-focus-color) !important;
+  border-width: 1px !important;
 }
 
 .app-mui-text-field .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline,
