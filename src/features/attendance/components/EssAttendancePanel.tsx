@@ -31,6 +31,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
+import { MasterBreadcrumbs, MasterGridSkeleton } from "@/components/master/MasterListUi";
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import styles from "@/components/master/MasterScreen.module.css";
@@ -498,7 +499,12 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
   }
 
   if (blnRightsLoading) {
-    return <BlockingLoader blnOpen strLabel={t("loading", "Loading...")} />;
+    return (
+      <Stack spacing={1.5}>
+        <MasterBreadcrumbs strSection={t("breadcrumb_attendance", "Attendance")} strTitle={blnHrMode ? t("breadcrumb_attendance_review", "Employee Attendance") : t("breadcrumb_my_attendance", "My Attendance")} />
+        <MasterGridSkeleton strControlId="attendance.review.skeleton" intColumns={7} />
+      </Stack>
+    );
   }
   if (!blnCanViewMyAttendance) {
     return (
@@ -512,6 +518,8 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
 
   const objEmployeeSelector = blnShowEmployeeSelector ? (
     <CommonSearchableSelect
+      className="app-mui-text-field"
+      showSearchIcon={false}
       controlId="attendance-review.employee.select"
       label="Employee"
       placeholder="Search employee..."
@@ -533,8 +541,9 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
 
   return (
     <Stack spacing={1.5}>
+      <MasterBreadcrumbs strSection={t("breadcrumb_attendance", "Attendance")} strTitle={blnHrMode ? t("breadcrumb_attendance_review", "Employee Attendance") : t("breadcrumb_my_attendance", "My Attendance")} />
       {blnHrMode && objEmployeeSelector ? (
-        <Box className={styles.controlsCard} data-control-id="attendance-review.filters.card">
+        <Box className={styles.controlsCard} data-control-id="attendance-review.filters.card" sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
           <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", sm: "minmax(260px, 420px)" }, alignItems: "center", mt: 1 }}>
             {objEmployeeSelector}
           </Box>

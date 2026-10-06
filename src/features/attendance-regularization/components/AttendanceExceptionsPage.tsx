@@ -12,6 +12,7 @@ import {
   DialogContent,
   DialogTitle,
   Grid,
+  Link,
   MenuItem,
   Paper,
   Snackbar,
@@ -27,7 +28,7 @@ import LookupChip, {
 } from "@/features/attendance-regularization/components/LookupChip";
 import CommonDataGrid, { type DataGridColumn } from "@/components/ui/CommonDataGrid";
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
-import CommonRowActions from "@/components/master/CommonRowActions";
+import { onSearchEnter, dicMasterNameLinkSx, dicMasterRowSx, MasterBreadcrumbs, MasterGridSkeleton } from "@/components/master/MasterListUi";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import styles from "@/components/master/MasterScreen.module.css";
 import { attendanceRegularizationService } from "@/features/attendance-regularization/services/attendanceRegularizationService";
@@ -252,15 +253,23 @@ export default function AttendanceExceptionsPage() {
     () =>
       (objList?.lstItems ?? []).map((objItem) => ({
         id: objItem.intID,
-        action: (
-          <CommonRowActions
-            testIdPrefix={`attendance-exceptions.${objItem.intID}`}
-            rowKey={objItem.intID}
-            blnCanView
-            onView={() => void openDetail(objItem)}
-          />
+        employeeText: objItem.strEmployeeName ?? objItem.strEmployeeCode ?? "",
+        employee: (
+          <Link
+            component="button"
+            type="button"
+            underline="none"
+            className="app-master-first-column-link"
+            data-control-id={`attendance-exceptions.${objItem.intID}.employee.button`}
+            onClick={(objEvent) => {
+              if (window.getSelection()?.toString()) { objEvent.stopPropagation(); return; }
+              void openDetail(objItem);
+            }}
+            sx={dicMasterNameLinkSx}
+          >
+            {objItem.strEmployeeName ?? objItem.strEmployeeCode}
+          </Link>
         ),
-        employee: objItem.strEmployeeName ?? objItem.strEmployeeCode,
         date: objItem.dtWorkDate,
         type: lookupLabel(lstTypes, objItem.strExceptionTypeCode, t("unavailable", "Unavailable")),
         severity: (
@@ -271,6 +280,7 @@ export default function AttendanceExceptionsPage() {
             blnHideIcon
           />
         ),
+        statusText: lookupLabel(lstStatuses, objItem.strExceptionStatus, objItem.strExceptionStatus),
         exceptionStatus: (
           <LookupChip
             lstOptions={lstStatuses}
@@ -289,12 +299,11 @@ export default function AttendanceExceptionsPage() {
 
   const lstTableColumns = useMemo<DataGridColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 90 },
-      { field: "employee", headerName: t("employee", "Employee"), width: 170 },
+      { field: "employee", headerName: t("employee", "Employee"), width: 170, sortAccessor: (row) => row.employeeText },
       { field: "date", headerName: t("date", "Date"), width: 120 },
       { field: "type", headerName: t("type", "Type"), width: 160 },
       { field: "severity", headerName: t("severity", "Severity"), sortable: false, width: 120 },
-      { field: "exceptionStatus", headerName: t("status", "Status"), sortable: false, width: 120 },
+      { field: "exceptionStatus", headerName: t("status", "Status"), filterable: false, width: 120, sortAccessor: (row) => row.statusText },
       { field: "punchRequest", headerName: t("punch_request", "Punch / Request"), width: 240 },
       { field: "age", headerName: t("age", "Age"), width: 110 },
     ],
@@ -316,10 +325,11 @@ export default function AttendanceExceptionsPage() {
     INFO: { strAccent: "#1565c0", strSurface: "#e3f2fd" },
   };
   return (
-    <Box className={styles.page} sx={{ "& .MuiOutlinedInput-root": { borderRadius: "9px" }, "& .MuiAlert-root": { borderRadius: "9px" } }}>
+    <Box className={styles.page} sx={{ position: "relative", "& .MuiAlert-root": { borderRadius: "9px" } }}>
       <BlockingLoader blnOpen={blnWorking} strLabel={t("working", "Please wait...")} />
+      <MasterBreadcrumbs strSection={t("breadcrumb_attendance", "Attendance")} strTitle={t("breadcrumb_exceptions", "Attendance Exceptions")} />
       {/* Keep actions and severity summaries in one row so the queue begins below a single toolbar. */}
-      <Paper className={styles.controlsCard}>
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="stretch">
           {blnCanGenerate ? (
             <>
@@ -408,13 +418,13 @@ export default function AttendanceExceptionsPage() {
           );
         })}
         </Stack>
-      </Paper>
+      </Box>
       {strError ? <Alert severity="error">{strError}</Alert> : null}
-      <Paper className={styles.controlsCard}>
-        <Grid container spacing={1}>
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        <Grid container spacing={1} onKeyDown={onSearchEnter(() => void loadQueue())}>
           {/* Content-sized controls and actions share one toolbar row on desktop. */}
           <Grid item xs={12} sm={6} md={2} lg={1.45}>
-            <TextField
+            <TextField className="app-mui-text-field" size="small"
               data-control-id="attendance-exceptions.from-date.input"
               fullWidth
               type="date"
@@ -430,7 +440,7 @@ export default function AttendanceExceptionsPage() {
             />
           </Grid>
           <Grid item xs={12} sm={6} md={2} lg={1.45}>
-            <TextField
+            <TextField className="app-mui-text-field" size="small"
               data-control-id="attendance-exceptions.to-date.input"
               fullWidth
               type="date"
@@ -446,7 +456,7 @@ export default function AttendanceExceptionsPage() {
             />
           </Grid>
           <Grid item xs={12} sm={6} md={2} lg={1.3}>
-            <CommonSearchableSelect
+            <CommonSearchableSelect className="app-mui-text-field"
               controlId="attendance-exceptions.type.select"
               fullWidth
               label={t("type", "Type")}
@@ -465,7 +475,7 @@ export default function AttendanceExceptionsPage() {
             />
           </Grid>
           <Grid item xs={12} sm={6} md={2} lg={1.3}>
-            <TextField
+            <TextField className="app-mui-text-field" size="small"
               data-control-id="attendance-exceptions.status.select"
               fullWidth
               select
@@ -492,7 +502,7 @@ export default function AttendanceExceptionsPage() {
             </TextField>
           </Grid>
           <Grid item xs={12} sm={6} md={2} lg={1.05}>
-            <TextField
+            <TextField className="app-mui-text-field" size="small"
               data-control-id="attendance-exceptions.ageing.input"
               fullWidth
               type="number"
@@ -509,7 +519,7 @@ export default function AttendanceExceptionsPage() {
             />
           </Grid>
           <Grid item xs={12} sm={6} md={2} lg={1.4}>
-            <TextField
+            <TextField className="app-mui-text-field" size="small"
               data-control-id="attendance-exceptions.sort-by.select"
               fullWidth
               select
@@ -533,7 +543,7 @@ export default function AttendanceExceptionsPage() {
             </TextField>
           </Grid>
           <Grid item xs={12} sm={6} md={2} lg={1.55}>
-            <TextField
+            <TextField className="app-mui-text-field" size="small"
               data-control-id="attendance-exceptions.sort-direction.select"
               fullWidth
               select
@@ -589,10 +599,9 @@ export default function AttendanceExceptionsPage() {
             </Stack>
           </Grid>
         </Grid>
-      </Paper>
-      <Paper className={styles.tableCard} sx={{ position: "relative", minHeight: blnLoading ? 160 : undefined }}>
-        <BlockingLoader blnOpen={blnLoading} blnLocal strLabel={t("loading", "Loading...")} />
-        {blnLoading ? null : (
+      </Box>
+      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        {blnLoading ? <MasterGridSkeleton strControlId="attendance-exceptions.list.skeleton" intColumns={7} /> : (
           <CommonDataGrid
             columns={lstTableColumns}
             rows={lstTableRows}
@@ -606,13 +615,15 @@ export default function AttendanceExceptionsPage() {
             emptyMessage={t("no_exceptions", "No exceptions found.")}
             testIdPrefix="attendance-exceptions.list"
             withPaper={false}
-            onRowDoubleClick={(objRow) => {
+            hideRowClickHint
+            getRowSx={() => dicMasterRowSx}
+            onRowClick={(objRow) => {
               const objException = objList?.lstItems.find((objItem) => objItem.intID === objRow.id);
               if (objException) void openDetail(objException);
             }}
           />
         )}
-      </Paper>
+      </Box>
       <Dialog
         data-control-id="attendance-exceptions.detail.dialog"
         open={Boolean(objDetail)}

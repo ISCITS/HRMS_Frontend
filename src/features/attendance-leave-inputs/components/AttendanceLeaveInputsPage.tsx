@@ -4,7 +4,6 @@ import ImportExportRoundedIcon from "@mui/icons-material/ImportExportRounded";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import {
   Alert,
   Autocomplete,
@@ -15,6 +14,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Link,
   Stack,
   TextField,
   Typography,
@@ -24,6 +24,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import BlockingLoader from "@/components/shared/BlockingLoader";
+import { dicMasterNameLinkSx, dicMasterRowSx, MasterBreadcrumbs, MasterGridSkeleton } from "@/components/master/MasterListUi";
 import { loadAttendanceLeaveInputsForRun, attendanceLeaveInputsService } from "@/features/attendance-leave-inputs/services/attendanceLeaveInputsService";
 import type { AttendanceLeaveInputRow, AttendanceLeaveInputsSummary } from "@/features/attendance-leave-inputs/types";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -271,23 +272,27 @@ export default function AttendanceLeaveInputsPage() {
     () =>
       lstRows.map((dicRow) => ({
         id: dicRow.intInputID ?? `validation-${dicRow.intEmployeeID}`,
-        action: dicRow.intInputID ? (
-          <Button
-            size="small"
-            startIcon={<VisibilityRoundedIcon sx={{ fontSize: 16 }} />}
-            onClick={() => objRouter.push(`/payroll/inputs/${dicRow.strInputRecordUUID}/edit`)}
-            controlId="attendance-leave-inputs.list.row.view.button"
+        strEmployeeNameText: dicRow.strEmployeeName,
+        strEmployeeName: dicRow.intInputID ? (
+          <Link
+            component="button"
+            type="button"
+            underline="none"
+            className="app-master-first-column-link"
+            data-control-id="attendance-leave-inputs.list.row.name.button"
             data-row-key={dicRow.intInputID}
+            onClick={(objEvent) => {
+              if (window.getSelection()?.toString()) { objEvent.stopPropagation(); return; }
+              objRouter.push(`/payroll/inputs/${dicRow.strInputRecordUUID}/edit`);
+            }}
+            sx={dicMasterNameLinkSx}
           >
-            {t("view", "View")}
-          </Button>
+            {dicRow.strEmployeeName}
+          </Link>
         ) : (
-          <Typography sx={{ color: "#64748b", fontSize: "0.82rem", fontWeight: 700 }}>
-            {t("no_input", "No input")}
-          </Typography>
+          dicRow.strEmployeeName
         ),
-        strEmployeeCode: dicRow.strEmployeeCode,
-        strEmployeeName: dicRow.strEmployeeName,
+        strInputRecordUUID: dicRow.strInputRecordUUID ?? "",        strEmployeeCode: dicRow.strEmployeeCode,
         strIssueMessage: dicRow.strIssueMessage ?? "-",
         decWorkingDays: dicRow.decWorkingDays ?? 0,
         decLwpDays: dicRow.decLwpDays ?? 0,
@@ -307,9 +312,8 @@ export default function AttendanceLeaveInputsPage() {
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      { field: "action", headerName: t("actions", "Action"), sortable: false, filterable: false, exportable: false, width: 100 },
+      { field: "strEmployeeName", headerName: t("employee_name", "Employee Name"), sortAccessor: (row) => row.strEmployeeNameText },
       { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code") },
-      { field: "strEmployeeName", headerName: t("employee_name", "Employee Name") },
       { field: "strIssueMessage", headerName: t("issue", "Issue"), minWidth: 260 },
       { field: "decWorkingDays", headerName: t("working_days", "Working Days"), align: "right" },
       { field: "decPayableDays", headerName: t("payable_days", "Payable Days"), align: "right" },
@@ -322,7 +326,12 @@ export default function AttendanceLeaveInputsPage() {
   );
 
   if (blnLoadingRuns || blnRightsLoading) {
-    return <BlockingLoader blnOpen strLabel={t("loading", "Loading...")} />;
+    return (
+      <Box className={masterStyles.page}>
+        <MasterBreadcrumbs strSection={t("breadcrumb_payroll", "Payroll")} strTitle={t("breadcrumb_title", "Attendance & Leave Inputs")} />
+        <MasterGridSkeleton strControlId="attendance-leave-inputs.list.skeleton" intColumns={9} />
+      </Box>
+    );
   }
 
   if (!blnCanView) {
@@ -334,13 +343,11 @@ export default function AttendanceLeaveInputsPage() {
   }
 
   return (
-    <Box className={masterStyles.page}>
-      <Typography className={masterStyles.breadcrumbs}>
-        {t("breadcrumbs", "Payroll / Attendance & Leave Inputs")}
-      </Typography>
+    <Box className={masterStyles.page} sx={{ position: "relative" }}>
+      <MasterBreadcrumbs strSection={t("breadcrumb_payroll", "Payroll")} strTitle={t("breadcrumb_title", "Attendance & Leave Inputs")} />
 
-      <Box className={masterStyles.controlsCard}>
-        <Box className={masterStyles.searchRow}>
+      <Box className={masterStyles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        <Box className={masterStyles.searchRow} sx={{ alignItems: "center" }}>
           <Autocomplete
             options={lstRuns}
             value={lstRuns.find((dicRunOption) => dicRunOption.strRecordUUID === (objSelectedRun?.strRecordUUID ?? "")) ?? null}
@@ -348,9 +355,12 @@ export default function AttendanceLeaveInputsPage() {
             isOptionEqualToValue={(dicA, dicB) => dicA.strRecordUUID === dicB.strRecordUUID}
             onChange={(_objEvent, dicRunOption) => selectRun(dicRunOption ? dicRunOption.strRecordUUID : "")}
             fullWidth
+            size="small"
+            className="app-mui-text-field"
             renderInput={(params) => (
               <TextField
                 {...params}
+                size="small"
                 label={t("payroll_run", "Payroll Run")}
                 placeholder={t("search_run", "Search payroll run...")}
                 controlId="attendance-leave-inputs.run-select.select"
@@ -358,9 +368,9 @@ export default function AttendanceLeaveInputsPage() {
               />
             )}
           />
-          <TextField label={t("payroll_period", "Payroll Period")} value={objRun ? formatMonth(objRun.dtPayrollMonth) : "-"} disabled fullWidth />
-          <TextField label={t("payroll_group", "Payroll Group")} value={objRun?.strPayrollGroupName ?? "-"} disabled fullWidth />
-          <TextField label={t("integration_status", "Integration Status")} value={strSelectedRunUUID ? `${strIntegrationStatus}${strIntegrationVersionSuffix}` : "-"} disabled fullWidth />
+          <TextField className="app-mui-text-field" size="small" label={t("payroll_period", "Payroll Period")} value={objRun ? formatMonth(objRun.dtPayrollMonth) : "-"} disabled fullWidth />
+          <TextField className="app-mui-text-field" size="small" label={t("payroll_group", "Payroll Group")} value={objRun?.strPayrollGroupName ?? "-"} disabled fullWidth />
+          <TextField className="app-mui-text-field" size="small" label={t("integration_status", "Integration Status")} value={strSelectedRunUUID ? `${strIntegrationStatus}${strIntegrationVersionSuffix}` : "-"} disabled fullWidth />
         </Box>
       </Box>
 
@@ -373,7 +383,7 @@ export default function AttendanceLeaveInputsPage() {
       {!strSelectedRunUUID && !(blnLoadingRuns && strSelectedRunKey) ? (
         <Alert severity="info">{t("select_run_prompt", "Select a payroll run to view or import its attendance & leave inputs.")}</Alert>
       ) : blnLoadingDetail ? (
-        <BlockingLoader blnOpen strLabel={t("loading_run", "Loading run details...")} />
+        <MasterGridSkeleton strControlId="attendance-leave-inputs.list.skeleton" intColumns={9} />
       ) : blnIntegrationNotStarted ? (
         <Alert severity="info">
           {t(
@@ -442,7 +452,7 @@ export default function AttendanceLeaveInputsPage() {
             </Box>
           ) : null}
 
-          <Box className={masterStyles.tableCard}>
+          <Box className={masterStyles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
             <CommonTable
               columns={lstTableColumns}
               rows={lstTableRows}
@@ -450,6 +460,12 @@ export default function AttendanceLeaveInputsPage() {
               exportFileName="attendance-leave-inputs"
               testIdPrefix="attendance-leave-inputs.list"
               showPaginationSummary
+              hideRowClickHint
+              onRowClick={(dicRow) => {
+                const strUUID = String(dicRow.strInputRecordUUID ?? "");
+                if (strUUID) objRouter.push(`/payroll/inputs/${strUUID}/edit`);
+              }}
+              getRowSx={() => dicMasterRowSx}
               emptyMessage={t("no_records", "No payroll input records found for this run.")}
               sx={{ p: 0, boxShadow: "none", background: "transparent" }}
             />

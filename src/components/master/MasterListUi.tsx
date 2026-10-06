@@ -1,0 +1,104 @@
+"use client";
+
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
+import { Box, Breadcrumbs, Skeleton, Typography } from "@mui/material";
+import type { KeyboardEvent } from "react";
+
+// Shared building blocks for list screens styled like the Department master:
+// breadcrumb header, skeleton grid and the compact search-row grid.
+
+type MasterBreadcrumbsProps = {
+  strSection: string;
+  strTitle: string;
+};
+
+export function MasterBreadcrumbs({ strSection, strTitle }: MasterBreadcrumbsProps) {
+  return (
+    <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ ml: "3px" }}>
+      <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{strSection}</Typography>
+      <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{strTitle}</Typography>
+    </Breadcrumbs>
+  );
+}
+
+type MasterStatusPillProps = {
+  blnActive: boolean;
+  strActiveLabel?: string;
+  strInactiveLabel?: string;
+};
+
+export function MasterStatusPill({ blnActive, strActiveLabel = "Active", strInactiveLabel = "Inactive" }: MasterStatusPillProps) {
+  return (
+    <span className={`app-master-status-pill ${blnActive ? "app-master-status-active" : "app-master-status-inactive"}`}>
+      {blnActive ? strActiveLabel : strInactiveLabel}
+    </span>
+  );
+}
+
+type MasterGridSkeletonProps = {
+  strControlId: string;
+  intColumns: number;
+  intRows?: number;
+};
+
+export function MasterGridSkeleton({ strControlId, intColumns, intRows = 8 }: MasterGridSkeletonProps) {
+  const strTemplate = `repeat(${intColumns}, 1fr)`;
+  return (
+    <Box data-control-id={strControlId} sx={{ border: "1px solid #e8eef5", borderRadius: "8px", overflow: "hidden", backgroundColor: "#fff" }}>
+      <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, px: 1.75, py: 1.25, flexWrap: "wrap" }}>
+        <Skeleton variant="rounded" width={142} height={36} />
+        <Box sx={{ display: "flex", gap: 1.25, alignItems: "center", flexWrap: "wrap" }}>
+          <Skeleton variant="rounded" width={64} height={36} />
+          <Skeleton variant="text" width={72} height={24} />
+          <Skeleton variant="rounded" width={116} height={32} />
+        </Box>
+      </Box>
+      <Box sx={{ minWidth: 800, overflow: "hidden" }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: strTemplate, bgcolor: "#edf3f9", borderTop: "1px solid #e8eef5", borderBottom: "1px solid #d9e3ee" }}>
+          {Array.from({ length: intColumns }).map((_, intColumn) => (
+            <Box key={intColumn} sx={{ px: 2, py: 1 }}><Skeleton variant="text" width={90} height={22} /></Box>
+          ))}
+        </Box>
+        {Array.from({ length: intRows }).map((_, intRow) => (
+          <Box key={intRow} sx={{ display: "grid", gridTemplateColumns: strTemplate, borderBottom: "1px solid #edf1f6", minHeight: 40, alignItems: "center" }}>
+            {Array.from({ length: intColumns }).map((__, intColumn) => (
+              <Box key={intColumn} sx={{ px: 2, py: 0.75 }}>
+                <Skeleton variant="text" width={`${46 + ((intRow + intColumn) % 3) * 14}%`} height={20} />
+              </Box>
+            ))}
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+}
+
+// Enter inside a search input runs the search. Ignores dropdowns (Enter picks an option / opens the
+// menu there), multiline fields and anything that has already handled the key.
+export function onSearchEnter(fnSearch: () => void) {
+  return (objEvent: KeyboardEvent<HTMLElement>) => {
+    if (objEvent.key !== "Enter" || objEvent.defaultPrevented || objEvent.nativeEvent.isComposing) return;
+    const objTarget = objEvent.target as HTMLElement;
+    if (objTarget.tagName !== "INPUT") return;
+    if (objTarget.getAttribute("role") === "combobox" || objTarget.getAttribute("aria-expanded") === "true") return;
+    objEvent.preventDefault();
+    fnSearch();
+  };
+}
+
+// Link-style first-column cell: grey text, blue + underline on row hover (matches Department master).
+export const dicMasterNameLinkSx = {
+  cursor: "pointer",
+  textAlign: "left",
+  textUnderlineOffset: "3px",
+  userSelect: "text",
+  WebkitUserSelect: "text",
+  "&&:hover": { color: "#0066df", textDecoration: "underline" },
+  "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 },
+} as const;
+
+export const dicMasterRowSx = {
+  backgroundColor: "#fff",
+  "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
+  "&.MuiTableRow-hover:hover td:first-of-type .MuiLink-root": { textDecoration: "underline" },
+} as const;

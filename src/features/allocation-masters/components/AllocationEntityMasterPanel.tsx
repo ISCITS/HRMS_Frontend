@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
+import { onSearchEnter } from "@/components/master/MasterListUi";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -261,7 +262,7 @@ export default function AllocationEntityMasterPanel() {
             type="button"
             underline="none"
             disabled={!blnCanView && !blnCanEdit}
-            data-control-id="allocation-entity.list.row.name.button"
+            className="app-master-first-column-link" data-control-id="allocation-entity.list.row.name.button"
             onClick={(objEvent) => {
               if (window.getSelection()?.toString()) {
                 objEvent.stopPropagation();
@@ -269,7 +270,7 @@ export default function AllocationEntityMasterPanel() {
               }
               openDialog(blnCanEdit ? "edit" : "view", dicRecord);
             }}
-            sx={{ color: "#334155", cursor: "pointer", fontSize: "inherit", fontWeight: 500, textAlign: "left", textUnderlineOffset: "3px", userSelect: "text", WebkitUserSelect: "text", "&:hover": { color: "#0066df", textDecoration: "underline" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}
+            sx={{ cursor: "pointer", textAlign: "left", textUnderlineOffset: "3px", userSelect: "text", WebkitUserSelect: "text", "&&:hover": { color: "#0066df", textDecoration: "underline" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}
           >
             {dicRecord.strEntityName}
           </Link>
@@ -282,7 +283,7 @@ export default function AllocationEntityMasterPanel() {
         dtEffectiveTo: dicRecord.dtEffectiveTo ?? "-",
         strStatus: (
           <span
-            className={`${styles.statusPill} ${dicRecord.blnIsActive ? styles.statusActive : styles.statusInactive}`}
+            className={`app-master-status-pill ${dicRecord.blnIsActive ? "app-master-status-active" : "app-master-status-inactive"}`}
           >
             {dicRecord.blnIsActive ? t("status_active", "Active") : t("status_inactive", "Inactive")}
           </span>
@@ -306,9 +307,9 @@ export default function AllocationEntityMasterPanel() {
 
   return (
     <Box className={styles.page} sx={{ position: "relative" }}>
-      <Breadcrumbs aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ fontSize: 13, py: 0.5, ml: "3px" }}>
+      <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ ml: "3px" }}>
         <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{t("breadcrumb_masters", "Masters")}</Typography>
-        <Typography component="h1" aria-current="page" sx={{ fontSize: "inherit", fontWeight: 700, color: "#243b53" }}>{t("breadcrumb_allocation_entities", "Allocation Entities")}</Typography>
+        <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{t("breadcrumb_allocation_entities", "Allocation Entities")}</Typography>
       </Breadcrumbs>
 
       <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
@@ -323,6 +324,7 @@ export default function AllocationEntityMasterPanel() {
 
         <Box
           className={styles.searchRow}
+          onKeyDown={onSearchEnter(() => { if (!blnSearchPanelFrozen) setDicSearchApplied(dicSearchDraft); })}
           aria-busy={blnSearchPanelFrozen}
           sx={{
             alignItems: "center",

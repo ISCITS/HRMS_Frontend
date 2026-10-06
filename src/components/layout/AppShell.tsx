@@ -30,6 +30,7 @@ import {
   Typography
 } from "@mui/material";
 import { ReactNode, useEffect, useRef, useState } from "react";
+import { useSearchOnEnter } from "@/components/layout/useSearchOnEnter";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { DashboardHeaderModeContext } from "@/components/layout/DashboardHeaderModeContext";
@@ -621,6 +622,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [intLastContentMutationAt, setIntLastContentMutationAt] = useState(0);
   const [strResolvedEmployeeName, setStrResolvedEmployeeName] = useState("");
   const objShellContentRef = useRef<HTMLDivElement | null>(null);
+  useSearchOnEnter();
   const objMainContentRef = useRef<HTMLElement | null>(null);
   const strHeaderModuleName = resolveRouteModuleName(strPathname);
   const { t: tCommon } = useModuleLabels("common");
@@ -1056,6 +1058,25 @@ export default function AppShell({ children }: { children: ReactNode }) {
     "/employment-type",
     "/employee-type",
   ].includes(strLowerPathname);
+  // Masters restyled like Department show their name in the breadcrumb, so the header title is hidden.
+  const blnDepartmentStyleMasterRoute = [
+    "/holidays",
+    "/leave/holidays",
+    "/masters/payroll-groups",
+    "/allocation-entity-types",
+    "/allocation-entities",
+    "/attendance/daily",
+    "/attendance/policies",
+    "/attendance/admin",
+    "/attendance/import",
+    "/attendance/exceptions",
+    "/attendance/regularization-requests",
+    "/attendance/review",
+    "/ess/attendance",
+    "/ess/attendance/regularization",
+    "/ess/attendance/regularization/approvals",
+    "/payroll/attendance-leave-inputs",
+  ].includes(strLowerPathname);
   const blnEmployeeReimbursementFormContext =
     Boolean(strLowerPathname.match(/^\/ess\/reimbursements(\/new|\/\d+(\/edit)?)?$/)) &&
     Boolean(objSearchParams.get("employee_id"));
@@ -1319,7 +1340,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         height: "100dvh",
         minHeight: "100dvh",
         overflow: "hidden",
-        background: strPathname === "/departments"
+        background: strPathname === "/departments" || blnDepartmentStyleMasterRoute
           ? "#edf4fc"
           : "radial-gradient(circle at top left, rgba(14,116,144,0.12), transparent 28%), linear-gradient(180deg, #f8fbff 0%, #eef4f8 100%)"
       }}
@@ -1548,7 +1569,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
               <Box sx={{ flex: 1, minWidth: 0 }} />
 
-              {strPathname === "/employees" || strPathname === "/departments" || strPathname === "/designations" || strPathname === "/settings" || strPathname === "/profile/change-password" || blnReferencedMasterRoute || blnEmployeeEditorRoute || blnDashboardRoute || blnEmployeeSalaryListRoute || blnEmployeeSalaryEditorRoute || blnUserListRoute || blnUserGroupListRoute || blnSalaryComponentListRoute || blnSalaryStructureListRoute || blnLeaveTypeListRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute ? null : (
+
+              {strPathname === "/employees" || strPathname === "/departments" || strPathname === "/designations" || strPathname === "/settings" || strPathname === "/profile/change-password" || blnReferencedMasterRoute || blnDepartmentStyleMasterRoute || blnEmployeeEditorRoute || blnDashboardRoute || blnEmployeeSalaryListRoute || blnEmployeeSalaryEditorRoute || blnUserListRoute || blnUserGroupListRoute || blnSalaryComponentListRoute || blnSalaryStructureListRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute ? null : (
                 <Box
                   sx={{
                     display: "flex",

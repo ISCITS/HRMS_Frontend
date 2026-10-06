@@ -22,6 +22,7 @@ import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
+import { onSearchEnter } from "@/components/master/MasterListUi";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useHolidayMaster } from "@/features/holiday-master/hooks/useHolidayMaster";
@@ -366,7 +367,7 @@ export default function HolidayMasterPanel() {
           type="button"
           underline="none"
           disabled={!blnCanView && !blnCanEdit}
-          data-control-id="holiday-master.list.row.name.button"
+          className="app-master-first-column-link" data-control-id="holiday-master.list.row.name.button"
           onClick={(objEvent) => {
             if (window.getSelection()?.toString()) {
               objEvent.stopPropagation();
@@ -374,14 +375,14 @@ export default function HolidayMasterPanel() {
             }
             void openHoliday(blnCanEdit ? "edit" : "view", objHoliday.intID);
           }}
-          sx={{ color: "#334155", cursor: "pointer", fontSize: "inherit", fontWeight: 500, textAlign: "left", textUnderlineOffset: "3px", userSelect: "text", WebkitUserSelect: "text", "&:hover": { color: "#0066df", textDecoration: "underline" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}
+          sx={{ cursor: "pointer", textAlign: "left", textUnderlineOffset: "3px", userSelect: "text", WebkitUserSelect: "text", "&&:hover": { color: "#0066df", textDecoration: "underline" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}
         >
           {objHoliday.strHolidayName}
         </Link>
       ),
       statusText: objHoliday.blnIsActive ? "Active" : "Inactive",
       type: objOptions.lstHolidayTypes.find((objType) => objType.strCode === objHoliday.strHolidayTypeCode)?.strLabel ?? objHoliday.strHolidayTypeCode,
-      status: <span className={`${styles.statusPill} ${objHoliday.blnIsActive ? styles.statusActive : styles.statusInactive}`}>{objHoliday.blnIsActive ? t("active", "Active") : t("inactive", "Inactive")}</span>,
+      status: <span className={`app-master-status-pill ${objHoliday.blnIsActive ? "app-master-status-active" : "app-master-status-inactive"}`}>{objHoliday.blnIsActive ? t("active", "Active") : t("inactive", "Inactive")}</span>,
     };
   }), [blnCanEdit, blnCanView, lstHolidays, lstSelectedIDs, objOptions.lstHolidayTypes, strLanguageCode, t]);
 
@@ -396,9 +397,9 @@ export default function HolidayMasterPanel() {
 
   return (
     <Box className={styles.page} sx={{ position: "relative" }}>
-      <Breadcrumbs aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ fontSize: 13, py: 0.5, ml: "3px" }}>
+      <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ ml: "3px" }}>
         <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{t("breadcrumb_masters", "Masters")}</Typography>
-        <Typography component="h1" aria-current="page" sx={{ fontSize: "inherit", fontWeight: 700, color: "#243b53" }}>{t("breadcrumb_holidays", "Holiday Master")}</Typography>
+        <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{t("breadcrumb_holidays", "Holiday Master")}</Typography>
       </Breadcrumbs>
 
       <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
@@ -407,6 +408,7 @@ export default function HolidayMasterPanel() {
         {!blnRightsLoading && blnCanView && blnReadOnly ? <Typography sx={{ color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>{t("read_only_mode", "You have view-only access for Holiday.")}</Typography> : null}
         <Box
           className={styles.searchRow}
+          onKeyDown={onSearchEnter(() => { if (!blnSearchPanelFrozen) applySearch(); })}
           aria-busy={blnSearchPanelFrozen}
           sx={{
             alignItems: "center",
@@ -441,7 +443,7 @@ export default function HolidayMasterPanel() {
             <Typography sx={{ fontSize: "14px", fontWeight: 700, color: "#0f172a" }}>{t("more_filters", "More Filters")}</Typography>
             <IconButton aria-label={t("close", "Close")} onClick={cancelMoreFilters} size="small" sx={{ color: "#94a3b8" }}><CloseRoundedIcon fontSize="small" /></IconButton>
           </Box>
-          <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1.5 }}>
+          <Box onKeyDown={onSearchEnter(() => { setElMoreFiltersAnchor(null); applySearch(); })} sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1.5 }}>
             <TextField className="app-mui-text-field" label={t("from_date", "From Date")} type="date" size="small" value={objSearchDraft.dtFromDate} onChange={(objEvent) => setObjSearchDraft((objPrevious) => ({ ...objPrevious, dtFromDate: objEvent.target.value }))} InputLabelProps={{ shrink: true }} inputProps={{ "data-control-id": "holiday-master.list.from-date.input" }} fullWidth />
             <TextField className="app-mui-text-field" label={t("to_date", "To Date")} type="date" size="small" value={objSearchDraft.dtToDate} onChange={(objEvent) => setObjSearchDraft((objPrevious) => ({ ...objPrevious, dtToDate: objEvent.target.value }))} InputLabelProps={{ shrink: true }} inputProps={{ "data-control-id": "holiday-master.list.to-date.input" }} fullWidth />
           </Box>
