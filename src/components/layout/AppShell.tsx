@@ -116,7 +116,7 @@ function getPageTitle(strPathname: string) {
   if (strPathname === "/leave/leave-types/new") {
     return "New Leave Type";
   }
-  if (/^\/leave\/leave-types\/\d+$/.test(strPathname)) {
+  if (/^\/leave\/leave-types\/[\w-]+$/.test(strPathname)) {
     return "Edit Leave Type";
   }
   if (strPathname === "/leave/plans") {
@@ -1033,13 +1033,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const blnUserGroupListRoute = strLowerPathname === "/security/user-groups";
   const blnSalaryComponentListRoute = strLowerPathname === "/salary-components";
   const blnSalaryStructureListRoute = strLowerPathname === "/salary-structures";
+  const blnLeaveTypeListRoute = strLowerPathname === "/leave";
   // The id segment is a record_uuid now, not a number; a legacy numeric URL still matches.
   const blnSalaryComponentEditorRoute = /^\/salary-components\/(?:add|(?:edit|view)\/[\w-]+)$/.test(strLowerPathname);
   // The id segment is a record_uuid now, not a number; a legacy numeric URL still matches.
   const blnSalaryStructureEditorRoute = /^\/salary-structures\/(?:add|edit\/[\w-]+)$/.test(strLowerPathname);
   // The Leave Type / Leave Plan editors carry their own title in the Back/Save toolbar, like the
   // salary editors.
-  const blnLeaveTypeEditorRoute = /^\/leave\/leave-types\/(?:new|\d+)$/.test(strLowerPathname);
+  const blnLeaveTypeEditorRoute = /^\/leave\/leave-types\/(?:new|[\w-]+)$/.test(strLowerPathname);
   const blnLeavePlanEditorRoute = /^\/leave\/plans\/(?:new|\d+)$/.test(strLowerPathname);
   const blnLeaveAssignmentEditorRoute = /^\/leave\/plan-assignments\/\d+$/.test(strLowerPathname);
   const blnLeaveApprovalsRoute = strLowerPathname === "/leave/approvals" || strLowerPathname === "/hr/leave/requests-approvals";
@@ -1547,7 +1548,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
               <Box sx={{ flex: 1, minWidth: 0 }} />
 
-              {strPathname === "/employees" || strPathname === "/departments" || strPathname === "/designations" || strPathname === "/settings" || strPathname === "/profile/change-password" || blnReferencedMasterRoute || blnEmployeeEditorRoute || blnDashboardRoute || blnEmployeeSalaryListRoute || blnEmployeeSalaryEditorRoute || blnUserListRoute || blnUserGroupListRoute || blnSalaryComponentListRoute || blnSalaryStructureListRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute ? null : (
+              {strPathname === "/employees" || strPathname === "/departments" || strPathname === "/designations" || strPathname === "/settings" || strPathname === "/profile/change-password" || blnReferencedMasterRoute || blnEmployeeEditorRoute || blnDashboardRoute || blnEmployeeSalaryListRoute || blnEmployeeSalaryEditorRoute || blnUserListRoute || blnUserGroupListRoute || blnSalaryComponentListRoute || blnSalaryStructureListRoute || blnLeaveTypeListRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute ? null : (
                 <Box
                   sx={{
                     display: "flex",
