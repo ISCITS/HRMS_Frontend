@@ -78,6 +78,7 @@ export type CommonDataGridProps<T extends Record<string, ReactNode>> = {
   hideRowClickHint?: boolean;
   wrapColumnHeaders?: boolean;
   loading?: boolean;
+  loadingHeaderSkeleton?: boolean;
   skeletonRowCount?: number;
 };
 
@@ -107,6 +108,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   hideRowClickHint = false,
   wrapColumnHeaders = true,
   loading = false,
+  loadingHeaderSkeleton = false,
   skeletonRowCount
 }: CommonDataGridProps<T>) {
   const { t } = useModuleLabels("common_data_grid");
@@ -491,6 +493,8 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
               {orderedColumns.map((column) => {
                 const strField = String(column.field);
                 const strAlign = column.align ?? "left";
+                const blnShowHeaderSkeleton = loading && loadingHeaderSkeleton;
+                const strHeaderSkeletonWidth = column.width ? `${Math.min(Math.max(column.width * 0.58, 64), column.width - 24)}px` : "64%";
                 return (
                   <TableCell
                     key={String(column.field)}
@@ -519,7 +523,16 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                       }
                     }}
                   >
-                    {column.sortable === false ? (
+                    {blnShowHeaderSkeleton ? (
+                      <Box sx={{ display: "flex", justifyContent: strAlign === "right" ? "flex-end" : strAlign === "center" ? "center" : "flex-start", width: "100%" }}>
+                        <Skeleton
+                          variant="text"
+                          width={strHeaderSkeletonWidth}
+                          height={18}
+                          data-controlid={`${testIdPrefix}.header.${strField}.skeleton`}
+                        />
+                      </Box>
+                    ) : column.sortable === false ? (
                       <Box sx={{ display: "inline-flex", alignItems: "center", justifyContent: strAlign === "center" ? "center" : "flex-start", width: "100%" }}>
                         {column.headerName}
                       </Box>

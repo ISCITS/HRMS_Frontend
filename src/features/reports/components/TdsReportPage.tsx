@@ -11,7 +11,6 @@ import { Alert, Autocomplete, Box, Breadcrumbs, Button, Divider, IconButton, Pop
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
-import BlockingLoader from "@/components/shared/BlockingLoader";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import type { TdsReportRow } from "@/features/payroll/types";
 import { getUniqueOptions } from "@/features/reports/components/ReportMultiSelectField";
@@ -156,6 +155,7 @@ export default function TdsReportPage() {
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
   const blnMoreFiltersOpen = Boolean(objMoreFiltersAnchor);
+  const blnPageLoading = blnRightsLoading || blnLoading;
 
   async function loadRows(objFilters: SearchForm) {
     setBlnLoading(true);
@@ -258,10 +258,6 @@ export default function TdsReportPage() {
     [],
   );
 
-  if (blnRightsLoading) {
-    return <BlockingLoader blnOpen strLabel="Loading TDS report..." />;
-  }
-
   return (
     <Box className={styles.page}>
       <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ ml: "3px" }}>
@@ -274,16 +270,16 @@ export default function TdsReportPage() {
         </Box>
         <Box className={styles.reportSearchPanelRow}>
           <Box className={styles.reportSearchField} sx={{ flex: "2 1 340px", minWidth: { xs: "100%", md: 320 } }}>
-            <SingleSelectFilter strLabel="Employee" strValue={dicSearchDraft.strSearchEmployee} fnOnChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: strValue }))} lstOptions={dicFilterOptions.lstEmployees} strPlaceholder="Search by employee code or name" strControlId="reports.tds.employee-search.input" blnDisabled={blnLoading} />
+            <SingleSelectFilter strLabel="Employee" strValue={dicSearchDraft.strSearchEmployee} fnOnChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: strValue }))} lstOptions={dicFilterOptions.lstEmployees} strPlaceholder="Search by employee code or name" strControlId="reports.tds.employee-search.input" blnDisabled={blnPageLoading} />
           </Box>
           <Box className={styles.reportSearchField}>
-            <SingleSelectFilter strLabel="Payroll Period / Run" strValue={dicSearchDraft.strSearchRun} fnOnChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: strValue }))} lstOptions={dicFilterOptions.lstRuns} strPlaceholder="Payroll period or run" strControlId="reports.tds.run-search.input" blnDisabled={blnLoading} />
+            <SingleSelectFilter strLabel="Payroll Period / Run" strValue={dicSearchDraft.strSearchRun} fnOnChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: strValue }))} lstOptions={dicFilterOptions.lstRuns} strPlaceholder="Payroll period or run" strControlId="reports.tds.run-search.input" blnDisabled={blnPageLoading} />
           </Box>
           <Box className={styles.reportSearchField}>
-            <SingleSelectFilter strLabel="Payroll Month" strValue={dicSearchDraft.strPayrollMonth} fnOnChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: strValue }))} lstOptions={dicFilterOptions.lstMonths} strPlaceholder="Payroll Month" strControlId="reports.tds.payroll-month.input" blnDisabled={blnLoading} />
+            <SingleSelectFilter strLabel="Payroll Month" strValue={dicSearchDraft.strPayrollMonth} fnOnChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: strValue }))} lstOptions={dicFilterOptions.lstMonths} strPlaceholder="Payroll Month" strControlId="reports.tds.payroll-month.input" blnDisabled={blnPageLoading} />
           </Box>
           <Box className={styles.reportSearchField} sx={{ flexBasis: 160, minWidth: 160 }}>
-            <SingleSelectFilter strLabel="Status" strValue={dicSearchDraft.strStatus === "All" ? "" : dicSearchDraft.strStatus} fnOnChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: strValue || "All" }))} lstOptions={dicFilterOptions.lstStatuses.length ? dicFilterOptions.lstStatuses : ["Calculated", "Approved", "Published", "Paid"]} strPlaceholder="All Statuses" strControlId="reports.tds.status.select" blnDisabled={blnLoading} />
+            <SingleSelectFilter strLabel="Status" strValue={dicSearchDraft.strStatus === "All" ? "" : dicSearchDraft.strStatus} fnOnChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: strValue || "All" }))} lstOptions={dicFilterOptions.lstStatuses.length ? dicFilterOptions.lstStatuses : ["Calculated", "Approved", "Published", "Paid"]} strPlaceholder="All Statuses" strControlId="reports.tds.status.select" blnDisabled={blnPageLoading} />
           </Box>
           <Box className={styles.searchActions}>
             <Button
@@ -295,13 +291,13 @@ export default function TdsReportPage() {
               }}
               aria-expanded={blnMoreFiltersOpen}
               aria-haspopup="dialog"
-              disabled={blnLoading}
+              disabled={blnPageLoading}
               controlId="reports.tds.more-filters.button"
             >
               More filters
             </Button>
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} disabled={blnLoading} controlId="reports.tds.search.button">Search</Button>
-            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} disabled={blnLoading} controlId="reports.tds.clear.button">Clear</Button>
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} disabled={blnPageLoading} controlId="reports.tds.search.button">Search</Button>
+            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} disabled={blnPageLoading} controlId="reports.tds.clear.button">Clear</Button>
           </Box>
         </Box>
         <Popover
@@ -332,17 +328,17 @@ export default function TdsReportPage() {
               </IconButton>
             </Box>
             <Box sx={{ px: 2.5, pb: 2, display: "grid", gap: 1.5 }}>
-              <SingleSelectFilter strLabel="Department" strValue={dicMoreFiltersDraft.strDepartment} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: strValue }))} lstOptions={dicFilterOptions.lstDepartments} strPlaceholder="All" strControlId="reports.tds.department.input" blnDisabled={blnLoading} />
-              <SingleSelectFilter strLabel="Location" strValue={dicMoreFiltersDraft.strLocation} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strLocation: strValue }))} lstOptions={dicFilterOptions.lstLocations} strPlaceholder="All" strControlId="reports.tds.location.input" blnDisabled={blnLoading} />
+              <SingleSelectFilter strLabel="Department" strValue={dicMoreFiltersDraft.strDepartment} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: strValue }))} lstOptions={dicFilterOptions.lstDepartments} strPlaceholder="All" strControlId="reports.tds.department.input" blnDisabled={blnPageLoading} />
+              <SingleSelectFilter strLabel="Location" strValue={dicMoreFiltersDraft.strLocation} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strLocation: strValue }))} lstOptions={dicFilterOptions.lstLocations} strPlaceholder="All" strControlId="reports.tds.location.input" blnDisabled={blnPageLoading} />
             </Box>
             <Divider />
             <Box sx={{ px: 2.5, py: 1.75, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1.25 }}>
-              <Button onClick={clearMoreFilters} disabled={blnLoading} data-controlid="reports.tds.more-filters.clear-all.button" sx={{ px: 0, minWidth: 0, fontWeight: 800, textTransform: "none", color: "var(--app-primary-color)", "&:hover": { backgroundColor: "var(--app-primary-soft)" } }}>
+              <Button onClick={clearMoreFilters} disabled={blnPageLoading} data-controlid="reports.tds.more-filters.clear-all.button" sx={{ px: 0, minWidth: 0, fontWeight: 800, textTransform: "none", color: "var(--app-primary-color)", "&:hover": { backgroundColor: "var(--app-primary-soft)" } }}>
                 Clear all
               </Button>
               <Box sx={{ display: "flex", gap: 1.25 }}>
-                <Button className={styles.secondaryButton} onClick={() => setObjMoreFiltersAnchor(null)} disabled={blnLoading} data-controlid="reports.tds.more-filters.cancel.button">Cancel</Button>
-                <Button className={styles.primaryButton} onClick={applyMoreFilters} disabled={blnLoading} data-controlid="reports.tds.more-filters.apply.button">Apply</Button>
+                <Button className={styles.secondaryButton} onClick={() => setObjMoreFiltersAnchor(null)} disabled={blnPageLoading} data-controlid="reports.tds.more-filters.cancel.button">Cancel</Button>
+                <Button className={styles.primaryButton} onClick={applyMoreFilters} disabled={blnPageLoading} data-controlid="reports.tds.more-filters.apply.button">Apply</Button>
               </Box>
             </Box>
           </Box>
@@ -367,7 +363,7 @@ export default function TdsReportPage() {
         </Typography>
       </Box>
       <Box className={styles.tableCard}>
-        {!blnCanView && !strError ? <Alert severity="warning" sx={{ mb: 1.5 }}>TDS report view access is not available for your user group.</Alert> : null}
+        {!blnRightsLoading && !blnCanView && !strError ? <Alert severity="warning" sx={{ mb: 1.5 }}>TDS report view access is not available for your user group.</Alert> : null}
         {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
         <CommonTable
           columns={lstTableColumns as unknown as CommonTableColumn<Record<string, ReactNode>>[]}
@@ -379,7 +375,8 @@ export default function TdsReportPage() {
           showPaginationSummary
           withPaper={false}
           testIdPrefix="reports.tds"
-          loading={blnLoading}
+          loading={blnPageLoading}
+          loadingHeaderSkeleton
           skeletonRowCount={10}
           hideRowClickHint
           onRowClick={() => undefined}
