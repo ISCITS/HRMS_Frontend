@@ -10,14 +10,7 @@ import {
   Button,
   Checkbox,
   Chip,
-  Paper,
   Snackbar,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Tooltip,
   Typography,
 } from "@mui/material";
@@ -32,6 +25,9 @@ import type {
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import BlockingLoader from "@/components/shared/BlockingLoader";
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import styles from "@/components/master/MasterScreen.module.css";
+import { dicMasterRowSx, MasterBreadcrumbs } from "@/components/master/MasterListUi";
 
 export default function AttendanceImportPanel() {
   const { t } = useModuleLabels("attendance", "Unable to load attendance labels.");
@@ -140,57 +136,95 @@ export default function AttendanceImportPanel() {
 
   const lstRows: AttendanceImportRow[] = objPreview?.lstRows ?? [];
 
-  return (
-    <Box>
-      <BlockingLoader blnOpen={blnBusy} strLabel={t("working", "Please wait...")} />
-      <Typography variant="h6" gutterBottom>
-        {t("import_attendance_title", "Import Attendance")}
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {t(
-          "import_attendance_description",
-          "Bulk-load attendance for employees who do not punch through this application. Download the template, fill it in, then upload it below for review before committing.",
-        )}
-      </Typography>
+  const lstPreviewRows = lstRows.map((objRow) => ({
+    id: objRow.intExcelRowNumber,
+    select: (
+      <Checkbox
+        data-control-id={`attendance.import.row-${objRow.intExcelRowNumber}.checkbox`}
+        disabled={!objRow.blnValid}
+        checked={setSelectedRows.has(objRow.intExcelRowNumber)}
+        onChange={(objEvent) => toggleRow(objRow.intExcelRowNumber, objEvent.target.checked)}
+      />
+    ),
+    row: objRow.intExcelRowNumber,
+    employeeCode: objRow.strEmployeeCode,
+    employeeName: objRow.strEmployeeName ?? "-",
+    workDate: objRow.dtWorkDate ?? objRow.strRawDate,
+    status: objRow.strStatus,
+    firstIn: objRow.strFirstIn ?? "-",
+    lastOut: objRow.strLastOut ?? "-",
+    resultText: objRow.blnValid ? (objRow.blnWillOverwrite ? "Overwrite" : "New") : "Error",
+    result: objRow.blnValid ? (
+      <Chip size="small" color={objRow.blnWillOverwrite ? "warning" : "success"} label={objRow.blnWillOverwrite ? t("overwrite", "Overwrite") : t("new", "New")} />
+    ) : (
+      <Tooltip title={objRow.strErrorMessage ?? ""}>
+        <Chip size="small" color="error" label={t("error", "Error")} />
+      </Tooltip>
+    ),
+  }));
+  const lstPreviewColumns: CommonTableColumn<(typeof lstPreviewRows)[number]>[] = [
+    { field: "select", headerName: "", sortable: false, filterable: false, exportable: false, width: 56 },
+    { field: "row", headerName: t("row", "Row"), width: 80 },
+    { field: "employeeCode", headerName: t("employee_code", "Employee Code"), width: 140 },
+    { field: "employeeName", headerName: t("employee_name", "Employee Name"), width: 180 },
+    { field: "workDate", headerName: t("date", "Date"), width: 130 },
+    { field: "status", headerName: t("status", "Status"), width: 120 },
+    { field: "firstIn", headerName: t("in_time", "In Time"), width: 110 },
+    { field: "lastOut", headerName: t("out_time", "Out Time"), width: 110 },
+    { field: "result", headerName: t("result", "Result"), filterable: false, width: 120, sortAccessor: (row) => row.resultText },
+  ];
 
-      <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
-        <Button
-          data-control-id="attendance.import.download-template.button"
-          variant="outlined"
-          startIcon={<DownloadIcon />}
-          onClick={handleDownloadTemplate}
-        >
-          {t("download_template", "Download Template")}
-        </Button>
-        {blnCanManage && (
-          <>
-            <Button
-              data-control-id="attendance.import.import-data.button"
-              variant="contained"
-              startIcon={<UploadFileIcon />}
-              onClick={handlePickFile}
-            >
-              {t("import_data", "Import Data")}
-            </Button>
-            <input
-              ref={objFileInputRef}
-              type="file"
-              accept=".xlsx"
-              hidden
-              onChange={handleFileSelected}
-              data-control-id="attendance.import.file-input"
-            />
-          </>
-        )}
-        {strFileName && (
-          <Typography variant="body2" sx={{ alignSelf: "center" }} color="text.secondary">
-            {strFileName}
-          </Typography>
-        )}
+  return (
+    <Box className={styles.page} sx={{ position: "relative" }}>
+      <BlockingLoader blnOpen={blnBusy} strLabel={t("working", "Please wait...")} />
+      <MasterBreadcrumbs strSection={t("breadcrumb_attendance", "Attendance")} strTitle={t("import_attendance_title", "Import Attendance")} />
+
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        <Typography sx={{ fontSize: "11px", color: "#64748b", mb: 1.25 }}>
+          {t(
+            "import_attendance_description",
+            "Bulk-load attendance for employees who do not punch through this application. Download the template, fill it in, then upload it below for review before committing.",
+          )}
+        </Typography>
+        <Box sx={{ display: "flex", gap: 1.25, flexWrap: "wrap", alignItems: "center" }}>
+          <Button
+            data-control-id="attendance.import.download-template.button"
+            className={styles.secondaryButton}
+            startIcon={<DownloadIcon />}
+            onClick={handleDownloadTemplate}
+          >
+            {t("download_template", "Download Template")}
+          </Button>
+          {blnCanManage && (
+            <>
+              <Button
+                data-control-id="attendance.import.import-data.button"
+                className={styles.primaryButton}
+                startIcon={<UploadFileIcon />}
+                onClick={handlePickFile}
+              >
+                {t("import_data", "Import Data")}
+              </Button>
+              <input
+                ref={objFileInputRef}
+                type="file"
+                accept=".xlsx"
+                hidden
+                onChange={handleFileSelected}
+                data-control-id="attendance.import.file-input"
+              />
+            </>
+          )}
+          {strFileName && (
+            <Typography variant="body2" color="text.secondary">
+              {strFileName}
+            </Typography>
+          )}
+        </Box>
       </Box>
 
       {objCommitResult && (
-        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setObjCommitResult(null)}>
+        <Alert severity="success" onClose={() => setObjCommitResult(null)}>
           {t("import_commit_summary", "Import complete")}: {objCommitResult.intCreated} {t("created", "created")}, {objCommitResult.intUpdated} {t("updated", "updated")}, {objCommitResult.intSkipped} {t("skipped", "skipped")}.
           {objCommitResult.lstFailures.length > 0 && (
             <Box component="ul" sx={{ mt: 1, mb: 0, pl: 2 }}>
@@ -205,72 +239,38 @@ export default function AttendanceImportPanel() {
       )}
 
       {objPreview && (
-        <>
-          <Box sx={{ display: "flex", gap: 3, mb: 1 }}>
-            <Chip label={`${t("total", "Total")}: ${objPreview.intTotal}`} />
-            <Chip color="success" label={`${t("valid", "Valid")}: ${objPreview.intValid}`} />
-            <Chip color="error" label={`${t("errors", "Errors")}: ${objPreview.intErrors}`} />
-            <Chip color="warning" label={`${t("will_overwrite", "Will overwrite")}: ${objPreview.intWillOverwrite}`} />
-          </Box>
-          <TableContainer component={Paper} sx={{ mb: 2, maxHeight: 480 }}>
-            <Table size="small" stickyHeader>
-              <TableHead>
-                <TableRow>
-                  <TableCell padding="checkbox" />
-                  <TableCell>{t("row", "Row")}</TableCell>
-                  <TableCell>{t("employee_code", "Employee Code")}</TableCell>
-                  <TableCell>{t("employee_name", "Employee Name")}</TableCell>
-                  <TableCell>{t("date", "Date")}</TableCell>
-                  <TableCell>{t("status", "Status")}</TableCell>
-                  <TableCell>{t("in_time", "In Time")}</TableCell>
-                  <TableCell>{t("out_time", "Out Time")}</TableCell>
-                  <TableCell>{t("result", "Result")}</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {lstRows.map((objRow) => (
-                  <TableRow key={objRow.intExcelRowNumber} hover>
-                    <TableCell padding="checkbox">
-                      <Checkbox
-                        data-control-id={`attendance.import.row-${objRow.intExcelRowNumber}.checkbox`}
-                        disabled={!objRow.blnValid}
-                        checked={setSelectedRows.has(objRow.intExcelRowNumber)}
-                        onChange={(objEvent) => toggleRow(objRow.intExcelRowNumber, objEvent.target.checked)}
-                      />
-                    </TableCell>
-                    <TableCell>{objRow.intExcelRowNumber}</TableCell>
-                    <TableCell>{objRow.strEmployeeCode}</TableCell>
-                    <TableCell>{objRow.strEmployeeName ?? "-"}</TableCell>
-                    <TableCell>{objRow.dtWorkDate ?? objRow.strRawDate}</TableCell>
-                    <TableCell>{objRow.strStatus}</TableCell>
-                    <TableCell>{objRow.strFirstIn ?? "-"}</TableCell>
-                    <TableCell>{objRow.strLastOut ?? "-"}</TableCell>
-                    <TableCell>
-                      {objRow.blnValid ? (
-                        <Chip size="small" color={objRow.blnWillOverwrite ? "warning" : "success"} label={objRow.blnWillOverwrite ? t("overwrite", "Overwrite") : t("new", "New")} />
-                      ) : (
-                        <Tooltip title={objRow.strErrorMessage ?? ""}>
-                          <Chip size="small" color="error" label={t("error", "Error")} />
-                        </Tooltip>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-          {blnCanManage && (
-            <Button
-              data-control-id="attendance.import.confirm.button"
-              variant="contained"
-              color="primary"
-              onClick={handleConfirmImport}
-              disabled={setSelectedRows.size === 0}
-            >
-              {t("confirm_import", "Confirm Import")}
-            </Button>
-          )}
-        </>
+        <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+          <CommonTable
+            columns={lstPreviewColumns}
+            rows={lstPreviewRows}
+            rowIdField="id"
+            showPaginationSummary
+            hideRowClickHint
+            minTableWidth={950}
+            emptyMessage={t("import_no_rows", "No rows found in the uploaded file.")}
+            testIdPrefix="attendance.import.preview"
+            toolbarLeft={
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+                {blnCanManage && (
+                  <Button
+                    data-control-id="attendance.import.confirm.button"
+                    className={styles.primaryButton}
+                    onClick={handleConfirmImport}
+                    disabled={setSelectedRows.size === 0}
+                  >
+                    {t("confirm_import", "Confirm Import")}
+                  </Button>
+                )}
+                <Chip size="small" label={`${t("total", "Total")}: ${objPreview.intTotal}`} />
+                <Chip size="small" color="success" label={`${t("valid", "Valid")}: ${objPreview.intValid}`} />
+                <Chip size="small" color="error" label={`${t("errors", "Errors")}: ${objPreview.intErrors}`} />
+                <Chip size="small" color="warning" label={`${t("will_overwrite", "Will overwrite")}: ${objPreview.intWillOverwrite}`} />
+              </Box>
+            }
+            getRowSx={() => dicMasterRowSx}
+            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+          />
+        </Box>
       )}
 
       <Snackbar open={Boolean(strError)} autoHideDuration={6000} onClose={() => setStrError(null)}>

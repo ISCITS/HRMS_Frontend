@@ -24,6 +24,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
+import { onSearchEnter } from "@/components/master/MasterListUi";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -177,7 +178,7 @@ export default function PayrollGroupListPage() {
             type="button"
             underline="none"
             disabled={!blnCanView && !blnCanEdit}
-            data-control-id="payroll-groups.list.row.name.button"
+            className="app-master-first-column-link" data-control-id="payroll-groups.list.row.name.button"
             onClick={(objEvent) => {
               if (window.getSelection()?.toString()) {
                 objEvent.stopPropagation();
@@ -185,7 +186,7 @@ export default function PayrollGroupListPage() {
               }
               openGroupEditor(blnCanEdit ? "edit" : "view", dicRow);
             }}
-            sx={{ color: "#334155", cursor: "pointer", fontSize: "inherit", fontWeight: 500, textAlign: "left", textUnderlineOffset: "3px", userSelect: "text", WebkitUserSelect: "text", "&:hover": { color: "#0066df", textDecoration: "underline" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}
+            sx={{ cursor: "pointer", textAlign: "left", textUnderlineOffset: "3px", userSelect: "text", WebkitUserSelect: "text", "&&:hover": { color: "#0066df", textDecoration: "underline" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}
           >
             {dicRow.strPayrollGroupName}
           </Link>
@@ -193,7 +194,7 @@ export default function PayrollGroupListPage() {
         strDescription: dicRow.strDescription || "-",
         strStatusText: dicRow.blnIsActive ? "Active" : "Inactive",
         blnIsActive: (
-          <span className={`${styles.statusPill} ${dicRow.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
+          <span className={`app-master-status-pill ${dicRow.blnIsActive ? "app-master-status-active" : "app-master-status-inactive"}`}>
             {dicRow.blnIsActive ? t("active", "Active") : t("inactive", "Inactive")}
           </span>
         ),
@@ -221,9 +222,9 @@ export default function PayrollGroupListPage() {
 
   return (
     <Box className={styles.page} sx={{ position: "relative" }}>
-      <Breadcrumbs aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ fontSize: 13, py: 0.5, ml: "3px" }}>
+      <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ ml: "3px" }}>
         <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{t("breadcrumb_masters", "Masters")}</Typography>
-        <Typography component="h1" aria-current="page" sx={{ fontSize: "inherit", fontWeight: 700, color: "#243b53" }}>{t("breadcrumb_payroll_groups", "Payroll Groups")}</Typography>
+        <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{t("breadcrumb_payroll_groups", "Payroll Groups")}</Typography>
       </Breadcrumbs>
 
       <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
@@ -237,6 +238,7 @@ export default function PayrollGroupListPage() {
         ) : null}
         <Box
           className={styles.searchRow}
+          onKeyDown={onSearchEnter(() => { if (!blnSearchPanelFrozen) setDicSearchApplied(dicSearchDraft); })}
           aria-busy={blnSearchPanelFrozen}
           sx={{
             alignItems: "center",
