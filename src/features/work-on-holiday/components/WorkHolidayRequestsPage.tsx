@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
@@ -13,7 +13,7 @@ import type { ReactNode, SyntheticEvent } from "react";
 
 import CommonDataGrid, { type DataGridColumn } from "@/components/ui/CommonDataGrid";
 import styles from "@/components/master/MasterScreen.module.css";
-import { dicMasterNameLinkSx, dicMasterRowSx, MasterBreadcrumbs, MasterGridSkeleton } from "@/components/master/MasterListUi";
+import { dicMasterNameLinkSx, dicMasterRowSxAnyColumn, MasterBreadcrumbs, MasterGridSkeleton } from "@/components/master/MasterListUi";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
 import WorkHolidayDetailDrawer from "@/features/work-on-holiday/components/WorkHolidayDetailDrawer";
@@ -189,7 +189,7 @@ export default function WorkHolidayRequestsPage({ blnEssManagerMode = false }: {
         <PendingActionsRoundedIcon fontSize="small" />
       </IconButton>
     ) : null,
-    strRequestNumberText: objRequest.strRequestNumber ?? "—",
+    strRequestNumberText: objRequest.strRequestNumber ?? "â€”",
     strRequestNumber: (
       <Link
         component="button"
@@ -204,19 +204,19 @@ export default function WorkHolidayRequestsPage({ blnEssManagerMode = false }: {
         }}
         sx={dicMasterNameLinkSx}
       >
-        {objRequest.strRequestNumber ?? "—"}
+        {objRequest.strRequestNumber ?? "â€”"}
       </Link>
     ),
     strRequestStatusText: t(`status_${objRequest.strRequestStatus.toLowerCase()}`, objRequest.strRequestStatus),    strEmployeeName: objRequest.strEmployeeName ?? `${t("employee", "Employee")} ${objRequest.intEmployeeID}`,
     strOrganisationContext: [
       objRequest.intDepartmentID ? `${t("department", "Department")} ${objRequest.intDepartmentID}` : null,
       objRequest.intLocationID ? `${t("location", "Location")} ${objRequest.intLocationID}` : null,
-    ].filter(Boolean).join(" · ") || "—",
+    ].filter(Boolean).join(" Â· ") || "â€”",
     dtWorkDate: objRequest.dtWorkDate,
     strDayTypeCode: t(`day_type_${objRequest.strDayTypeCode.toLowerCase()}`, objRequest.strDayTypeCode),
     strRequestedOutcomeCode: t(`outcome_${objRequest.strRequestedOutcomeCode.toLowerCase()}`, objRequest.strRequestedOutcomeCode),
     strRequestStatus: <Chip size="small" label={t(`status_${objRequest.strRequestStatus.toLowerCase()}`, objRequest.strRequestStatus)} />,
-    strCurrentApproverName: objRequest.strCurrentApproverName ?? (objRequest.intCurrentApproverUserID ? t("assigned_approver", "Assigned Approver") : "—"),
+    strCurrentApproverName: objRequest.strCurrentApproverName ?? (objRequest.intCurrentApproverUserID ? t("assigned_approver", "Assigned Approver") : "â€”"),
   }));
 
   if (blnRightsLoading) return <Stack spacing={1.5} data-control-id="work-on-holiday.workbench.rights-loading.container"><MasterBreadcrumbs strSection={t("breadcrumb_leave", "Leave Management")} strTitle={t("breadcrumb_work_on_holiday", "Work on Holiday Requests")} /><MasterGridSkeleton strControlId="work-on-holiday.workbench.skeleton" intColumns={9} /></Stack>;
@@ -267,7 +267,7 @@ export default function WorkHolidayRequestsPage({ blnEssManagerMode = false }: {
           exportFileName="work_on_holiday_requests"
           testIdPrefix="work-on-holiday-workbench"
           hideRowClickHint
-          getRowSx={() => dicMasterRowSx}
+          getRowSx={() => dicMasterRowSxAnyColumn}
           onRowClick={(objRow) => { if (blnCanView) void openRequestDetail(Number(objRow.intID)); }}
           withPaper={false}
           emptyMessage={t("empty_requests", "No matching requests found.")}

@@ -2,13 +2,13 @@
 
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
-  Alert, Box, Chip, CircularProgress, InputAdornment, Pagination, Snackbar, Stack, Table, TableBody,
+  Alert, Box, Chip, InputAdornment, Link, Pagination, Snackbar, Stack, Table, TableBody,
   TableCell, TableHead, TableRow, TextField, Typography,
 } from "@mui/material";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
-import CommonRowActions from "@/components/master/CommonRowActions";
+import { MasterBreadcrumbs, MasterGridSkeleton } from "@/components/master/MasterListUi";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import styles from "@/features/payroll/components/EmployeeMonthlyTaxPage.module.css";
 import MonthlyTaxImportPanel from "@/features/payroll/components/MonthlyTaxImportPanel";
@@ -152,6 +152,7 @@ export default function EmployeeMonthlyTaxPage({
   const objFilters = (
     <Box className={styles.filtersRow}>
       <TextField
+        className="app-mui-text-field"
         controlId="employee-monthly-tax.financial-year.select"
         select
         SelectProps={{ native: true }}
@@ -168,6 +169,7 @@ export default function EmployeeMonthlyTaxPage({
         ))}
       </TextField>
       <TextField
+        className="app-mui-text-field"
         controlId="employee-monthly-tax.employee-search.input"
         label={t("employee_search_label", "Employee search")}
         placeholder={t("employee_search_placeholder", "Search by code or name")}
@@ -191,21 +193,24 @@ export default function EmployeeMonthlyTaxPage({
 
   return (
     <Box className={styles.page}>
-      <Box className={styles.controlsCard}>
+      <MasterBreadcrumbs strSection={t("breadcrumb_section", "Payroll")} strTitle={t("breadcrumb_title", "Employee Monthly Tax")} />
+
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {blnCanImport ? (
           <MonthlyTaxImportPanel onImported={loadMatrix} objToolbarLeft={objFilters} />
         ) : objFilters}
       </Box>
 
-      {blnLoading && (
-        <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-          <CircularProgress size={28} />
-        </Box>
-      )}
       {strError && <Alert severity="error">{strError}</Alert>}
 
+      {blnLoading && (
+        <Box className={styles.tableCard} sx={{ p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+          <MasterGridSkeleton strControlId="employee-monthly-tax.list.skeleton" intColumns={8} />
+        </Box>
+      )}
+
       {!blnLoading && !strError && objMatrix && (
-        <Box className={styles.tableCard}>
+        <Box className={styles.tableCard} sx={{ p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
           <Box className={styles.paginationBar}>
             <Box className={styles.paginationInfo}>
               <TextField
@@ -262,9 +267,6 @@ export default function EmployeeMonthlyTaxPage({
             <Table className={styles.table}>
               <TableHead>
                 <TableRow>
-                  <TableCell rowSpan={2} className={styles.stickyAction}>
-                    {t("column_actions", "Actions")}
-                  </TableCell>
                   <TableCell rowSpan={2} className={`${styles.stickyEmployee} ${styles.employeeCell}`}>
                     {t("column_employee", "Employee")}
                   </TableCell>
@@ -299,25 +301,30 @@ export default function EmployeeMonthlyTaxPage({
                 {lstPaginatedRows.map((objRow) => {
                   const strDefaultEditMonth = resolveDefaultEditMonth(objRow, objMatrix.lstMonths);
                   return (
-                    <TableRow key={objRow.intEmployeeID}>
-                      <TableCell className={styles.stickyAction}>
-                        <CommonRowActions
-                          testIdPrefix="employee-monthly-tax.list.row"
-                          rowKey={objRow.intEmployeeID}
-                          blnCanEdit={blnCanEdit && Boolean(strDefaultEditMonth)}
-                          editTooltip={t("edit_tooltip", "Edit monthly tax entries")}
-                          onEdit={() =>
-                            strDefaultEditMonth &&
-                            setObjDetailTarget({
-                              intEmployeeID: objRow.intEmployeeID,
-                              strEmployeeName: objRow.strEmployeeName,
-                              strPeriodMonth: strDefaultEditMonth,
-                            })
-                          }
-                        />
-                      </TableCell>
+                    <TableRow key={objRow.intEmployeeID} hover>
                       <TableCell className={`${styles.stickyEmployee} ${styles.employeeCell}`}>
-                        <div className={styles.employeeCode}>{objRow.strEmployeeCode}</div>
+                        {blnCanEdit && strDefaultEditMonth ? (
+                          <Link
+                            className={`app-master-first-column-link ${styles.employeeCode}`}
+                            component="button"
+                            type="button"
+                            underline="none"
+                            title={t("edit_tooltip", "Edit monthly tax entries")}
+                            data-controlid="employee-monthly-tax.list.row.employee.link"
+                            data-row-key={String(objRow.intEmployeeID)}
+                            onClick={() =>
+                              setObjDetailTarget({
+                                intEmployeeID: objRow.intEmployeeID,
+                                strEmployeeName: objRow.strEmployeeName,
+                                strPeriodMonth: strDefaultEditMonth,
+                              })
+                            }
+                          >
+                            {objRow.strEmployeeCode}
+                          </Link>
+                        ) : (
+                          <div className={styles.employeeCode}>{objRow.strEmployeeCode}</div>
+                        )}
                         <div className={styles.employeeName}>{objRow.strEmployeeName}</div>
                       </TableCell>
                       {objMatrix.lstMonths.map((strMonth, intIndex) => {
@@ -352,7 +359,7 @@ export default function EmployeeMonthlyTaxPage({
                 })}
                 {lstFilteredRows.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={objMatrix.lstMonths.length * 2 + 4} className={styles.emptyState}>
+                    <TableCell colSpan={objMatrix.lstMonths.length * 2 + 3} className={styles.emptyState}>
                       {t("no_rows", "No employees with monthly tax data for this financial year yet.")}
                     </TableCell>
                   </TableRow>

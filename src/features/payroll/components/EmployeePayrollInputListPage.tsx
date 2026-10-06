@@ -1,14 +1,14 @@
 "use client";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
   Box,
   Button,
+  InputAdornment,
+  Link,
   MenuItem,
   Snackbar,
   TextField,
@@ -18,9 +18,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
-import CommonRowActions from "@/components/master/CommonRowActions";
-import styles from "@/features/payroll/components/PayrollScreen.module.css";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import { MasterBreadcrumbs, MasterGridSkeleton, MasterStatusPill, dicMasterRowSx, onSearchEnter } from "@/components/master/MasterListUi";
+import styles from "@/components/master/MasterScreen.module.css";
 import { withBasePath } from "@/lib/basePath";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { employeePayrollInputService } from "@/features/payroll/services/employeePayrollInputService";
@@ -150,23 +149,29 @@ export default function EmployeePayrollInputListPage() {
     window.location.assign(withBasePath(strPath));
   }
 
+  function openInput(strRecordUUID: string) {
+    navigateToFullScreen(`/payroll/employee-payroll-inputs/${strRecordUUID}/edit`);
+  }
+
   const lstTableRows = useMemo(
     () =>
       lstFilteredRows.map((dicRow) => ({
         id: dicRow.intID,
-        action: (
-          <CommonRowActions
-            testIdPrefix="employee-payroll-inputs.list.row"
-            rowKey={dicRow.intID}
-            blnCanView={blnCanView}
-            blnCanEdit={blnCanEdit && !dicRow.blnIsLocked}
-            onView={() =>
-              navigateToFullScreen(`/payroll/employee-payroll-inputs/${dicRow.strRecordUUID}/edit`)
-            }
-            onEdit={blnCanEdit ? () => navigateToFullScreen(`/payroll/employee-payroll-inputs/${dicRow.strRecordUUID}/edit`) : undefined}
-          />
+        strRecordUUID: dicRow.strRecordUUID,
+        strEmployeeNameSort: dicRow.strEmployeeName,
+        strEmployeeName: (
+          <Link
+            className="app-master-first-column-link"
+            component="button"
+            type="button"
+            underline="none"
+            data-controlid="employee-payroll-inputs.list.row.name.link"
+            data-row-key={String(dicRow.intID)}
+            onClick={(objEvent) => { objEvent.stopPropagation(); openInput(dicRow.strRecordUUID); }}
+          >
+            {dicRow.strEmployeeName}
+          </Link>
         ),
-        strEmployeeName: dicRow.strEmployeeName,
         strEmployeeCode: dicRow.strEmployeeCode,
         strRunName: dicRow.strRunName,
         dtPayrollMonth: formatDate(dicRow.dtPayrollMonth),
@@ -182,19 +187,14 @@ export default function EmployeePayrollInputListPage() {
         decLopDays: formatNumber(dicRow.decLopDays),
         decLopDaysSortValue: Number(dicRow.decLopDays ?? 0),
         intAdjustmentLineCount: dicRow.intAdjustmentLineCount ?? 0,
-        strStatus: (
-          <span className={`${styles.statusPill} ${dicRow.strStatus === "Locked" ? styles.statusInactive : styles.statusActive}`}>
-            {dicRow.strStatus}
-          </span>
-        ),
+        strStatus: <MasterStatusPill blnActive={dicRow.strStatus !== "Locked"} strActiveLabel={dicRow.strStatus} strInactiveLabel={dicRow.strStatus} />,
       })),
-    [blnCanEdit, blnCanView, lstFilteredRows, t]
+    [lstFilteredRows, t]
   );
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 110 },
-      { field: "strEmployeeName", headerName: t("employee_name", "Employee Name") },
+      { field: "strEmployeeName", headerName: t("employee_name", "Employee Name"), sortAccessor: (dicRow) => dicRow.strEmployeeNameSort },
       { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code") },
       { field: "strRunName", headerName: t("payroll_run", "Payroll Run") },
       { field: "dtPayrollMonth", headerName: t("payroll_month", "Payroll Period"), sortAccessor: (dicRow) => dicRow.dtPayrollMonthSortValue },
@@ -207,39 +207,34 @@ export default function EmployeePayrollInputListPage() {
     [t]
   );
 
-  if (blnLoading || blnRightsLoading) {
-    return (
-      <BlockingLoader
-        blnOpen
-        strLabel={t(
-          "loading_employee_payroll_inputs",
-          "Loading payroll inputs..."
-        )}
-      />
-    );
+  const blnBusy = blnLoading || blnRightsLoading;
+
+  function applySearch() {
+    if (blnBusy) return;
+    setDicSearchApplied(dicSearchDraft);
+    loadInputs(dicSearchDraft).catch(() => undefined);
   }
 
   return (
     <Box className={styles.page}>
-      <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>
-        {t("breadcrumbs", "Payroll / Payroll Input")}
-      </Typography>
+      <MasterBreadcrumbs strSection={t("breadcrumb_section", "Payroll")} strTitle={t("breadcrumb_title", "Payroll Input")} />
 
-      <Box className={`${styles.topBar} ${styles.hiddenHeader}`}>
-        <Button
-          controlId="employee-payroll-input.list.back.button"
-          className={styles.secondaryButton}
-          startIcon={<ArrowBackRoundedIcon />}
-          onClick={() => objRouter.push("/payroll")}
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        <Box
+          className={styles.searchRow}
+          aria-busy={blnBusy}
+          onKeyDown={onSearchEnter(applySearch)}
+          sx={{
+            alignItems: "center",
+            "&&": { gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "minmax(220px, 1.3fr) minmax(180px, 1fr) minmax(150px, 0.8fr) max-content max-content" } },
+            "& .MuiButton-root": { alignSelf: "center", whiteSpace: "nowrap" },
+          }}
         >
-          {t("back_button", "Back to Payroll")}
-        </Button>
-      </Box>
-
-      <Box className={styles.controlsCard}>
-        <Box className={`${styles.searchRow} ${styles.employeePayrollInputSearchRow}`}>
           <TextField
+            className="app-mui-text-field"
+            size="small"
             controlId="employee-payroll-input.list.employee-search.input"
+            label={t("employee", "Employee")}
             value={dicSearchDraft.strSearchEmployee}
             onChange={(objEvent) =>
               setDicSearchDraft((dicPrevious) => ({
@@ -251,9 +246,14 @@ export default function EmployeePayrollInputListPage() {
               "employee_search_placeholder",
               "Search by employee code or name"
             )}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }}
+            disabled={blnBusy}
             fullWidth
           />
           <TextField
+            className="app-mui-text-field"
+            size="small"
+            label={t("payroll_run", "Payroll Run")}
             value={dicSearchDraft.strSearchRun}
             onChange={(objEvent) =>
               setDicSearchDraft((dicPrevious) => ({
@@ -262,10 +262,15 @@ export default function EmployeePayrollInputListPage() {
               }))
             }
             placeholder={t("run_search_placeholder", "Search by payroll run")}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }}
+            disabled={blnBusy}
             fullWidth
           />
           <TextField
+            className="app-mui-text-field"
+            size="small"
             select
+            label={t("status", "Status")}
             value={dicSearchDraft.strStatus}
             onChange={(objEvent) =>
               setDicSearchDraft((dicPrevious) => ({
@@ -273,6 +278,7 @@ export default function EmployeePayrollInputListPage() {
                 strStatus: objEvent.target.value as SearchForm["strStatus"],
               }))
             }
+            disabled={blnBusy}
             fullWidth
           >
             <MenuItem value="All">{t("status_all", "All statuses")}</MenuItem>
@@ -285,14 +291,15 @@ export default function EmployeePayrollInputListPage() {
               controlId="employee-payroll-input.list.search.button"
               className={styles.primaryButton}
               startIcon={<SearchRoundedIcon />}
-              onClick={() => {
-                setDicSearchApplied(dicSearchDraft);
-                loadInputs(dicSearchDraft).catch(() => undefined);
-              }}
+              onClick={applySearch}
+              disabled={blnBusy}
             >
               {t("search", "Search")}
             </Button>
+          </Box>
+          <Box className={styles.searchActions}>
             <Button
+              controlId="employee-payroll-input.list.clear.button"
               className={styles.secondaryButton}
               startIcon={<ClearRoundedIcon />}
               onClick={() => {
@@ -300,6 +307,7 @@ export default function EmployeePayrollInputListPage() {
                 setDicSearchApplied(dicEmptySearch);
                 loadInputs(dicEmptySearch).catch(() => undefined);
               }}
+              disabled={blnBusy}
             >
               {t("clear", "Clear")}
             </Button>
@@ -307,16 +315,18 @@ export default function EmployeePayrollInputListPage() {
         </Box>
       </Box>
 
-      <Box className={styles.tableCard}>
-        {strRightsError ? <Alert severity="warning" sx={{ mb: 1.5 }}>{strRightsError}</Alert> : null}
-        {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
-        {!blnCanView ? (
+      {strRightsError ? <Alert severity="warning">{strRightsError}</Alert> : null}
+      {strError ? <Alert severity="error">{strError}</Alert> : null}
+
+      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        {blnBusy ? (
+          <MasterGridSkeleton strControlId="employee-payroll-input.list.skeleton" intColumns={9} />
+        ) : !blnCanView ? (
           <Box className={styles.emptyState}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", "Payroll input access is not available for your user group.")}</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>{t("access_denied_help", "Contact your administrator if you need payroll input visibility.")}</Typography>
           </Box>
-        ) : null}
-        {blnCanView ? (
+        ) : (
           <CommonTable
             columns={lstTableColumns}
             rows={lstTableRows}
@@ -336,10 +346,13 @@ export default function EmployeePayrollInputListPage() {
                 {t("employee_payroll_input_add_button", "Add Payroll Input")}
               </Button>
             ) : undefined}
+            onRowClick={(dicRow) => openInput(dicRow.strRecordUUID)}
+            minTableWidth={1300}
+            hideRowClickHint
+            getRowSx={() => dicMasterRowSx}
             sx={{ p: 0, boxShadow: "none", background: "transparent" }}
           />
-        ) : null}
-
+        )}
       </Box>
 
       <Snackbar

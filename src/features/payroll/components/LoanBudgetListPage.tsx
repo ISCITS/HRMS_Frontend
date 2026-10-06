@@ -1,13 +1,12 @@
 "use client";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import { Alert, Box, Button, Chip } from "@mui/material";
+import { Alert, Box, Button, Link } from "@mui/material";
 import { useEffect, useState } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
-import CommonRowActions from "@/components/master/CommonRowActions";
-import BlockingLoader from "@/components/shared/BlockingLoader";
-import styles from "@/features/payroll/components/PayrollScreen.module.css";
+import { MasterBreadcrumbs, MasterGridSkeleton, MasterStatusPill, dicMasterRowSx } from "@/components/master/MasterListUi";
+import masterStyles from "@/components/master/MasterScreen.module.css";
 import { loanBudgetService } from "@/features/payroll/services/loanBudgetService";
 import type { LoanBudgetSummaryRecord } from "@/features/payroll/types";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -60,27 +59,29 @@ export default function LoanBudgetListPage({ intRefreshKey, onOpenBudget, onCrea
 
   const lstTableRows = lstRows.map((objRow) => ({
     id: objRow.intID,
-    action: (
-      <CommonRowActions
-        testIdPrefix="loan-budget.list.row"
-        rowKey={objRow.intID}
-        blnCanView
-        blnCanEdit={blnCanCreate}
-        onView={() => onOpenBudget(objRow.strFinancialYear)}
-        onEdit={() => onOpenBudget(objRow.strFinancialYear)}
-      />
+    strFinancialYearText: objRow.strFinancialYear,
+    strFinancialYear: (
+      <Link
+        className="app-master-first-column-link"
+        component="button"
+        type="button"
+        underline="none"
+        data-controlid="loan-budget.list.row.financial-year.link"
+        data-row-key={String(objRow.intID)}
+        onClick={(objEvent) => { objEvent.stopPropagation(); onOpenBudget(objRow.strFinancialYear); }}
+      >
+        {objRow.strFinancialYear}
+      </Link>
     ),
-    strFinancialYear: objRow.strFinancialYear,
     decTotalBudgetAmount: formatCurrency(objRow.decTotalBudgetAmount),
     decApprovedTotal: formatCurrency(objRow.decApprovedTotal),
     decOutstandingTotal: formatCurrency(objRow.decOutstandingTotal),
     decRemaining: formatCurrency(objRow.decRemaining),
-    status: <Chip size="small" label={objRow.blnIsActive ? t("active", "Active") : t("closed", "Closed")} color={objRow.blnIsActive ? "success" : "default"} />,
+    status: <MasterStatusPill blnActive={objRow.blnIsActive} strActiveLabel={t("active", "Active")} strInactiveLabel={t("closed", "Closed")} />,
   }));
 
   const lstTableColumns: CommonTableColumn<(typeof lstTableRows)[number]>[] = [
-    { field: "action", headerName: t("table_actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 100 },
-    { field: "strFinancialYear", headerName: t("table_financial_year", "Financial Year"), width: 150 },
+    { field: "strFinancialYear", headerName: t("table_financial_year", "Financial Year"), width: 150, sortAccessor: (dicRow) => dicRow.strFinancialYearText },
     { field: "decTotalBudgetAmount", headerName: t("table_budget", "Company Budget"), align: "right", width: 170 },
     { field: "decApprovedTotal", headerName: t("table_approved", "Approved"), align: "right", width: 160 },
     { field: "decOutstandingTotal", headerName: t("table_outstanding", "Outstanding"), align: "right", width: 160 },
@@ -88,13 +89,20 @@ export default function LoanBudgetListPage({ intRefreshKey, onOpenBudget, onCrea
     { field: "status", headerName: t("table_status", "Status"), sortable: false, filterable: false, width: 120 },
   ];
 
+  const blnBusy = blnLoading || blnRightsLoading || blnLoadingLabels;
+
   return (
-    <Box className={styles.page}>
+    <Box className={masterStyles.page}>
+      <MasterBreadcrumbs strSection={t("breadcrumb_section", "Payroll")} strTitle={t("breadcrumb_title", "Loan Budget")} />
       {strRightsError || strLabelError ? <Alert severity="warning">{strRightsError || strLabelError}</Alert> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
-      {!blnCanView && !blnRightsLoading ? <Alert severity="warning">{t("no_access", "Loan budget access is not available for your user group.")}</Alert> : null}
-      {blnCanView ? (
-        <Box className={styles.tableCard}>
+      {!blnCanView && !blnBusy ? <Alert severity="warning">{t("no_access", "Loan budget access is not available for your user group.")}</Alert> : null}
+      {blnBusy ? (
+        <Box className={masterStyles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+          <MasterGridSkeleton strControlId="loan-budget.list.skeleton" intColumns={6} />
+        </Box>
+      ) : blnCanView ? (
+        <Box className={masterStyles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
           <CommonTable
             columns={lstTableColumns}
             rows={lstTableRows}
@@ -105,16 +113,19 @@ export default function LoanBudgetListPage({ intRefreshKey, onOpenBudget, onCrea
             testIdPrefix="loan-budget.list"
             toolbarLeft={
               blnCanCreate ? (
-                <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={onCreateBudget}>
+                <Button className={masterStyles.primaryButton} startIcon={<AddRoundedIcon />} onClick={onCreateBudget}>
                   {t("add_button", "Add Budget")}
                 </Button>
               ) : undefined
             }
+            onRowClick={(dicRow) => onOpenBudget(dicRow.strFinancialYearText)}
+            minTableWidth={900}
+            hideRowClickHint
+            getRowSx={() => dicMasterRowSx}
             sx={{ p: 0, boxShadow: "none", background: "transparent" }}
           />
         </Box>
       ) : null}
-      <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnLoadingLabels} strLabel={t("loading", "Loading loan budgets...")} />
     </Box>
   );
 }

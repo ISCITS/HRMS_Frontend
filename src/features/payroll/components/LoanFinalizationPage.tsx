@@ -19,6 +19,8 @@ import {
   DialogContentText,
   DialogTitle,
   IconButton,
+  InputAdornment,
+  Link,
   Stack,
   Table,
   TableBody,
@@ -32,8 +34,9 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import { MasterBreadcrumbs, MasterGridSkeleton, dicMasterRowSxAnyColumn } from "@/components/master/MasterListUi";
+import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
-import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { loanAdvanceService } from "@/features/payroll/services/loanAdvanceService";
 import { loanRecoveryService } from "@/features/payroll/services/loanRecoveryService";
@@ -313,7 +316,19 @@ export default function LoanFinalizationPage() {
             </Stack>
           ),
           employeeCode: objRow.strEmployeeCode,
-          employeeName: objRow.strEmployeeName,
+          employeeNameSort: objRow.strEmployeeName,
+          employeeName: (
+            <Link
+              className="app-master-first-column-link"
+              component="button"
+              type="button"
+              underline="none"
+              data-controlid={`loan-recovery.row.${objRow.intScheduleID}.employee-name.link`}
+              onClick={(objEvent) => { objEvent.stopPropagation(); openHistoryDialog(objRow); }}
+            >
+              {objRow.strEmployeeName}
+            </Link>
+          ),
           loanNumber: objRow.strLoanAdvanceNumber || "-",
           category: objRow.strCategoryName,
           installmentNo: objRow.intInstallmentNo,
@@ -356,7 +371,7 @@ export default function LoanFinalizationPage() {
       },
       { field: "rowActions", headerName: t("table_actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 120 },
       { field: "employeeCode", headerName: t("table_employee_code", "Employee Code"), width: 110 },
-      { field: "employeeName", headerName: t("table_employee_name", "Employee Name"), width: 150 },
+      { field: "employeeName", headerName: t("table_employee_name", "Employee Name"), width: 150, sortAccessor: (dicRow) => dicRow.employeeNameSort },
       { field: "loanNumber", headerName: t("table_loan_no", "Loan/Advance No."), width: 120 },
       { field: "category", headerName: t("table_category", "Category"), width: 120 },
       { field: "installmentNo", headerName: t("table_installment_no", "Installment No."), align: "center", width: 90 },
@@ -371,6 +386,8 @@ export default function LoanFinalizationPage() {
     [t, lstPostableRows, blnCanPost, blnAllPostableSelected]
   );
 
+  const blnBusy = blnLoading || blnRightsLoading || blnLoadingLabels;
+
   if (!blnCanView && !blnRightsLoading) {
     return (
       <Box className={styles.page}>
@@ -381,21 +398,29 @@ export default function LoanFinalizationPage() {
 
   return (
     <Box className={styles.page}>
-      <Typography className={styles.title}>{t("page_title", "Loan Recovery")}</Typography>
+      <MasterBreadcrumbs strSection={t("breadcrumb_section", "Payroll")} strTitle={t("page_title", "Loan Recovery")} />
 
-      <Box className={styles.controlsCard}>
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.2, alignItems: "flex-end" }}>
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        <Box
+          className={styles.searchRow}
+          sx={{
+            alignItems: "center",
+            "&&": { gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "minmax(280px, 1fr) max-content 1fr" } },
+            "& .MuiButton-root": { alignSelf: "center", whiteSpace: "nowrap" },
+          }}
+        >
           <Autocomplete
             size="small"
+            fullWidth
             options={lstPayrollRuns}
             value={lstPayrollRuns.find((objOption) => objOption.strRecordUUID === strSelectedRunUUID) ?? null}
             getOptionLabel={(objOption) => `${objOption.strRunName} (${objOption.dtPayrollMonth.slice(0, 7)})`}
             isOptionEqualToValue={(objA, objB) => objA.strRecordUUID === objB.strRecordUUID}
             onChange={(_e, objOption) => selectRun(objOption ? objOption.strRecordUUID : "")}
-            sx={{ minWidth: 320, flex: "1 1 320px" }}
+            disabled={blnBusy}
             renderInput={(params) => (
-              <TextField {...params} label={t("field_payroll_run", "Payroll Run")} placeholder={t("select_run_prompt", "Search an open payroll run")} controlId="loan-recovery.select.payroll-run"
-                InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />
+              <TextField {...params} className="app-mui-text-field" size="small" label={t("field_payroll_run", "Payroll Run")} placeholder={t("select_run_prompt", "Search an open payroll run")} controlId="loan-recovery.select.payroll-run"
+                InputProps={{ ...params.InputProps, startAdornment: (<><InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment>{params.InputProps.startAdornment}</>) }} />
             )}
           />
           {blnCanPost ? (
@@ -416,10 +441,14 @@ export default function LoanFinalizationPage() {
       {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success" onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
 
-      {!objRun ? (
+      {blnBusy ? (
+        <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+          <MasterGridSkeleton strControlId="loan-recovery.list.skeleton" intColumns={9} />
+        </Box>
+      ) : !objRun ? (
         <Alert severity="info">{t("select_run_hint", "Select an open payroll run above to see the loan/advance installments due that month.")}</Alert>
       ) : (
-        <Box className={styles.tableCard}>
+        <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
           <CommonTable
             columns={lstTableColumns}
             rows={lstTableRows}
@@ -428,6 +457,9 @@ export default function LoanFinalizationPage() {
             showPaginationSummary
             emptyMessage={t("empty_message", "No loan/advance installments due for this payroll run.")}
             testIdPrefix="loan-recovery.list"
+            minTableWidth={1500}
+            hideRowClickHint
+            getRowSx={() => dicMasterRowSxAnyColumn}
             sx={{ p: 0, boxShadow: "none", background: "transparent" }}
           />
         </Box>
@@ -609,7 +641,7 @@ export default function LoanFinalizationPage() {
         </DialogActions>
       </Dialog>
 
-      <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnLoadingLabels || blnActionLoading || blnHistoryLoading} strLabel={t("loading", "Loading...")} />
+      <BlockingLoader blnOpen={blnActionLoading || blnHistoryLoading} strLabel={t("loading", "Loading...")} />
     </Box>
   );
 }

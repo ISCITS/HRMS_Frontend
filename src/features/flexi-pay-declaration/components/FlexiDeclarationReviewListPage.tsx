@@ -1,10 +1,13 @@
 "use client";
 
-import { Alert, Box, Button, Chip, CircularProgress, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
+import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import { Alert, Box, Button, Chip, Link, MenuItem, Stack, TextField } from "@mui/material";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import { MasterBreadcrumbs, MasterGridSkeleton, dicMasterRowSx, onSearchEnter } from "@/components/master/MasterListUi";
 import styles from "@/components/master/MasterScreen.module.css";
 import {
   hrFlexiDeclarationReviewService,
@@ -69,21 +72,28 @@ export default function FlexiDeclarationReviewListPage() {
     [lstRows],
   );
 
+  function openDeclaration(intDeclarationID: number) {
+    objRouter.push(`/payroll/flexi-declaration-review/${intDeclarationID}`);
+  }
+
   const lstTableRows = useMemo(
     () =>
       lstRows.map((objRow) => ({
         id: objRow.intDeclarationID,
-        action: (
-          <Button
-            size="small"
-            onClick={() => objRouter.push(`/payroll/flexi-declaration-review/${objRow.intDeclarationID}`)}
-            controlId="flexi-declaration-review.row.view.button"
+        strEmployeeCodeSort: objRow.strEmployeeCode,
+        strEmployeeCode: (
+          <Link
+            className="app-master-first-column-link"
+            component="button"
+            type="button"
+            underline="none"
+            data-controlid="flexi-declaration-review.row.view.link"
             data-row-key={objRow.intDeclarationID}
+            onClick={(objEvent) => { objEvent.stopPropagation(); openDeclaration(objRow.intDeclarationID); }}
           >
-            View
-          </Button>
+            {objRow.strEmployeeCode}
+          </Link>
         ),
-        strEmployeeCode: objRow.strEmployeeCode,
         strEmployeeName: objRow.strEmployeeName,
         strFinancialYearCode: objRow.strFinancialYearCode,
         decDeclaredTotalAnnual: formatCurrency(objRow.decDeclaredTotalAnnual),
@@ -92,13 +102,13 @@ export default function FlexiDeclarationReviewListPage() {
         strStatus: <Chip size="small" color={getStatusColor(objRow.strWorkflowStatus)} label={formatStatus(objRow.strWorkflowStatus)} />,
         strStatusSort: objRow.strWorkflowStatus || "",
       })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [lstRows, objRouter]
   );
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      { field: "action", headerName: "Action", sortable: false, filterable: false, exportable: false, width: 100 },
-      { field: "strEmployeeCode", headerName: "Employee Code", width: 150 },
+      { field: "strEmployeeCode", headerName: "Employee Code", width: 150, sortAccessor: (objRow) => String(objRow.strEmployeeCodeSort) },
       { field: "strEmployeeName", headerName: "Employee Name", width: 200 },
       { field: "strFinancialYearCode", headerName: "Financial Year", width: 140 },
       { field: "decDeclaredTotalAnnual", headerName: "Declared Total", align: "right", width: 160 },
@@ -109,44 +119,30 @@ export default function FlexiDeclarationReviewListPage() {
     []
   );
 
-  if (blnLoading) {
-    return (
-      <Box sx={{ display: "grid", placeItems: "center", minHeight: "48vh" }}>
-        <CircularProgress size={30} />
-      </Box>
-    );
-  }
-
   return (
-    <Stack spacing={1} className={styles.page}>
-      {strError ? <Alert severity="error">{strError}</Alert> : null}
+    <Box className={styles.page}>
+      <MasterBreadcrumbs strSection="Payroll" strTitle="Flexi Declaration Review" />
 
-      <Paper sx={{ p: 1.2, borderRadius: "12px", border: "1px solid #bfdbfe", background: "linear-gradient(90deg, #1D5D96 0%, #2E73B8 50%, #5A9FD8 100%)" }}>
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
-          <Box>
-            <Typography sx={{ color: "#f8fcff", fontWeight: 800, fontSize: "1rem" }}>Flexi Declaration Review</Typography>
-            <Typography sx={{ color: "rgba(239,252,255,0.92)", fontSize: "0.76rem" }}>Payroll and HR review queue</Typography>
-          </Box>
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <Chip size="small" label={`Submitted ${objSummary.submitted || 0}`} />
-            <Chip size="small" label={`Approved ${objSummary.approved || 0}`} />
-            <Chip size="small" label={`Locked ${objSummary.locked || 0}`} />
-            <Chip size="small" label={`Released ${objSummary.released || 0}`} />
-            <Chip size="small" label={`Returned ${objSummary.returned || 0}`} />
-            <Chip size="small" label={`Rejected ${objSummary.rejected || 0}`} />
-          </Stack>
-        </Stack>
-      </Paper>
-
-      <Paper className={styles.controlsCard}>
-        <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        <Box
+          className={styles.searchRow}
+          aria-busy={blnLoading}
+          onKeyDown={onSearchEnter(() => { if (!blnLoading) void loadData(strWorkflowStatus); })}
+          sx={{
+            alignItems: "center",
+            "&&": { gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "minmax(180px, 280px) max-content max-content 1fr" } },
+            "& .MuiButton-root": { alignSelf: "center", whiteSpace: "nowrap" },
+          }}
+        >
           <TextField
+            className="app-mui-text-field"
             select
             size="small"
             label="Status"
             value={strWorkflowStatus}
             onChange={(e) => setStrWorkflowStatus(e.target.value)}
-            sx={{ minWidth: 180 }}
+            disabled={blnLoading}
+            fullWidth
           >
             <MenuItem value="submitted">Submitted</MenuItem>
             <MenuItem value="approved">Approved</MenuItem>
@@ -155,22 +151,55 @@ export default function FlexiDeclarationReviewListPage() {
             <MenuItem value="returned">Returned</MenuItem>
             <MenuItem value="rejected">Rejected</MenuItem>
           </TextField>
-          <Button variant="contained" onClick={() => void loadData(strWorkflowStatus)}>Search</Button>
-        </Stack>
-      </Paper>
+          <Box className={styles.searchActions}>
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => void loadData(strWorkflowStatus)} disabled={blnLoading}>Search</Button>
+          </Box>
+          <Box className={styles.searchActions}>
+            <Button
+              className={styles.secondaryButton}
+              startIcon={<ClearRoundedIcon />}
+              onClick={() => { setStrWorkflowStatus("submitted"); void loadData("submitted"); }}
+              disabled={blnLoading}
+            >
+              Clear
+            </Button>
+          </Box>
+        </Box>
+      </Box>
 
-      <Paper className={styles.tableCard} sx={{ mt: "0 !important" }}>
-        <CommonTable
-          columns={lstTableColumns}
-          rows={lstTableRows}
-          rowIdField="id"
-          showPaginationSummary
-          minTableWidth={1140}
-          emptyMessage="No declarations found."
-          testIdPrefix="flexi-declaration-review.list"
-          withPaper={false}
-        />
-      </Paper>
-    </Stack>
+      {strError ? <Alert severity="error">{strError}</Alert> : null}
+
+      {!blnLoading ? (
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Chip size="small" label={`Submitted ${objSummary.submitted || 0}`} />
+          <Chip size="small" label={`Approved ${objSummary.approved || 0}`} />
+          <Chip size="small" label={`Locked ${objSummary.locked || 0}`} />
+          <Chip size="small" label={`Released ${objSummary.released || 0}`} />
+          <Chip size="small" label={`Returned ${objSummary.returned || 0}`} />
+          <Chip size="small" label={`Rejected ${objSummary.rejected || 0}`} />
+        </Stack>
+      ) : null}
+
+      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        {blnLoading ? (
+          <MasterGridSkeleton strControlId="flexi-declaration-review.list.skeleton" intColumns={7} />
+        ) : (
+          <CommonTable
+            columns={lstTableColumns}
+            rows={lstTableRows}
+            rowIdField="id"
+            exportFileName="flexi_declaration_review"
+            showPaginationSummary
+            minTableWidth={1140}
+            hideRowClickHint
+            emptyMessage="No declarations found."
+            testIdPrefix="flexi-declaration-review.list"
+            onRowClick={(objRow) => openDeclaration(objRow.id)}
+            getRowSx={() => dicMasterRowSx}
+            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+          />
+        )}
+      </Box>
+    </Box>
   );
 }

@@ -1,17 +1,16 @@
 "use client";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
   Box,
   Button,
   CircularProgress,
+  InputAdornment,
+  Link,
   MenuItem,
-  Pagination,
   Snackbar,
   Stack,
   TextField,
@@ -20,10 +19,10 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import CommonRowActions from "@/components/master/CommonRowActions";
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import { MasterBreadcrumbs, MasterGridSkeleton, MasterStatusPill, dicMasterRowSx, onSearchEnter } from "@/components/master/MasterListUi";
+import masterStyles from "@/components/master/MasterScreen.module.css";
 import CommonPayrollDialog from "@/features/payroll/components/CommonPayrollDialog";
-import styles from "@/features/payroll/components/PayrollScreen.module.css";
-import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import {
@@ -49,7 +48,6 @@ const dicEmptySearch: SearchForm = {
   strStatus: "All",
 };
 const lstStatutoryRuleModuleCodes = ["STATUTORY_RULE", "STATUTORY_RULES", "PAYROLL_STATUTORY_RULE", "PAYROLL_STATUTORY_RULES"];
-const lstRowsPerPageOptions = [10, 20, 50];
 
 function formatDate(strDate: string) {
   return new Intl.DateTimeFormat("en-IN", {
@@ -66,85 +64,6 @@ function formatJson(objValue: unknown) {
   return JSON.stringify(objValue, null, 2);
 }
 
-function downloadCsv(strFileName: string, lstRows: StatutoryRuleListRecord[]) {
-  const lstHeaders = ["Rule", "Scope", "Effective From", "Numeric Value", "Status"];
-  const lstLines = [
-    lstHeaders.join(","),
-    ...lstRows.map((dicRow) =>
-      [
-        dicRow.strRuleCode,
-        dicRow.strScopeLabel,
-        dicRow.dtEffectiveFrom,
-        dicRow.decRuleValue ?? "",
-        dicRow.blnIsActive ? "Active" : "Inactive",
-      ]
-        .map((strValue) => `"${String(strValue).replace(/"/g, '""')}"`)
-        .join(",")
-    ),
-  ];
-  const objBlob = new Blob([lstLines.join("\n")], { type: "text/csv;charset=utf-8;" });
-  const strUrl = URL.createObjectURL(objBlob);
-  const objLink = document.createElement("a");
-  objLink.href = strUrl;
-  objLink.download = strFileName;
-  objLink.click();
-  URL.revokeObjectURL(strUrl);
-}
-
-function exportPdf(strTitle: string, lstRows: StatutoryRuleListRecord[]) {
-  const objWindow = window.open("", "_blank", "width=1200,height=800");
-  if (!objWindow) {
-    return;
-  }
-  const strRows = lstRows
-    .map(
-      (dicRow) => `
-    <tr>
-      <td>${dicRow.strRuleCode}</td>
-      <td>${dicRow.strRuleLabel}</td>
-      <td>${dicRow.strScopeLabel}</td>
-      <td>${dicRow.dtEffectiveFrom}</td>
-      <td>${dicRow.decRuleValue ?? "-"}</td>
-      <td>${dicRow.blnIsActive ? "Active" : "Inactive"}</td>
-    </tr>
-  `
-    )
-    .join("");
-  objWindow.document.write(`
-    <html>
-      <head>
-        <title>${strTitle}</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 24px; }
-          h1 { margin-bottom: 16px; }
-          table { width: 100%; border-collapse: collapse; }
-          th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: left; }
-          th { background: #e2e8f0; }
-        </style>
-      </head>
-      <body>
-        <h1>${strTitle}</h1>
-        <table>
-          <thead>
-            <tr>
-              <th>Rule Code</th>
-              <th>Rule</th>
-              <th>Scope</th>
-              <th>Effective From</th>
-              <th>Numeric Value</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>${strRows}</tbody>
-        </table>
-      </body>
-    </html>
-  `);
-  objWindow.document.close();
-  objWindow.focus();
-  objWindow.print();
-}
-
 export default function StatutoryRuleListPage() {
   const objRouter = useRouter();
   const { t } = useModuleLabels("statutory-rules");
@@ -154,14 +73,13 @@ export default function StatutoryRuleListPage() {
   const [strError, setStrError] = useState("");
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
-  const [intPage, setIntPage] = useState(1);
-  const [intRowsPerPage, setIntRowsPerPage] = useState(10);
   const [objPreviewRule, setObjPreviewRule] = useState<StatutoryRuleDetailRecord | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
   const blnCanView = canViewAny() || canDoAny("list");
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
   const blnCanExport = canDoAny("export");
+  const blnBusy = blnLoading || blnRightsLoading;
 
   async function loadRules(objFilters: SearchForm = dicSearchApplied) {
     if (!blnCanView) {
@@ -180,7 +98,6 @@ export default function StatutoryRuleListPage() {
           strStatus: objFilters.strStatus,
         })
       );
-      setIntPage(1);
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to load statutory rules.");
     } finally {
@@ -211,15 +128,6 @@ export default function StatutoryRuleListPage() {
     });
   }, [dicSearchApplied, lstRules]);
 
-  const intPageCount = Math.max(1, Math.ceil(lstFilteredRows.length / intRowsPerPage));
-  const intCurrentPage = Math.min(intPage, intPageCount);
-  const intStartIndex = (intCurrentPage - 1) * intRowsPerPage;
-  const lstVisibleRows = lstFilteredRows.slice(intStartIndex, intStartIndex + intRowsPerPage);
-  const strRangeLabel =
-    lstFilteredRows.length === 0
-      ? `0 ${t("pagination_separator", "of")} 0`
-      : `${intStartIndex + 1}-${Math.min(intStartIndex + intRowsPerPage, lstFilteredRows.length)} ${t("pagination_separator", "of")} ${lstFilteredRows.length}`;
-
   function showToast(strMessage: string, strSeverity: ToastState["strSeverity"] = "success") {
     setObjToast({ blnOpen: true, strMessage, strSeverity });
   }
@@ -236,32 +144,98 @@ export default function StatutoryRuleListPage() {
     }
   }
 
-  if (blnLoading || blnRightsLoading) {
-    return <BlockingLoader blnOpen strLabel={t("loading_rules", "Loading statutory rules...")} />;
+  // Edit when the user may, otherwise the read-only preview.
+  function openRule(intRuleID: number) {
+    if (blnCanEdit) {
+      objRouter.push(`/payroll/statutory-rules/${intRuleID}/edit`);
+      return;
+    }
+    openPreview(intRuleID).catch(() => undefined);
   }
 
-  return (
-    <Box className={styles.page}>
-      <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>{t("breadcrumbs", "Payroll / Statutory Rules")}</Typography>
-      <Box className={`${styles.topBar} ${styles.hiddenHeader}`}>
-        <Button controlId="statutory-rules.list.back.button" className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll")}>
-          {t("back_button", "Back to Payroll")}
-        </Button>
-      </Box>
+  function applySearch() {
+    if (blnBusy) return;
+    setDicSearchApplied(dicSearchDraft);
+    loadRules(dicSearchDraft).catch(() => undefined);
+  }
 
-      <Box className={styles.controlsCard}>
-        <Box className={styles.searchRow}>
+  const lstTableRows = useMemo(
+    () =>
+      lstFilteredRows.map((dicRow) => ({
+        id: dicRow.intID,
+        strRuleCodeSort: dicRow.strRuleCode,
+        strRuleCode: (
+          <Link
+            className="app-master-first-column-link"
+            component="button"
+            type="button"
+            underline="none"
+            data-controlid="statutory-rules.list.row.code.link"
+            data-row-key={String(dicRow.intID)}
+            onClick={(objEvent) => { objEvent.stopPropagation(); openRule(dicRow.intID); }}
+          >
+            {dicRow.strRuleCode}
+          </Link>
+        ),
+        strRuleLabel: dicRow.strRuleLabel,
+        strScopeLabel: dicRow.strScopeLabel,
+        dtEffectiveFrom: formatDate(dicRow.dtEffectiveFrom),
+        dtEffectiveFromSort: dicRow.dtEffectiveFrom ? new Date(dicRow.dtEffectiveFrom).getTime() : 0,
+        decRuleValue: dicRow.decRuleValue ?? "-",
+        strStatusText: dicRow.blnIsActive ? "Active" : "Inactive",
+        blnIsActive: <MasterStatusPill blnActive={dicRow.blnIsActive} strActiveLabel={t("status_active", "Active")} strInactiveLabel={t("status_inactive", "Inactive")} />,
+      })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [blnCanEdit, lstFilteredRows, t]
+  );
+
+  const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
+    () => [
+      { field: "strRuleCode", headerName: t("rule_code", "Rule Code"), width: 180, sortAccessor: (dicRow) => dicRow.strRuleCodeSort },
+      { field: "strRuleLabel", headerName: t("rule_name", "Rule") },
+      { field: "strScopeLabel", headerName: t("scope", "Scope"), width: 160 },
+      { field: "dtEffectiveFrom", headerName: t("effective_from", "Effective From"), width: 150, sortAccessor: (dicRow) => dicRow.dtEffectiveFromSort },
+      { field: "decRuleValue", headerName: t("numeric_value", "Numeric Value"), width: 150, align: "right" },
+      { field: "blnIsActive", headerName: t("status", "Status"), filterable: false, width: 130, sortAccessor: (dicRow) => dicRow.strStatusText },
+    ],
+    [t]
+  );
+
+  return (
+    <Box className={masterStyles.page}>
+      <MasterBreadcrumbs strSection={t("breadcrumb_section", "Payroll")} strTitle={t("breadcrumb_title", "Statutory Rules")} />
+
+      <Box className={masterStyles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        <Box
+          className={masterStyles.searchRow}
+          aria-busy={blnBusy}
+          onKeyDown={onSearchEnter(applySearch)}
+          sx={{
+            alignItems: "center",
+            "&&": { gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "minmax(220px, 1.4fr) minmax(160px, 0.8fr) minmax(160px, 0.8fr) max-content max-content" } },
+            "& .MuiButton-root": { alignSelf: "center", whiteSpace: "nowrap" },
+          }}
+        >
           <TextField
+            className="app-mui-text-field"
+            size="small"
             controlId="statutory-rules.list.search-code.input"
+            label={t("rule_code", "Rule Code")}
             value={dicSearchDraft.strSearchCode}
             onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchCode: objEvent.target.value }))}
             placeholder={t("search_code_placeholder", "Search by rule code")}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }}
+            disabled={blnBusy}
             fullWidth
           />
           <TextField
+            className="app-mui-text-field"
+            size="small"
             select
+            label={t("scope", "Scope")}
             value={dicSearchDraft.strScopeType}
             onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strScopeType: objEvent.target.value as SearchForm["strScopeType"] }))}
+            disabled={blnBusy}
             fullWidth
           >
             <MenuItem value="all">{t("scope_all", "All scopes")}</MenuItem>
@@ -269,35 +243,35 @@ export default function StatutoryRuleListPage() {
             <MenuItem value="company">{t("scope_company", "Company-specific")}</MenuItem>
           </TextField>
           <TextField
+            className="app-mui-text-field"
+            size="small"
             select
+            label={t("status", "Status")}
             value={dicSearchDraft.strStatus}
             onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))}
+            disabled={blnBusy}
             fullWidth
           >
             <MenuItem value="All">{t("status_all", "All statuses")}</MenuItem>
             <MenuItem value="Active">{t("status_active", "Active")}</MenuItem>
             <MenuItem value="Inactive">{t("status_inactive", "Inactive")}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions}>
-            <Button
-              controlId="statutory-rules.list.search.button"
-              className={styles.primaryButton}
-              startIcon={<SearchRoundedIcon />}
-              onClick={() => {
-                setDicSearchApplied(dicSearchDraft);
-                loadRules(dicSearchDraft).catch(() => undefined);
-              }}
-            >
+          <Box className={masterStyles.searchActions}>
+            <Button controlId="statutory-rules.list.search.button" className={masterStyles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={applySearch} disabled={blnBusy}>
               {t("search", "Search")}
             </Button>
+          </Box>
+          <Box className={masterStyles.searchActions}>
             <Button
-              className={styles.secondaryButton}
+              controlId="statutory-rules.list.clear.button"
+              className={masterStyles.secondaryButton}
               startIcon={<ClearRoundedIcon />}
               onClick={() => {
                 setDicSearchDraft(dicEmptySearch);
                 setDicSearchApplied(dicEmptySearch);
                 loadRules(dicEmptySearch).catch(() => undefined);
               }}
+              disabled={blnBusy}
             >
               {t("clear", "Clear")}
             </Button>
@@ -305,118 +279,44 @@ export default function StatutoryRuleListPage() {
         </Box>
       </Box>
 
-      <Box className={styles.tableCard}>
-        <Box className={styles.listUtilityBar}>
-          <Box className={styles.listUtilityActions}>
-            {blnCanAdd ? <Button
-              controlId="statutory-rules.list.add.button"
-              className={styles.primaryButton}
-              startIcon={<AddRoundedIcon />}
-              onClick={() => objRouter.push("/payroll/statutory-rules/new")}
-            >
-              {t("add_button", "Add Rule")}
-            </Button> : null}
-            {blnCanExport ? <Button
-              className={styles.secondaryButton}
-              startIcon={<DownloadRoundedIcon />}
-              onClick={() => downloadCsv("statutory-rules.csv", lstFilteredRows)}
-            >
-              {t("export_excel", "Export Excel")}
-            </Button> : null}
-            {blnCanExport ? <Button
-              className={styles.secondaryButton}
-              startIcon={<DownloadRoundedIcon />}
-              onClick={() => exportPdf("Statutory Rules", lstFilteredRows)}
-            >
-              {t("export_pdf", "Export PDF")}
-            </Button> : null}
-          </Box>
+      {strRightsError ? <Alert severity="warning">{strRightsError}</Alert> : null}
+      {strError ? <Alert severity="error">{strError}</Alert> : null}
 
-          <Box className={styles.paginationBar} sx={{ p: 0 }}>
-            <Box className={styles.paginationInfo}>
-              <Typography>{t("rows_per_page", "Rows per page")}</Typography>
-              <TextField
-                select
-                size="small"
-                value={intRowsPerPage}
-                onChange={(objEvent) => {
-                  setIntRowsPerPage(Number(objEvent.target.value));
-                  setIntPage(1);
-                }}
-                className={styles.rowsPerPageSelect}
-                sx={{ width: 92 }}
-              >
-                {lstRowsPerPageOptions.map((intOption) => (
-                  <MenuItem key={intOption} value={intOption}>
-                    {intOption}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <Typography className={styles.paginationRange}>{strRangeLabel}</Typography>
-            </Box>
-            <Pagination count={intPageCount} page={intCurrentPage} onChange={(_, intValue) => setIntPage(intValue)} color="primary" size="small" showFirstButton showLastButton />
-          </Box>
-        </Box>
-
-        {strRightsError ? <Alert severity="warning" sx={{ mb: 1.5 }}>{strRightsError}</Alert> : null}
-        {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
-        {!blnCanView ? (
-          <Box className={styles.emptyState}>
+      <Box className={masterStyles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        {blnBusy ? (
+          <MasterGridSkeleton strControlId="statutory-rules.list.skeleton" intColumns={6} />
+        ) : !blnCanView ? (
+          <Box className={masterStyles.emptyState}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", "Statutory rule access is not available for your user group.")}</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>{t("access_denied_help", "Contact your administrator if you need statutory rule visibility.")}</Typography>
           </Box>
-        ) : null}
-        {blnCanView ? <Box className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th className={styles.actionsColumn}>{t("actions", "Actions")}</th>
-                <th>{t("rule_code", "Rule Code")}</th>
-                <th>{t("rule_name", "Rule")}</th>
-                <th>{t("scope", "Scope")}</th>
-                <th>{t("effective_from", "Effective From")}</th>
-                <th>{t("numeric_value", "Numeric Value")}</th>
-                <th>{t("status", "Status")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lstVisibleRows.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className={styles.emptyState}>
-                    {t("empty_message", "No statutory rules found for the current filters.")}
-                  </td>
-                </tr>
-              ) : null}
-              {lstVisibleRows.map((dicRow) => (
-                <tr key={dicRow.intID}>
-                  <td className={styles.actionsColumn}>
-                    <Box className={styles.actionCell}>
-                      <CommonRowActions
-                        testIdPrefix="statutory-rules.list.row"
-                        rowKey={dicRow.intID}
-                        blnCanView={blnCanView}
-                        blnCanEdit={blnCanEdit}
-                        onView={() => openPreview(dicRow.intID).catch(() => undefined)}
-                        onEdit={blnCanEdit ? () => objRouter.push(`/payroll/statutory-rules/${dicRow.intID}/edit`) : undefined}
-                      />
-                    </Box>
-                  </td>
-                  <td>{dicRow.strRuleCode}</td>
-                  <td>{dicRow.strRuleLabel}</td>
-                  <td>{dicRow.strScopeLabel}</td>
-                  <td>{formatDate(dicRow.dtEffectiveFrom)}</td>
-                  <td>{dicRow.decRuleValue ?? "-"}</td>
-                  <td>
-                    <span className={`${styles.statusPill} ${dicRow.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
-                      {dicRow.blnIsActive ? t("status_active", "Active") : t("status_inactive", "Inactive")}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Box> : null}
-
+        ) : (
+          <CommonTable
+            columns={lstTableColumns}
+            rows={lstTableRows}
+            rowIdField="id"
+            exportFileName="statutory-rules"
+            showExportOptions={blnCanExport}
+            showPaginationSummary
+            emptyMessage={t("empty_message", "No statutory rules found for the current filters.")}
+            testIdPrefix="statutory-rules.list"
+            toolbarLeft={blnCanAdd ? (
+              <Button
+                controlId="statutory-rules.list.add.button"
+                className={masterStyles.primaryButton}
+                startIcon={<AddRoundedIcon />}
+                onClick={() => objRouter.push("/payroll/statutory-rules/new")}
+              >
+                {t("add_button", "Add Rule")}
+              </Button>
+            ) : undefined}
+            onRowClick={(dicRow) => openRule(dicRow.id)}
+            minTableWidth={900}
+            hideRowClickHint
+            getRowSx={() => dicMasterRowSx}
+            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+          />
+        )}
       </Box>
 
       <CommonPayrollDialog

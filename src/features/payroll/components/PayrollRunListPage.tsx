@@ -7,6 +7,8 @@ import {
   Alert,
   Box,
   Button,
+  InputAdornment,
+  Link,
   TextField,
   Typography,
 } from "@mui/material";
@@ -15,8 +17,8 @@ import { useRouter } from "next/navigation";
 
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
-import CommonRowActions from "@/components/master/CommonRowActions";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import { MasterBreadcrumbs, MasterGridSkeleton, MasterMoreFilters, dicMasterRowSx, onSearchEnter } from "@/components/master/MasterListUi";
+import masterStyles from "@/components/master/MasterScreen.module.css";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payrollRunService } from "@/features/payroll/services/payrollRunService";
@@ -172,19 +174,29 @@ export default function PayrollRunListPage() {
     });
   }, [dicSearchApplied, lstRuns]);
 
+  function openRun(strRecordUUID: string) {
+    objRouter.push(`/payroll/runs/${strRecordUUID}`);
+  }
+
   const lstTableRows = useMemo(
     () =>
       lstFilteredRows.map((dicRow) => ({
         id: dicRow.intID,
-        action: (
-          <CommonRowActions
-            testIdPrefix="payroll-runs.list.row"
-            rowKey={dicRow.intID}
-            blnCanView={blnCanView}
-            onView={() => objRouter.push(`/payroll/runs/${dicRow.strRecordUUID}`)}
-          />
+        strRecordUUID: dicRow.strRecordUUID,
+        strRunNameSort: dicRow.strRunName,
+        strRunName: (
+          <Link
+            className="app-master-first-column-link"
+            component="button"
+            type="button"
+            underline="none"
+            data-controlid="payroll-runs.list.row.name.link"
+            data-row-key={String(dicRow.intID)}
+            onClick={(objEvent) => { objEvent.stopPropagation(); openRun(dicRow.strRecordUUID); }}
+          >
+            {dicRow.strRunName}
+          </Link>
         ),
-        strRunName: dicRow.strRunName,
         dtPayrollMonth: formatMonth(dicRow.dtPayrollMonth),
         strPayrollSchedule: dicRow.strPayrollGroupName ?? dicRow.strPayrollScheduleName ?? "-",
         intInputCount: dicRow.dicSummary.intInputCount,
@@ -197,13 +209,12 @@ export default function PayrollRunListPage() {
           ? new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(dicRow.dtLastExecutedOn))
           : "-",
       })),
-    [blnCanView, lstFilteredRows, objRouter, t]
+    [lstFilteredRows, objRouter, t]
   );
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 110 },
-      { field: "strRunName", headerName: t("run_name", "Payroll Run") },
+      { field: "strRunName", headerName: t("run_name", "Payroll Run"), sortAccessor: (dicRow) => dicRow.strRunNameSort },
       { field: "dtPayrollMonth", headerName: t("payroll_month", "Payroll Period") },
       { field: "strPayrollSchedule", headerName: t("payroll_group", "Payroll Schedule / Group") },
       { field: "intInputCount", headerName: t("inputs", "Employees"), align: "right" },
@@ -213,100 +224,108 @@ export default function PayrollRunListPage() {
     [t]
   );
 
-  if (blnLoading || blnRightsLoading) {
-    return <BlockingLoader blnOpen strLabel={t("loading_runs", "Loading payroll runs...")} />;
+  const blnBusy = blnLoading || blnRightsLoading;
+  const intActiveMoreFilters = (dicSearchDraft.strSearchGroup.trim() ? 1 : 0) + (dicSearchDraft.strRunType !== "All" ? 1 : 0);
+
+  function applySearch() {
+    if (blnBusy) return;
+    setDicSearchApplied(dicSearchDraft);
+    loadRuns(dicSearchDraft).catch(() => undefined);
   }
 
   return (
-    <Box className={styles.page}>
-      <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>
-        {t("breadcrumbs", "Payroll / Payroll Runs")}
-      </Typography>
+    <Box className={masterStyles.page}>
+      <MasterBreadcrumbs strSection={t("breadcrumb_section", "Payroll")} strTitle={t("breadcrumb_title", "Payroll Runs")} />
 
-      <Box className={styles.controlsCard}>
-        <Box className={`${styles.searchRow} ${styles.payrollRunSearchRow}`}>
+      <Box className={masterStyles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        <Box
+          className={masterStyles.searchRow}
+          aria-busy={blnBusy}
+          onKeyDown={onSearchEnter(applySearch)}
+          sx={{
+            alignItems: "center",
+            "&&": { gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "minmax(200px, 1.3fr) minmax(160px, 1fr) minmax(160px, 1fr) max-content max-content max-content" } },
+            "& .MuiButton-root": { alignSelf: "center", whiteSpace: "nowrap" },
+          }}
+        >
           <TextField
+            className="app-mui-text-field"
+            size="small"
             controlId="payroll-runs.list.search.input"
+            label={t("run_name", "Payroll Run")}
             value={dicSearchDraft.strSearch}
-            onChange={(objEvent) =>
-              setDicSearchDraft((dicPrevious) => ({
-                ...dicPrevious,
-                strSearch: objEvent.target.value,
-              }))
-            }
+            onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearch: objEvent.target.value }))}
             placeholder={t("search_placeholder", "Search by run name")}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }}
+            disabled={blnBusy}
             fullWidth
           />
           <TextField
+            className="app-mui-text-field"
+            size="small"
+            label={t("payroll_month", "Payroll Period")}
             value={dicSearchDraft.strSearchMonth}
-            onChange={(objEvent) =>
-              setDicSearchDraft((dicPrevious) => ({
-                ...dicPrevious,
-                strSearchMonth: objEvent.target.value,
-              }))
-            }
+            onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchMonth: objEvent.target.value }))}
             placeholder={t("month_placeholder", "Search payroll period")}
-            fullWidth
-          />
-          <TextField
-            controlId="payroll-runs.list.search-group.input"
-            value={dicSearchDraft.strSearchGroup}
-            onChange={(objEvent) =>
-              setDicSearchDraft((dicPrevious) => ({
-                ...dicPrevious,
-                strSearchGroup: objEvent.target.value,
-              }))
-            }
-            placeholder={t("group_placeholder", "Search payroll group")}
+            disabled={blnBusy}
             fullWidth
           />
           <CommonSearchableSelect
+            className="app-mui-text-field"
             controlId="payroll-runs.list.search-status.select"
             label={t("status", "Status")}
             value={dicSearchDraft.strStatus}
             options={lstStatusOptions}
-            onChange={(value) =>
-              setDicSearchDraft((dicPrevious) => ({
-                ...dicPrevious,
-                strStatus: (value || "All") as SearchForm["strStatus"],
-              }))
-            }
+            onChange={(value) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: (value || "All") as SearchForm["strStatus"] }))}
+            size="small"
+            disabled={blnBusy}
             fullWidth
           />
-          <CommonSearchableSelect
-            controlId="payroll-runs.list.search-run-type.select"
-            label={t("run_type", "Run Type")}
-            value={dicSearchDraft.strRunType}
-            options={lstRunTypeOptions}
-            onChange={(value) =>
-              setDicSearchDraft((dicPrevious) => ({
-                ...dicPrevious,
-                strRunType: value || "All",
-              }))
-            }
-            fullWidth
-          />
-          <Box className={styles.searchActions}>
-            <Button
-              controlId="payroll-runs.list.search.button"
-              className={styles.primaryButton}
-              startIcon={<SearchRoundedIcon />}
-              onClick={() => {
-                setDicSearchApplied(dicSearchDraft);
-                loadRuns(dicSearchDraft).catch(() => undefined);
-              }}
-            >
+          <MasterMoreFilters
+            strControlPrefix="payroll-runs.list"
+            intActiveCount={intActiveMoreFilters}
+            blnDisabled={blnBusy}
+            onApply={applySearch}
+            onClearAll={() => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchGroup: "", strRunType: "All" }))}
+            onCancel={() => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchGroup: dicSearchApplied.strSearchGroup, strRunType: dicSearchApplied.strRunType }))}
+          >
+            <TextField
+              className="app-mui-text-field"
+              size="small"
+              controlId="payroll-runs.list.search-group.input"
+              label={t("payroll_group", "Payroll Group")}
+              value={dicSearchDraft.strSearchGroup}
+              onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchGroup: objEvent.target.value }))}
+              placeholder={t("group_placeholder", "Search payroll group")}
+              fullWidth
+            />
+            <CommonSearchableSelect
+              className="app-mui-text-field"
+              controlId="payroll-runs.list.search-run-type.select"
+              label={t("run_type", "Run Type")}
+              value={dicSearchDraft.strRunType}
+              options={lstRunTypeOptions}
+              onChange={(value) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strRunType: value || "All" }))}
+              size="small"
+              fullWidth
+            />
+          </MasterMoreFilters>
+          <Box className={masterStyles.searchActions}>
+            <Button controlId="payroll-runs.list.search.button" className={masterStyles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={applySearch} disabled={blnBusy}>
               {t("search", "Search")}
             </Button>
+          </Box>
+          <Box className={masterStyles.searchActions}>
             <Button
               controlId="payroll-runs.list.clear.button"
-              className={styles.secondaryButton}
+              className={masterStyles.secondaryButton}
               startIcon={<ClearRoundedIcon />}
               onClick={() => {
                 setDicSearchDraft(dicEmptySearch);
                 setDicSearchApplied(dicEmptySearch);
                 loadRuns(dicEmptySearch).catch(() => undefined);
               }}
+              disabled={blnBusy}
             >
               {t("clear", "Clear")}
             </Button>
@@ -314,16 +333,18 @@ export default function PayrollRunListPage() {
         </Box>
       </Box>
 
-      <Box className={styles.tableCard}>
-        {strRightsError ? <Alert severity="warning" sx={{ mb: 1.5 }}>{strRightsError}</Alert> : null}
-        {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
-        {!blnCanView ? (
-          <Box className={styles.emptyState}>
+      {strRightsError ? <Alert severity="warning">{strRightsError}</Alert> : null}
+      {strError ? <Alert severity="error">{strError}</Alert> : null}
+
+      <Box className={masterStyles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        {blnBusy ? (
+          <MasterGridSkeleton strControlId="payroll-runs.list.skeleton" intColumns={6} />
+        ) : !blnCanView ? (
+          <Box className={masterStyles.emptyState}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", "Payroll run access is not available for your user group.")}</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>{t("access_denied_help", "Contact your administrator if you need payroll run visibility.")}</Typography>
           </Box>
-        ) : null}
-        {blnCanView ? (
+        ) : (
           <CommonTable
             columns={lstTableColumns}
             rows={lstTableRows}
@@ -336,16 +357,20 @@ export default function PayrollRunListPage() {
             toolbarLeft={blnCanAdd ? (
               <Button
                 controlId="payroll-runs.list.add.button"
-                className={styles.primaryButton}
+                className={masterStyles.primaryButton}
                 startIcon={<AddRoundedIcon />}
                 onClick={() => objRouter.push("/payroll/runs/new")}
               >
                 {t("add_button", "Add Payroll Run")}
               </Button>
             ) : undefined}
+            onRowClick={(dicRow) => openRun(dicRow.strRecordUUID)}
+            minTableWidth={900}
+            hideRowClickHint
+            getRowSx={() => dicMasterRowSx}
             sx={{ p: 0, boxShadow: "none", background: "transparent" }}
           />
-        ) : null}
+        )}
       </Box>
     </Box>
   );

@@ -1,17 +1,16 @@
 "use client";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
   Box,
   Button,
-  CircularProgress,
+  InputAdornment,
+  Link,
   MenuItem,
   Snackbar,
-  Stack,
   TextField,
   Typography
 } from "@mui/material";
@@ -19,7 +18,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
-import CommonRowActions from "@/components/master/CommonRowActions";
+import { MasterBreadcrumbs, MasterGridSkeleton, MasterStatusPill, dicMasterRowSx, onSearchEnter } from "@/components/master/MasterListUi";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -101,17 +100,20 @@ export default function PayrollCycleListPage() {
     () =>
       lstFilteredRows.map((dicRow) => ({
         id: dicRow.intID,
-        action: (
-          <CommonRowActions
-            testIdPrefix="payroll-cycles.list.row"
-            rowKey={dicRow.intID}
-            blnCanView={blnCanView}
-            blnCanEdit={blnCanEdit}
-            onView={() => openScheduleEditor(dicRow.intID, "view")}
-            onEdit={blnCanEdit ? () => openScheduleEditor(dicRow.intID, "edit") : undefined}
-          />
+        strCycleNameSort: dicRow.strCycleName,
+        strCycleName: (
+          <Link
+            className="app-master-first-column-link"
+            component="button"
+            type="button"
+            underline="none"
+            data-controlid="payroll-cycles.list.row.name.link"
+            data-row-key={String(dicRow.intID)}
+            onClick={(objEvent) => { objEvent.stopPropagation(); openScheduleEditor(dicRow.intID, blnCanEdit ? "edit" : "view"); }}
+          >
+            {dicRow.strCycleName}
+          </Link>
         ),
-        strCycleName: dicRow.strCycleName,
         strPayrollGroup: (
           <Box>
             <Typography sx={{ fontWeight: 700, color: "#0f172a", fontSize: "0.95rem" }}>{dicRow.strPayrollGroupName ?? "-"}</Typography>
@@ -119,19 +121,14 @@ export default function PayrollCycleListPage() {
           </Box>
         ),
         strPeriodType: dicRow.strPeriodType,
-        blnIsActive: (
-          <span className={`${styles.statusPill} ${dicRow.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
-            {dicRow.blnIsActive ? t("active") : t("inactive")}
-          </span>
-        ),
+        blnIsActive: <MasterStatusPill blnActive={dicRow.blnIsActive} strActiveLabel={t("active")} strInactiveLabel={t("inactive")} />,
       })),
-    [blnCanEdit, blnCanView, lstFilteredRows, objRouter, t]
+    [blnCanEdit, lstFilteredRows, objRouter, t]
   );
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      { field: "action", headerName: t("actions"), sortable: false, filterable: false, exportable: false, width: 110 },
-      { field: "strCycleName", headerName: t("schedule_name", "Payroll Schedule") },
+      { field: "strCycleName", headerName: t("schedule_name", "Payroll Schedule"), sortAccessor: (dicRow) => dicRow.strCycleNameSort },
       { field: "strPayrollGroup", headerName: t("payroll_group"), sortable: false, filterable: false, width: 220 },
       { field: "strPeriodType", headerName: t("period_type") },
       { field: "blnIsActive", headerName: t("status"), sortable: false, filterable: false, width: 130 },
@@ -147,58 +144,49 @@ export default function PayrollCycleListPage() {
     setObjToast((objPrevious) => ({ ...objPrevious, blnOpen: false }));
   }
 
-  if (blnLoading || blnRightsLoading) {
-    return (
-      <Box sx={{ minHeight: 360, display: "grid", placeItems: "center" }}>
-        <Stack spacing={1.5} alignItems="center">
-          <CircularProgress />
-          <Typography sx={{ color: "#64748b" }}>{t("schedule_loading_list")}</Typography>
-        </Stack>
-      </Box>
-    );
-  }
+  const blnBusy = blnLoading || blnRightsLoading;
 
-  if (!blnCanView) {
-    return (
-      <Box className={styles.emptyState}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
-          {t("schedule_access_denied")}
-        </Typography>
-        <Typography sx={{ mt: 1, color: "#64748b" }}>
-          {t("schedule_access_denied_help")}
-        </Typography>
-        {strRightsError ? <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography> : null}
-      </Box>
-    );
+  function applySearch() {
+    if (blnBusy) return;
+    setDicSearchApplied(dicSearchDraft);
   }
 
   return (
     <Box className={styles.page}>
-      <Box className={styles.topBar}>
-        <Button controlId="payroll-cycles.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>
-          {t("back_button")}
-        </Button>
-      </Box>
+      <MasterBreadcrumbs strSection={t("breadcrumb_section", "Payroll")} strTitle={t("breadcrumb_title", "Payroll Schedules")} />
 
-      <Box className={styles.controlsCard}>
-        <Box className={styles.searchRow} sx={{ display: "flex", gridTemplateColumns: "none", flexWrap: "wrap", alignItems: "center", gap: 1.25, pt: 1, rowGap: 2, pb: 0.5, "& > .MuiTextField-root": { flex: "1 1 240px", minWidth: 200 } }}>
-          <TextField controlId="payroll-cycles.list.cycle-name.input" inputProps={{ "controlId": "payroll-cycles.list.cycle-name.input" }} label={t("schedule_name", "Payroll Schedule")} value={dicSearchDraft.strName} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strName: objEvent.target.value }))} size="small" />
-          <TextField controlId="payroll-cycles.list.search-status.select" inputProps={{ "controlId": "payroll-cycles.list.search-status.select" }} select label={t("status")} value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} size="small">
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        <Box
+          className={styles.searchRow}
+          aria-busy={blnBusy}
+          onKeyDown={onSearchEnter(applySearch)}
+          sx={{
+            alignItems: "center",
+            "&&": { gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "minmax(220px, 1.4fr) minmax(160px, 0.8fr) max-content max-content 1fr" } },
+            "& .MuiButton-root": { alignSelf: "center", whiteSpace: "nowrap" },
+          }}
+        >
+          <TextField className="app-mui-text-field" controlId="payroll-cycles.list.cycle-name.input" inputProps={{ "controlId": "payroll-cycles.list.cycle-name.input" }} label={t("schedule_name", "Payroll Schedule")} placeholder={t("search_schedule", "Search payroll schedule")} value={dicSearchDraft.strName} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strName: objEvent.target.value }))} InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} size="small" disabled={blnBusy} fullWidth />
+          <TextField className="app-mui-text-field" controlId="payroll-cycles.list.search-status.select" inputProps={{ "controlId": "payroll-cycles.list.search-status.select" }} select label={t("status")} value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} size="small" disabled={blnBusy} fullWidth>
             <MenuItem controlId="payroll-cycles.list.search-status.all.option" value="All">{t("all")}</MenuItem>
             <MenuItem controlId="payroll-cycles.list.search-status.active.option" value="Active">{t("active")}</MenuItem>
             <MenuItem controlId="payroll-cycles.list.search-status.inactive.option" value="Inactive">{t("inactive")}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions} sx={{ flexShrink: 0, ml: "auto" }}>
-            <Button controlId="payroll-cycles.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }}>
+          <Box className={styles.searchActions}>
+            <Button controlId="payroll-cycles.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={applySearch} disabled={blnBusy}>
               {t("search")}
             </Button>
+          </Box>
+          <Box className={styles.searchActions}>
             <Button
+              controlId="payroll-cycles.list.clear.button"
               className={styles.secondaryButton}
               startIcon={<ClearRoundedIcon />}
               onClick={() => {
                 setDicSearchDraft(dicEmptySearch);
                 setDicSearchApplied(dicEmptySearch);
               }}
+              disabled={blnBusy}
             >
               {t("clear")}
             </Button>
@@ -206,26 +194,44 @@ export default function PayrollCycleListPage() {
         </Box>
       </Box>
 
+      {strRightsError && !blnCanView && !blnBusy ? <Alert severity="warning">{strRightsError}</Alert> : null}
       {blnReadOnly ? <Alert severity="info">{t("schedule_read_only_mode")}</Alert> : null}
 
-      <Box className={styles.tableCard}>
+      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <BlockingLoader blnOpen={blnSubmitting} strLabel={t("schedule_processing")} />
-        <CommonTable
-          columns={lstTableColumns}
-          rows={lstTableRows}
-          rowIdField="id"
-          exportFileName="payroll_cycles"
-          showExportOptions={blnCanExport}
-          testIdPrefix="payroll-cycles.list"
-          showPaginationSummary
-          emptyMessage={t("schedule_no_records")}
-          toolbarLeft={blnCanAdd ? (
-            <Button controlId="payroll-cycles.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/payroll/schedules/add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
-              {t("schedule_add_button")}
-            </Button>
-          ) : undefined}
-          sx={{ p: 0, boxShadow: "none", background: "transparent" }}
-        />
+        {blnBusy ? (
+          <MasterGridSkeleton strControlId="payroll-cycles.list.skeleton" intColumns={4} />
+        ) : !blnCanView ? (
+          <Box className={styles.emptyState}>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
+              {t("schedule_access_denied")}
+            </Typography>
+            <Typography sx={{ mt: 1, color: "#64748b" }}>
+              {t("schedule_access_denied_help")}
+            </Typography>
+          </Box>
+        ) : (
+          <CommonTable
+            columns={lstTableColumns}
+            rows={lstTableRows}
+            rowIdField="id"
+            exportFileName="payroll_cycles"
+            showExportOptions={blnCanExport}
+            testIdPrefix="payroll-cycles.list"
+            showPaginationSummary
+            emptyMessage={t("schedule_no_records")}
+            toolbarLeft={blnCanAdd ? (
+              <Button controlId="payroll-cycles.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/payroll/schedules/add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+                {t("schedule_add_button")}
+              </Button>
+            ) : undefined}
+            onRowClick={(dicRow) => openScheduleEditor(dicRow.id, blnCanEdit ? "edit" : "view")}
+            minTableWidth={760}
+            hideRowClickHint
+            getRowSx={() => dicMasterRowSx}
+            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+          />
+        )}
       </Box>
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}>

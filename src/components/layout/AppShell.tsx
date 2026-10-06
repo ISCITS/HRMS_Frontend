@@ -1046,6 +1046,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const blnLeavePlanEditorRoute = /^\/leave\/plans\/(?:new|\d+)$/.test(strLowerPathname);
   const blnLeaveAssignmentEditorRoute = /^\/leave\/plan-assignments\/\d+$/.test(strLowerPathname);
   const blnLeaveApprovalsRoute = strLowerPathname === "/leave/approvals" || strLowerPathname === "/hr/leave/requests-approvals";
+  // Leave and Attendance screens already show a breadcrumb, so the header title before the profile avatar is redundant.
+  const blnLeaveAttendanceRoute = /^\/(?:leave|attendance|hr\/leave)(?:\/|$)/.test(strLowerPathname)
+    || strLowerPathname === "/ess/leave/approvals" || strLowerPathname === "/ess/work-on-holiday/approvals"
+    || strLowerPathname === "/ess/attendance/regularization/approvals";
   const blnReferencedMasterRoute = [
     "/grades",
     "/cost-centers",
@@ -1081,6 +1085,28 @@ export default function AppShell({ children }: { children: ReactNode }) {
     "/payroll/employee-reimbursement",
     "/payroll/reimbursements",
     "/payroll/fnf-settlements",
+    "/payroll/runs",
+    "/payroll/run",
+    "/payroll/results",
+    "/payroll/cycles",
+    "/payroll/schedules",
+    "/payroll-cycles",
+    "/payroll/process-log",
+    "/payroll-process-logs",
+    "/payroll/statutory-rules",
+    "/payroll/tax-regimes",
+    "/tax-regimes",
+    "/payroll/employee-payroll-inputs",
+    "/payroll/employee-payroll-input",
+    "/payroll/inputs",
+    "/payroll/employee-monthly-tax",
+    "/payroll/loans-advances",
+    "/ess/loans-advances",
+    "/payroll/loan-budget",
+    "/payroll/loan-finalization",
+    "/payroll/flexi-declaration-review",
+    "/reports/payslips",
+    "/ess/my-payslips",
     "/leave",
     "/leave/approvals",
     "/leave/leave-ledger",
@@ -1090,6 +1116,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
     "/leave/work-on-holiday/requests",
     "/ess/work-on-holiday/approvals",
   ].includes(strLowerPathname);
+  // The run-scoped process log reuses the list page, which carries its own breadcrumb.
+  const blnPayrollProcessLogRunRoute = /^\/(?:payroll\/process-log|payroll-process-logs)\/run\/[\w-]+$/.test(strLowerPathname);
   const blnEmployeeReimbursementFormContext =
     Boolean(strLowerPathname.match(/^\/ess\/reimbursements(\/new|\/\d+(\/edit)?)?$/)) &&
     Boolean(objSearchParams.get("employee_id"));
@@ -1583,7 +1611,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               <Box sx={{ flex: 1, minWidth: 0 }} />
 
 
-              {strPathname === "/employees" || strPathname === "/departments" || strPathname === "/designations" || strPathname === "/settings" || strPathname === "/profile/change-password" || blnReferencedMasterRoute || blnDepartmentStyleMasterRoute || blnEmployeeEditorRoute || blnDashboardRoute || blnEmployeeSalaryListRoute || blnEmployeeSalaryEditorRoute || blnUserListRoute || blnUserGroupListRoute || blnSalaryComponentListRoute || blnSalaryStructureListRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute ? null : (
+              {strPathname === "/employees" || strPathname === "/departments" || strPathname === "/designations" || strPathname === "/settings" || strPathname === "/profile/change-password" || blnReferencedMasterRoute || blnDepartmentStyleMasterRoute || blnEmployeeEditorRoute || blnDashboardRoute || blnEmployeeSalaryListRoute || blnEmployeeSalaryEditorRoute || blnUserListRoute || blnUserGroupListRoute || blnSalaryComponentListRoute || blnSalaryStructureListRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute || blnLeaveAttendanceRoute || blnPayrollProcessLogRunRoute ? null : (
                 <Box
                   sx={{
                     display: "flex",

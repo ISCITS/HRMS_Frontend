@@ -1,9 +1,11 @@
 "use client";
 
+import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import FilterListRoundedIcon from "@mui/icons-material/FilterListRounded";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import ViewColumnRoundedIcon from "@mui/icons-material/ViewColumnRounded";
-import { Box, Breadcrumbs, Button, Checkbox, Menu, MenuItem, Skeleton, Typography } from "@mui/material";
-import { useState, type KeyboardEvent } from "react";
+import { Box, Breadcrumbs, Button, Checkbox, IconButton, Menu, MenuItem, Popover, Skeleton, Typography } from "@mui/material";
+import { useState, type KeyboardEvent, type ReactNode } from "react";
 
 import styles from "@/components/master/MasterScreen.module.css";
 
@@ -103,7 +105,7 @@ export const dicMasterNameLinkSx = {
 export const dicMasterRowSx = {
   backgroundColor: "#fff",
   "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
-  "&.MuiTableRow-hover:hover td:first-of-type .MuiLink-root": { textDecoration: "underline" },
+  "&.MuiTableRow-hover:hover td:first-of-type .MuiLink-root": { textDecoration: "underline", color: "#0066df" },
 } as const;
 
 // Same as dicMasterRowSx but for screens whose first column is a checkbox, so the name link is not in the first td.
@@ -112,6 +114,66 @@ export const dicMasterRowSxAnyColumn = {
   "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
   "&.MuiTableRow-hover:hover td .MuiLink-root": { textDecoration: "underline", color: "#0066df" },
 } as const;
+
+type MasterMoreFiltersProps = {
+  strControlPrefix: string;
+  intActiveCount: number;
+  blnDisabled?: boolean;
+  onApply: () => void;
+  onClearAll: () => void;
+  // Called when the popup is dismissed without applying, so the screen can reset its draft values.
+  onCancel?: () => void;
+  children: ReactNode;
+};
+
+// "More filters" button + popup matching the Employee master: fields stacked full width, "Clear all"
+// on the left of the footer, Cancel / Apply on the right, "•" on the button while a filter is active.
+export function MasterMoreFilters({ strControlPrefix, intActiveCount, blnDisabled = false, onApply, onClearAll, onCancel, children }: MasterMoreFiltersProps) {
+  const [objAnchor, setObjAnchor] = useState<HTMLElement | null>(null);
+
+  function cancel() {
+    onCancel?.();
+    setObjAnchor(null);
+  }
+
+  return (
+    <>
+      <Button
+        data-control-id={`${strControlPrefix}.more-filters.button`}
+        className={styles.secondaryButton}
+        startIcon={<FilterListRoundedIcon />}
+        onClick={(objEvent) => setObjAnchor(objEvent.currentTarget)}
+        aria-expanded={Boolean(objAnchor)}
+        disabled={blnDisabled}
+        sx={{ whiteSpace: "nowrap" }}
+      >
+        More filters{intActiveCount > 0 ? " •" : ""}
+      </Button>
+      <Popover
+        open={Boolean(objAnchor)}
+        anchorEl={objAnchor}
+        onClose={cancel}
+        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+        PaperProps={{ className: styles.employeeMoreFilters, "data-control-id": `${strControlPrefix}.more-filters.popover` } as object}
+      >
+        <Box className={styles.employeeMoreFiltersHeader}>
+          <Typography fontWeight={700}>More filters</Typography>
+          <IconButton data-control-id={`${strControlPrefix}.more-filters.close.button`} aria-label="Close" size="small" onClick={cancel}><ClearRoundedIcon fontSize="small" /></IconButton>
+        </Box>
+        <Box onKeyDown={onSearchEnter(() => { setObjAnchor(null); onApply(); })} sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+          {children}
+        </Box>
+        <Box className={styles.employeeMoreFiltersActions}>
+          <Button data-control-id={`${strControlPrefix}.more-filters.clear-all.button`} className={styles.employeeMoreFiltersClear} onClick={onClearAll}>Clear all</Button>
+          <Box className={styles.employeeMoreFiltersActionButtons}>
+            <Button data-control-id={`${strControlPrefix}.more-filters.cancel.button`} className={styles.secondaryButton} onClick={cancel}>Cancel</Button>
+            <Button data-control-id={`${strControlPrefix}.more-filters.apply.button`} className={styles.primaryButton} onClick={() => { setObjAnchor(null); onApply(); }}>Apply</Button>
+          </Box>
+        </Box>
+      </Popover>
+    </>
+  );
+}
 
 export type MasterOptionalColumn<TKey extends string> = {
   strKey: TKey;

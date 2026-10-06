@@ -6,6 +6,7 @@ import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import { Alert, Box, Button, FormControlLabel, MenuItem, Pagination, Radio, RadioGroup, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, TextField, Typography } from "@mui/material";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
+import { MasterBreadcrumbs } from "@/components/master/MasterListUi";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -316,6 +317,7 @@ export default function LoanBudgetDetailPage({
 
   return (
     <Box className={styles.page}>
+      <MasterBreadcrumbs strSection={t("breadcrumb_section", "Payroll")} strTitle={t("breadcrumb_title", "Loan Budget")} />
       {/* Fixed header: compact inline summary on the left (edit mode only), Back + Save grouped
           on the right -- one row, never scrolls. No page title here by design; the sidebar/menu
           already names the screen. */}

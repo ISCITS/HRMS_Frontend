@@ -10,6 +10,9 @@ type ReportMultiSelectFieldProps = {
   options: string[];
   onChange: (strValue: string) => void;
   controlId?: string;
+  // Compact variant for list-screen search rows: common input style, small height, floating label.
+  blnCompact?: boolean;
+  disabled?: boolean;
 };
 
 function splitValue(strValue: string) {
@@ -36,18 +39,24 @@ export default function ReportMultiSelectField({
   options,
   onChange,
   controlId,
+  blnCompact = false,
+  disabled = false,
 }: ReportMultiSelectFieldProps) {
   return (
     <Autocomplete<string, true, false, true>
       multiple
       freeSolo
       forcePopupIcon
+      size={blnCompact ? "small" : undefined}
+      disabled={disabled}
       options={options}
       value={splitValue(value)}
       onChange={(_, lstSelected) => onChange(joinValue(lstSelected))}
       renderInput={(objParams) => (
         <TextField
           {...objParams}
+          className={blnCompact ? "app-mui-text-field" : undefined}
+          size={blnCompact ? "small" : undefined}
           label={label}
           InputLabelProps={{ shrink: true }}
           placeholder={splitValue(value).length ? "Search..." : placeholder || "Search..."}
