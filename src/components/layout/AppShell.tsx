@@ -1030,7 +1030,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
   // The employee editor has its own breadcrumb and action toolbar.
   const blnEmployeeEditorRoute = /^\/employees\/(?:add|(?:edit|view)\/[\w-]+)$/.test(strLowerPathname);
   const blnEmployeeSalaryEditorRoute = /^\/employee-salary\/\d+(?:\/revise)?$/.test(strLowerPathname);
+  const blnEmployeeSalaryListRoute = strLowerPathname === "/employee-salary";
+  const blnUserListRoute = strLowerPathname === "/users";
+  const blnUserGroupListRoute = strLowerPathname === "/security/user-groups";
   const blnSalaryComponentListRoute = strLowerPathname === "/salary-components";
+  const blnSalaryStructureListRoute = strLowerPathname === "/salary-structures";
   // The id segment is a record_uuid now, not a number; a legacy numeric URL still matches.
   const blnSalaryComponentEditorRoute = /^\/salary-components\/(?:add|(?:edit|view)\/[\w-]+)$/.test(strLowerPathname);
   // The id segment is a record_uuid now, not a number; a legacy numeric URL still matches.
@@ -1564,7 +1568,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
               <Box sx={{ flex: 1, minWidth: 0 }} />
 
-              {strPathname === "/employees" || strPathname === "/departments" || strPathname === "/designations" || strPathname === "/settings" || strPathname === "/profile/change-password" || blnReferencedMasterRoute || blnDepartmentStyleMasterRoute || blnEmployeeEditorRoute || blnDashboardRoute || blnEmployeeSalaryEditorRoute || blnSalaryComponentListRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute ? null : (
+
+              {strPathname === "/employees" || strPathname === "/departments" || strPathname === "/designations" || strPathname === "/settings" || strPathname === "/profile/change-password" || blnReferencedMasterRoute || blnDepartmentStyleMasterRoute || blnEmployeeEditorRoute || blnDashboardRoute || blnEmployeeSalaryListRoute || blnEmployeeSalaryEditorRoute || blnUserListRoute || blnUserGroupListRoute || blnSalaryComponentListRoute || blnSalaryStructureListRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute ? null : (
                 <Box
                   sx={{
                     display: "flex",

@@ -2,10 +2,12 @@
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
   Box,
+  Breadcrumbs,
   Button,
   InputAdornment,
   Link,
@@ -191,6 +193,7 @@ export default function UserGroupMasterScreen() {
     errorSave: t("error_save", "Unable to save user group."),
     exportFileName: t("export_file_name", "user_groups"),
   };
+  const strPageTitle = t("page_title", "User Group");
 
   async function loadUserGroups() {
     if (!canViewAny()) {
@@ -386,6 +389,11 @@ export default function UserGroupMasterScreen() {
 
   return (
     <Box className={styles.page}>
+      <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />}>
+        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{t("breadcrumb_administration", "Administration")}</Typography>
+        <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{strPageTitle}</Typography>
+      </Breadcrumbs>
+
       <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {strRightsError ? (
           <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography>

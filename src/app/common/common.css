@@ -227,7 +227,7 @@
 .app-master-first-column-link {
   background: transparent;
   border: 0;
-  color: #0f172a;
+  color: #0757b8;
   cursor: pointer;
   font: inherit;
   font-weight: 500;
@@ -239,9 +239,15 @@
 }
 
 .app-master-first-column-link.MuiLink-root {
-  color: #0f172a;
+  color: #0757b8;
   font: inherit;
   font-weight: 500;
+}
+
+.app-master-first-column-link:hover,
+.app-master-first-column-link.MuiLink-root:hover {
+  color: #064a9f;
+  text-decoration: underline;
 }
 
 .app-master-status-pill {

@@ -2,23 +2,26 @@
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
   Box,
+  Breadcrumbs,
   Button,
+  InputAdornment,
+  Link,
   MenuItem,
+  Skeleton,
   Snackbar,
   TextField,
   Typography
 } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
-import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
-import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useEmployeeSalaryLabels } from "@/features/employee-salary/hooks/useEmployeeSalaryLabels";
 import { employeeSalaryService } from "@/features/employee-salary/services/employeeSalaryService";
@@ -60,6 +63,59 @@ function formatDate(strDate: string | null) {
 
 const dicEmptySearch: SearchForm = { strName: "", strCode: "", strStatus: "All" };
 const lstEmployeeSalaryModuleCodes = ["EMPLOYEE_SALARY", "EMPLOYEE-SALARY", "EMPLOYEE_SALARIES"];
+const intEmployeeSalarySkeletonRows = 8;
+
+function EmployeeSalaryGridSkeleton() {
+  return (
+    <Box
+      data-controlid="employee-salary.list.skeleton"
+      sx={{
+        border: "1px solid #e8eef5",
+        borderRadius: "8px",
+        overflow: "hidden",
+        backgroundColor: "#fff",
+      }}
+    >
+      <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, px: 1.75, py: 1.25, flexWrap: "wrap" }}>
+        <Skeleton variant="rounded" width={156} height={36} />
+        <Box sx={{ display: "flex", gap: 1.25, alignItems: "center", flexWrap: "wrap" }}>
+          <Skeleton variant="rounded" width={64} height={36} />
+          <Skeleton variant="text" width={72} height={24} />
+          <Skeleton variant="rounded" width={116} height={32} />
+        </Box>
+      </Box>
+      <Box sx={{ minWidth: 980 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "1.35fr 0.9fr 1.35fr 0.9fr 0.9fr 0.95fr 0.85fr", bgcolor: "#edf3f9", borderTop: "1px solid #e8eef5", borderBottom: "1px solid #d9e3ee" }}>
+          {Array.from({ length: 7 }).map((_, intColumn) => (
+            <Box key={intColumn} sx={{ px: 2, py: 1 }}>
+              <Skeleton variant="text" width={intColumn === 6 ? 82 : 116} height={22} />
+            </Box>
+          ))}
+        </Box>
+        {Array.from({ length: intEmployeeSalarySkeletonRows }).map((_, intIndex) => (
+          <Box
+            key={intIndex}
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "1.35fr 0.9fr 1.35fr 0.9fr 0.9fr 0.95fr 0.85fr",
+              borderBottom: "1px solid #edf1f6",
+              minHeight: 40,
+              alignItems: "center",
+            }}
+          >
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${62 + (intIndex % 3) * 8}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width="58%" height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${56 + (intIndex % 2) * 12}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width="52%" height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width="48%" height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width="54%" height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="rounded" width={82} height={22} /></Box>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+}
 
 export default function EmployeeSalaryListPage() {
   const objRouter = useRouter();
@@ -85,6 +141,17 @@ export default function EmployeeSalaryListPage() {
 
   function closeToast() {
     setObjToast((objPrevious) => ({ ...objPrevious, blnOpen: false }));
+  }
+
+  function applySearch() {
+    setDicAppliedSearch(dicSearch);
+  }
+
+  function handleSearchInputKeyDown(objEvent: KeyboardEvent<HTMLInputElement>) {
+    if (objEvent.key === "Enter") {
+      objEvent.preventDefault();
+      applySearch();
+    }
   }
 
   async function loadEmployeeSalaries() {
@@ -125,25 +192,32 @@ export default function EmployeeSalaryListPage() {
     () =>
       lstFilteredRows.map((dicRow) => ({
         id: dicRow.intEmployeeID,
-        action: (
-          <CommonRowActions
-            testIdPrefix="employee-salary.list.row"
-            rowKey={dicRow.intEmployeeID}
-            blnCanView={blnCanView}
-            blnCanEdit={blnCanMutate}
-            onView={() => objRouter.push(`/employee-salary/${dicRow.strEmployeeRecordUUID}`)}
-            onEdit={() => objRouter.push(`/employee-salary/${dicRow.strEmployeeRecordUUID}`)}
-          />
-        ),
+        strEmployeeRecordUUID: dicRow.strEmployeeRecordUUID,
         strEmployeeCode: dicRow.strEmployeeCode,
-        strEmployeeName: dicRow.strEmployeeName,
+        strEmployeeNameSort: dicRow.strEmployeeName,
+        strEmployeeName: (
+          <Link
+            className="app-master-first-column-link"
+            component="button"
+            type="button"
+            underline="none"
+            data-controlid="employee-salary.list.row.name.link"
+            data-row-key={String(dicRow.intEmployeeID)}
+            onClick={() => objRouter.push(`/employee-salary/${dicRow.strEmployeeRecordUUID}`)}
+          >
+            {dicRow.strEmployeeName}
+          </Link>
+        ),
         strSalaryStatus: (
-          <span className={`${styles.statusPill} ${dicRow.strSalaryStatus === "Assigned" ? styles.statusActive : styles.statusInactive}`}>
+          <span data-controlid="employee-salary.list.row.status.pill" data-row-key={String(dicRow.intEmployeeID)} className={`app-master-status-pill ${dicRow.strSalaryStatus === "Assigned" ? "app-master-status-active" : "app-master-status-inactive"}`}>
             {dicRow.strSalaryStatus === "Assigned"
               ? t("employee_salary_status_assigned", "Assigned")
               : t("employee_salary_status_unassigned", "Unassigned")}
           </span>
         ),
+        strSalaryStatusSort: dicRow.strSalaryStatus === "Assigned"
+          ? t("employee_salary_status_assigned", "Assigned")
+          : t("employee_salary_status_unassigned", "Unassigned"),
         strAssignedStructure: dicRow.strStructureName ?? t("employee_salary_not_assigned", "Not assigned"),
         dtEffectiveFrom: formatDate(dicRow.dtEffectiveFrom),
         strEffectiveFromSort: dicRow.dtEffectiveFrom ?? "",
@@ -152,26 +226,30 @@ export default function EmployeeSalaryListPage() {
         decGrossMonthly: formatCurrency(dicRow.decGrossMonthly),
         decGrossMonthlySort: dicRow.decGrossMonthly ?? Number.NEGATIVE_INFINITY
       })),
-    [blnCanMutate, blnCanView, lstFilteredRows, objRouter, t]
+    [lstFilteredRows, objRouter, t]
   );
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      { field: "action", headerName: t("employee_salary_action", "Action"), sortable: false, filterable: false, exportable: false, width: 110 },
-      { field: "strEmployeeCode", headerName: t("employee_salary_employee_code", "Employee Code") },
-      { field: "strEmployeeName", headerName: t("employee_salary_employee_name", "Employee Name") },
-      { field: "strSalaryStatus", headerName: t("employee_salary_salary_status", "Salary Status"), sortable: false, filterable: false, width: 150 },
+      { field: "strEmployeeName", headerName: t("employee_salary_employee_name", "Employee Name"), width: 210, sortAccessor: (dicRow) => String(dicRow.strEmployeeNameSort) },
+      { field: "strEmployeeCode", headerName: t("employee_salary_employee_code", "Employee Code"), width: 150 },
       { field: "strAssignedStructure", headerName: t("employee_salary_assigned_structure", "Assigned Structure") },
       { field: "dtEffectiveFrom", headerName: t("employee_salary_effective_from", "Effective From"), sortAccessor: (dicRow) => dicRow.strEffectiveFromSort },
       { field: "decCtcAnnual", headerName: t("employee_salary_ctc_annual", "CTC Annual"), align: "right", sortAccessor: (dicRow) => dicRow.decCtcAnnualSort },
-      { field: "decGrossMonthly", headerName: t("employee_salary_gross_monthly", "Gross Monthly"), align: "right", sortAccessor: (dicRow) => dicRow.decGrossMonthlySort }
+      { field: "decGrossMonthly", headerName: t("employee_salary_gross_monthly", "Gross Monthly"), align: "right", sortAccessor: (dicRow) => dicRow.decGrossMonthlySort },
+      { field: "strSalaryStatus", headerName: t("employee_salary_salary_status", "Salary Status"), filterable: false, width: 150, sortAccessor: (dicRow) => dicRow.strSalaryStatusSort }
     ],
     [t]
   );
 
   return (
     <Box className={styles.page}>
-      <Box className={styles.controlsCard}>
+      <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />}>
+        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{t("breadcrumb_salary", "Salary")}</Typography>
+        <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{t("breadcrumb_employee_salary", "Employee Salary")}</Typography>
+      </Breadcrumbs>
+
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {strRightsError ? <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography> : null}
         {!blnRightsLoading && blnCanView && blnReadOnly ? (
           <Typography sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>
@@ -179,31 +257,53 @@ export default function EmployeeSalaryListPage() {
           </Typography>
         ) : null}
 
-        <Box className={styles.searchRow}>
+        <Box
+          className={styles.searchRow}
+          aria-busy={blnLoading || blnRightsLoading}
+          sx={{
+            alignItems: "center",
+            "& .MuiButton-root": { alignSelf: "center" },
+          }}
+        >
           <TextField
-            data-testid="employee-salary.list.search-code.input"
-            inputProps={{ "data-testid": "employee-salary.list.search-code.input" }}
-            value={dicSearch.strCode}
-            onChange={(objEvent) => setDicSearch((dicPrev) => ({ ...dicPrev, strCode: objEvent.target.value.toUpperCase() }))}
-            placeholder={t("employee_salary_search_employee_code", "Search employee code")}
-            fullWidth
-          />
-
-          <TextField
+            className="app-mui-text-field"
             data-controlid="employee-salary.list.search-name.input"
             inputProps={{ "data-controlid": "employee-salary.list.search-name.input" }}
+            label={t("employee_salary_employee_name", "Employee Name")}
             value={dicSearch.strName}
             onChange={(objEvent) => setDicSearch((dicPrev) => ({ ...dicPrev, strName: objEvent.target.value }))}
+            onKeyDown={handleSearchInputKeyDown}
             placeholder={t("employee_salary_search_employee_name", "Search employee name")}
+            size="small"
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }}
+            disabled={blnLoading || blnRightsLoading}
             fullWidth
           />
 
           <TextField
+            className="app-mui-text-field"
+            data-controlid="employee-salary.list.search-code.input"
+            inputProps={{ "data-controlid": "employee-salary.list.search-code.input" }}
+            label={t("employee_salary_employee_code", "Employee Code")}
+            value={dicSearch.strCode}
+            onChange={(objEvent) => setDicSearch((dicPrev) => ({ ...dicPrev, strCode: objEvent.target.value.toUpperCase() }))}
+            onKeyDown={handleSearchInputKeyDown}
+            placeholder={t("employee_salary_search_employee_code", "Search employee code")}
+            size="small"
+            disabled={blnLoading || blnRightsLoading}
+            fullWidth
+          />
+
+          <TextField
+            className="app-mui-text-field"
             data-controlid="employee-salary.list.search-status.select"
             inputProps={{ "data-controlid": "employee-salary.list.search-status.select" }}
             select
+            label={t("employee_salary_salary_status", "Salary Status")}
             value={dicSearch.strStatus}
             onChange={(objEvent) => setDicSearch((dicPrev) => ({ ...dicPrev, strStatus: objEvent.target.value as SearchForm["strStatus"] }))}
+            size="small"
+            disabled={blnLoading || blnRightsLoading}
             fullWidth
           >
             <MenuItem data-controlid="employee-salary.list.search-status.all.option" value="All">{t("employee_salary_status_filter", "Salary Status")}</MenuItem>
@@ -214,10 +314,10 @@ export default function EmployeeSalaryListPage() {
             <Button
               data-controlid="employee-salary.list.search.button"
               className={styles.primaryButton}
+              size="small"
               startIcon={<SearchRoundedIcon />}
-              onClick={() => {
-                setDicAppliedSearch(dicSearch);
-              }}
+              onClick={applySearch}
+              disabled={blnLoading || blnRightsLoading}
             >
               {t("employee_salary_search_button", "Search")}
             </Button>
@@ -226,11 +326,13 @@ export default function EmployeeSalaryListPage() {
             <Button
               data-controlid="employee-salary.list.clear.button"
               className={styles.secondaryButton}
+              size="small"
               startIcon={<ClearRoundedIcon />}
               onClick={() => {
                 setDicSearch(dicEmptySearch);
                 setDicAppliedSearch(dicEmptySearch);
               }}
+              disabled={blnLoading || blnRightsLoading}
             >
               {t("employee_salary_clear_button", "Clear")}
             </Button>
@@ -238,8 +340,10 @@ export default function EmployeeSalaryListPage() {
         </Box>
       </Box>
 
-      <Box className={styles.tableCard}>
-        {!blnCanView ? (
+      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        {blnLoading || blnRightsLoading ? (
+          <EmployeeSalaryGridSkeleton />
+        ) : !blnCanView ? (
           <Box className={styles.emptyState}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
               {t("employee_salary_access_denied", "Employee salary access is not available for your user group.")}
@@ -277,12 +381,20 @@ export default function EmployeeSalaryListPage() {
               </Box>
             )}
             testIdPrefix="employee-salary.list"
+            onRowClick={(dicRow) => {
+              if (!blnCanView) return;
+              objRouter.push(`/employee-salary/${dicRow.strEmployeeRecordUUID}`);
+            }}
+            minTableWidth={980}
+            hideRowClickHint
+            getRowSx={() => ({
+              "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
+              "&.MuiTableRow-hover:hover td:nth-of-type(1) .MuiLink-root": { textDecoration: "underline" },
+            })}
             sx={{ p: 0, boxShadow: "none", background: "transparent" }}
           />
         )}
       </Box>
-
-      <BlockingLoader blnOpen={blnLoading || blnRightsLoading} strLabel={t("employee_salary_loading_records", "Loading employee salary records...")} intZIndex={1400} />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>
