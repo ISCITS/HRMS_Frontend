@@ -20,6 +20,7 @@ import type { Resolver } from "react-hook-form";
 import * as yup from "yup";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
+import { MasterGridSkeleton } from "@/components/master/MasterListUi";
 import CommonDataGrid, { type DataGridColumn } from "@/components/ui/CommonDataGrid";
 import FileRowActions from "@/components/shared/files/FileRowActions";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -348,7 +349,7 @@ export default function EssWorkHolidayPage() {
     };
   });
 
-  if (blnRightsLoading) return <Box data-control-id="work-on-holiday.ess.rights-loading.container" sx={{ display: "grid", placeItems: "center", minHeight: 240 }}><CircularProgress aria-label={t("loading", "Loading")} /></Box>;
+  if (blnRightsLoading) return <Box data-control-id="work-on-holiday.ess.rights-loading.container"><MasterGridSkeleton strControlId="work-on-holiday.ess.skeleton" intColumns={8} /></Box>;
   if (!blnCanView && !blnCanCreate) return <Alert data-control-id="work-on-holiday.ess.unauthorized.alert" severity="warning">{strRightsError || t("unauthorized", "Work on Holiday access is not available. Ask your administrator to assign the ESS Work on Holiday rights.")}</Alert>;
   return (
     <Stack spacing={2}>
@@ -437,7 +438,7 @@ export default function EssWorkHolidayPage() {
           </Box>
         </Paper>
       ) : null}
-      {intTab === 1 ? <Box sx={{ position: "relative" }}>{blnLoading ? <CircularProgress aria-label={t("loading", "Loading")} /> : null}<CommonDataGrid columns={lstColumns} rows={lstRows} rowIdField="intID" showExportOptions showPaginationSummary defaultPageSize={20} pageSizeOptions={[20, 50, 100]} exportFileName="work_on_holiday_my_requests" testIdPrefix="work-on-holiday-my" emptyMessage={t("empty_my_requests", "No requests found.")} getRowSx={() => ({ height: 62 })} /></Box> : null}
+      {intTab === 1 ? <Box sx={{ position: "relative" }}>{blnLoading ? <MasterGridSkeleton strControlId="work-on-holiday.ess.my-requests.skeleton" intColumns={8} /> : <CommonDataGrid columns={lstColumns} rows={lstRows} rowIdField="intID" showExportOptions showPaginationSummary defaultPageSize={20} pageSizeOptions={[20, 50, 100]} exportFileName="work_on_holiday_my_requests" testIdPrefix="work-on-holiday-my" emptyMessage={t("empty_my_requests", "No requests found.")} getRowSx={() => ({ height: 62 })} />}</Box> : null}
       {intTab === 2 ? <CommonDataGrid columns={[
         { field: "strRequestNumber", headerName: t("source_request", "Source Request") },
         { field: "dtWorkDate", headerName: t("work_date", "Work Date") },

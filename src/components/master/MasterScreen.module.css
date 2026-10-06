@@ -1317,3 +1317,26 @@
 .salaryStructureSearchRow .searchActions {
   align-items: center;
 }
+
+/* Search row for list screens with many filters: fields wrap into equal cells, Search/Clear sit in the last cell. */
+.multiFilterSearchRow {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+
+.multiFilterSearchRow > :global(.MuiFormControl-root),
+.multiFilterSearchRow > :global(.MuiAutocomplete-root) {
+  min-width: 0;
+}
+
+.multiFilterSearchRow .searchActions {
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.multiFilterSearchRow :global(.MuiButton-root) {
+  align-self: center;
+  white-space: nowrap;
+}

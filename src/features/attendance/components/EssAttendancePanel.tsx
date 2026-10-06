@@ -876,7 +876,7 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
         <Typography variant="h6" fontWeight={900} sx={{ mb: 1 }}>{t("monthly_history", "Monthly Attendance")}</Typography>
 
         {blnLoading ? (
-          <Box sx={{ position: "relative", minHeight: 160 }}><BlockingLoader blnOpen blnLocal strLabel={t("loading", "Loading...")} /></Box>
+          <MasterGridSkeleton strControlId="ess.my-attendance.history.skeleton" intColumns={7} intRows={6} />
         ) : blnMobile ? (
           <Stack spacing={0.75}>
             {lstMonthDays.map((strDate) => {
@@ -1129,9 +1129,7 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
           }}
         >
           {blnTimelineLoading ? (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
-              <BlockingLoader blnOpen blnLocal strLabel={t("loading", "Loading")} />
-            </Box>
+            <MasterGridSkeleton strControlId="ess.my-attendance.punch-timeline.skeleton" intColumns={4} intRows={4} />
           ) : strTimelineError ? (
             <Alert severity="error">{strTimelineError}</Alert>
           ) : objPunchTimeline.lstRows.length > 0 ? (

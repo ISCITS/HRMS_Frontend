@@ -310,7 +310,7 @@ export default function AttendanceExceptionsPage() {
     [t],
   );
 
-  if (blnRightsLoading) return <BlockingLoader blnOpen strLabel={t("loading", "Loading...")} />;
+  if (blnRightsLoading) return <Box className={styles.page}><MasterBreadcrumbs strSection={t("breadcrumb_attendance", "Attendance")} strTitle={t("breadcrumb_exceptions", "Attendance Exceptions")} /><MasterGridSkeleton strControlId="attendance-exceptions.list.skeleton" intColumns={7} /></Box>;
   if (!canViewAny())
     return (
       <Alert severity="warning">

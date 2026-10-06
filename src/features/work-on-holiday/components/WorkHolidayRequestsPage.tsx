@@ -4,16 +4,16 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import PendingActionsRoundedIcon from "@mui/icons-material/PendingActionsRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import {
-  Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
-  DialogTitle, Grid, IconButton, MenuItem, Paper, Stack, Tab, Tabs, TextField,
+  Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent,
+  DialogTitle, Grid, IconButton, InputAdornment, Link, MenuItem, Paper, Stack, Tab, Tabs, TextField,
 } from "@mui/material";
 import { useMemo, useState } from "react";
 import type { ReactNode, SyntheticEvent } from "react";
 
 import CommonDataGrid, { type DataGridColumn } from "@/components/ui/CommonDataGrid";
 import styles from "@/components/master/MasterScreen.module.css";
+import { dicMasterNameLinkSx, dicMasterRowSx, MasterBreadcrumbs, MasterGridSkeleton } from "@/components/master/MasterListUi";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
 import WorkHolidayDetailDrawer from "@/features/work-on-holiday/components/WorkHolidayDetailDrawer";
@@ -166,15 +166,15 @@ export default function WorkHolidayRequestsPage({ blnEssManagerMode = false }: {
   }
 
   const lstColumns: DataGridColumn<WorkHolidayWorkbenchRow>[] = [
-    { field: "action", headerName: t("actions", "Actions"), align: "left", width: 92, sortable: false, filterable: false, exportable: false },
-    { field: "strRequestNumber", headerName: t("request_number", "Request Number"), width: 170 },
+    { field: "strRequestNumber", headerName: t("request_number", "Request Number"), width: 170, sortAccessor: (objRow) => String(objRow.strRequestNumberText ?? "") },
     { field: "strEmployeeName", headerName: t("requester", "Requester"), width: 190 },
     { field: "strOrganisationContext", headerName: t("organisation", "Organisation"), width: 180 },
     { field: "dtWorkDate", headerName: t("work_date", "Work Date"), width: 130 },
     { field: "strDayTypeCode", headerName: t("day_type", "Day Type"), width: 130 },
     { field: "strRequestedOutcomeCode", headerName: t("outcome", "Outcome"), width: 150 },
-    { field: "strRequestStatus", headerName: t("status", "Status"), width: 170 },
+    { field: "strRequestStatus", headerName: t("status", "Status"), width: 170, filterable: false, sortAccessor: (objRow) => String(objRow.strRequestStatusText ?? "") },
     { field: "strCurrentApproverName", headerName: t("current_approver", "Current Approver"), width: 180 },
+    { field: "action", headerName: t("actions", "Actions"), align: "left", width: 92, sortable: false, filterable: false, exportable: false },
   ];
   const lstRows: WorkHolidayWorkbenchRow[] = objList.lstItems.filter((objRequest) => {
     if (strSelectedTab === "approval" && (objRequest.strRequestStatus !== "PENDING_APPROVAL" || objRequest.blnApprovalDecisionTaken)) {
@@ -184,22 +184,30 @@ export default function WorkHolidayRequestsPage({ blnEssManagerMode = false }: {
     return !strNeedle || [objRequest.strRequestNumber, objRequest.strEmployeeName, objRequest.strEmployeeCode].some((strValue) => strValue?.toLowerCase().includes(strNeedle));
   }).map((objRequest) => ({
     intID: objRequest.intID,
-    action: (
-      <Stack direction="row" spacing={0.5} alignItems="center" sx={{ width: 64, justifyContent: "flex-start" }}>
-        {blnCanView ? (
-          <IconButton data-control-id={`work-on-holiday.workbench.${objRequest.intID}.view.button`} aria-label={t("view", "View")} color="primary" size="small" onClick={() => void openRequestDetail(objRequest.intID)}>
-            <VisibilityRoundedIcon fontSize="small" />
-          </IconButton>
-        ) : null}
-        {blnCanAct && canActOnRequest(objRequest) ? (
-          <IconButton data-control-id={`work-on-holiday.workbench.${objRequest.intID}.action.button`} aria-label={t("action", "Action")} color="primary" size="small" onClick={() => void openRequestActions(objRequest.intID)}>
-            <PendingActionsRoundedIcon fontSize="small" />
-          </IconButton>
-        ) : null}
-      </Stack>
+    action: blnCanAct && canActOnRequest(objRequest) ? (
+      <IconButton data-control-id={`work-on-holiday.workbench.${objRequest.intID}.action.button`} aria-label={t("action", "Action")} color="primary" size="small" onClick={(objEvent) => { objEvent.stopPropagation(); void openRequestActions(objRequest.intID); }}>
+        <PendingActionsRoundedIcon fontSize="small" />
+      </IconButton>
+    ) : null,
+    strRequestNumberText: objRequest.strRequestNumber ?? "—",
+    strRequestNumber: (
+      <Link
+        component="button"
+        type="button"
+        underline="none"
+        className="app-master-first-column-link"
+        disabled={!blnCanView}
+        data-control-id={`work-on-holiday.workbench.${objRequest.intID}.view.button`}
+        onClick={(objEvent) => {
+          if (window.getSelection()?.toString()) { objEvent.stopPropagation(); return; }
+          void openRequestDetail(objRequest.intID);
+        }}
+        sx={dicMasterNameLinkSx}
+      >
+        {objRequest.strRequestNumber ?? "—"}
+      </Link>
     ),
-    strRequestNumber: objRequest.strRequestNumber ?? "—",
-    strEmployeeName: objRequest.strEmployeeName ?? `${t("employee", "Employee")} ${objRequest.intEmployeeID}`,
+    strRequestStatusText: t(`status_${objRequest.strRequestStatus.toLowerCase()}`, objRequest.strRequestStatus),    strEmployeeName: objRequest.strEmployeeName ?? `${t("employee", "Employee")} ${objRequest.intEmployeeID}`,
     strOrganisationContext: [
       objRequest.intDepartmentID ? `${t("department", "Department")} ${objRequest.intDepartmentID}` : null,
       objRequest.intLocationID ? `${t("location", "Location")} ${objRequest.intLocationID}` : null,
@@ -211,40 +219,43 @@ export default function WorkHolidayRequestsPage({ blnEssManagerMode = false }: {
     strCurrentApproverName: objRequest.strCurrentApproverName ?? (objRequest.intCurrentApproverUserID ? t("assigned_approver", "Assigned Approver") : "—"),
   }));
 
-  if (blnRightsLoading) return <Box data-control-id="work-on-holiday.workbench.rights-loading.container" sx={{ display: "grid", placeItems: "center", minHeight: 240 }}><CircularProgress aria-label={t("loading", "Loading")} /></Box>;
+  if (blnRightsLoading) return <Stack spacing={1.5} data-control-id="work-on-holiday.workbench.rights-loading.container"><MasterBreadcrumbs strSection={t("breadcrumb_leave", "Leave Management")} strTitle={t("breadcrumb_work_on_holiday", "Work on Holiday Requests")} /><MasterGridSkeleton strControlId="work-on-holiday.workbench.skeleton" intColumns={9} /></Stack>;
   if (!lstTabs.length && !blnCanOnBehalf) return <Alert data-control-id="work-on-holiday.workbench.unauthorized.alert" severity="warning">{strRightsError || t("unauthorized", "Work on Holiday Requests access is not available. Ask your administrator to assign manager or HR Work on Holiday rights.")}</Alert>;
   return (
-    <Stack spacing={2}>
-      {/* AppShell already provides the screen title, so the workbench starts with its status and tabs. */}
+    <Stack spacing={1.5}>
+      <MasterBreadcrumbs strSection={t("breadcrumb_leave", blnEssManagerMode ? "Team" : "Leave Management")} strTitle={blnEssManagerMode ? t("breadcrumb_work_on_holiday_approvals", "Work on Holiday Approvals") : t("breadcrumb_work_on_holiday", "Work on Holiday Requests")} />
       {strNotice ? <Alert data-control-id="work-on-holiday.workbench.success.alert" severity="success" onClose={() => setStrNotice("")}>{strNotice}</Alert> : null}
       {strError || strListError ? <Alert data-control-id="work-on-holiday.workbench.error.alert" severity="error" onClose={() => setStrError("")}>{strError || strListError}</Alert> : null}
-      <Paper className={styles.workbenchTabsCard}><Tabs value={Math.min(intTab, Math.max(lstTabs.length - 1, 0))} onChange={changeTab} variant="scrollable" aria-label={t("workbench_tabs", "Work on Holiday work queues")}>{lstTabs.map((objTab) => <Tab data-control-id={`work-on-holiday.workbench.${objTab.strCode}.tab`} key={objTab.strCode} label={objTab.strLabel} />)}</Tabs></Paper>
-      <Paper className={styles.controlsCard}>
+      <Paper className={styles.workbenchTabsCard} sx={{ borderRadius: "10px !important", boxShadow: "none" }}><Tabs value={Math.min(intTab, Math.max(lstTabs.length - 1, 0))} onChange={changeTab} variant="scrollable" aria-label={t("workbench_tabs", "Work on Holiday work queues")}>{lstTabs.map((objTab) => <Tab data-control-id={`work-on-holiday.workbench.${objTab.strCode}.tab`} key={objTab.strCode} label={objTab.strLabel} />)}</Tabs></Paper>
+      <Paper className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <Box
           component="form"
           className={styles.searchRow}
           sx={{
-            gridTemplateColumns: ["all", "history"].includes(strSelectedTab)
-              ? "minmax(260px, 1fr) minmax(210px, .45fr) auto auto !important"
-              : "minmax(280px, 1fr) auto auto !important",
+            alignItems: "center",
+            "&&": {
+              gridTemplateColumns: ["all", "history"].includes(strSelectedTab)
+                ? { xs: "1fr", md: "minmax(240px, 1.2fr) minmax(180px, .6fr) auto auto 1fr" }
+                : { xs: "1fr", md: "minmax(240px, 1.2fr) auto auto 1fr" },
+            },
+            "& .MuiButton-root": { alignSelf: "center" },
           }}
           onSubmit={(objEvent) => {
             objEvent.preventDefault();
             searchRequests();
           }}
         >
-          <TextField data-control-id="work-on-holiday.workbench.search.input" size="small" fullWidth label={t("search", "Search")} placeholder={t("search_requests_placeholder", "Request number, employee name or code")} value={strSearch} onChange={(objEvent) => setStrSearch(objEvent.target.value)} />
-          {["all", "history"].includes(strSelectedTab) ? <TextField data-control-id="work-on-holiday.workbench.status.select" size="small" fullWidth select label={t("status", "Status")} value={strStatusFilter} onChange={(objEvent) => setStrStatusFilter(objEvent.target.value)}><MenuItem data-control-id="work-on-holiday.workbench.status.all.option" value="">{t("all_statuses", "All Statuses")}</MenuItem>{["APPROVED", "POSTED", "REJECTED", "WITHDRAWN", "REVERSED", "POSTING_FAILED"].map((strStatus) => <MenuItem data-control-id={`work-on-holiday.workbench.status.${strStatus.toLowerCase()}.option`} key={strStatus} value={strStatus}>{t(`status_${strStatus.toLowerCase()}`, strStatus)}</MenuItem>)}</TextField> : null}
+          <TextField className="app-mui-text-field" data-control-id="work-on-holiday.workbench.search.input" size="small" fullWidth label={t("search", "Search")} placeholder={t("search_requests_placeholder", "Request number, employee name or code")} value={strSearch} onChange={(objEvent) => setStrSearch(objEvent.target.value)} InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} />
+          {["all", "history"].includes(strSelectedTab) ? <TextField className="app-mui-text-field" data-control-id="work-on-holiday.workbench.status.select" size="small" fullWidth select label={t("status", "Status")} value={strStatusFilter} onChange={(objEvent) => setStrStatusFilter(objEvent.target.value)}><MenuItem data-control-id="work-on-holiday.workbench.status.all.option" value="">{t("all_statuses", "All Statuses")}</MenuItem>{["APPROVED", "POSTED", "REJECTED", "WITHDRAWN", "REVERSED", "POSTING_FAILED"].map((strStatus) => <MenuItem data-control-id={`work-on-holiday.workbench.status.${strStatus.toLowerCase()}.option`} key={strStatus} value={strStatus}>{t(`status_${strStatus.toLowerCase()}`, strStatus)}</MenuItem>)}</TextField> : null}
           <Box className={styles.searchActions}><Button data-control-id="work-on-holiday.workbench.search.button" type="submit" className={styles.primaryButton} startIcon={<SearchRoundedIcon />}>{t("search", "Search")}</Button></Box>
           <Box className={styles.searchActions}><Button data-control-id="work-on-holiday.workbench.clear.button" type="button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearRequestFilters}>{t("clear", "Clear")}</Button></Box>
         </Box>
       </Paper>
-      {blnLoading ? (
-        <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
-          <CircularProgress aria-label={t("loading", "Loading")} />
-        </Box>
+      {blnListEnabled && blnLoading ? (
+        <MasterGridSkeleton strControlId="work-on-holiday.workbench.skeleton" intColumns={9} />
       ) : null}
-      {blnListEnabled ? (
+      {blnListEnabled && !blnLoading ? (
+        <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <CommonDataGrid
           columns={lstColumns}
           rows={lstRows}
@@ -255,6 +266,10 @@ export default function WorkHolidayRequestsPage({ blnEssManagerMode = false }: {
           pageSizeOptions={[20, 50, 100]}
           exportFileName="work_on_holiday_requests"
           testIdPrefix="work-on-holiday-workbench"
+          hideRowClickHint
+          getRowSx={() => dicMasterRowSx}
+          onRowClick={(objRow) => { if (blnCanView) void openRequestDetail(Number(objRow.intID)); }}
+          withPaper={false}
           emptyMessage={t("empty_requests", "No matching requests found.")}
           toolbarLeft={blnCanOnBehalf ? (
             <Button
@@ -267,6 +282,7 @@ export default function WorkHolidayRequestsPage({ blnEssManagerMode = false }: {
             </Button>
           ) : null}
         />
+        </Box>
       ) : null}
       <WorkHolidayDetailDrawer objDetail={objDetail} blnOpen={Boolean(objDetail)} blnLoading={blnDetailLoading} blnCanApprove={blnCanApprove} blnCanReject={blnCanReject} blnCanSendBack={blnCanSendBack} blnCanVerify={blnCanVerify} blnCanPost={blnCanPost} blnCanReverse={blnCanReverse} blnActionMode={blnActionMode} fnOnClose={closeDetailDrawer} fnOnRefresh={async () => { await reload(); if (objDetail) await loadDetail(objDetail.intID); }} fnOnConflict={(strMessage) => setStrError(`${t("concurrency_conflict", "This request changed. The latest record has been loaded.")} ${strMessage}`)} />
       <Dialog data-control-id="work-on-holiday.on-behalf.dialog" open={blnOnBehalfOpen} onClose={() => setBlnOnBehalfOpen(false)} fullWidth maxWidth="lg">

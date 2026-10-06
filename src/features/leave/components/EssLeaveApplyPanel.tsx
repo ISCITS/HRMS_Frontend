@@ -39,6 +39,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
+import { MasterGridSkeleton } from "@/components/master/MasterListUi";
 import { leaveService } from "@/features/leave/services/leaveService";
 import {
   formatLeaveDate,
@@ -221,9 +222,7 @@ export default function EssLeaveApplyPanel() {
       </Paper>
 
       {blnLoading ? (
-        <Box sx={{ display: "grid", placeItems: "center", py: 6 }}>
-          <CircularProgress />
-        </Box>
+        <MasterGridSkeleton strControlId="ess.leave.apply.skeleton" intColumns={6} />
       ) : (
         <>
           {/* Balance summary cards */}
