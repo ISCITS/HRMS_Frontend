@@ -1011,11 +1011,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const blnEssOnlyNavigation = strActivePortalContext
     ? strActivePortalContext === "ESS"
     : Boolean(intLinkedEmployeeID) && !blnHasPrivilegedRole;
-  // Shell branding must follow the selected portal. Dashboard type is only a legacy fallback
-  // because an employee-linked HRMS user can still receive employee-oriented dashboard content.
-  const blnEssShellBrand = strActivePortalContext
-    ? strActivePortalContext === "ESS"
-    : blnEssOnlyNavigation || blnEssDashboardActive;
   const strLinkedEmployeeName = strResolvedEmployeeName || extractLinkedEmployeeName(objUserContext);
   const { strEmployeeCode, strDesignation } = extractEmployeeMeta(objUserContext);
   const strProfileDisplayName = strLinkedEmployeeName || strUserName;
@@ -1215,10 +1210,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
             </Box>
             <Box sx={{ minWidth: 0 }}>
               <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
-                {blnEssShellBrand
-                  ? tCommon("brand_short_name", "ESS")
-                  : appConfig.appName}
+                {appConfig.appName}
               </Typography>
+              {strCompanyName ? (
+                <Typography title={strCompanyName} noWrap sx={{ mt: 0.25, color: "#64748b", fontSize: "0.78rem", lineHeight: 1.1, fontWeight: 500, letterSpacing: 0 }}>
+                  {strCompanyName}
+                </Typography>
+              ) : null}
             </Box>
           </Stack>
           <IconButton
@@ -1536,7 +1534,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               boxShadow: "none"
             }}
           >
-            <Toolbar sx={{ gap: { xs: 0.5, sm: 1, xl: 1.5 }, height: { xs: "auto", lg: intBannerHeight }, minHeight: `${intBannerHeight}px !important`, flexWrap: { xs: "wrap", lg: "nowrap" }, py: { xs: 1, lg: 0 }, boxSizing: "border-box", alignItems: "center", px: { xs: 1, sm: 2 } }}>
+            <Toolbar sx={{ gap: { xs: 0.5, sm: 1, xl: 1.5 }, height: { xs: "auto", lg: intBannerHeight }, minHeight: `${intBannerHeight}px !important`, flexWrap: { xs: "wrap", lg: "nowrap" }, py: { xs: 1, lg: 0 }, boxSizing: "border-box", alignItems: "center", px: { xs: 1, sm: 2 }, position: "relative" }}>
               <IconButton
                 aria-label="Open navigation menu"
                 onClick={handleMenuToggle}
@@ -1562,17 +1560,25 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 spacing={{ xs: 0.75, md: 1 }}
                 alignItems="center"
                 sx={{
+                  position: "relative",
+                  zIndex: 2,
                   minWidth: 0,
-                  flex: { xs: "1 1 auto", lg: "0 1 360px" },
-                  width: { xs: "auto", lg: "30%" },
-                  maxWidth: { xs: "calc(100% - 56px)", md: "38%", lg: "360px" }
+                  flex: { xs: "1 1 auto", lg: "0 0 calc(50% - 236px)" },
+                  width: { xs: "auto", lg: "calc(50% - 236px)" },
+                  maxWidth: { xs: "calc(100% - 56px)", md: "48%", lg: "calc(50% - 236px)" },
+                  pr: { lg: 1 }
                 }}
               >
                 <Typography sx={{ fontSize: objAppBarHeadingFontSize, color: "var(--app-banner-text-color)", fontWeight: 800, lineHeight: 1, whiteSpace: "nowrap", flexShrink: 0 }}>
                   {appConfig.appName}
                 </Typography>
-                {strCompanyName || strCompanyLogoUrl ? (
+                {strCompanyName ? (
                   <Divider orientation="vertical" flexItem sx={{ borderColor: "var(--app-banner-border-color)", my: 0.5, flexShrink: 0 }} />
+                ) : null}
+                {strCompanyName ? (
+                  <Typography title={strCompanyName} noWrap sx={{ minWidth: 0, flex: "1 1 auto", fontSize: { xs: "0.78rem", md: "0.9rem", lg: "0.95rem" }, lineHeight: 1, fontWeight: 400, color: "#334155", letterSpacing: 0 }}>
+                    {strCompanyName}
+                  </Typography>
                 ) : null}
                 {strCompanyLogoUrl && strFailedCompanyLogoUrl !== strCompanyLogoUrl ? (
                   <Box
@@ -1580,17 +1586,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
                     src={strCompanyLogoUrl}
                     alt=""
                     onError={() => setStrFailedCompanyLogoUrl(strCompanyLogoUrl)}
-                    sx={{ height: { xs: 24, md: 30 }, maxWidth: { xs: 40, md: 64 }, objectFit: "contain", flexShrink: 0 }}
+                    sx={{ height: { xs: 20, md: 24 }, maxWidth: { xs: 32, md: 48 }, objectFit: "contain", flexShrink: 0 }}
                   />
-                ) : null}
-                {strCompanyName ? (
-                  <Typography title={strCompanyName} noWrap sx={{ minWidth: 0, flex: "1 1 auto", fontSize: { xs: "0.8rem", md: "0.95rem", lg: "1rem" }, lineHeight: 1, fontWeight: 400, color: "#64748b" }}>
-                    {strCompanyName}
-                  </Typography>
                 ) : null}
               </Stack>
 
-              <Box sx={{ order: { xs: 10, lg: 0 }, flex: { xs: "1 0 100%", lg: "0 1 440px" }, minWidth: 0, width: { lg: "36%" }, maxWidth: { lg: 440 }, position: { lg: "absolute" }, left: { lg: "50%" }, transform: { lg: "translateX(-50%)" } }}>
+              <Box sx={{ order: { xs: 10, lg: 0 }, flex: { xs: "1 0 100%", lg: "0 0 440px" }, minWidth: 0, width: { lg: 440 }, maxWidth: { lg: 440 }, position: { lg: "absolute" }, left: { lg: "50%" }, transform: { lg: "translateX(-50%)" }, zIndex: { lg: 1 } }}>
                 <BannerSearch key={strActivePortalContext + ":" + strPathname + ":" + intCurrentLanguageID} items={objMenu.lstMenuItems} disabled={blnPortalSwitching || blnLanguageSwitching || blnLoggingOut} />
               </Box>
 
