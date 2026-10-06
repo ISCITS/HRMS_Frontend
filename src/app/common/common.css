@@ -217,6 +217,13 @@
   margin: 0;
 }
 
+.app-breadcrumb-heading.MuiTypography-root {
+  color: #243b53;
+  font-size: inherit;
+  font-weight: 700;
+  line-height: inherit;
+}
+
 .app-master-first-column-link {
   background: transparent;
   border: 0;

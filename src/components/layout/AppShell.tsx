@@ -1028,6 +1028,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   // The employee editor has its own breadcrumb and action toolbar.
   const blnEmployeeEditorRoute = /^\/employees\/(?:add|(?:edit|view)\/[\w-]+)$/.test(strLowerPathname);
   const blnEmployeeSalaryEditorRoute = /^\/employee-salary\/\d+(?:\/revise)?$/.test(strLowerPathname);
+  const blnSalaryComponentListRoute = strLowerPathname === "/salary-components";
   // The id segment is a record_uuid now, not a number; a legacy numeric URL still matches.
   const blnSalaryComponentEditorRoute = /^\/salary-components\/(?:add|(?:edit|view)\/[\w-]+)$/.test(strLowerPathname);
   // The id segment is a record_uuid now, not a number; a legacy numeric URL still matches.
@@ -1542,7 +1543,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
               <Box sx={{ flex: 1, minWidth: 0 }} />
 
-              {strPathname === "/employees" || strPathname === "/departments" || strPathname === "/designations" || strPathname === "/settings" || strPathname === "/profile/change-password" || blnReferencedMasterRoute || blnEmployeeEditorRoute || blnDashboardRoute || blnEmployeeSalaryEditorRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute ? null : (
+              {strPathname === "/employees" || strPathname === "/departments" || strPathname === "/designations" || strPathname === "/settings" || strPathname === "/profile/change-password" || blnReferencedMasterRoute || blnEmployeeEditorRoute || blnDashboardRoute || blnEmployeeSalaryEditorRoute || blnSalaryComponentListRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute ? null : (
                 <Box
                   sx={{
                     display: "flex",
