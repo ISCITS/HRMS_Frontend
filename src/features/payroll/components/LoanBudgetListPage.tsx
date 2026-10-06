@@ -5,8 +5,8 @@ import { Alert, Box, Button, Link } from "@mui/material";
 import { useEffect, useState } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
-import { MasterBreadcrumbs, MasterGridSkeleton, MasterStatusPill, dicMasterRowSx } from "@/components/master/MasterListUi";
-import masterStyles from "@/components/master/MasterScreen.module.css";
+import { MasterBreadcrumbs, dicMasterRowSx } from "@/components/master/MasterListUi";
+import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { loanBudgetService } from "@/features/payroll/services/loanBudgetService";
 import type { LoanBudgetSummaryRecord } from "@/features/payroll/types";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -59,7 +59,7 @@ export default function LoanBudgetListPage({ intRefreshKey, onOpenBudget, onCrea
 
   const lstTableRows = lstRows.map((objRow) => ({
     id: objRow.intID,
-    strFinancialYearText: objRow.strFinancialYear,
+    strFinancialYearSort: objRow.strFinancialYear,
     strFinancialYear: (
       <Link
         className="app-master-first-column-link"
@@ -68,7 +68,7 @@ export default function LoanBudgetListPage({ intRefreshKey, onOpenBudget, onCrea
         underline="none"
         data-controlid="loan-budget.list.row.financial-year.link"
         data-row-key={String(objRow.intID)}
-        onClick={(objEvent) => { objEvent.stopPropagation(); onOpenBudget(objRow.strFinancialYear); }}
+        onClick={() => onOpenBudget(objRow.strFinancialYear)}
       >
         {objRow.strFinancialYear}
       </Link>
@@ -77,32 +77,31 @@ export default function LoanBudgetListPage({ intRefreshKey, onOpenBudget, onCrea
     decApprovedTotal: formatCurrency(objRow.decApprovedTotal),
     decOutstandingTotal: formatCurrency(objRow.decOutstandingTotal),
     decRemaining: formatCurrency(objRow.decRemaining),
-    status: <MasterStatusPill blnActive={objRow.blnIsActive} strActiveLabel={t("active", "Active")} strInactiveLabel={t("closed", "Closed")} />,
+    intStatusSort: objRow.blnIsActive ? 1 : 0,
+    status: (
+      <span className={`app-master-status-pill ${objRow.blnIsActive ? "app-master-status-active" : "app-master-status-inactive"}`}>
+        {objRow.blnIsActive ? t("active", "Active") : t("closed", "Closed")}
+      </span>
+    ),
   }));
 
   const lstTableColumns: CommonTableColumn<(typeof lstTableRows)[number]>[] = [
-    { field: "strFinancialYear", headerName: t("table_financial_year", "Financial Year"), width: 150, sortAccessor: (dicRow) => dicRow.strFinancialYearText },
+    { field: "strFinancialYear", headerName: t("table_financial_year", "Financial Year"), width: 170, sortAccessor: (dicRow) => String(dicRow.strFinancialYearSort) },
     { field: "decTotalBudgetAmount", headerName: t("table_budget", "Company Budget"), align: "right", width: 170 },
     { field: "decApprovedTotal", headerName: t("table_approved", "Approved"), align: "right", width: 160 },
     { field: "decOutstandingTotal", headerName: t("table_outstanding", "Outstanding"), align: "right", width: 160 },
     { field: "decRemaining", headerName: t("table_remaining", "Remaining"), align: "right", width: 160 },
-    { field: "status", headerName: t("table_status", "Status"), sortable: false, filterable: false, width: 120 },
+    { field: "status", headerName: t("table_status", "Status"), filterable: false, width: 120, sortAccessor: (dicRow) => Number(dicRow.intStatusSort) },
   ];
 
-  const blnBusy = blnLoading || blnRightsLoading || blnLoadingLabels;
-
   return (
-    <Box className={masterStyles.page}>
-      <MasterBreadcrumbs strSection={t("breadcrumb_section", "Payroll")} strTitle={t("breadcrumb_title", "Loan Budget")} />
+    <Box className={styles.page}>
+      <MasterBreadcrumbs strSection={t("breadcrumb_loan_management", "Loan Management")} strTitle={t("breadcrumb_loan_budget", "Loan Budget")} />
       {strRightsError || strLabelError ? <Alert severity="warning">{strRightsError || strLabelError}</Alert> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
-      {!blnCanView && !blnBusy ? <Alert severity="warning">{t("no_access", "Loan budget access is not available for your user group.")}</Alert> : null}
-      {blnBusy ? (
-        <Box className={masterStyles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
-          <MasterGridSkeleton strControlId="loan-budget.list.skeleton" intColumns={6} />
-        </Box>
-      ) : blnCanView ? (
-        <Box className={masterStyles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+      {!blnCanView && !blnRightsLoading ? <Alert severity="warning">{t("no_access", "Loan budget access is not available for your user group.")}</Alert> : null}
+      {blnCanView || blnRightsLoading ? (
+        <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
           <CommonTable
             columns={lstTableColumns}
             rows={lstTableRows}
@@ -111,17 +110,19 @@ export default function LoanBudgetListPage({ intRefreshKey, onOpenBudget, onCrea
             showPaginationSummary
             emptyMessage={t("empty_message", "No loan budgets configured yet.")}
             testIdPrefix="loan-budget.list"
+            loading={blnLoading || blnRightsLoading || blnLoadingLabels}
+            skeletonRowCount={8}
             toolbarLeft={
               blnCanCreate ? (
-                <Button className={masterStyles.primaryButton} startIcon={<AddRoundedIcon />} onClick={onCreateBudget}>
+                <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={onCreateBudget}>
                   {t("add_button", "Add Budget")}
                 </Button>
               ) : undefined
             }
-            onRowClick={(dicRow) => onOpenBudget(dicRow.strFinancialYearText)}
-            minTableWidth={900}
+            minTableWidth={940}
             hideRowClickHint
             getRowSx={() => dicMasterRowSx}
+            onRowClick={(dicRow) => onOpenBudget(String(dicRow.strFinancialYearSort))}
             sx={{ p: 0, boxShadow: "none", background: "transparent" }}
           />
         </Box>

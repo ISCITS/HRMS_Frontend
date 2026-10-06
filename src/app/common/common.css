@@ -247,7 +247,7 @@
 .app-master-first-column-link:hover,
 .app-master-first-column-link.MuiLink-root:hover {
   color: #064a9f;
-  text-decoration: underline;
+  text-decoration: underline !important;
 }
 
 .app-master-status-pill {

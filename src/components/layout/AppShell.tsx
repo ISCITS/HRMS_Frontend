@@ -435,11 +435,11 @@ function getLocalizedHeaderTitle(
         ? tHeader("edit_loans_advances", "Edit Loans Advances")
         : blnViewMode
           ? tHeader("view_loans_advances", "View Loans Advances")
-          : tHeader("page_title_view", "Payroll / Loans & Advances / View");
+          : tHeader("page_title_view", "Loan Management / Loans & Advances / View");
     }
     return strLowerPath.startsWith("/ess/")
       ? tHeader("ess_header_title", "ESS / Loans & Advances")
-      : tHeader("header_title", "Payroll / Loans & Advances");
+      : tHeader("header_title", "Loan Management / Loans & Advances");
   }
   if (strHeaderModuleName === "fnf-settlements") {
     if (strLowerPath === "/payroll/fnf-settlements/new") {
@@ -1035,6 +1035,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const blnUserGroupListRoute = strLowerPathname === "/security/user-groups";
   const blnSalaryComponentListRoute = strLowerPathname === "/salary-components";
   const blnSalaryStructureListRoute = strLowerPathname === "/salary-structures";
+  const blnCtcFormatRoute = strLowerPathname === "/reports/ctc-format";
+  const blnLoanBudgetListRoute = strLowerPathname === "/payroll/loan-budget";
+  const blnLoanRecoveryRoute = strLowerPathname === "/payroll/loan-finalization";
+  const blnLoanAdvanceListRoute = strLowerPathname === "/payroll/loans-advances" || strLowerPathname === "/ess/loans-advances";
   const blnLeaveTypeListRoute = strLowerPathname === "/leave";
   // The id segment is a record_uuid now, not a number; a legacy numeric URL still matches.
   const blnSalaryComponentEditorRoute = /^\/salary-components\/(?:add|(?:edit|view)\/[\w-]+)$/.test(strLowerPathname);
@@ -1581,12 +1585,22 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 <AppMenuLogo />
               </IconButton>
 
-              <Stack direction="row" spacing={{ xs: 1, md: 1.5 }} alignItems="center" sx={{ minWidth: 0, flexShrink: 1, maxWidth: { xs: "65%", md: "38%", lg: "30%" } }}>
+              <Stack
+                direction="row"
+                spacing={{ xs: 0.75, md: 1 }}
+                alignItems="center"
+                sx={{
+                  minWidth: 0,
+                  flex: { xs: "1 1 auto", lg: "0 1 360px" },
+                  width: { xs: "auto", lg: "30%" },
+                  maxWidth: { xs: "calc(100% - 56px)", md: "38%", lg: "360px" }
+                }}
+              >
                 <Typography sx={{ fontSize: objAppBarHeadingFontSize, color: "var(--app-banner-text-color)", fontWeight: 800, lineHeight: 1, whiteSpace: "nowrap", flexShrink: 0 }}>
                   {appConfig.appName}
                 </Typography>
                 {strCompanyName || strCompanyLogoUrl ? (
-                  <Divider orientation="vertical" flexItem sx={{ borderColor: "var(--app-banner-border-color)", my: 0.5 }} />
+                  <Divider orientation="vertical" flexItem sx={{ borderColor: "var(--app-banner-border-color)", my: 0.5, flexShrink: 0 }} />
                 ) : null}
                 {strCompanyLogoUrl && strFailedCompanyLogoUrl !== strCompanyLogoUrl ? (
                   <Box
@@ -1598,7 +1612,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   />
                 ) : null}
                 {strCompanyName ? (
-                  <Typography title={strCompanyName} noWrap sx={{ minWidth: 0, fontSize: { xs: "0.8rem", md: "0.95rem", lg: "1rem" }, lineHeight: 1, fontWeight: 400, color: "#64748b" }}>
+                  <Typography title={strCompanyName} noWrap sx={{ minWidth: 0, flex: "1 1 auto", fontSize: { xs: "0.8rem", md: "0.95rem", lg: "1rem" }, lineHeight: 1, fontWeight: 400, color: "#64748b" }}>
                     {strCompanyName}
                   </Typography>
                 ) : null}
@@ -1611,7 +1625,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               <Box sx={{ flex: 1, minWidth: 0 }} />
 
 
-              {strPathname === "/employees" || strPathname === "/departments" || strPathname === "/designations" || strPathname === "/settings" || strPathname === "/profile/change-password" || blnReferencedMasterRoute || blnDepartmentStyleMasterRoute || blnEmployeeEditorRoute || blnDashboardRoute || blnEmployeeSalaryListRoute || blnEmployeeSalaryEditorRoute || blnUserListRoute || blnUserGroupListRoute || blnSalaryComponentListRoute || blnSalaryStructureListRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute || blnLeaveAttendanceRoute || blnPayrollProcessLogRunRoute ? null : (
+              {strPathname === "/employees" || strPathname === "/departments" || strPathname === "/designations" || strPathname === "/settings" || strPathname === "/profile/change-password" || blnReferencedMasterRoute || blnDepartmentStyleMasterRoute || blnEmployeeEditorRoute || blnDashboardRoute || blnEmployeeSalaryListRoute || blnEmployeeSalaryEditorRoute || blnUserListRoute || blnUserGroupListRoute || blnSalaryComponentListRoute || blnSalaryStructureListRoute || blnCtcFormatRoute || blnLoanBudgetListRoute || blnLoanRecoveryRoute || blnLoanAdvanceListRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute || blnLeaveAttendanceRoute || blnPayrollProcessLogRunRoute ? null : (
                 <Box
                   sx={{
                     display: "flex",

@@ -2,17 +2,19 @@
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import FilterAltOutlinedIcon from "@mui/icons-material/FilterAltOutlined";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Autocomplete, Box, Button, InputAdornment, Link, MenuItem, TextField, Typography } from "@mui/material";
+import ViewColumnRoundedIcon from "@mui/icons-material/ViewColumnRounded";
+import { Alert, Autocomplete, Box, Breadcrumbs, Button, Checkbox, IconButton, Link, Menu, MenuItem, Popover, Skeleton, TextField, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { MenuItem as AuthMenuItem } from "@/models/AuthModels";
 
-import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
-import { MasterBreadcrumbs, MasterGridSkeleton, MasterMoreFilters, dicMasterRowSx, onSearchEnter } from "@/components/master/MasterListUi";
-import masterStyles from "@/components/master/MasterScreen.module.css";
 import LoanAdvanceStatusBadge from "@/features/payroll/components/LoanAdvanceStatusBadge";
+import styles from "@/components/master/MasterScreen.module.css";
 import { employeeService } from "@/features/employee/services/employeeService";
 import type { EmployeeListRecord } from "@/features/employee/types";
 import { loanAdvanceService } from "@/features/payroll/services/loanAdvanceService";
@@ -24,6 +26,10 @@ import { authApiService } from "@/services/auth/AuthApiService";
 const lstModuleCodes = ["PAYROLL_LOANS_ADVANCES", "LOANS_ADVANCES", "LOANS_AND_ADVANCES"];
 const lstEssModuleCodes = ["ESS_LOANS_ADVANCES", "ESS_LOANS_AND_ADVANCES", "LOANS_ADVANCES", "LOANS_AND_ADVANCES"];
 const lstStatuses = ["All", "draft", "sent_back", "pending_approval", "approved", "disbursed", "active", "closed", "rejected", "cancelled"];
+const intLoanAdvanceSkeletonRows = 8;
+const strLoanAdvanceSkeletonColumns = "170px 130px 180px 150px 180px 160px 160px 150px";
+const lstOptionalColumnKeys = ["outstandingAmount", "installmentAmount", "recoveryStartMonth", "perquisiteTax"] as const;
+type OptionalColumnKey = (typeof lstOptionalColumnKeys)[number];
 
 const dicPayrollActionAliases: Record<string, string[]> = {
   view: ["loan_adv_view"],
@@ -43,6 +49,10 @@ function formatCurrency(decValue?: number | null) {
 
 function formatMonth(strValue?: string | null) {
   return strValue ? strValue.slice(0, 7) : "-";
+}
+
+function formatLoanAdvanceStatusForSort(strStatus?: string | null) {
+  return (strStatus || "").replaceAll("_", " ");
 }
 
 function getEmployeeName(objRow: LoanAdvanceRecord) {
@@ -65,6 +75,46 @@ function hasMenuRoute(lstItems: AuthMenuItem[], strRoute: string): boolean {
   return lstItems.some((objItem) => objItem.strRoute === strRoute || hasMenuRoute(objItem.lstChildren, strRoute));
 }
 
+function LoanAdvanceGridSkeleton() {
+  return (
+    <Box
+      data-controlid="loan-advance.list.skeleton"
+      sx={{ border: "1px solid #e8eef5", borderRadius: "8px", overflow: "hidden", backgroundColor: "#fff" }}
+    >
+      <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, px: 1.75, py: 1.25, flexWrap: "wrap" }}>
+        <Skeleton variant="rounded" width={132} height={36} />
+        <Box sx={{ display: "flex", gap: 1.25, alignItems: "center", flexWrap: "wrap" }}>
+          <Skeleton variant="rounded" width={64} height={36} />
+          <Skeleton variant="text" width={72} height={24} />
+          <Skeleton variant="rounded" width={116} height={32} />
+        </Box>
+      </Box>
+      <Box sx={{ minWidth: 1280 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: strLoanAdvanceSkeletonColumns, bgcolor: "#edf3f9", borderTop: "1px solid #e8eef5", borderBottom: "1px solid #d9e3ee" }}>
+          {Array.from({ length: 8 }).map((_, intColumn) => (
+            <Box key={intColumn} sx={{ px: 2, py: 1 }}>
+              <Skeleton variant="text" width={intColumn === 7 ? 76 : 112} height={22} />
+            </Box>
+          ))}
+        </Box>
+        {Array.from({ length: intLoanAdvanceSkeletonRows }).map((_, intIndex) => (
+          <Box key={intIndex} sx={{ display: "grid", gridTemplateColumns: strLoanAdvanceSkeletonColumns, borderBottom: "1px solid #edf1f6", minHeight: 40, alignItems: "center" }}>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="rounded" width={70} height={24} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${58 + (intIndex % 3) * 8}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width="64%" height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${48 + (intIndex % 2) * 12}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width="54%" height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width="68%" height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width="60%" height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width="56%" height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="rounded" width={96} height={22} /></Box>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+}
+
 export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?: "payroll" | "ess" }) {
   const objRouter = useRouter();
   const { t, blnLoadingLabels, strLabelError } = useModuleLabels("loans-advances");
@@ -75,6 +125,9 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnHasMenuFallbackAccess, setBlnHasMenuFallbackAccess] = useState(false);
   const [strError, setStrError] = useState("");
+  const [objMoreFiltersAnchor, setObjMoreFiltersAnchor] = useState<HTMLElement | null>(null);
+  const [objColumnsAnchor, setObjColumnsAnchor] = useState<HTMLElement | null>(null);
+  const [lstVisibleOptionalColumns, setLstVisibleOptionalColumns] = useState<OptionalColumnKey[]>([]);
   const [dicFilters, setDicFilters] = useState({
     employee_code: "",
     department: "",
@@ -84,14 +137,15 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
     date_from: "",
     date_to: "",
   });
-  // Last filters sent to the server; "More filters" > Cancel restores its fields from here.
-  const [dicAppliedFilters, setDicAppliedFilters] = useState(dicFilters);
   const blnIsEssMode = strMode === "ess";
   const canLoanAction = (strAction: "view" | "create" | "edit") =>
     (blnIsEssMode ? dicEssActionAliases[strAction] : dicPayrollActionAliases[strAction]).some((strAlias) => canDoAny(strAlias));
   const blnCanView = blnHasMenuFallbackAccess || canViewAny() || canLoanAction("view");
   const blnCanCreate = canLoanAction("create");
   const blnCanEdit = canLoanAction("edit");
+  const blnCanExport = canDoAny("export");
+  const blnSearchPanelFrozen = blnLoading || blnRightsLoading || blnLoadingLabels;
+  const intActiveMoreFilters = (dicFilters.date_from ? 1 : 0) + (dicFilters.date_to ? 1 : 0);
 
   useEffect(() => {
     let blnMounted = true;
@@ -129,7 +183,6 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
     }
     setBlnLoading(true);
     setStrError("");
-    setDicAppliedFilters(dicNextFilters);
     try {
       setLstRows(await (blnIsEssMode ? loanAdvanceService.listEssLoans(dicNextFilters) : loanAdvanceService.listLoans(dicNextFilters)));
     } catch (objError) {
@@ -200,20 +253,24 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
       lstRows.map((objRow) => ({
         id: objRow.intID,
         strRecordUUID: objRow.strRecordUUID,
-        employeeNameSort: getEmployeeName(objRow),
         employeeName: (
           <Link
             className="app-master-first-column-link"
             component="button"
             type="button"
             underline="none"
-            data-controlid="loan-advance.list.row.employee-name.link"
+            data-controlid="loan-advance.list.row.employee.link"
             data-row-key={String(objRow.intID)}
-            onClick={(objEvent) => { objEvent.stopPropagation(); openLoan(objRow.strRecordUUID); }}
+            onClick={(objEvent) => {
+              objEvent.stopPropagation();
+              if (blnSearchPanelFrozen || (!blnCanEdit && !blnCanView)) return;
+              objRouter.push(blnIsEssMode ? `/ess/loans-advances/${objRow.strRecordUUID}` : `/payroll/loans-advances/${objRow.strRecordUUID}`);
+            }}
           >
             {getEmployeeName(objRow)}
           </Link>
         ),
+        employeeNameSortValue: getEmployeeName(objRow),
         employeeCode: <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{objRow.objEmployee?.strEmployeeCode || "-"}</Typography>,
         department: objRow.objEmployee?.strDepartmentName || "-",
         requestType: t(`type_${objRow.strRequestType}`, objRow.strRequestType),
@@ -229,30 +286,46 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
         recoveryStartMonth: formatMonth(objRow.dtRecoveryStartMonth),
         perquisiteTax: objRow.blnPerquisiteTaxApplicable ? t("yes", "Yes") : t("no", "No"),
         status: <LoanAdvanceStatusBadge strStatus={objRow.strWorkflowStatus} t={t} />,
+        statusSortValue: formatLoanAdvanceStatusForSort(objRow.strWorkflowStatus),
       })),
-    [blnIsEssMode, lstRows, objRouter, t]
+    [blnCanEdit, blnCanView, blnIsEssMode, blnSearchPanelFrozen, lstRows, objRouter, t]
   );
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
-    () => [
-      { field: "employeeName", headerName: t("table_employee_name", "Employee Name"), width: 170, sortAccessor: (dicRow) => dicRow.employeeNameSort },
+    () => {
+      const lstBaseColumns: CommonTableColumn<(typeof lstTableRows)[number]>[] = [
+      { field: "employeeName", headerName: t("table_employee_name", "Employee Name"), width: 170, sortAccessor: (dicRow) => dicRow.employeeNameSortValue },
       { field: "employeeCode", headerName: t("table_employee_code", "Employee Code"), width: 130, sortable: false },
       { field: "department", headerName: t("table_department", "Department"), width: 180 },
       { field: "requestType", headerName: t("table_request_type", "Request Type"), width: 150 },
       { field: "category", headerName: t("table_category", "Category"), width: 180 },
       { field: "requestedAmount", headerName: t("table_requested_amount", "Requested Amount"), align: "right", width: 160, sortAccessor: (dicRow) => dicRow.requestedAmountSortValue },
       { field: "approvedAmount", headerName: t("table_approved_amount", "Approved Amount"), align: "right", width: 160, sortAccessor: (dicRow) => dicRow.approvedAmountSortValue },
-      { field: "outstandingAmount", headerName: t("table_outstanding_amount", "Outstanding Amount"), align: "right", width: 170, sortAccessor: (dicRow) => dicRow.outstandingAmountSortValue },
-      { field: "installmentAmount", headerName: t("table_installment", "Installment"), align: "right", width: 140, sortAccessor: (dicRow) => dicRow.installmentAmountSortValue },
-      { field: "recoveryStartMonth", headerName: t("table_recovery_start_month", "Recovery Start Month"), width: 170 },
-      { field: "perquisiteTax", headerName: t("table_perquisite_tax", "Perquisite Tax"), width: 140 },
-      { field: "status", headerName: t("table_status", "Status"), sortable: false, filterable: false, width: 150 },
-    ],
-    [lstTableRows, t]
+      { field: "status", headerName: t("table_status", "Status"), filterable: false, width: 150, sortAccessor: (dicRow) => dicRow.statusSortValue },
+      ];
+      const lstOptionalColumns: CommonTableColumn<(typeof lstTableRows)[number]>[] = [];
+      if (lstVisibleOptionalColumns.includes("outstandingAmount")) {
+        lstOptionalColumns.push({ field: "outstandingAmount", headerName: t("table_outstanding_amount", "Outstanding Amount"), align: "right", width: 170, sortAccessor: (dicRow) => dicRow.outstandingAmountSortValue });
+      }
+      if (lstVisibleOptionalColumns.includes("installmentAmount")) {
+        lstOptionalColumns.push({ field: "installmentAmount", headerName: t("table_installment", "Installment"), align: "right", width: 140, sortAccessor: (dicRow) => dicRow.installmentAmountSortValue });
+      }
+      if (lstVisibleOptionalColumns.includes("recoveryStartMonth")) {
+        lstOptionalColumns.push({ field: "recoveryStartMonth", headerName: t("table_recovery_start_month", "Recovery Start Month"), width: 170 });
+      }
+      if (lstVisibleOptionalColumns.includes("perquisiteTax")) {
+        lstOptionalColumns.push({ field: "perquisiteTax", headerName: t("table_perquisite_tax", "Perquisite Tax"), width: 140 });
+      }
+      return [...lstBaseColumns, ...lstOptionalColumns];
+    },
+    [lstTableRows, lstVisibleOptionalColumns, t]
   );
-
-  const blnBusy = blnLoading || blnRightsLoading || blnLoadingLabels;
-  const intActiveMoreFilters = (dicFilters.category_id ? 1 : 0) + (dicFilters.date_from ? 1 : 0) + (dicFilters.date_to ? 1 : 0);
+  const dicOptionalColumnLabels: Record<OptionalColumnKey, string> = {
+    outstandingAmount: t("table_outstanding_amount", "Outstanding Amount"),
+    installmentAmount: t("table_installment", "Installment"),
+    recoveryStartMonth: t("table_recovery_start_month", "Recovery Start Month"),
+    perquisiteTax: t("table_perquisite_tax", "Perquisite Tax"),
+  };
 
   function clearFilters() {
     const dicReset = { employee_code: "", department: "", request_type: "All", category_id: "", status: "All", date_from: "", date_to: "" };
@@ -260,9 +333,20 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
     void loadRows(dicReset);
   }
 
-  function applySearch() {
-    if (blnBusy) return;
+  function applyFilters() {
     void loadRows();
+  }
+
+  function cancelMoreFilters() {
+    setObjMoreFiltersAnchor(null);
+  }
+
+  function toggleOptionalColumn(strColumnKey: OptionalColumnKey) {
+    setLstVisibleOptionalColumns((lstPrevious) => (
+      lstPrevious.includes(strColumnKey)
+        ? lstPrevious.filter((strKey) => strKey !== strColumnKey)
+        : [...lstPrevious, strColumnKey]
+    ));
   }
 
   const objSelectMenuProps = {
@@ -278,126 +362,181 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
     }
   } as const;
 
-  const dicSearchAdornment = <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment>;
+  const objFilters = (
+    <Box
+      className={`${styles.searchRow} ${styles.loanAdvanceSearchRow}`}
+      aria-busy={blnSearchPanelFrozen}
+      sx={{
+        alignItems: "center",
+        "& .MuiButton-root": { alignSelf: "center", whiteSpace: "nowrap" },
+        "& .MuiOutlinedInput-root": { borderRadius: "6px", backgroundColor: "#fff" },
+      }}
+    >
+      <Autocomplete
+        fullWidth
+        size="small"
+        options={lstEmployeeOptions}
+        value={lstEmployeeOptions.find((objEmployee) => objEmployee.strEmployeeCode === dicFilters.employee_code) || null}
+        getOptionLabel={(objOption) => getEmployeeLabel(objOption)}
+        isOptionEqualToValue={(objOption, objValue) => objOption.strEmployeeCode === objValue.strEmployeeCode}
+        onChange={(_, objValue) => setDicFilters((d) => ({ ...d, employee_code: objValue?.strEmployeeCode || "" }))}
+        slotProps={{ popper: { sx: { zIndex: 1802 } } }}
+        disabled={blnSearchPanelFrozen}
+        renderInput={(params) => <TextField {...params} className="app-mui-text-field" label={t("filter_employee", "Employee")} placeholder={t("search_employee", "Search employee...")}
+          InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "#94a3b8", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />}
+      />
+      <Autocomplete
+        fullWidth
+        size="small"
+        options={lstDepartmentOptions}
+        value={dicFilters.department || null}
+        onChange={(_, strValue) => setDicFilters((d) => ({ ...d, department: strValue || "" }))}
+        slotProps={{ popper: { sx: { zIndex: 1802 } } }}
+        disabled={blnSearchPanelFrozen}
+        renderInput={(params) => <TextField {...params} className="app-mui-text-field" label={t("filter_department", "Department")} placeholder="Search department..."
+          InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "#94a3b8", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />}
+      />
+      <TextField className="app-mui-text-field" fullWidth select size="small" label={t("filter_request_type", "Request Type")} value={dicFilters.request_type} onChange={(e) => setDicFilters((d) => ({ ...d, request_type: e.target.value }))} disabled={blnSearchPanelFrozen} SelectProps={{ MenuProps: objSelectMenuProps }}>
+        {["All", "loan", "advance"].map((strValue) => <MenuItem key={strValue} value={strValue}>{strValue === "All" ? t("all", "All") : t(`type_${strValue}`, strValue)}</MenuItem>)}
+      </TextField>
+      <Autocomplete
+        fullWidth
+        size="small"
+        options={lstCategories}
+        value={lstCategories.find((objCategory) => String(objCategory.intID) === dicFilters.category_id) || null}
+        getOptionLabel={(objOption) => t(toLabelKey(objOption.strCategoryName), objOption.strCategoryName)}
+        isOptionEqualToValue={(objOption, objValue) => objOption.intID === objValue.intID}
+        onChange={(_, objValue) => setDicFilters((d) => ({ ...d, category_id: objValue ? String(objValue.intID) : "" }))}
+        slotProps={{ popper: { sx: { zIndex: 1802 } } }}
+        disabled={blnSearchPanelFrozen}
+        renderInput={(params) => <TextField {...params} className="app-mui-text-field" label={t("filter_category", "Category")} placeholder={t("all", "All")}
+          InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "#94a3b8", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />}
+      />
+      <Autocomplete
+        fullWidth
+        size="small"
+        options={lstStatuses}
+        value={dicFilters.status}
+        getOptionLabel={(strStatus) => strStatus === "All" ? t("all", "All") : t(`status_${strStatus}`, strStatus.replaceAll("_", " "))}
+        onChange={(_, strValue) => setDicFilters((d) => ({ ...d, status: strValue || "All" }))}
+        slotProps={{ popper: { sx: { zIndex: 1802 } } }}
+        disabled={blnSearchPanelFrozen}
+        renderInput={(params) => <TextField {...params} className="app-mui-text-field" label={t("filter_status", "Status")} placeholder={t("all", "All")}
+          InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "#94a3b8", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />}
+      />
+      <Button className={`${styles.secondaryButton} ${styles.loanAdvanceFilterButton}`} startIcon={<FilterAltOutlinedIcon />} onClick={(objEvent) => setObjMoreFiltersAnchor(objEvent.currentTarget)} disabled={blnSearchPanelFrozen}>
+        {t("more_filters", "More filters")}{intActiveMoreFilters > 0 ? ` (${intActiveMoreFilters})` : ""}
+      </Button>
+      <Box className={styles.searchActions}>
+        <Button className={`${styles.primaryButton} ${styles.loanAdvanceFilterButton}`} startIcon={<SearchRoundedIcon />} onClick={applyFilters} disabled={blnSearchPanelFrozen}>{t("search", "Search")}</Button>
+      </Box>
+      <Box className={styles.searchActions}>
+        <Button className={`${styles.secondaryButton} ${styles.loanAdvanceFilterButton}`} startIcon={<ClearRoundedIcon />} onClick={clearFilters} disabled={blnSearchPanelFrozen}>{t("clear", "Clear")}</Button>
+      </Box>
+    </Box>
+  );
 
   return (
-    <Box className={masterStyles.page}>
-      <MasterBreadcrumbs
-        strSection={blnIsEssMode ? t("breadcrumb_section_ess", "Employee Services") : t("breadcrumb_section", "Payroll")}
-        strTitle={blnIsEssMode ? t("breadcrumb_title_ess", "My Loans & Advances") : t("breadcrumb_title", "Loans & Advances")}
-      />
-
-      <Box className={masterStyles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
-        <Box
-          className={masterStyles.searchRow}
-          aria-busy={blnBusy}
-          onKeyDown={onSearchEnter(applySearch)}
-          sx={{
-            alignItems: "center",
-            "&&": { gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "minmax(200px, 1.3fr) minmax(160px, 1fr) minmax(140px, 0.8fr) minmax(150px, 0.9fr) max-content max-content max-content" } },
-            "& .MuiButton-root": { alignSelf: "center", whiteSpace: "nowrap" },
-          }}
+    <Box className={styles.page}>
+      <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />}>
+        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{blnIsEssMode ? t("breadcrumb_ess", "ESS") : t("breadcrumb_loan_management", "Loan Management")}</Typography>
+        <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{blnIsEssMode ? t("ess_page_title", "My Loans & Advances") : t("page_title", "Loans & Advances")}</Typography>
+      </Breadcrumbs>
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none", overflowX: "auto" }}>
+        {objFilters}
+        <Popover
+          open={Boolean(objMoreFiltersAnchor)}
+          anchorEl={objMoreFiltersAnchor}
+          onClose={cancelMoreFilters}
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+          transformOrigin={{ vertical: "top", horizontal: "right" }}
+          slotProps={{ paper: { sx: { mt: 1, p: 2, width: 340, borderRadius: "10px" } } }}
         >
-          <Autocomplete
-            fullWidth
-            size="small"
-            options={lstEmployeeOptions}
-            value={lstEmployeeOptions.find((objEmployee) => objEmployee.strEmployeeCode === dicFilters.employee_code) || null}
-            getOptionLabel={(objOption) => getEmployeeLabel(objOption)}
-            isOptionEqualToValue={(objOption, objValue) => objOption.strEmployeeCode === objValue.strEmployeeCode}
-            onChange={(_, objValue) => setDicFilters((d) => ({ ...d, employee_code: objValue?.strEmployeeCode || "" }))}
-            disabled={blnBusy}
-            slotProps={{ popper: { sx: { zIndex: 1802 } } }}
-            renderInput={(params) => <TextField {...params} className="app-mui-text-field" size="small" label={t("filter_employee", "Employee")} placeholder={t("search_employee", "Search employee...")}
-              InputProps={{ ...params.InputProps, startAdornment: (<>{dicSearchAdornment}{params.InputProps.startAdornment}</>) }} />}
-          />
-          <Autocomplete
-            fullWidth
-            size="small"
-            options={lstDepartmentOptions}
-            value={dicFilters.department || null}
-            onChange={(_, strValue) => setDicFilters((d) => ({ ...d, department: strValue || "" }))}
-            disabled={blnBusy}
-            slotProps={{ popper: { sx: { zIndex: 1802 } } }}
-            renderInput={(params) => <TextField {...params} className="app-mui-text-field" size="small" label={t("filter_department", "Department")} placeholder="Search department..."
-              InputProps={{ ...params.InputProps, startAdornment: (<>{dicSearchAdornment}{params.InputProps.startAdornment}</>) }} />}
-          />
-          <TextField className="app-mui-text-field" fullWidth select size="small" label={t("filter_request_type", "Request Type")} value={dicFilters.request_type} onChange={(e) => setDicFilters((d) => ({ ...d, request_type: e.target.value }))} disabled={blnBusy} SelectProps={{ MenuProps: objSelectMenuProps }}>
-            {["All", "loan", "advance"].map((strValue) => <MenuItem key={strValue} value={strValue}>{strValue === "All" ? t("all", "All") : t(`type_${strValue}`, strValue)}</MenuItem>)}
-          </TextField>
-          <CommonSearchableSelect
-            className="app-mui-text-field"
-            fullWidth
-            size="small"
-            disabled={blnBusy}
-            label={t("filter_status", "Status")}
-            value={dicFilters.status}
-            options={lstStatuses.map((strStatus) => ({ intID: strStatus, strLabel: strStatus === "All" ? t("all", "All") : t(`status_${strStatus}`, strStatus.replaceAll("_", " ")) }))}
-            onChange={(strValue) => setDicFilters((d) => ({ ...d, status: strValue || "All" }))}
-          />
-          <MasterMoreFilters
-            strControlPrefix="loan-advance.list"
-            intActiveCount={intActiveMoreFilters}
-            blnDisabled={blnBusy}
-            onApply={applySearch}
-            onClearAll={() => setDicFilters((d) => ({ ...d, category_id: "", date_from: "", date_to: "" }))}
-            onCancel={() => setDicFilters((d) => ({ ...d, category_id: dicAppliedFilters.category_id, date_from: dicAppliedFilters.date_from, date_to: dicAppliedFilters.date_to }))}
-          >
-            <CommonSearchableSelect
-              className="app-mui-text-field"
-              fullWidth
-              size="small"
-              label={t("filter_category", "Category")}
-              value={dicFilters.category_id ? Number(dicFilters.category_id) : ""}
-              options={lstCategories.map((objCategory) => ({ intID: objCategory.intID, strLabel: t(toLabelKey(objCategory.strCategoryName), objCategory.strCategoryName) }))}
-              onChange={(intValue) => setDicFilters((d) => ({ ...d, category_id: intValue === "" ? "" : String(intValue) }))}
-              placeholder={t("all_categories", "All categories")}
-            />
-            <TextField className="app-mui-text-field" fullWidth size="small" type="date" label={t("filter_date_from", "Date From")} InputLabelProps={{ shrink: true }} value={dicFilters.date_from} onChange={(e) => setDicFilters((d) => ({ ...d, date_from: e.target.value }))} />
-            <TextField className="app-mui-text-field" fullWidth size="small" type="date" label={t("filter_date_to", "Date To")} InputLabelProps={{ shrink: true }} value={dicFilters.date_to} onChange={(e) => setDicFilters((d) => ({ ...d, date_to: e.target.value }))} />
-          </MasterMoreFilters>
-          <Box className={masterStyles.searchActions}>
-            <Button className={masterStyles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={applySearch} disabled={blnBusy}>{t("search", "Search")}</Button>
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1.5 }}>
+            <Typography sx={{ fontSize: "14px", fontWeight: 700, color: "#0f172a" }}>{t("more_filters", "More Filters")}</Typography>
+            <IconButton aria-label={t("close", "Close")} onClick={cancelMoreFilters} size="small" sx={{ color: "#94a3b8" }}><CloseRoundedIcon fontSize="small" /></IconButton>
           </Box>
-          <Box className={masterStyles.searchActions}>
-            <Button className={masterStyles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} disabled={blnBusy}>{t("clear", "Clear")}</Button>
+          <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1.5 }}>
+            <TextField className="app-mui-text-field" fullWidth size="small" type="date" label={t("filter_date_from", "From Date")} InputLabelProps={{ shrink: true }} value={dicFilters.date_from} onChange={(e) => setDicFilters((d) => ({ ...d, date_from: e.target.value }))} />
+            <TextField className="app-mui-text-field" fullWidth size="small" type="date" label={t("filter_date_to", "To Date")} InputLabelProps={{ shrink: true }} value={dicFilters.date_to} onChange={(e) => setDicFilters((d) => ({ ...d, date_to: e.target.value }))} />
           </Box>
-        </Box>
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mt: 2 }}>
+            <Link component="button" type="button" underline="hover" onClick={() => setDicFilters((d) => ({ ...d, date_from: "", date_to: "" }))} sx={{ fontSize: "12px", fontWeight: 600 }}>{t("clear_all", "Clear all")}</Link>
+            <Box sx={{ display: "flex", gap: 1 }}>
+              <Button className={styles.secondaryButton} onClick={cancelMoreFilters}>{t("cancel", "Cancel")}</Button>
+              <Button className={styles.primaryButton} onClick={() => { setObjMoreFiltersAnchor(null); applyFilters(); }}>{t("apply", "Apply")}</Button>
+            </Box>
+          </Box>
+        </Popover>
       </Box>
       {strRightsError || strLabelError ? <Alert severity="warning">{strRightsError || strLabelError}</Alert> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {!blnCanView && !blnRightsLoading ? <Alert severity="warning">{blnIsEssMode ? t("ess_no_access", "ESS loans and advances access is not available for your user group.") : t("no_access", "Loans and advances access is not available for your user group.")}</Alert> : null}
-      {blnBusy ? (
-        <Box className={masterStyles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
-          <MasterGridSkeleton strControlId="loan-advance.list.skeleton" intColumns={9} />
-        </Box>
-      ) : blnCanView ? (
-        <Box className={masterStyles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+      <Box className={styles.tableCard} sx={{ p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        {blnLoading || blnRightsLoading || blnLoadingLabels ? (
+          <LoanAdvanceGridSkeleton />
+        ) : !blnCanView ? (
+          <Box className={styles.emptyState}>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{blnIsEssMode ? t("ess_no_access", "ESS loans and advances access is not available for your user group.") : t("no_access", "Loans and advances access is not available for your user group.")}</Typography>
+          </Box>
+        ) : (
           <CommonTable
             columns={lstTableColumns}
             rows={lstTableRows}
             rowIdField="id"
             exportFileName={blnIsEssMode ? "ess-loans-advances" : "payroll-loans-advances"}
+            showExportOptions={blnCanExport}
             showPaginationSummary
             emptyMessage={t("empty_message", "No loans or advances found.")}
             testIdPrefix="loan-advance.list"
             toolbarLeft={blnCanCreate ? (
               <Button
-                className={masterStyles.primaryButton}
+                className={styles.primaryButton}
                 startIcon={<AddRoundedIcon />}
                 onClick={() => objRouter.push(blnIsEssMode ? "/ess/loans-advances/new" : "/payroll/loans-advances/new")}
               >
                 {t("add_button", "New Request")}
               </Button>
             ) : undefined}
-            onRowClick={(dicRow) => openLoan(dicRow.strRecordUUID)}
-            minTableWidth={1700}
+            toolbarAfterExport={(
+              <>
+                <Button
+                  id="loan-advance-add-columns-button"
+                  className={styles.secondaryButton}
+                  startIcon={<ViewColumnRoundedIcon />}
+                  onClick={(objEvent) => setObjColumnsAnchor(objEvent.currentTarget)}
+                >
+                  {t("add_columns", "Add columns")}
+                </Button>
+                <Menu
+                  id="loan-advance-add-columns-menu"
+                  anchorEl={objColumnsAnchor}
+                  open={Boolean(objColumnsAnchor)}
+                  onClose={() => setObjColumnsAnchor(null)}
+                  MenuListProps={{ "aria-labelledby": "loan-advance-add-columns-button" }}
+                >
+                  {lstOptionalColumnKeys.map((strColumnKey) => (
+                    <MenuItem key={strColumnKey} onClick={() => toggleOptionalColumn(strColumnKey)}>
+                      <Checkbox size="small" checked={lstVisibleOptionalColumns.includes(strColumnKey)} sx={{ p: 0.5, mr: 1 }} />
+                      {dicOptionalColumnLabels[strColumnKey]}
+                    </MenuItem>
+                  ))}
+                </Menu>
+              </>
+            )}
+            onRowClick={(dicRow) => {
+              if (blnSearchPanelFrozen || (!blnCanEdit && !blnCanView)) return;
+              objRouter.push(blnIsEssMode ? `/ess/loans-advances/${dicRow.strRecordUUID}` : `/payroll/loans-advances/${dicRow.strRecordUUID}`);
+            }}
             hideRowClickHint
-            getRowSx={() => dicMasterRowSx}
+            getRowSx={() => ({
+              backgroundColor: "#fff",
+              "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff", cursor: blnCanEdit || blnCanView ? "pointer" : "default" },
+            })}
             sx={{ p: 0, boxShadow: "none", background: "transparent" }}
           />
-        </Box>
-      ) : null}
+        )}
+      </Box>
     </Box>
   );
 }

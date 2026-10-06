@@ -32,7 +32,7 @@ export default function LoanAdvanceStatusBadge({
     <Chip
       size="small"
       label={strLabel}
-      sx={{ height: 24, borderRadius: "999px", fontWeight: 800, backgroundColor: objTone.strBg, color: objTone.strColor }}
+      sx={{ height: 24, borderRadius: "999px", backgroundColor: objTone.strBg, color: objTone.strColor }}
     />
   );
 }

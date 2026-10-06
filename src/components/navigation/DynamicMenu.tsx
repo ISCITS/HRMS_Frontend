@@ -1462,6 +1462,14 @@ export default function DynamicMenu({
       return resolveGroupFallbackLabel("masters", strModuleName || "Masters");
     }
 
+    if (
+      strModuleCode.includes("loan_management") ||
+      strModuleCode.includes("loans_advances") ||
+      strModuleName.trim().toLowerCase() === "loan management"
+    ) {
+      return resolveGroupFallbackLabel("loan_management", strModuleName || "Loan Management");
+    }
+
     if (strModuleCode.includes("payroll")) {
       return resolveGroupFallbackLabel("payroll", strModuleName || "Payroll");
     }
