@@ -102,3 +102,10 @@ export const dicMasterRowSx = {
   "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
   "&.MuiTableRow-hover:hover td:first-of-type .MuiLink-root": { textDecoration: "underline" },
 } as const;
+
+// Same as dicMasterRowSx but for screens whose first column is a checkbox, so the name link is not in the first td.
+export const dicMasterRowSxAnyColumn = {
+  backgroundColor: "#fff",
+  "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
+  "&.MuiTableRow-hover:hover td .MuiLink-root": { textDecoration: "underline", color: "#0066df" },
+} as const;

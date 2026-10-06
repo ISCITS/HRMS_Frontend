@@ -27,6 +27,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import styles from "@/components/master/MasterScreen.module.css";
+import { MasterBreadcrumbs, MasterGridSkeleton } from "@/components/master/MasterListUi";
 import { employeeService } from "@/features/employee/services/employeeService";
 import { leaveService } from "@/features/leave/services/leaveService";
 import type { LeaveLedgerDto, LedgerEmployeeDto } from "@/features/leave/types";
@@ -311,6 +312,8 @@ export default function EssLeaveLedgerPanel({ blnHrMode = false }: { blnHrMode?:
         renderInput={(objParams) => (
           <TextField
             {...objParams}
+            className="app-mui-text-field"
+            size="small"
             label="Employee"
             placeholder="Search employee..."
             controlId="ess.leave-ledger.employee.select"
@@ -319,6 +322,8 @@ export default function EssLeaveLedgerPanel({ blnHrMode = false }: { blnHrMode?:
         )}
       />
       <CommonSearchableSelect
+        className="app-mui-text-field"
+        showSearchIcon={false}
         label="Leave Type"
         value={strLeaveTypeFilter}
         options={lstLeaveTypeSelectOptions}
@@ -327,6 +332,7 @@ export default function EssLeaveLedgerPanel({ blnHrMode = false }: { blnHrMode?:
         sx={{ minWidth: 160 }}
       />
       <TextField
+        className="app-mui-text-field"
         select
         size="small"
         label="Leave Year"
@@ -346,14 +352,13 @@ export default function EssLeaveLedgerPanel({ blnHrMode = false }: { blnHrMode?:
 
   return (
     <Stack spacing={1.5}>
-      <Box className={styles.controlsCard} data-control-id="leave-ledger.filters.card">
+      <MasterBreadcrumbs strSection="Leave Management" strTitle={blnHrMode ? "Leave Ledger" : "My Leave Ledger"} />
+      <Box className={styles.controlsCard} data-control-id="leave-ledger.filters.card" sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <Box
+          className={styles.searchRow}
           sx={{
-            display: "grid",
-            gap: 1.25,
-            gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "minmax(260px, 1.4fr) minmax(160px, 0.8fr) minmax(130px, 0.6fr)" },
             alignItems: "center",
-            mt: 1,
+            "&&": { gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "minmax(260px, 1.4fr) minmax(160px, 0.8fr) minmax(130px, 0.6fr) 1fr" } },
           }}
         >
           {objHeaderFilters}
@@ -375,15 +380,13 @@ export default function EssLeaveLedgerPanel({ blnHrMode = false }: { blnHrMode?:
           </Typography>
         </Paper>
       ) : (
-        <Paper variant="outlined" sx={{ borderRadius: "16px", overflow: "hidden" }}>
+        <Paper variant="outlined" sx={{ borderRadius: "10px", overflow: "hidden", border: blnLoading ? "none" : undefined }}>
           {blnLoading ? (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
-              <CircularProgress />
-            </Box>
+            <MasterGridSkeleton strControlId="leave-ledger.skeleton" intColumns={7} />
           ) : (
             <TableContainer sx={{ overflowX: "auto" }}>
               <Table size="small" stickyHeader>
-                <TableHead>
+                <TableHead sx={{ "& th": { backgroundColor: "#edf3f9", fontWeight: 700 } }}>
                   <TableRow>
                     <TableCell>Transaction Date</TableCell>
                     <TableCell>Description</TableCell>

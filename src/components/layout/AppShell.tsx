@@ -1076,6 +1076,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
     "/ess/attendance/regularization",
     "/ess/attendance/regularization/approvals",
     "/payroll/attendance-leave-inputs",
+    "/leave",
+    "/leave/approvals",
+    "/leave/leave-ledger",
+    "/ess/leave-ledger",
+    "/leave/plans",
+    "/leave/plan-assignments",
+    "/leave/work-on-holiday/requests",
+    "/ess/work-on-holiday/approvals",
   ].includes(strLowerPathname);
   const blnEmployeeReimbursementFormContext =
     Boolean(strLowerPathname.match(/^\/ess\/reimbursements(\/new|\/\d+(\/edit)?)?$/)) &&
