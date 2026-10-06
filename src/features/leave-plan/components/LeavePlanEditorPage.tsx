@@ -108,6 +108,15 @@ function collectFirstErrorMessage(objErrors: unknown): string | undefined {
   return undefined;
 }
 
+function getLeaveTypeDisplayName(objType: LeaveTypeOption): string {
+  return objType.strDisplayName || objType.strTypeName || objType.strTypeCode;
+}
+
+function getLeaveTypeTone(objType: LeaveTypeOption | undefined): string {
+  const strColor = objType?.strColorCode?.trim();
+  return strColor || "var(--app-primary-color)";
+}
+
 // The URL carries the plan's public identifier (record_uuid), not the internal row id.
 export default function LeavePlanEditorPage({ strMode, strPlanID, strReturnTo }: { strMode: "new" | "edit"; strPlanID?: string; strReturnTo?: string }) {
   const objRouter = useRouter();
@@ -124,7 +133,8 @@ export default function LeavePlanEditorPage({ strMode, strPlanID, strReturnTo }:
   // Whether each Leave Type permits a negative balance — gates the plan's Negative Balance Limit column.
   const dicTypeAllowNeg = useMemo(() => Object.fromEntries(lstLeaveTypes.map((objType) => [objType.intID, Boolean(objType.blnAllowNegativeBalance)])), [lstLeaveTypes]);
   // CommonSearchableSelect expects {intID, strLabel, strCode?}; LeaveTypeOption carries strTypeCode/strTypeName instead.
-  const lstLeaveTypeSelectOptions = useMemo(() => lstLeaveTypes.map((objType) => ({ ...objType, strLabel: objType.strTypeName, strCode: objType.strTypeCode })), [lstLeaveTypes]);
+  const dicLeaveTypesByID = useMemo(() => Object.fromEntries(lstLeaveTypes.map((objType) => [objType.intID, objType])), [lstLeaveTypes]);
+  const lstLeaveTypeSelectOptions = useMemo(() => lstLeaveTypes.map((objType) => ({ ...objType, strLabel: getLeaveTypeDisplayName(objType), strCode: objType.strTypeCode })), [lstLeaveTypes]);
   const lstWatchedItems = useWatch({ control, name: "lstItems" });
   const lstWatchedTexts = useWatch({ control, name: "lstText" });
   const blnCanManage = canDo("LEAVE_PLANS", "EDIT") || canDo("LEAVE_PLANS", "ADD") || canDo("LEAVE_PLANS", "LEAVE_MANAGE");
@@ -173,7 +183,11 @@ export default function LeavePlanEditorPage({ strMode, strPlanID, strReturnTo }:
       blnIsDefault: objValues.blnIsDefault, blnIsActive: objValues.blnIsActive, intVersionNo: objValues.intVersionNo, strRemarks: objValues.strRemarks.trim() || null,
       // Strip the DB-row intID and the server-computed base snapshot from items — the backend item
       // schema forbids extra inputs (policy is resolved server-side, snapshot captured on save).
-      lstItems: objValues.lstItems.map(({ intID: _intItemID, decBaseEntitlementSnapshot: _decBaseSnapshot, ...objItem }) => ({ ...objItem, intLeavePolicyID: objItem.intLeavePolicyID || null })),
+      lstItems: objValues.lstItems.map(({ intID: _intItemID, decBaseEntitlementSnapshot: _decBaseSnapshot, strOverrideReason, ...objItem }) => ({
+        ...objItem,
+        intLeavePolicyID: objItem.intLeavePolicyID || null,
+        strOverrideReason: objItem.blnIsEntitlementOverride ? (strOverrideReason?.trim() || null) : null,
+      })),
       lstText: objValues.lstText.map(({ intID: _intTextID, ...objText }) => ({ ...objText, strPlanName: objText.strPlanName.trim(), strDescription: objText.strDescription.trim() || null })),
     };
     try {
@@ -310,10 +324,50 @@ export default function LeavePlanEditorPage({ strMode, strPlanID, strReturnTo }:
                 const intTypeID = Number(lstWatchedItems?.[intIndex]?.intLeaveTypeID ?? 0);
                 const blnOverride = Boolean(lstWatchedItems?.[intIndex]?.blnIsEntitlementOverride);
                 const blnAllowNeg = Boolean(dicTypeAllowNeg[intTypeID]);
+                const objSelectedType = dicLeaveTypesByID[intTypeID];
                 return <TableRow key={objField.id}>
                   {/* Leave Type: equal fixed width; selecting one resolves the inherited entitlement and clamps
                       the negative limit. Policy is resolved on the server (not shown). */}
-                  <TableCell><Controller name={`lstItems.${intIndex}.intLeaveTypeID`} control={control} render={({ field }) => <CommonSearchableSelect label="" placeholder={t("select_leave_type", "Select Leave Type")} value={field.value || ""} options={lstLeaveTypeSelectOptions} onChange={async (intOption) => { const intValue = intOption === "" ? 0 : Number(intOption); field.onChange(intValue); objForm.setValue(`lstItems.${intIndex}.intLeavePolicyID`, null); objForm.setValue(`lstItems.${intIndex}.blnIsEntitlementOverride`, false); objForm.setValue(`lstItems.${intIndex}.strOverrideReason`, null); const lstLoaded = await loadPolicies(intValue, strEffectiveFrom); const decInherited = resolveInheritedEntitlement(lstLoaded, strEffectiveFrom || new Date().toISOString().slice(0, 10)); objForm.setValue(`lstItems.${intIndex}.decBaseEntitlementSnapshot`, decInherited); objForm.setValue(`lstItems.${intIndex}.decAnnualEntitlement`, decInherited, { shouldValidate: true }); if (!dicTypeAllowNeg[intValue]) objForm.setValue(`lstItems.${intIndex}.decNegativeBalanceLimit`, 0); }} error={Boolean(errors.lstItems?.[intIndex]?.intLeaveTypeID)} controlId={`leave-plan.editor.item.${intIndex}.leave-type.select`} fullWidth={false} sx={{ width: 200 }} />} /></TableCell>
+                  <TableCell>
+                    <Controller
+                      name={`lstItems.${intIndex}.intLeaveTypeID`}
+                      control={control}
+                      render={({ field }) => (
+                        <Stack spacing={0.75}>
+                          <CommonSearchableSelect
+                            label=""
+                            placeholder={t("select_leave_type", "Select Leave Type")}
+                            value={field.value || ""}
+                            options={lstLeaveTypeSelectOptions}
+                            onChange={async (intOption) => {
+                              const intValue = intOption === "" ? 0 : Number(intOption);
+                              field.onChange(intValue);
+                              objForm.setValue(`lstItems.${intIndex}.intLeavePolicyID`, null);
+                              objForm.setValue(`lstItems.${intIndex}.blnIsEntitlementOverride`, false);
+                              objForm.setValue(`lstItems.${intIndex}.strOverrideReason`, null);
+                              const lstLoaded = await loadPolicies(intValue, strEffectiveFrom);
+                              const decInherited = resolveInheritedEntitlement(lstLoaded, strEffectiveFrom || new Date().toISOString().slice(0, 10));
+                              objForm.setValue(`lstItems.${intIndex}.decBaseEntitlementSnapshot`, decInherited);
+                              objForm.setValue(`lstItems.${intIndex}.decAnnualEntitlement`, decInherited, { shouldValidate: true });
+                              if (!dicTypeAllowNeg[intValue]) objForm.setValue(`lstItems.${intIndex}.decNegativeBalanceLimit`, 0);
+                            }}
+                            error={Boolean(errors.lstItems?.[intIndex]?.intLeaveTypeID)}
+                            controlId={`leave-plan.editor.item.${intIndex}.leave-type.select`}
+                            fullWidth={false}
+                            sx={{ width: 220 }}
+                          />
+                          {objSelectedType ? (
+                            <Stack direction="row" spacing={0.75} alignItems="center" sx={{ pl: 0.25 }}>
+                              <Box sx={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: getLeaveTypeTone(objSelectedType), border: "1px solid rgba(15,23,42,0.12)", flex: "0 0 auto" }} />
+                              <Typography variant="caption" sx={{ color: "#64748b", lineHeight: 1.2 }}>
+                                {[objSelectedType.strLeaveCategoryCode, objSelectedType.strUnit].filter(Boolean).join(" / ")}
+                              </Typography>
+                            </Stack>
+                          ) : null}
+                        </Stack>
+                      )}
+                    />
+                  </TableCell>
                   {/* Annual Entitlement: read-only (inherited) unless override is enabled. */}
                   <TableCell><Controller name={`lstItems.${intIndex}.decAnnualEntitlement`} control={control} render={({ field }) => <TextField {...field} type="number" size="small" disabled={!blnOverride} inputProps={{ "data-control-id": `leave-plan.editor.item.${intIndex}.annual-entitlement.input`, min: 0, step: .5 }} onChange={(objEvent) => field.onChange(Number(objEvent.target.value))} sx={{ width: 110 }} helperText={blnOverride ? t("entitlement_overridden", "Overridden") : undefined} />} /></TableCell>
                   {/* Override toggle: turning it off restores the inherited value and clears the reason. */}
