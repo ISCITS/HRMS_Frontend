@@ -202,6 +202,59 @@
   background: var(--app-grid-row-hover-background);
 }
 
+.app-breadcrumbs {
+  color: #697586;
+  font-size: 13px;
+  line-height: 1.2;
+  padding: 4px 0;
+}
+
+.app-breadcrumb-heading {
+  color: #243b53;
+  font-size: inherit;
+  font-weight: 700;
+  line-height: inherit;
+  margin: 0;
+}
+
+.app-master-first-column-link {
+  background: transparent;
+  border: 0;
+  color: #0f172a;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 500;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  padding: 0;
+  text-align: left;
+  vertical-align: baseline;
+}
+
+.app-master-first-column-link.MuiLink-root {
+  color: #0f172a;
+  font: inherit;
+  font-weight: 500;
+}
+
+.app-master-status-pill {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 2px 9px;
+}
+
+.app-master-status-active {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.app-master-status-inactive {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
 .app-header {
   margin: 0;
   font-family: var(--app-font-family);
