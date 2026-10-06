@@ -34,6 +34,8 @@ export function BlockingLoaderViewportProvider({
 }
 
 export function DottedLoader() {
+  const intDotCount = 10;
+
   return (
     <Box
       aria-hidden="true"
@@ -45,7 +47,7 @@ export function DottedLoader() {
         color: "var(--app-primary-color, #1d5d96)",
       }}
     >
-      {Array.from({ length: 10 }, (_, intIndex) => (
+      {Array.from({ length: intDotCount }, (_, intIndex) => (
         <Box
           key={intIndex}
           className="app-dotted-loader-position"
@@ -53,7 +55,7 @@ export function DottedLoader() {
         >
           <Box
             className="app-dotted-loader-dot"
-            style={{ animationDelay: `${intIndex * -0.1}s` }}
+            style={{ animationDelay: `${(intDotCount - intIndex) * -0.1}s` }}
           />
         </Box>
       ))}

@@ -1031,6 +1031,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const blnSalaryComponentListRoute = strLowerPathname === "/salary-components";
   const blnSalaryStructureListRoute = strLowerPathname === "/salary-structures";
   const blnCtcFormatRoute = strLowerPathname === "/reports/ctc-format";
+  const blnSalaryStatementRoute = strLowerPathname === "/reports/salary-statement";
   const blnLoanBudgetListRoute = strLowerPathname === "/payroll/loan-budget";
   const blnLoanRecoveryRoute = strLowerPathname === "/payroll/loan-finalization";
   const blnLoanAdvanceListRoute = strLowerPathname === "/payroll/loans-advances" || strLowerPathname === "/ess/loans-advances";
@@ -1106,6 +1107,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     "/payroll/flexi-declaration-review",
     "/reports/payslips",
     "/ess/my-payslips",
+    "/reports/tds-register",
     "/leave",
     "/leave/approvals",
     "/leave/leave-ledger",
@@ -1627,6 +1629,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
 
               {strPathname === "/employees" || strPathname === "/departments" || strPathname === "/designations" || strPathname === "/settings" || strPathname === "/profile/change-password" || blnReferencedMasterRoute || blnDepartmentStyleMasterRoute || blnEmployeeEditorRoute || blnDashboardRoute || blnEmployeeSalaryListRoute || blnEmployeeSalaryEditorRoute || blnUserListRoute || blnUserGroupListRoute || blnSalaryComponentListRoute || blnSalaryStructureListRoute || blnCtcFormatRoute || blnLoanBudgetListRoute || blnLoanRecoveryRoute || blnLoanAdvanceListRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute || blnLeaveAttendanceRoute || blnPayrollProcessLogRunRoute ? null : (
+              {strPathname === "/employees" || strPathname === "/departments" || strPathname === "/designations" || strPathname === "/settings" || strPathname === "/profile/change-password" || blnReferencedMasterRoute || blnDepartmentStyleMasterRoute || blnEmployeeEditorRoute || blnDashboardRoute || blnEmployeeSalaryListRoute || blnEmployeeSalaryEditorRoute || blnUserListRoute || blnUserGroupListRoute || blnSalaryComponentListRoute || blnSalaryStructureListRoute || blnCtcFormatRoute || blnSalaryStatementRoute || blnLoanBudgetListRoute || blnLoanRecoveryRoute || blnLoanAdvanceListRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute ? null : (
                 <Box
                   sx={{
                     display: "flex",
