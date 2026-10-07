@@ -322,7 +322,7 @@ export default function TdsReportPage() {
         >
           <Box data-controlid="reports.tds.more-filters.panel">
             <Box sx={{ px: 2.5, pt: 2.25, pb: 1.5, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <Typography sx={{ fontSize: 15, fontWeight: 800, color: "#0f172a", lineHeight: 1.2 }}>More filters</Typography>
+              <Typography sx={{ fontSize: 15, fontWeight: 700, color: "#0f172a", lineHeight: 1.2 }}>More filters</Typography>
               <IconButton size="small" onClick={() => setObjMoreFiltersAnchor(null)} aria-label="Close more filters" data-controlid="reports.tds.more-filters.close.button" sx={{ color: "#64748b" }}>
                 <CloseRoundedIcon fontSize="small" />
               </IconButton>
@@ -333,7 +333,7 @@ export default function TdsReportPage() {
             </Box>
             <Divider />
             <Box sx={{ px: 2.5, py: 1.75, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1.25 }}>
-              <Button onClick={clearMoreFilters} disabled={blnPageLoading} data-controlid="reports.tds.more-filters.clear-all.button" sx={{ px: 0, minWidth: 0, fontWeight: 800, textTransform: "none", color: "var(--app-primary-color)", "&:hover": { backgroundColor: "var(--app-primary-soft)" } }}>
+              <Button onClick={clearMoreFilters} disabled={blnPageLoading} data-controlid="reports.tds.more-filters.clear-all.button" sx={{ px: 0, minWidth: 0, fontWeight: 700, textTransform: "none", color: "var(--app-primary-color)", "&:hover": { backgroundColor: "var(--app-primary-soft)" } }}>
                 Clear all
               </Button>
               <Box sx={{ display: "flex", gap: 1.25 }}>

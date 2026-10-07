@@ -1030,6 +1030,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const blnUserGroupListRoute = strLowerPathname === "/security/user-groups";
   const blnSalaryComponentListRoute = strLowerPathname === "/salary-components";
   const blnSalaryStructureListRoute = strLowerPathname === "/salary-structures";
+  const blnSalaryRegisterRoute = strLowerPathname === "/reports/salary-register";
   const blnCtcFormatRoute = strLowerPathname === "/reports/ctc-format";
   const blnSalaryStatementRoute = strLowerPathname === "/reports/salary-statement";
   const blnLoanBudgetListRoute = strLowerPathname === "/payroll/loan-budget";
@@ -1632,7 +1633,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               <Box sx={{ flex: 1, minWidth: 0 }} />
 
 
-              {strPathname === "/employees" || strPathname === "/departments" || strPathname === "/designations" || strPathname === "/settings" || strPathname === "/profile/change-password" || blnReferencedMasterRoute || blnDepartmentStyleMasterRoute || blnEmployeeEditorRoute || blnDashboardRoute || blnEmployeeSalaryListRoute || blnEmployeeSalaryEditorRoute || blnUserListRoute || blnUserGroupListRoute || blnSalaryComponentListRoute || blnSalaryStructureListRoute || blnCtcFormatRoute || blnSalaryStatementRoute || blnLoanBudgetListRoute || blnLoanRecoveryRoute || blnLoanAdvanceListRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute || blnLeaveAttendanceRoute || blnPayrollProcessLogRunRoute ? null : (
+              {strPathname === "/employees" || strPathname === "/departments" || strPathname === "/designations" || strPathname === "/settings" || strPathname === "/profile/change-password" || blnReferencedMasterRoute || blnDepartmentStyleMasterRoute || blnEmployeeEditorRoute || blnDashboardRoute || blnEmployeeSalaryListRoute || blnEmployeeSalaryEditorRoute || blnUserListRoute || blnUserGroupListRoute || blnSalaryComponentListRoute || blnSalaryStructureListRoute || blnCtcFormatRoute || blnSalaryRegisterRoute || blnSalaryStatementRoute || blnLoanBudgetListRoute || blnLoanRecoveryRoute || blnLoanAdvanceListRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute || blnLeaveAttendanceRoute || blnPayrollProcessLogRunRoute ? null : (
                 <Box
                   sx={{
                     display: "flex",
