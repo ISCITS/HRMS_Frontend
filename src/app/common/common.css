@@ -358,9 +358,15 @@
 
 .app-mui-text-field .MuiInputLabel-root {
   color: var(--app-field-label-color);
-  top: 50%;
+  top: 0;
   line-height: 1.45;
-  transform: translate(14px, -50%) scale(1) !important;
+  transform: translate(14px, 9px) scale(1) !important;
+  transform-origin: top left;
+  transition:
+    color 200ms cubic-bezier(0, 0, 0.2, 1),
+    transform 200ms cubic-bezier(0, 0, 0.2, 1),
+    max-width 200ms cubic-bezier(0, 0, 0.2, 1);
+  will-change: transform;
 }
 
 .app-mui-text-field .MuiInputLabel-root.Mui-focused:not(.Mui-error) {
@@ -372,7 +378,6 @@
 }
 
 .app-mui-text-field .MuiInputLabel-root.MuiInputLabel-shrink {
-  top: 0;
   transform: translate(14px, -9px) scale(0.75) !important;
   z-index: 1;
   padding: 0 3px;
