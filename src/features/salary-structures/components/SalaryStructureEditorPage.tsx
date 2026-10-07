@@ -11,12 +11,14 @@ import FlightTakeoffRoundedIcon from "@mui/icons-material/FlightTakeoffRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import LocalGasStationRoundedIcon from "@mui/icons-material/LocalGasStationRounded";
 import LocalPhoneRoundedIcon from "@mui/icons-material/LocalPhoneRounded";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import RestaurantRoundedIcon from "@mui/icons-material/RestaurantRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import {
   Alert,
   Box,
+  Breadcrumbs,
   Button,
   CircularProgress,
   Dialog,
@@ -26,6 +28,7 @@ import {
   FormControlLabel,
   InputAdornment,
   IconButton,
+  Link,
   MenuItem,
   Paper,
   Radio,
@@ -37,6 +40,7 @@ import {
   Typography
 } from "@mui/material";
 import { useEffect, useMemo, useRef, useState } from "react";
+import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
@@ -458,10 +462,6 @@ export default function SalaryStructureEditorPage({
     return () => objObserver.disconnect();
   }, [blnLoading, blnRightsLoading, blnCanLoadWorkspace]);
   const blnFieldDisabled = blnSaving || blnReadOnly || !blnCanSave;
-  const strPageHeading = strMode === "add"
-    ? t("add_salary_structure", "Add Salary Structure")
-    : t("edit_salary_structure", "Edit Salary Structure");
-
   useEffect(() => {
     let blnMounted = true;
 
@@ -1837,33 +1837,24 @@ export default function SalaryStructureEditorPage({
     <Stack spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
       <Paper
         sx={{
-          borderRadius: "22px",
-          p: { xs: 1.5, md: 2 },
-          border: "1px solid rgba(148,163,184,0.18)",
-          background: "linear-gradient(135deg, #f9fbff 0%, #eef4ff 50%, #f8fafc 100%)"
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
+          borderRadius: 0,
+          p: 0.5,
+          border: 0,
+          boxShadow: "none",
+          bgcolor: "var(--app-bg-color)"
         }}
       >
         <Stack spacing={1.25}>
-          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.25}>
+          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.5} alignItems={{ sm: "center" }}>
             <Box>
-              <Typography
-                component="h1"
-                sx={{
-                  color: "#0f172a",
-                  fontSize: { xs: "1.35rem", md: "1.65rem" },
-                  fontWeight: 800,
-                  letterSpacing: "-0.025em",
-                  lineHeight: 1.2
-                }}
-              >
-                {strPageHeading}
-              </Typography>
-              <Typography sx={{ color: "#64748b", mt: 0.35, fontSize: "0.9rem", lineHeight: 1.35 }}>
-                {t(
-                  "editor_description",
-                  "Define structure header, company scope dates, multilingual text, and component-wise calculation rules in one workflow."
-                )}
-              </Typography>
+              <Breadcrumbs aria-label={t("salary_structure_breadcrumb", "Salary structure breadcrumb")} separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ fontSize: 13, py: 0.5, ml: "3px" }}>
+                <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{t("breadcrumb_salary", "Salary")}</Typography>
+                <Link component={NextLink} href="/salary-structures" data-controlid="salary-structures.editor.breadcrumb.list.link" underline="hover" sx={{ color: "text.secondary", fontSize: "inherit" }}>{t("breadcrumb_salary_structure", "Salary Structure")}</Link>
+                <Typography component="h1" aria-current="page" sx={{ fontSize: "inherit", fontWeight: 700, color: "#172554" }}>{strMode === "edit" ? t("breadcrumb_edit", "Edit") : t("breadcrumb_add", "Add")}</Typography>
+              </Breadcrumbs>
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
               <Button

@@ -4,10 +4,12 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import {
   Alert,
   Box,
+  Breadcrumbs,
   Button,
   Checkbox,
   Chip,
@@ -23,9 +25,11 @@ import {
   Switch,
   TextField,
   Tooltip,
+  Link,
   Typography
 } from "@mui/material";
 import { useEffect, useMemo, useState, type Dispatch, type InputHTMLAttributes, type SetStateAction } from "react";
+import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 
 import CommonSearchableMultiSelect from "@/Common/components/CommonSearchableMultiSelect";
@@ -499,12 +503,6 @@ export default function SalaryComponentEditorPage({
   const blnCanSave = strMode === "add" ? blnCanAdd : strMode === "edit" && blnCanEdit;
   const blnFieldDisabled = blnSaving || blnReadOnly || !blnCanSave;
   const strResolvedBackRoute = strBackRoute?.startsWith("/") ? strBackRoute : "/salary-components";
-  const strPageHeading = strMode === "add"
-    ? t("add_salary_component", "Add Salary Component")
-    : strMode === "edit"
-      ? t("edit_salary_component", "Edit Salary Component")
-      : t("view_salary_component", "View Salary Component");
-
   useEffect(() => {
     function syncLanguage() {
       setIntCurrentLanguageID(authHelpers.getLanguageID());
@@ -1443,34 +1441,25 @@ export default function SalaryComponentEditorPage({
     <Stack data-controlid="salary-components.editor.page" spacing={2.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
       <Paper
         sx={{
-          borderRadius: "28px",
-          px: { xs: 2, md: 3 },
-          py: { xs: 1.5, md: 2 },
-          border: "1px solid rgba(148,163,184,0.18)",
-          background: "linear-gradient(135deg, #f9fbff 0%, #eef4ff 50%, #f8fafc 100%)"
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
+          borderRadius: 0,
+          px: 0,
+          py: 0.5,
+          border: 0,
+          boxShadow: "none",
+          bgcolor: "var(--app-bg-color)"
         }}
       >
         <Stack spacing={2}>
-          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
+          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.5} alignItems={{ sm: "center" }}>
             <Box>
-              <Typography
-                component="h1"
-                sx={{
-                  color: "#0f172a",
-                  fontSize: { xs: "1.35rem", md: "1.65rem" },
-                  fontWeight: 800,
-                  letterSpacing: "-0.025em",
-                  lineHeight: 1.2
-                }}
-              >
-                {strPageHeading}
-              </Typography>
-              <Typography sx={{ color: "#64748b", mt: 0.75 }}>
-                {t(
-                  "editor_description",
-                  "Configure calculation rules, compliance flags, multilingual labels, and dependency mapping in one reusable component master."
-                )}
-              </Typography>
+              <Breadcrumbs aria-label={t("salary_component_breadcrumb", "Salary component breadcrumb")} separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ fontSize: 13, py: 0.5, ml: "3px" }}>
+                <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{t("breadcrumb_salary", "Salary")}</Typography>
+                <Link component={NextLink} href="/salary-components" data-controlid="salary-components.editor.breadcrumb.list.link" underline="hover" sx={{ color: "text.secondary", fontSize: "inherit" }}>{t("breadcrumb_salary_components", "Salary Components")}</Link>
+                <Typography component="h1" aria-current="page" sx={{ fontSize: "inherit", fontWeight: 700, color: "#172554" }}>{strMode === "edit" ? t("breadcrumb_edit", "Edit") : strMode === "add" ? t("breadcrumb_add", "Add") : t("breadcrumb_view", "View")}</Typography>
+              </Breadcrumbs>
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ width: { xs: "100%", sm: "auto" } }}>
               <Button
@@ -1512,7 +1501,7 @@ export default function SalaryComponentEditorPage({
                     minHeight: 38,
                     py: 0,
                     px: 2.25,
-                    minWidth: 168,
+                    minWidth: 100,
                     fontSize: "0.9rem",
                     whiteSpace: "nowrap",
                     flexShrink: 0,
@@ -1525,7 +1514,7 @@ export default function SalaryComponentEditorPage({
                   }}
 
                 >
-                  {blnSaving ? t("saving", "Saving...") : t("save_component", "Save Component")}
+                  {blnSaving ? t("saving", "Saving...") : t("save_button", "Save")}
                 </Button>
               ) : null}
             </Stack>

@@ -1024,7 +1024,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const strLowerPathname = strPathname?.toLowerCase() || "";
   // The employee editor has its own breadcrumb and action toolbar.
   const blnEmployeeEditorRoute = /^\/employees\/(?:add|(?:edit|view)\/[\w-]+)$/.test(strLowerPathname);
-  const blnEmployeeSalaryEditorRoute = /^\/employee-salary\/\d+(?:\/revise)?$/.test(strLowerPathname);
+  const blnEmployeeSalaryEditorRoute = /^\/employee-salary\/[\w-]+(?:\/revise)?$/.test(strLowerPathname);
   const blnEmployeeSalaryListRoute = strLowerPathname === "/employee-salary";
   const blnUserListRoute = strLowerPathname === "/users";
   const blnUserGroupListRoute = strLowerPathname === "/security/user-groups";

@@ -423,6 +423,14 @@
   margin-right: 4px;
 }
 
+.app-theme .MuiAutocomplete-root .MuiInputBase-root > .MuiSvgIcon-root[data-testid='SearchRoundedIcon'],
+.app-theme .MuiInputBase-root > .MuiSvgIcon-root[data-testid='SearchRoundedIcon'] {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
 .app-mui-text-field .MuiOutlinedInput-notchedOutline {
   border: 1px solid var(--app-field-border-color);
 }

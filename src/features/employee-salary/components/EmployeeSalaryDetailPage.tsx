@@ -8,6 +8,7 @@ import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import SalaryCalculationTooltip from "./SalaryCalculationTooltip";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import RemoveCircleOutlineRoundedIcon from "@mui/icons-material/RemoveCircleOutlineRounded";
 import SavingsOutlinedIcon from "@mui/icons-material/SavingsOutlined";
@@ -16,10 +17,12 @@ import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import {
   Alert,
   Box,
+  Breadcrumbs,
   Button,
   CircularProgress,
   FormControlLabel,
   IconButton,
+  Link,
   Radio,
   RadioGroup,
   Tooltip,
@@ -30,6 +33,7 @@ import {
   Typography
 } from "@mui/material";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
@@ -2616,18 +2620,24 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
     <Stack spacing={1.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
       <Paper
         sx={{
-          borderRadius: "22px",
-          p: { xs: 1.5, md: 2 },
-          border: "1px solid rgba(148,163,184,0.18)",
-          background: "linear-gradient(135deg, #f8fbff 0%, #eef6ff 46%, #f8fafc 100%)"
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
+          borderRadius: 0,
+          p: 0.5,
+          border: 0,
+          boxShadow: "none",
+          bgcolor: "var(--app-bg-color)"
         }}
       >
         <Stack spacing={1.25}>
-          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
+          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.5} alignItems={{ sm: "center" }}>
             <Box>
-              <Typography component="h1" sx={{ color: "#0f172a", fontSize: "1.25rem", fontWeight: 800 }}>
-                {t("employee_salary_detail_title", "Employee Salary Detail")}
-              </Typography>
+              <Breadcrumbs aria-label={t("employee_salary_breadcrumb", "Employee salary breadcrumb")} separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ fontSize: 13, py: 0.5, ml: "3px" }}>
+                <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{t("breadcrumb_salary", "Salary")}</Typography>
+                <Link component={NextLink} href="/employee-salary" data-controlid="employee-salary.detail.breadcrumb.list.link" underline="hover" sx={{ color: "text.secondary", fontSize: "inherit" }}>{t("breadcrumb_employee_salary", "Employee Salary")}</Link>
+                <Typography component="h1" aria-current="page" sx={{ fontSize: "inherit", fontWeight: 700, color: "#172554" }}>{objDetail?.objEmployeeSummary?.strEmployeeName || t("employee_salary_employee_name", "Employee Name")}</Typography>
+              </Breadcrumbs>
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
               <Button
