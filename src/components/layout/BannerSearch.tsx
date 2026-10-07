@@ -31,6 +31,7 @@ export default function BannerSearch({ items, disabled }: { items: MenuItem[]; d
     <Box
       component="form"
       role="search"
+      autoComplete="off"
       data-controlid="app-shell.search"
       onSubmit={event => {
         event.preventDefault();
@@ -74,6 +75,7 @@ export default function BannerSearch({ items, disabled }: { items: MenuItem[]; d
         }}
         disabled={disabled}
         placeholder={label}
+        autoComplete="off"
         error={noMatch}
         helperText={noMatch ? t("no_matching_pages", "No matching pages available") : undefined}
         FormHelperTextProps={{ role: "status", sx: { position: "absolute", top: "100%", m: 0, px: 1, bgcolor: "background.paper", borderRadius: 1, zIndex: 1 } }}
@@ -83,6 +85,8 @@ export default function BannerSearch({ items, disabled }: { items: MenuItem[]; d
           "aria-controls": showSuggestions ? suggestionsId : undefined,
           "aria-expanded": showSuggestions && suggestions.length > 0,
           "aria-activedescendant": showSuggestions && suggestions.length > 0 ? `${suggestionsId}-${activeSuggestion}` : undefined,
+          autoComplete: "off",
+          name: "app-banner-search-no-autocomplete",
           "data-controlid": "app-shell.search.input"
         }}
         InputProps={{
