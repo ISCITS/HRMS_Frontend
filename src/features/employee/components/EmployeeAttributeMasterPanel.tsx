@@ -6,7 +6,7 @@ import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, CircularProgress, IconButton, InputAdornment, Link, MenuItem, Skeleton, Snackbar, TextField, Tooltip, Typography } from "@mui/material";
+import { Alert, Box, Button, IconButton, InputAdornment, Link, MenuItem, Skeleton, Snackbar, TextField, Tooltip, Typography } from "@mui/material";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
@@ -14,7 +14,7 @@ import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import MasterBreadcrumbs from "@/components/master/MasterBreadcrumbs";
 import styles from "@/components/master/MasterScreen.module.css";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import BlockingLoader, { DottedLoader } from "@/components/shared/BlockingLoader";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
@@ -566,7 +566,7 @@ export default function EmployeeAttributeMasterPanel({ config }: { config: Emplo
                     disabled={mode === "view"}
                     InputProps={{
                       endAdornment: translationLoading[text.strRowID] ? (
-                        <InputAdornment position="end"><CircularProgress size={18} sx={{ color: "#2563eb" }} /></InputAdornment>
+                        <InputAdornment position="end"><DottedLoader intSize={18} sx={{ color: "#2563eb" }} /></InputAdornment>
                       ) : undefined,
                     }}
                     fullWidth

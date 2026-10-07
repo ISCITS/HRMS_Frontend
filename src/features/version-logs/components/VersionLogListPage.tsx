@@ -8,7 +8,6 @@ import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   MenuItem,
   Snackbar,
   Stack,
@@ -21,7 +20,7 @@ import { useRouter } from "next/navigation";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import BlockingLoader, { DottedLoader } from "@/components/shared/BlockingLoader";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useVersionLogLabels } from "@/features/version-logs/hooks/useVersionLogLabels";
 import {
@@ -168,7 +167,7 @@ export default function VersionLogListPage() {
     return (
       <Box sx={{ minHeight: 360, display: "grid", placeItems: "center" }}>
         <Stack spacing={1.5} alignItems="center">
-          <CircularProgress />
+          <DottedLoader />
           <Typography sx={{ color: "#64748b" }}>{t("loading_version_logs", "Loading version logs...")}</Typography>
         </Stack>
       </Box>

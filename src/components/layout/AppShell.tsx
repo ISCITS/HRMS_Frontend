@@ -11,7 +11,6 @@ import {
   Avatar,
   Box,
   Button,
-  CircularProgress,
   Divider,
   Dialog,
   DialogActions,
@@ -36,7 +35,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { DashboardHeaderModeContext } from "@/components/layout/DashboardHeaderModeContext";
 import BannerSearch from "@/components/layout/BannerSearch";
 import DynamicMenu from "@/components/navigation/DynamicMenu";
-import BlockingLoader, { BlockingLoaderViewportProvider } from "@/components/shared/BlockingLoader";
+import BlockingLoader, { BlockingLoaderViewportProvider, DottedLoader } from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { labelService } from "@/features/labels/services/labelService";
 import { resolveRouteModuleName } from "@/features/labels/utils/resolveRouteModuleName";
@@ -1368,7 +1367,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     return (
       <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", backgroundColor: "#f8fafc" }}>
         <Stack spacing={2} alignItems="center">
-          <CircularProgress size={36} thickness={4} />
+          <DottedLoader intSize={36} />
           <Typography sx={{ color: "#64748b" }}>{tCommon("preparing_workspace", "Preparing your workspace...")}</Typography>
         </Stack>
       </Box>
@@ -1840,7 +1839,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               sx={{ width: "100%", px: 2, py: 1.25, gap: 1.25, justifyContent: "flex-start", color: "#334155" }}
               {...getAutomationProps("app-shell.language.toggle")}
             >
-              {blnLanguageSwitching ? <CircularProgress size={20} /> : <LanguageRoundedIcon fontSize="small" />}
+              {blnLanguageSwitching ? <DottedLoader intSize={20} /> : <LanguageRoundedIcon fontSize="small" />}
               <Typography sx={{ flex: 1, textAlign: "left", fontWeight: 600 }}>{tCommon("language", "Language")}</Typography>
               <ExpandMoreRoundedIcon sx={{ fontSize: 20, transform: blnLanguageMenuExpanded ? "none" : "rotate(-90deg)" }} />
             </ButtonBase>

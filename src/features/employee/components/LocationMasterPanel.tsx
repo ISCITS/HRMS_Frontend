@@ -10,7 +10,6 @@ import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   IconButton,
   InputAdornment,
   Link,
@@ -28,7 +27,7 @@ import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonT
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import MasterBreadcrumbs from "@/components/master/MasterBreadcrumbs";
 import styles from "@/components/master/MasterScreen.module.css";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import BlockingLoader, { DottedLoader } from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
@@ -908,7 +907,7 @@ export default function LocationMasterPanel() {
                         disabled={strMode === "view"}
                         InputProps={{
                           endAdornment: dicTextTranslationLoading[dicText.strRowID] ? (
-                            <InputAdornment position="end"><CircularProgress size={18} sx={{ color: "#2563eb" }} /></InputAdornment>
+                            <InputAdornment position="end"><DottedLoader intSize={18} sx={{ color: "#2563eb" }} /></InputAdornment>
                           ) : undefined,
                         }}
                         fullWidth

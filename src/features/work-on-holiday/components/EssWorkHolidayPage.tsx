@@ -7,16 +7,35 @@ import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
-import { yupResolver } from "@hookform/resolvers/yup";
 import {
-  Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Grid, Link, MenuItem, Paper,
-  IconButton, Stack, Tab, Tabs, TextField, Typography,
+  yupResolver } from "@hookform/resolvers/yup";
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  Grid,
+  Link,
+  MenuItem,
+  Paper,
+  IconButton,
+  Stack,
+  Tab,
+  Tabs,
+  TextField,
+  Typography
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode, SyntheticEvent } from "react";
 import { Controller, useForm } from "react-hook-form";
 import type { Resolver } from "react-hook-form";
 import * as yup from "yup";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import { MasterAddColumnsControl, MasterBreadcrumbs, MasterGridSkeleton, dicMasterRowSx, type MasterOptionalColumn } from "@/components/master/MasterListUi";
@@ -451,7 +470,7 @@ export default function EssWorkHolidayPage() {
                 <Grid item xs={12}><Controller name="strWorkReason" control={control} render={({ field }) => <TextField {...field} className="app-mui-text-field" data-control-id="work-on-holiday.ess.reason.input" fullWidth size="small" multiline minRows={2} label={t("reason", "Reason")} error={Boolean(errors.strWorkReason)} helperText={errors.strWorkReason?.message} />} /></Grid>
                 <Grid item xs={12}><Controller name="strWorkDescription" control={control} render={({ field }) => <TextField {...field} className="app-mui-text-field" data-control-id="work-on-holiday.ess.description.input" fullWidth size="small" multiline minRows={3} label={t("work_description", "Work Description")} />} /></Grid>
               </Grid>
-              <Divider sx={{ my: 2 }} /><Stack direction={{ xs: "column", sm: "row" }} justifyContent="flex-end" gap={1}><Button data-control-id="work-on-holiday.ess.clear.button" type="button" variant="outlined" startIcon={<ClearRoundedIcon />} disabled={blnSaving} onClick={clearRequestForm} sx={objSecondaryActionSx}>{t("clear", "Clear")}</Button><Button data-control-id="work-on-holiday.ess.save-draft.button" variant="outlined" disabled={blnSaving} onClick={handleSubmit((objValues) => saveAndSubmit(objValues, false))} sx={objSecondaryActionSx}>{objEditingRequest ? t("update_draft", "Update Draft") : t("save_draft", "Save Draft")}</Button><Button data-control-id="work-on-holiday.ess.submit.button" type="submit" variant="contained" disabled={blnSaving} sx={{ backgroundColor: "var(--app-primary-color)", "&:hover": { backgroundColor: "var(--app-primary-hover-color, #164d7c)" } }}>{blnSaving ? <CircularProgress size={20} color="inherit" /> : (objEditingRequest?.strRequestStatus === "SENT_BACK" ? t("resubmit", "Resubmit") : t("submit", "Submit"))}</Button></Stack>
+              <Divider sx={{ my: 2 }} /><Stack direction={{ xs: "column", sm: "row" }} justifyContent="flex-end" gap={1}><Button data-control-id="work-on-holiday.ess.clear.button" type="button" variant="outlined" startIcon={<ClearRoundedIcon />} disabled={blnSaving} onClick={clearRequestForm} sx={objSecondaryActionSx}>{t("clear", "Clear")}</Button><Button data-control-id="work-on-holiday.ess.save-draft.button" variant="outlined" disabled={blnSaving} onClick={handleSubmit((objValues) => saveAndSubmit(objValues, false))} sx={objSecondaryActionSx}>{objEditingRequest ? t("update_draft", "Update Draft") : t("save_draft", "Save Draft")}</Button><Button data-control-id="work-on-holiday.ess.submit.button" type="submit" variant="contained" disabled={blnSaving} sx={{ backgroundColor: "var(--app-primary-color)", "&:hover": { backgroundColor: "var(--app-primary-hover-color, #164d7c)" } }}>{blnSaving ? <DottedLoader intSize={20} color="inherit" /> : (objEditingRequest?.strRequestStatus === "SENT_BACK" ? t("resubmit", "Resubmit") : t("submit", "Submit"))}</Button></Stack>
             </Box>
           </Box>
         </Paper>

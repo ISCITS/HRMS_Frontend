@@ -3,16 +3,16 @@
 import {
   Alert,
   Box,
-  CircularProgress,
   MenuItem,
   Stack,
   Tab,
   Tabs,
   TextField,
   Tooltip,
-  Typography,
+  Typography
 } from "@mui/material";
 import { type HTMLAttributes, useEffect, useMemo, useState } from "react";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
@@ -386,7 +386,7 @@ export default function UserGroupMasterDialog({
           <Box sx={{ flex: 1, minHeight: 0, pt: 1 }}>
             {blnRightsLoading ? (
               <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1.5, minHeight: 240 }}>
-                <CircularProgress size={28} />
+                <DottedLoader intSize={28} />
                 <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>{dicLabels.rightsLoading}</Typography>
               </Box>
             ) : lstRightsNodes.length > 0 ? (

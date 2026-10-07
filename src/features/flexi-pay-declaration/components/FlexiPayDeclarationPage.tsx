@@ -16,7 +16,6 @@ import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   Chip,
   Dialog,
   DialogActions,
@@ -30,13 +29,13 @@ import {
   Switch,
   TextField,
   Tooltip,
-  Typography,
+  Typography
 } from "@mui/material";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import BlockingLoader, { DottedLoader } from "@/components/shared/BlockingLoader";
 import {
   buildEmployeeSalaryFixedRows,
   calculateEmployeeSalaryBaseSummaryMetrics,
@@ -1878,7 +1877,7 @@ export default function FlexiPayDeclarationPage() {
             <Chip label={formatTranslatedStatus(strWorkflowStatus)} color={getStatusTone(strWorkflowStatus)} />
             {blnEvaluating && !blnSaving ? (
               <Chip
-                icon={<CircularProgress size={14} color="inherit" />}
+                icon={<DottedLoader intSize={14} color="inherit" />}
                 label={t("evaluating", "Evaluating...")}
                 variant="outlined"
                 sx={{ color: "#f8fcff", borderColor: "rgba(255,255,255,0.55)" }}

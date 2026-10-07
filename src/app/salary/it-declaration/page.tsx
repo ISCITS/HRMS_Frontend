@@ -18,7 +18,6 @@ import {
   Button,
   Checkbox,
   Chip,
-  CircularProgress,
   Fade,
   Dialog,
   DialogActions,
@@ -40,7 +39,7 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Typography,
+  Typography
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -50,7 +49,7 @@ import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { ApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import BlockingLoader, { DottedLoader } from "@/components/shared/BlockingLoader";
 import FileUploadButton from "@/components/shared/files/FileUploadButton";
 import ITDeclarationStatusBadge from "@/features/it-declaration/components/ITDeclarationStatusBadge";
 import { hrItDeclarationService, itDeclarationService, type ItDeclarationDto } from "@/features/it-declaration/services/itDeclarationService";
@@ -2071,7 +2070,7 @@ export default function SalaryEssDeclarationsPage() {
           <Button onClick={closeEditModal}>{blnDeclarationReadOnly ? t("close", "Close") : t("cancel", "Cancel")}</Button>
           {!blnDeclarationReadOnly ? (
             <Button variant="contained" onClick={() => void saveDeclarationEdit()} disabled={blnSaveEditDisabled || blnModalSaving || !blnCanEditDeclaration}>
-              {blnModalSaving ? <CircularProgress size={16} color="inherit" /> : t("save", "Save")}
+              {blnModalSaving ? <DottedLoader intSize={16} color="inherit" /> : t("save", "Save")}
             </Button>
           ) : null}
         </DialogActions>
@@ -2314,7 +2313,7 @@ export default function SalaryEssDeclarationsPage() {
           <Button onClick={() => setBlnSubmitModalOpen(false)}>{t("cancel", "Cancel")}</Button>
           {blnCanSubmitDeclaration ? (
             <Button variant="contained" onClick={() => void submitDeclaration()} disabled={blnSubmitModalLoading}>
-              {blnSubmitModalLoading ? <CircularProgress size={16} color="inherit" /> : t("confirm_submit", "Confirm & Submit")}
+              {blnSubmitModalLoading ? <DottedLoader intSize={16} color="inherit" /> : t("confirm_submit", "Confirm & Submit")}
             </Button>
           ) : null}
         </DialogActions>

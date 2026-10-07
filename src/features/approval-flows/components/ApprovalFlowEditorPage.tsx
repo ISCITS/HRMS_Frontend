@@ -8,13 +8,12 @@ import {
   Box,
   Button,
   Chip,
-  CircularProgress,
   MenuItem,
   Snackbar,
   Stack,
   Switch,
   TextField,
-  Typography,
+  Typography
 } from "@mui/material";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -23,7 +22,7 @@ import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import CommonEditModeBanner from "@/Common/components/CommonEditModeBanner";
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import styles from "@/components/master/MasterScreen.module.css";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import BlockingLoader, { DottedLoader } from "@/components/shared/BlockingLoader";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
 import { approvalFlowService } from "@/features/approval-flows/services/approvalFlowService";
 import { lstApprovalFlowModules, type ApprovalFlowModuleCode, type ApprovalFlowRecord } from "@/features/approval-flows/types";
@@ -270,7 +269,7 @@ export default function ApprovalFlowEditorPage({ intApprovalFlowID }: ApprovalFl
                 ...objParams.InputProps,
                 endAdornment: (
                   <>
-                    {blnSearching ? <CircularProgress color="inherit" size={16} /> : null}
+                    {blnSearching ? <DottedLoader color="inherit" intSize={16} /> : null}
                     {objParams.InputProps.endAdornment}
                   </>
                 ),
@@ -331,7 +330,7 @@ export default function ApprovalFlowEditorPage({ intApprovalFlowID }: ApprovalFl
 
       {blnBusy ? (
         <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
-          <CircularProgress />
+          <DottedLoader />
         </Box>
       ) : (
         <Stack spacing={3}>

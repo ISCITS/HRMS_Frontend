@@ -5,10 +5,11 @@ import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Autocomplete, Box, Breadcrumbs, Button, Checkbox, Chip, CircularProgress, MenuItem, TextField, Typography } from "@mui/material";
+import { Alert, Autocomplete, Box, Breadcrumbs, Button, Checkbox, Chip, MenuItem, TextField, Typography } from "@mui/material";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 import { dicMasterRowSx } from "@/components/master/MasterListUi";
 import { ReportMoreFilters } from "@/features/reports/components/ReportFilterUi";
 import masterStyles from "@/components/master/MasterScreen.module.css";
@@ -159,7 +160,7 @@ function ReportMultiSelect(objProps: {
             ),
             endAdornment: (
               <>
-                {blnLoading ? <CircularProgress color="inherit" size={16} /> : null}
+                {blnLoading ? <DottedLoader intSize={16} /> : null}
                 {objParams.InputProps.endAdornment}
               </>
             ),

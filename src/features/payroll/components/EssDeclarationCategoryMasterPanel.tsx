@@ -5,7 +5,7 @@ import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import ListAltRoundedIcon from "@mui/icons-material/ListAltRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, Checkbox, Chip, CircularProgress, FormControl, FormControlLabel, FormHelperText, FormLabel, IconButton, MenuItem, Paper, Radio, RadioGroup, Snackbar, Stack, Switch, TextField, Tooltip, Typography } from "@mui/material";
+import { Alert, Box, Button, Checkbox, Chip, FormControl, FormControlLabel, FormHelperText, FormLabel, IconButton, MenuItem, Paper, Radio, RadioGroup, Snackbar, Stack, Switch, TextField, Tooltip, Typography } from "@mui/material";
 import { type InputHTMLAttributes, type ReactNode, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -16,7 +16,7 @@ import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import BlockingLoader, { DottedLoader } from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
@@ -997,7 +997,7 @@ export default function EssDeclarationCategoryMasterPanel({
         </Box>
         {blnSubmitting ? (
           <Box className={styles.bulkBar}>
-            <CircularProgress size={20} />
+            <DottedLoader intSize={20} />
             <Typography className={styles.bulkCount}>{dicLabels.bulkApplyingChanges}</Typography>
           </Box>
         ) : lstSelectedIds.length > 0 && !blnReadOnly && blnCanChangeStatus ? (

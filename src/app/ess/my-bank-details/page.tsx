@@ -7,7 +7,6 @@ import {
   Box,
   Button,
   Chip,
-  CircularProgress,
   FormControlLabel,
   Grid,
   Paper,
@@ -18,6 +17,7 @@ import {
 import { alpha } from "@mui/material/styles";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
@@ -191,7 +191,7 @@ export default function EssMyBankDetailsPage() {
     return (
       <Box sx={{ minHeight: "50vh", display: "grid", placeItems: "center" }}>
         <Stack spacing={1.5} alignItems="center">
-          <CircularProgress />
+          <DottedLoader />
           <Typography color="text.secondary">{t("loading_bank_details", "Loading bank details...")}</Typography>
         </Stack>
       </Box>

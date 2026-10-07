@@ -9,7 +9,6 @@ import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   InputAdornment,
   Link,
   MenuItem,
@@ -27,7 +26,7 @@ import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonT
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import MasterBreadcrumbs from "@/components/master/MasterBreadcrumbs";
 import styles from "@/components/master/MasterScreen.module.css";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import BlockingLoader, { DottedLoader } from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
@@ -793,7 +792,7 @@ export default function BankMasterPanel() {
                         disabled={strMode === "view"}
                         InputProps={{
                           endAdornment: dicTextTranslationLoading[dicText.strRowID] ? (
-                            <InputAdornment position="end"><CircularProgress controlId="bank-master.dialog.translated-name.loading" size={18} sx={{ color: "#2563eb" }} /></InputAdornment>
+                            <InputAdornment position="end"><DottedLoader controlId="bank-master.dialog.translated-name.loading" intSize={18} sx={{ color: "#2563eb" }} /></InputAdornment>
                           ) : undefined,
                         }}
                         fullWidth

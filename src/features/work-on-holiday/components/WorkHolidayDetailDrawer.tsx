@@ -1,9 +1,20 @@
 "use client";
 
 import {
-  Alert, Box, Button, Chip, CircularProgress, Dialog, DialogContent, DialogTitle, Grid, Stack, TextField, Typography,
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Grid,
+  Stack,
+  TextField,
+  Typography
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import { workHolidayService } from "@/features/work-on-holiday/services/workHolidayService";
 import { getWorkHolidayBusinessStatus } from "@/features/work-on-holiday/types/WorkHolidayTypes";
@@ -164,7 +175,7 @@ export default function WorkHolidayDetailDrawer({
         >
         {blnLoading ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-            <CircularProgress aria-label={t("loading", "Loading")} />
+            <DottedLoader aria-label={t("loading", "Loading")} />
           </Box>
         ) : null}
         {objDetail && !blnLoading ? (

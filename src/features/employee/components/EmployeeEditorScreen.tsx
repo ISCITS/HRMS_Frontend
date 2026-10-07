@@ -31,7 +31,6 @@ import {
   Box,
   Breadcrumbs,
   Button,
-  CircularProgress,
   Collapse,
   Dialog,
   DialogActions,
@@ -2089,7 +2088,7 @@ export default function EmployeeEditorScreen({
                   <Avatar src={strAuthenticatedAvatarUrl || undefined} sx={{ width: 62, height: 62, bgcolor: "#edf3ff", border: "3px solid #f1f5fb", color: "#2563eb" }}><AccountCircleRoundedIcon className="employeeProfileIcon" sx={{ width: "100%", height: "100%", color: "#215f91" }} /></Avatar>
                   {!blnViewOnly ? (
                     <IconButton component="label" data-control-id="employee-master-profile-photo-upload" aria-label={t("upload_photo", "Upload photo")} disabled={blnAvatarUpdating || !intResolvedEmployeeID} size="small" sx={{ position: "absolute", right: -3, bottom: -3, width: 23, height: 23, bgcolor: "#fff", border: "1px solid #dce7f5", boxShadow: "0 1px 4px rgba(31,61,110,0.16)", "&:hover": { bgcolor: "#f1f5fb" } }}>
-                      {blnAvatarUpdating ? <CircularProgress size={13} /> : <EditRoundedIcon sx={{ fontSize: 13 }} />}
+                      {blnAvatarUpdating ? <DottedLoader intSize={13} /> : <EditRoundedIcon sx={{ fontSize: 13 }} />}
                       <input hidden type="file" accept="image/png,image/jpeg,image/webp" data-control-id="employee-master-profile-photo-file" onChange={handleAvatarUpload} />
                     </IconButton>
                   ) : null}
@@ -2131,7 +2130,7 @@ export default function EmployeeEditorScreen({
             </Avatar>
             {!blnViewOnly ? (
               <Stack direction="row" spacing={0.75}>
-                <Button component="label" data-control-id="employee-master-profile-photo-upload" size="small" variant="outlined" startIcon={blnAvatarUpdating ? <CircularProgress size={14} /> : <UploadRoundedIcon />} disabled={blnAvatarUpdating || !intResolvedEmployeeID} sx={{ textTransform: "none", fontSize: "0.72rem" }}>
+                <Button component="label" data-control-id="employee-master-profile-photo-upload" size="small" variant="outlined" startIcon={blnAvatarUpdating ? <DottedLoader intSize={14} /> : <UploadRoundedIcon />} disabled={blnAvatarUpdating || !intResolvedEmployeeID} sx={{ textTransform: "none", fontSize: "0.72rem" }}>
                   {t("upload_photo", "Upload photo")}
                   <input hidden type="file" accept="image/png,image/jpeg,image/webp" data-control-id="employee-master-profile-photo-file" onChange={handleAvatarUpload} />
                 </Button>

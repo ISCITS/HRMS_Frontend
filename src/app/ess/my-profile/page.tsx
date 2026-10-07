@@ -19,7 +19,6 @@ import {
   Box,
   Button,
   Chip,
-  CircularProgress,
   Divider,
   Grid,
   Paper,
@@ -30,6 +29,7 @@ import {
 } from "@mui/material";
 // import { useRouter } from "next/navigation";
 import { ChangeEvent, type ReactElement, useEffect, useState } from "react";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import { employeeService } from "@/features/employee/services/employeeService";
@@ -244,7 +244,7 @@ export default function EssMyProfilePage() {
     return (
       <Box sx={{ minHeight: "50vh", display: "grid", placeItems: "center" }}>
         <Stack spacing={1.5} alignItems="center">
-          <CircularProgress />
+          <DottedLoader />
           <Typography color="text.secondary">{t("loading_profile", "Loading your employee profile...")}</Typography>
         </Stack>
       </Box>
@@ -400,7 +400,7 @@ export default function EssMyProfilePage() {
 
             <Divider sx={{ my: 1.35 }} />
             <Stack spacing={0.8}>
-              <Button component="label" variant="outlined" fullWidth startIcon={blnAvatarUpdating ? <CircularProgress size={13} /> : <PhotoCameraRoundedIcon />} disabled={blnAvatarUpdating || !blnCanEditProfile} sx={{ minHeight: 34, borderRadius: "4px", textTransform: "none", fontWeight: 700 }}>
+              <Button component="label" variant="outlined" fullWidth startIcon={blnAvatarUpdating ? <DottedLoader intSize={13} /> : <PhotoCameraRoundedIcon />} disabled={blnAvatarUpdating || !blnCanEditProfile} sx={{ minHeight: 34, borderRadius: "4px", textTransform: "none", fontWeight: 700 }}>
                 {t("change_photo", "Change Photo")}
                 <input hidden type="file" accept="image/png,image/jpeg,image/webp" onChange={handleAvatarUpload} />
               </Button>

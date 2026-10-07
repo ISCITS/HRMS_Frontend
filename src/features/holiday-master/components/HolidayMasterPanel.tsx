@@ -8,10 +8,24 @@ import FilterAltOutlinedIcon from "@mui/icons-material/FilterAltOutlined";
 import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { yupResolver } from "@hookform/resolvers/yup";
 import {
-  Alert, Box, Breadcrumbs, Button, Checkbox, CircularProgress, IconButton, InputAdornment, Link, MenuItem,
-  Popover, Skeleton, Snackbar, TextField, Tooltip, Typography,
+  yupResolver } from "@hookform/resolvers/yup";
+import {
+  Alert,
+  Box,
+  Breadcrumbs,
+  Button,
+  Checkbox,
+  IconButton,
+  InputAdornment,
+  Link,
+  MenuItem,
+  Popover,
+  Skeleton,
+  Snackbar,
+  TextField,
+  Tooltip,
+  Typography
 } from "@mui/material";
 import { useMemo, useState, type InputHTMLAttributes } from "react";
 import { Controller, useFieldArray, useForm, type Resolver } from "react-hook-form";
@@ -24,7 +38,7 @@ import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonT
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import { onSearchEnter } from "@/components/master/MasterListUi";
 import styles from "@/components/master/MasterScreen.module.css";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import BlockingLoader, { DottedLoader } from "@/components/shared/BlockingLoader";
 import { useHolidayMaster } from "@/features/holiday-master/hooks/useHolidayMaster";
 import { holidayMasterService } from "@/features/holiday-master/services/holidayMasterService";
 import type { HolidayFilters, HolidayFormValues, HolidayRecord } from "@/features/holiday-master/types/HolidayTypes";
@@ -570,7 +584,7 @@ export default function HolidayMasterPanel() {
                 </Box>
                 <Tooltip title={t("translate_help", "Generate suggested translations using AI. Review before saving.")} arrow>
                   <span>
-                    <Button data-control-id="holiday-master.dialog.ai-translate.button" className={styles.secondaryButton} variant="outlined" startIcon={blnTranslating ? <CircularProgress size={16} /> : <AutoAwesomeRoundedIcon />} onClick={() => void translateHolidayFields()} disabled={strMode === "view" || blnSubmitting || blnTranslating || objOptions.lstLanguages.length < 2} sx={{ minHeight: 34, whiteSpace: "nowrap", background: "#fff" }}>{t("ai_translate", "AI Translate")}</Button>
+                    <Button data-control-id="holiday-master.dialog.ai-translate.button" className={styles.secondaryButton} variant="outlined" startIcon={blnTranslating ? <DottedLoader intSize={16} /> : <AutoAwesomeRoundedIcon />} onClick={() => void translateHolidayFields()} disabled={strMode === "view" || blnSubmitting || blnTranslating || objOptions.lstLanguages.length < 2} sx={{ minHeight: 34, whiteSpace: "nowrap", background: "#fff" }}>{t("ai_translate", "AI Translate")}</Button>
                   </span>
                 </Tooltip>
               </Box>

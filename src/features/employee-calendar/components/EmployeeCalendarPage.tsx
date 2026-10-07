@@ -2,10 +2,11 @@
 
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
-import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, Grid, InputLabel, MenuItem, Paper, Select, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, Grid, InputLabel, MenuItem, Paper, Select, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import type { Theme } from "@mui/material/styles";
 import { useMemo, useState } from "react";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import { useEmployeeCalendar } from "@/features/employee-calendar/hooks/useEmployeeCalendar";
 import type { EmployeeCalendarDay } from "@/features/employee-calendar/types/EmployeeCalendarTypes";
@@ -98,7 +99,7 @@ export default function EmployeeCalendarPage() {
       {strError ? <Alert data-control-id="employee-calendar.error.alert" severity="error" action={<Button data-control-id="employee-calendar.retry.button" onClick={reload}>{t("retry", "Retry")}</Button>}>{strError}</Alert> : null}
       <Paper sx={{ p: 1.5, borderRadius: 3, position: "relative", minHeight: 420 }}>
         <Stack direction="row" gap={1} flexWrap="wrap" alignItems="center" sx={{ px: 1, pt: 0.5, mb: 1.5 }}>{lstLegendStatuses.map((strStatus) => <Chip key={strStatus} size="small" label={t(`status_${strStatus}`, strStatus.replaceAll("_", " "))} sx={{ color: getStatusColor(strStatus, objTheme), bgcolor: alpha(getStatusColor(strStatus, objTheme), 0.12), fontWeight: 700 }} />)}</Stack>
-        {blnLoading || blnRightsLoading ? <Box sx={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", bgcolor: alpha(objTheme.palette.background.paper, 0.75), zIndex: 2 }}><CircularProgress aria-label={t("loading", "Loading calendar")} /></Box> : null}
+        {blnLoading || blnRightsLoading ? <Box sx={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", bgcolor: alpha(objTheme.palette.background.paper, 0.75), zIndex: 2 }}><DottedLoader aria-label={t("loading", "Loading calendar")} /></Box> : null}
         <Grid container columns={7} sx={{ px: 1 }}>{lstWeekdays.map((strDay) => <Grid item xs={1} key={strDay}><Typography align="center" fontWeight={700} color="text.secondary">{t(`weekday_${strDay}`, strDay)}</Typography></Grid>)}</Grid>
         <Box sx={{ mx: 1, mt: 1, display: "grid", gridTemplateColumns: "repeat(7, minmax(90px, 1fr))", gap: 0.75, overflowX: "auto" }}>
           {Array.from({ length: intFirstWeekday }, (_, intIndex) => <Box key={`blank-${intIndex}`} />)}

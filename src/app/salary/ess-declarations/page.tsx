@@ -3,9 +3,10 @@
 import AddCircleOutlineRoundedIcon from "@mui/icons-material/AddCircleOutlineRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import { itDeclarationService, type ItDeclarationDashboardCardDto, type ItDeclarationRegime } from "@/features/it-declaration/services/itDeclarationService";
 import ITDeclarationStatusBadge from "@/features/it-declaration/components/ITDeclarationStatusBadge";
@@ -330,7 +331,7 @@ export default function SalaryEssDeclarationsPage() {
   if (blnLoading || blnRightsLoading) {
     return (
       <Box sx={{ display: "grid", placeItems: "center", minHeight: "40vh" }}>
-        <CircularProgress size={28} />
+        <DottedLoader intSize={28} />
       </Box>
     );
   }

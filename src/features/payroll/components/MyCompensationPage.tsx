@@ -8,11 +8,11 @@ import SavingsOutlinedIcon from "@mui/icons-material/SavingsOutlined";
 import {
   Alert,
   Box,
-  CircularProgress,
   Stack,
-  Typography,
+  Typography
 } from "@mui/material";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { employeeSalaryService } from "@/features/employee-salary/services/employeeSalaryService";
@@ -276,7 +276,7 @@ export default function MyCompensationPage() {
   );
 
   if (blnRightsLoading || blnLoading) {
-    return <Box sx={{ display: "grid", placeItems: "center", py: 8 }}><CircularProgress /></Box>;
+    return <Box sx={{ display: "grid", placeItems: "center", py: 8 }}><DottedLoader /></Box>;
   }
 
   if (!blnCanView) {

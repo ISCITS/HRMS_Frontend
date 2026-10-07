@@ -8,7 +8,6 @@ import {
   Autocomplete,
   Box,
   Button,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -17,10 +16,11 @@ import {
   Link,
   MenuItem,
   Stack,
-  TextField,
+  TextField
 } from "@mui/material";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { MasterAddColumnsControl, MasterBreadcrumbs, MasterGridSkeleton, dicMasterRowSx, type MasterOptionalColumn } from "@/components/master/MasterListUi";
@@ -453,7 +453,7 @@ export default function HrItDeclarationListPage() {
                   ),
                   endAdornment: (
                     <>
-                      {blnEmployeeLoading ? <CircularProgress color="inherit" size={16} /> : null}
+                      {blnEmployeeLoading ? <DottedLoader color="inherit" intSize={16} /> : null}
                       {objParams.InputProps.endAdornment}
                     </>
                   ),
@@ -602,7 +602,7 @@ export default function HrItDeclarationListPage() {
                     ...objParams.InputProps,
                     endAdornment: (
                       <>
-                        {blnEmployeeLoading ? <CircularProgress color="inherit" size={16} /> : null}
+                        {blnEmployeeLoading ? <DottedLoader color="inherit" intSize={16} /> : null}
                         {objParams.InputProps.endAdornment}
                       </>
                     ),

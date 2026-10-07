@@ -7,8 +7,26 @@ import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import {
-  Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
-  Divider, Grid, InputAdornment, Link, MenuItem, Paper, Snackbar, Stack, Tab, Tabs, TextField, Typography,
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  Grid,
+  InputAdornment,
+  Link,
+  MenuItem,
+  Paper,
+  Snackbar,
+  Stack,
+  Tab,
+  Tabs,
+  TextField,
+  Typography
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -21,7 +39,7 @@ import CommonDataGrid, { type DataGridColumn } from "@/components/ui/CommonDataG
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import LookupChip, { lookupLabel } from "@/features/attendance-regularization/components/LookupChip";
 import styles from "@/components/master/MasterScreen.module.css";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import BlockingLoader, { DottedLoader } from "@/components/shared/BlockingLoader";
 import { onSearchEnter, dicMasterNameLinkSx, dicMasterRowSx, MasterBreadcrumbs, MasterGridSkeleton } from "@/components/master/MasterListUi";
 import FileRowActions from "@/components/shared/files/FileRowActions";
 import { attendanceRegularizationService } from "@/features/attendance-regularization/services/attendanceRegularizationService";
@@ -691,7 +709,7 @@ export default function AttendanceRegularizationPage() {
               <Stack ref={objActionRowRef} direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="flex-end" sx={{ mt: 2, scrollMarginBottom: 16 }}>
                 <Button data-control-id="attendance-regularization.clear.button" className={styles.secondaryButton} disabled={blnSaving} startIcon={<ClearRoundedIcon />} onClick={clearRequestForm}>{t("clear", "Clear")}</Button>
                 <Button data-control-id="attendance-regularization.preview.button" variant="outlined" disabled={blnSaving} onClick={handleSubmit((objValues) => void previewForm(objValues))}>{t("preview", "Preview")}</Button>
-                <Button data-control-id="attendance-regularization.save-draft.button" type="submit" variant="contained" disabled={blnSaving} startIcon={blnSaving ? <CircularProgress size={18} /> : <SaveRoundedIcon />}>{t("save_draft", "Save Draft")}</Button>
+                <Button data-control-id="attendance-regularization.save-draft.button" type="submit" variant="contained" disabled={blnSaving} startIcon={blnSaving ? <DottedLoader intSize={18} /> : <SaveRoundedIcon />}>{t("save_draft", "Save Draft")}</Button>
                 {objEditing ? <Button data-control-id="attendance-regularization.submit.button" variant="contained" color="success" disabled={blnSaving} startIcon={<SendRoundedIcon />} onClick={() => setObjConfirm({ strAction: "submit", objRequest: objEditing })}>{t("submit", "Submit")}</Button> : null}
               </Stack>
               {objPreview && !objPreview.blnValid ? <Alert severity="warning" sx={{ mt: 2 }}>{objPreview.lstErrors.map((objItem) => t(`validation_${objItem.strCode.toLowerCase()}`, objItem.strCode)).join(" · ")}{objPreview.objPayrollConflict ? ` · ${t("payroll_conflict", "Payroll is locked or processed.")}` : ""}</Alert> : null}

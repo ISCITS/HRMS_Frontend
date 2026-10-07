@@ -5,7 +5,6 @@ import {
   Box,
   Button,
   Checkbox,
-  CircularProgress,
   FormControlLabel,
   MenuItem,
   Paper,
@@ -15,9 +14,10 @@ import {
   StepLabel,
   Stepper,
   TextField,
-  Typography,
+  Typography
 } from "@mui/material";
 import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import CommonSearchableMultiSelect from "@/Common/components/CommonSearchableMultiSelect";
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
@@ -356,7 +356,7 @@ export default function TenantAdminTenantEditorPage({ intTenantID }: TenantEdito
     return (
       <Paper sx={{ p: 4, display: "grid", placeItems: "center", minHeight: 320 }}>
         <Stack spacing={2} alignItems="center">
-          <CircularProgress />
+          <DottedLoader />
           <Typography>Loading tenant editor...</Typography>
         </Stack>
       </Paper>
@@ -393,7 +393,7 @@ export default function TenantAdminTenantEditorPage({ intTenantID }: TenantEdito
           {intActiveStep < 3 ? (
             <Button controlId="tenant-admin.editor.next.button" variant="contained" onClick={handleNext} disabled={blnSubmitting}>Next</Button>
           ) : (
-            <Button controlId="tenant-admin.editor.save.button" variant="contained" onClick={handleSubmit} disabled={blnSubmitting} startIcon={blnSubmitting ? <CircularProgress color="inherit" size={16} /> : undefined}>Save Changes</Button>
+            <Button controlId="tenant-admin.editor.save.button" variant="contained" onClick={handleSubmit} disabled={blnSubmitting} startIcon={blnSubmitting ? <DottedLoader color="inherit" intSize={16} /> : undefined}>Save Changes</Button>
           )}
         </Box>
       </Paper>

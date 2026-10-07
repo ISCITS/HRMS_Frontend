@@ -19,7 +19,6 @@ import {
   Box,
   Breadcrumbs,
   Button,
-  CircularProgress,
   FormControlLabel,
   IconButton,
   Link,
@@ -35,6 +34,7 @@ import {
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
@@ -2315,7 +2315,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
     return (
       <Box sx={{ minHeight: 360, display: "grid", placeItems: "center" }}>
         <Stack spacing={1.5} alignItems="center">
-          <CircularProgress />
+          <DottedLoader />
           <Typography sx={{ color: "#64748b" }}>
             {t("employee_salary_loading_workspace", "Loading employee salary workspace...")}
           </Typography>
