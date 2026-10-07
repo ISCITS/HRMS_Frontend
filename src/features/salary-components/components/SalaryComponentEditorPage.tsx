@@ -13,7 +13,6 @@ import {
   Button,
   Checkbox,
   Chip,
-  CircularProgress,
   FormControlLabel,
   IconButton,
   InputAdornment,
@@ -36,6 +35,7 @@ import CommonSearchableMultiSelect from "@/Common/components/CommonSearchableMul
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/components/master/MasterScreen.module.css";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useSalaryComponentLabels } from "@/features/salary-components/hooks/useSalaryComponentLabels";
 import { allocationMasterService } from "@/features/allocation-masters/services/allocationMasterService";
@@ -1414,7 +1414,7 @@ export default function SalaryComponentEditorPage({
     return (
       <Box data-controlid="salary-components.editor.loading.state" sx={{ minHeight: 360, display: "grid", placeItems: "center" }}>
         <Stack spacing={1.5} alignItems="center">
-          <CircularProgress />
+          <DottedLoader />
           <Typography sx={{ color: "#64748b" }}>{t("loading_salary_component_workspace", "Loading salary component workspace...")}</Typography>
         </Stack>
       </Box>
@@ -2455,7 +2455,7 @@ export default function SalaryComponentEditorPage({
               data-controlid="salary-components.editor.multilingual.translate.button"
             >
               {dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]
-                ? <CircularProgress size={18} sx={{ color: "#ffffff" }} />
+                ? <DottedLoader intSize={18} />
                 : t("translate", "AI Translate")}
             </Button>
           </Box>
@@ -2479,7 +2479,7 @@ export default function SalaryComponentEditorPage({
                 inputProps={{ ...buildInputTestIdProps("salary-components.editor.multilingual.component-name.input"), "data-row-key": dicText.strRowID }}
                 InputProps={{
                   endAdornment: dicTextTranslationLoading[dicText.strRowID]
-                    ? <InputAdornment position="end"><CircularProgress size={18} sx={{ color: "#2563eb" }} /></InputAdornment>
+                    ? <InputAdornment position="end"><DottedLoader intSize={18} /></InputAdornment>
                     : undefined
                 }}
                 fullWidth
@@ -2494,7 +2494,7 @@ export default function SalaryComponentEditorPage({
                 inputProps={{ ...buildInputTestIdProps("salary-components.editor.multilingual.description.input"), "data-row-key": dicText.strRowID }}
                 InputProps={{
                   endAdornment: dicTextTranslationLoading[dicText.strRowID]
-                    ? <InputAdornment position="end"><CircularProgress size={18} sx={{ color: "#2563eb" }} /></InputAdornment>
+                    ? <InputAdornment position="end"><DottedLoader intSize={18} /></InputAdornment>
                     : undefined
                 }}
                 fullWidth

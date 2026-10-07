@@ -12,7 +12,6 @@ import {
   Box,
   Button,
   Checkbox,
-  CircularProgress,
   Dialog,
   DialogContent,
   DialogTitle,
@@ -30,7 +29,7 @@ import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import { handleSingleDialogActionEnter } from "@/Common/utils/dialogKeyboard";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/components/master/MasterScreen.module.css";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import BlockingLoader, { DottedLoader } from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";
 import { useEmployeeLabels } from "@/features/employee/hooks/useEmployeeLabels";
 import { employeeService } from "@/features/employee/services/employeeService";
@@ -350,7 +349,7 @@ export default function EmployeeMasterPanel() {
 
         {blnSubmitting ? (
           <Box className={styles.bulkBar}>
-            <CircularProgress size={20} />
+            <DottedLoader intSize={20} />
             <Typography className={styles.bulkCount}>Applying changes...</Typography>
           </Box>
         ) : lstSelectedIDs.length > 0 ? (
@@ -401,7 +400,7 @@ export default function EmployeeMasterPanel() {
 
         {blnLoading ? (
           <Box className={styles.emptyState}>
-            <CircularProgress size={24} />
+            <DottedLoader intSize={24} />
             <Typography sx={{ mt: 1 }}>{dicConstant.employeeMaster.loading}</Typography>
           </Box>
         ) : (

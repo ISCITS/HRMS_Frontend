@@ -1,7 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Alert, Autocomplete, Box, Breadcrumbs, Button, CircularProgress, MenuItem, TextField, Typography } from "@mui/material";
+import {
+  useEffect,
+  useRef,
+  useState } from "react";
+import { Alert,
+  Autocomplete,
+  Box,
+  Breadcrumbs,
+  Button,
+  MenuItem,
+  TextField,
+  Typography
+} from "@mui/material";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import PictureAsPdfRoundedIcon from "@mui/icons-material/PictureAsPdfRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
@@ -97,7 +108,7 @@ export default function CtcFormatReportPage() {
               InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />} />
         </Box>
         <Box className={screen.searchActions}>
-          <Button type="submit" size="small" className={screen.primaryButton} startIcon={generating ? <CircularProgress size={16} color="inherit" /> : <SearchRoundedIcon />} disabled={!selected || binding || busy} data-testid="ctc.generate" sx={{ minHeight: "30px !important", px: "8px !important" }}>Search</Button>
+          <Button type="submit" size="small" className={screen.primaryButton} startIcon={generating ? <DottedLoader intSize={16} color="inherit" /> : <SearchRoundedIcon />} disabled={!selected || binding || busy} data-testid="ctc.generate" sx={{ minHeight: "30px !important", px: "8px !important" }}>Search</Button>
           <Button size="small" className={screen.secondaryButton} startIcon={<ClearRoundedIcon />} disabled={busy || binding} onClick={() => { setType("All"); setSelected(null); setStatement(null); setError(""); }} sx={{ minHeight: "30px !important", px: "8px !important" }}>Clear</Button>
         </Box>
       </Box>
@@ -115,8 +126,8 @@ export default function CtcFormatReportPage() {
       <Box className={styles.toolbar}>
         <Typography fontWeight={700}>CTC Statement</Typography>
         {canExport && <Box className={styles.downloads}>
-          <Button className={screen.secondaryButton} startIcon={downloading === "xlsx" ? <CircularProgress size={16} /> : <DownloadRoundedIcon />} disabled={!statement || busy} onClick={() => void download("xlsx")} data-testid="ctc.export.xlsx">Export Excel</Button>
-          <Button className={screen.secondaryButton} startIcon={downloading === "pdf" ? <CircularProgress size={16} /> : <PictureAsPdfRoundedIcon />} disabled={!statement || busy} onClick={() => void download("pdf")} data-testid="ctc.export.pdf">Download PDF</Button>
+          <Button className={screen.secondaryButton} startIcon={downloading === "xlsx" ? <DottedLoader intSize={16} /> : <DownloadRoundedIcon />} disabled={!statement || busy} onClick={() => void download("xlsx")} data-testid="ctc.export.xlsx">Export Excel</Button>
+          <Button className={screen.secondaryButton} startIcon={downloading === "pdf" ? <DottedLoader intSize={16} /> : <PictureAsPdfRoundedIcon />} disabled={!statement || busy} onClick={() => void download("pdf")} data-testid="ctc.export.pdf">Download PDF</Button>
         </Box>}
       </Box>
       {statement?.document.warnings.map((warning, index) => <Alert severity="warning" key={index} sx={{ mb: 1 }}>{warning}</Alert>)}

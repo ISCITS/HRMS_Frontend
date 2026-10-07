@@ -12,12 +12,12 @@ import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import SecurityRoundedIcon from "@mui/icons-material/SecurityRounded";
 import SpaRoundedIcon from "@mui/icons-material/SpaRounded";
-import { Alert, Autocomplete, Box, Breadcrumbs, Button, Chip, CircularProgress, Divider, InputAdornment, Menu, MenuItem, Paper, Snackbar, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Autocomplete, Box, Breadcrumbs, Button, Chip, Divider, InputAdornment, Menu, MenuItem, Paper, Snackbar, Stack, TextField, Typography } from "@mui/material";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import BlockingLoader, { DottedLoader } from "@/components/shared/BlockingLoader";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
 import { settingsService } from "@/features/settings/services/settingsService";
 import type { ApproverEmployeeDto, ApproverSnapshotDto, DefaultApproverSource, LeaveSettingsConfigDto } from "@/features/settings/types";
@@ -249,7 +249,7 @@ export default function LeaveSettingsPanel() {
                 ...objParams.InputProps,
                 endAdornment: (
                   <>
-                    {blnIsSearching ? <CircularProgress color="inherit" size={16} /> : null}
+                    {blnIsSearching ? <DottedLoader color="inherit" intSize={16} /> : null}
                     {objParams.InputProps.endAdornment}
                   </>
                 ),
@@ -426,7 +426,7 @@ export default function LeaveSettingsPanel() {
       </Paper>
 
       {blnBusy ? (
-        <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}><CircularProgress /></Box>
+        <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}><DottedLoader /></Box>
       ) : strActiveCategory === "leave" ? (
         <>
           <Paper id="settings-section-leave-calendar" variant="outlined" sx={sxCard}>

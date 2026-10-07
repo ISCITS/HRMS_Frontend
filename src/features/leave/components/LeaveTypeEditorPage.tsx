@@ -10,7 +10,6 @@ import {
   Box,
   Button,
   Chip,
-  CircularProgress,
   Collapse,
   Divider,
   FormControlLabel,
@@ -21,10 +20,11 @@ import {
   Stack,
   Switch,
   TextField,
-  Typography,
+  Typography
 } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
@@ -617,7 +617,7 @@ export default function LeaveTypeEditorPage({ strMode, strLeaveTypeID }: { strMo
   if (blnLoading) {
     return (
       <Box sx={{ display: "grid", placeItems: "center", py: 8 }}>
-        <CircularProgress />
+        <DottedLoader />
       </Box>
     );
   }

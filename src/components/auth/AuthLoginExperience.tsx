@@ -9,9 +9,10 @@ import SecurityRoundedIcon from "@mui/icons-material/SecurityRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VpnKeyRoundedIcon from "@mui/icons-material/VpnKeyRounded";
-import { Alert, Box, Button, ButtonBase, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, IconButton, InputAdornment, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, ButtonBase, Dialog, DialogActions, DialogContent, DialogTitle, Divider, IconButton, InputAdornment, Paper, Stack, TextField, Typography } from "@mui/material";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import styles from "@/components/auth/AuthLoginExperience.module.css";
 import { LoginUiMessage } from "@/Common/enums/AppEnums";
@@ -516,7 +517,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
               <Typography variant="body2" sx={{ color: "#94a3b8" }}>
                 {strTenantUUID}
               </Typography>
-              <CircularProgress />
+              <DottedLoader />
             </Stack>
           </Box>
         </Box>
@@ -615,7 +616,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                 onClick={() => {
                   void handleGoogleMfaVerification();
                 }}
-                startIcon={blnSubmitting ? <CircularProgress size={18} color="inherit" /> : undefined}
+                startIcon={blnSubmitting ? <DottedLoader intSize={18} color="inherit" /> : undefined}
                 sx={{ minHeight: 52, borderRadius: "10px" }}
               >
                 {strResolvedVerifyButtonLabel}
@@ -660,14 +661,14 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
           <Box className={styles.formCard}>
             {blnLanguageSwitching ? (
               <Box className={styles.languageLoadingOverlay}>
-                <CircularProgress size={22} />
+                <DottedLoader intSize={22} />
               </Box>
             ) : null}
             {lstLanguageOptions.length > 1 ? (
               <Box className={styles.languageSwitcherRow}>
                 <Box className={styles.languageSwitcher} role="tablist" aria-label="Login language switcher">
                   <Box className={styles.languageSwitcherIcon}>
-                    {blnLanguageSwitching ? <CircularProgress size={14} /> : <LanguageRoundedIcon sx={{ fontSize: 16 }} />}
+                    {blnLanguageSwitching ? <DottedLoader intSize={14} /> : <LanguageRoundedIcon sx={{ fontSize: 16 }} />}
                   </Box>
                   {lstLanguageOptions.map((dicLanguageOption) => (
                     <button
@@ -844,7 +845,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                   background: "linear-gradient(135deg, #132a63 0%, #184a8b 100%)",
                   boxShadow: "0 10px 20px rgba(24, 74, 139, 0.24)"
                 }}
-                startIcon={blnSubmitting ? <CircularProgress size={18} color="inherit" /> : <LockRoundedIcon />}
+                startIcon={blnSubmitting ? <DottedLoader intSize={18} color="inherit" /> : <LockRoundedIcon />}
               >
                 {blnOtpStep ? getLoginLabel("verifyOtpTitle") : getLoginLabel("signInButton")}
               </Button>

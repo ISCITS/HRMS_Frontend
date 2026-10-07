@@ -5,7 +5,6 @@ import {
   Box,
   Button,
   Checkbox,
-  CircularProgress,
   FormControlLabel,
   MenuItem,
   Paper,
@@ -15,11 +14,12 @@ import {
   StepLabel,
   Stepper,
   TextField,
-  Typography,
+  Typography
 } from "@mui/material";
 import type { InputHTMLAttributes } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import CommonSearchableMultiSelect from "@/Common/components/CommonSearchableMultiSelect";
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
@@ -371,7 +371,7 @@ export default function TenantOnboardingPage() {
     return (
       <Paper sx={{ p: 4, display: "grid", placeItems: "center", minHeight: 320 }}>
         <Stack spacing={2} alignItems="center">
-          <CircularProgress />
+          <DottedLoader />
           <Typography>Loading tenant onboarding form...</Typography>
         </Stack>
       </Paper>
@@ -415,7 +415,7 @@ export default function TenantOnboardingPage() {
               variant="contained"
               onClick={handleNext}
               disabled={blnSubmitting || blnCheckingCode}
-              startIcon={blnCheckingCode ? <CircularProgress color="inherit" size={16} /> : undefined}
+              startIcon={blnCheckingCode ? <DottedLoader color="inherit" intSize={16} /> : undefined}
             >
               Next
             </Button>
@@ -425,7 +425,7 @@ export default function TenantOnboardingPage() {
               variant="contained"
               onClick={handleSubmit}
               disabled={blnSubmitting}
-              startIcon={blnSubmitting ? <CircularProgress color="inherit" size={16} /> : undefined}
+              startIcon={blnSubmitting ? <DottedLoader color="inherit" intSize={16} /> : undefined}
             >
               Create Tenant
             </Button>
@@ -581,7 +581,7 @@ export default function TenantOnboardingPage() {
                 variant="outlined"
                 onClick={handleValidateExistingDatabase}
                 disabled={blnValidatingDatabase}
-                startIcon={blnValidatingDatabase ? <CircularProgress color="inherit" size={16} /> : undefined}
+                startIcon={blnValidatingDatabase ? <DottedLoader color="inherit" intSize={16} /> : undefined}
               >
                 Validate Database
               </Button>

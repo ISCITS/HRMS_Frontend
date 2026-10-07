@@ -7,17 +7,17 @@ import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   InputAdornment,
   Link,
   MenuItem,
   Snackbar,
   Stack,
   TextField,
-  Typography,
+  Typography
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { MasterBreadcrumbs, MasterGridSkeleton, MasterStatusPill, dicMasterRowSx, onSearchEnter } from "@/components/master/MasterListUi";
@@ -362,7 +362,7 @@ export default function StatutoryRuleListPage() {
               </Box>
             </Box>
           </Stack>
-        ) : <CircularProgress size={20} />}
+        ) : <DottedLoader intSize={20} />}
       />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3200} onClose={closeToast}>

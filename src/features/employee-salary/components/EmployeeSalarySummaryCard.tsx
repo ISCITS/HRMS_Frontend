@@ -1,15 +1,22 @@
 "use client";
 
-import { isCtcProvisionCategory } from "@/lib/salaryCategories";
+import {
+  isCtcProvisionCategory } from "@/lib/salaryCategories";
 
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import AccountBalanceWalletRoundedIcon from "@mui/icons-material/AccountBalanceWalletRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import MonetizationOnRoundedIcon from "@mui/icons-material/MonetizationOnRounded";
 import SavingsRoundedIcon from "@mui/icons-material/SavingsRounded";
-import { Box, Button, CircularProgress, Paper, Stack, Typography } from "@mui/material";
+import { Box,
+  Button,
+  Paper,
+  Stack,
+  Typography
+} from "@mui/material";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import SalaryCalculationTooltip from "./SalaryCalculationTooltip";
 
@@ -128,7 +135,7 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
         <Typography sx={{ fontSize: "1rem", fontWeight: 800, color: "#172554", lineHeight: 1.2, mb: 1.5 }}>{t("salary_summary_card_title", "Salary Summary")}</Typography>
         {blnLoading ? (
           <Stack direction="row" spacing={1} alignItems="center" sx={{ flex: 1, color: "#64748b" }}>
-            <CircularProgress size={16} />
+            <DottedLoader intSize={16} />
             <Typography sx={{ fontSize: "0.8rem" }}>{t("salary_summary_card_loading", "Loading salary summary...")}</Typography>
           </Stack>
         ) : !objSalaryDetail ? (
@@ -172,7 +179,7 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
 
         {blnLoading ? (
           <Stack direction="row" spacing={1} alignItems="center" sx={{ py: 1, color: "#64748b" }}>
-            <CircularProgress size={16} />
+            <DottedLoader intSize={16} />
             <Typography sx={{ typography: "caption" }}>{t("salary_summary_card_loading", "Loading salary summary...")}</Typography>
           </Stack>
         ) : !objSalaryDetail ? (
@@ -253,7 +260,7 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
           </Typography>
         ) : blnLoading ? (
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, color: "#64748b", gridColumn: { md: "2 / 6" } }}>
-            <CircularProgress size={18} />
+            <DottedLoader intSize={18} />
             <Typography>{t("salary_summary_card_loading", "Loading salary summary...")}</Typography>
           </Box>
         ) : (

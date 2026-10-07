@@ -5,13 +5,13 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import RadioButtonUncheckedRoundedIcon from "@mui/icons-material/RadioButtonUncheckedRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
-import { yupResolver } from "@hookform/resolvers/yup";
+import {
+  yupResolver } from "@hookform/resolvers/yup";
 import {
   Alert,
   Avatar,
   Box,
   Button,
-  CircularProgress,
   Divider,
   IconButton,
   InputAdornment,
@@ -23,6 +23,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import * as yup from "yup";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import { useChangePassword } from "@/features/change-password/hooks/useChangePassword";
@@ -492,7 +493,7 @@ export default function ChangePasswordForm({
             size="small"
             disabled={blnSubmitting || blnLoadingEmployees || !objForm.formState.isValid || (blnAdminResetMode && !strEmployeeID)}
             data-controlid="change-password.submit.button"
-            startIcon={blnSubmitting ? <CircularProgress size={18} color="inherit" /> : undefined}
+            startIcon={blnSubmitting ? <DottedLoader intSize={18} color="inherit" /> : undefined}
             sx={{
               minHeight: "var(--app-button-height)",
               borderRadius: "var(--app-button-radius)",

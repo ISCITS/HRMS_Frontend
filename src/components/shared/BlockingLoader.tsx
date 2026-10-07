@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, type ReactNode, useContext } from "react";
-import { Backdrop, Box, Stack, Typography } from "@mui/material";
+import { Backdrop, Box, type BoxProps, Stack, Typography } from "@mui/material";
 import { createPortal } from "react-dom";
 
 type BlockingLoaderProps = {
@@ -33,19 +33,30 @@ export function BlockingLoaderViewportProvider({
   );
 }
 
-export function DottedLoader() {
+type DottedLoaderProps = BoxProps & {
+  intSize?: number;
+  controlId?: string;
+};
+
+export function DottedLoader({ intSize = 64, controlId, sx, ...objProps }: DottedLoaderProps) {
   const intDotCount = 10;
+  const intDotSize = Math.max(3, Math.round(intSize * 0.17));
 
   return (
     <Box
       aria-hidden="true"
       className="app-dotted-loader"
-      sx={{
-        position: "relative",
-        width: 64,
-        height: 64,
-        color: "var(--app-primary-color, #1d5d96)",
-      }}
+      data-controlid={controlId}
+      {...objProps}
+      sx={[
+        {
+          position: "relative",
+          width: intSize,
+          height: intSize,
+          color: "var(--app-primary-color, #1d5d96)",
+        },
+        ...(Array.isArray(sx) ? sx : sx ? [sx] : []),
+      ]}
     >
       {Array.from({ length: intDotCount }, (_, intIndex) => (
         <Box
@@ -55,7 +66,12 @@ export function DottedLoader() {
         >
           <Box
             className="app-dotted-loader-dot"
-            style={{ animationDelay: `${(intDotCount - intIndex) * -0.1}s` }}
+            style={{
+              width: intDotSize,
+              height: intDotSize,
+              marginLeft: -(intDotSize / 2),
+              animationDelay: `${(intDotCount - intIndex) * -0.1}s`,
+            }}
           />
         </Box>
       ))}

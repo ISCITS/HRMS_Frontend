@@ -12,7 +12,6 @@ import {
   Breadcrumbs,
   Button,
   Checkbox,
-  CircularProgress,
   InputAdornment,
   Link,
   Menu,
@@ -28,7 +27,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import styles from "@/components/master/MasterScreen.module.css";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import BlockingLoader, { DottedLoader } from "@/components/shared/BlockingLoader";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useSalaryComponentLabels } from "@/features/salary-components/hooks/useSalaryComponentLabels";
 import { salaryComponentService } from "@/features/salary-components/services/salaryComponentService";
@@ -613,7 +612,7 @@ export default function SalaryComponentListPage() {
 
         {blnSubmitting ? (
           <Box className={styles.bulkBar} data-controlid="salary-components.list.bulk-processing.state">
-            <CircularProgress size={20} />
+            <DottedLoader intSize={20} />
             <Typography className={styles.bulkCount}>{t("bulk_applying_changes", "Applying changes...")}</Typography>
           </Box>
         ) : lstSelectedIds.length > 0 && !blnReadOnly && (blnCanEdit || blnCanDelete) ? (

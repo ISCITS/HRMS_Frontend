@@ -7,13 +7,13 @@ import {
   Box,
   Button,
   Chip,
-  CircularProgress,
   Paper,
   Stack,
-  Typography,
+  Typography
 } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import styles from "@/components/master/MasterScreen.module.css";
@@ -198,7 +198,7 @@ export default function SalaryFlexiPayDeclarationsRoute() {
   if (blnLoading) {
     return (
       <Box sx={{ display: "grid", placeItems: "center", minHeight: "48vh" }}>
-        <CircularProgress size={30} />
+        <DottedLoader intSize={30} />
       </Box>
     );
   }

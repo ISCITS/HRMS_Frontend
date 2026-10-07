@@ -8,7 +8,6 @@ import {
   Autocomplete,
   Box,
   Chip,
-  CircularProgress,
   MenuItem,
   Paper,
   Snackbar,
@@ -20,7 +19,7 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Typography,
+  Typography
 } from "@mui/material";
 import { Fragment, useEffect, useMemo, useState } from "react";
 

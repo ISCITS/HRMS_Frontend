@@ -4,16 +4,36 @@ import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
-import { yupResolver } from "@hookform/resolvers/yup";
 import {
-  Alert, Box, Button, Chip, CircularProgress, Collapse, Dialog,
-  DialogActions, DialogContent, DialogTitle, Divider, Paper, Snackbar, Stack, Table, TableBody,
-  TableCell, TableContainer, TableHead, TableRow, TextField, Typography,
+  yupResolver } from "@hookform/resolvers/yup";
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Collapse,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  Paper,
+  Snackbar,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography
 } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type PropsWithChildren, type ReactNode } from "react";
 import { Controller, useForm, useWatch, type Resolver } from "react-hook-form";
 import * as yup from "yup";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import CommonEditModeBanner from "@/Common/components/CommonEditModeBanner";
@@ -270,7 +290,7 @@ export default function EmployeeLeavePlanDetailPage({ strEmployeeID }: { strEmpl
     setObjMovement(null);
   }
 
-  if (blnLoading || blnRightsLoading) return <Box sx={{ py: 10, textAlign: "center" }}><CircularProgress /><Typography>{t("loading_detail", "Loading employee Leave Plan...")}</Typography></Box>;
+  if (blnLoading || blnRightsLoading) return <Box sx={{ py: 10, textAlign: "center" }}><DottedLoader /><Typography>{t("loading_detail", "Loading employee Leave Plan...")}</Typography></Box>;
   if (!blnCanView) return <Box sx={{ p: 3 }}><Alert severity="warning">{t("access_denied", "Leave assignment access is not available for your user group.")}</Alert></Box>;
 
   // 12px between every card, matching the gap between the app header and the toolbar below it.
@@ -317,7 +337,7 @@ export default function EmployeeLeavePlanDetailPage({ strEmployeeID }: { strEmpl
     <SectionCard strTitle={t("section_yearly_balances", "Yearly Leave Balances")} objAction={
       <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
         <TextField type="number" size="small" label={t("leave_year", "Leave Year")} value={intLeaveYear} onChange={(objEvent) => setIntLeaveYear(Number(objEvent.target.value))} inputProps={{ "data-control-id": "employee-leave-plan.balance.year.input", min: 2001, max: 2999 }} />
-        {blnRefreshing ? <CircularProgress size={22} sx={{ alignSelf: "center" }} data-control-id="employee-leave-plan.balance.year.spinner" /> : null}
+        {blnRefreshing ? <DottedLoader intSize={22} sx={{ alignSelf: "center" }} data-control-id="employee-leave-plan.balance.year.spinner" /> : null}
         {blnCanManage && objCurrent ? <Button startIcon={<AddRoundedIcon />} onClick={() => void executeAction(initializeBalances)} disabled={blnSaving} data-control-id="employee-leave-plan.balance.initialize.button">{t("initialize_balances", "Initialize Balances")}</Button> : null}
       </Box>
     }>
@@ -334,7 +354,7 @@ export default function EmployeeLeavePlanDetailPage({ strEmployeeID }: { strEmpl
       <Controller name="strAssignmentReason" control={objAssignmentForm.control} render={({ field }) => <TextField {...field} label={t("assignment_reason", "Assignment Reason")} error={Boolean(objAssignmentForm.formState.errors.strAssignmentReason)} helperText={objAssignmentForm.formState.errors.strAssignmentReason?.message} inputProps={{ "data-control-id": "employee-leave-plan.assignment.reason.input", maxLength: 500 }} />} />
     </Box>
       {objSelectedPlanSummary ? <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>{t("plan_validity_hint", "Selected plan validity: {from} – {to}").replace("{from}", formatDate(strPlanEffectiveFrom || null)).replace("{to}", formatDate(strPlanEffectiveTo || null))}{strJoiningDate ? ` · ${t("joining_date_hint", "Employee joining date: {date}").replace("{date}", formatDate(strJoiningDate))}` : ""}</Typography> : null}
-      {blnPreviewLoading ? <Box sx={{ mt: 2, textAlign: "center" }}><CircularProgress size={22} /></Box> : lstPreviewItems.length ? <Box sx={{ mt: 2 }}>
+      {blnPreviewLoading ? <Box sx={{ mt: 2, textAlign: "center" }}><DottedLoader intSize={22} /></Box> : lstPreviewItems.length ? <Box sx={{ mt: 2 }}>
         <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1 }}>{t("preview_title", "Plan Entitlement Preview")}</Typography>
         <TableContainer><Table size="small"><TableHead><TableRow>{["leave_type", "annual_entitlement", "opening_allowed", "negative_limit", "opening_balance"].map((strKey) => <TableCell key={strKey} sx={{ fontWeight: 800 }}>{t(`preview_${strKey}`, strKey.replaceAll("_", " "))}</TableCell>)}</TableRow></TableHead><TableBody>
           {lstPreviewItems.map((objItem) => <TableRow key={objItem.intLeaveTypeID}>

@@ -8,7 +8,6 @@ import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   FormControlLabel,
   InputAdornment,
   Paper,
@@ -19,6 +18,7 @@ import {
 } from "@mui/material";
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/components/master/MasterScreen.module.css";
@@ -317,7 +317,7 @@ const PayrollGroupEditorPage = forwardRef<PayrollGroupEditorHandle, PayrollGroup
     return (
       <Box sx={{ minHeight: 360, display: "grid", placeItems: "center" }}>
         <Stack spacing={1.5} alignItems="center">
-          <CircularProgress />
+          <DottedLoader />
           <Typography sx={{ color: "#64748b" }}>{t("group_loading_workspace", "Loading payroll group...")}</Typography>
         </Stack>
       </Box>
@@ -455,7 +455,7 @@ const PayrollGroupEditorPage = forwardRef<PayrollGroupEditorHandle, PayrollGroup
                         endAdornment: dicTextTranslationLoading[Number(dicText.intLanguageID)]
                           ? (
                               <InputAdornment position="end">
-                                <CircularProgress size={18} sx={{ color: "#2563eb" }} />
+                                <DottedLoader intSize={18} sx={{ color: "#2563eb" }} />
                               </InputAdornment>
                             )
                           : undefined,

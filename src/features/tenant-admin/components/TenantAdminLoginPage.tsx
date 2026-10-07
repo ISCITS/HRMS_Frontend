@@ -1,19 +1,23 @@
 "use client";
 
-import { FormEvent, Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import {
+  FormEvent,
+  Suspense,
+  useState } from "react";
+import { useRouter,
+  useSearchParams } from "next/navigation";
 import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   Paper,
   Stack,
   TextField,
-  Typography,
+  Typography
 } from "@mui/material";
 
 import { tenantAdministrationService } from "@/services";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 export default function TenantAdminLoginPage() {
   return (
@@ -87,7 +91,7 @@ function TenantAdminLoginPageContent() {
             variant="contained"
             size="large"
             disabled={blnSubmitting}
-            startIcon={blnSubmitting ? <CircularProgress color="inherit" size={18} /> : undefined}
+            startIcon={blnSubmitting ? <DottedLoader color="inherit" intSize={18} /> : undefined}
           >
             Sign In
           </Button>

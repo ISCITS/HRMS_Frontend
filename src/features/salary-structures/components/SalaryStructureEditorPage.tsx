@@ -1,7 +1,9 @@
 "use client";
 
-import { isCtcProvisionCategory } from "@/lib/salaryCategories";
+import {
+  isCtcProvisionCategory } from "@/lib/salaryCategories";
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
@@ -20,7 +22,6 @@ import {
   Box,
   Breadcrumbs,
   Button,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -1809,7 +1810,7 @@ export default function SalaryStructureEditorPage({
     return (
       <Box sx={{ minHeight: 360, display: "grid", placeItems: "center" }}>
         <Stack spacing={1.5} alignItems="center">
-          <CircularProgress />
+          <DottedLoader />
           <Typography sx={{ color: "#64748b" }}>{t("loading_salary_structure_workspace", "Loading salary structure workspace...")}</Typography>
         </Stack>
       </Box>
@@ -1852,7 +1853,7 @@ export default function SalaryStructureEditorPage({
             <Box>
               <Breadcrumbs aria-label={t("salary_structure_breadcrumb", "Salary structure breadcrumb")} separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ fontSize: 13, py: 0.5, ml: "3px" }}>
                 <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{t("breadcrumb_salary", "Salary")}</Typography>
-                <Link component={NextLink} href="/salary-structures" data-controlid="salary-structures.editor.breadcrumb.list.link" underline="hover" sx={{ color: "text.secondary", fontSize: "inherit" }}>{t("breadcrumb_salary_structure", "Salary Structure")}</Link>
+                <Link component={NextLink} href="/salary-structures" data-controlid="salary-structures.editor.breadcrumb.list.link" underline="hover" sx={{ color: "text.secondary", fontSize: "inherit" }}>{t("breadcrumb_salary_structure_singular", "Salary Structure")}</Link>
                 <Typography component="h1" aria-current="page" sx={{ fontSize: "inherit", fontWeight: 700, color: "#172554" }}>{strMode === "edit" ? t("breadcrumb_edit", "Edit") : t("breadcrumb_add", "Add")}</Typography>
               </Breadcrumbs>
             </Box>
@@ -2885,7 +2886,7 @@ export default function SalaryStructureEditorPage({
               controlId="salary-structures.editor.multilingual.translate.button"
             >
               {dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]
-                ? <CircularProgress size={18} sx={{ color: "#ffffff" }} />
+                ? <DottedLoader intSize={18} sx={{ color: "#ffffff" }} />
                 : t("translate", "AI Translate")}
             </Button>
           </Box>
@@ -2929,7 +2930,7 @@ export default function SalaryStructureEditorPage({
                 inputProps={buildInputTestIdProps("salary-structures.editor.multilingual.structure-name.input", { "data-row-key": dicText.strRowID })}
                 InputProps={{
                   endAdornment: dicTextTranslationLoading[dicText.strRowID]
-                    ? <InputAdornment position="end"><CircularProgress size={18} sx={{ color: "#2563eb" }} /></InputAdornment>
+                    ? <InputAdornment position="end"><DottedLoader intSize={18} sx={{ color: "#2563eb" }} /></InputAdornment>
                     : undefined
                 }}
                 fullWidth
@@ -2943,7 +2944,7 @@ export default function SalaryStructureEditorPage({
                 inputProps={buildInputTestIdProps("salary-structures.editor.multilingual.description.input", { "data-row-key": dicText.strRowID })}
                 InputProps={{
                   endAdornment: dicTextTranslationLoading[dicText.strRowID]
-                    ? <InputAdornment position="end"><CircularProgress size={18} sx={{ color: "#2563eb" }} /></InputAdornment>
+                    ? <InputAdornment position="end"><DottedLoader intSize={18} sx={{ color: "#2563eb" }} /></InputAdornment>
                     : undefined
                 }}
                 fullWidth
