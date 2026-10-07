@@ -60,15 +60,6 @@ function formatTotalAmount(decValue: number) {
   return decValue.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// Columns hidden from the on-screen grid only (kept in the Excel export, which shows full
-// detail) — a curated subset for at-a-glance viewing, per an explicit ask to declutter the list.
-const SET_HIDDEN_GRID_COLUMNS = new Set(["hra payment", "bonus / ex gratia payment", "hostel fee payment"]);
-
-function isColumnHiddenOnGrid(strColumnLabel: string) {
-  const strLower = strColumnLabel.trim().toLowerCase();
-  return strLower.includes("reimbursement") || SET_HIDDEN_GRID_COLUMNS.has(strLower);
-}
-
 function collapseValues(lstRows: SalaryRegisterRow[], fnGetValue: (dicRow: SalaryRegisterRow) => string | null | undefined, strFallback: string) {
   const setValues = new Set(lstRows.map((dicRow) => (fnGetValue(dicRow) || "").trim()).filter(Boolean));
   if (setValues.size === 1) return Array.from(setValues)[0];
@@ -379,9 +370,6 @@ export default function SalaryRegisterReportPage() {
     setObjMoreFiltersAnchor(null);
   }
 
-  const lstVisiblePaymentColumns = useMemo(() => lstPaymentColumns.filter((strColumn) => !isColumnHiddenOnGrid(strColumn)), [lstPaymentColumns]);
-  const lstVisibleRecoveryColumns = useMemo(() => lstRecoveryColumns.filter((strColumn) => !isColumnHiddenOnGrid(strColumn)), [lstRecoveryColumns]);
-
   const lstColumns = useMemo<CommonTableColumn<Record<string, ReactNode>>[]>(() => [
     { field: "strEmployeeCode", headerName: "Employee No", width: 120 },
     { field: "strEmployeeName", headerName: "Employee Name", width: 190 },
@@ -390,12 +378,12 @@ export default function SalaryRegisterReportPage() {
     { field: "strLocation", headerName: "Location", width: 140 },
     { field: "strDataSource", headerName: "Status", width: 130 },
     { field: "decTotalPresentDays", headerName: "Total Present Days", width: 130, align: "right" },
-    ...lstVisiblePaymentColumns.map((strColumn): CommonTableColumn<Record<string, ReactNode>> => ({ field: strColumn, headerName: strColumn, width: 150, align: "right" })),
+    ...lstPaymentColumns.map((strColumn): CommonTableColumn<Record<string, ReactNode>> => ({ field: strColumn, headerName: strColumn, width: 150, align: "right" })),
     { field: "decGrossEarning", headerName: "Gross Earning", width: 140, align: "right" },
-    ...lstVisibleRecoveryColumns.map((strColumn): CommonTableColumn<Record<string, ReactNode>> => ({ field: strColumn, headerName: strColumn, width: 150, align: "right" })),
+    ...lstRecoveryColumns.map((strColumn): CommonTableColumn<Record<string, ReactNode>> => ({ field: strColumn, headerName: strColumn, width: 150, align: "right" })),
     { field: "decGrossDeduction", headerName: "Gross Deduction", width: 140, align: "right" },
     { field: "decNetEarning", headerName: "Net Earning", width: 140, align: "right" },
-  ], [lstVisiblePaymentColumns, lstVisibleRecoveryColumns]);
+  ], [lstPaymentColumns, lstRecoveryColumns]);
 
   const lstDisplayRows = useMemo(() => lstRows.map((dicRow, intIndex) => {
     const blnProcessed = dicRow.strDataSource === "Processed";

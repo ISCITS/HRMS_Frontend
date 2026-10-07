@@ -760,6 +760,7 @@ export type PayrollResultLineRecord = {
   intSalaryComponentID: number;
   strComponentCode: string;
   strComponentName: string;
+  intDisplayOrder?: number | null;
   strComponentCategory: string;
   strLineType: string;
   decAmount: number;

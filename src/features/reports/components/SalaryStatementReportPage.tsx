@@ -109,11 +109,14 @@ function buildSalaryStatementLines(lstDetails: PayrollResultDetailRecord[], lstM
       if (!dicLine.blnIncludeInPayslip && !dicLine.blnIncludeInGross && !dicLine.blnIncludeInNetPay && !dicLine.blnIsEmployerContribution) return;
       const strSection = getLineSection(dicLine);
       const strKey = `${strSection}:${dicLine.strComponentCode || dicLine.intSalaryComponentID}:${dicLine.strComponentName}`;
+      // Sections keep their fixed block (earnings, deductions, employer); within a block the
+      // rows follow the display order set on the Salary Component screen.
+      const intSectionBase = strSection === "earnings" ? 1_000_000 : strSection === "deductions" ? 3_000_000 : 5_000_000;
       const dicExisting = mapLines.get(strKey) ?? {
         strKey,
         strComponent: dicLine.strComponentName || dicLine.strComponentCode || "Salary Component",
         strSection,
-        intOrder: strSection === "earnings" ? 10 : strSection === "deductions" ? 30 : 50,
+        intOrder: intSectionBase + Number(dicLine.intDisplayOrder ?? 999_999),
         dicAmounts: {},
       };
       addAmount(dicExisting.dicAmounts, strMonthKey, getNumber(dicLine.decAmount));
