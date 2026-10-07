@@ -36,7 +36,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { DashboardHeaderModeContext } from "@/components/layout/DashboardHeaderModeContext";
 import BannerSearch from "@/components/layout/BannerSearch";
 import DynamicMenu from "@/components/navigation/DynamicMenu";
-import BlockingLoader, { BlockingLoaderViewportProvider, DottedLoader } from "@/components/shared/BlockingLoader";
+import BlockingLoader, { BlockingLoaderViewportProvider } from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { labelService } from "@/features/labels/services/labelService";
 import { resolveRouteModuleName } from "@/features/labels/utils/resolveRouteModuleName";
@@ -1108,6 +1108,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
     "/payroll/flexi-declaration-review",
     "/reports/payslips",
     "/ess/my-payslips",
+    "/reports/attendance/monthly-summary",
+    "/reports/attendance/exceptions",
     "/reports/tds-register",
     "/ess/reimbursements",
     "/ess/my-form16",
@@ -1360,7 +1362,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     return (
       <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", backgroundColor: "#f8fafc" }}>
         <Stack spacing={2} alignItems="center">
-          <DottedLoader />
+          <CircularProgress size={36} thickness={4} />
           <Typography sx={{ color: "#64748b" }}>{tCommon("preparing_workspace", "Preparing your workspace...")}</Typography>
         </Stack>
       </Box>

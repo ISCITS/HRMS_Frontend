@@ -3,14 +3,16 @@
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Autocomplete, Box, Button, Checkbox, Chip, CircularProgress, MenuItem, TextField, Typography } from "@mui/material";
+import { Alert, Autocomplete, Box, Breadcrumbs, Button, Checkbox, Chip, CircularProgress, MenuItem, TextField, Typography } from "@mui/material";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import { dicMasterRowSx } from "@/components/master/MasterListUi";
+import masterStyles from "@/components/master/MasterScreen.module.css";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
-import styles from "@/features/payroll/components/PayrollScreen.module.css";
+import payrollStyles from "@/features/payroll/components/PayrollScreen.module.css";
 
 export type ReportDisplayRow = Record<string, ReactNode>;
 
@@ -43,6 +45,10 @@ export type ReportGridPageProps = {
   /** Keep column labels on one line and allow horizontal scrolling when needed. */
   blnWrapColumnHeaders?: boolean;
   blnAlignSearchActionsBottomRight?: boolean;
+  blnUseMasterStyle?: boolean;
+  strBreadcrumbRoot?: string;
+  strBreadcrumbSection?: string;
+  strBreadcrumbTitle?: string;
 };
 
 const lstRowsPerPageOptions = [10, 20, 50];
@@ -132,6 +138,7 @@ function ReportMultiSelect(objProps: {
       renderInput={(objParams) => (
         <TextField
           {...objParams}
+          className="app-mui-text-field"
           label={objProps.strLabel}
           placeholder={`Search ${objProps.strLabel}...`}
           error={Boolean(strError)}
@@ -163,6 +170,7 @@ function ReportMultiSelect(objProps: {
 export default function ReportGridPage(objProps: ReportGridPageProps) {
   const { blnLoading: blnRightsLoading, canDoAny, canViewAny } = useModuleActionAccess(objProps.lstRightsHints);
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
+  const styles = objProps.blnUseMasterStyle ? masterStyles : payrollStyles;
 
   const [dicFilters, setDicFilters] = useState<Record<string, string>>(objProps.dicDefaultFilters ?? {});
   const [lstRows, setLstRows] = useState<ReportDisplayRow[]>([]);
@@ -277,19 +285,37 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
     }
   }
 
-  if (blnRightsLoading || (blnLoading && !blnHasLoaded)) {
-    return <BlockingLoader blnOpen strLabel={`Loading ${objProps.strTitle.toLowerCase()}...`} />;
-  }
+  const blnPageLoading = blnRightsLoading || blnLoading;
 
   return (
     <Box className={styles.page}>
-      <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>{objProps.strTitle}</Typography>
+      {objProps.strBreadcrumbSection || objProps.strBreadcrumbTitle ? (
+        <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ ml: "3px" }}>
+          {objProps.strBreadcrumbRoot ? (
+            <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{objProps.strBreadcrumbRoot}</Typography>
+          ) : null}
+          <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{objProps.strBreadcrumbSection ?? objProps.strTitle}</Typography>
+          <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{objProps.strBreadcrumbTitle ?? objProps.strTitle}</Typography>
+        </Breadcrumbs>
+      ) : (
+        <Typography className={`${styles.breadcrumbs} ${payrollStyles.hiddenHeader}`}>{objProps.strTitle}</Typography>
+      )}
 
-      <Box className={styles.controlsCard}>
-        <Box className={styles.reportSearchPanelRow}>
+      <Box className={styles.controlsCard} sx={objProps.blnUseMasterStyle ? { p: "12px !important", borderRadius: "10px !important", boxShadow: "none" } : undefined}>
+        <Box
+          className={objProps.blnUseMasterStyle ? styles.searchRow : styles.reportSearchPanelRow}
+          sx={objProps.blnUseMasterStyle ? {
+            alignItems: "center",
+            gridTemplateColumns: {
+              xs: "1fr",
+              md: "minmax(150px, 0.7fr) minmax(220px, 1fr) minmax(180px, 0.85fr) minmax(180px, 0.85fr) auto auto",
+            },
+            "& .MuiButton-root": { alignSelf: "center" },
+          } : undefined}
+        >
           {objProps.lstFilters.map((objFilter) => (
             <Box
-              className={styles.reportSearchField}
+              className={objProps.blnUseMasterStyle ? undefined : styles.reportSearchField}
               key={objFilter.strKey}
               sx={objFilter.intWidth ? { flexBasis: objFilter.intWidth, minWidth: objFilter.intWidth } : undefined}
             >
@@ -314,6 +340,7 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
                   renderInput={(objParams) => (
                     <TextField
                       {...objParams}
+                      className="app-mui-text-field"
                       label={objFilter.strLabel}
                       placeholder={`Search ${objFilter.strLabel}...`}
                       InputLabelProps={{ shrink: true }}
@@ -332,6 +359,7 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
                 />
               ) : (
                 <TextField
+                  className="app-mui-text-field"
                   type={objFilter.strType === "month" ? "month" : objFilter.strType === "date" ? "date" : "text"}
                   label={objFilter.strLabel}
                   value={dicFilters[objFilter.strKey] ?? ""}
@@ -345,8 +373,8 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
             </Box>
           ))}
           <Box className={`${styles.searchActions} ${objProps.blnAlignSearchActionsBottomRight ? styles.reportBottomRightActions : ""}`}>
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => loadRows(dicFilters)} data-controlid={`reports.${objProps.strCsvFileName}.search.button`}>Search</Button>
-            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} data-controlid={`reports.${objProps.strCsvFileName}.clear.button`}>Clear</Button>
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => loadRows(dicFilters)} disabled={blnPageLoading} data-controlid={`reports.${objProps.strCsvFileName}.search.button`}>Search</Button>
+            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} disabled={blnPageLoading} data-controlid={`reports.${objProps.strCsvFileName}.clear.button`}>Clear</Button>
           </Box>
         </Box>
       </Box>
@@ -356,8 +384,8 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
         <Typography sx={{ color: "inherit", lineHeight: 1.5 }}>{objProps.strInfo}</Typography>
       </Box>
 
-      <Box className={styles.tableCard}>
-        {!blnCanView && !strError ? <Alert severity="warning" sx={{ mb: 1.5 }}>This report is not available for your user group.</Alert> : null}
+      <Box className={styles.tableCard} sx={objProps.blnUseMasterStyle ? { p: "0 !important", borderRadius: "10px !important", boxShadow: "none" } : undefined}>
+        {!blnRightsLoading && !blnCanView && !strError ? <Alert severity="warning" sx={{ mb: 1.5 }}>This report is not available for your user group.</Alert> : null}
         {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
         <CommonTable
           columns={lstColumns}
@@ -369,10 +397,15 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
           showPaginationSummary
           withPaper={false}
           testIdPrefix={`reports.${objProps.strCsvFileName}`}
+          loading={blnPageLoading}
+          loadingHeaderSkeleton
+          skeletonRowCount={10}
           wrapColumnHeaders={objProps.blnWrapColumnHeaders ?? true}
-          getRowSx={objProps.blnSelectable ? (dicRow) => (setSelectedIds.has(String(dicRow[objProps.strRowIdField])) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : {}) : undefined}
+          getRowSx={objProps.blnUseMasterStyle ? () => dicMasterRowSx : objProps.blnSelectable ? (dicRow) => (setSelectedIds.has(String(dicRow[objProps.strRowIdField])) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : {}) : undefined}
+          hideRowClickHint
+          onRowClick={() => undefined}
           toolbarLeft={(
-            <Box className={styles.listUtilityActions} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Box className={payrollStyles.listUtilityActions} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               {canDoAny("export") ? (
                 <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} disabled={blnExporting} onClick={exportCsv} data-controlid={`reports.${objProps.strCsvFileName}.export.button`}>Export CSV</Button>
               ) : null}

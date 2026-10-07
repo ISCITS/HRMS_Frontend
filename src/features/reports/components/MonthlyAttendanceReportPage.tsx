@@ -67,6 +67,9 @@ export default function MonthlyAttendanceReportPage() {
   return (
     <ReportGridPage
       strTitle={t("monthly_attendance", "Monthly Attendance Summary")}
+      strBreadcrumbRoot={t("reports", "Reports")}
+      strBreadcrumbSection={t("attendance_reports", "Attendance Reports")}
+      strBreadcrumbTitle={t("monthly_attendance", "Monthly Attendance Summary")}
       strInfo={t("monthly_attendance_info", "Per-employee attendance totals for the selected month by final day status, paid days, late minutes and OT.")}
       lstColumns={lstColumns}
       lstFilters={lstFilters}
@@ -74,6 +77,7 @@ export default function MonthlyAttendanceReportPage() {
       strRowIdField="intEmployeeID"
       strCsvFileName="monthly-attendance"
       blnWrapColumnHeaders={false}
+      blnUseMasterStyle
       lstRightsHints={["REPORTS_ATTENDANCE_SUMMARY", "REPORTS"]}
       strEmptyMessage={t("monthly_attendance_empty", "No attendance recorded for the selected month/filters.")}
       fnLoad={async (dicFilters) => {

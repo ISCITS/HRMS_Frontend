@@ -264,11 +264,8 @@ export default function TdsReportPage() {
         <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>Reports</Typography>
         <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">TDS Register</Typography>
       </Breadcrumbs>
-      <Box className={styles.controlsCard}>
-        <Box className={styles.controlsHeader} sx={{ mb: 1.25 }}>
-          <Box />
-        </Box>
-        <Box className={styles.reportSearchPanelRow}>
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        <Box className={styles.reportSearchPanelRow} sx={{ py: "0 !important" }}>
           <Box className={styles.reportSearchField} sx={{ flex: "2 1 340px", minWidth: { xs: "100%", md: 320 } }}>
             <SingleSelectFilter strLabel="Employee" strValue={dicSearchDraft.strSearchEmployee} fnOnChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: strValue }))} lstOptions={dicFilterOptions.lstEmployees} strPlaceholder="Search by employee code or name" strControlId="reports.tds.employee-search.input" blnDisabled={blnPageLoading} />
           </Box>
@@ -362,7 +359,7 @@ export default function TdsReportPage() {
           Employee-wise monthly TDS deducted from salary, year-to-date TDS, and total tax liability for the selected financial year.
         </Typography>
       </Box>
-      <Box className={styles.tableCard}>
+      <Box className={styles.tableCard} sx={{ p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {!blnRightsLoading && !blnCanView && !strError ? <Alert severity="warning" sx={{ mb: 1.5 }}>TDS report view access is not available for your user group.</Alert> : null}
         {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
         <CommonTable
