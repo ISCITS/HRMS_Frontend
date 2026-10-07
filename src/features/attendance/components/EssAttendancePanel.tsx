@@ -542,19 +542,12 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
   return (
     <Stack spacing={1.5}>
       <MasterBreadcrumbs strSection={t("breadcrumb_attendance", "Attendance")} strTitle={blnHrMode ? t("breadcrumb_attendance_review", "Employee Attendance") : t("breadcrumb_my_attendance", "My Attendance")} />
-      {blnHrMode && objEmployeeSelector ? (
+      {blnHrMode && objEmployeeSelector && !objSelectedEmployee ? (
         <Box className={styles.controlsCard} data-control-id="attendance-review.filters.card" sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
           <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", sm: "minmax(260px, 420px)" }, alignItems: "center", mt: 1 }}>
             {objEmployeeSelector}
           </Box>
         </Box>
-      ) : null}
-
-      {objSelectedEmployee && !objSelectedEmployee.blnIsSelf ? (
-        <Alert severity="info" variant="outlined" sx={{ borderRadius: "12px", py: 0.25 }}>
-          Viewing attendance for <strong>{objSelectedEmployee.strFullName}</strong>
-          {objSelectedEmployee.strEmployeeCode ? ` (${objSelectedEmployee.strEmployeeCode})` : ""}
-        </Alert>
       ) : null}
 
       {blnHrMode && !objSelectedEmployee ? (
@@ -576,12 +569,23 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
           flexWrap: "wrap",
           rowGap: 1,
           alignItems: "center",
-          justifyContent: !blnHrMode && objEmployeeSelector ? "space-between" : "flex-end",
+          columnGap: 1.5,
+          justifyContent: objEmployeeSelector ? "space-between" : "flex-end",
           boxShadow: "none",
           border: "1px solid rgba(31, 91, 142, 0.18)",
         }}
       >
-        {!blnHrMode ? objEmployeeSelector : null}
+        {objEmployeeSelector}
+        {objSelectedEmployee && !objSelectedEmployee.blnIsSelf ? (
+          <Alert
+            severity="info"
+            variant="outlined"
+            sx={{ borderRadius: "12px", py: 0, flex: "1 1 240px", minWidth: 0, "& .MuiAlert-message": { py: 0.75 } }}
+          >
+            Viewing attendance for <strong>{objSelectedEmployee.strFullName}</strong>
+            {objSelectedEmployee.strEmployeeCode ? ` (${objSelectedEmployee.strEmployeeCode})` : ""}
+          </Alert>
+        ) : null}
         <Stack
           direction="row"
           spacing={0.75}
