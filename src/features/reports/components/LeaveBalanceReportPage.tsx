@@ -50,6 +50,12 @@ export default function LeaveBalanceReportPage() {
         })),
       },
       {
+        strKey: "leave_type_id", strLabel: t("leave_type_id", "Leave Type"), strType: "multiselect",
+        fnLoadOptions: async () => (await leavePlanService.getActiveLeaveTypes()).map((objType) => ({
+          strValue: String(objType.intID), strLabel: `${objType.strTypeCode} - ${objType.strTypeName}`,
+        })),
+      },
+      {
         strKey: "department_id", strLabel: t("department_id", "Department"), strType: "multiselect",
         fnLoadOptions: async () => (await employeeService.getFormOptions()).lstDepartments.map((objDept) => ({
           strValue: String(objDept.intID), strLabel: objDept.strLabel,
@@ -59,12 +65,6 @@ export default function LeaveBalanceReportPage() {
         strKey: "location_id", strLabel: t("location_id", "Location"), strType: "multiselect",
         fnLoadOptions: async () => (await employeeService.getFormOptions()).lstLocations.map((objLoc) => ({
           strValue: String(objLoc.intID), strLabel: objLoc.strLabel,
-        })),
-      },
-      {
-        strKey: "leave_type_id", strLabel: t("leave_type_id", "Leave Type"), strType: "multiselect",
-        fnLoadOptions: async () => (await leavePlanService.getActiveLeaveTypes()).map((objType) => ({
-          strValue: String(objType.intID), strLabel: `${objType.strTypeCode} - ${objType.strTypeName}`,
         })),
       },
     ];
@@ -107,6 +107,10 @@ export default function LeaveBalanceReportPage() {
   return (
     <ReportGridPage
       strTitle={t("leave_balance", "Leave Balance")}
+      strBreadcrumbRoot={t("reports", "Reports")}
+      strBreadcrumbSection={t("leave_reports", "Leave Reports")}
+      strBreadcrumbTitle={t("leave_balance", "Leave Balance")}
+      intInlineFilterCount={3}
       strInfo={t("leave_balance_info", "Current leave balances by type — opening, entitlement, accrued, carry forward, adjustments, utilised, hold, lapsed, encashed and available.")}
       lstColumns={lstColumns}
       lstFilters={lstFilters}

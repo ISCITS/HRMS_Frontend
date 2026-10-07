@@ -3,15 +3,16 @@
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField, Typography } from "@mui/material";
+import { Alert, Box, Breadcrumbs, Button, Checkbox, MenuItem, TextField, Typography } from "@mui/material";
 import { type InputHTMLAttributes, type ReactNode, useEffect, useMemo, useState } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
-import BlockingLoader from "@/components/shared/BlockingLoader";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import type { StatutoryReportCode, StatutoryReportRow } from "@/features/payroll/types";
-import ReportMultiSelectField, { getUniqueOptions } from "@/features/reports/components/ReportMultiSelectField";
+import { ReportMoreFilters, SingleSelectFilter } from "@/features/reports/components/ReportFilterUi";
+import { getUniqueOptions } from "@/features/reports/components/ReportMultiSelectField";
 import { payrollReportService } from "@/features/reports/services/payrollReportService";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
@@ -35,6 +36,8 @@ const dicEmptySearch: SearchForm = {
   strPayrollMonth: "",
 };
 const lstRowsPerPageOptions = [10, 20, 50];
+type MoreFiltersForm = Pick<SearchForm, "strSearchRun" | "strDepartment" | "strLocation">;
+const dicEmptyMoreFilters: MoreFiltersForm = { strSearchRun: "", strDepartment: "", strLocation: "" };
 const lstReportTypes: Array<{ strCode: StatutoryReportCode; strLabel: string; strFile: string }> = [
   { strCode: "ALL", strLabel: "Statutory Summary Report", strFile: "statutory-summary" },
   { strCode: "PF", strLabel: "PF Report / PF ECR Report", strFile: "pf-ecr-report" },
@@ -192,20 +195,19 @@ export default function StatutoryReportPage() {
   const { blnLoading: blnRightsLoading, canDoAny, canViewAny } = useModuleActionAccess(["REPORTS", "STATUTORY_REPORT", "REPORT_STATUTORY", "PAYROLL_RESULTS", "PAYROLL_RESULT"]);
   const [lstRows, setLstRows] = useState<StatutoryReportRow[]>([]);
   const [blnLoading, setBlnLoading] = useState(false);
-  const [blnHasLoadedRows, setBlnHasLoadedRows] = useState(false);
-  const [blnFilterDialogOpen, setBlnFilterDialogOpen] = useState(false);
+  const [dicMoreFiltersDraft, setDicMoreFiltersDraft] = useState<MoreFiltersForm>(dicEmptyMoreFilters);
   const [strError, setStrError] = useState("");
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
   const [setSelectedRowIDs, setSetSelectedRowIDs] = useState<Set<number>>(new Set());
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
+  const blnPageLoading = blnRightsLoading || blnLoading;
 
   async function loadRows(objFilters: SearchForm) {
     setBlnLoading(true);
     setStrError("");
     try {
       setLstRows(await payrollReportService.getStatutoryReportRows(objFilters));
-      setBlnHasLoadedRows(true);
       setSetSelectedRowIDs(new Set());
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to load statutory report.");
@@ -263,14 +265,18 @@ export default function StatutoryReportPage() {
   function applyFilters(dicFilters: SearchForm) {
     setDicSearchDraft(dicFilters);
     setDicSearchApplied(dicFilters);
-    setBlnFilterDialogOpen(false);
     loadRows(dicFilters).catch(() => undefined);
   }
 
   function clearFilters() {
     setDicSearchDraft(dicEmptySearch);
     setDicSearchApplied(dicEmptySearch);
+    setDicMoreFiltersDraft(dicEmptyMoreFilters);
     loadRows(dicEmptySearch).catch(() => undefined);
+  }
+
+  function applyMoreFilters() {
+    applyFilters({ ...dicSearchDraft, ...dicMoreFiltersDraft });
   }
 
   useEffect(() => {
@@ -417,44 +423,43 @@ export default function StatutoryReportPage() {
     [lstSummaryTableRows],
   );
 
-  if (blnRightsLoading) {
-    return <BlockingLoader blnOpen strLabel="Loading statutory reports..." />;
-  }
-
   return (
     <Box className={styles.page}>
-      <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>Statutory Reports</Typography>
-      <Box className={styles.controlsCard}>
-        <Box className={styles.controlsHeader} sx={{ mb: 1.25 }}>
-          <Box />
-        </Box>
-        <Box className={styles.reportSearchPanelRow}>
+      <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ ml: "3px" }}>
+        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>Reports</Typography>
+        <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">Statutory Reports</Typography>
+      </Breadcrumbs>
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        <Box className={styles.reportSearchPanelRow} sx={{ py: "0 !important" }}>
           <Box className={styles.reportSearchField}>
-            <TextField select value={dicSearchDraft.strStatutoryCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatutoryCode: objEvent.target.value as StatutoryReportCode }))} fullWidth controlId="reports.statutory.report-type.select">
+            <TextField className="app-mui-text-field" size="small" select label="Report Type" value={dicSearchDraft.strStatutoryCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatutoryCode: objEvent.target.value as StatutoryReportCode }))} disabled={blnPageLoading} fullWidth InputLabelProps={{ shrink: true }} controlId="reports.statutory.report-type.select">
               {lstReportTypes.map((dicType) => <MenuItem key={dicType.strCode} value={dicType.strCode}>{dicType.strLabel}</MenuItem>)}
             </TextField>
           </Box>
-          <Box className={styles.reportSearchField}>
-            <ReportMultiSelectField label="Employee" value={dicSearchDraft.strSearchEmployee} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: strValue }))} options={dicFilterOptions.lstEmployees} placeholder="Search by employee code or name" controlId="reports.statutory.employee-search.input" />
+          <Box className={styles.reportSearchField} sx={{ flex: "2 1 340px", minWidth: { xs: "100%", md: 320 } }}>
+            <SingleSelectFilter strLabel="Employee" strValue={dicSearchDraft.strSearchEmployee} fnOnChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: strValue }))} lstOptions={dicFilterOptions.lstEmployees} strPlaceholder="Search by employee code or name" strControlId="reports.statutory.employee-search.input" blnDisabled={blnPageLoading} />
           </Box>
           <Box className={styles.reportSearchField}>
-            <ReportMultiSelectField label="Payroll Period / Run" value={dicSearchDraft.strSearchRun} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: strValue }))} options={dicFilterOptions.lstRuns} placeholder="Payroll period or run" controlId="reports.statutory.run-search.input" />
-          </Box>
-          <Box className={styles.reportSearchField}>
-            <ReportMultiSelectField value={dicSearchDraft.strPayrollMonth} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: strValue }))} options={dicFilterOptions.lstMonths} label="Payroll Month" placeholder="Payroll Month" controlId="reports.statutory.payroll-month.input" />
+            <SingleSelectFilter strLabel="Payroll Month" strValue={dicSearchDraft.strPayrollMonth} fnOnChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: strValue }))} lstOptions={dicFilterOptions.lstMonths} strPlaceholder="Payroll Month" strControlId="reports.statutory.payroll-month.input" blnDisabled={blnPageLoading} />
           </Box>
           <Box className={styles.reportSearchField} sx={{ flexBasis: 160, minWidth: 160 }}>
-            <ReportMultiSelectField label="Department" value={dicSearchDraft.strDepartment} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: strValue }))} options={dicFilterOptions.lstDepartments} placeholder="Department" controlId="reports.statutory.department.input" />
-          </Box>
-          <Box className={styles.reportSearchField} sx={{ flexBasis: 160, minWidth: 160 }}>
-            <ReportMultiSelectField label="Location" value={dicSearchDraft.strLocation} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: strValue }))} options={dicFilterOptions.lstLocations} placeholder="Location" controlId="reports.statutory.location.input" />
-          </Box>
-          <Box className={styles.reportSearchField} sx={{ flexBasis: 160, minWidth: 160 }}>
-            <ReportMultiSelectField label="Status" value={dicSearchDraft.strStatus === "All" ? "" : dicSearchDraft.strStatus} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: strValue || "All" }))} options={dicFilterOptions.lstStatuses.length ? dicFilterOptions.lstStatuses : ["Calculated", "Approved", "Published", "Paid"]} placeholder="All Statuses" controlId="reports.statutory.status.select" />
+            <SingleSelectFilter strLabel="Status" strValue={dicSearchDraft.strStatus === "All" ? "" : dicSearchDraft.strStatus} fnOnChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: strValue || "All" }))} lstOptions={dicFilterOptions.lstStatuses.length ? dicFilterOptions.lstStatuses : ["Calculated", "Approved", "Published", "Paid"]} strPlaceholder="All Statuses" strControlId="reports.statutory.status.select" blnDisabled={blnPageLoading} />
           </Box>
           <Box className={styles.searchActions}>
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} controlId="reports.statutory.search.button">Search</Button>
-            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} controlId="reports.statutory.clear.button">Clear</Button>
+            <ReportMoreFilters
+              strControlPrefix="reports.statutory"
+              intActiveCount={(dicSearchDraft.strSearchRun ? 1 : 0) + (dicSearchDraft.strDepartment ? 1 : 0) + (dicSearchDraft.strLocation ? 1 : 0)}
+              blnDisabled={blnPageLoading}
+              onOpen={() => setDicMoreFiltersDraft({ strSearchRun: dicSearchDraft.strSearchRun, strDepartment: dicSearchDraft.strDepartment, strLocation: dicSearchDraft.strLocation })}
+              onApply={applyMoreFilters}
+              onClearAll={() => setDicMoreFiltersDraft(dicEmptyMoreFilters)}
+            >
+              <SingleSelectFilter strLabel="Payroll Period / Run" strValue={dicMoreFiltersDraft.strSearchRun} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: strValue }))} lstOptions={dicFilterOptions.lstRuns} strPlaceholder="Payroll period or run" strControlId="reports.statutory.run-search.input" blnDisabled={blnPageLoading} />
+              <SingleSelectFilter strLabel="Department" strValue={dicMoreFiltersDraft.strDepartment} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: strValue }))} lstOptions={dicFilterOptions.lstDepartments} strPlaceholder="All" strControlId="reports.statutory.department.input" blnDisabled={blnPageLoading} />
+              <SingleSelectFilter strLabel="Location" strValue={dicMoreFiltersDraft.strLocation} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strLocation: strValue }))} lstOptions={dicFilterOptions.lstLocations} strPlaceholder="All" strControlId="reports.statutory.location.input" blnDisabled={blnPageLoading} />
+            </ReportMoreFilters>
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} disabled={blnPageLoading} controlId="reports.statutory.search.button">Search</Button>
+            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} disabled={blnPageLoading} controlId="reports.statutory.clear.button">Clear</Button>
           </Box>
         </Box>
       </Box>
@@ -476,9 +481,8 @@ export default function StatutoryReportPage() {
           PF, ESI, professional tax, labour welfare fund, summary, challan, payment, and return-ready statutory payroll data.
         </Typography>
       </Box>
-      <Box className={styles.tableCard}>
-        {!blnCanView && !strError ? <Alert severity="warning" sx={{ mb: 1.5 }}>Statutory report view access is not available for your user group.</Alert> : null}
-        <BlockingLoader blnOpen={blnLoading} strLabel="Loading statutory report rows..." />
+      <Box className={styles.tableCard} sx={{ p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        {!blnRightsLoading && !blnCanView && !strError ? <Alert severity="warning" sx={{ mb: 1.5 }}>Statutory report view access is not available for your user group.</Alert> : null}
         {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
         <CommonTable
           columns={(blnSummaryReport ? lstSummaryTableColumns : lstDetailTableColumns) as unknown as CommonTableColumn<Record<string, ReactNode>>[]}
@@ -490,6 +494,11 @@ export default function StatutoryReportPage() {
           showPaginationSummary
           withPaper={false}
           testIdPrefix="reports.statutory"
+          loading={blnPageLoading}
+          loadingHeaderSkeleton
+          skeletonRowCount={10}
+          hideRowClickHint
+          onRowClick={() => undefined}
           toolbarLeft={(
             <Box className={styles.listUtilityActions}>
               {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv(`${dicReportMeta.strFile}.csv`, lstExportRows)} controlId="reports.statutory.export-excel.button">Export Excel</Button> : null}
@@ -537,27 +546,6 @@ export default function StatutoryReportPage() {
           sx={{ p: 0, boxShadow: "none", background: "transparent" }}
         />
       </Box>
-      <Dialog open={blnFilterDialogOpen} maxWidth="sm" fullWidth controlId="reports.statutory.filter.dialog">
-        <DialogTitle>Statutory Reports</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2, pt: 1 }}>
-            <TextField label="Report Type" select value={dicSearchDraft.strStatutoryCode} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatutoryCode: objEvent.target.value as StatutoryReportCode }))} fullWidth>
-              {lstReportTypes.map((dicType) => <MenuItem key={dicType.strCode} value={dicType.strCode}>{dicType.strLabel}</MenuItem>)}
-            </TextField>
-            <TextField label="Payroll Month" type="month" value={dicSearchDraft.strPayrollMonth} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: objEvent.target.value }))} fullWidth InputLabelProps={{ shrink: true }} />
-            <TextField label="Department" value={dicSearchDraft.strDepartment} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: objEvent.target.value }))} fullWidth />
-            <TextField label="Location" value={dicSearchDraft.strLocation} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: objEvent.target.value }))} fullWidth />
-            <TextField label="Status" select value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} fullWidth>
-              <MenuItem value="All">All</MenuItem><MenuItem value="Calculated">Calculated</MenuItem><MenuItem value="Approved">Approved</MenuItem><MenuItem value="Published">Published</MenuItem><MenuItem value="Paid">Paid</MenuItem>
-            </TextField>
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => setDicSearchDraft(dicEmptySearch)} controlId="reports.statutory.filter.reset.button">Reset</Button>
-          {blnHasLoadedRows ? <Button className={styles.secondaryButton} onClick={() => setBlnFilterDialogOpen(false)} controlId="reports.statutory.filter.close.button">Close</Button> : null}
-          <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} disabled={blnLoading} controlId="reports.statutory.filter.show-report.button">Show Report</Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 }

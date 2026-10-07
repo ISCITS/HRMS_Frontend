@@ -68,8 +68,8 @@ export default function LeaveRegisterReportPage() {
         { strValue: "draft", strLabel: t("status_draft", "Draft") },
       ],
     },
-    { strKey: "leave_type_id", strLabel: t("leave_type", "Leave Type"), strType: "select", lstOptions: lstLeaveTypes },
     { strKey: "employee_id", strLabel: t("employee", "Employee"), strType: "select", lstOptions: lstEmployees, intWidth: 170 },
+    { strKey: "leave_type_id", strLabel: t("leave_type", "Leave Type"), strType: "select", lstOptions: lstLeaveTypes },
     { strKey: "department_id", strLabel: t("department", "Department"), strType: "select", lstOptions: lstDepartments, intWidth: 170 },
   ];
 
@@ -94,6 +94,10 @@ export default function LeaveRegisterReportPage() {
   return (
     <ReportGridPage
       strTitle={t("leave_register", "Leave Application Register")}
+      strBreadcrumbRoot={t("reports", "Reports")}
+      strBreadcrumbSection={t("leave_reports", "Leave Reports")}
+      strBreadcrumbTitle={t("leave_register", "Leave Application Register")}
+      intInlineFilterCount={4}
       strInfo={t("leave_register_info", "Leave applications with reference, dates, days, status, current approver, ageing and reason.")}
       lstColumns={lstColumns}
       lstFilters={lstFilters}
