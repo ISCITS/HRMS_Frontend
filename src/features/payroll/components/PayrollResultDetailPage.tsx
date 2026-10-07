@@ -35,6 +35,7 @@ import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
+import { DetailPageHeader } from "@/components/master/MasterListUi";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import PayslipHtmlPreview from "@/features/payroll/components/PayslipHtmlPreview";
@@ -516,6 +517,7 @@ export default function PayrollResultDetailPage({
   }, [strResultID]);
 
   const strResolvedBackRoute = strBackRoute || (blnPayslipScreen ? "/reports/payslips" : "/payroll/results");
+  const blnEssRoute = strResolvedBackRoute.startsWith("/ess/");
   const strTaxInformationHref = (() => {
     const strBasePath = blnPayslipScreen
       ? `/reports/payslips/${strResultID}/tax-information`
@@ -813,59 +815,12 @@ export default function PayrollResultDetailPage({
         pb: 2,
       }}
     >
-      <Paper
-        sx={{
-          borderRadius: "12px",
-          p: { xs: 1.5, md: 2 },
-          border: "1px solid #cfe0f5",
-          background: "#f6f9fd",
-          boxShadow: "0 16px 38px rgba(15, 23, 42, 0.05)",
-          maxWidth: "100%",
-          overflow: "hidden",
-        }}
+      <DetailPageHeader
+        strSection={blnEssRoute ? t("ess_breadcrumb_section", "Employee Services") : t("breadcrumb_section", "Payroll")}
+        strListTitle={blnPayslipScreen ? (blnEssRoute ? t("ess_breadcrumbs", "My Payslips") : t("payslip_breadcrumbs", "Payslips")) : t("breadcrumbs", "Payroll Results")}
+        strListHref={strResolvedBackRoute}
+        strCurrent={t("breadcrumb_view", "View")}
       >
-        <Stack spacing={1.7}>
-          <Paper
-            sx={{
-              borderRadius: "12px",
-              border: "1px solid #dbe7f3",
-              boxShadow: "0 10px 24px rgba(15, 23, 42, 0.04)",
-              background: "#fff",
-              px: { xs: 1.5, md: 2.4 },
-              py: 1.7,
-              minHeight: 88,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 2,
-              flexWrap: "wrap",
-            }}
-          >
-              <Stack direction="row" spacing={1.8} alignItems="center" sx={{ minWidth: 0 }}>
-                <Avatar
-                  sx={{
-                    width: 58,
-                    height: 58,
-                    background: "linear-gradient(135deg, #6157f2 0%, #5138d8 100%)",
-                    color: "#fff",
-                    fontSize: "1.25rem",
-                    fontWeight: 900,
-                    flexShrink: 0,
-                  }}
-                >
-                  {getInitials(objResult.strEmployeeName)}
-                </Avatar>
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography component="h1" sx={{ color: "#0f172a", fontSize: { xs: "1.35rem", md: "1.55rem" }, fontWeight: 900, lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {blnPayslipScreen ? t("payslip_title", "Payslip") : t("payroll_results_title", "Payroll Results")}
-                  </Typography>
-                  <Typography sx={{ color: "#334d79", fontSize: "0.9rem", mt: 0.5, fontWeight: 600 }}>
-                    {objResult.strEmployeeName} {" | "} {objResult.strEmployeeCode} {" | "} {objResult.strRunName}
-                  </Typography>
-                </Box>
-              </Stack>
-
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} alignItems={{ xs: "flex-start", sm: "center" }} justifyContent="flex-end" sx={{ ml: { sm: "auto" } }}>
               <Button
                 onClick={() => objRouter.push(strResolvedBackRoute)}
                 startIcon={<ArrowBackRoundedIcon />}
@@ -884,7 +839,6 @@ export default function PayrollResultDetailPage({
               >
                 {t("back_to_list", "Back to List")}
               </Button>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} alignItems={{ xs: "stretch", sm: "center" }} justifyContent="flex-start">
                 <Chip
                   label={translateDynamicLabel(t, objResult.strStatus, "status")}
                   sx={{
@@ -933,8 +887,59 @@ export default function PayrollResultDetailPage({
                   </Menu>
                   </>
                 ) : null}
+      </DetailPageHeader>
+      <Paper
+        sx={{
+          borderRadius: "12px",
+          p: { xs: 1.5, md: 2 },
+          border: "1px solid #cfe0f5",
+          background: "#f6f9fd",
+          boxShadow: "0 16px 38px rgba(15, 23, 42, 0.05)",
+          maxWidth: "100%",
+          overflow: "hidden",
+        }}
+      >
+        <Stack spacing={1.7}>
+          <Paper
+            sx={{
+              borderRadius: "12px",
+              border: "1px solid #dbe7f3",
+              boxShadow: "0 10px 24px rgba(15, 23, 42, 0.04)",
+              background: "#fff",
+              px: { xs: 1.5, md: 2.4 },
+              py: 1.7,
+              minHeight: 88,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 2,
+              flexWrap: "wrap",
+            }}
+          >
+              <Stack direction="row" spacing={1.8} alignItems="center" sx={{ minWidth: 0 }}>
+                <Avatar
+                  sx={{
+                    width: 58,
+                    height: 58,
+                    background: "linear-gradient(135deg, #6157f2 0%, #5138d8 100%)",
+                    color: "#fff",
+                    fontSize: "1.25rem",
+                    fontWeight: 900,
+                    flexShrink: 0,
+                  }}
+                >
+                  {getInitials(objResult.strEmployeeName)}
+                </Avatar>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography sx={{ color: "#0f172a", fontSize: { xs: "1.35rem", md: "1.55rem" }, fontWeight: 900, lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {blnPayslipScreen ? t("payslip_title", "Payslip") : t("payroll_results_title", "Payroll Results")}
+                  </Typography>
+                  <Typography sx={{ color: "#334d79", fontSize: "0.9rem", mt: 0.5, fontWeight: 600 }}>
+                    {objResult.strEmployeeName} {" | "} {objResult.strEmployeeCode} {" | "} {objResult.strRunName}
+                  </Typography>
+                </Box>
               </Stack>
-            </Stack>
+
           </Paper>
 
           {strError ? <Alert severity="error">{strError}</Alert> : null}

@@ -1131,6 +1131,26 @@ export default function AppShell({ children }: { children: ReactNode }) {
   ].includes(strLowerPathname);
   // The run-scoped process log reuses the list page, which carries its own breadcrumb.
   const blnPayrollProcessLogRunRoute = /^\/(?:payroll\/process-log|payroll-process-logs)\/run\/[\w-]+$/.test(strLowerPathname);
+  // Add / Edit / View screens of Payroll, Employee Services and Loan Management carry their own
+  // sticky breadcrumb heading with the action buttons (DetailPageHeader), so the shell heading is hidden.
+  const blnDetailHeadingRoute = [
+    /^\/payroll-cycles\/(?:add|edit\/[\w-]+)$/,
+    /^\/payroll\/(?:cycles|schedules)\/(?:add|edit(?:\/[\w-]+)?)$/,
+    /^\/masters\/payroll-groups\/(?:add|(?:edit|view)\/[\w-]+)$/,
+    /^\/payroll\/runs?\/(?:new|[\w-]+)$/,
+    /^\/payroll\/employee-payroll-inputs\/(?:new|[\w-]+\/edit)$/,
+    /^\/payroll\/inputs\/[\w-]+\/edit$/,
+    /^\/payroll\/statutory-rules\/(?:new|[\w-]+\/edit)$/,
+    /^\/(?:payroll\/|masters\/)?tax-regimes\/(?:add|edit\/[\w-]+(?:\/slabs)?)$/,
+    /^\/payroll\/fnf-settlements\/(?:new|[\w-]+)$/,
+    /^\/payroll\/(?:it|flexi)-declaration-review\/[\w-]+$/,
+    /^\/salary\/flexi-pay-declaration$/,
+    /^\/payroll\/reimbursements\/[\w-]+$/,
+    /^\/(?:payroll\/results|payroll\/payslips?|reports\/payslips)\/[\w-]+(?:\/tax-information)?$/,
+    /^\/(?:payroll|ess)\/loans-advances\/(?:new|[\w-]+)$/,
+    /^\/ess\/reimbursements\/(?:new|[\w-]+(?:\/edit)?)$/,
+    /^\/ess\/my-profile\/edit\/[\w-]+$/,
+  ].some((objPattern) => objPattern.test(strLowerPathname));
   const blnEmployeeReimbursementFormContext =
     Boolean(strLowerPathname.match(/^\/ess\/reimbursements(\/new|\/\d+(\/edit)?)?$/)) &&
     Boolean(objSearchParams.get("employee_id"));
@@ -1640,7 +1660,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               <Box sx={{ flex: 1, minWidth: 0 }} />
 
 
-              {strPathname === "/employees" || strPathname === "/departments" || strPathname === "/designations" || strPathname === "/settings" || strPathname === "/profile/change-password" || blnReferencedMasterRoute || blnDepartmentStyleMasterRoute || blnEmployeeEditorRoute || blnDashboardRoute || blnEmployeeSalaryListRoute || blnEmployeeSalaryEditorRoute || blnUserListRoute || blnUserGroupListRoute || blnSalaryComponentListRoute || blnSalaryStructureListRoute || blnCtcFormatRoute || blnSalaryRegisterRoute || blnSalaryStatementRoute || blnLoanBudgetListRoute || blnLoanRecoveryRoute || blnLoanAdvanceListRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute || blnLeaveAttendanceRoute || blnPayrollProcessLogRunRoute ? null : (
+              {strPathname === "/employees" || strPathname === "/departments" || strPathname === "/designations" || strPathname === "/settings" || strPathname === "/profile/change-password" || blnReferencedMasterRoute || blnDepartmentStyleMasterRoute || blnEmployeeEditorRoute || blnDashboardRoute || blnEmployeeSalaryListRoute || blnEmployeeSalaryEditorRoute || blnUserListRoute || blnUserGroupListRoute || blnSalaryComponentListRoute || blnSalaryStructureListRoute || blnCtcFormatRoute || blnSalaryRegisterRoute || blnSalaryStatementRoute || blnLoanBudgetListRoute || blnLoanRecoveryRoute || blnLoanAdvanceListRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute || blnLeaveAttendanceRoute || blnPayrollProcessLogRunRoute || blnDetailHeadingRoute ? null : (
                 <Box
                   sx={{
                     display: "flex",

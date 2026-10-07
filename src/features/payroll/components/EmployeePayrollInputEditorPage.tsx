@@ -38,6 +38,7 @@ import { useRouter } from "next/navigation";
 
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
+import { DetailPageHeader } from "@/components/master/MasterListUi";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -702,39 +703,12 @@ export default function EmployeePayrollInputEditorPage({
         px: { xs: 0, md: 0.5 },
       }}
     >
-      {strLabelError && !objDismissedNotices.has("labelError") ? <Alert severity="warning" onClose={() => dismissNotice("labelError")}>{strLabelError}</Alert> : null}
-      {strCommonLabelError && !objDismissedNotices.has("commonLabelError") ? <Alert severity="warning" onClose={() => dismissNotice("commonLabelError")}>{strCommonLabelError}</Alert> : null}
-      {strRightsError && !objDismissedNotices.has("rightsError") ? <Alert severity="warning" onClose={() => dismissNotice("rightsError")}>{strRightsError}</Alert> : null}
-      {!blnCanView && !blnCanSave ? <Alert severity="warning">{t("access_denied", "Payroll input access is not available for your user group.")}</Alert> : null}
-      {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
-      {strSuccess ? <Alert severity="success" onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
-      <CommonEditModeBanner
-        blnReadOnly={blnReadOnly}
-        strReadOnlyMessage={t("read_only_mode", "This payroll input is open in view mode.")}
-      />
-      {blnSelectedRunBlocksInputChanges && !objDismissedNotices.has("runBlocks") ? <Alert severity="warning" onClose={() => dismissNotice("runBlocks")}>{t("run_locked_input_warning", "Selected payroll run is locked, so payroll input cannot be edited.")}</Alert> : null}
-
-      <Box
-        sx={{
-          background: "var(--app-surface-color)",
-          border: "1px solid var(--app-card-border-color)",
-          borderRadius: "var(--app-card-radius)",
-          boxShadow: "var(--app-shadow-soft)",
-          p: { xs: 1.5, md: 2 },
-        }}
+      <DetailPageHeader
+        strSection={t("breadcrumb_section", "Payroll")}
+        strListTitle={t("breadcrumb_title", "Payroll Input")}
+        strListHref={strBackRoute || "/payroll/employee-payroll-inputs"}
+        strCurrent={strMode === "add" ? t("breadcrumb_add", "Add") : blnReadOnly ? t("breadcrumb_view", "View") : t("breadcrumb_edit", "Edit")}
       >
-      <Box sx={{ pt: 0.5 }}>
-        <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", columnGap: 1, rowGap: 1.25, mb: 2.5 }}>
-          <Box>
-            <Typography sx={{ display: "flex", alignItems: "center", gap: 1, fontWeight: 800, color: "#0f172a", fontSize: "0.96rem" }}>
-              <PersonOutlineRoundedIcon sx={{ color: "#2563eb", fontSize: 20 }} />
-              {t("section_employee_run", "Employee and Run Details").replace(/^\d+\.\s*/, "")}
-            </Typography>
-            <Typography sx={{ color: "#64748b", mt: 0.35, fontSize: "0.83rem" }}>
-              {t("section_employee_run_help", "Select the employee and payroll run to view or edit attendance/leave inputs.")}
-            </Typography>
-          </Box>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ alignItems: { xs: "stretch", sm: "center" } }}>
             <Button
               controlId="employee-payroll-input.editor.back.button"
               className={styles.secondaryButton}
@@ -769,7 +743,39 @@ export default function EmployeePayrollInputEditorPage({
                 {blnSaving ? tCommon("processing", "Processing...") : tCommon("save", "Save")}
               </Button>
             ) : null}
-          </Stack>
+      </DetailPageHeader>
+      {strLabelError && !objDismissedNotices.has("labelError") ? <Alert severity="warning" onClose={() => dismissNotice("labelError")}>{strLabelError}</Alert> : null}
+      {strCommonLabelError && !objDismissedNotices.has("commonLabelError") ? <Alert severity="warning" onClose={() => dismissNotice("commonLabelError")}>{strCommonLabelError}</Alert> : null}
+      {strRightsError && !objDismissedNotices.has("rightsError") ? <Alert severity="warning" onClose={() => dismissNotice("rightsError")}>{strRightsError}</Alert> : null}
+      {!blnCanView && !blnCanSave ? <Alert severity="warning">{t("access_denied", "Payroll input access is not available for your user group.")}</Alert> : null}
+      {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
+      {strSuccess ? <Alert severity="success" onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
+      <CommonEditModeBanner
+        blnReadOnly={blnReadOnly}
+        strReadOnlyMessage={t("read_only_mode", "This payroll input is open in view mode.")}
+      />
+      {blnSelectedRunBlocksInputChanges && !objDismissedNotices.has("runBlocks") ? <Alert severity="warning" onClose={() => dismissNotice("runBlocks")}>{t("run_locked_input_warning", "Selected payroll run is locked, so payroll input cannot be edited.")}</Alert> : null}
+
+      <Box
+        sx={{
+          background: "var(--app-surface-color)",
+          border: "1px solid var(--app-card-border-color)",
+          borderRadius: "var(--app-card-radius)",
+          boxShadow: "var(--app-shadow-soft)",
+          p: { xs: 1.5, md: 2 },
+        }}
+      >
+      <Box sx={{ pt: 0.5 }}>
+        <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", columnGap: 1, rowGap: 1.25, mb: 2.5 }}>
+          <Box>
+            <Typography sx={{ display: "flex", alignItems: "center", gap: 1, fontWeight: 800, color: "#0f172a", fontSize: "0.96rem" }}>
+              <PersonOutlineRoundedIcon sx={{ color: "#2563eb", fontSize: 20 }} />
+              {t("section_employee_run", "Employee and Run Details").replace(/^\d+\.\s*/, "")}
+            </Typography>
+            <Typography sx={{ color: "#64748b", mt: 0.35, fontSize: "0.83rem" }}>
+              {t("section_employee_run_help", "Select the employee and payroll run to view or edit attendance/leave inputs.")}
+            </Typography>
+          </Box>
         </Box>
         <Box sx={{ display: "grid", columnGap: 1.5, rowGap: 1.25, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" }, alignItems: "start" }}>
           <Autocomplete

@@ -6,6 +6,7 @@ import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { DetailPageHeader } from "@/components/master/MasterListUi";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import FNFActionBar from "@/features/payroll/components/FNFActionBar";
 import FNFSettlementLineEditor from "@/features/payroll/components/FNFSettlementLineEditor";
@@ -167,15 +168,11 @@ export default function FNFSettlementDetailPage({ strSettlementID }: { /** recor
 
   return (
     <Box className={styles.page}>
-      <Box className={styles.controlsCard}>
-        <Box className={styles.controlsHeader}>
-          <Box sx={{ p: 1 }}><Typography className={styles.title} sx={{ fontSize: "1.2rem" }}>Full and Final Settlement #{objSettlement?.strSettlementNumber || objSettlement?.intID}</Typography></Box>
-          <Stack direction="row" gap={1} flexWrap="wrap" justifyContent="flex-end">
-            <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/fnf-settlements")} controlId="payroll.fnf-settlement-detail.back.button">Back</Button>
-            {objSettlement ? <FNFActionBar objSettlement={objSettlement} blnBusy={blnSaving} onAction={openAction} /> : null}
-          </Stack>
-        </Box>
-      </Box>
+      <DetailPageHeader strSection="Employee Services" strListTitle="Full & Final Settlement" strListHref="/payroll/fnf-settlements" strCurrent="View">
+        <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/fnf-settlements")} controlId="payroll.fnf-settlement-detail.back.button">Back</Button>
+        {objSettlement ? <FNFActionBar objSettlement={objSettlement} blnBusy={blnSaving} onAction={openAction} /> : null}
+      </DetailPageHeader>
+      <Box sx={{ px: 0.5 }}><Typography className={styles.title} sx={{ fontSize: "1.2rem" }}>Full and Final Settlement #{objSettlement?.strSettlementNumber || objSettlement?.intID}</Typography></Box>
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
       {objSettlement ? (

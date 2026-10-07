@@ -24,6 +24,7 @@ import {
 } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { DetailPageHeader } from "@/components/master/MasterListUi";
 import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
@@ -628,44 +629,32 @@ export default function LeaveTypeEditorPage({ strMode, strLeaveTypeID }: { strMo
   // header does from the toolbar below it.
   return (
     <Stack spacing={1.5} sx={{ height: "100%", overflow: "auto", pr: 0.5, pb: 4 }}>
-      {/* Header (matches the Salary Component editor chrome) */}
-      <Paper
-        sx={{
-          borderRadius: "28px",
-          px: { xs: 2, md: 3 },
-          py: { xs: 1.5, md: 2 },
-          border: "1px solid rgba(148,163,184,0.18)",
-          background: "linear-gradient(135deg, #f9fbff 0%, #eef4ff 50%, #f8fafc 100%)",
-        }}
+      <DetailPageHeader
+        strSection="Leave Management"
+        strListTitle="Leave Types"
+        strListHref="/leave"
+        strCurrent={strMode === "new" ? "Add" : blnReadOnly ? "View" : "Edit"}
       >
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={1.5}>
-          {/* The page title lives here rather than in the app-shell header (see blnLeaveTypeEditorRoute). */}
-          <Typography component="h1" sx={{ fontWeight: 800, fontSize: { xs: "1.1rem", md: "1.28rem" }, color: "#0f172a" }}>
-            {strMode === "new" ? "New Leave Type" : blnReadOnly ? "View Leave Type" : "Edit Leave Type"}
-          </Typography>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ width: { xs: "100%", sm: "auto" } }}>
-            <Button
-              className={styles.secondaryButton}
-              startIcon={<ArrowBackRoundedIcon />}
-              onClick={() => objRouter.push("/leave")}
-              sx={{ borderRadius: "14px", height: 38, minHeight: 38, py: 0, px: 2.25, minWidth: 100, fontSize: "0.9rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }}
-            >
-              Back
-            </Button>
-            {!blnReadOnly ? (
-              <Button
-                className={styles.primaryButton}
-                startIcon={<SaveRoundedIcon />}
-                onClick={submit}
-                disabled={blnSaving}
-                sx={{ borderRadius: "14px", height: 38, minHeight: 38, py: 0, px: 2.25, minWidth: 168, fontSize: "0.9rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }}
-              >
-                {blnSaving ? "Saving..." : "Save Leave Type"}
-              </Button>
-            ) : null}
-          </Stack>
-        </Stack>
-      </Paper>
+        <Button
+          className={styles.secondaryButton}
+          startIcon={<ArrowBackRoundedIcon />}
+          onClick={() => objRouter.push("/leave")}
+          sx={{ height: 32, minHeight: 32, py: 0, px: 1.5, fontSize: "0.8125rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }}
+        >
+          Back
+        </Button>
+        {!blnReadOnly ? (
+          <Button
+            className={styles.primaryButton}
+            startIcon={<SaveRoundedIcon />}
+            onClick={submit}
+            disabled={blnSaving}
+            sx={{ height: 32, minHeight: 32, py: 0, px: 1.75, fontSize: "0.8125rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }}
+          >
+            {blnSaving ? "Saving..." : "Save Leave Type"}
+          </Button>
+        ) : null}
+      </DetailPageHeader>
 
       {/* The 12px top margin is set here rather than left to the Stack: an inline margin outranks the
           Stack's spacing class, so relying on it would leave this one seam flush. */}

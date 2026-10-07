@@ -17,6 +17,7 @@ import {
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { DetailPageHeader } from "@/components/master/MasterListUi";
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import masterStyles from "@/components/master/MasterScreen.module.css";
 import payrollStyles from "@/features/payroll/components/PayrollScreen.module.css";
@@ -219,54 +220,31 @@ export default function PayrollRunEditorPage() {
         pb: 2,
       }}
     >
-      <Paper
-        sx={{
-          borderRadius: "var(--app-card-radius)",
-          p: "10px",
-          border: "1px solid rgba(148,163,184,0.18)",
-          background: "linear-gradient(135deg, #f8fbff 0%, #eef7f4 45%, #f8fafc 100%)",
-        }}
+      <DetailPageHeader
+        strSection={t("breadcrumb_section", "Payroll")}
+        strListTitle={t("breadcrumb_title", "Payroll Runs")}
+        strListHref="/payroll/runs"
+        strCurrent={t("breadcrumb_add", "Add")}
       >
-        <Stack spacing={1.25}>
-          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
-            <Box>
-              <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
-                {t("add_title", "Create Payroll Run")}
-              </Typography>
-              <Typography sx={{ color: "#64748b", mt: 0.75 }}>
-                {t("subtitle", "Open payroll run creation in a dedicated screen instead of a modal dialog.")}
-              </Typography>
-            </Box>
-            <Stack
-              direction={{ xs: "column", sm: "row" }}
-              spacing={1.25}
-              sx={{
-                alignItems: { xs: "stretch", sm: "center" },
-                alignSelf: { md: "flex-start" },
-              }}
-            >
-              <Button
-                className={masterStyles.secondaryButton}
-                startIcon={<ArrowBackRoundedIcon />}
-                onClick={() => objRouter.push("/payroll/runs")}
-                disabled={blnSaving}
-                controlId="payroll.run-editor.back.button"
-              >
-                {t("back_to_list", "Back to List")}
-              </Button>
-              {blnCanAdd ? <Button
-                className={masterStyles.primaryButton}
-                startIcon={<SaveRoundedIcon />}
-                onClick={saveRun}
-                disabled={blnFieldDisabled}
-                controlId="payroll.run-editor.save.button"
-              >
-                {blnSaving ? tCommon("processing", "Processing...") : tCommon("save", "Save")}
-              </Button> : null}
-            </Stack>
-          </Stack>
-        </Stack>
-      </Paper>
+        <Button
+          className={masterStyles.secondaryButton}
+          startIcon={<ArrowBackRoundedIcon />}
+          onClick={() => objRouter.push("/payroll/runs")}
+          disabled={blnSaving}
+          controlId="payroll.run-editor.back.button"
+        >
+          {t("back_to_list", "Back to List")}
+        </Button>
+        {blnCanAdd ? <Button
+          className={masterStyles.primaryButton}
+          startIcon={<SaveRoundedIcon />}
+          onClick={saveRun}
+          disabled={blnFieldDisabled}
+          controlId="payroll.run-editor.save.button"
+        >
+          {blnSaving ? tCommon("processing", "Processing...") : tCommon("save", "Save")}
+        </Button> : null}
+      </DetailPageHeader>
 
       {strRightsError ? <Alert severity="warning">{strRightsError}</Alert> : null}
       {!blnCanAdd ? <Alert severity="warning">{t("add_access_denied", "Payroll run add access is not available for your user group.")}</Alert> : null}

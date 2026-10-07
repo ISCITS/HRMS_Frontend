@@ -30,6 +30,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
 import { Controller, useFieldArray, useForm, useWatch, type Resolver } from "react-hook-form";
 import * as yup from "yup";
+import { DetailPageHeader } from "@/components/master/MasterListUi";
 import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
@@ -37,7 +38,7 @@ import CommonEditModeBanner from "@/Common/components/CommonEditModeBanner";
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import styles from "@/components/master/MasterScreen.module.css";
 import { useLeavePlanEditor } from "@/features/leave-plan/hooks/useLeavePlanEditor";
-import type { LeavePlanItem, LeavePlanSaveRequest, LeavePlanText, LeavePolicyOption } from "@/features/leave-plan/types/LeavePlanTypes";
+import type { LeavePlanItem, LeavePlanSaveRequest, LeavePlanText, LeavePolicyOption, LeaveTypeOption } from "@/features/leave-plan/types/LeavePlanTypes";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
 
@@ -247,56 +248,38 @@ export default function LeavePlanEditorPage({ strMode, strPlanID, strReturnTo }:
 
   return (
     <Stack spacing={1.5} sx={{ height: "100%", overflow: "auto", pr: 0.5, pb: 4 }} component="form" onSubmit={handleSubmit(submitForm, onInvalidForm)}>
-      {/* Header (matches the Salary Component editor chrome) */}
-      <Paper
-        sx={{
-          borderRadius: "28px",
-          px: { xs: 2, md: 3 },
-          py: { xs: 1.5, md: 2 },
-          border: "1px solid rgba(148,163,184,0.18)",
-          background: "linear-gradient(135deg, #f9fbff 0%, #eef4ff 50%, #f8fafc 100%)",
-        }}
+      <DetailPageHeader
+        strSection={t("breadcrumb_leave", "Leave Management")}
+        strListTitle={t("breadcrumb_leave_plans", "Leave Plans")}
+        strListHref="/leave/plans"
+        strCurrent={strMode === "new" ? t("breadcrumb_add", "Add") : blnReadOnly ? t("breadcrumb_view", "View") : t("breadcrumb_edit", "Edit")}
       >
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={1.5}>
-          {/* The page title lives here rather than in the app-shell header (see blnLeavePlanEditorRoute). */}
-          <Typography component="h1" sx={{ fontWeight: 800, fontSize: { xs: "1.1rem", md: "1.28rem" }, color: "#0f172a" }}>
-            {strMode === "new"
-              ? t("editor_title_new", "New Leave Plan")
-              : blnReadOnly
-                ? t("editor_title_view", "View Leave Plan")
-                : t("editor_title_edit", "Edit Leave Plan")}
-          </Typography>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ width: { xs: "100%", sm: "auto" } }}>
-            <Button
-              className={styles.secondaryButton}
-              startIcon={<ArrowBackRoundedIcon />}
-              onClick={() => objRouter.push(strBackPath)}
-              sx={{ borderRadius: "14px", height: 38, minHeight: 38, py: 0, px: 2.25, minWidth: 100, fontSize: "0.9rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }}
-              data-control-id="leave-plan.editor.back.button"
-            >
-              {t("back_button", "Back")}
-            </Button>
-            {!blnReadOnly ? (
-              <Button
-                type="submit"
-                className={styles.primaryButton}
-                startIcon={<SaveRoundedIcon />}
-                disabled={blnSaving}
-                sx={{ borderRadius: "14px", height: 38, minHeight: 38, py: 0, px: 2.25, minWidth: 168, fontSize: "0.9rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }}
-                data-control-id="leave-plan.editor.save.button"
-              >
-                {blnSaving ? t("saving", "Saving...") : t("save_plan", "Save Leave Plan")}
-              </Button>
-            ) : null}
-          </Stack>
-        </Stack>
-        <Box sx={{ mt: 1.5 }}>
-          <CommonEditModeBanner
-            blnReadOnly={blnReadOnly}
-            strReadOnlyMessage={t("plan_read_only", "You have view-only access to Leave Plans.")}
-          />
-        </Box>
-      </Paper>
+        <Button
+          className={styles.secondaryButton}
+          startIcon={<ArrowBackRoundedIcon />}
+          onClick={() => objRouter.push(strBackPath)}
+          sx={{ height: 32, minHeight: 32, py: 0, px: 1.5, fontSize: "0.8125rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }}
+          data-control-id="leave-plan.editor.back.button"
+        >
+          {t("back_button", "Back")}
+        </Button>
+        {!blnReadOnly ? (
+          <Button
+            type="submit"
+            className={styles.primaryButton}
+            startIcon={<SaveRoundedIcon />}
+            disabled={blnSaving}
+            sx={{ height: 32, minHeight: 32, py: 0, px: 1.75, fontSize: "0.8125rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }}
+            data-control-id="leave-plan.editor.save.button"
+          >
+            {blnSaving ? t("saving", "Saving...") : t("save_plan", "Save Leave Plan")}
+          </Button>
+        ) : null}
+      </DetailPageHeader>
+      <CommonEditModeBanner
+        blnReadOnly={blnReadOnly}
+        strReadOnlyMessage={t("plan_read_only", "You have view-only access to Leave Plans.")}
+      />
 
       {strError ? <Alert severity="error">{strError}</Alert> : null}
 

@@ -4,9 +4,10 @@ import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
-import { Alert, Autocomplete, Box, Button, Stack, Step, StepLabel, Stepper, TextField, Tooltip, Typography } from "@mui/material";
+import { Alert, Autocomplete, Box, Button, Stack, Step, StepLabel, Stepper, TextField, Tooltip } from "@mui/material";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { DetailPageHeader } from "@/components/master/MasterListUi";
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
@@ -185,11 +186,9 @@ export default function FNFSettlementCreatePage() {
 
   return (
     <Box className={styles.page}>
-      <Box className={styles.controlsCard}>
-        <Box className={styles.controlsHeader}>
-          <Button className={styles.secondaryButton} variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={handleCancel} controlId="payroll.fnf-settlement-create.back-top.button">Back</Button>
-        </Box>
-      </Box>
+      <DetailPageHeader strSection="Employee Services" strListTitle="Full & Final Settlement" strListHref="/payroll/fnf-settlements" strCurrent="Add">
+        <Button className={styles.secondaryButton} variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={handleCancel} controlId="payroll.fnf-settlement-create.back-top.button">Back</Button>
+      </DetailPageHeader>
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       <Box className={`${styles.tableCard} ${styles.fnfCreateCard}`}>
         <Box className={styles.detailScrollCard}>

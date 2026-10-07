@@ -45,6 +45,7 @@ import {
 import { type MouseEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
+import { DetailPageHeader } from "@/components/master/MasterListUi";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import CommonRowActions from "@/components/master/CommonRowActions";
@@ -1175,16 +1176,12 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
 
   return (
     <Box sx={{ background: "#F6F8FC", color: "#0F2747", display: "flex", flexDirection: "column", gap: 1.25, height: "100%", minHeight: 0, overflow: "auto", p: { xs: 1.25, md: 1.5 } }}>
-      <Box sx={{ ...objCardSx, borderColor: "#DCE4EF", p: { xs: 1.1, md: 1.35 } }}>
-        <Box sx={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 1 }}>
-          <Box sx={{ alignItems: "center", display: "flex", flex: "0 0 auto", gap: 1.1, minWidth: 0 }}>
-            <Typography sx={{ color: "#0F2747", fontSize: { xs: "1.15rem", md: "1.3rem" }, fontWeight: 900, lineHeight: 1.05, whiteSpace: "nowrap" }}>
-              {objRun.strRunName}
-            </Typography>
-            <StatusPill strStatus={objRun.strRunStatus} />
-          </Box>
-          <Box sx={{ flex: "1 1 auto", minWidth: 0 }} />
-
+      <DetailPageHeader
+        strSection={t("breadcrumb_section", "Payroll")}
+        strListTitle={t("breadcrumb_title", "Payroll Runs")}
+        strListHref="/payroll/runs"
+        strCurrent={objRun.strRunName}
+      >
           <Box sx={{ alignItems: "center", display: "flex", flex: "0 1 auto", gap: 0.75, minWidth: 0, overflowX: "auto", pb: 0.25 }}>
             {lstWorkflowSteps.map((dicStep, intIndex) => {
               const blnEnabled = isWorkflowStepEnabled(dicStep.strStep, objRun, blnSaving, blnPayslipLoading, blnCanValidate, blnCanProcess, blnCanFinalize, blnCanGeneratePayslip);
@@ -1245,7 +1242,6 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
               <MoreVertRoundedIcon />
             </IconButton>
           </Box>
-        </Box>
 
         <Menu anchorEl={objActionsAnchor} open={Boolean(objActionsAnchor)} onClose={handleCloseActions}>
           {blnCanReprocess ? (
@@ -1274,6 +1270,17 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
             </MenuItem>
           ) : null}
         </Menu>
+      </DetailPageHeader>
+
+      <Box sx={{ ...objCardSx, borderColor: "#DCE4EF", p: { xs: 1.1, md: 1.35 } }}>
+        <Box sx={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 1 }}>
+          <Box sx={{ alignItems: "center", display: "flex", flex: "0 0 auto", gap: 1.1, minWidth: 0 }}>
+            <Typography sx={{ color: "#0F2747", fontSize: { xs: "1.15rem", md: "1.3rem" }, fontWeight: 900, lineHeight: 1.05, whiteSpace: "nowrap" }}>
+              {objRun.strRunName}
+            </Typography>
+            <StatusPill strStatus={objRun.strRunStatus} />
+          </Box>
+        </Box>
       </Box>
 
       {strRightsError && !blnRightsErrorDismissed ? <Alert severity="warning" onClose={() => setBlnRightsErrorDismissed(true)}>{strRightsError}</Alert> : null}

@@ -23,6 +23,7 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { DetailPageHeader } from "@/components/master/MasterListUi";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { payrollResultService } from "@/features/payroll/services/payrollResultService";
@@ -260,32 +261,37 @@ export default function TaxCalculationDetailPage({ strResultID, blnPayslipScreen
 
   return (
     <Stack spacing={1.4}>
+      <DetailPageHeader
+        strSection={strResolvedBackRoute.startsWith("/ess/") ? "Employee Services" : "Payroll"}
+        strListTitle={blnPayslipScreen ? (strResolvedBackRoute.startsWith("/ess/") ? "My Payslips" : "Payslips") : "Payroll Results"}
+        strListHref={blnPayslipScreen ? (strResolvedBackRoute.startsWith("/ess/") ? "/ess/my-payslips" : "/reports/payslips") : "/payroll/results"}
+        strCurrent="Tax Information"
+      >
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<ArrowBackRoundedIcon />}
+          onClick={() => objRouter.push(strResolvedBackRoute)}
+          data-controlid="payroll.tax-information.back.button"
+        >
+          {t("back", "Back")}
+        </Button>
+      </DetailPageHeader>
       <Paper sx={{ p: 1.35, borderRadius: "8px", border: "1px solid #ddd6fe", backgroundColor: "#f5f3ff", boxShadow: "0 3px 10px rgba(15,23,42,0.04)" }}>
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1} alignItems={{ xs: "flex-start", md: "center" }}>
-          <Stack spacing={0.35}>
-            <Typography sx={{ fontWeight: 900, color: "#0f172a", fontSize: "1.08rem" }}>
-              Tax Information - {objDetail.strEmployeeName} ({objDetail.strEmployeeCode})
+        <Stack spacing={0.35}>
+          <Typography sx={{ fontWeight: 900, color: "#0f172a", fontSize: "1.08rem" }}>
+            Tax Information - {objDetail.strEmployeeName} ({objDetail.strEmployeeCode})
+          </Typography>
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+            <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>
+              Financial Year: {objDetail.strFinancialYearCode || "-"}
             </Typography>
-            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-              <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>
-                Financial Year: {objDetail.strFinancialYearCode || "-"}
-              </Typography>
-              <Chip
-                size="small"
-                label={`${objDetail.strRegimeUsed || "-"} Regime`}
-                sx={{ backgroundColor: "#ede9fe", color: "#6d28d9", fontWeight: 800 }}
-              />
-            </Stack>
+            <Chip
+              size="small"
+              label={`${objDetail.strRegimeUsed || "-"} Regime`}
+              sx={{ backgroundColor: "#ede9fe", color: "#6d28d9", fontWeight: 800 }}
+            />
           </Stack>
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<ArrowBackRoundedIcon />}
-            onClick={() => objRouter.push(strResolvedBackRoute)}
-            data-controlid="payroll.tax-information.back.button"
-          >
-            {t("back", "Back")}
-          </Button>
         </Stack>
       </Paper>
 

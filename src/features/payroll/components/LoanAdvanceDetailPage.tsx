@@ -13,6 +13,7 @@ import UndoRoundedIcon from "@mui/icons-material/UndoRounded";
 import { Alert, Autocomplete, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Step, StepLabel, Stepper, Tab, Tabs, TextField, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { DetailPageHeader } from "@/components/master/MasterListUi";
 import type { MenuItem as AuthMenuItem } from "@/models/AuthModels";
 
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
@@ -619,17 +620,16 @@ export default function LoanAdvanceDetailPage({ strLoanAdvanceID, strMode = "pay
 
   return (
     <Box className={`${styles.page} ${styles.detailPage}`}>
-      <Box className={styles.controlsCard} sx={{ py: 1, minHeight: 0 }}>
-        <Box className={`${styles.controlsHeader} ${styles.detailHeader}`} sx={{ alignItems: "center", minHeight: 0 }}>
-          <Box>
-            <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push(blnIsEssMode ? "/ess/loans-advances" : "/payroll/loans-advances")}>{t("back_button", "Back")}</Button>
-          </Box>
-          <Box className={`${styles.headerActions} ${styles.detailHeaderActions}`}>
-            {objRecord ? <LoanAdvanceStatusBadge strStatus={objRecord.strWorkflowStatus} t={t} /> : null}
-            {renderWorkflowActions()}
-          </Box>
-        </Box>
-      </Box>
+      <DetailPageHeader
+        strSection={blnIsEssMode ? t("breadcrumb_ess", "ESS") : t("breadcrumb_loan_management", "Loan Management")}
+        strListTitle={blnIsEssMode ? t("ess_page_title", "My Loans & Advances") : t("page_title", "Loans & Advances")}
+        strListHref={blnIsEssMode ? "/ess/loans-advances" : "/payroll/loans-advances"}
+        strCurrent={!objRecord ? t("breadcrumb_add", "Add") : ["draft", "sent_back"].includes(strStatus) ? t("breadcrumb_edit", "Edit") : t("breadcrumb_view", "View")}
+      >
+        <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push(blnIsEssMode ? "/ess/loans-advances" : "/payroll/loans-advances")}>{t("back_button", "Back")}</Button>
+        {objRecord ? <LoanAdvanceStatusBadge strStatus={objRecord.strWorkflowStatus} t={t} /> : null}
+        {renderWorkflowActions()}
+      </DetailPageHeader>
       {strRightsError || strLabelError ? <Alert severity="warning">{strRightsError || strLabelError}</Alert> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}

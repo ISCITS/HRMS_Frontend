@@ -33,6 +33,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type PropsWithChildren, type ReactNode } from "react";
 import { Controller, useForm, useWatch, type Resolver } from "react-hook-form";
 import * as yup from "yup";
+import { DetailPageHeader } from "@/components/master/MasterListUi";
 import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
@@ -295,26 +296,19 @@ export default function EmployeeLeavePlanDetailPage({ strEmployeeID }: { strEmpl
 
   // 12px between every card, matching the gap between the app header and the toolbar below it.
   return <Stack spacing={1.5} sx={{ height: "100%", overflow: "auto", pr: 0.5, pb: 4 }}>
-    <Paper sx={{ borderRadius: "28px", px: { xs: 2, md: 3 }, py: { xs: 1.5, md: 2 }, border: "1px solid rgba(148,163,184,0.18)", background: "linear-gradient(135deg, #f9fbff 0%, #eef4ff 50%, #f8fafc 100%)" }}>
-      <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={1.5}>
-        {/* The page title lives here rather than in the app-shell header (see blnLeaveAssignmentEditorRoute). */}
-        <Typography component="h1" sx={{ fontWeight: 800, fontSize: { xs: "1.1rem", md: "1.28rem" }, color: "#0f172a" }}>
-          {blnCanManage
-            ? t("detail_title_edit", "Edit Employee Leave Assignment")
-            : t("detail_title_view", "View Employee Leave Assignment")}
-        </Typography>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ width: { xs: "100%", sm: "auto" } }}>
-          <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/leave/plan-assignments")} sx={{ borderRadius: "14px", height: 38, minHeight: 38, py: 0, px: 2.25, minWidth: 100, fontSize: "0.9rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }} data-control-id="employee-leave-plan.detail.back.button">{t("back_button", "Back")}</Button>
-          {blnCanManage ? <Button onClick={() => { setBlnReplaceOpen(true); void objAssignmentForm.handleSubmit(submitAssignment)(); }} className={styles.primaryButton} startIcon={<SaveRoundedIcon />} disabled={blnSaving} sx={{ borderRadius: "14px", height: 38, minHeight: 38, py: 0, px: 2.25, minWidth: 168, fontSize: "0.9rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }} data-control-id="employee-leave-plan.detail.save.button">{blnSaving ? t("saving", "Saving...") : t("save_leave_plan", "Save Leave Plan")}</Button> : null}
-        </Stack>
-      </Stack>
-      <Box sx={{ mt: 1.5 }}>
-        <CommonEditModeBanner
-          blnReadOnly={!blnCanManage}
-          strReadOnlyMessage={t("assignment_read_only", "You are viewing this leave assignment.")}
-        />
-      </Box>
-    </Paper>
+    <DetailPageHeader
+      strSection={t("breadcrumb_leave", "Leave Management")}
+      strListTitle={t("breadcrumb_plan_assignments", "Employee Leave Assignment")}
+      strListHref="/leave/plan-assignments"
+      strCurrent={blnCanManage ? t("breadcrumb_edit", "Edit") : t("breadcrumb_view", "View")}
+    >
+      <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/leave/plan-assignments")} sx={{ height: 32, minHeight: 32, py: 0, px: 1.5, fontSize: "0.8125rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }} data-control-id="employee-leave-plan.detail.back.button">{t("back_button", "Back")}</Button>
+      {blnCanManage ? <Button onClick={() => { setBlnReplaceOpen(true); void objAssignmentForm.handleSubmit(submitAssignment)(); }} className={styles.primaryButton} startIcon={<SaveRoundedIcon />} disabled={blnSaving} sx={{ height: 32, minHeight: 32, py: 0, px: 1.75, fontSize: "0.8125rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }} data-control-id="employee-leave-plan.detail.save.button">{blnSaving ? t("saving", "Saving...") : t("save_leave_plan", "Save Leave Plan")}</Button> : null}
+    </DetailPageHeader>
+    <CommonEditModeBanner
+      blnReadOnly={!blnCanManage}
+      strReadOnlyMessage={t("assignment_read_only", "You are viewing this leave assignment.")}
+    />
     {(strError || strActionError) ? <Alert severity="error">{strError || strActionError}</Alert> : null}
     {/* 1. Compact Employee Summary + Current Leave Plan (merged). */}
     <SectionCard strTitle={t("section_employee_account", "Employee Leave Account")}>

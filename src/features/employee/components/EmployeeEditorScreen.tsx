@@ -117,6 +117,9 @@ type EmployeeEditorScreenProps = {
   lstAccessModuleCodes?: string[];
   strMenuActionOverride?: string;
   strPageTitleOverride?: string;
+  /** Breadcrumb section / list names used when a page title override replaces the Masters > Employees trail. */
+  strBreadcrumbSection?: string;
+  strBreadcrumbList?: string;
 };
 
 function sanitizeMobileNumberInput(strValue: string): string {
@@ -398,7 +401,9 @@ export default function EmployeeEditorScreen({
   strBackRoute = "/employees",
   lstAccessModuleCodes = lstEmployeeModuleCodes,
   strMenuActionOverride,
-  strPageTitleOverride
+  strPageTitleOverride,
+  strBreadcrumbSection,
+  strBreadcrumbList
 }: EmployeeEditorScreenProps) {
   const objRouter = useRouter();
   const objSearchParams = useSearchParams();
@@ -1965,7 +1970,11 @@ export default function EmployeeEditorScreen({
       <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.5} alignItems={{ sm: "center" }} sx={{ position: "sticky", top: 0, zIndex: 10, bgcolor: "var(--app-bg-color)", py: 0.5 }}>
         <Box>
           {!blnHidePageHeading ? strPageTitleOverride ? (
-            <Typography component="h1" sx={{ mt: 0.5, fontWeight: 800, color: "#1f2937", fontSize: "clamp(1.35rem, 1.9vw, 1.75rem)", lineHeight: 1.05 }}>{strPageTitleOverride}</Typography>
+            <Breadcrumbs aria-label={t("employee_breadcrumb", "Employee breadcrumb")} separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ fontSize: 13, py: 0.5, ml: "3px" }}>
+              <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{strBreadcrumbSection || "Employee Services"}</Typography>
+              <Link component={NextLink} href={strBackRoute} underline="hover" sx={{ color: "text.secondary", fontSize: "inherit" }}>{strBreadcrumbList || strPageTitleOverride}</Link>
+              <Typography component="h1" aria-current="page" sx={{ fontSize: "inherit", fontWeight: 700, color: "#172554" }}>{strMode === "view" ? t("breadcrumb_view", "View") : t("breadcrumb_edit", "Edit")}</Typography>
+            </Breadcrumbs>
           ) : (
             <Breadcrumbs aria-label={t("employee_breadcrumb", "Employee breadcrumb")} separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ fontSize: 13, py: 0.5, ml: "3px" }}>
               <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{t("breadcrumb_masters", "Masters")}</Typography>

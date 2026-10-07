@@ -4,7 +4,8 @@ import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import FilterListRoundedIcon from "@mui/icons-material/FilterListRounded";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import ViewColumnRoundedIcon from "@mui/icons-material/ViewColumnRounded";
-import { Box, Breadcrumbs, Button, Checkbox, IconButton, Menu, MenuItem, Popover, Skeleton, Typography } from "@mui/material";
+import { Box, Breadcrumbs, Button, Checkbox, IconButton, Link, Menu, MenuItem, Popover, Skeleton, Stack, Typography } from "@mui/material";
+import NextLink from "next/link";
 import { useState, type KeyboardEvent, type ReactNode } from "react";
 
 import styles from "@/components/master/MasterScreen.module.css";
@@ -23,6 +24,48 @@ export function MasterBreadcrumbs({ strSection, strTitle }: MasterBreadcrumbsPro
       <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{strSection}</Typography>
       <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{strTitle}</Typography>
     </Breadcrumbs>
+  );
+}
+
+type DetailPageHeaderProps = {
+  strSection: string;
+  strListTitle: string;
+  /** Route of the parent list screen; the list title becomes a link back to it. */
+  strListHref: string;
+  /** In-page screens that are not separate routes go back through a callback instead of a link. */
+  fnListClick?: () => void;
+  /** Last crumb, e.g. Add / Edit / View. */
+  strCurrent: string;
+  /** Action buttons kept visible in the sticky heading. */
+  children?: ReactNode;
+};
+
+// Heading shared by detail (add / edit / view) screens: Section > List > Mode, with the screen's
+// action buttons pinned beside it like the Employee details screen.
+export function DetailPageHeader({ strSection, strListTitle, strListHref, fnListClick, strCurrent, children }: DetailPageHeaderProps) {
+  return (
+    <Stack
+      direction={{ xs: "column", sm: "row" }}
+      justifyContent="space-between"
+      alignItems={{ sm: "center" }}
+      spacing={1.5}
+      sx={{ position: "sticky", top: 0, zIndex: 10, bgcolor: "var(--app-bg-color)", py: 0.5 }}
+    >
+      <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ ml: "3px" }}>
+        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{strSection}</Typography>
+        {fnListClick ? (
+          <Link component="button" type="button" onClick={fnListClick} underline="hover" sx={{ color: "text.secondary", fontSize: "inherit", verticalAlign: "baseline" }}>{strListTitle}</Link>
+        ) : (
+          <Link component={NextLink} href={strListHref} underline="hover" sx={{ color: "text.secondary", fontSize: "inherit" }}>{strListTitle}</Link>
+        )}
+        <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{strCurrent}</Typography>
+      </Breadcrumbs>
+      {children ? (
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: { xs: "100%", sm: "auto" }, flexShrink: 0 }}>
+          {children}
+        </Stack>
+      ) : null}
+    </Stack>
   );
 }
 
