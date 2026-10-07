@@ -77,6 +77,7 @@ export default function MonthlyAttendanceReportPage() {
       strRowIdField="intEmployeeID"
       strCsvFileName="monthly-attendance"
       blnWrapColumnHeaders={false}
+      blnEqualSearchFilterWidths
       blnUseMasterStyle
       lstRightsHints={["REPORTS_ATTENDANCE_SUMMARY", "REPORTS"]}
       strEmptyMessage={t("monthly_attendance_empty", "No attendance recorded for the selected month/filters.")}

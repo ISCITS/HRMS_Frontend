@@ -45,6 +45,7 @@ export type ReportGridPageProps = {
   /** Keep column labels on one line and allow horizontal scrolling when needed. */
   blnWrapColumnHeaders?: boolean;
   blnAlignSearchActionsBottomRight?: boolean;
+  blnEqualSearchFilterWidths?: boolean;
   blnUseMasterStyle?: boolean;
   strBreadcrumbRoot?: string;
   strBreadcrumbSection?: string;
@@ -308,7 +309,9 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
             alignItems: "center",
             gridTemplateColumns: {
               xs: "1fr",
-              md: "minmax(150px, 0.7fr) minmax(220px, 1fr) minmax(180px, 0.85fr) minmax(180px, 0.85fr) auto auto",
+              md: objProps.blnEqualSearchFilterWidths
+                ? `repeat(${objProps.lstFilters.length}, minmax(0, 1fr)) auto auto !important`
+                : "minmax(150px, 0.7fr) minmax(220px, 1fr) minmax(180px, 0.85fr) minmax(180px, 0.85fr) auto auto",
             },
             "& .MuiButton-root": { alignSelf: "center" },
           } : undefined}
@@ -360,6 +363,7 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
               ) : (
                 <TextField
                   className="app-mui-text-field"
+                  size="small"
                   type={objFilter.strType === "month" ? "month" : objFilter.strType === "date" ? "date" : "text"}
                   label={objFilter.strLabel}
                   value={dicFilters[objFilter.strKey] ?? ""}
@@ -368,6 +372,10 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
                   fullWidth
                   InputLabelProps={objFilter.strType === "text" ? undefined : { shrink: true }}
                   data-controlid={`reports.${objProps.strCsvFileName}.${objFilter.strKey}.input`}
+                  sx={{
+                    "& .MuiOutlinedInput-root": { boxSizing: "border-box", height: "36px !important", minHeight: "36px !important" },
+                    "& .MuiOutlinedInput-input": { boxSizing: "border-box", height: "19px", paddingBottom: "7.5px !important", paddingTop: "7.5px !important" },
+                  }}
                 />
               )}
             </Box>
