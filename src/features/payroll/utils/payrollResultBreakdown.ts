@@ -3,6 +3,7 @@ import type { PayrollResultLineRecord } from "@/features/payroll/types";
 const normalize = (value: string) => value.trim().toLowerCase().replace(/[\s-]+/g, "_");
 
 export function buildPayrollResultBreakdown(lines: PayrollResultLineRecord[]) {
+  const earnings: PayrollResultLineRecord[] = [];
   const deductions: PayrollResultLineRecord[] = [];
   const employeeContributions: PayrollResultLineRecord[] = [];
   const employerContributions: PayrollResultLineRecord[] = [];
@@ -26,9 +27,12 @@ export function buildPayrollResultBreakdown(lines: PayrollResultLineRecord[]) {
       const isContribution = types.includes("employee_contribution") ||
         /(^|_)(pf|epf|esi|esic|eesi|lwf|nps|pension|superannuation|provident_fund|labour_welfare_fund|labor_welfare_fund)($|_)/.test(tokens);
       (isContribution ? employeeContributions : deductions).push(line);
+      continue;
     }
+    // Everything left over (basic, allowances, reimbursements, arrears, ...) is an earning.
+    earnings.push(line);
   }
-  return { deductions, employeeContributions, employerContributions };
+  return { earnings, deductions, employeeContributions, employerContributions };
 }
 
 export const sumPayrollAmounts = (lines: PayrollResultLineRecord[]) =>

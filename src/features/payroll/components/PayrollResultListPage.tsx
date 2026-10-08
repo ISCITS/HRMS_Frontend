@@ -22,7 +22,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { MasterBreadcrumbs, MasterGridSkeleton, MasterMoreFilters, dicMasterRowSx, onSearchEnter } from "@/components/master/MasterListUi";
 import masterStyles from "@/components/master/MasterScreen.module.css";
-import CommonRowActions from "@/components/master/CommonRowActions";
 import CommonPayrollDialog from "@/features/payroll/components/CommonPayrollDialog";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
@@ -491,14 +490,7 @@ export default function PayrollResultListPage({
                   </Button>
                 ) : null}
               </>
-            ) : (
-              <CommonRowActions
-                testIdPrefix="payroll-results.list.row"
-                rowKey={dicRow.intID}
-                blnCanView={blnCanAccessResults}
-                onView={() => openResult(dicRow.strRecordUUID)}
-              />
-            )}
+            ) : null}
           </Box>
         ),
         strRecordUUID: dicRow.strRecordUUID,
@@ -583,15 +575,25 @@ export default function PayrollResultListPage({
       { field: "strStatus", headerName: t("status", "Status"), sortable: false, filterable: false, width: 140 },
     ];
 
+<<<<<<< Updated upstream
     // Results screen: employee name first, then the row actions (view icon), then the employee code.
     if (!blnPayslipScreen && blnCanAccessResults) {
+=======
+    // Employee name first, then the payslip actions (payslip screen only), then the employee code.
+    // The payroll results screen has no actions column - the employee name opens the result.
+    if (blnPayslipScreen && blnCanUsePayslipRowActions) {
+>>>>>>> Stashed changes
       lstColumns.splice(1, 0, {
         field: "action",
         headerName: t("actions", "Actions"),
         sortable: false,
         filterable: false,
         exportable: false,
+<<<<<<< Updated upstream
         width: 90,
+=======
+        width: 340,
+>>>>>>> Stashed changes
       });
     }
 
@@ -624,6 +626,7 @@ export default function PayrollResultListPage({
 
     return lstColumns;
   }, [blnCanAccessResults, blnCanDownloadPayslips, blnCanPrintPayslips, blnPayslipScreen, t]);
+  }, [blnCanUsePayslipRowActions, blnPayslipScreen, t]);
 
   const blnBusy =
     blnRightsLoading ||
@@ -646,7 +649,7 @@ export default function PayrollResultListPage({
           ? (blnEssMode
               ? t("ess_breadcrumbs", "My Payslips")
               : t("payslip_breadcrumbs", "Payslips"))
-          : t("breadcrumbs", "Payroll Results")}
+          : t("payroll_results_breadcrumbs", "Payroll Results")}
       />
 
       <Box className={masterStyles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>

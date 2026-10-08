@@ -907,6 +907,7 @@ export type PayrollResultRecord = {
   dtPeriodEndDate?: string | null;
   decCalendarDays?: number | null;
   decPaidDays: number | null;
+  decPayableDays?: number | null;
   decLwpDays?: number | null;
   decLopDays: number | null;
   intPayslipID: number | null;

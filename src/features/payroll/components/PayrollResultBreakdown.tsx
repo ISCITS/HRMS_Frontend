@@ -13,6 +13,7 @@ export default function PayrollResultBreakdown({ objResult }: { objResult: Payro
   const { t } = useModuleLabels("payslips");
   const breakdown = buildPayrollResultBreakdown(objResult.lstLines);
   const sections = [
+    { key: "earnings", title: t("earnings", "Earnings"), lines: breakdown.earnings },
     { key: "deductions", title: t("employee_deductions", "Employee Deductions"), lines: breakdown.deductions },
     { key: "employee", title: t("employee_contributions", "Employee Contributions"), lines: breakdown.employeeContributions },
     { key: "employer", title: t("total_employer_contribution", "Total Employer Contribution"), lines: breakdown.employerContributions },

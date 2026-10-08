@@ -21,6 +21,8 @@ describe("payroll result breakdown", () => {
     expect(result.deductions.map(row => row.strComponentCode)).toEqual(["TDS", "PT", "LOAN"]);
     expect(sumPayrollAmounts(result.deductions)).toBe(3200);
     expect(sumPayrollAmounts(result.employerContributions)).toBe(1800);
+    expect(result.earnings.map(row => row.strComponentCode)).toEqual(["BASIC"]);
+    expect(sumPayrollAmounts(result.earnings)).toBe(30000);
   });
 
   it("keeps legacy category labels and custom contribution components", () => {
@@ -41,7 +43,7 @@ describe("payroll result breakdown", () => {
       line("INFO", 300, { strLineType: "information" }),
       line("PF", 0),
     ]);
-    expect(result).toEqual({ deductions: [], employeeContributions: [], employerContributions: [] });
+    expect(result).toEqual({ earnings: [], deductions: [], employeeContributions: [], employerContributions: [] });
   });
 
   it("preserves refunds and sorts components without mutating payroll lines", () => {
