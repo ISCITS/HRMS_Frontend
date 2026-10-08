@@ -1,15 +1,17 @@
 "use client";
 
-import {
-  Alert, Button, Chip, Dialog, DialogContent, DialogTitle, Divider, IconButton, MenuItem, Snackbar, Stack,
-  Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography,
-} from "@mui/material";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import {
+  Alert, Box, IconButton, MenuItem, Snackbar, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography,
+} from "@mui/material";
 import { useEffect, useState } from "react";
 
+import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
-import { employeeMonthlyTaxService, type MonthlyTaxTransaction } from "@/features/payroll/services/employeeMonthlyTaxService";
+import masterStyles from "@/components/master/MasterScreen.module.css";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import styles from "@/features/payroll/components/EmployeeMonthlyTaxPage.module.css";
+import { employeeMonthlyTaxService, type MonthlyTaxTransaction } from "@/features/payroll/services/employeeMonthlyTaxService";
 import { buildMonthlyTaxDisplayRows } from "@/features/payroll/utils/monthlyTaxDisplayRows";
 
 const EDITABLE_SOURCE_TYPES = ["OPENING_IMPORT", "MANUAL_ENTRY", "PREVIOUS_EMPLOYER_OPENING", "ADJUSTMENT"];
@@ -17,6 +19,10 @@ const EDITABLE_SOURCE_TYPES = ["OPENING_IMPORT", "MANUAL_ENTRY", "PREVIOUS_EMPLO
 function formatMonthLabel(strPeriodMonth: string): string {
   const objDate = new Date(`${strPeriodMonth}T00:00:00`);
   return objDate.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+}
+
+function formatAmount(decAmount: number): string {
+  return Number(decAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -29,6 +35,17 @@ const SOURCE_LABELS: Record<string, string> = {
   FNF: "Full & Final Settlement",
   ADJUSTMENT: "Adjustment",
 };
+
+// Every entry is presented as "Opening Import"; the subheading says what the entry actually is -
+// the history category for imported rows (e.g. REGULAR_PAYROLL_HISTORY), otherwise the real
+// source plus its reference (e.g. "Regular Payroll · PR-202608-001").
+function resolveEntrySubheading(objTxn: MonthlyTaxTransaction): string {
+  if (objTxn.strSourceType === "OPENING_IMPORT" && objTxn.strRemarks) {
+    return objTxn.strRemarks.split("|")[0].trim();
+  }
+  const strSource = SOURCE_LABELS[objTxn.strSourceType] || objTxn.strSourceType;
+  return objTxn.blnIsSystemGenerated && objTxn.strSourceReferenceNo ? `${strSource} · ${objTxn.strSourceReferenceNo}` : strSource;
+}
 
 export default function MonthlyTaxTransactionDetailDialog({
   blnOpen,
@@ -91,7 +108,7 @@ export default function MonthlyTaxTransactionDetailDialog({
   }, [blnOpen, intEmployeeID, strFinancialYearCode, strPeriodMonth]);
 
   async function handleAddEntry() {
-    if (!intEmployeeID || !strPeriodMonth) return;
+    if (!intEmployeeID || !strPeriodMonth || !strTaxable) return;
     setBlnSaving(true);
     setStrSaveError("");
     try {
@@ -117,75 +134,62 @@ export default function MonthlyTaxTransactionDetailDialog({
     }
   }
 
-  return (
-    <Dialog open={blnOpen} onClose={onClose} maxWidth="md" fullWidth data-control-id="employee-monthly-tax.detail.dialog">
-      <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span>
-          {t("transaction_detail_title", "Transaction Detail")}
-          {strEmployeeName ? ` - ${strEmployeeName}` : ""}
-        </span>
-        <IconButton onClick={onClose} controlId="employee-monthly-tax.detail.close.button">
-          <CloseRoundedIcon />
-        </IconButton>
-      </DialogTitle>
-      <DialogContent>
-        {lstAvailableMonths && lstAvailableMonths.length > 0 && (
-          <TextField
-            select
-            controlId="employee-monthly-tax.detail.month.select"
-            label={t("column_month", "Month")}
-            size="small"
-            value={strPeriodMonth ?? ""}
-            onChange={(objEvent) => onPeriodMonthChange?.(objEvent.target.value)}
-            InputLabelProps={{ shrink: true }}
-            sx={{ minWidth: 200, mt: 2, mb: 2 }}
-          >
-            {lstAvailableMonths.map((strMonth) => (
-              <MenuItem key={strMonth} value={strMonth}>
-                {formatMonthLabel(strMonth)}
-              </MenuItem>
-            ))}
-          </TextField>
-        )}
-        {blnLoading && <Typography variant="body2">{t("loading", "Loading...")}</Typography>}
-        {strError && <Typography color="error" variant="body2">{strError}</Typography>}
-        {!blnLoading && !strError && (
-          <Table size="small">
+  const blnShowEntryForm = blnCanEdit && !blnLoading && !strError;
+
+  const nodeContent = (
+    <Box sx={{ display: "grid", gap: "14px" }}>
+      {lstAvailableMonths && lstAvailableMonths.length > 0 && (
+        <TextField
+          select
+          className="app-mui-text-field"
+          controlId="employee-monthly-tax.detail.month.select"
+          label={t("column_month", "Month")}
+          size="small"
+          value={strPeriodMonth ?? ""}
+          onChange={(objEvent) => onPeriodMonthChange?.(objEvent.target.value)}
+          InputLabelProps={{ shrink: true }}
+          sx={{ width: { xs: "100%", sm: 240 }, mt: 0.5 }}
+        >
+          {lstAvailableMonths.map((strMonth) => (
+            <MenuItem key={strMonth} value={strMonth}>
+              {formatMonthLabel(strMonth)}
+            </MenuItem>
+          ))}
+        </TextField>
+      )}
+
+      {blnLoading && <Typography variant="body2">{t("loading", "Loading...")}</Typography>}
+      {strError && <Alert severity="error">{strError}</Alert>}
+      {!blnLoading && !strError && (
+        <Box sx={{ border: "1px solid #e5edf5", borderRadius: "8px", overflowX: "auto" }}>
+          <Table size="small" className={styles.taxDetailTable}>
             <TableHead>
               <TableRow>
                 <TableCell>{t("column_source", "Source")}</TableCell>
-                <TableCell>{t("column_reference", "Reference")}</TableCell>
                 <TableCell align="right">{t("column_gross", "Gross")}</TableCell>
                 <TableCell align="right">{t("column_taxable", "Taxable")}</TableCell>
                 <TableCell align="right">{t("column_tds", "TDS")}</TableCell>
-                <TableCell>{t("column_system", "System?")}</TableCell>
-                <TableCell>{t("column_previous_employer", "Previous Employer?")}</TableCell>
+                <TableCell>{t("remarks", "Remarks")}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {lstDisplayRows.map((objTxn) => (
                 <TableRow key={objTxn.intID}>
-                  <TableCell>
-                    {SOURCE_LABELS[objTxn.strSourceType] || objTxn.strSourceType}
-                    {!objTxn.blnIsSystemGenerated && objTxn.strRemarks && (
-                      <Typography variant="caption" color="text.secondary" component="div">
-                        {objTxn.strRemarks.split("|")[0].trim()}
-                      </Typography>
-                    )}
+                  <TableCell sx={{ whiteSpace: "nowrap" }}>
+                    {SOURCE_LABELS.OPENING_IMPORT}
+                    <Typography variant="caption" color="text.secondary" component="div">
+                      {resolveEntrySubheading(objTxn)}
+                    </Typography>
                   </TableCell>
-                  <TableCell>{objTxn.strSourceReferenceNo || "-"}</TableCell>
-                  <TableCell align="right">{objTxn.decGrossIncomeAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                  <TableCell align="right">{objTxn.decTaxableIncomeAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                  <TableCell align="right">{objTxn.decTdsAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                  <TableCell>
-                    <Chip size="small" label={objTxn.blnIsSystemGenerated ? t("yes", "Yes") : t("no", "No")} color={objTxn.blnIsSystemGenerated ? "success" : undefined} />
-                  </TableCell>
-                  <TableCell>{objTxn.blnIsPreviousEmployer ? t("yes", "Yes") : t("no", "No")}</TableCell>
+                  <TableCell align="right">{formatAmount(objTxn.decGrossIncomeAmount)}</TableCell>
+                  <TableCell align="right">{formatAmount(objTxn.decTaxableIncomeAmount)}</TableCell>
+                  <TableCell align="right">{formatAmount(objTxn.decTdsAmount)}</TableCell>
+                  <TableCell sx={{ minWidth: 220, overflowWrap: "anywhere" }}>{objTxn.strRemarks || "-"}</TableCell>
                 </TableRow>
               ))}
               {lstDisplayRows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7}>
+                  <TableCell colSpan={5}>
                     <Typography variant="body2" color="text.secondary">
                       {t("no_transactions", "No transactions recorded for this month.")}
                     </Typography>
@@ -194,77 +198,127 @@ export default function MonthlyTaxTransactionDetailDialog({
               )}
             </TableBody>
           </Table>
-        )}
+        </Box>
+      )}
 
-        {blnCanEdit && !blnLoading && !strError && (
-          <>
-            <Divider sx={{ my: 2 }} />
-            <Typography variant="subtitle2" gutterBottom>
-              {t("add_entry_title", "Add Historical Entry")}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+      {blnShowEntryForm && (
+        <Box sx={{ display: "grid", gap: "10px", pt: 0.5 }}>
+          <Box>
+            <Typography className={styles.taxDetailSectionTitle}>{t("add_entry_title", "Add Historical Entry")}</Typography>
+            <Typography className={styles.taxDetailSectionHelp} sx={{ mt: 0.25 }}>
               {t(
                 "add_entry_help",
                 "System-generated (payroll-run) transactions cannot be edited here - correct those via payroll reprocess instead.",
               )}
             </Typography>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mb: 1 }}>
-              <TextField
-                select
-                controlId="employee-monthly-tax.detail.source-type.select"
-                label={t("column_source_type", "Source Type")}
-                size="small"
-                value={strSourceType}
-                onChange={(objEvent) => setStrSourceType(objEvent.target.value)}
-                sx={{ minWidth: 200 }}
-              >
-                {EDITABLE_SOURCE_TYPES.map((strType) => (
-                  <MenuItem key={strType} value={strType}>
-                    {SOURCE_LABELS[strType] || strType}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                label={t("column_taxable", "Taxable")}
-                controlId="employee-monthly-tax.detail.taxable.input"
-                type="number"
-                size="small"
-                value={strTaxable}
-                onChange={(objEvent) => setStrTaxable(objEvent.target.value)}
-              />
-              <TextField
-                label={t("column_tds", "TDS")}
-                controlId="employee-monthly-tax.detail.tds.input"
-                type="number"
-                size="small"
-                value={strTds}
-                onChange={(objEvent) => setStrTds(objEvent.target.value)}
-              />
-              <TextField
-                label={t("remarks", "Remarks")}
-                controlId="employee-monthly-tax.detail.remarks.input"
-                size="small"
-                value={strRemarks}
-                onChange={(objEvent) => setStrRemarks(objEvent.target.value)}
-                sx={{ flexGrow: 1 }}
-              />
-            </Stack>
-            <Button
-              variant="contained"
-              onClick={handleAddEntry}
-              disabled={blnSaving || !strTaxable}
-              controlId="employee-monthly-tax.detail.add-entry.button"
+          </Box>
+          <Box
+            sx={{
+              display: "grid",
+              columnGap: 1.6,
+              rowGap: "12px",
+              gridTemplateColumns: { xs: "1fr", sm: "repeat(3, minmax(0, 1fr))" },
+              alignItems: "start",
+            }}
+          >
+            <TextField
+              select
+              className="app-mui-text-field"
+              controlId="employee-monthly-tax.detail.source-type.select"
+              label={t("column_source_type", "Source Type")}
+              size="small"
+              value={strSourceType}
+              onChange={(objEvent) => setStrSourceType(objEvent.target.value)}
+              fullWidth
             >
-              {t("save", "Save")}
-            </Button>
-          </>
-        )}
-      </DialogContent>
+              {EDITABLE_SOURCE_TYPES.map((strType) => (
+                <MenuItem key={strType} value={strType}>
+                  {SOURCE_LABELS[strType] || strType}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              className="app-mui-text-field"
+              controlId="employee-monthly-tax.detail.taxable.input"
+              label={t("column_taxable", "Taxable")}
+              placeholder={t("taxable_placeholder", "Enter taxable amount")}
+              type="number"
+              size="small"
+              required
+              value={strTaxable}
+              onChange={(objEvent) => setStrTaxable(objEvent.target.value)}
+              fullWidth
+            />
+            <TextField
+              className="app-mui-text-field"
+              controlId="employee-monthly-tax.detail.tds.input"
+              label={t("column_tds", "TDS")}
+              placeholder={t("tds_placeholder", "Enter TDS amount")}
+              type="number"
+              size="small"
+              value={strTds}
+              onChange={(objEvent) => setStrTds(objEvent.target.value)}
+              fullWidth
+            />
+            <TextField
+              className="app-mui-text-field"
+              controlId="employee-monthly-tax.detail.remarks.input"
+              label={t("remarks", "Remarks")}
+              placeholder={t("remarks_placeholder", "Enter remarks")}
+              size="small"
+              value={strRemarks}
+              onChange={(objEvent) => setStrRemarks(objEvent.target.value)}
+              fullWidth
+              sx={{ gridColumn: "1 / -1" }}
+            />
+          </Box>
+        </Box>
+      )}
+    </Box>
+  );
+
+  return (
+    <>
+      <CommonMasterDialog
+        blnOpen={blnOpen}
+        onClose={onClose}
+        onDialogClose={(_, strReason) => {
+          if (strReason !== "backdropClick") onClose();
+        }}
+        rootTestId="employee-monthly-tax.detail.dialog"
+        cancelButtonTestId="employee-monthly-tax.detail.cancel.button"
+        primaryButtonTestId="employee-monthly-tax.detail.add-entry.button"
+        strTitle={`${t("transaction_detail_title", "Transaction Detail")}${strEmployeeName ? ` - ${strEmployeeName}` : ""}`}
+        nodeTitleAction={
+          <IconButton aria-label={t("close", "Close")} onClick={onClose} size="small" sx={{ color: "#94a3b8" }}>
+            <CloseRoundedIcon fontSize="small" />
+          </IconButton>
+        }
+        nodeFooterStart={
+          blnShowEntryForm ? (
+            <Typography sx={{ color: "#64748b", fontSize: "11px" }}>
+              {t("required_fields_hint", "Required fields are marked")} <Box component="span" sx={{ color: "#dc2626" }}>*</Box>
+            </Typography>
+          ) : undefined
+        }
+        strSecondaryLabel={blnShowEntryForm ? t("cancel", "Cancel") : t("close", "Close")}
+        strPrimaryLabel={blnSaving ? t("saving", "Saving...") : t("save", "Save")}
+        onPrimaryAction={handleAddEntry}
+        blnPrimaryDisabled={blnSaving || !strTaxable}
+        blnHidePrimary={!blnShowEntryForm}
+        titleSx={{ px: 2.25, py: 1.25, fontSize: "16px", fontWeight: 700, maxHeight: 50 }}
+        paperClassName={`${masterStyles.departmentDialogPaper} ${styles.taxDetailDialogPaper}`}
+        paperSx={{ "& .MuiButton-root": { fontSize: "12px !important", fontWeight: "600 !important" } }}
+        maxWidth={false}
+        fullWidth={false}
+        contentSx={{ overflowX: "hidden", overflowY: "auto", px: "20px", py: "12px", borderColor: "#e5edf5" }}
+        nodeContent={nodeContent}
+      />
       <Snackbar open={Boolean(strSaveError)} autoHideDuration={5000} onClose={() => setStrSaveError("")}>
         <Alert severity="error" onClose={() => setStrSaveError("")} componentsProps={{ closeButton: { controlId: "employee-monthly-tax.detail.error.close.button" } }}>
           {strSaveError}
         </Alert>
       </Snackbar>
-    </Dialog>
+    </>
   );
 }
