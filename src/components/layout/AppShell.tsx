@@ -1120,6 +1120,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
     "/ess/my-form16",
     "/reports/form16",
     "/ess/work-on-holiday",
+    "/salary/ess-declarations",
+    "/salary/flexi-pay-declarations",
     "/leave",
     "/leave/approvals",
     "/leave/leave-ledger",

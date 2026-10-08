@@ -1,9 +1,10 @@
 "use client";
 
+import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
-  Alert, Box, Chip, InputAdornment, Link, Pagination, Snackbar, Stack, Table, TableBody,
-  TableCell, TableHead, TableRow, TextField, Typography,
+  Alert, Box, Button, Chip, FormControlLabel, InputAdornment, Link, Pagination, Snackbar, Stack, Switch, Table,
+  TableBody, TableCell, TableHead, TableRow, TextField, Typography,
 } from "@mui/material";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
@@ -11,6 +12,7 @@ import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { MasterBreadcrumbs, MasterGridSkeleton } from "@/components/master/MasterListUi";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import styles from "@/features/payroll/components/EmployeeMonthlyTaxPage.module.css";
+import payrollStyles from "@/features/payroll/components/PayrollScreen.module.css";
 import MonthlyTaxImportPanel from "@/features/payroll/components/MonthlyTaxImportPanel";
 import MonthlyTaxTransactionDetailDialog from "@/features/payroll/components/MonthlyTaxTransactionDetailDialog";
 import {
@@ -50,13 +52,25 @@ function formatMonthShortLabel(strPeriodMonth: string): string {
   return objDate.toLocaleDateString(undefined, { month: "short", year: "2-digit" });
 }
 
+function buildCurrentMonthKey(): string {
+  const dtToday = new Date();
+  return `${dtToday.getFullYear()}-${String(dtToday.getMonth() + 1).padStart(2, "0")}-01`;
+}
+
+// FY months up to and including the current calendar month; a future FY keeps its first month.
+function resolveVisibleMonths(lstMonths: string[]): string[] {
+  const strCurrentMonth = buildCurrentMonthKey();
+  const lstVisible = lstMonths.filter((strMonth) => strMonth <= strCurrentMonth);
+  return lstVisible.length > 0 ? lstVisible : lstMonths.slice(0, 1);
+}
+
 function resolveDefaultEditMonth(objRow: MonthlyTaxMatrixRow, lstMonths: string[]): string | null {
   if (lstMonths.length === 0) return null;
-  const dtToday = new Date();
-  const strCurrentMonth = `${dtToday.getFullYear()}-${String(dtToday.getMonth() + 1).padStart(2, "0")}-01`;
-  if (lstMonths.includes(strCurrentMonth)) return strCurrentMonth;
+  // Open on the latest month that has data, so imported history is visible straight away.
   const lstMonthsWithData = lstMonths.filter((strMonth) => objRow.dicMonths[strMonth]);
   if (lstMonthsWithData.length > 0) return lstMonthsWithData[lstMonthsWithData.length - 1];
+  const strCurrentMonth = buildCurrentMonthKey();
+  if (lstMonths.includes(strCurrentMonth)) return strCurrentMonth;
   return lstMonths[0];
 }
 
@@ -72,8 +86,10 @@ export default function EmployeeMonthlyTaxPage({
   const blnCanEdit = canDo("EMPLOYEE_MONTHLY_TAX", "EDIT") || canDo("EMPLOYEE_MONTHLY_TAX", "ADD");
   const blnCanImport = canDo("EMPLOYEE_MONTHLY_TAX", "IMPORT") || blnCanEdit;
 
-  const [strFinancialYearCode, setStrFinancialYearCode] = useState(strInitialFinancialYearCode || buildFinancialYearOptions()[0]);
+  const strDefaultFinancialYearCode = buildFinancialYearOptions()[0];
+  const [strFinancialYearCode, setStrFinancialYearCode] = useState(strInitialFinancialYearCode || strDefaultFinancialYearCode);
   const [strEmployeeSearch, setStrEmployeeSearch] = useState("");
+  const [blnHideZeroTds, setBlnHideZeroTds] = useState(true);
   const [intFilterEmployeeID, setIntFilterEmployeeID] = useState<number | undefined>(intInitialEmployeeID);
   const [objMatrix, setObjMatrix] = useState<MonthlyTaxMatrixResult | null>(null);
   const [blnLoading, setBlnLoading] = useState(false);
@@ -129,20 +145,36 @@ export default function EmployeeMonthlyTaxPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [strNormalizedFinancialYearCode, intFilterEmployeeID]);
 
+  const lstVisibleMonths = useMemo(() => resolveVisibleMonths(objMatrix?.lstMonths ?? []), [objMatrix]);
+
   const lstFilteredRows: MonthlyTaxMatrixRow[] = useMemo(() => {
     if (!objMatrix) return [];
     const strSearch = strEmployeeSearch.trim().toLowerCase();
-    if (!strSearch) return objMatrix.lstRows;
-    return objMatrix.lstRows.filter(
-      (objRow) =>
+    return objMatrix.lstRows.filter((objRow) => {
+      // A deep link to one employee always shows that employee, even with zero TDS.
+      if (blnHideZeroTds && !intFilterEmployeeID && Number(objRow.decFyTds) === 0) return false;
+      if (!strSearch) return true;
+      return (
         objRow.strEmployeeCode?.toLowerCase().includes(strSearch) ||
-        objRow.strEmployeeName?.toLowerCase().includes(strSearch),
-    );
-  }, [objMatrix, strEmployeeSearch]);
+        objRow.strEmployeeName?.toLowerCase().includes(strSearch)
+      );
+    });
+  }, [objMatrix, strEmployeeSearch, blnHideZeroTds, intFilterEmployeeID]);
 
   useEffect(() => {
     setIntPage(0);
-  }, [strEmployeeSearch, strNormalizedFinancialYearCode, intRowsPerPage]);
+  }, [strEmployeeSearch, strNormalizedFinancialYearCode, intRowsPerPage, blnHideZeroTds]);
+
+  const blnFiltersAtDefault =
+    strFinancialYearCode === strDefaultFinancialYearCode && !strEmployeeSearch && blnHideZeroTds && !intFilterEmployeeID;
+
+  function handleClearFilters() {
+    setStrFinancialYearCode(strDefaultFinancialYearCode);
+    setStrEmployeeSearch("");
+    setBlnHideZeroTds(true);
+    setIntFilterEmployeeID(undefined);
+    setIntPage(0);
+  }
 
   const lstPaginatedRows = useMemo(
     () => lstFilteredRows.slice(intPage * intRowsPerPage, intPage * intRowsPerPage + intRowsPerPage),
@@ -188,6 +220,28 @@ export default function EmployeeMonthlyTaxPage({
           ),
         }}
       />
+      <FormControlLabel
+        sx={{ ml: 0, mr: 0 }}
+        control={
+          <Switch
+            size="small"
+            checked={blnHideZeroTds}
+            onChange={(objEvent) => setBlnHideZeroTds(objEvent.target.checked)}
+            inputProps={{ "data-control-id": "employee-monthly-tax.hide-zero-tds.switch" } as Record<string, string>}
+          />
+        }
+        label={<Typography variant="body2">{t("hide_zero_tds_label", "Hide employees with zero TDS")}</Typography>}
+      />
+      <Button
+        className={payrollStyles.secondaryButton}
+        variant="outlined"
+        startIcon={<ClearRoundedIcon />}
+        disabled={blnFiltersAtDefault}
+        onClick={handleClearFilters}
+        controlId="employee-monthly-tax.clear-filters.button"
+      >
+        {t("clear_filters", "Clear Filters")}
+      </Button>
     </Box>
   );
 
@@ -270,7 +324,7 @@ export default function EmployeeMonthlyTaxPage({
                   <TableCell rowSpan={2} className={`${styles.stickyEmployee} ${styles.employeeCell}`}>
                     {t("column_employee", "Employee")}
                   </TableCell>
-                  {objMatrix.lstMonths.map((strMonth, intIndex) => (
+                  {lstVisibleMonths.map((strMonth, intIndex) => (
                     <TableCell
                       key={strMonth} colSpan={2}
                       className={intIndex % 2 === 1 ? styles.monthGroupTint : undefined}
@@ -281,7 +335,7 @@ export default function EmployeeMonthlyTaxPage({
                   <TableCell colSpan={2}>{t("column_fy_total", "FY Total")}</TableCell>
                 </TableRow>
                 <TableRow>
-                  {objMatrix.lstMonths.map((strMonth, intIndex) => (
+                  {lstVisibleMonths.map((strMonth, intIndex) => (
                     <Fragment key={strMonth}>
                       <TableCell className={intIndex % 2 === 1 ? styles.monthGroupTint : undefined}>
                         {t("column_taxable_short", "Taxable")}
@@ -299,7 +353,7 @@ export default function EmployeeMonthlyTaxPage({
               </TableHead>
               <TableBody>
                 {lstPaginatedRows.map((objRow) => {
-                  const strDefaultEditMonth = resolveDefaultEditMonth(objRow, objMatrix.lstMonths);
+                  const strDefaultEditMonth = resolveDefaultEditMonth(objRow, lstVisibleMonths);
                   return (
                     <TableRow key={objRow.intEmployeeID} hover>
                       <TableCell className={`${styles.stickyEmployee} ${styles.employeeCell}`}>
@@ -320,14 +374,14 @@ export default function EmployeeMonthlyTaxPage({
                               })
                             }
                           >
-                            {objRow.strEmployeeCode}
+                            {objRow.strEmployeeName}
                           </Link>
                         ) : (
-                          <div className={styles.employeeCode}>{objRow.strEmployeeCode}</div>
+                          <div className={styles.employeeCode}>{objRow.strEmployeeName}</div>
                         )}
-                        <div className={styles.employeeName}>{objRow.strEmployeeName}</div>
+                        <div className={styles.employeeName}>{objRow.strEmployeeCode}</div>
                       </TableCell>
-                      {objMatrix.lstMonths.map((strMonth, intIndex) => {
+                      {lstVisibleMonths.map((strMonth, intIndex) => {
                         const objCell = objRow.dicMonths[strMonth];
                         const strTintClass = intIndex % 2 === 1 ? styles.monthGroupTint : "";
                         return (
@@ -359,8 +413,10 @@ export default function EmployeeMonthlyTaxPage({
                 })}
                 {lstFilteredRows.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={objMatrix.lstMonths.length * 2 + 3} className={styles.emptyState}>
-                      {t("no_rows", "No employees with monthly tax data for this financial year yet.")}
+                    <TableCell colSpan={lstVisibleMonths.length * 2 + 3} className={styles.emptyState}>
+                      {blnHideZeroTds && objMatrix.lstRows.length > 0
+                        ? t("no_rows_with_tds", "No employees with TDS for this filter. Turn off \"Hide employees with zero TDS\" to see all.")
+                        : t("no_rows", "No employees with monthly tax data for this financial year yet.")}
                     </TableCell>
                   </TableRow>
                 )}
@@ -379,7 +435,7 @@ export default function EmployeeMonthlyTaxPage({
         strEmployeeName={objDetailTarget?.strEmployeeName ?? null}
         strFinancialYearCode={strNormalizedFinancialYearCode}
         strPeriodMonth={objDetailTarget?.strPeriodMonth ?? null}
-        lstAvailableMonths={objMatrix?.lstMonths}
+        lstAvailableMonths={lstVisibleMonths}
         onPeriodMonthChange={(strMonth) =>
           setObjDetailTarget((objPrev) => (objPrev ? { ...objPrev, strPeriodMonth: strMonth } : objPrev))
         }

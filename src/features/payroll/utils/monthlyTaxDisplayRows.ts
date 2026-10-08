@@ -5,10 +5,14 @@ export function buildMonthlyTaxDisplayRows(lstTransactions: MonthlyTaxTransactio
   const dicGroups = new Map<string, { objRow: MonthlyTaxTransaction; setReferences: Set<string> }>();
 
   for (const objTxn of lstTransactions) {
-    // Reversals remain individual audit entries and never contribute to active totals.
-    const strKey = objTxn.blnIsReversed
-      ? `reversed:${objTxn.intID}`
-      : JSON.stringify([objTxn.strSourceType, objTxn.blnIsSystemGenerated, objTxn.blnIsPreviousEmployer]);
+    // Reversed postings are superseded by a later payroll reprocess and never count towards totals,
+    // so they are left out of the display entirely (they remain in the ledger for audit).
+    if (objTxn.blnIsReversed) continue;
+    // Payroll postings of the same kind are merged; imported/manual entries stay one row each so
+    // e.g. REGULAR_PAYROLL_HISTORY and INCENTIVE_HISTORY rows of the same month remain visible.
+    const strKey = objTxn.blnIsSystemGenerated
+      ? JSON.stringify([objTxn.strSourceType, objTxn.blnIsSystemGenerated, objTxn.blnIsPreviousEmployer])
+      : `entry:${objTxn.intID}`;
     let objGroup = dicGroups.get(strKey);
     if (!objGroup) {
       objGroup = {
@@ -23,7 +27,8 @@ export function buildMonthlyTaxDisplayRows(lstTransactions: MonthlyTaxTransactio
         Math.round(objGroup.objRow[strField] * 100) + Math.round(Number(objTxn[strField]) * 100)
       ) / 100;
     }
-    if (objTxn.strSourceReferenceNo) objGroup.setReferences.add(objTxn.strSourceReferenceNo);
+    const strReference = objTxn.strSourceReferenceNo || objTxn.strExternalReference;
+    if (strReference) objGroup.setReferences.add(strReference);
   }
 
   return Array.from(dicGroups.values(), ({ objRow, setReferences }) => ({

@@ -17,7 +17,7 @@ import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import {
   Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Drawer, Grid, IconButton, InputAdornment,
-  LinearProgress, MenuItem, Paper, Skeleton, Snackbar, Stack, Tab, Table, TableBody, TableCell,
+  LinearProgress, Link, MenuItem, Paper, Skeleton, Snackbar, Stack, Tab, Table, TableBody, TableCell,
   TableHead, TablePagination, TableRow, Tabs, TextField, Tooltip, Typography,
   useMediaQuery, useTheme,
 } from "@mui/material";
@@ -339,17 +339,15 @@ function ApprovalTable({ lstItems, intTab, objSort, fnToggleSort, blnCanViewConf
     <TableCell>{fnSortLabel("decDays", fnLabel("chargeable_days", "Chargeable Days"))}</TableCell>
     <TableCell>{intTab === 2 ? fnLabel("actioned_on", "Actioned On") : fnSortLabel("dtAppliedOn", fnLabel("applied_on", "Applied On"))}</TableCell>
     <TableCell>{fnLabel("status", "Status")}</TableCell>
-    <TableCell align="right">{fnLabel("actions", "Actions")}</TableCell>
   </TableRow></TableHead><TableBody>
-    {lstItems.map((objItem) => <TableRow key={objItem.intID} hover>
-      <TableCell><Typography sx={{ fontWeight: 700, fontSize: ".82rem" }}>{fnEmployeeName(objItem)}</Typography><Typography sx={{ fontSize: ".7rem", color: "#64748b" }}>{objItem.strEmployeeCode ?? ""}</Typography></TableCell>
+    {lstItems.map((objItem) => <TableRow key={objItem.intID} hover onClick={() => fnOnOpen(objItem)} sx={{ cursor: "pointer", "&:hover .MuiLink-root": { textDecoration: "underline" } }}>
+      <TableCell><Link className="app-master-first-column-link" component="button" type="button" underline="none" data-controlid={`ess.leave.approvals.view.${objItem.intID}`} onClick={(objEvent) => { objEvent.stopPropagation(); fnOnOpen(objItem); }} sx={{ fontWeight: 700, fontSize: ".82rem" }}>{fnEmployeeName(objItem)}</Link><Typography sx={{ fontSize: ".7rem", color: "#64748b" }}>{objItem.strEmployeeCode ?? ""}</Typography></TableCell>
       <TableCell><Stack spacing={.5}><TypeCell objItem={objItem} blnCanViewConfidential={blnCanViewConfidential} fnLabel={fnLabel} /><RowTags objItem={objItem} fnLabel={fnLabel} /></Stack></TableCell>
       <TableCell>{formatLeaveDate(objItem.dtFromDate)}{objItem.blnFromHalf ? " (½)" : ""}</TableCell>
       <TableCell>{formatLeaveDate(objItem.dtToDate)}{objItem.blnToHalf ? " (½)" : ""}</TableCell>
       <TableCell>{objItem.decDays}</TableCell>
       <TableCell>{formatLeaveDate(intTab === 2 ? objItem.dtLastActionOn : objItem.dtAppliedOn)}</TableCell>
       <TableCell><StatusChip strStatus={objItem.strStatus} fnLabel={fnLabel} /></TableCell>
-      <TableCell align="right"><Button data-controlid={`ess.leave.approvals.view.${objItem.intID}`} size="small" variant="outlined" startIcon={<VisibilityOutlinedIcon />} onClick={() => fnOnOpen(objItem)}>{fnLabel("review", "Review")}</Button></TableCell>
     </TableRow>)}
   </TableBody></Table></Box>;
 }

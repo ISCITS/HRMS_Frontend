@@ -37,6 +37,7 @@ export type MonthlyTaxTransaction = {
   intID: number;
   strSourceType: string;
   strSourceReferenceNo: string | null;
+  strExternalReference: string | null;
   decGrossIncomeAmount: number;
   decTaxableIncomeAmount: number;
   decTdsAmount: number;

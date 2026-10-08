@@ -164,11 +164,13 @@ export default function MonthlyTaxTransactionDetailDialog({
             </TableHead>
             <TableBody>
               {lstDisplayRows.map((objTxn) => (
-                <TableRow key={objTxn.intID} sx={{ opacity: objTxn.blnIsReversed ? 0.5 : 1 }}>
+                <TableRow key={objTxn.intID}>
                   <TableCell>
                     {SOURCE_LABELS[objTxn.strSourceType] || objTxn.strSourceType}
-                    {objTxn.blnIsReversed && (
-                      <Chip size="small" label={t("reversed", "Reversed")} sx={{ ml: 1 }} color="default" />
+                    {!objTxn.blnIsSystemGenerated && objTxn.strRemarks && (
+                      <Typography variant="caption" color="text.secondary" component="div">
+                        {objTxn.strRemarks.split("|")[0].trim()}
+                      </Typography>
                     )}
                   </TableCell>
                   <TableCell>{objTxn.strSourceReferenceNo || "-"}</TableCell>
@@ -181,7 +183,7 @@ export default function MonthlyTaxTransactionDetailDialog({
                   <TableCell>{objTxn.blnIsPreviousEmployer ? t("yes", "Yes") : t("no", "No")}</TableCell>
                 </TableRow>
               ))}
-              {lstTransactions.length === 0 && (
+              {lstDisplayRows.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7}>
                     <Typography variant="body2" color="text.secondary">
