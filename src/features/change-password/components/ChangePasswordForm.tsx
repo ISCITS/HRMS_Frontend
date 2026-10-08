@@ -458,8 +458,8 @@ export default function ChangePasswordForm({
       <Divider sx={{ borderColor: "#e5e7eb", mt: 0.25 }} />
 
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }} justifyContent="space-between" sx={{ mt: -0.25 }}>
-        <Typography sx={{ color: "#64748b", fontSize: "0.78rem", fontWeight: 600 }}>
-          Required fields are marked <Box component="span" sx={{ color: "var(--app-field-error-color)" }}>*</Box>{" "}
+        <Typography className="app-master-dialog-required-fields">
+          Required fields are marked <Box component="span" className="app-master-dialog-required-asterisk">*</Box>{" "}
         </Typography>
 
         <Stack direction={{ xs: "column-reverse", sm: "row" }} spacing={1} justifyContent="flex-end">
@@ -467,23 +467,10 @@ export default function ChangePasswordForm({
             type="button"
             variant="outlined"
             size="small"
+            className="app-btn app-btn-outline"
             disabled={blnSubmitting}
             onClick={() => objRouter.push(strReturnTo)}
             data-controlid="change-password.cancel.button"
-            sx={{
-              minHeight: "var(--app-button-height)",
-              borderRadius: "var(--app-button-radius)",
-              px: "var(--app-button-horizontal-padding)",
-              background: "var(--app-button-secondary-background)",
-              color: "var(--app-button-secondary-text)",
-              borderColor: "var(--app-button-secondary-border)",
-              fontSize: "var(--app-button-font-size)",
-              fontWeight: "var(--app-button-font-weight)",
-              "&:hover": {
-                borderColor: "var(--app-button-secondary-border)",
-                backgroundColor: "var(--app-grid-row-hover-background)"
-              }
-            }}
           >
             Cancel
           </Button>
@@ -491,27 +478,10 @@ export default function ChangePasswordForm({
             type="submit"
             variant="contained"
             size="small"
+            className="app-btn app-btn-primary"
             disabled={blnSubmitting || blnLoadingEmployees || !objForm.formState.isValid || (blnAdminResetMode && !strEmployeeID)}
             data-controlid="change-password.submit.button"
             startIcon={blnSubmitting ? <DottedLoader intSize={18} color="inherit" /> : undefined}
-            sx={{
-              minHeight: "var(--app-button-height)",
-              borderRadius: "var(--app-button-radius)",
-              px: "var(--app-button-horizontal-padding)",
-              background: "var(--app-primary-color)",
-              boxShadow: "var(--app-button-primary-shadow)",
-              fontSize: "var(--app-button-font-size)",
-              fontWeight: "var(--app-button-font-weight)",
-              "&:hover": {
-                background: "var(--app-primary-hover)",
-                boxShadow: "0 12px 24px rgba(24, 74, 139, 0.30)"
-              },
-              "&.Mui-disabled": {
-                background: "#dddddd",
-                color: "#a6a6a6",
-                boxShadow: "none"
-              }
-            }}
           >
             {blnSubmitting
               ? (blnAdminResetMode ? "Resetting Password..." : "Changing Password...")

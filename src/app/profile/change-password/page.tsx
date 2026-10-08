@@ -36,11 +36,11 @@ export default function ChangePasswordPage() {
           visibility: blnLoadingEmployeeOptions ? "hidden" : "visible"
         }}
       >
-      <Breadcrumbs aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ fontSize: 13, py: 0.5, ml: "3px", color: "#64748b" }}>
-        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>
+      <Breadcrumbs aria-label="breadcrumb" className="app-breadcrumbs app-breadcrumbs-master" separator={<NavigateNextRoundedIcon className="app-breadcrumb-separator-icon" />}>
+        <Typography className="app-breadcrumb-label">
           Administration
         </Typography>
-        <Typography component="h1" aria-current="page" sx={{ fontSize: "inherit", fontWeight: 700, color: "#243b53" }}>
+        <Typography component="h1" aria-current="page" className="app-breadcrumb-heading">
           Change Password
         </Typography>
       </Breadcrumbs>

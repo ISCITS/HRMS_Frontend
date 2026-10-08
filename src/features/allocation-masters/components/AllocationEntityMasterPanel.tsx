@@ -82,6 +82,7 @@ export default function AllocationEntityMasterPanel() {
   const blnCanView = objAccess.canViewAny();
   const blnCanAdd = objAccess.canDoAny("add");
   const blnCanEdit = objAccess.canDoAny("edit");
+  const blnCanExport = objAccess.canDoAny("export");
   const blnSearchPanelFrozen = blnLoading || blnSubmitting || objAccess.blnLoading;
 
   function showToast(strMessage: string, strSeverity: ToastState["strSeverity"] = "success") {
@@ -270,7 +271,6 @@ export default function AllocationEntityMasterPanel() {
               }
               openDialog(blnCanEdit ? "edit" : "view", dicRecord);
             }}
-            sx={{ cursor: "pointer", textAlign: "left", textUnderlineOffset: "3px", userSelect: "text", WebkitUserSelect: "text", "&&:hover": { color: "#0066df", textDecoration: "underline" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}
           >
             {dicRecord.strEntityName}
           </Link>
@@ -306,13 +306,13 @@ export default function AllocationEntityMasterPanel() {
   );
 
   return (
-    <Box className={styles.page} sx={{ position: "relative" }}>
-      <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ ml: "3px" }}>
-        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{t("breadcrumb_masters", "Masters")}</Typography>
+    <Box className={`${styles.page} ${styles.relativePage}`}>
+      <Breadcrumbs className="app-breadcrumbs app-breadcrumbs-master" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon className="app-breadcrumb-separator-icon" />}>
+        <Typography className="app-breadcrumb-label">{t("breadcrumb_masters", "Masters")}</Typography>
         <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{t("breadcrumb_allocation_entities", "Allocation Entities")}</Typography>
       </Breadcrumbs>
 
-      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+      <Box className="app-master-search-panel">
         {objAccess.strError ? (
           <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{objAccess.strError}</Typography>
         ) : null}
@@ -343,7 +343,7 @@ export default function AllocationEntityMasterPanel() {
             }
             placeholder={t("search_name_placeholder", "Search by Entity Name")}
             size="small"
-            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon className="app-search-adornment-icon" /></InputAdornment> }}
             disabled={blnSearchPanelFrozen}
             fullWidth
           />
@@ -358,7 +358,7 @@ export default function AllocationEntityMasterPanel() {
             }
             placeholder={t("search_code_placeholder", "Search by Entity Code")}
             size="small"
-            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon className="app-search-adornment-icon" /></InputAdornment> }}
             disabled={blnSearchPanelFrozen}
             fullWidth
           />
@@ -411,7 +411,7 @@ export default function AllocationEntityMasterPanel() {
           <Box className={styles.searchActions}>
             <Button
               data-control-id="allocation-entity.list.search.button"
-              className={styles.primaryButton}
+              className="app-btn app-btn-primary"
               startIcon={<SearchRoundedIcon />}
               onClick={() => setDicSearchApplied(dicSearchDraft)}
               disabled={blnSearchPanelFrozen}
@@ -422,7 +422,7 @@ export default function AllocationEntityMasterPanel() {
           <Box className={styles.searchActions}>
             <Button
               data-control-id="allocation-entity.list.clear.button"
-              className={styles.secondaryButton}
+              className="app-btn app-btn-outline"
               startIcon={<ClearRoundedIcon />}
               onClick={() => {
                 setDicSearchDraft(dicEmptySearch);
@@ -436,7 +436,7 @@ export default function AllocationEntityMasterPanel() {
         </Box>
       </Box>
 
-      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+      <Box className="app-master-table-panel app-master-page-relative">
         {(blnLoading || objAccess.blnLoading) && !blnDialogOpen ? (
           <AllocationGridSkeleton strControlId="allocation-entity.list.skeleton" intColumns={7} />
         ) : !blnCanView ? (
@@ -450,6 +450,9 @@ export default function AllocationEntityMasterPanel() {
             columns={lstTableColumns}
             rows={lstTableRows}
             rowIdField="id"
+            exportFileName="allocation-entity"
+            exportButtonClassName="app-btn app-btn-outline"
+            showExportOptions={blnCanExport}
             testIdPrefix="allocation-entity.list"
             showPaginationSummary
             hideRowClickHint
@@ -463,7 +466,7 @@ export default function AllocationEntityMasterPanel() {
               blnCanAdd ? (
                 <Button
                   data-control-id="allocation-entity.list.add.button"
-                  className={styles.primaryButton}
+                  className="app-btn app-btn-primary"
                   startIcon={<AddRoundedIcon />}
                   onClick={() => openDialog("add")}
                   disabled={blnLoading || blnSubmitting || objAccess.blnLoading}
@@ -477,7 +480,7 @@ export default function AllocationEntityMasterPanel() {
               "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
               "&.MuiTableRow-hover:hover td:first-of-type .MuiLink-root": { textDecoration: "underline" },
             })}
-            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+            className="app-master-common-table-reset"
           />
         )}
         <BlockingLoader blnOpen={blnSubmitting} strLabel={t("processing", "Processing...")} intZIndex={1400} blnLocal />
@@ -501,33 +504,30 @@ export default function AllocationEntityMasterPanel() {
         }
         strSecondaryLabel={strMode === "view" ? t("close", "Close") : t("cancel", "Cancel")}
         strPrimaryLabel={blnSubmitting ? t("saving", "Saving...") : t("save", "Save")}
+        strSecondaryButtonClassName="app-btn app-btn-outline"
+        strPrimaryButtonClassName="app-btn app-btn-primary"
         onPrimaryAction={saveEntity}
         blnPrimaryDisabled={blnSubmitting}
         blnHidePrimary={strMode === "view" || !(strMode === "add" ? blnCanAdd : blnCanEdit)}
-        paperClassName={styles.departmentDialogPaper}
+        paperClassName={`${styles.departmentDialogPaper} ${styles.departmentDialogPaperWide640}`}
         maxWidth={false}
         fullWidth={false}
-        paperSx={{
-          width: "min(640px, calc(100vw - 32px)) !important",
-          maxWidth: "640px !important",
-          "& .MuiButton-root": { fontSize: "12px !important", fontWeight: "600 !important" },
-        }}
-        titleSx={{ px: 2.25, py: 1.25, fontSize: "16px", fontWeight: 700, maxHeight: 50 }}
-        contentSx={{ overflowX: "hidden", overflowY: "auto", px: "20px", py: "12px", borderColor: "#e5edf5" }}
-        nodeFooterStart={<Typography sx={{ color: "#64748b", fontSize: "11px" }}>{t("required_fields_hint", "Required fields are marked")} <Box component="span" sx={{ color: "#dc2626" }}>*</Box></Typography>}
+        contentClassName="app-master-dialog-content-compact"
+        nodeFooterStart={<Typography className="app-master-dialog-required-fields">{t("required_fields_hint", "Required fields are marked")} <Box component="span" className="app-master-dialog-required-asterisk">*</Box></Typography>}
         nodeTitleAction={
-          <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
+          <Box className={`${styles.switchRow} app-master-dialog-status-row`}>
             <ActiveStatusSwitch
+              className="app-master-dialog-status-switch"
               testId="allocation-entity.dialog.active.switch"
               blnIsActive={dicForm.blnIsActive}
               disabled={strMode === "view"}
               sx={dicActiveSwitchSx}
               onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, blnIsActive: blnChecked }))}
             />
-            <Typography className={styles.switchLabel} sx={{ fontSize: "12px !important", fontWeight: "600 !important", whiteSpace: "nowrap" }}>
+            <Typography className={`${styles.switchLabel} app-master-dialog-status-text`}>
               {t("status_active", "Active")}
             </Typography>
-            <IconButton aria-label={t("close", "Close")} onClick={() => setBlnDialogOpen(false)} size="small" sx={{ ml: 1, color: "#94a3b8" }}>
+            <IconButton aria-label={t("close", "Close")} onClick={() => setBlnDialogOpen(false)} size="small" className="app-master-dialog-close-button app-master-dialog-close-button-spaced">
               <CloseRoundedIcon fontSize="small" />
             </IconButton>
           </Box>
@@ -545,8 +545,8 @@ export default function AllocationEntityMasterPanel() {
             >
               {strMode === "add" ? (
                 <Box sx={{ gridColumn: "1 / -1" }}>
-                  <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>{t("basic_information", "Basic Information")}</Typography>
-                  <Typography sx={{ fontSize: "11px", color: "#64748b", mt: 0.25, mb: 1 }}>
+                  <Typography className="app-master-dialog-section-heading">{t("basic_information", "Basic Information")}</Typography>
+                  <Typography className="app-master-dialog-section-subheading app-master-dialog-section-subheading-spaced">
                     {t("basic_information_help", "Create a new allocation entity under an entity type.")}
                   </Typography>
                 </Box>
@@ -707,7 +707,7 @@ export default function AllocationEntityMasterPanel() {
           onClose={() => setObjToast((objPrevious) => ({ ...objPrevious, blnOpen: false }))}
           severity={objToast.strSeverity}
           variant="filled"
-          sx={{ width: "100%" }}
+          className="app-master-toast-alert"
         >
           {objToast.strMessage}
         </Alert>

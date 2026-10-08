@@ -272,19 +272,19 @@ export default function LeaveSettingsPanel() {
     <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25, minHeight: "calc(100vh - 96px)", pb: 2 }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 2, flexWrap: "wrap" }}>
         <Box>
-          <Breadcrumbs aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ fontSize: 13, py: 0.5, ml: "3px" }}>
-            <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>Administration</Typography>
-            <Typography component="h1" aria-current="page" sx={{ fontSize: "inherit", fontWeight: 700, color: "#243b53" }}>Settings</Typography>
+          <Breadcrumbs className="app-breadcrumbs app-breadcrumbs-master" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon className="app-breadcrumb-separator-icon" />}>
+            <Typography className="app-breadcrumb-label">Administration</Typography>
+            <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">Settings</Typography>
           </Breadcrumbs>
         </Box>
         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-          <Typography sx={{ color: "#64748b", fontSize: "11px" }}>
-            Required fields are marked <Box component="span" sx={{ color: "#dc2626" }}>*</Box>
+          <Typography className="app-master-dialog-required-fields">
+            Required fields are marked <Box component="span" className="app-master-dialog-required-asterisk">*</Box>
           </Typography>
           {!blnReadOnly ? (
             <>
-              <Button variant="outlined" startIcon={<CancelRoundedIcon />} onClick={handleCancel} disabled={blnSaving || blnBusy} controlId="settings.cancel.button" sx={{ height: 36, px: 2.25, borderRadius: "8px", fontWeight: 800 }}>Cancel</Button>
-              <Button variant="contained" startIcon={<SaveRoundedIcon />} onClick={() => void handleSave()} disabled={blnSaving || blnBusy} controlId="settings.save.button" sx={{ height: 36, px: 2.75, borderRadius: "8px", fontWeight: 800, boxShadow: "none" }}>{blnSaving ? "Saving..." : "Save"}</Button>
+              <Button className="app-btn app-btn-outline" startIcon={<CancelRoundedIcon />} onClick={handleCancel} disabled={blnSaving || blnBusy} controlId="settings.cancel.button">Cancel</Button>
+              <Button className="app-btn app-btn-primary" startIcon={<SaveRoundedIcon />} onClick={() => void handleSave()} disabled={blnSaving || blnBusy} controlId="settings.save.button">{blnSaving ? "Saving..." : "Save"}</Button>
             </>
           ) : null}
         </Stack>

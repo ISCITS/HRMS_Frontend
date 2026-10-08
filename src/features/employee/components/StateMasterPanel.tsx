@@ -529,6 +529,7 @@ export default function StateMasterPanel() {
           type="button"
           underline="none"
           disabled={!blnCanView && !blnCanEdit}
+          className="app-master-first-column-link"
           data-control-id="state-master.list.row.name.button"
           onClick={(objEvent) => {
             if (window.getSelection()?.toString()) {
@@ -537,13 +538,12 @@ export default function StateMasterPanel() {
             }
             openDialog(blnCanEdit ? "edit" : "view", dicState);
           }}
-          sx={{ color: "#334155", cursor: "pointer", fontSize: "inherit", fontWeight: 500, textAlign: "left", textUnderlineOffset: "3px", userSelect: "text", WebkitUserSelect: "text", "&:hover": { color: "#0066df", textDecoration: "underline" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}
         >
           {dicState.name}
         </Link>
       ),
       code: dicState.code,
-      status: <span className={`${styles.statusPill} ${dicState.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicState.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span>,
+      status: <span className={`app-master-status-pill ${dicState.status === "Active" ? "app-master-status-active" : "app-master-status-inactive"}`}>{dicState.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span>,
       statusSortValue: dicState.status,
     };
   }), [blnCanEdit, blnCanView, dicCommonLabels.statusActive, dicCommonLabels.statusInactive, lstFiltered, lstSelectedIds]);
@@ -573,37 +573,37 @@ export default function StateMasterPanel() {
   ], [blnAllFilteredSelected, blnSomeFilteredSelected, dicLabels.tableCode, dicLabels.tableCountry, dicLabels.tableName, dicLabels.tableStatus, lstFiltered.length]);
 
   return (
-    <Box className={styles.page} sx={{ position: "relative" }}>
-      <Breadcrumbs aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ fontSize: 13, py: 0.5, ml: "3px" }}>
-        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{t("breadcrumb_masters", "Masters")}</Typography>
-        <Typography component="h1" aria-current="page" sx={{ fontSize: "inherit", fontWeight: 700, color: "#243b53" }}>{t("breadcrumb_states", dicLabels.pageTitle)}</Typography>
+    <Box className={`${styles.page} ${styles.relativePage}`}>
+      <Breadcrumbs className="app-breadcrumbs app-breadcrumbs-master" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon className="app-breadcrumb-separator-icon" />}>
+        <Typography className="app-breadcrumb-label">{t("breadcrumb_masters", "Masters")}</Typography>
+        <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{t("breadcrumb_states", dicLabels.pageTitle)}</Typography>
       </Breadcrumbs>
 
-      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+      <Box className="app-master-search-panel">
         {strRightsError ? <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography> : null}
         {!blnRightsLoading && blnCanView && blnReadOnly ? <Typography sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>{t("read_only_mode", "You have view-only access for State.")}</Typography> : null}
-        <Box className={styles.searchRow} aria-busy={blnSearchPanelFrozen} sx={{ alignItems: "center", "& .MuiButton-root": { alignSelf: "center" } }}>
-          <TextField className="app-mui-text-field" id="state-search-name" controlId="state-master.list.search-name.input" inputProps={{ "controlId": "state-master.list.search-name.input" }} label={dicLabels.tableName} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnSearchPanelFrozen} fullWidth />
-          <TextField className="app-mui-text-field" id="state-search-code" controlId="state-master.list.search-code.input" inputProps={{ "controlId": "state-master.list.search-code.input" }} label={dicLabels.tableCode} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnSearchPanelFrozen} fullWidth />
+        <Box className={`${styles.searchRow} ${styles.searchRowCentered}`} aria-busy={blnSearchPanelFrozen}>
+          <TextField className="app-mui-text-field" id="state-search-name" controlId="state-master.list.search-name.input" inputProps={{ "controlId": "state-master.list.search-name.input" }} label={dicLabels.tableName} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon className="app-search-adornment-icon" /></InputAdornment> }} disabled={blnSearchPanelFrozen} fullWidth />
+          <TextField className="app-mui-text-field" id="state-search-code" controlId="state-master.list.search-code.input" inputProps={{ "controlId": "state-master.list.search-code.input" }} label={dicLabels.tableCode} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon className="app-search-adornment-icon" /></InputAdornment> }} disabled={blnSearchPanelFrozen} fullWidth />
           <TextField className="app-mui-text-field" id="state-search-status" controlId="state-master.list.search-status.select" inputProps={{ "controlId": "state-master.list.search-status.select" }} select label={dicLabels.tableStatus} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} size="small" disabled={blnSearchPanelFrozen} fullWidth>
             <MenuItem controlId="state-master.list.search-status.all.option" value="All">All</MenuItem>
             <MenuItem controlId="state-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
             <MenuItem controlId="state-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions}><Button data-control-id="state-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnSearchPanelFrozen}>{dicCommonLabels.search}</Button></Box>
-          <Box className={styles.searchActions}><Button data-control-id="state-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnSearchPanelFrozen}>{dicCommonLabels.clear}</Button></Box>
+          <Box className={styles.searchActions}><Button data-control-id="state-master.list.search.button" className="app-btn app-btn-primary" startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnSearchPanelFrozen}>{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button data-control-id="state-master.list.clear.button" className="app-btn app-btn-outline" startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnSearchPanelFrozen}>{dicCommonLabels.clear}</Button></Box>
         </Box>
         {!blnSubmitting && lstSelectedIds.length > 0 && !blnReadOnly && (blnCanChangeStatus || blnCanDelete) ? (
           <Box className={styles.bulkBar}><Typography className={styles.bulkCount}>{`${lstSelectedIds.length} ${dicLabels.bulkRowsSelected}`}</Typography>{blnCanChangeStatus ? <Button controlId="state-master.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicLabels.bulkActivate}</Button> : null}{blnCanChangeStatus ? <Button controlId="state-master.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicLabels.bulkDeactivate}</Button> : null}{blnCanDelete ? <Button controlId="state-master.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicLabels.bulkDelete}</Button> : null}</Box>
         ) : null}
       </Box>
-      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+      <Box className="app-master-table-panel app-master-page-relative">
         {(blnLoading || blnRightsLoading) && !blnDialogOpen ? (
           <StateGridSkeleton />
         ) : !blnCanView ? (
           <Box className={styles.emptyState}><Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", "State access is not available for your user group.")}</Typography><Typography sx={{ mt: 1, color: "#64748b" }}>{t("access_denied_help", "Contact your administrator if you need state visibility.")}</Typography></Box>
         ) : (
-          <CommonTable columns={lstTableColumns} rows={lstTableRows} rowIdField="id" exportFileName={dicLabels.exportFileName} showExportOptions={blnCanExport} testIdPrefix="state-master.list" showPaginationSummary hideRowClickHint onRowClick={(dicRow) => { if (blnRightsLoading || blnLoading || blnSubmitting || (!blnCanEdit && !blnCanView)) return; const dicState = lstStates.find((dicItem) => dicItem.id === dicRow.id); if (dicState) openDialog(blnCanEdit ? "edit" : "view", dicState); }} minTableWidth={900} emptyMessage={dicLabels.emptyMessage} toolbarLeft={<Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>{blnCanAdd ? <Button data-control-id="state-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicLabels.addButton}</Button> : null}</Box>} getRowSx={() => ({ backgroundColor: "#fff", "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" } })} sx={{ p: 0, boxShadow: "none", background: "transparent" }} />
+          <CommonTable columns={lstTableColumns} rows={lstTableRows} rowIdField="id" exportFileName={dicLabels.exportFileName} exportButtonClassName="app-btn app-btn-outline" showExportOptions={blnCanExport} testIdPrefix="state-master.list" showPaginationSummary hideRowClickHint onRowClick={(dicRow) => { if (blnRightsLoading || blnLoading || blnSubmitting || (!blnCanEdit && !blnCanView)) return; const dicState = lstStates.find((dicItem) => dicItem.id === dicRow.id); if (dicState) openDialog(blnCanEdit ? "edit" : "view", dicState); }} minTableWidth={900} emptyMessage={dicLabels.emptyMessage} toolbarLeft={<Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>{blnCanAdd ? <Button data-control-id="state-master.list.add.button" className="app-btn app-btn-primary" startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicLabels.addButton}</Button> : null}</Box>} getRowSx={() => ({ backgroundColor: "#fff", "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" } })} className="app-master-common-table-reset" />
         )}
         <BlockingLoader blnOpen={blnSubmitting} strLabel={dicCommonLabels.processing} intZIndex={1400} blnLocal />
       </Box>
@@ -621,17 +621,17 @@ export default function StateMasterPanel() {
         strTitle={strMode === "add" ? dicLabels.dialogAddTitle : strMode === "edit" ? dicLabels.dialogEditTitle : dicLabels.dialogViewTitle}
         strSecondaryLabel={strMode === "view" ? dicCommonLabels.close : dicCommonLabels.cancel}
         strPrimaryLabel={blnSubmitting ? dicLabels.saving : dicCommonLabels.save}
+        strSecondaryButtonClassName="app-btn app-btn-outline"
+        strPrimaryButtonClassName="app-btn app-btn-primary"
         onPrimaryAction={saveState}
         blnPrimaryDisabled={blnSubmitting}
         blnHidePrimary={strMode === "view"}
-        nodeFooterStart={<Typography sx={{ color: "#64748b", fontSize: "11px" }}>{t("required_fields_hint", "Required fields are marked")} <Box component="span" sx={{ color: "#dc2626" }}>*</Box></Typography>}
+        nodeFooterStart={<Typography className="app-master-dialog-required-fields">{t("required_fields_hint", "Required fields are marked")} <Box component="span" className="app-master-dialog-required-asterisk">*</Box></Typography>}
         paperClassName={styles.departmentDialogPaper}
-        paperSx={{ "& .MuiButton-root": { fontSize: "12px !important", fontWeight: "600 !important" } }}
         maxWidth={false}
         fullWidth={false}
-        titleSx={{ px: 2.25, py: 1.25, fontSize: "16px", fontWeight: 700, maxHeight: 50 }}
         nodeTitleAction={
-          <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
+          <Box className={`${styles.switchRow} app-master-dialog-status-row`}>
             <ActiveStatusSwitch
               testId="state-master.dialog.active.switch"
               blnIsActive={dicForm.status === "Active"}
@@ -657,7 +657,7 @@ export default function StateMasterPanel() {
               }}
               onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))}
             />
-            <Typography className={styles.switchLabel} sx={{ fontSize: "12px !important", fontWeight: "600 !important", whiteSpace: "nowrap" }}>
+            <Typography className={`${styles.switchLabel} app-master-dialog-status-text`}>
               {dicCommonLabels.statusActive}
             </Typography>
             <IconButton aria-label={dicCommonLabels.close} onClick={closeDialog} size="small" sx={{ ml: 1, color: "#94a3b8" }}>
@@ -665,14 +665,14 @@ export default function StateMasterPanel() {
             </IconButton>
           </Box>
         }
-        contentSx={{ overflowX: "hidden", overflowY: "auto", px: "20px", py: "12px", borderColor: "#e5edf5" }}
+        contentClassName="app-master-dialog-content-compact"
         nodeContent={
           <Box sx={{ display: "grid", gap: "12px" }}>
             <Box sx={{ display: "grid", columnGap: 1.6, rowGap: "12px", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" }, alignItems: "start" }}>
               {strMode === "add" ? (
                 <Box sx={{ gridColumn: "1 / -1" }}>
-                  <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>{t("basic_information", "Basic Information")}</Typography>
-                  <Typography sx={{ fontSize: "11px", color: "#64748b", mt: 0.25, mb: 1 }}>{t("basic_information_help", "Create a new state for your organisation.")}</Typography>
+                  <Typography className="app-master-dialog-section-heading">{t("basic_information", "Basic Information")}</Typography>
+                  <Typography className="app-master-dialog-section-subheading app-master-dialog-section-subheading-spaced">{t("basic_information_help", "Create a new state for your organisation.")}</Typography>
                 </Box>
               ) : null}
               <TextField
@@ -741,14 +741,14 @@ export default function StateMasterPanel() {
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap", p: 1, borderBottom: "1px solid #e3edfc", background: "#eff6ff" }}>
                   <LanguageRoundedIcon sx={{ color: "#1473cf" }} />
                   <Box sx={{ flex: 1, minWidth: 180 }}>
-                    <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>{t("language_translations", "Language Translations")}</Typography>
-                    <Typography sx={{ color: "#64748b", fontSize: "11px", mt: 0.25 }}>
+                    <Typography className="app-master-dialog-section-heading">{t("language_translations", "Language Translations")}</Typography>
+                    <Typography className="app-master-dialog-section-subheading app-master-dialog-section-subheading-spaced">
                       {t("language_translations_help", "Provide translated state names for the application languages you want to support.")}
                     </Typography>
                   </Box>
                   <Tooltip title={t("translate_help", "Generate suggested translations using AI. Review before saving.")} arrow>
                     <span>
-                      <Button className={styles.secondaryButton} variant="outlined" startIcon={<AutoAwesomeRoundedIcon />} onClick={() => void handleTranslateClick()} disabled={strMode === "view" || blnSubmitting || !dicForm.name.trim() || Boolean(dicTextTranslationLoading[lstVisibleTranslationRows[0]?.strRowID ?? ""])} sx={{ minHeight: 34, whiteSpace: "nowrap", background: "#fff" }}>
+                      <Button className="app-btn app-btn-outline" variant="outlined" startIcon={<AutoAwesomeRoundedIcon />} onClick={() => void handleTranslateClick()} disabled={strMode === "view" || blnSubmitting || !dicForm.name.trim() || Boolean(dicTextTranslationLoading[lstVisibleTranslationRows[0]?.strRowID ?? ""])} sx={{ minHeight: 34, whiteSpace: "nowrap", background: "#fff" }}>
                         {t("translate", "AI Translate")}
                       </Button>
                     </span>
@@ -800,7 +800,7 @@ export default function StateMasterPanel() {
         autoHideDuration={3500}
         onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert severity={objToast.strSeverity} onClose={closeToast} variant="filled"
-          sx={{ width: "100%" }}>{objToast.strMessage}</Alert>
+          className="app-master-toast-alert">{objToast.strMessage}</Alert>
       </Snackbar>
     </Box>
   );

@@ -453,6 +453,7 @@ export default function EmployeeCategoryMasterPanel() {
         type="button"
         underline="none"
         disabled={!blnCanView && !blnCanEdit}
+        className="app-master-first-column-link"
         data-control-id="employee-category-master.list.row.name.button"
         onClick={(objEvent) => {
           if (window.getSelection()?.toString()) {
@@ -461,7 +462,6 @@ export default function EmployeeCategoryMasterPanel() {
           }
           openDialog(blnCanEdit ? "edit" : "view", dicEmployeeCategory);
         }}
-        sx={{ color: "#334155", cursor: "pointer", fontSize: "inherit", fontWeight: 500, textAlign: "left", textUnderlineOffset: "3px", userSelect: "text", WebkitUserSelect: "text", "&:hover": { color: "#0066df", textDecoration: "underline" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}
       >
         {dicEmployeeCategory.name}
       </Link>
@@ -469,7 +469,7 @@ export default function EmployeeCategoryMasterPanel() {
     nameText: dicEmployeeCategory.name,
     code: dicEmployeeCategory.code,
     status: (
-      <span className={styles.statusPill} style={{ background: dicEmployeeCategory.status === "Active" ? "#dcfce7" : "#fee2e2", color: dicEmployeeCategory.status === "Active" ? "#15803d" : "#dc2626" }}>
+      <span className={`app-master-status-pill ${dicEmployeeCategory.status === "Active" ? "app-master-status-active" : "app-master-status-inactive"}`}>
         {dicEmployeeCategory.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}
       </span>
     ),
@@ -633,13 +633,13 @@ export default function EmployeeCategoryMasterPanel() {
   }
 
   return (
-    <Box className={styles.page} sx={{ position: "relative" }}>
-      <Breadcrumbs aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ fontSize: 13, py: 0.5, ml: "3px" }}>
-        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{t("breadcrumb_masters", "Masters")}</Typography>
-        <Typography component="h1" aria-current="page" sx={{ fontSize: "inherit", fontWeight: 700, color: "#243b53" }}>{t("breadcrumb_employee_categories", "Employee Categories")}</Typography>
+    <Box className={`${styles.page} ${styles.relativePage}`}>
+      <Breadcrumbs className="app-breadcrumbs app-breadcrumbs-master" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon className="app-breadcrumb-separator-icon" />}>
+        <Typography className="app-breadcrumb-label">{t("breadcrumb_masters", "Masters")}</Typography>
+        <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{t("breadcrumb_employee_categories", "Employee Categories")}</Typography>
       </Breadcrumbs>
 
-      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+      <Box className="app-master-search-panel">
         {strRightsError ? (
           <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography>
         ) : null}
@@ -656,19 +656,19 @@ export default function EmployeeCategoryMasterPanel() {
             "& .MuiButton-root": { alignSelf: "center" },
           }}
         >
-          <TextField className="app-mui-text-field" id="employee-category-master-search-name" controlId="employee-category-master.list.search-name.input" inputProps={{ "controlId": "employee-category-master.list.search-name.input" }} label={dicEmployeeCategoryLabels.tableName} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicEmployeeCategoryLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnLoading || blnRightsLoading || blnSubmitting} fullWidth />
-          <TextField className="app-mui-text-field" id="employee-category-master-search-code" controlId="employee-category-master.list.search-code.input" inputProps={{ "controlId": "employee-category-master.list.search-code.input" }} label={dicEmployeeCategoryLabels.tableCode} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicEmployeeCategoryLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnLoading || blnRightsLoading || blnSubmitting} fullWidth />
+          <TextField className="app-mui-text-field" id="employee-category-master-search-name" controlId="employee-category-master.list.search-name.input" inputProps={{ "controlId": "employee-category-master.list.search-name.input" }} label={dicEmployeeCategoryLabels.tableName} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicEmployeeCategoryLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon className="app-search-adornment-icon" /></InputAdornment> }} disabled={blnLoading || blnRightsLoading || blnSubmitting} fullWidth />
+          <TextField className="app-mui-text-field" id="employee-category-master-search-code" controlId="employee-category-master.list.search-code.input" inputProps={{ "controlId": "employee-category-master.list.search-code.input" }} label={dicEmployeeCategoryLabels.tableCode} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicEmployeeCategoryLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon className="app-search-adornment-icon" /></InputAdornment> }} disabled={blnLoading || blnRightsLoading || blnSubmitting} fullWidth />
           <TextField className="app-mui-text-field" id="employee-category-master-search-status" controlId="employee-category-master.list.search-status.select" inputProps={{ "controlId": "employee-category-master.list.search-status.select" }} select label={dicEmployeeCategoryLabels.tableStatus} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} size="small" disabled={blnLoading || blnRightsLoading || blnSubmitting} fullWidth>
             <MenuItem controlId="employee-category-master.list.search-status.all.option" value="All">All</MenuItem>
             <MenuItem controlId="employee-category-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
             <MenuItem controlId="employee-category-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions}><Button data-control-id="employee-category-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnLoading || blnRightsLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
-          <Box className={styles.searchActions}><Button data-control-id="employee-category-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnRightsLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
+          <Box className={styles.searchActions}><Button data-control-id="employee-category-master.list.search.button" className="app-btn app-btn-primary" startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnLoading || blnRightsLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button data-control-id="employee-category-master.list.clear.button" className="app-btn app-btn-outline" startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnRightsLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
         </Box>
       </Box>
 
-      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+      <Box className="app-master-table-panel app-master-page-relative">
         {(blnLoading || blnRightsLoading) && !blnDialogOpen ? (
           <EmployeeCategoryGridSkeleton />
         ) : !blnCanView ? (
@@ -682,6 +682,7 @@ export default function EmployeeCategoryMasterPanel() {
             rows={lstTableRows}
             rowIdField="id"
             exportFileName={dicEmployeeCategoryLabels.exportFileName}
+            exportButtonClassName="app-btn app-btn-outline"
             showExportOptions={blnCanExport}
             testIdPrefix="employee-category-master.list"
             showPaginationSummary
@@ -696,7 +697,7 @@ export default function EmployeeCategoryMasterPanel() {
             toolbarLeft={(
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
                 {blnCanAdd ? (
-                  <Button data-control-id="employee-category-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+                  <Button data-control-id="employee-category-master.list.add.button" className="app-btn app-btn-primary" startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
                     {dicEmployeeCategoryLabels.addButton}
                   </Button>
                 ) : null}
@@ -707,7 +708,7 @@ export default function EmployeeCategoryMasterPanel() {
               "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
               "&.MuiTableRow-hover:hover td:first-of-type .MuiLink-root": { textDecoration: "underline" },
             })}
-            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+            className="app-master-common-table-reset"
           />
         )}
         <BlockingLoader
@@ -727,12 +728,15 @@ export default function EmployeeCategoryMasterPanel() {
         strTitle={strMode === "add" ? dicEmployeeCategoryLabels.dialogAddTitle : strMode === "edit" ? dicEmployeeCategoryLabels.dialogEditTitle : dicEmployeeCategoryLabels.dialogViewTitle}
         strSecondaryLabel={strMode === "view" ? dicCommonLabels.close : dicCommonLabels.cancel}
         strPrimaryLabel={blnSubmitting ? dicEmployeeCategoryLabels.saving : dicCommonLabels.save}
+        strSecondaryButtonClassName="app-btn app-btn-outline"
+        strPrimaryButtonClassName="app-btn app-btn-primary"
         onPrimaryAction={saveEmployeeCategory}
         blnPrimaryDisabled={blnSubmitting}
         blnHidePrimary={strMode === "view"}
         nodeTitleAction={
-          <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
+          <Box className={`${styles.switchRow} app-master-dialog-status-row`}>
             <ActiveStatusSwitch
+              className="app-master-dialog-status-switch"
               testId="employee-category-master.dialog.active.switch"
               blnIsActive={dicForm.status === "Active"}
               disabled={strMode === "view"}
@@ -766,19 +770,17 @@ export default function EmployeeCategoryMasterPanel() {
               }}
               onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))}
             />
-            <Typography className={styles.switchLabel} sx={{ fontSize: "12px !important", fontWeight: "600 !important", whiteSpace: "nowrap" }}>{dicCommonLabels.statusActive}</Typography>
-            <IconButton aria-label={dicCommonLabels.close} onClick={closeDialog} size="small" sx={{ ml: 1, color: "#94a3b8" }}>
+            <Typography className={`${styles.switchLabel} app-master-dialog-status-text`}>{dicCommonLabels.statusActive}</Typography>
+            <IconButton aria-label={dicCommonLabels.close} onClick={closeDialog} size="small" className="app-master-dialog-close-button app-master-dialog-close-button-spaced">
               <CloseRoundedIcon fontSize="small" />
             </IconButton>
           </Box>
         }
-        nodeFooterStart={<Typography sx={{ color: "#64748b", fontSize: "11px" }}>{t("required_fields_hint", "Required fields are marked")} <Box component="span" sx={{ color: "#dc2626" }}>*</Box></Typography>}
-        titleSx={{ px: 2.25, py: 1.25, fontSize: "16px", fontWeight: 700, maxHeight: 50 }}
+        nodeFooterStart={<Typography className="app-master-dialog-required-fields">{t("required_fields_hint", "Required fields are marked")} <Box component="span" className="app-master-dialog-required-asterisk">*</Box></Typography>}
         paperClassName={styles.departmentDialogPaper}
-        paperSx={{ "& .MuiButton-root": { fontSize: "12px !important", fontWeight: "600 !important" } }}
         maxWidth={false}
         fullWidth={false}
-        contentSx={{ overflowX: "hidden", overflowY: "auto", px: "20px", py: "12px", borderColor: "#e5edf5" }}
+        contentClassName="app-master-dialog-content-compact"
         nodeContent={
           <Box sx={{ display: "grid", gap: "12px" }}>
             <Box
@@ -792,10 +794,10 @@ export default function EmployeeCategoryMasterPanel() {
             >
               {strMode === "add" ? (
                 <Box sx={{ gridColumn: "1 / -1" }}>
-                  <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>
+                  <Typography className="app-master-dialog-section-heading">
                     {t("basic_information", "Basic Information")}
                   </Typography>
-                  <Typography sx={{ fontSize: "11px", color: "#64748b", mt: 0.25, mb: 1 }}>
+                  <Typography className="app-master-dialog-section-subheading app-master-dialog-section-subheading-spaced">
                     {t("basic_information_help", "Create a new employee category for your organisation.")}
                   </Typography>
                 </Box>
@@ -850,8 +852,8 @@ export default function EmployeeCategoryMasterPanel() {
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap", p: 1, borderBottom: "1px solid #e3edfc", background: "#eff6ff" }}>
                   <LanguageRoundedIcon sx={{ color: "#1473cf" }} />
                   <Box sx={{ flex: 1, minWidth: 180 }}>
-                    <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>{t("language_translations", "Language Translations")}</Typography>
-                    <Typography sx={{ color: "#64748b", fontSize: "11px", mt: 0.25 }}>
+                    <Typography className="app-master-dialog-section-heading">{t("language_translations", "Language Translations")}</Typography>
+                    <Typography className="app-master-dialog-section-subheading app-master-dialog-section-subheading-spaced">
                       {t("multilingual_text_help", "Add translated employee category names for supported languages.")}
                     </Typography>
                   </Box>
@@ -859,7 +861,7 @@ export default function EmployeeCategoryMasterPanel() {
                     <span>
                       <Button
                         controlId="employee-category-master.dialog.translate.button"
-                        className={styles.secondaryButton}
+                        className="app-btn app-btn-outline"
                         variant="outlined"
                         startIcon={Object.values(dicTextTranslationLoading).some(Boolean) ? undefined : <AutoAwesomeRoundedIcon />}
                         onClick={() => void handleTranslateClick()}
@@ -908,7 +910,7 @@ export default function EmployeeCategoryMasterPanel() {
       />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
-        <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>
+        <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" className="app-master-toast-alert">
           {objToast.strMessage}
         </Alert>
       </Snackbar>

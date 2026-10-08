@@ -510,6 +510,7 @@ export default function UserMasterPanel() {
         component="button"
         type="button"
         underline="none"
+        className="app-master-first-column-link"
         disabled={!blnCanView && !blnCanEdit}
         data-controlid="user-master.list.row.login-name.button"
         onClick={(objEvent) => {
@@ -519,7 +520,7 @@ export default function UserMasterPanel() {
           }
           void openDialog(blnCanEdit ? "edit" : "view", dicUser);
         }}
-        sx={{ color: "#334155", cursor: "pointer", fontSize: "inherit", fontWeight: 500, textAlign: "left", textUnderlineOffset: "3px", userSelect: "text", WebkitUserSelect: "text", "&:hover": { color: "#0066df", textDecoration: "underline" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}
+        sx={{ "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}
       >
         {dicUser.loginName}
       </Link>
@@ -530,7 +531,7 @@ export default function UserMasterPanel() {
     employeeName: dicUser.employeeName || "-",
     userGroupName: dicUser.userGroupName || "-",
     status: (
-      <span className={styles.statusPill} style={{ background: dicUser.status === "Active" ? "#dcfce7" : "#fee2e2", color: dicUser.status === "Active" ? "#15803d" : "#dc2626" }}>
+      <span className={`app-master-status-pill ${dicUser.status === "Active" ? "app-master-status-active" : "app-master-status-inactive"}`}>
         {dicUser.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}
       </span>
     ),
@@ -879,19 +880,19 @@ export default function UserMasterPanel() {
   }
 
   return (
-    <Box className={styles.page} sx={{ position: "relative" }}>
+    <Box className={`${styles.page} app-master-page-relative`}>
       <Box className={styles.topBar}>
         <Button data-controlid="user-master.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/dashboard")}>
           {dicModuleLabels.backButton}
         </Button>
       </Box>
 
-      <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />}>
-        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{strBreadcrumbParent}</Typography>
+      <Breadcrumbs className="app-breadcrumbs app-breadcrumbs-master" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon className="app-breadcrumb-separator-icon" />}>
+        <Typography className="app-breadcrumb-label">{strBreadcrumbParent}</Typography>
         <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{dicModuleLabels.pageTitle}</Typography>
       </Breadcrumbs>
 
-      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+      <Box className="app-master-search-panel">
         {strRightsError ? <Alert severity="warning" sx={{ mb: 2 }}>{strRightsError}</Alert> : null}
         {blnReadOnly ? <Alert severity="info" sx={{ mb: 2 }}>You have read-only access to this screen.</Alert> : null}
         <Box
@@ -911,7 +912,7 @@ export default function UserMasterPanel() {
             value={dicSearchDraft.code}
             placeholder={t("search_login_or_email_placeholder", "Enter login name or email")}
             size="small"
-            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon className="app-search-adornment-icon" /></InputAdornment> }}
             disabled={blnSearchPanelFrozen}
             fullWidth
             onChange={(objEvent) => setDicSearchDraft((objPrevious) => ({ ...objPrevious, code: objEvent.target.value }))}
@@ -925,7 +926,7 @@ export default function UserMasterPanel() {
             value={dicSearchDraft.employeeName}
             placeholder={dicModuleLabels.searchEmployeePlaceholder}
             size="small"
-            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon className="app-search-adornment-icon" /></InputAdornment> }}
             disabled={blnSearchPanelFrozen}
             fullWidth
             onChange={(objEvent) => setDicSearchDraft((objPrevious) => ({ ...objPrevious, employeeName: objEvent.target.value }))}
@@ -949,10 +950,10 @@ export default function UserMasterPanel() {
             <MenuItem data-controlid="user-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
-            <Button data-controlid="user-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }} disabled={blnSearchPanelFrozen}>
+            <Button data-controlid="user-master.list.search.button" className="app-btn app-btn-primary" startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }} disabled={blnSearchPanelFrozen}>
               {dicCommonLabels.search}
             </Button>
-            <Button data-controlid="user-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnSearchPanelFrozen}>
+            <Button data-controlid="user-master.list.clear.button" className="app-btn app-btn-outline" startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnSearchPanelFrozen}>
               {dicCommonLabels.clear}
             </Button>
           </Box>
@@ -968,7 +969,7 @@ export default function UserMasterPanel() {
         ) : null}
       </Box>
 
-      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+      <Box className="app-master-table-panel app-master-page-relative">
         {(blnLoading || blnRightsLoading) && !blnDialogOpen ? (
           <UserGridSkeleton />
         ) : !blnCanView ? (
@@ -982,13 +983,14 @@ export default function UserMasterPanel() {
             rowIdField="id"
             emptyMessage={dicModuleLabels.emptyMessage}
             exportFileName="user-master"
+            exportButtonClassName="app-btn app-btn-outline"
             showExportOptions={blnCanExport}
             showPaginationSummary
             hideRowClickHint
             testIdPrefix="user-master.list"
             minTableWidth={1180}
             toolbarLeft={
-              blnCanAdd ? <Button data-controlid="user-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => { void openDialog("add"); }} disabled={blnRightsLoading || blnLoading || blnSubmitting}>{dicModuleLabels.addButton}</Button> : null
+              blnCanAdd ? <Button data-controlid="user-master.list.add.button" className="app-btn app-btn-primary" startIcon={<AddRoundedIcon />} onClick={() => { void openDialog("add"); }} disabled={blnRightsLoading || blnLoading || blnSubmitting}>{dicModuleLabels.addButton}</Button> : null
             }
             onRowClick={(dicRow) => {
               if (blnRightsLoading || blnLoading || blnSubmitting || (!blnCanEdit && !blnCanView)) return;
@@ -1000,7 +1002,7 @@ export default function UserMasterPanel() {
               "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
               "&.MuiTableRow-hover:hover td:first-of-type .MuiLink-root": { textDecoration: "underline" },
             })}
-            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+            className="app-master-common-table-reset"
           />
         )}
         <BlockingLoader
@@ -1024,7 +1026,7 @@ export default function UserMasterPanel() {
         }}
         maxWidth={false}
         fullWidth={false}
-        paperClassName={styles.dialogPaperDapartment}
+        paperClassName={`${styles.dialogPaperDapartment} app-master-dialog-compact-buttons`}
         paperSx={{
           overflow: "hidden",
           maxHeight: "86vh",
@@ -1034,82 +1036,32 @@ export default function UserMasterPanel() {
           maxWidth: "860px !important",
           "& .MuiButton-root": { fontSize: "12px !important", fontWeight: "600 !important" },
           "& .MuiSvgIcon-root": { color: "var(--app-primary-color)" },
-          "& .MuiSwitch-root": {
-            height: "22px !important",
-            overflow: "visible !important",
-            padding: "0 !important",
-            width: "40px !important",
-          },
-          "& .MuiSwitch-switchBase": {
-            color: "#fff !important",
-            padding: "3px !important",
-          },
-          "& .MuiSwitch-switchBase.Mui-checked": {
-            color: "#fff",
-            transform: "translateX(18px) !important",
-            "& + .MuiSwitch-track": { backgroundColor: "var(--app-primary-color)", opacity: 1 },
-          },
-          "& .MuiSwitch-thumb": {
-            height: "16px !important",
-            width: "16px !important",
-            boxShadow: "0 1px 3px rgba(15, 23, 42, 0.2)",
-          },
-          "& .MuiSwitch-track": {
-            backgroundColor: '#98a2b3',
-            borderRadius: "11px !important",
-            opacity: "1 !important",
-          },
         }}
         strTitle={strMode === "add" ? "Add User" : strMode === "edit" ? "Edit User" : "View User"}
         strSecondaryLabel={strMode === "view" ? dicCommonLabels.close : dicCommonLabels.cancel}
         strPrimaryLabel={strMode === "add" ? dicModuleLabels.saveButton : dicModuleLabels.updateButton}
+        strSecondaryButtonClassName="app-btn app-btn-outline"
+        strPrimaryButtonClassName="app-btn app-btn-primary"
         onPrimaryAction={saveUser}
         blnPrimaryDisabled={blnSubmitting}
         blnHidePrimary={strMode === "view"}
         nodeTitleAction={
-          <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
+          <Box className={`${styles.switchRow} app-master-dialog-status-row`}>
             <ActiveStatusSwitch
+              className="app-master-dialog-status-switch"
               testId="user-master.dialog.status.switch"
               blnIsActive={dicForm.status === "Active"}
               disabled={strMode === "view"}
-              sx={{
-                width: 40,
-                height: 22,
-                p: 0,
-                overflow: "visible",
-                "& .MuiSwitch-switchBase": {
-                  p: "3px",
-                  color: "#fff",
-                  transitionDuration: "180ms",
-                  "&.Mui-checked": {
-                    transform: "translateX(18px)",
-                    color: "#fff",
-                    "& + .MuiSwitch-track": { backgroundColor: "#00b86b", opacity: 1 },
-                  },
-                  "&.Mui-disabled": { color: "#fff", opacity: 0.7 },
-                },
-                "& .MuiSwitch-thumb": {
-                  width: 16,
-                  height: 16,
-                  boxShadow: "0 1px 3px rgba(15, 23, 42, 0.2)",
-                },
-                "& .MuiSwitch-track": {
-                  borderRadius: "11px",
-                  backgroundColor: "#98a2b3",
-                  opacity: 1,
-                  transition: "background-color 180ms",
-                },
-              }}
               onChange={(blnChecked) => setFormField("status", blnChecked ? "Active" : "Inactive")}
             />
-            <Typography className={styles.switchLabel} sx={{ fontSize: "12px !important", fontWeight: "600 !important", whiteSpace: "nowrap" }}>{dicCommonLabels.statusActive}</Typography>
-            <IconButton aria-label={dicCommonLabels.close} onClick={closeDialog} size="small" sx={{ ml: 1, color: "#94a3b8" }}>
+            <Typography className={`${styles.switchLabel} app-master-dialog-status-text`}>{dicCommonLabels.statusActive}</Typography>
+            <IconButton aria-label={dicCommonLabels.close} onClick={closeDialog} size="small" className="app-master-dialog-close-button app-master-dialog-close-button-spaced">
               <CloseRoundedIcon fontSize="small" />
             </IconButton>
           </Box>
         }
-        nodeFooterStart={<Typography sx={{ color: "#64748b", fontSize: "11px" }}>Required fields are marked <Box component="span" sx={{ color: "#dc2626" }}>*</Box></Typography>}
-        titleSx={{ px: 2.25, py: 1.25, fontSize: "16px", fontWeight: 700, maxHeight: 50 }}
+        nodeFooterStart={<Typography className="app-master-dialog-required-fields">Required fields are marked <Box component="span" className="app-master-dialog-required-asterisk">*</Box></Typography>}
+        contentClassName="app-master-dialog-content-compact"
         contentSx={{
           overflowX: "hidden",
           overflowY: "auto",
@@ -1123,8 +1075,8 @@ export default function UserMasterPanel() {
         nodeContent={<Box ref={objDialogRootRef} sx={{ display: "grid", gap: "12px" }}>
           <Box sx={{ border: "1px solid #e3edfc", borderRadius: "6px", background: "#f7faff", p: "12px", display: "grid", gap: "12px" }}>
           <Box>
-            <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>{dicModuleLabels.sectionAccountAssociation}</Typography>
-            <Typography sx={{ color: "#64748b", fontSize: "11px", mt: 0.25 }}>Link this account to an employee profile when needed.</Typography>
+            <Typography className="app-master-dialog-section-heading">{dicModuleLabels.sectionAccountAssociation}</Typography>
+            <Typography className="app-master-dialog-section-subheading app-master-dialog-section-subheading-spaced">Link this account to an employee profile when needed.</Typography>
           </Box>
           <Box
             sx={{
@@ -1373,7 +1325,7 @@ export default function UserMasterPanel() {
             {blnShowOtpOnlyOption ? (
               <Box sx={{ display: "flex", alignItems: "center", gap: 1, justifyContent: "space-between" }}>
                 <Typography sx={{ fontWeight: 400, color: "#0f172a" }}>{dicModuleLabels.fieldEnableOtpOnly}</Typography>
-                <Switch inputProps={{ "data-controlid": "user-master.dialog.otp-only.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.mfaEnabled} onChange={(_, blnChecked) => setFormField("mfaEnabled", blnChecked)} disabled={strMode === "view" || blnDisableOtpOnlyOption} />
+                <Switch className="app-master-dialog-status-switch" inputProps={{ "data-controlid": "user-master.dialog.otp-only.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.mfaEnabled} onChange={(_, blnChecked) => setFormField("mfaEnabled", blnChecked)} disabled={strMode === "view" || blnDisableOtpOnlyOption} />
               </Box>
             ) : null}
           </Box>
@@ -1388,8 +1340,8 @@ export default function UserMasterPanel() {
               first; each toggle sits inline beside the group it governs. */}
           <Box sx={{ border: "1px solid #e3edfc", borderRadius: "6px", background: "#f7faff", p: "12px", display: "grid", gap: "12px" }}>
           <Box>
-            <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>{dicModuleLabels.sectionApplicationAccess}</Typography>
-            <Typography sx={{ color: "#64748b", fontSize: "11px", mt: 0.25 }}>Turn on the portals this user can access.</Typography>
+            <Typography className="app-master-dialog-section-heading">{dicModuleLabels.sectionApplicationAccess}</Typography>
+            <Typography className="app-master-dialog-section-subheading app-master-dialog-section-subheading-spaced">Turn on the portals this user can access.</Typography>
           </Box>
           {dicErrors.portalAccess ? (
             <Typography sx={{ color: "#d32f2f", fontSize: "0.8rem" }} tabIndex={-1} data-controlid="user-master.dialog.portal-access.error">
@@ -1401,6 +1353,7 @@ export default function UserMasterPanel() {
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr) auto", md: "minmax(120px, 164px) auto" }, alignItems: "center", gap: 1 }}>
               <Typography sx={{ fontWeight: 400, color: "#0f172a" }}>{dicModuleLabels.fieldHrmsAccess}</Typography>
               <Switch
+                className="app-master-dialog-status-switch"
                 inputProps={{ "data-controlid": "user-master.dialog.hrms-access.switch" } as InputHTMLAttributes<HTMLInputElement>}
                 checked={dicForm.hrmsAccessEnabled}
                 onChange={(_, blnChecked) => setFormField("hrmsAccessEnabled", blnChecked)}
@@ -1428,6 +1381,7 @@ export default function UserMasterPanel() {
               <Tooltip title={blnEssAccessDisabled && strMode !== "view" ? dicModuleLabels.validationEssRequiresEmployee : ""} arrow>
                 <span>
                   <Switch
+                    className="app-master-dialog-status-switch"
                     inputProps={{ "data-controlid": "user-master.dialog.ess-access.switch" } as InputHTMLAttributes<HTMLInputElement>}
                     checked={dicForm.essAccessEnabled}
                     onChange={(_, blnChecked) => setFormField("essAccessEnabled", blnChecked)}
@@ -1472,7 +1426,7 @@ export default function UserMasterPanel() {
       />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
-        <Alert severity={objToast.strSeverity} onClose={closeToast} variant="filled" sx={{ width: "100%" }}>{objToast.strMessage}</Alert>
+        <Alert severity={objToast.strSeverity} onClose={closeToast} variant="filled" className="app-master-toast-alert">{objToast.strMessage}</Alert>
       </Snackbar>
     </Box>
   );

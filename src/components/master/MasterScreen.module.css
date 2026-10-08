@@ -9,6 +9,10 @@
   width: 100%;
 }
 
+.relativePage {
+  position: relative;
+}
+
 .breadcrumbs {
   color: #697586;
   font-size: 14px;
@@ -370,9 +374,33 @@
     auto;
 }
 
+.payrollGroupSearchRow {
+  grid-template-columns: minmax(260px, 1fr) minmax(150px, 180px) auto auto !important;
+}
+
+.payrollGroupSearchRow > * {
+  min-width: 0;
+}
+
+.payrollGroupSearchRow .searchActions {
+  flex-wrap: nowrap;
+}
+
+.payrollGroupSearchRow .searchActions > button {
+  white-space: nowrap;
+}
+
 .searchActions {
   display: flex;
   gap: 10px;
+}
+
+.searchRowCentered {
+  align-items: center;
+}
+
+.searchRowCentered :global(.MuiButton-root) {
+  align-self: center;
 }
 
 .filterActions {
@@ -743,6 +771,22 @@
   width: min(550px, calc(100vw - 32px)) !important;
   max-width: 550px !important;
   margin: 16px;
+}
+
+.departmentDialogPaper :global(.MuiButton-root),
+.designationDialogPaper :global(.MuiButton-root) {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+.departmentDialogPaperWide640.departmentDialogPaperWide640 {
+  max-width: 640px !important;
+  width: min(640px, calc(100vw - 32px)) !important;
+}
+
+.departmentDialogPaperWide760.departmentDialogPaperWide760 {
+  max-width: 760px !important;
+  width: min(760px, calc(100vw - 32px)) !important;
 }
 
 .confirmDialogPaper {
@@ -1228,6 +1272,12 @@
   .dialogFooter {
     padding-left: 20px !important;
     padding-right: 20px !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .payrollGroupSearchRow {
+    grid-template-columns: 1fr 1fr !important;
   }
 }
 

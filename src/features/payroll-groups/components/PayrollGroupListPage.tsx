@@ -53,25 +53,20 @@ function PayrollGroupGridSkeleton() {
   return (
     <Box
       data-control-id="payroll-groups.list.skeleton"
-      sx={{
-        border: "1px solid #e8eef5",
-        borderRadius: "8px",
-        overflow: "hidden",
-        backgroundColor: "#fff",
-      }}
+      className="app-master-grid-skeleton"
     >
-      <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, px: 1.75, py: 1.25, flexWrap: "wrap" }}>
+      <Box className="app-master-grid-skeleton-toolbar">
         <Skeleton variant="rounded" width={164} height={36} />
-        <Box sx={{ display: "flex", gap: 1.25, alignItems: "center", flexWrap: "wrap" }}>
+        <Box className="app-master-grid-skeleton-toolbar-actions">
           <Skeleton variant="rounded" width={64} height={36} />
           <Skeleton variant="text" width={72} height={24} />
           <Skeleton variant="rounded" width={116} height={32} />
         </Box>
       </Box>
-      <Box sx={{ minWidth: 800 }}>
-        <Box sx={{ display: "grid", gridTemplateColumns: "110px 1fr 1.2fr 130px", bgcolor: "#edf3f9", borderTop: "1px solid #e8eef5", borderBottom: "1px solid #d9e3ee" }}>
+      <Box className="app-master-grid-skeleton-table">
+        <Box className="app-master-grid-skeleton-header">
           {[0, 1, 2, 3].map((intColumn) => (
-            <Box key={intColumn} sx={{ px: 2, py: 1 }}>
+            <Box key={intColumn} className="app-master-grid-skeleton-header-cell">
               <Skeleton variant="text" width={intColumn === 0 ? 64 : intColumn === 3 ? 76 : 138} height={22} />
             </Box>
           ))}
@@ -79,18 +74,12 @@ function PayrollGroupGridSkeleton() {
         {Array.from({ length: intPayrollGroupSkeletonRows }).map((_, intIndex) => (
           <Box
             key={intIndex}
-            sx={{
-              display: "grid",
-              gridTemplateColumns: "110px 1fr 1.2fr 130px",
-              borderBottom: "1px solid #edf1f6",
-              minHeight: 40,
-              alignItems: "center",
-            }}
+            className="app-master-grid-skeleton-row"
           >
-            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="rounded" width={76} height={24} /></Box>
-            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${58 + (intIndex % 3) * 9}%`} height={20} /></Box>
-            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${42 + (intIndex % 2) * 14}%`} height={20} /></Box>
-            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="rounded" width={72} height={22} /></Box>
+            <Box className="app-master-grid-skeleton-cell"><Skeleton variant="rounded" width={76} height={24} /></Box>
+            <Box className="app-master-grid-skeleton-cell"><Skeleton variant="text" width={`${58 + (intIndex % 3) * 9}%`} height={20} /></Box>
+            <Box className="app-master-grid-skeleton-cell"><Skeleton variant="text" width={`${42 + (intIndex % 2) * 14}%`} height={20} /></Box>
+            <Box className="app-master-grid-skeleton-cell"><Skeleton variant="rounded" width={72} height={22} /></Box>
           </Box>
         ))}
       </Box>
@@ -178,7 +167,7 @@ export default function PayrollGroupListPage() {
             type="button"
             underline="none"
             disabled={!blnCanView && !blnCanEdit}
-            className="app-master-first-column-link" data-control-id="payroll-groups.list.row.name.button"
+            className="app-mui-link-muted app-master-first-column-link" data-control-id="payroll-groups.list.row.name.button"
             onClick={(objEvent) => {
               if (window.getSelection()?.toString()) {
                 objEvent.stopPropagation();
@@ -186,7 +175,6 @@ export default function PayrollGroupListPage() {
               }
               openGroupEditor(blnCanEdit ? "edit" : "view", dicRow);
             }}
-            sx={{ cursor: "pointer", textAlign: "left", textUnderlineOffset: "3px", userSelect: "text", WebkitUserSelect: "text", "&&:hover": { color: "#0066df", textDecoration: "underline" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}
           >
             {dicRow.strPayrollGroupName}
           </Link>
@@ -221,30 +209,25 @@ export default function PayrollGroupListPage() {
   }
 
   return (
-    <Box className={styles.page} sx={{ position: "relative" }}>
-      <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ ml: "3px" }}>
-        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{t("breadcrumb_masters", "Masters")}</Typography>
+    <Box className={`${styles.page} app-master-page-relative`}>
+      <Breadcrumbs className="app-breadcrumbs app-breadcrumbs-master" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon className="app-breadcrumb-separator-icon" />}>
+        <Typography className="app-breadcrumb-label">{t("breadcrumb_masters", "Masters")}</Typography>
         <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{t("breadcrumb_payroll_groups", "Payroll Groups")}</Typography>
       </Breadcrumbs>
 
-      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+      <Box className="app-master-search-panel">
         {strRightsError ? (
-          <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography>
+          <Typography className="app-master-access-message app-master-access-warning">{strRightsError}</Typography>
         ) : null}
         {!blnRightsLoading && blnCanView && blnReadOnly ? (
-          <Typography sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>
+          <Typography className="app-master-access-message app-master-access-info">
             {t("group_read_only_mode", "You have view-only access to Payroll Groups.")}
           </Typography>
         ) : null}
         <Box
-          className={styles.searchRow}
+          className={`${styles.searchRow} ${styles.payrollGroupSearchRow} app-master-search-row-centered`}
           onKeyDown={onSearchEnter(() => { if (!blnSearchPanelFrozen) setDicSearchApplied(dicSearchDraft); })}
           aria-busy={blnSearchPanelFrozen}
-          sx={{
-            alignItems: "center",
-            "&&": { gridTemplateColumns: { xs: "1fr", md: "minmax(220px, 1.2fr) minmax(150px, 0.7fr) auto auto 1fr" } },
-            "& .MuiButton-root": { alignSelf: "center" },
-          }}
         >
           <TextField
             className="app-mui-text-field"
@@ -256,7 +239,7 @@ export default function PayrollGroupListPage() {
             onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strName: objEvent.target.value }))}
             placeholder={t("search_name_placeholder", "Search payroll group name")}
             size="small"
-            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon className="app-search-adornment-icon" /></InputAdornment> }}
             disabled={blnSearchPanelFrozen}
             fullWidth
           />
@@ -278,14 +261,15 @@ export default function PayrollGroupListPage() {
             <MenuItem value="Inactive">{t("inactive", "Inactive")}</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
-            <Button controlId="payroll-groups.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }} disabled={blnSearchPanelFrozen}>
+            <Button controlId="payroll-groups.list.search.button" className="app-btn app-btn-primary" size="small" startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }} disabled={blnSearchPanelFrozen}>
               {t("search", "Search")}
             </Button>
           </Box>
           <Box className={styles.searchActions}>
             <Button
               controlId="payroll-groups.list.clear.button"
-              className={styles.secondaryButton}
+              className="app-btn app-btn-outline"
+              size="small"
               startIcon={<ClearRoundedIcon />}
               onClick={() => {
                 setDicSearchDraft(dicEmptySearch);
@@ -299,15 +283,15 @@ export default function PayrollGroupListPage() {
         </Box>
       </Box>
 
-      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+      <Box className="app-master-table-panel app-master-page-relative">
         {(blnLoading || blnRightsLoading) && !dicDialog.blnOpen ? (
           <PayrollGroupGridSkeleton />
         ) : !blnCanView ? (
           <Box className={styles.emptyState}>
-            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
+            <Typography className="app-master-empty-title">
               {t("group_access_denied", "You do not have access to Payroll Groups.")}
             </Typography>
-            <Typography sx={{ mt: 1, color: "#64748b" }}>
+            <Typography className="app-master-empty-help">
               {t("group_access_denied_help", "Contact your administrator if you believe this is a mistake.")}
             </Typography>
           </Box>
@@ -317,6 +301,7 @@ export default function PayrollGroupListPage() {
             rows={lstTableRows}
             rowIdField="id"
             exportFileName="payroll_groups"
+            exportButtonClassName="app-btn app-btn-outline"
             showExportOptions={blnCanExport}
             testIdPrefix="payroll-groups.list"
             showPaginationSummary
@@ -328,17 +313,16 @@ export default function PayrollGroupListPage() {
             }}
             minTableWidth={800}
             emptyMessage={t("group_no_records", "No payroll groups found.")}
-            toolbarLeft={blnCanAdd ? (
-              <Button controlId="payroll-groups.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openGroupEditor("add")} disabled={blnLoading || blnRightsLoading}>
-                {t("group_add_button", "Add Payroll Group")}
-              </Button>
-            ) : undefined}
-            getRowSx={() => ({
-              backgroundColor: "#fff",
-              "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
-              "&.MuiTableRow-hover:hover td:first-of-type .MuiLink-root": { textDecoration: "underline" },
-            })}
-            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+            toolbarLeft={(
+              <Box className="app-master-toolbar-actions">
+                {blnCanAdd ? (
+                  <Button controlId="payroll-groups.list.add.button" className="app-btn app-btn-primary" startIcon={<AddRoundedIcon />} onClick={() => openGroupEditor("add")} disabled={blnLoading || blnRightsLoading}>
+                    {t("group_add_button", "Add Payroll Group")}
+                  </Button>
+                ) : null}
+              </Box>
+            )}
+            className="app-master-common-table-reset"
           />
         )}
         <BlockingLoader blnOpen={blnSubmitting} strLabel={t("group_processing", "Processing...")} intZIndex={1400} blnLocal />
@@ -355,6 +339,8 @@ export default function PayrollGroupListPage() {
         rootTestId="payroll-groups.dialog"
         cancelButtonTestId="payroll-groups.dialog.cancel.button"
         primaryButtonTestId="payroll-groups.dialog.save.button"
+        strSecondaryButtonClassName="app-btn app-btn-outline"
+        strPrimaryButtonClassName="app-btn app-btn-primary"
         strTitle={
           dicDialog.strMode === "add"
             ? t("group_add_title", "Add Payroll Group")
@@ -367,47 +353,27 @@ export default function PayrollGroupListPage() {
         onPrimaryAction={() => objEditorRef.current?.save()}
         blnHidePrimary={dicDialog.strMode === "view" || !blnCanEdit}
         nodeTitleAction={
-          <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
+          <Box className={`${styles.switchRow} app-master-dialog-status-row`}>
             <ActiveStatusSwitch
+              className="app-master-dialog-status-switch"
               testId="payroll-groups.dialog.active.switch"
               blnIsActive={objActiveState.blnIsActive}
               disabled={objActiveState.blnDisabled}
-              sx={{
-                width: 40,
-                height: 22,
-                p: 0,
-                overflow: "visible",
-                "& .MuiSwitch-switchBase": {
-                  p: "3px",
-                  color: "#fff",
-                  transitionDuration: "180ms",
-                  "&.Mui-checked": {
-                    transform: "translateX(18px)",
-                    color: "#fff",
-                    "& + .MuiSwitch-track": { backgroundColor: "#00b86b", opacity: 1 },
-                  },
-                  "&.Mui-disabled": { color: "#fff", opacity: 0.7 },
-                },
-                "& .MuiSwitch-thumb": { width: 16, height: 16, boxShadow: "0 1px 3px rgba(15, 23, 42, 0.2)" },
-                "& .MuiSwitch-track": { borderRadius: "11px", backgroundColor: "#98a2b3", opacity: 1, transition: "background-color 180ms" },
-              }}
               onChange={(blnChecked) => objEditorRef.current?.setActive(blnChecked)}
             />
-            <Typography className={styles.switchLabel} sx={{ fontSize: "12px !important", fontWeight: "600 !important", whiteSpace: "nowrap" }}>
+            <Typography className={`${styles.switchLabel} app-master-dialog-status-text`}>
               {t("active", "Active")}
             </Typography>
-            <IconButton aria-label={t("close", "Close")} onClick={closeGroupEditor} size="small" sx={{ ml: 1, color: "#94a3b8" }}>
+            <IconButton aria-label={t("close", "Close")} onClick={closeGroupEditor} size="small" className="app-master-dialog-close-button app-master-dialog-close-button-spaced">
               <CloseRoundedIcon fontSize="small" />
             </IconButton>
           </Box>
         }
-        paperClassName={styles.departmentDialogPaper}
+        paperClassName={`${styles.departmentDialogPaper} app-master-dialog-compact-buttons`}
         maxWidth={false}
         fullWidth={false}
-        paperSx={{ "& .MuiButton-root": { fontSize: "12px !important", fontWeight: "600 !important" } }}
-        contentSx={{ overflowX: "hidden", overflowY: "auto", px: "20px", py: "12px", borderColor: "#e5edf5" }}
-        titleSx={{ px: 2.25, py: 1.25, fontSize: "16px", fontWeight: 700, maxHeight: 50 }}
-        nodeFooterStart={<Typography sx={{ color: "#64748b", fontSize: "11px" }}>{t("required_fields_hint", "Required fields are marked")} <Box component="span" sx={{ color: "#dc2626" }}>*</Box></Typography>}
+        contentClassName="app-master-dialog-content-compact"
+        nodeFooterStart={<Typography className="app-master-dialog-required-fields">{t("required_fields_hint", "Required fields are marked")} <Box component="span" className="app-master-dialog-required-asterisk">*</Box></Typography>}
         nodeContent={
           dicDialog.blnOpen ? (
             <PayrollGroupEditorPage
@@ -432,7 +398,7 @@ export default function PayrollGroupListPage() {
       />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}>
-        <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>
+        <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" className="app-master-toast-alert">
           {objToast.strMessage}
         </Alert>
       </Snackbar>

@@ -1,8 +1,10 @@
 "use client";
 
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import {
   Alert,
   Box,
+  IconButton,
   MenuItem,
   Stack,
   Tab,
@@ -181,6 +183,7 @@ export default function UserGroupMasterDialog({
     dialogViewTitle: t("dialog_view_title", "View User Group"),
     tabBasicDetails: t("tab_basic_details", "Basic Details"),
     tabRights: t("tab_rights", "Menu & Action Rights"),
+    basicDetailsHelp: t("basic_details_help", "Maintain group identity, scope, and portal type."),
     fieldGroupCode: t("field_group_code", "Group Code"),
     fieldGroupName: t("field_group_name", "Group Name"),
     fieldGroupDescription: t("field_group_description", "Group Description"),
@@ -226,11 +229,40 @@ export default function UserGroupMasterDialog({
       onPrimaryAction={() => onSave(serializeRights(lstRightsNodes))}
       blnPrimaryDisabled={blnSaving || blnMetadataLoading || blnRightsLoading}
       blnHidePrimary={blnReadOnly}
-      paperClassName={styles.dialogPaperDapartment}
+      strSecondaryButtonClassName="app-btn app-btn-outline"
+      strPrimaryButtonClassName="app-btn app-btn-primary"
+      nodeTitleAction={
+        <Box className={`${styles.switchRow} app-master-dialog-status-row`}>
+          <Tooltip
+            title={blnProtectCurrentUserGroup && !blnReadOnly ? strOwnGroupInactiveWarning : ""}
+            arrow
+          >
+            <span>
+              <ActiveStatusSwitch
+                className="app-master-dialog-status-switch"
+                blnIsActive={objForm.blnIsActive}
+                onChange={(blnChecked) => updateField("blnIsActive", blnChecked)}
+                disabled={blnReadOnly || blnProtectCurrentUserGroup}
+                controlId="security.user-group.dialog.is-active.switch"
+                testId="security.user-group.dialog.is-active.switch"
+              />
+            </span>
+          </Tooltip>
+          <Typography className={`${styles.switchLabel} app-master-dialog-status-text`}>
+            {dicLabels.fieldIsActive}
+          </Typography>
+          <IconButton aria-label={dicLabels.closeButton} onClick={onClose} size="small" className="app-master-dialog-close-button app-master-dialog-close-button-spaced">
+            <CloseRoundedIcon fontSize="small" />
+          </IconButton>
+        </Box>
+      }
+      nodeFooterStart={<Typography className="app-master-dialog-required-fields">Required fields are marked <Box component="span" className="app-master-dialog-required-asterisk">*</Box></Typography>}
+      paperClassName={`${styles.dialogPaperDapartment} app-master-dialog-compact-buttons`}
       maxWidth={false}
       fullWidth={false}
       titleSx={{ px: 2.25, py: 1.25, fontSize: "1rem", maxHeight: 50 }}
-      contentSx={{ px: 2.5, py: 2.5, display: "flex", flexDirection: "column", minHeight: 0, overflowX: "hidden" }}
+      contentClassName="app-master-dialog-content-compact"
+      contentSx={{ display: "flex", flexDirection: "column", minHeight: 0, overflowX: "hidden" }}
       nodeContent={(
         <>
           <Tabs
@@ -250,6 +282,14 @@ export default function UserGroupMasterDialog({
                 {strSaveError}
               </Alert>
             ) : null}
+            <Box>
+              <Typography className="app-master-dialog-section-heading">
+                {dicLabels.tabBasicDetails}
+              </Typography>
+              <Typography className="app-master-dialog-section-subheading app-master-dialog-section-subheading-spaced">
+                {dicLabels.basicDetailsHelp}
+              </Typography>
+            </Box>
             <Box
               sx={{
                 display: "grid",
@@ -258,6 +298,7 @@ export default function UserGroupMasterDialog({
               }}
             >
               <TextField
+                className="app-mui-text-field"
                 label={dicLabels.fieldGroupCode}
                 value={objForm.strGroupCode}
                 onChange={(objEvent) => updateField("strGroupCode", objEvent.target.value)}
@@ -268,6 +309,7 @@ export default function UserGroupMasterDialog({
                 inputProps={{ controlId: "security.user-group.dialog.group-code.input" }}
               />
               <TextField
+                className="app-mui-text-field"
                 label={dicLabels.fieldGroupName}
                 value={objForm.strGroupName}
                 onChange={(objEvent) => updateField("strGroupName", objEvent.target.value)}
@@ -280,6 +322,7 @@ export default function UserGroupMasterDialog({
             </Box>
 
             <TextField
+              className="app-mui-text-field"
               label={dicLabels.fieldGroupDescription}
               value={objForm.strGroupDescription ?? ""}
               onChange={(objEvent) => updateField("strGroupDescription", objEvent.target.value)}
@@ -290,6 +333,7 @@ export default function UserGroupMasterDialog({
             />
 
             <TextField
+              className="app-mui-text-field"
               select
               label={dicLabels.fieldGroupScope}
               value={objForm.intCompanyID == null ? "tenant" : "company"}
@@ -312,6 +356,7 @@ export default function UserGroupMasterDialog({
               }}
             >
               <TextField
+                className="app-mui-text-field"
                 select
                 label={dicLabels.fieldGroupType}
                 value={objForm.strGroupType === "BOTH" ? "HR" : objForm.strGroupType}
@@ -325,32 +370,6 @@ export default function UserGroupMasterDialog({
                 <MenuItem value="HR" data-control-id="security.user-group.dialog.group-type.hr.option">{dicLabels.groupTypeHR}</MenuItem>
                 <MenuItem value="ESS" data-control-id="security.user-group.dialog.group-type.ess.option">{dicLabels.groupTypeESS}</MenuItem>
               </TextField>
-
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  px: 0,
-                  py: 1,
-                }}
-              >
-                <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicLabels.fieldIsActive}</Typography>
-                <Tooltip
-                  title={blnProtectCurrentUserGroup && !blnReadOnly ? strOwnGroupInactiveWarning : ""}
-                  arrow
-                >
-                  <span>
-                    <ActiveStatusSwitch
-                      blnIsActive={objForm.blnIsActive}
-                      onChange={(blnChecked) => updateField("blnIsActive", blnChecked)}
-                      disabled={blnReadOnly || blnProtectCurrentUserGroup}
-                      controlId="security.user-group.dialog.is-active.switch"
-                      testId="security.user-group.dialog.is-active.switch"
-                    />
-                  </span>
-                </Tooltip>
-              </Box>
             </Box>
 
             {blnProtectCurrentUserGroup ? (

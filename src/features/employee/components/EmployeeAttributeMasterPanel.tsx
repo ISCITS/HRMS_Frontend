@@ -407,7 +407,7 @@ export default function EmployeeAttributeMasterPanel({ config }: { config: Emplo
       <Link
         component="button"
         underline="none"
-        sx={{ color: "#0f172a", fontWeight: 500, textAlign: "left" }}
+        className="app-master-first-column-link"
         onClick={(event) => {
           event.stopPropagation();
           if (canEdit || canView) {
@@ -421,7 +421,7 @@ export default function EmployeeAttributeMasterPanel({ config }: { config: Emplo
     code: item.code,
     statusText: item.status,
     status: (
-      <span className={`${styles.statusPill} ${item.status === "Active" ? styles.statusActive : styles.statusInactive}`}>
+      <span className={`app-master-status-pill ${item.status === "Active" ? "app-master-status-active" : "app-master-status-inactive"}`}>
         {item.status}
       </span>
     ),
@@ -432,43 +432,43 @@ export default function EmployeeAttributeMasterPanel({ config }: { config: Emplo
     { field: "status", headerName: label("table_status", "Status"), sortable: false, filterable: false },
   ];
 
-  return <Box className={styles.page} sx={{ position: "relative" }}>
+  return <Box className={`${styles.page} ${styles.relativePage}`}>
     <MasterBreadcrumbs strCurrent={config.plural} />
 
-    <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+    <Box className="app-master-search-panel">
       {rightsError ? <Typography sx={{ mt: 1, color: "#b45309", fontSize: ".85rem" }}>{rightsError}</Typography> : null}
       {!rightsLoading && canView && readOnly ? <Typography sx={{ mt: 1, color: "#1d4ed8", fontSize: ".85rem", fontWeight: 700 }}>You have view-only access for {config.singular}.</Typography> : null}
-      <Box className={styles.searchRow} aria-busy={searchFrozen} sx={{ alignItems: "center", "& .MuiButton-root": { alignSelf: "center" } }}>
-        <TextField className="app-mui-text-field" id={`${config.testId}-search-name`} controlId={`${config.testId}.list.search-name.input`} inputProps={{ controlId: `${config.testId}.list.search-name.input` }} label={strNameLabel} value={searchDraft.name} onChange={(event) => setSearchDraft((old) => ({ ...old, name: event.target.value }))} placeholder={strNameLabel} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={searchFrozen} fullWidth />
-        <TextField className="app-mui-text-field" id={`${config.testId}-search-code`} controlId={`${config.testId}.list.search-code.input`} inputProps={{ controlId: `${config.testId}.list.search-code.input` }} label={strCodeLabel} value={searchDraft.code} onChange={(event) => setSearchDraft((old) => ({ ...old, code: event.target.value.toUpperCase() }))} placeholder={strCodeLabel} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={searchFrozen} fullWidth />
+      <Box className={`${styles.searchRow} ${styles.searchRowCentered}`} aria-busy={searchFrozen}>
+        <TextField className="app-mui-text-field" id={`${config.testId}-search-name`} controlId={`${config.testId}.list.search-name.input`} inputProps={{ controlId: `${config.testId}.list.search-name.input` }} label={strNameLabel} value={searchDraft.name} onChange={(event) => setSearchDraft((old) => ({ ...old, name: event.target.value }))} placeholder={strNameLabel} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon className="app-search-adornment-icon" /></InputAdornment> }} disabled={searchFrozen} fullWidth />
+        <TextField className="app-mui-text-field" id={`${config.testId}-search-code`} controlId={`${config.testId}.list.search-code.input`} inputProps={{ controlId: `${config.testId}.list.search-code.input` }} label={strCodeLabel} value={searchDraft.code} onChange={(event) => setSearchDraft((old) => ({ ...old, code: event.target.value.toUpperCase() }))} placeholder={strCodeLabel} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon className="app-search-adornment-icon" /></InputAdornment> }} disabled={searchFrozen} fullWidth />
         <TextField className="app-mui-text-field" id={`${config.testId}-search-status`} controlId={`${config.testId}.list.search-status.select`} inputProps={{ controlId: `${config.testId}.list.search-status.select` }} select label={label("table_status", "Status")} value={searchDraft.status} onChange={(event) => setSearchDraft((old) => ({ ...old, status: event.target.value as SearchForm["status"] }))} size="small" disabled={searchFrozen} fullWidth>
           <MenuItem controlId={`${config.testId}.list.search-status.all.option`} value="All">All</MenuItem>
           <MenuItem controlId={`${config.testId}.list.search-status.active.option`} value="Active">Active</MenuItem>
           <MenuItem controlId={`${config.testId}.list.search-status.inactive.option`} value="Inactive">Inactive</MenuItem>
           </TextField>
-        <Box className={styles.searchActions}><Button controlId={`${config.testId}.list.search.button`} className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setSearchApplied(searchDraft)} disabled={searchFrozen}>Search</Button></Box>
-        <Box className={styles.searchActions}><Button controlId={`${config.testId}.list.clear.button`} className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setSearchDraft(emptySearch); setSearchApplied(emptySearch); }} disabled={searchFrozen}>Clear</Button></Box>
+        <Box className={styles.searchActions}><Button controlId={`${config.testId}.list.search.button`} className="app-btn app-btn-primary" startIcon={<SearchRoundedIcon />} onClick={() => setSearchApplied(searchDraft)} disabled={searchFrozen}>Search</Button></Box>
+        <Box className={styles.searchActions}><Button controlId={`${config.testId}.list.clear.button`} className="app-btn app-btn-outline" startIcon={<ClearRoundedIcon />} onClick={() => { setSearchDraft(emptySearch); setSearchApplied(emptySearch); }} disabled={searchFrozen}>Clear</Button></Box>
       </Box>
     </Box>
 
-    <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+    <Box className="app-master-table-panel app-master-page-relative">
       {(loading || rightsLoading) && !dialogOpen ? <EmployeeAttributeGridSkeleton testId={config.testId} /> :
       !canView ? <Box className={styles.emptyState}><Typography sx={{ fontWeight: 800 }}>{config.singular} access is not available for your user group.</Typography></Box> :
-        <CommonTable columns={columns} rows={rows} rowIdField="id" exportFileName={config.exportFileName} showExportOptions={canExport} showPaginationSummary hideRowClickHint onRowClick={(row) => { if (rightsLoading || loading || submitting || (!canEdit && !canView)) return; const item = records.find((entry) => entry.id === row.id); if (item) void openDialog(canEdit ? "edit" : "view", item); }} minTableWidth={800} emptyMessage={`No ${config.plural.toLowerCase()} found.`} testIdPrefix={`${config.testId}.list`} toolbarLeft={canAdd ? <Button controlId={`${config.testId}.list.add.button`} className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => void openDialog("add")} disabled={loading || submitting || rightsLoading}>Add {config.singular}</Button> : null} getRowSx={() => ({ backgroundColor: "#fff", "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" }, "&.MuiTableRow-hover:hover td:first-of-type .MuiLink-root": { textDecoration: "underline" } })} sx={{ p: 0, boxShadow: "none", background: "transparent" }} />}
+        <CommonTable columns={columns} rows={rows} rowIdField="id" exportFileName={config.exportFileName} exportButtonClassName="app-btn app-btn-outline" showExportOptions={canExport} showPaginationSummary hideRowClickHint onRowClick={(row) => { if (rightsLoading || loading || submitting || (!canEdit && !canView)) return; const item = records.find((entry) => entry.id === row.id); if (item) void openDialog(canEdit ? "edit" : "view", item); }} minTableWidth={800} emptyMessage={`No ${config.plural.toLowerCase()} found.`} testIdPrefix={`${config.testId}.list`} toolbarLeft={canAdd ? <Button controlId={`${config.testId}.list.add.button`} className="app-btn app-btn-primary" startIcon={<AddRoundedIcon />} onClick={() => void openDialog("add")} disabled={loading || submitting || rightsLoading}>Add {config.singular}</Button> : null} getRowSx={() => ({ backgroundColor: "#fff", "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" }, "&.MuiTableRow-hover:hover td:first-of-type .MuiLink-root": { textDecoration: "underline" } })} className="app-master-common-table-reset" />}
       <BlockingLoader blnOpen={submitting} strLabel="Processing..." intZIndex={1400} blnLocal />
     </Box>
 
-    <CommonMasterDialog blnOpen={dialogOpen} onClose={() => setDialogOpen(false)} onDialogClose={(_, reason) => { if (reason !== "backdropClick") setDialogOpen(false); }} rootTestId={`${config.testId}.dialog`} cancelButtonTestId={`${config.testId}.dialog.cancel.button`} primaryButtonTestId={`${config.testId}.dialog.save.button`} strTitle={`${mode === "add" ? "Add" : mode === "edit" ? "Edit" : "View"} ${config.singular}`} strSecondaryLabel={mode === "view" ? "Close" : "Cancel"} strPrimaryLabel={submitting ? "Saving..." : "Save"} onPrimaryAction={() => void save()} blnPrimaryDisabled={submitting} blnHidePrimary={mode === "view"} paperClassName={styles.departmentDialogPaper} titleSx={{ px: 2.25, py: 1.25, fontSize: "16px", fontWeight: 700, maxHeight: 50 }} paperSx={{ "& .MuiButton-root": { fontSize: "12px !important", fontWeight: "600 !important" } }} maxWidth={false} fullWidth={false} contentSx={{ overflowX: "hidden", overflowY: "auto", px: "20px", py: "12px", borderColor: "#e5edf5" }}
-      nodeTitleAction={<Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}><ActiveStatusSwitch testId={`${config.testId}.dialog.active.switch`} blnIsActive={form.status === "Active"} disabled={mode === "view"} sx={{ width: 40, height: 22, p: 0, overflow: "visible", "& .MuiSwitch-switchBase": { p: "3px", color: "#fff", transitionDuration: "180ms", "&.Mui-checked": { transform: "translateX(18px)", color: "#fff", "& + .MuiSwitch-track": { backgroundColor: "#00b86b", opacity: 1 } }, "&.Mui-disabled": { color: "#fff", opacity: 0.7 } }, "& .MuiSwitch-thumb": { width: 16, height: 16, boxShadow: "0 1px 3px rgba(15, 23, 42, 0.2)" }, "& .MuiSwitch-track": { borderRadius: "11px", backgroundColor: "#98a2b3", opacity: 1, transition: "background-color 180ms" } }} onChange={(checked) => setForm((old) => ({ ...old, status: checked ? "Active" : "Inactive" }))} /><Typography className={styles.switchLabel} sx={{ fontSize: "12px !important", fontWeight: "600 !important", whiteSpace: "nowrap" }}>Active</Typography><IconButton aria-label="Close" onClick={() => setDialogOpen(false)} size="small" sx={{ ml: 1, color: "#94a3b8" }}><CloseRoundedIcon fontSize="small" /></IconButton></Box>}
-      nodeFooterStart={<Typography sx={{ color: "#64748b", fontSize: "11px" }}>Required fields are marked <Box component="span" sx={{ color: "#dc2626" }}>*</Box></Typography>}
+    <CommonMasterDialog blnOpen={dialogOpen} onClose={() => setDialogOpen(false)} onDialogClose={(_, reason) => { if (reason !== "backdropClick") setDialogOpen(false); }} rootTestId={`${config.testId}.dialog`} cancelButtonTestId={`${config.testId}.dialog.cancel.button`} primaryButtonTestId={`${config.testId}.dialog.save.button`} strTitle={`${mode === "add" ? "Add" : mode === "edit" ? "Edit" : "View"} ${config.singular}`} strSecondaryLabel={mode === "view" ? "Close" : "Cancel"} strPrimaryLabel={submitting ? "Saving..." : "Save"} strSecondaryButtonClassName="app-btn app-btn-outline" strPrimaryButtonClassName="app-btn app-btn-primary" onPrimaryAction={() => void save()} blnPrimaryDisabled={submitting} blnHidePrimary={mode === "view"} paperClassName={styles.departmentDialogPaper} maxWidth={false} fullWidth={false} contentClassName="app-master-dialog-content-compact"
+      nodeTitleAction={<Box className={`${styles.switchRow} app-master-dialog-status-row`}><ActiveStatusSwitch className="app-master-dialog-status-switch" testId={`${config.testId}.dialog.active.switch`} blnIsActive={form.status === "Active"} disabled={mode === "view"} sx={{ width: 40, height: 22, p: 0, overflow: "visible", "& .MuiSwitch-switchBase": { p: "3px", color: "#fff", transitionDuration: "180ms", "&.Mui-checked": { transform: "translateX(18px)", color: "#fff", "& + .MuiSwitch-track": { backgroundColor: "#00b86b", opacity: 1 } }, "&.Mui-disabled": { color: "#fff", opacity: 0.7 } }, "& .MuiSwitch-thumb": { width: 16, height: 16, boxShadow: "0 1px 3px rgba(15, 23, 42, 0.2)" }, "& .MuiSwitch-track": { borderRadius: "11px", backgroundColor: "#98a2b3", opacity: 1, transition: "background-color 180ms" } }} onChange={(checked) => setForm((old) => ({ ...old, status: checked ? "Active" : "Inactive" }))} /><Typography className={`${styles.switchLabel} app-master-dialog-status-text`}>Active</Typography><IconButton aria-label="Close" onClick={() => setDialogOpen(false)} size="small" className="app-master-dialog-close-button app-master-dialog-close-button-spaced"><CloseRoundedIcon fontSize="small" /></IconButton></Box>}
+      nodeFooterStart={<Typography className="app-master-dialog-required-fields">Required fields are marked <Box component="span" className="app-master-dialog-required-asterisk">*</Box></Typography>}
       nodeContent={<Box sx={{ display: "grid", gap: "12px" }}>
         <Box sx={{ display: "grid", columnGap: 1.6, rowGap: "12px", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" }, alignItems: "start" }}>
           {mode === "add" ? (
             <Box sx={{ gridColumn: "1 / -1" }}>
-              <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>
+              <Typography className="app-master-dialog-section-heading">
                 {label("basic_information", "Basic Information")}
               </Typography>
-              <Typography sx={{ fontSize: "11px", color: "#64748b", mt: 0.25, mb: 1 }}>
+              <Typography className="app-master-dialog-section-subheading app-master-dialog-section-subheading-spaced">
                 {label("basic_information_help", `Create a new ${config.singular.toLowerCase()} for your organisation.`)}
               </Typography>
             </Box>
@@ -522,8 +522,8 @@ export default function EmployeeAttributeMasterPanel({ config }: { config: Emplo
             <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap", p: 1, borderBottom: "1px solid #e3edfc", background: "#eff6ff" }}>
               <LanguageRoundedIcon sx={{ color: "#1473cf" }} />
               <Box sx={{ flex: 1, minWidth: 180 }}>
-                <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>{label("language_translations", "Language Translations")}</Typography>
-                <Typography sx={{ color: "#64748b", fontSize: "11px", mt: 0.25 }}>
+                <Typography className="app-master-dialog-section-heading">{label("language_translations", "Language Translations")}</Typography>
+                <Typography className="app-master-dialog-section-subheading app-master-dialog-section-subheading-spaced">
                   {label("language_translations_help", `Provide translated ${config.singular.toLowerCase()} names for the application languages you want to support.`)}
                 </Typography>
               </Box>
@@ -531,7 +531,7 @@ export default function EmployeeAttributeMasterPanel({ config }: { config: Emplo
                 <span>
                   <Button
                     controlId={`${config.testId}.dialog.translate.button`}
-                    className={styles.secondaryButton}
+                    className="app-btn app-btn-outline"
                     variant="outlined"
                     startIcon={<AutoAwesomeRoundedIcon />}
                     onClick={() => void handleTranslateClick()}

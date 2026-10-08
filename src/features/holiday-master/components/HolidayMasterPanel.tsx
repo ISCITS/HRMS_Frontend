@@ -410,13 +410,13 @@ export default function HolidayMasterPanel() {
   ], [blnAllSelected, blnSomeSelected, lstTableRows, t]);
 
   return (
-    <Box className={styles.page} sx={{ position: "relative" }}>
-      <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ ml: "3px" }}>
-        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{t("breadcrumb_masters", "Masters")}</Typography>
+    <Box className={`${styles.page} ${styles.relativePage}`}>
+      <Breadcrumbs className="app-breadcrumbs app-breadcrumbs-master" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon className="app-breadcrumb-separator-icon" />}>
+        <Typography className="app-breadcrumb-label">{t("breadcrumb_masters", "Masters")}</Typography>
         <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{t("breadcrumb_holidays", "Holiday Master")}</Typography>
       </Breadcrumbs>
 
-      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+      <Box className="app-master-search-panel">
         {strRightsError ? <Alert severity="warning">{strRightsError}</Alert> : null}
         {strError ? <Alert severity="error">{strError}</Alert> : null}
         {!blnRightsLoading && blnCanView && blnReadOnly ? <Typography sx={{ color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>{t("read_only_mode", "You have view-only access for Holiday.")}</Typography> : null}
@@ -431,19 +431,19 @@ export default function HolidayMasterPanel() {
           }}
         >
           <TextField className="app-mui-text-field" id="holiday-search-year" controlId="holiday-master.list.search-year.input" label={t("year", "Year")} type="number" size="small" value={objSearchDraft.intYear} onChange={(objEvent) => setObjSearchDraft((objPrevious) => ({ ...objPrevious, intYear: Number(objEvent.target.value) }))} inputProps={{ min: 1900, max: 9999, "data-control-id": "holiday-master.list.search-year.input" }} disabled={blnSearchPanelFrozen} fullWidth />
-          <TextField className="app-mui-text-field" id="holiday-search-name" label={t("name", "Holiday Name")} placeholder={t("search_name", "Search holiday name")} size="small" value={objSearchDraft.strSearchName} onChange={(objEvent) => setObjSearchDraft((objPrevious) => ({ ...objPrevious, strSearchName: objEvent.target.value }))} InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} inputProps={{ "data-control-id": "holiday-master.list.search-name.input" }} disabled={blnSearchPanelFrozen} fullWidth />
-          <TextField className="app-mui-text-field" id="holiday-search-code" label={t("code", "Holiday Code")} placeholder={t("search_code", "Search holiday code")} size="small" value={objSearchDraft.strSearchCode} onChange={(objEvent) => setObjSearchDraft((objPrevious) => ({ ...objPrevious, strSearchCode: objEvent.target.value.toUpperCase() }))} InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} inputProps={{ "data-control-id": "holiday-master.list.search-code.input" }} disabled={blnSearchPanelFrozen} fullWidth />
+          <TextField className="app-mui-text-field" id="holiday-search-name" label={t("name", "Holiday Name")} placeholder={t("search_name", "Search holiday name")} size="small" value={objSearchDraft.strSearchName} onChange={(objEvent) => setObjSearchDraft((objPrevious) => ({ ...objPrevious, strSearchName: objEvent.target.value }))} InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon className="app-search-adornment-icon" /></InputAdornment> }} inputProps={{ "data-control-id": "holiday-master.list.search-name.input" }} disabled={blnSearchPanelFrozen} fullWidth />
+          <TextField className="app-mui-text-field" id="holiday-search-code" label={t("code", "Holiday Code")} placeholder={t("search_code", "Search holiday code")} size="small" value={objSearchDraft.strSearchCode} onChange={(objEvent) => setObjSearchDraft((objPrevious) => ({ ...objPrevious, strSearchCode: objEvent.target.value.toUpperCase() }))} InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon className="app-search-adornment-icon" /></InputAdornment> }} inputProps={{ "data-control-id": "holiday-master.list.search-code.input" }} disabled={blnSearchPanelFrozen} fullWidth />
           <CommonSearchableSelect className="app-mui-text-field" controlId="holiday-master.list.search-type.select" label={t("type", "Holiday Type")} placeholder={t("all", "All")} showSearchIcon={false} value={objSearchDraft.strHolidayTypeCode} options={objOptions.lstHolidayTypes.map((objType) => ({ intID: objType.strCode, strLabel: objType.strLabel }))} onChange={(strValue) => setObjSearchDraft((objPrevious) => ({ ...objPrevious, strHolidayTypeCode: strValue === "" ? "" : String(strValue) }))} disabled={blnSearchPanelFrozen} />
           <TextField className="app-mui-text-field" id="holiday-search-status" select label={t("status", "Status")} size="small" value={objSearchDraft.strStatus} onChange={(objEvent) => setObjSearchDraft((objPrevious) => ({ ...objPrevious, strStatus: objEvent.target.value }))} inputProps={{ "data-control-id": "holiday-master.list.search-status.select" }} disabled={blnSearchPanelFrozen} fullWidth>
             <MenuItem value="">{t("all", "All")}</MenuItem>
             <MenuItem value="Active">{t("active", "Active")}</MenuItem>
             <MenuItem value="Inactive">{t("inactive", "Inactive")}</MenuItem>
           </TextField>
-          <Button data-control-id="holiday-master.list.more-filters.button" className={styles.secondaryButton} startIcon={<FilterAltOutlinedIcon />} onClick={(objEvent) => setElMoreFiltersAnchor(objEvent.currentTarget)} disabled={blnSearchPanelFrozen}>
+          <Button data-control-id="holiday-master.list.more-filters.button" className="app-btn app-btn-outline" startIcon={<FilterAltOutlinedIcon />} onClick={(objEvent) => setElMoreFiltersAnchor(objEvent.currentTarget)} disabled={blnSearchPanelFrozen}>
             {t("more_filters", "More filters")}{intActiveMoreFilters > 0 ? ` (${intActiveMoreFilters})` : ""}
           </Button>
-          <Button data-control-id="holiday-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={applySearch} disabled={blnSearchPanelFrozen}>{t("search", "Search")}</Button>
-          <Button data-control-id="holiday-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearSearch} disabled={blnSearchPanelFrozen}>{t("clear", "Clear")}</Button>
+          <Button data-control-id="holiday-master.list.search.button" className="app-btn app-btn-primary" startIcon={<SearchRoundedIcon />} onClick={applySearch} disabled={blnSearchPanelFrozen}>{t("search", "Search")}</Button>
+          <Button data-control-id="holiday-master.list.clear.button" className="app-btn app-btn-outline" startIcon={<ClearRoundedIcon />} onClick={clearSearch} disabled={blnSearchPanelFrozen}>{t("clear", "Clear")}</Button>
         </Box>
         <Popover
           open={Boolean(elMoreFiltersAnchor)}
@@ -464,15 +464,15 @@ export default function HolidayMasterPanel() {
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mt: 2 }}>
             <Link component="button" type="button" underline="hover" onClick={() => setObjSearchDraft((objPrevious) => ({ ...objPrevious, dtFromDate: "", dtToDate: "" }))} sx={{ fontSize: "12px", fontWeight: 600 }}>{t("clear_all", "Clear all")}</Link>
             <Box sx={{ display: "flex", gap: 1 }}>
-              <Button data-control-id="holiday-master.list.more-filters.cancel.button" className={styles.secondaryButton} onClick={cancelMoreFilters}>{t("cancel", "Cancel")}</Button>
-              <Button data-control-id="holiday-master.list.more-filters.apply.button" className={styles.primaryButton} onClick={() => { setElMoreFiltersAnchor(null); applySearch(); }}>{t("apply", "Apply")}</Button>
+              <Button data-control-id="holiday-master.list.more-filters.cancel.button" className="app-btn app-btn-outline" onClick={cancelMoreFilters}>{t("cancel", "Cancel")}</Button>
+              <Button data-control-id="holiday-master.list.more-filters.apply.button" className="app-btn app-btn-primary" onClick={() => { setElMoreFiltersAnchor(null); applySearch(); }}>{t("apply", "Apply")}</Button>
             </Box>
           </Box>
         </Popover>
         {lstSelectedIDs.length > 0 && blnCanEdit ? <Box className={styles.bulkBar}><Typography className={styles.bulkCount}>{lstSelectedIDs.length} {t("rows_selected", "rows selected")}</Typography><Button data-control-id="holiday-master.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => requestBulkStatus(true)}>{t("activate", "Activate")}</Button><Button data-control-id="holiday-master.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => requestBulkStatus(false)}>{t("deactivate", "Deactivate")}</Button></Box> : null}
       </Box>
 
-      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+      <Box className="app-master-table-panel app-master-page-relative">
         {(blnLoading || blnRightsLoading) && !blnDialogOpen ? (
           <HolidayGridSkeleton />
         ) : !blnCanView ? (
@@ -483,6 +483,7 @@ export default function HolidayMasterPanel() {
             rows={lstTableRows}
             rowIdField="id"
             exportFileName="holiday"
+            exportButtonClassName="app-btn app-btn-outline"
             showExportOptions={blnCanExport}
             showPaginationSummary
             hideRowClickHint
@@ -492,13 +493,13 @@ export default function HolidayMasterPanel() {
               if (blnRightsLoading || blnLoading || blnSubmitting || !blnCanView) return;
               void openHoliday(blnCanEdit ? "edit" : "view", Number(objRow.id));
             }}
-            toolbarLeft={blnCanAdd ? <Button data-control-id="holiday-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={openAdd}>{t("add_button", "Add Holiday")}</Button> : null}
+            toolbarLeft={blnCanAdd ? <Button data-control-id="holiday-master.list.add.button" className="app-btn app-btn-primary" startIcon={<AddRoundedIcon />} onClick={openAdd}>{t("add_button", "Add Holiday")}</Button> : null}
             getRowSx={() => ({
               backgroundColor: "#fff",
               "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
               "&.MuiTableRow-hover:hover .MuiLink-root": { textDecoration: "underline", color: "#0066df" },
             })}
-            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+            className="app-master-common-table-reset"
           />
         )}
       </Box>
@@ -520,17 +521,11 @@ export default function HolidayMasterPanel() {
         blnHidePrimary={strMode === "view"}
         maxWidth={false}
         fullWidth={false}
-        paperClassName={styles.departmentDialogPaper}
-        paperSx={{
-          width: "min(760px, calc(100vw - 32px)) !important",
-          maxWidth: "760px !important",
-          "& .MuiButton-root": { fontSize: "12px !important", fontWeight: "600 !important" },
-        }}
-        titleSx={{ px: 2.25, py: 1.25, fontSize: "16px", fontWeight: 700, maxHeight: 50 }}
-        contentSx={{ overflowX: "hidden", overflowY: "auto", px: "20px", py: "12px", borderColor: "#e5edf5" }}
-        nodeFooterStart={<Typography sx={{ color: "#64748b", fontSize: "11px" }}>{t("required_fields_hint", "Required fields are marked")} <Box component="span" sx={{ color: "#dc2626" }}>*</Box></Typography>}
+        paperClassName={`${styles.departmentDialogPaper} ${styles.departmentDialogPaperWide760}`}
+        contentClassName="app-master-dialog-content-compact"
+        nodeFooterStart={<Typography className="app-master-dialog-required-fields">{t("required_fields_hint", "Required fields are marked")} <Box component="span" className="app-master-dialog-required-asterisk">*</Box></Typography>}
         nodeTitleAction={
-          <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
+          <Box className={`${styles.switchRow} app-master-dialog-status-row`}>
             <ActiveStatusSwitch
               testId="holiday-master.dialog.active.switch"
               blnIsActive={blnFormActive}
@@ -556,7 +551,7 @@ export default function HolidayMasterPanel() {
               }}
               onChange={(blnChecked) => setValue("blnIsActive", blnChecked)}
             />
-            <Typography className={styles.switchLabel} sx={{ fontSize: "12px !important", fontWeight: "600 !important", whiteSpace: "nowrap" }}>{t("active", "Active")}</Typography>
+            <Typography className={`${styles.switchLabel} app-master-dialog-status-text`}>{t("active", "Active")}</Typography>
             <IconButton aria-label={t("close", "Close")} onClick={() => setBlnDialogOpen(false)} size="small" sx={{ ml: 1, color: "#94a3b8" }}><CloseRoundedIcon fontSize="small" /></IconButton>
           </Box>
         }
@@ -584,7 +579,7 @@ export default function HolidayMasterPanel() {
                 </Box>
                 <Tooltip title={t("translate_help", "Generate suggested translations using AI. Review before saving.")} arrow>
                   <span>
-                    <Button data-control-id="holiday-master.dialog.ai-translate.button" className={styles.secondaryButton} variant="outlined" startIcon={blnTranslating ? <DottedLoader intSize={16} /> : <AutoAwesomeRoundedIcon />} onClick={() => void translateHolidayFields()} disabled={strMode === "view" || blnSubmitting || blnTranslating || objOptions.lstLanguages.length < 2} sx={{ minHeight: 34, whiteSpace: "nowrap", background: "#fff" }}>{t("ai_translate", "AI Translate")}</Button>
+                    <Button data-control-id="holiday-master.dialog.ai-translate.button" className="app-btn app-btn-outline" variant="outlined" startIcon={blnTranslating ? <DottedLoader intSize={16} /> : <AutoAwesomeRoundedIcon />} onClick={() => void translateHolidayFields()} disabled={strMode === "view" || blnSubmitting || blnTranslating || objOptions.lstLanguages.length < 2} sx={{ minHeight: 34, whiteSpace: "nowrap", background: "#fff" }}>{t("ai_translate", "AI Translate")}</Button>
                   </span>
                 </Tooltip>
               </Box>

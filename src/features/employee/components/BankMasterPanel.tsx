@@ -3,12 +3,14 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
   Box,
   Button,
+  IconButton,
   InputAdornment,
   Link,
   MenuItem,
@@ -402,14 +404,14 @@ export default function BankMasterPanel() {
   const lstTableRows: BankTableRow[] = lstFilteredBanks.map((dicBank) => ({
     id: dicBank.id,
     name: (
-      <Link component="span" underline="none" sx={{ color: "inherit", cursor: "pointer", fontSize: "inherit", fontWeight: 500, p: 0, textAlign: "left" }}>
+      <Link component="span" underline="none" className="app-master-first-column-link">
         {dicBank.name}
       </Link>
     ),
     nameSortValue: dicBank.name,
     code: dicBank.code,
     status: (
-      <span className={styles.statusPill} style={{ background: dicBank.status === "Active" ? "#dcfce7" : "#fee2e2", color: dicBank.status === "Active" ? "#15803d" : "#dc2626" }}>
+      <span className={`app-master-status-pill ${dicBank.status === "Active" ? "app-master-status-active" : "app-master-status-inactive"}`}>
         {dicBank.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}
       </span>
     ),
@@ -567,7 +569,7 @@ export default function BankMasterPanel() {
     <Box className={styles.page}>
       <MasterBreadcrumbs strCurrent={dicBankLabels.pageTitle} />
 
-      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+      <Box className="app-master-search-panel">
         {strRightsError ? (
           <Typography controlId="bank-master.list.banner.rights-error" sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography>
         ) : null}
@@ -577,25 +579,21 @@ export default function BankMasterPanel() {
           </Typography>
         ) : null}
         <Box
-          className={styles.searchRow}
-          sx={{
-            alignItems: "center",
-            "& .MuiButton-root": { alignSelf: "center" },
-          }}
+          className={`${styles.searchRow} ${styles.searchRowCentered}`}
         >
-          <TextField className="app-mui-text-field" id="bank-search-name" controlId="bank-master.list.search-name.input" inputProps={{ "controlId": "bank-master.list.search-name.input" }} label={dicBankLabels.tableName} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicBankLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnLoading || blnSubmitting} fullWidth />
-          <TextField className="app-mui-text-field" id="bank-search-code" controlId="bank-master.list.search-code.input" inputProps={{ "controlId": "bank-master.list.search-code.input" }} label={dicBankLabels.tableCode} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicBankLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnLoading || blnSubmitting} fullWidth />
+          <TextField className="app-mui-text-field" id="bank-search-name" controlId="bank-master.list.search-name.input" inputProps={{ "controlId": "bank-master.list.search-name.input" }} label={dicBankLabels.tableName} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicBankLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon className="app-search-adornment-icon" /></InputAdornment> }} disabled={blnLoading || blnSubmitting} fullWidth />
+          <TextField className="app-mui-text-field" id="bank-search-code" controlId="bank-master.list.search-code.input" inputProps={{ "controlId": "bank-master.list.search-code.input" }} label={dicBankLabels.tableCode} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicBankLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon className="app-search-adornment-icon" /></InputAdornment> }} disabled={blnLoading || blnSubmitting} fullWidth />
           <TextField className="app-mui-text-field" id="bank-search-status" controlId="bank-master.list.search-status.select" inputProps={{ "controlId": "bank-master.list.search-status.select" }} select label={dicBankLabels.tableStatus} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} size="small" disabled={blnLoading || blnSubmitting} fullWidth>
             <MenuItem controlId="bank-master.list.search-status.all.option" value="All">All</MenuItem>
             <MenuItem controlId="bank-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
             <MenuItem controlId="bank-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions}><Button controlId="bank-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
-          <Box className={styles.searchActions}><Button controlId="bank-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
+          <Box className={styles.searchActions}><Button controlId="bank-master.list.search.button" className="app-btn app-btn-primary" startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button controlId="bank-master.list.clear.button" className="app-btn app-btn-outline" startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
         </Box>
       </Box>
 
-      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+      <Box className="app-master-table-panel app-master-page-relative">
         {(blnLoading || blnRightsLoading) && !blnDialogOpen ? (
           <BankGridSkeleton />
         ) : !blnCanView ? (
@@ -611,6 +609,7 @@ export default function BankMasterPanel() {
             defaultPageSize={20}
             pageSizeOptions={[10, 20, 50]}
             exportFileName={dicBankLabels.exportFileName.replace(/\.(csv|pdf)$/i, "")}
+            exportButtonClassName="app-btn app-btn-outline"
             showExportOptions={blnCanExport}
             showPaginationSummary
             hideRowClickHint
@@ -622,7 +621,7 @@ export default function BankMasterPanel() {
             emptyMessage={dicBankLabels.emptyMessage}
             testIdPrefix="bank-master.list"
             toolbarLeft={blnCanAdd ? (
-              <Button controlId="bank-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+              <Button controlId="bank-master.list.add.button" className="app-btn app-btn-primary" startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
                 {dicBankLabels.addButton}
               </Button>
             ) : null}
@@ -631,7 +630,7 @@ export default function BankMasterPanel() {
               "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
               "&.MuiTableRow-hover:hover td:first-of-type .MuiLink-root": { textDecoration: "underline" },
             })}
-            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+            className="app-master-common-table-reset"
           />
         )}
       </Box>
@@ -642,18 +641,19 @@ export default function BankMasterPanel() {
         strTitle={strMode === "add" ? dicBankLabels.dialogAddTitle : strMode === "edit" ? dicBankLabels.dialogEditTitle : dicBankLabels.dialogViewTitle}
         strSecondaryLabel={strMode === "view" ? dicCommonLabels.close : dicCommonLabels.cancel}
         strPrimaryLabel={blnSubmitting ? dicBankLabels.saving : dicCommonLabels.save}
+        strSecondaryButtonClassName="app-btn app-btn-outline"
+        strPrimaryButtonClassName="app-btn app-btn-primary"
         onPrimaryAction={saveBank}
         blnPrimaryDisabled={blnSubmitting}
         blnHidePrimary={strMode === "view"}
         paperClassName={styles.departmentDialogPaper}
-        paperSx={{ "& .MuiButton-root": { fontSize: "12px !important", fontWeight: "600 !important" } }}
         maxWidth={false}
         fullWidth={false}
-        contentSx={{ overflowX: "hidden", overflowY: "auto", px: "20px", py: "12px", borderColor: "#e5edf5" }}
-        titleSx={{ px: 2.25, py: 1.25, fontSize: "16px", fontWeight: 700, maxHeight: 50 }}
+        contentClassName="app-master-dialog-content-compact"
         nodeTitleAction={
-          <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
+          <Box className={`${styles.switchRow} app-master-dialog-status-row`}>
             <ActiveStatusSwitch
+              className="app-master-dialog-status-switch"
               testId="bank-master.dialog.active.switch"
               blnIsActive={dicForm.status === "Active"}
               disabled={strMode === "view"}
@@ -687,12 +687,15 @@ export default function BankMasterPanel() {
               }}
               onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))}
             />
-            <Typography className={styles.switchLabel} sx={{ fontSize: "12px !important", fontWeight: "600 !important", whiteSpace: "nowrap" }}>
+            <Typography className={`${styles.switchLabel} app-master-dialog-status-text`}>
               {dicCommonLabels.statusActive}
             </Typography>
+            <IconButton aria-label={dicCommonLabels.close} onClick={closeDialog} size="small" className="app-master-dialog-close-button app-master-dialog-close-button-spaced">
+              <CloseRoundedIcon fontSize="small" />
+            </IconButton>
           </Box>
         }
-        nodeFooterStart={<Typography sx={{ color: "#64748b", fontSize: "11px" }}>{t("required_fields_hint", "Required fields are marked")} <Box component="span" sx={{ color: "#dc2626" }}>*</Box></Typography>}
+        nodeFooterStart={<Typography className="app-master-dialog-required-fields">{t("required_fields_hint", "Required fields are marked")} <Box component="span" className="app-master-dialog-required-asterisk">*</Box></Typography>}
         nodeContent={
           <Box sx={{ display: "grid", gap: "12px" }}>
             <Box
@@ -754,8 +757,8 @@ export default function BankMasterPanel() {
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap", p: 1, borderBottom: "1px solid #e3edfc", background: "#eff6ff" }}>
                   <LanguageRoundedIcon sx={{ color: "#1473cf" }} />
                   <Box sx={{ flex: 1, minWidth: 180 }}>
-                    <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>{t("language_translations", "Language Translations")}</Typography>
-                    <Typography sx={{ color: "#64748b", fontSize: "11px", mt: 0.25 }}>
+                    <Typography className="app-master-dialog-section-heading">{t("language_translations", "Language Translations")}</Typography>
+                    <Typography className="app-master-dialog-section-subheading app-master-dialog-section-subheading-spaced">
                       {t("language_translations_help", "Provide translated bank names for the application languages you want to support.")}
                     </Typography>
                   </Box>
@@ -763,7 +766,7 @@ export default function BankMasterPanel() {
                     <span>
                       <Button
                         controlId="bank-master.dialog.translate.button"
-                        className={styles.secondaryButton}
+                        className="app-btn app-btn-outline"
                         variant="outlined"
                         startIcon={<AutoAwesomeRoundedIcon />}
                         onClick={() => void handleTranslateClick()}
@@ -809,7 +812,7 @@ export default function BankMasterPanel() {
       <BlockingLoader blnOpen={blnSubmitting} strLabel={dicCommonLabels.processing} intZIndex={1400} blnLocal />
 
       <Snackbar controlId="bank-master.toast.alert" open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
-        <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>
+        <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" className="app-master-toast-alert">
           <span controlId="bank-master.toast.message">{objToast.strMessage}</span>
         </Alert>
       </Snackbar>

@@ -318,7 +318,7 @@ const PayrollGroupEditorPage = forwardRef<PayrollGroupEditorHandle, PayrollGroup
       <Box sx={{ minHeight: 360, display: "grid", placeItems: "center" }}>
         <Stack spacing={1.5} alignItems="center">
           <DottedLoader />
-          <Typography sx={{ color: "#64748b" }}>{t("group_loading_workspace", "Loading payroll group...")}</Typography>
+          <Typography className="app-master-empty-help">{t("group_loading_workspace", "Loading payroll group...")}</Typography>
         </Stack>
       </Box>
     );
@@ -327,15 +327,15 @@ const PayrollGroupEditorPage = forwardRef<PayrollGroupEditorHandle, PayrollGroup
   if (!blnCanLoadWorkspace) {
     return (
       <Box className={styles.emptyState}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
+        <Typography className="app-master-empty-title">
           {strMode === "add"
             ? t("group_access_denied_add", "You do not have access to add Payroll Groups.")
             : t("group_access_denied", "You do not have access to Payroll Groups.")}
         </Typography>
-        <Typography sx={{ mt: 1, color: "#64748b" }}>
+        <Typography className="app-master-empty-help">
           {t("group_access_denied_help", "Contact your administrator if you believe this is a mistake.")}
         </Typography>
-        {strRightsError ? <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography> : null}
+        {strRightsError ? <Typography className="app-master-access-message app-master-access-warning">{strRightsError}</Typography> : null}
       </Box>
     );
   }
@@ -349,7 +349,7 @@ const PayrollGroupEditorPage = forwardRef<PayrollGroupEditorHandle, PayrollGroup
         strReadOnlyMessage={t("group_read_only_mode", "You have view-only access to Payroll Groups.")}
       />
 
-      <Box sx={{ display: "grid", gap: "12px" }}>
+      <Box className="app-master-dialog-form-grid">
         {!blnEmbedded ? (
           <FormControlLabel
             control={<ActiveStatusSwitch testId="payroll-groups.editor.active.switch" blnIsActive={dicForm.blnIsActive} onChange={(blnChecked) => updateField("blnIsActive", blnChecked)} disabled={blnFieldDisabled} />}
@@ -357,11 +357,11 @@ const PayrollGroupEditorPage = forwardRef<PayrollGroupEditorHandle, PayrollGroup
             sx={{ m: 0, gap: 1, color: "#0f172a", "& .MuiFormControlLabel-label": { fontWeight: 700 } }}
           />
         ) : null}
-        <Box sx={{ display: "grid", columnGap: 1.6, rowGap: "12px", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" }, alignItems: "start" }}>
+        <Box className="app-master-dialog-two-column-grid">
           {strMode === "add" ? (
-            <Box sx={{ gridColumn: "1 / -1" }}>
-              <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>{t("basic_information", "Basic Information")}</Typography>
-              <Typography sx={{ fontSize: "11px", color: "#64748b", mt: 0.25, mb: 1 }}>
+            <Box className="app-master-dialog-full-row">
+              <Typography className="app-master-dialog-section-heading">{t("basic_information", "Basic Information")}</Typography>
+              <Typography className="app-master-dialog-section-subheading app-master-dialog-section-subheading-spaced">
                 {t("group_basic_information_help", "Give this payroll group a clear, business-friendly name.")}
               </Typography>
             </Box>
@@ -400,7 +400,7 @@ const PayrollGroupEditorPage = forwardRef<PayrollGroupEditorHandle, PayrollGroup
         </Box>
 
         {objUsage ? (
-          <Typography sx={{ color: "#64748b", fontSize: "12px" }}>
+          <Typography className="app-master-dialog-section-subheading">
             {t(
               "group_usage_summary",
               `Used by ${objUsage.intPayrollCycleCount} payroll schedule(s) and ${objUsage.intEmployeeCount} employee(s).`
@@ -409,12 +409,12 @@ const PayrollGroupEditorPage = forwardRef<PayrollGroupEditorHandle, PayrollGroup
         ) : null}
 
         {intSecondaryLanguageID && dicForm.lstTexts.length > 1 ? (
-          <Box sx={{ border: "1px solid #e3edfc", borderRadius: "6px", overflow: "hidden", background: "#f7faff" }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap", p: 1, borderBottom: "1px solid #e3edfc", background: "#eff6ff" }}>
-              <LanguageRoundedIcon sx={{ color: "#1473cf" }} />
-              <Box sx={{ flex: 1, minWidth: 180 }}>
-                <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>{t("language_translations", "Language Translations")}</Typography>
-                <Typography sx={{ color: "#64748b", fontSize: "11px", mt: 0.25 }}>
+          <Box className="app-master-translation-panel">
+            <Box className="app-master-translation-header">
+              <LanguageRoundedIcon className="app-master-translation-icon" />
+              <Box className="app-master-translation-title">
+                <Typography className="app-master-dialog-section-heading">{t("language_translations", "Language Translations")}</Typography>
+                <Typography className="app-master-dialog-section-subheading">
                   {t("group_multilingual_text_help", "Provide translated payroll group names for the application languages you want to support.")}
                 </Typography>
               </Box>
@@ -422,25 +422,24 @@ const PayrollGroupEditorPage = forwardRef<PayrollGroupEditorHandle, PayrollGroup
                 <span>
                   <Button
                     controlId="payroll-groups.editor.translate.button"
-                    className={styles.secondaryButton}
+                    className="app-btn app-btn-outline app-btn-white app-master-translation-button"
                     variant="outlined"
                     startIcon={<AutoAwesomeRoundedIcon />}
                     onClick={() => void translateSecondaryLanguageRow()}
                     disabled={blnFieldDisabled || !dicForm.strPayrollGroupName.trim() || Boolean(dicTextTranslationLoading[intSecondaryLanguageID])}
-                    sx={{ minHeight: 34, whiteSpace: "nowrap", background: "#fff" }}
                   >
                     {t("translate", "AI Translate")}
                   </Button>
                 </span>
               </Tooltip>
             </Box>
-            <Box sx={{ display: "grid", gap: 1.5, p: 1 }}>
+            <Box className="app-master-translation-rows">
               {dicForm.lstTexts.slice(1).map((dicText, intOffset) => {
                 const intIndex = intOffset + 1;
                 const strLanguageLabel = (objFormOptions?.lstLanguages ?? []).find((dicLanguage) => dicLanguage.intID === Number(dicText.intLanguageID))?.strLabel ?? dicText.strLanguageName ?? "";
                 return (
-                  <Box key={dicText.intLanguageID || intIndex} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "minmax(100px, 0.3fr) minmax(0, 1fr)" }, alignItems: "center", gap: 1.5 }}>
-                    <Typography component="label" htmlFor={`payroll-group-translation-${intIndex}`} sx={{ fontSize: "12px", fontWeight: 600, color: "#0f172a" }}>
+                  <Box key={dicText.intLanguageID || intIndex} className="app-master-translation-row">
+                    <Typography component="label" htmlFor={`payroll-group-translation-${intIndex}`} className="app-master-translation-label">
                       {strLanguageLabel}
                     </Typography>
                     <TextField
@@ -455,7 +454,7 @@ const PayrollGroupEditorPage = forwardRef<PayrollGroupEditorHandle, PayrollGroup
                         endAdornment: dicTextTranslationLoading[Number(dicText.intLanguageID)]
                           ? (
                               <InputAdornment position="end">
-                                <DottedLoader intSize={18} sx={{ color: "#2563eb" }} />
+                                <DottedLoader intSize={18} className="app-master-translation-loader" />
                               </InputAdornment>
                             )
                           : undefined,
@@ -490,21 +489,19 @@ const PayrollGroupEditorPage = forwardRef<PayrollGroupEditorHandle, PayrollGroup
       >
         <Button
           controlId="payroll-groups.editor.back.button"
-          className={styles.secondaryButton}
+          className="app-btn app-btn-outline app-btn-small"
           startIcon={<ArrowBackRoundedIcon />}
           onClick={() => onClose ? onClose() : objRouter.push("/masters/payroll-groups")}
-          sx={{ height: 32, minHeight: 32, py: 0, px: 1.5, fontSize: "0.8125rem", whiteSpace: "nowrap" }}
         >
           {t("group_back_to_list", "Back to List")}
         </Button>
         {blnCanSave ? (
           <Button
             controlId="payroll-groups.editor.save.button"
-            className={styles.primaryButton}
+            className="app-btn app-btn-primary app-btn-small"
             startIcon={<SaveRoundedIcon />}
             onClick={handleSave}
             disabled={blnSaving}
-            sx={{ height: 32, minHeight: 32, py: 0, px: 1.75, fontSize: "0.8125rem", whiteSpace: "nowrap" }}
           >
             {blnSaving ? t("group_saving", "Saving...") : t("group_save", "Save")}
           </Button>

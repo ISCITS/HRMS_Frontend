@@ -69,10 +69,12 @@ export type CommonDataGridProps<T extends Record<string, ReactNode>> = {
   defaultPageSize?: number;
   pageSizeOptions?: number[];
   exportFileName?: string;
+  exportButtonClassName?: string;
   showExportOptions?: boolean;
   showPaginationSummary?: boolean;
   emptyMessage?: string;
   withPaper?: boolean;
+  className?: string;
   sx?: SxProps<Theme>;
   testIdPrefix?: string;
   hideRowClickHint?: boolean;
@@ -99,10 +101,12 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   defaultPageSize = 20,
   pageSizeOptions = [10, 20, 50],
   exportFileName = dicConstant.commonDataGrid.defaultExportFileName,
+  exportButtonClassName,
   showExportOptions = false,
   showPaginationSummary = false,
   emptyMessage = dicConstant.commonDataGrid.emptyMessage,
   withPaper = true,
+  className,
   sx,
   testIdPrefix = "common-data-grid",
   hideRowClickHint = false,
@@ -376,7 +380,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
             {toolbarLeft ? <Box sx={{ display: "flex", alignItems: "center", minHeight: 40 }}>{toolbarLeft}</Box> : null}
             {!hideToolbar && showExportOptions ? (
               <>
-                <Button data-controlid={`${testIdPrefix}.export.button`} className={styles.secondaryButton}
+                <Button data-controlid={`${testIdPrefix}.export.button`} className={exportButtonClassName ?? styles.secondaryButton}
                   startIcon={<DownloadRoundedIcon />} endIcon={<ExpandMoreRoundedIcon />}
                   aria-haspopup="menu" aria-expanded={Boolean(exportAnchor)}
                   aria-controls={exportAnchor ? `${testIdPrefix}-export-menu` : undefined}
@@ -691,7 +695,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   }
 
   return (
-    <Paper sx={{ p: 0, border: "1px solid #e8eef5", borderRadius: "8px", boxShadow: "none", display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden", ...sx }}>
+    <Paper className={className} sx={{ p: 0, border: "1px solid #e8eef5", borderRadius: "8px", boxShadow: "none", display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden", ...sx }}>
       {table}
     </Paper>
   );

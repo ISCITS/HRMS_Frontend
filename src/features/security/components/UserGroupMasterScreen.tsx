@@ -264,24 +264,13 @@ export default function UserGroupMasterScreen() {
           underline="none"
           disabled={!blnCanView && !blnCanEdit}
           data-control-id="security.user-group.list.row.name.button"
+          className="app-master-first-column-link"
           onClick={(objEvent) => {
             if (window.getSelection()?.toString()) {
               objEvent.stopPropagation();
               return;
             }
             openDialog(blnCanEdit ? "edit" : "view", objRecord);
-          }}
-          sx={{
-            color: "#334155",
-            cursor: "pointer",
-            fontSize: "inherit",
-            fontWeight: 500,
-            textAlign: "left",
-            textUnderlineOffset: "3px",
-            userSelect: "text",
-            WebkitUserSelect: "text",
-            "&:hover": { color: "#0066df", textDecoration: "underline" },
-            "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 },
           }}
         >
           {objRecord.strGroupName}
@@ -390,7 +379,7 @@ export default function UserGroupMasterScreen() {
   return (
     <Box className={styles.page}>
       <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />}>
-        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{t("breadcrumb_administration", "Administration")}</Typography>
+        <Typography className="app-breadcrumb-label">{t("breadcrumb_administration", "Administration")}</Typography>
         <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{strPageTitle}</Typography>
       </Breadcrumbs>
 
@@ -472,7 +461,7 @@ export default function UserGroupMasterScreen() {
           </TextField>
           <Box className={styles.searchActions}>
             <Button
-              className={styles.primaryButton}
+              className="app-btn app-btn-primary"
               startIcon={<SearchRoundedIcon />}
               onClick={() => setDicSearchApplied(dicSearchDraft)}
               data-control-id="security.user-group.search.button"
@@ -482,7 +471,7 @@ export default function UserGroupMasterScreen() {
           </Box>
           <Box className={styles.searchActions}>
             <Button
-              className={styles.secondaryButton}
+              className="app-btn app-btn-outline"
               startIcon={<ClearRoundedIcon />}
               onClick={() => {
                 const dicEmpty = { query: "", groupType: "All" as const, status: "All" as const };
@@ -518,6 +507,7 @@ export default function UserGroupMasterScreen() {
               rowIdField="intID"
               emptyMessage={dicLabels.emptyMessage}
               exportFileName={dicLabels.exportFileName}
+              exportButtonClassName="app-btn app-btn-outline"
               showExportOptions={blnCanExport}
               showPaginationSummary
               testIdPrefix="security.user-group.list"
@@ -532,7 +522,7 @@ export default function UserGroupMasterScreen() {
               toolbarLeft={
                 <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
                   {blnCanAdd ? (
-                    <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSaving || blnRightsLoading} data-control-id="security.user-group.add.button">
+                    <Button className="app-btn app-btn-primary" startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSaving || blnRightsLoading} data-control-id="security.user-group.add.button">
                       {dicLabels.addButton}
                     </Button>
                   ) : null}
@@ -543,6 +533,7 @@ export default function UserGroupMasterScreen() {
                 "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
                 "&.MuiTableRow-hover:hover td:first-of-type .MuiLink-root": { textDecoration: "underline" },
               })}
+              className="app-master-common-table-reset"
             />
           )}
         </Box>

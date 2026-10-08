@@ -6,9 +6,10 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, Checkbox, InputAdornment, Link, MenuItem, Skeleton, Snackbar, TextField, Tooltip, Typography } from "@mui/material";
+import { Alert, Box, Button, Checkbox, IconButton, InputAdornment, Link, MenuItem, Skeleton, Snackbar, TextField, Tooltip, Typography } from "@mui/material";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -438,6 +439,7 @@ export default function CountryMasterPanel() {
           type="button"
           underline="none"
           disabled={!blnCanView && !blnCanEdit}
+          className="app-master-first-column-link"
           data-control-id="country-master.list.row.name.button"
           onClick={(objEvent) => {
             if (window.getSelection()?.toString()) {
@@ -446,7 +448,6 @@ export default function CountryMasterPanel() {
             }
             void openDialog(blnCanEdit ? "edit" : "view", dicCountry);
           }}
-          sx={{ color: "#334155", cursor: "pointer", fontSize: "inherit", fontWeight: 500, textAlign: "left", textUnderlineOffset: "3px", userSelect: "text", WebkitUserSelect: "text", "&:hover": { color: "#0066df", textDecoration: "underline" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}
         >
           {dicCountry.name}
         </Link>
@@ -455,7 +456,7 @@ export default function CountryMasterPanel() {
       currencyCode: dicCountry.currencyCode,
       phoneCode: dicCountry.phoneCode || "-",
       status: (
-        <span className={`${styles.statusPill} ${dicCountry.status === "Active" ? styles.statusActive : styles.statusInactive}`}>
+        <span className={`app-master-status-pill ${dicCountry.status === "Active" ? "app-master-status-active" : "app-master-status-inactive"}`}>
           {dicCountry.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}
         </span>
       ),
@@ -676,7 +677,7 @@ export default function CountryMasterPanel() {
         </Button>
       </Box>
 
-      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+      <Box className="app-master-search-panel">
         {strRightsError ? <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography> : null}
         {!blnRightsLoading && blnCanView && blnReadOnly ? (
           <Typography sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>
@@ -684,16 +685,16 @@ export default function CountryMasterPanel() {
           </Typography>
         ) : null}
 
-        <Box className={styles.searchRow} aria-busy={blnSearchPanelFrozen} sx={{ alignItems: "center", "& .MuiButton-root": { alignSelf: "center" } }}>
-          <TextField className="app-mui-text-field" id="country-master-search-name" label={dicModuleLabels.tableName} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicModuleLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnSearchPanelFrozen} fullWidth controlId="country-master.search.name.input" inputProps={{ "controlId": "country-master.search.name.input" }} />
-          <TextField className="app-mui-text-field" id="country-master-search-code" label={dicModuleLabels.tableCode} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicModuleLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnSearchPanelFrozen} fullWidth controlId="country-master.search.code.input" inputProps={{ "controlId": "country-master.search.code.input" }} />
+        <Box className={`${styles.searchRow} ${styles.searchRowCentered}`} aria-busy={blnSearchPanelFrozen}>
+          <TextField className="app-mui-text-field" id="country-master-search-name" label={dicModuleLabels.tableName} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicModuleLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon className="app-search-adornment-icon" /></InputAdornment> }} disabled={blnSearchPanelFrozen} fullWidth controlId="country-master.search.name.input" inputProps={{ "controlId": "country-master.search.name.input" }} />
+          <TextField className="app-mui-text-field" id="country-master-search-code" label={dicModuleLabels.tableCode} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicModuleLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon className="app-search-adornment-icon" /></InputAdornment> }} disabled={blnSearchPanelFrozen} fullWidth controlId="country-master.search.code.input" inputProps={{ "controlId": "country-master.search.code.input" }} />
           <TextField className="app-mui-text-field" id="country-master-search-status" select label={dicModuleLabels.tableStatus} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} size="small" disabled={blnSearchPanelFrozen} fullWidth controlId="country-master.search.status.select" inputProps={{ "controlId": "country-master.search.status.select" }}>
             <MenuItem value="All">All</MenuItem>
             <MenuItem value="Active">{dicCommonLabels.statusActive}</MenuItem>
             <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions}><Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnSearchPanelFrozen} controlId="country-master.search.button">{dicCommonLabels.search}</Button></Box>
-          <Box className={styles.searchActions}><Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnSearchPanelFrozen} controlId="country-master.clear.button">{dicCommonLabels.clear}</Button></Box>
+          <Box className={styles.searchActions}><Button className="app-btn app-btn-primary" startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnSearchPanelFrozen} controlId="country-master.search.button">{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button className="app-btn app-btn-outline" startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnSearchPanelFrozen} controlId="country-master.clear.button">{dicCommonLabels.clear}</Button></Box>
         </Box>
 
         {!blnSubmitting && lstSelectedIds.length > 0 && !blnReadOnly && (blnCanChangeStatus || blnCanDelete) ? (
@@ -706,7 +707,7 @@ export default function CountryMasterPanel() {
         ) : null}
       </Box>
 
-      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+      <Box className="app-master-table-panel app-master-page-relative">
         {(blnLoading || blnRightsLoading) && !blnDialogOpen ? (
           <CountryGridSkeleton />
         ) : !blnCanView ? (
@@ -721,6 +722,7 @@ export default function CountryMasterPanel() {
             rowIdField="id"
             emptyMessage={dicModuleLabels.emptyMessage}
             exportFileName="country-master"
+            exportButtonClassName="app-btn app-btn-outline"
             showExportOptions={blnCanExport}
             testIdPrefix="country-master.list"
             showPaginationSummary
@@ -733,7 +735,7 @@ export default function CountryMasterPanel() {
             minTableWidth={800}
             toolbarLeft={(
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
-                {blnCanAdd ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => void openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading} controlId="country-master.add.button">{dicModuleLabels.addButton}</Button> : null}
+                {blnCanAdd ? <Button className="app-btn app-btn-primary" startIcon={<AddRoundedIcon />} onClick={() => void openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading} controlId="country-master.add.button">{dicModuleLabels.addButton}</Button> : null}
               </Box>
             )}
             getRowSx={(dicRow) => ({
@@ -742,7 +744,7 @@ export default function CountryMasterPanel() {
               "& .MuiLink-root:hover": { textDecoration: "underline" },
               "&.MuiTableRow-hover:hover .MuiLink-root": { textDecoration: "underline" },
             })}
-            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+            className="app-master-common-table-reset"
           />
         )}
         <BlockingLoader blnOpen={blnSubmitting} strLabel={dicCommonLabels.processing} intZIndex={1400} blnLocal />
@@ -754,6 +756,8 @@ export default function CountryMasterPanel() {
         strTitle={strMode === "add" ? dicModuleLabels.dialogAddTitle : strMode === "edit" ? dicModuleLabels.dialogEditTitle : dicModuleLabels.dialogViewTitle}
         strSecondaryLabel={strMode === "view" ? dicModuleLabels.close : dicCommonLabels.cancel}
         strPrimaryLabel={blnSubmitting ? dicCommonLabels.processing : strMode === "add" ? dicCommonLabels.save : dicCommonLabels.update}
+        strSecondaryButtonClassName="app-btn app-btn-outline"
+        strPrimaryButtonClassName="app-btn app-btn-primary"
         onPrimaryAction={saveCountry}
         blnPrimaryDisabled={blnSubmitting}
         blnHidePrimary={strMode === "view"}
@@ -761,17 +765,18 @@ export default function CountryMasterPanel() {
         cancelButtonTestId="country-master.dialog.cancel.button"
         primaryButtonTestId="country-master.dialog.primary.button"
         paperClassName={styles.departmentDialogPaper}
-        paperSx={{ "& .MuiButton-root": { fontSize: "12px !important", fontWeight: "600 !important" } }}
         maxWidth={false}
         fullWidth={false}
-        contentSx={{ overflowX: "hidden", overflowY: "auto", px: "20px", py: "12px", borderColor: "#e5edf5" }}
+        contentClassName="app-master-dialog-content-compact"
         nodeTitleAction={
-          <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
-            <ActiveStatusSwitch blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} testId="country-master.dialog.status.switch" />
-            <Typography className={styles.switchLabel}>{dicModuleLabels.fieldIsActive}</Typography>
+          <Box className={`${styles.switchRow} app-master-dialog-status-row`}>
+            <ActiveStatusSwitch className="app-master-dialog-status-switch" blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} testId="country-master.dialog.status.switch" />
+            <Typography className={`${styles.switchLabel} app-master-dialog-status-text`}>{dicModuleLabels.fieldIsActive}</Typography>
+            <IconButton aria-label={dicModuleLabels.close} onClick={closeDialog} size="small" className="app-master-dialog-close-button app-master-dialog-close-button-spaced">
+              <CloseRoundedIcon fontSize="small" />
+            </IconButton>
           </Box>
         }
-         titleSx={{ px: 2.25, py: 1.25, fontSize: "16px", fontWeight: 700, maxHeight: 50 }}
         nodeContent={(
           <Box sx={{ display: "grid", gap: "12px" }}>
             <Box sx={{ display: "grid", columnGap: 1.6, rowGap: "12px", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" }, alignItems: "start" }}>
@@ -856,8 +861,8 @@ export default function CountryMasterPanel() {
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap", p: 1, borderBottom: "1px solid #e3edfc", background: "#eff6ff" }}>
                   <LanguageRoundedIcon sx={{ color: "#1473cf" }} />
                   <Box sx={{ flex: 1, minWidth: 180 }}>
-                    <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>{t("language_translations", "Language Translations")}</Typography>
-                    <Typography sx={{ color: "#64748b", fontSize: "11px", mt: 0.25 }}>
+                    <Typography className="app-master-dialog-section-heading">{t("language_translations", "Language Translations")}</Typography>
+                    <Typography className="app-master-dialog-section-subheading app-master-dialog-section-subheading-spaced">
                       {t("language_translations_help", "Provide translated country names for the application languages you want to support.")}
                     </Typography>
                   </Box>
@@ -865,7 +870,7 @@ export default function CountryMasterPanel() {
                     <span>
                       <Button
                         controlId="country-master.dialog.translate.button"
-                        className={styles.secondaryButton}
+                        className="app-btn app-btn-outline"
                         variant="outlined"
                         startIcon={<AutoAwesomeRoundedIcon />}
                         onClick={() => void handleTranslateClick()}
@@ -923,7 +928,7 @@ export default function CountryMasterPanel() {
       />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
-        <Alert severity={objToast.strSeverity} onClose={closeToast} variant="filled" sx={{ width: "100%" }}>
+        <Alert severity={objToast.strSeverity} onClose={closeToast} variant="filled" className="app-master-toast-alert">
           {objToast.strMessage}
         </Alert>
       </Snackbar>

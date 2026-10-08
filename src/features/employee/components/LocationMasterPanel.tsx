@@ -411,6 +411,7 @@ export default function LocationMasterPanel() {
         type="button"
         underline="none"
         disabled={!blnCanView && !blnCanEdit}
+        className="app-master-first-column-link"
         data-control-id="location-master.list.row.name.button"
         onClick={(objEvent) => {
           if (window.getSelection()?.toString()) {
@@ -419,7 +420,6 @@ export default function LocationMasterPanel() {
           }
           openDialog(blnCanEdit ? "edit" : "view", dicLocation);
         }}
-        sx={{ color: "#334155", cursor: "pointer", fontSize: "inherit", fontWeight: 500, textAlign: "left", textUnderlineOffset: "3px", userSelect: "text", WebkitUserSelect: "text", "&:hover": { color: "#0066df", textDecoration: "underline" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}
       >
         {dicLocation.name}
       </Link>
@@ -428,7 +428,7 @@ export default function LocationMasterPanel() {
     state: dicLocation.strStateName || "-",
     city: dicLocation.strCityName || "-",
     status: (
-      <span className={styles.statusPill} style={{ background: dicLocation.status === "Active" ? "#dcfce7" : "#fee2e2", color: dicLocation.status === "Active" ? "#15803d" : "#dc2626" }}>
+      <span className={`app-master-status-pill ${dicLocation.status === "Active" ? "app-master-status-active" : "app-master-status-inactive"}`}>
         {dicLocation.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}
       </span>
     ),
@@ -583,10 +583,10 @@ export default function LocationMasterPanel() {
   }
 
   return (
-    <Box className={styles.page} sx={{ position: "relative" }}>
+    <Box className={`${styles.page} ${styles.relativePage}`}>
       <MasterBreadcrumbs strCurrent={dicModuleLabels.pageTitle} />
 
-      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+      <Box className="app-master-search-panel">
         {strRightsError ? (
           <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography>
         ) : null}
@@ -603,19 +603,19 @@ export default function LocationMasterPanel() {
             "& .MuiButton-root": { alignSelf: "center" },
           }}
         >
-          <TextField className="app-mui-text-field" id="location-master-search-name" controlId="location-master.list.search-name.input" inputProps={{ "controlId": "location-master.list.search-name.input" }} label={dicModuleLabels.tableName} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicModuleLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnLoading || blnSubmitting || blnRightsLoading} fullWidth />
-          <TextField className="app-mui-text-field" id="location-master-search-code" controlId="location-master.list.search-code.input" inputProps={{ "controlId": "location-master.list.search-code.input" }} label={dicModuleLabels.tableCode} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicModuleLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} disabled={blnLoading || blnSubmitting || blnRightsLoading} fullWidth />
+          <TextField className="app-mui-text-field" id="location-master-search-name" controlId="location-master.list.search-name.input" inputProps={{ "controlId": "location-master.list.search-name.input" }} label={dicModuleLabels.tableName} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicModuleLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon className="app-search-adornment-icon" /></InputAdornment> }} disabled={blnLoading || blnSubmitting || blnRightsLoading} fullWidth />
+          <TextField className="app-mui-text-field" id="location-master-search-code" controlId="location-master.list.search-code.input" inputProps={{ "controlId": "location-master.list.search-code.input" }} label={dicModuleLabels.tableCode} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicModuleLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon className="app-search-adornment-icon" /></InputAdornment> }} disabled={blnLoading || blnSubmitting || blnRightsLoading} fullWidth />
           <TextField className="app-mui-text-field" id="location-master-search-status" controlId="location-master.list.search-status.select" inputProps={{ "controlId": "location-master.list.search-status.select" }} select label={dicModuleLabels.tableStatus} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} size="small" disabled={blnLoading || blnSubmitting || blnRightsLoading} fullWidth>
             <MenuItem controlId="location-master.list.search-status.all.option" value="All">All</MenuItem>
             <MenuItem controlId="location-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
             <MenuItem controlId="location-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions}><Button controlId="location-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.search}</Button></Box>
-          <Box className={styles.searchActions}><Button controlId="location-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.clear}</Button></Box>
+          <Box className={styles.searchActions}><Button controlId="location-master.list.search.button" className="app-btn app-btn-primary" startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button controlId="location-master.list.clear.button" className="app-btn app-btn-outline" startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicCommonLabels.clear}</Button></Box>
         </Box>
       </Box>
 
-      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+      <Box className="app-master-table-panel app-master-page-relative">
         {!blnCanView && !blnRightsLoading && !blnLoading ? (
           <Box className={styles.emptyState}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>Location access is not available for your user group.</Typography>
@@ -627,6 +627,7 @@ export default function LocationMasterPanel() {
             rows={lstTableRows}
             rowIdField="id"
             exportFileName={dicModuleLabels.exportFileName.replace(/\.(csv|pdf)$/i, "")}
+            exportButtonClassName="app-btn app-btn-outline"
             showExportOptions={blnCanExport}
             testIdPrefix="location-master.list"
             showPaginationSummary
@@ -641,7 +642,7 @@ export default function LocationMasterPanel() {
             toolbarLeft={(
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
                 {blnCanAdd ? (
-                  <Button controlId="location-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+                  <Button controlId="location-master.list.add.button" className="app-btn app-btn-primary" startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
                     {dicModuleLabels.addButton}
                   </Button>
                 ) : null}
@@ -652,7 +653,7 @@ export default function LocationMasterPanel() {
               "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
               "&.MuiTableRow-hover:hover td:first-of-type .MuiLink-root": { textDecoration: "underline" },
             })}
-            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+            className="app-master-common-table-reset"
           />
         )}
         <BlockingLoader
@@ -677,11 +678,13 @@ export default function LocationMasterPanel() {
         strTitle={strMode === "add" ? dicModuleLabels.dialogAddTitle : strMode === "edit" ? dicModuleLabels.dialogEditTitle : dicModuleLabels.dialogViewTitle}
         strSecondaryLabel={strMode === "view" ? dicCommonLabels.close : dicCommonLabels.cancel}
         strPrimaryLabel={blnSubmitting ? dicModuleLabels.saving : dicCommonLabels.save}
+        strSecondaryButtonClassName="app-btn app-btn-outline"
+        strPrimaryButtonClassName="app-btn app-btn-primary"
         onPrimaryAction={saveLocation}
         blnPrimaryDisabled={blnSubmitting}
         blnHidePrimary={strMode === "view"}
         nodeTitleAction={
-          <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
+          <Box className={`${styles.switchRow} app-master-dialog-status-row`}>
             <ActiveStatusSwitch
               testId="location-master.dialog.active.switch"
               blnIsActive={dicForm.status === "Active"}
@@ -716,7 +719,7 @@ export default function LocationMasterPanel() {
               }}
               onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))}
             />
-            <Typography className={styles.switchLabel} sx={{ fontSize: "12px !important", fontWeight: "600 !important", whiteSpace: "nowrap" }}>
+            <Typography className={`${styles.switchLabel} app-master-dialog-status-text`}>
               {dicCommonLabels.statusActive}
             </Typography>
             <IconButton aria-label={dicCommonLabels.close} onClick={closeDialog} size="small" sx={{ ml: 1, color: "#94a3b8" }}>
@@ -724,13 +727,11 @@ export default function LocationMasterPanel() {
             </IconButton>
           </Box>
         }
-        nodeFooterStart={<Typography sx={{ color: "#64748b", fontSize: "11px" }}>{t("required_fields_hint", "Required fields are marked")} <Box component="span" sx={{ color: "#dc2626" }}>*</Box></Typography>}
-        titleSx={{ px: 2.25, py: 1.25, fontSize: "16px", fontWeight: 700, maxHeight: 50 }}
+        nodeFooterStart={<Typography className="app-master-dialog-required-fields">{t("required_fields_hint", "Required fields are marked")} <Box component="span" className="app-master-dialog-required-asterisk">*</Box></Typography>}
         paperClassName={styles.departmentDialogPaper}
-        paperSx={{ "& .MuiButton-root": { fontSize: "12px !important", fontWeight: "600 !important" } }}
         maxWidth={false}
         fullWidth={false}
-        contentSx={{ overflowX: "hidden", overflowY: "auto", px: "20px", py: "12px", borderColor: "#e5edf5" }}
+        contentClassName="app-master-dialog-content-compact"
         nodeContent={
           <Box sx={{ display: "grid", gap: "12px" }}>
             <Box
@@ -744,10 +745,10 @@ export default function LocationMasterPanel() {
             >
               {strMode === "add" ? (
                 <Box sx={{ gridColumn: "1 / -1" }}>
-                  <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>
+                  <Typography className="app-master-dialog-section-heading">
                     {t("basic_information", "Basic Information")}
                   </Typography>
-                  <Typography sx={{ fontSize: "11px", color: "#64748b", mt: 0.25, mb: 1 }}>
+                  <Typography className="app-master-dialog-section-subheading app-master-dialog-section-subheading-spaced">
                     {t("basic_information_help", "Create a new location for your organisation.")}
                   </Typography>
                 </Box>
@@ -869,8 +870,8 @@ export default function LocationMasterPanel() {
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap", p: 1, borderBottom: "1px solid #e3edfc", background: "#eff6ff" }}>
                   <LanguageRoundedIcon sx={{ color: "#1473cf" }} />
                   <Box sx={{ flex: 1, minWidth: 180 }}>
-                    <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>{t("language_translations", "Language Translations")}</Typography>
-                    <Typography sx={{ color: "#64748b", fontSize: "11px", mt: 0.25 }}>
+                    <Typography className="app-master-dialog-section-heading">{t("language_translations", "Language Translations")}</Typography>
+                    <Typography className="app-master-dialog-section-subheading app-master-dialog-section-subheading-spaced">
                       {t("language_translations_help", "Provide translated location names for the application languages you want to support.")}
                     </Typography>
                   </Box>
@@ -878,7 +879,7 @@ export default function LocationMasterPanel() {
                     <span>
                       <Button
                         controlId="location-master.dialog.translate.button"
-                        className={styles.secondaryButton}
+                        className="app-btn app-btn-outline"
                         variant="outlined"
                         startIcon={<AutoAwesomeRoundedIcon />}
                         onClick={() => void handleTranslateClick()}
@@ -925,7 +926,7 @@ export default function LocationMasterPanel() {
       <BlockingLoader blnOpen={(blnLoading || blnRightsLoading) && !blnDialogOpen} strLabel={dicCommonLabels.loading} intZIndex={1400} />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
-        <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>
+        <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" className="app-master-toast-alert">
           {objToast.strMessage}
         </Alert>
       </Snackbar>

@@ -20,8 +20,8 @@ type MasterBreadcrumbsProps = {
 
 export function MasterBreadcrumbs({ strSection, strTitle }: MasterBreadcrumbsProps) {
   return (
-    <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ ml: "3px" }}>
-      <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{strSection}</Typography>
+    <Breadcrumbs className="app-breadcrumbs app-breadcrumbs-master" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon className="app-breadcrumb-separator-icon" />}>
+      <Typography className="app-breadcrumb-label">{strSection}</Typography>
       <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{strTitle}</Typography>
     </Breadcrumbs>
   );
@@ -51,8 +51,8 @@ export function DetailPageHeader({ strSection, strListTitle, strListHref, fnList
       spacing={1.5}
       sx={{ position: "sticky", top: 0, zIndex: 10, bgcolor: "var(--app-bg-color)", py: 0.5 }}
     >
-      <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ ml: "3px" }}>
-        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{strSection}</Typography>
+      <Breadcrumbs className="app-breadcrumbs app-breadcrumbs-master" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon className="app-breadcrumb-separator-icon" />}>
+        <Typography className="app-breadcrumb-label">{strSection}</Typography>
         {fnListClick ? (
           <Link component="button" type="button" onClick={fnListClick} underline="hover" sx={{ color: "text.secondary", fontSize: "inherit", verticalAlign: "baseline" }}>{strListTitle}</Link>
         ) : (

@@ -26,6 +26,7 @@ type CommonMasterDialogProps = {
   fullWidth?: boolean;
   paperClassName?: string;
   paperSx?: object;
+  contentClassName?: string;
   contentSx?: SxProps<Theme>;
   onDialogClose?: DialogProps["onClose"];
   strSecondaryButtonClassName?: string;
@@ -57,6 +58,7 @@ export default function CommonMasterDialog({
   fullWidth = true,
   paperClassName = masterStyles.compactDialogPaper,
   paperSx,
+  contentClassName,
   contentSx,
   onDialogClose,
   strSecondaryButtonClassName = masterStyles.secondaryButton,
@@ -96,37 +98,31 @@ export default function CommonMasterDialog({
       PaperProps={{ className: paperClassName, sx: paperSx }}
     >
       <DialogTitle
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: { xs: 1, sm: 2 },
-          fontSize: "1.25rem",
-          ...titleSx,
-        }}
+        className="app-master-dialog-heading"
+        sx={titleSx}
       >
-        <Box component="span" sx={{ minWidth: 0, overflowWrap: "anywhere" }}>{strTitle}</Box>
+        <Box component="span" className="app-master-dialog-title-text">{strTitle}</Box>
         {/* Callers pass a compact control here (usually a status toggle) via the `.switchRow`
             CSS-module class, which forces min-height:68px. Emotion runs with prepend:true, so a
             caller's `sx={{ minHeight: "auto" }}` loses the cascade and the row overflows the
             short DialogTitle - DialogContent then paints over the lower half of the control and
             eats its clicks. Force the row back to its natural height here, where !important wins. */}
         {nodeTitleAction ? (
-          <Box sx={{ display: "flex", alignItems: "center", ml: "auto", flexShrink: 0, "& > *": { minHeight: "unset !important" } }}>
+          <Box className="app-master-dialog-title-action">
             {nodeTitleAction}
           </Box>
         ) : null}
         {blnDepartmentReferenceLayout ? (
-          <IconButton aria-label="Close" onClick={onClose} size="small" sx={{ ml: nodeTitleAction ? 0.5 : "auto", color: "#94a3b8" }}>
+          <IconButton aria-label="Close" onClick={onClose} size="small" className={nodeTitleAction ? "app-master-dialog-close-button" : "app-master-dialog-close-button app-master-dialog-close-button-auto"}>
             <CloseRoundedIcon fontSize="small" />
           </IconButton>
         ) : null}
       </DialogTitle>
-      <DialogContent dividers sx={contentSx}>{nodeContent}</DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        {nodeFooterStart ? <Box sx={{ mr: "auto" }}>{nodeFooterStart}</Box> : blnDepartmentReferenceLayout ? (
-          <Typography sx={{ mr: "auto", color: "#64748b", fontSize: "11px" }}>
-            Required fields are marked <Box component="span" sx={{ color: "#dc2626" }}>*</Box>
+      <DialogContent dividers className={contentClassName} sx={contentSx}>{nodeContent}</DialogContent>
+      <DialogActions className="app-master-dialog-actions">
+        {nodeFooterStart ? <Box className="app-master-dialog-footer-start">{nodeFooterStart}</Box> : blnDepartmentReferenceLayout ? (
+          <Typography className="app-master-dialog-required-fields app-master-dialog-footer-start">
+            Required fields are marked <Box component="span" className="app-master-dialog-required-asterisk">*</Box>
           </Typography>
         ) : null}
         <Button data-control-id={strCancelButtonControlId} className={strSecondaryButtonClassName} onClick={onClose}>

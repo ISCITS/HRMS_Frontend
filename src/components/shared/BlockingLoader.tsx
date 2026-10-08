@@ -38,14 +38,14 @@ type DottedLoaderProps = BoxProps & {
   controlId?: string;
 };
 
-export function DottedLoader({ intSize = 64, controlId, sx, ...objProps }: DottedLoaderProps) {
+export function DottedLoader({ intSize = 64, controlId, className, sx, ...objProps }: DottedLoaderProps) {
   const intDotCount = 10;
   const intDotSize = Math.max(3, Math.round(intSize * 0.17));
 
   return (
     <Box
       aria-hidden="true"
-      className="app-dotted-loader"
+      className={["app-dotted-loader", className].filter(Boolean).join(" ")}
       data-controlid={controlId}
       {...objProps}
       sx={[
