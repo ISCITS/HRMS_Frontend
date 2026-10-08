@@ -575,28 +575,7 @@ export default function PayrollResultListPage({
       { field: "strStatus", headerName: t("status", "Status"), sortable: false, filterable: false, width: 140 },
     ];
 
-<<<<<<< Updated upstream
-    // Results screen: employee name first, then the row actions (view icon), then the employee code.
-    if (!blnPayslipScreen && blnCanAccessResults) {
-=======
-    // Employee name first, then the payslip actions (payslip screen only), then the employee code.
-    // The payroll results screen has no actions column - the employee name opens the result.
-    if (blnPayslipScreen && blnCanUsePayslipRowActions) {
->>>>>>> Stashed changes
-      lstColumns.splice(1, 0, {
-        field: "action",
-        headerName: t("actions", "Actions"),
-        sortable: false,
-        filterable: false,
-        exportable: false,
-<<<<<<< Updated upstream
-        width: 90,
-=======
-        width: 340,
->>>>>>> Stashed changes
-      });
-    }
-
+    // Payroll results screen: no actions column - the employee name (first column) opens the result.
     // Payslip screen: payslip number (opens the payslip) first, download/print actions last.
     if (blnPayslipScreen) {
       lstColumns.unshift({
@@ -625,8 +604,7 @@ export default function PayrollResultListPage({
     }
 
     return lstColumns;
-  }, [blnCanAccessResults, blnCanDownloadPayslips, blnCanPrintPayslips, blnPayslipScreen, t]);
-  }, [blnCanUsePayslipRowActions, blnPayslipScreen, t]);
+  }, [blnCanDownloadPayslips, blnCanPrintPayslips, blnPayslipScreen, t]);
 
   const blnBusy =
     blnRightsLoading ||
