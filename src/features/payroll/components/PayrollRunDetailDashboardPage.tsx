@@ -33,6 +33,7 @@ import {
   DialogTitle,
   IconButton,
   InputAdornment,
+  Link,
   Menu,
   MenuItem,
   Stack,
@@ -48,7 +49,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { DetailPageHeader } from "@/components/master/MasterListUi";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
-import CommonRowActions from "@/components/master/CommonRowActions";
+import masterStyles from "@/components/master/MasterScreen.module.css";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import PayslipHtmlPreview from "@/features/payroll/components/PayslipHtmlPreview";
 import ResultLinesTable from "@/features/payroll/components/ResultLinesTable";
@@ -486,9 +487,11 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
   const [blnRightsErrorDismissed, setBlnRightsErrorDismissed] = useState(false);
   const [blnIsLocked, setBlnIsLocked] = useState(false);
   const [objValidationSummary, setObjValidationSummary] = useState<PayrollValidationSummary | null>(null);
+  const [blnShowAllValidations, setBlnShowAllValidations] = useState(false);
   const [objProcessSummary, setObjProcessSummary] = useState<PayrollProcessSummary | null>(null);
   const [lstPayslips, setLstPayslips] = useState<PayslipRunListRecord[]>([]);
   const [strPayslipSearch, setStrPayslipSearch] = useState("");
+  const [strReviewResultSearch, setStrReviewResultSearch] = useState("");
   const [strPayslipPreviewHtml, setStrPayslipPreviewHtml] = useState("");
   const [intPreviewResultID, setIntPreviewResultID] = useState<number | null>(null);
   const [blnPayslipLoading, setBlnPayslipLoading] = useState(false);
@@ -1010,11 +1013,30 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     ...(objRun.strRunTypeCode === "VARIABLE_PAY" ? lstVariablePayValidationIssues : []),
   ];
   const setAttendanceBlockingCodes = new Set(["PAY_ATT_MISSING_DAY", "PAY_ATT_NO_POLICY", "PAY_ATT_BLOCKING_EXCEPTION"]);
-  const lstValidationRows = blnAttendanceBlockedFilterActive
+  // Warnings that can change what an employee is paid (or how it is paid) - everything else
+  // (payslip-section gaps, override/proration notices, info rows, ...) is hidden by default.
+  const setImportantWarningCodes = new Set([
+    "MISSING_STATUTORY_PROFILE",
+    "STATUTORY_APPLICABLE_BUT_RULE_DISABLED",
+    "MISSING_TAX_PROFILE",
+    "TAX_YTD_INCOMPLETE_FOR_JOINING_DATE",
+    "MISSING_BANK_ACCOUNT",
+    "FLEXI_ALLOCATION_MISSING",
+    "REIMBURSEMENT_PENDING_PUSH",
+    "PAY_ATT_PENDING_REG",
+    "PAY_ARREAR_PENDING",
+    "PAY_DAYS_NEGATIVE",
+    "PAY_DAYS_EXCEED_PERIOD",
+  ]);
+  const fnIsKeyIssue = (dicIssue: PayrollValidationResultRecord) =>
+    dicIssue.blnIsBlocking || (dicIssue.strSeverity !== "INFO" && setImportantWarningCodes.has(dicIssue.strValidationCode));
+  const lstScopedValidationRows = blnAttendanceBlockedFilterActive
     ? lstAllValidationRows.filter(
         (dicIssue) => dicIssue.blnIsBlocking && setAttendanceBlockingCodes.has(dicIssue.strValidationCode),
       )
     : lstAllValidationRows;
+  const lstValidationRows = blnShowAllValidations ? lstScopedValidationRows : lstScopedValidationRows.filter(fnIsKeyIssue);
+  const intHiddenValidationCount = lstScopedValidationRows.length - lstScopedValidationRows.filter(fnIsKeyIssue).length;
   const intBlockingCount = lstValidationRows.filter((dicIssue) => dicIssue.blnIsBlocking).length;
   const intWarningCount = lstValidationRows.filter((dicIssue) => !dicIssue.blnIsBlocking).length;
   const blnShowPayrollControls = ["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus);
@@ -1129,26 +1151,47 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
   });
 
   const lstValidationTableColumns: CommonTableColumn<(typeof lstValidationTableRows)[number]>[] = [
+    { field: "strEmployee", headerName: t("employee", "Employee"), width: 200 },
     { field: "strLevel", headerName: t("level", "Level"), width: 110, sortAccessor: (dicRow) => dicRow.strLevelSortValue },
     { field: "strCategory", headerName: t("category", "Category"), width: 190 },
-    { field: "strEmployee", headerName: t("employee", "Employee"), width: 200 },
     { field: "strMessage", headerName: t("message", "Message"), width: 420, sortable: false },
     { field: "strFix", headerName: t("actions", "Actions"), width: 96, sortable: false, exportable: false },
   ];
 
-  const lstReviewResultRows = lstRunResults.map((dicRow) => ({
+  const strReviewResultSearchNormalized = strReviewResultSearch.trim().toLowerCase();
+  const lstFilteredReviewResults = strReviewResultSearchNormalized
+    ? lstRunResults.filter((dicRow) =>
+        dicRow.strEmployeeName.toLowerCase().includes(strReviewResultSearchNormalized) ||
+        dicRow.strEmployeeCode.toLowerCase().includes(strReviewResultSearchNormalized),
+      )
+    : lstRunResults;
+  const lstReviewResultRows = lstFilteredReviewResults.map((dicRow) => ({
     id: dicRow.intID,
-    action: (
-      <CommonRowActions
-        testIdPrefix="payroll.run-detail.review-results.row"
-        rowKey={dicRow.intID}
-        blnCanView
-        blnCanEdit={false}
-        onView={() => openResultLinesDialog(dicRow.strRecordUUID)}
-      />
+    strRecordUUID: dicRow.strRecordUUID,
+    strEmployeeNameSortValue: dicRow.strEmployeeName,
+    strEmployeeName: (
+      <Link
+        component="button"
+        type="button"
+        underline="none"
+        data-controlid="payroll.run-detail.review-results.row.employee-name.button"
+        data-row-key={dicRow.intID}
+        onClick={(objEvent) => {
+          objEvent.stopPropagation();
+          if (window.getSelection()?.toString()) return;
+          openResultLinesDialog(dicRow.strRecordUUID);
+        }}
+        sx={{
+          color: "#334155", cursor: "pointer", fontSize: "inherit", fontWeight: 500,
+          textAlign: "left", textUnderlineOffset: "3px", userSelect: "text", WebkitUserSelect: "text",
+          "&:hover": { color: "#0066df", textDecoration: "underline" },
+          "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 },
+        }}
+      >
+        {dicRow.strEmployeeName}
+      </Link>
     ),
     strEmployeeCode: dicRow.strEmployeeCode,
-    strEmployeeName: dicRow.strEmployeeName,
     strRunName: dicRow.strRunName,
     dtPayrollMonth: dicRow.dtPayrollMonth ? formatMonth(dicRow.dtPayrollMonth) : "-",
     dtPayrollMonthSortValue: dicRow.dtPayrollMonth ? new Date(dicRow.dtPayrollMonth).getTime() : 0,
@@ -1163,15 +1206,14 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
   }));
 
   const lstReviewResultColumns: CommonTableColumn<(typeof lstReviewResultRows)[number]>[] = [
-    { field: "action", headerName: t("actions", "Actions"), sortable: false, exportable: false, width: 90 },
-    { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code"), width: 140 },
-    { field: "strEmployeeName", headerName: t("employee_name", "Employee Name"), width: 200 },
-    { field: "strRunName", headerName: t("payroll_run", "Payroll Run"), width: 220 },
-    { field: "dtPayrollMonth", headerName: t("payroll_month", "Payroll Month"), width: 140, sortAccessor: (dicRow) => dicRow.dtPayrollMonthSortValue },
-    { field: "decGrossEarningsAmount", headerName: t("gross_earnings", "Gross Earnings"), align: "right", width: 160, sortAccessor: (dicRow) => dicRow.decGrossEarningsAmountSortValue },
-    { field: "decEmployeeDeductionTotal", headerName: t("deduction_total", "Employee Deductions"), align: "right", width: 180, sortAccessor: (dicRow) => dicRow.decEmployeeDeductionTotalSortValue },
+    { field: "strEmployeeName", headerName: t("employee_name", "Employee Name"), width: 200, sortAccessor: (dicRow) => dicRow.strEmployeeNameSortValue },
+    { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code"), width: 120 },
+    { field: "strRunName", headerName: t("payroll_run", "Payroll Run"), width: 180 },
+    { field: "dtPayrollMonth", headerName: t("payroll_month", "Payroll Month"), width: 120, sortAccessor: (dicRow) => dicRow.dtPayrollMonthSortValue },
+    { field: "decGrossEarningsAmount", headerName: t("gross_earnings", "Gross Earnings"), align: "right", width: 140, sortAccessor: (dicRow) => dicRow.decGrossEarningsAmountSortValue },
+    { field: "decEmployeeDeductionTotal", headerName: t("deduction_total", "Employee Deductions"), align: "right", width: 140, sortAccessor: (dicRow) => dicRow.decEmployeeDeductionTotalSortValue },
     { field: "decTaxTotal", headerName: t("tax_total", "Tax"), align: "right", width: 140, sortAccessor: (dicRow) => dicRow.decTaxTotalSortValue },
-    { field: "decNetPayAmount", headerName: t("net_pay", "Net Pay"), align: "right", width: 150, sortAccessor: (dicRow) => dicRow.decNetPayAmountSortValue },
+    { field: "decNetPayAmount", headerName: t("net_pay", "Net Pay"), align: "right", width: 140, sortAccessor: (dicRow) => dicRow.decNetPayAmountSortValue },
   ];
 
   return (
@@ -1330,12 +1372,12 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
             label={
               <Box sx={{ alignItems: "center", display: "flex", gap: 0.6 }}>
                 <span>{t("validation_summary", "Validation Summary")}</span>
-                {lstAllValidationRows.length ? (
+                {lstAllValidationRows.filter(fnIsKeyIssue).length ? (
                   <Box
                     component="span"
                     sx={{ background: "#fef2f2", borderRadius: "999px", color: "#dc2626", fontSize: "0.68rem", fontWeight: 800, px: 0.9, py: 0.15 }}
                   >
-                    {lstAllValidationRows.length}
+                    {lstAllValidationRows.filter(fnIsKeyIssue).length}
                   </Box>
                 ) : null}
               </Box>
@@ -1576,6 +1618,19 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
               ) : null}
               <Chip label={`${intBlockingCount} ${t("blocking", "Blocking")}`} size="small" sx={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", fontWeight: 800 }} />
               <Chip label={`${intWarningCount} ${t("warning", "Warning")}`} size="small" sx={{ background: "#fff7ed", border: "1px solid #fed7aa", color: "#ea580c", fontWeight: 800 }} />
+              {intHiddenValidationCount > 0 || blnShowAllValidations ? (
+                <Chip
+                  label={
+                    blnShowAllValidations
+                      ? t("validation_show_key_only", "Show key issues only")
+                      : `${t("validation_show_all", "Show all")} (+${intHiddenValidationCount})`
+                  }
+                  size="small"
+                  onClick={() => setBlnShowAllValidations((blnPrev) => !blnPrev)}
+                  sx={{ background: "#f1f5f9", border: "1px solid #cbd5e1", color: "#334155", cursor: "pointer", fontWeight: 800 }}
+                  controlId="payroll.run-detail.validation.toggle-all.chip"
+                />
+              ) : null}
             </Box>
           </Box>
           <CommonTable
@@ -1596,25 +1651,65 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
         ) : null}
 
         {strActiveTab === "review" ? (
-        <Box sx={{ ...objCardSx, display: "flex", flexDirection: "column", minWidth: 0, p: 1.25 }}>
+        <Box className={masterStyles.controlsCard} sx={{ display: "flex", flexDirection: "column", minWidth: 0, p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
           <Box sx={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 1, justifyContent: "space-between", mb: 1 }}>
             <Typography sx={{ alignItems: "center", display: "flex", fontSize: "1rem", fontWeight: 900, gap: 0.75 }}>
               <ReceiptLongRoundedIcon sx={{ color: "#2563eb", fontSize: 20 }} />
               {t("review_results_panel", "Review Results")}
             </Typography>
           </Box>
+          <TextField
+            className="app-mui-text-field"
+            label={t("review_results_search_label", "Employee name or code")}
+            value={strReviewResultSearch}
+            onChange={(objEvent) => setStrReviewResultSearch(objEvent.target.value)}
+            placeholder={t("review_results_search_placeholder", "Search by employee name or code")}
+            size="small"
+            fullWidth
+            sx={{ mb: 1 }}
+            inputProps={{ "aria-label": t("review_results_search_placeholder", "Search by employee name or code") }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchRoundedIcon sx={{ color: "#94a3b8", fontSize: 20 }} />
+                </InputAdornment>
+              ),
+              endAdornment: strReviewResultSearch ? (
+                <InputAdornment position="end">
+                  <IconButton
+                    size="small"
+                    aria-label={t("clear_search", "Clear search")}
+                    onClick={() => setStrReviewResultSearch("")}
+                    controlId="payroll.run-detail.review-results.search.clear.icon-button"
+                  >
+                    <CloseRoundedIcon fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              ) : undefined,
+            }}
+            controlId="payroll.run-detail.review-results.search.input"
+          />
           <CommonTable
+            key={strReviewResultSearchNormalized}
             columns={lstReviewResultColumns}
             rows={lstReviewResultRows}
             rowIdField="id"
-            withPaper={false}
             minTableWidth={980}
             defaultPageSize={20}
             showPaginationSummary
+            hideRowClickHint
             showExportOptions={blnCanExport}
             exportFileName={`payroll-results-${objRun.strRunCode || objRun.intID}`}
-            onRowDoubleClick={(dicRow) => openResultLinesDialog(String(dicRow.id))}
-            emptyMessage={t("review_results_empty", "No processed payroll results are available for this run.")}
+            onRowClick={(dicRow) => openResultLinesDialog(String(dicRow.strRecordUUID))}
+            getRowSx={() => ({
+              backgroundColor: "#fff",
+              "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
+              "&.MuiTableRow-hover:hover td:first-of-type .MuiLink-root": { textDecoration: "underline" },
+            })}
+            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+            emptyMessage={strReviewResultSearchNormalized
+              ? t("review_results_search_empty", "No employees match your search.")
+              : t("review_results_empty", "No processed payroll results are available for this run.")}
             testIdPrefix="payroll.run-detail.review-results"
           />
         </Box>

@@ -244,9 +244,9 @@ export default function TdsReportPage() {
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      { field: "strPayrollPeriod", headerName: "Payroll Period", width: 140, sortAccessor: (dicRow) => dicRow.strPayrollPeriodSortValue },
-      { field: "strEmployeeCode", headerName: "Employee Code", width: 140 },
       { field: "strEmployeeName", headerName: "Employee Name", width: 220 },
+      { field: "strEmployeeCode", headerName: "Employee Code", width: 140 },
+      { field: "strPayrollPeriod", headerName: "Payroll Period", width: 140, sortAccessor: (dicRow) => dicRow.strPayrollPeriodSortValue },
       { field: "strFinancialYearCode", headerName: "Financial Year", width: 130 },
       { field: "strRegimeUsed", headerName: "Regime", width: 110 },
       { field: "decNetTaxableIncome", headerName: "Net Taxable Income", width: 170, align: "right", sortAccessor: (dicRow) => dicRow.decNetTaxableIncomeSortValue },

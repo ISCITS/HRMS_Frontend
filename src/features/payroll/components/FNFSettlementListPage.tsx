@@ -115,8 +115,8 @@ export default function FNFSettlementListPage() {
 
   const lstTableColumns = useMemo<CommonTableColumn<FNFSettlementGridRow>[]>(() => {
     const lstColumns: CommonTableColumn<FNFSettlementGridRow>[] = [
-      { field: "strSettlementNumber", headerName: "Settlement #", width: 160, sortAccessor: (row) => row.strSettlementNumberSort },
       { field: "strEmployee", headerName: "Employee", width: 170 },
+      { field: "strSettlementNumber", headerName: "Settlement #", width: 160, sortAccessor: (row) => row.strSettlementNumberSort },
       { field: "strDepartment", headerName: "Department", width: 160 },
       { field: "dtLastWorkingDate", headerName: "LWD", width: 130 },
       { field: "dtSettlementMonth", headerName: "Settlement Month", width: 150 },

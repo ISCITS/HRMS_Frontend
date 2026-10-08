@@ -131,7 +131,7 @@ function buildExportHtml(
   </tr>`;
 
   const fnMetaRow = (strLabel: string, strValue: string) =>
-    `<tr class="meta-row"><td class="label">${escapeHtml(strLabel)}</td><td colspan="${intColumnCount - 1}">${escapeHtml(strValue)}</td></tr>`;
+    `<tr class="meta-row"><td class="label">${escapeHtml(strLabel)}</td><td class="value" colspan="${intColumnCount - 1}" style="text-align:left">${escapeHtml(strValue)}</td></tr>`;
 
   return `
     <html>
@@ -145,7 +145,8 @@ function buildExportHtml(
           .company td { font-size: 18px; font-weight: 800; padding-top: 8px; }
           .title td { font-size: 15px; font-weight: 800; padding-bottom: 10px; }
           tr.meta-row td { border: none; vertical-align: top; }
-          tr.meta-row td.label { font-weight: 700; white-space: nowrap; }
+          tr.meta-row td.label { font-weight: 700; white-space: nowrap; text-align: right; }
+          tr.meta-row td.value { text-align: left; }
           tr.spacer td { border: none; padding: 4px; }
           thead th { border: 1px solid #000; text-align: center; font-weight: 700; background: #f3f4f6; }
           tbody td { border: 1px solid #000; text-align: right; }
@@ -371,8 +372,8 @@ export default function SalaryRegisterReportPage() {
   }
 
   const lstColumns = useMemo<CommonTableColumn<Record<string, ReactNode>>[]>(() => [
-    { field: "strEmployeeCode", headerName: "Employee No", width: 120 },
     { field: "strEmployeeName", headerName: "Employee Name", width: 190 },
+    { field: "strEmployeeCode", headerName: "Employee No", width: 120 },
     { field: "strDepartment", headerName: "Department", width: 150 },
     { field: "strDesignation", headerName: "Designation", width: 150 },
     { field: "strLocation", headerName: "Location", width: 140 },

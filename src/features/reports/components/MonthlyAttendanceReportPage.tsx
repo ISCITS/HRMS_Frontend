@@ -19,8 +19,8 @@ export default function MonthlyAttendanceReportPage() {
   const { lstEmployees, lstDepartments, lstLocations } = useReportFilterOptions();
 
   const lstColumns = useMemo<CommonTableColumn<ReportDisplayRow>[]>(() => [
-    { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code"), width: 160 },
     { field: "strEmployeeName", headerName: t("employee_name", "Employee"), width: 200 },
+    { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code"), width: 160 },
     { field: "strDepartment", headerName: t("department", "Department"), width: 160 },
     { field: "intDaysRecorded", headerName: t("days_recorded", "Days"), width: 90, align: "right" },
     { field: "intPresent", headerName: t("present", "Present"), width: 105, align: "right" },

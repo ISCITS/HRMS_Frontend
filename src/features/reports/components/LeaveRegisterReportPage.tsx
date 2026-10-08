@@ -40,9 +40,9 @@ export default function LeaveRegisterReportPage() {
   const dicDefaultFilters = useMemo(() => buildLeaveDefaultFilters(objSearchParams), [objSearchParams]);
 
   const lstColumns = useMemo<CommonTableColumn<ReportDisplayRow>[]>(() => [
-    { field: "strReference", headerName: t("reference", "Reference"), width: 130 },
-    { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code"), width: 140 },
     { field: "strEmployeeName", headerName: t("employee_name", "Employee"), width: 200 },
+    { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code"), width: 140 },
+    { field: "strReference", headerName: t("reference", "Reference"), width: 130 },
     { field: "strLeaveType", headerName: t("leave_type", "Leave Type"), width: 150 },
     { field: "dtFromDate", headerName: t("from_date", "From"), width: 120 },
     { field: "dtToDate", headerName: t("to_date", "To"), width: 120 },

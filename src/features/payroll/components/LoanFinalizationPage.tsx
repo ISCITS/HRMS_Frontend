@@ -326,9 +326,9 @@ export default function LoanFinalizationPage() {
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
+      { field: "employeeName", headerName: t("table_employee_name", "Employee Name"), width: 150, sortAccessor: (dicRow) => dicRow.employeeNameSort },
       { field: "rowActions", headerName: t("table_actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 120 },
       { field: "employeeCode", headerName: t("table_employee_code", "Employee Code"), width: 110 },
-      { field: "employeeName", headerName: t("table_employee_name", "Employee Name"), width: 150, sortAccessor: (dicRow) => dicRow.employeeNameSort },
       { field: "loanNumber", headerName: t("table_loan_no", "Loan/Advance No."), width: 120 },
       { field: "category", headerName: t("table_category", "Category"), width: 120 },
       { field: "installmentNo", headerName: t("table_installment_no", "Installment No."), align: "center", width: 90 },

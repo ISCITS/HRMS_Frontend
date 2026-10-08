@@ -353,9 +353,9 @@ export default function StatutoryReportPage() {
         exportable: false,
         width: 56,
       },
-      { field: "strPayrollPeriod", headerName: "Payroll Period", width: 140, sortAccessor: (dicRow) => dicRow.strPayrollPeriodSortValue },
-      { field: "strEmployeeCode", headerName: "Employee Code", width: 140 },
       { field: "strEmployeeName", headerName: "Employee Name", width: 220 },
+      { field: "strEmployeeCode", headerName: "Employee Code", width: 140 },
+      { field: "strPayrollPeriod", headerName: "Payroll Period", width: 140, sortAccessor: (dicRow) => dicRow.strPayrollPeriodSortValue },
       { field: "strStatutoryName", headerName: "Statutory", width: 170 },
       { field: "decBasisAmount", headerName: "Basis", width: 140, align: "right", sortAccessor: (dicRow) => dicRow.decBasisAmountSortValue },
       { field: "decEmployeeRatePercent", headerName: "Employee Rate", width: 130, align: "right", sortAccessor: (dicRow) => dicRow.decEmployeeRatePercentSortValue },
@@ -405,9 +405,9 @@ export default function StatutoryReportPage() {
 
   const lstSummaryTableColumns = useMemo<CommonTableColumn<(typeof lstSummaryTableRows)[number]>[]>(
     () => [
-      { field: "strPayrollPeriod", headerName: "Payroll Period", width: 140, sortAccessor: (dicRow) => dicRow.strPayrollPeriodSortValue },
-      { field: "strEmployeeCode", headerName: "Employee Code", width: 140 },
       { field: "strEmployeeName", headerName: "Employee Name", width: 220 },
+      { field: "strEmployeeCode", headerName: "Employee Code", width: 140 },
+      { field: "strPayrollPeriod", headerName: "Payroll Period", width: 140, sortAccessor: (dicRow) => dicRow.strPayrollPeriodSortValue },
       { field: "decPfEmployee", headerName: "PF Employee", width: 140, align: "right", sortAccessor: (dicRow) => dicRow.decPfEmployeeSortValue },
       { field: "decPfEmployer", headerName: "PF Employer", width: 140, align: "right", sortAccessor: (dicRow) => dicRow.decPfEmployerSortValue },
       { field: "decEsiEmployee", headerName: "ESI Employee", width: 140, align: "right", sortAccessor: (dicRow) => dicRow.decEsiEmployeeSortValue },

@@ -18,8 +18,8 @@ export default function LeaveBalanceReportPage() {
   const { t } = useModuleLabels("reports");
 
   const lstColumns = useMemo<CommonTableColumn<ReportDisplayRow>[]>(() => [
-    { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code"), width: 140 },
     { field: "strEmployeeName", headerName: t("employee_name", "Employee"), width: 200 },
+    { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code"), width: 140 },
     { field: "strDepartment", headerName: t("department", "Department"), width: 160 },
     { field: "strLeaveType", headerName: t("leave_type", "Leave Type"), width: 160 },
     { field: "intLeaveYear", headerName: t("leave_year", "Year"), width: 90, align: "right" },

@@ -6,10 +6,8 @@ import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
-import NoteAltOutlinedIcon from "@mui/icons-material/NoteAltOutlined";
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
 import PercentRoundedIcon from "@mui/icons-material/PercentRounded";
-import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
 import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import RequestQuoteRoundedIcon from "@mui/icons-material/RequestQuoteRounded";
@@ -39,7 +37,7 @@ import { DetailPageHeader } from "@/components/master/MasterListUi";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import PayslipHtmlPreview from "@/features/payroll/components/PayslipHtmlPreview";
-import ResultLinesTable from "@/features/payroll/components/ResultLinesTable";
+import PayrollResultBreakdown from "@/features/payroll/components/PayrollResultBreakdown";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payrollResultService } from "@/features/payroll/services/payrollResultService";
 import { payslipService } from "@/features/payroll/services/payslipService";
@@ -479,8 +477,8 @@ export default function PayrollResultDetailPage({
   const [strArrearsError, setStrArrearsError] = useState("");
   const [blnArrearsLoaded, setBlnArrearsLoaded] = useState(false);
   const [strActiveTab, setStrActiveTab] = useState<
-    "pay-summary" | "earnings-deductions" | "tax-summary" | "statutory-summary" | "attendance-lop" | "calculation-trace"
-  >("pay-summary");
+    "earnings-deductions" | "tax-summary" | "statutory-summary" | "attendance-lop"
+  >("earnings-deductions");
 
   useEffect(() => {
     let blnMounted = true;
@@ -700,27 +698,6 @@ export default function PayrollResultDetailPage({
   const dicStatusTone = getStatusTone(objResult.strStatus);
   const dicWageRulePreview = getWageRulePreview(objResult);
   const dicTaxSummary = objResult.dicTaxSummary;
-  const lstEmployeeSummaryItems: SummaryDisplayItem[] = [
-    { key: "employee-code", label: t("employee_code", "Employee Code"), value: objResult.strEmployeeCode },
-    { key: "employee-name", label: t("employee_name", "Employee Name"), value: objResult.strEmployeeName, tooltip: objResult.strEmployeeName },
-    { key: "flexi-bucket", label: t("flexi_bucket", "Flexi Bucket"), value: formatCurrency(objResult.decFlexiBucketAmount ?? 0) },
-    { key: "declared-flexi", label: t("declared_flexi", "Declared Flexi"), value: formatCurrency(objResult.decDeclaredFlexiAmount ?? 0) },
-    { key: "residual-flexi", label: t("residual_flexi", "Residual Flexi"), value: formatCurrency(objResult.decResidualFlexiAmount ?? 0) },
-    {
-      key: "status",
-      label: t("status", "Status"),
-      value: <Chip label={translateDynamicLabel(t, objResult.strStatus, "status")} size="small" sx={{ ...dicStatusTone, height: 22, fontSize: "0.7rem", fontWeight: 800 }} />,
-    },
-  ];
-  const lstJobPayrollItems: SummaryDisplayItem[] = [
-    { key: "payroll-run", label: t("payroll_run", "Payroll Run"), value: objResult.strRunName, tooltip: objResult.strRunName },
-    { key: "run-code", label: t("run_code", "Run Code"), value: objResult.strRunCode },
-    { key: "payroll-month", label: t("payroll_month", "Payroll Month"), value: formatMonth(objResult.dtPayrollMonth) },
-    { key: "payroll-period", label: t("payroll_period", "Payroll Period"), value: `${objResult.dtPeriodStartDate || "-"} to ${objResult.dtPeriodEndDate || "-"}` },
-    { key: "working-days", label: t("working_days", "Working Days"), value: String(objResult.decCalendarDays ?? "-") },
-    { key: "paid-days", label: t("paid_days", "Paid Days"), value: String(objResult.decPaidDays ?? "-") },
-    { key: "lop-days", label: t("lop_days", "LOP Days"), value: String(objResult.decLopDays ?? "-") },
-  ];
   const lstTaxSummaryItems: SummaryDisplayItem[] = [
     { key: "tax-regime", label: t("tax_regime", "Tax Regime"), value: objResult.strRegimeUsed || "-" },
     { key: "taxable-income", label: t("taxable_income", "Taxable Income"), value: formatCurrency(objResult.decTaxableIncome) },
@@ -752,26 +729,6 @@ export default function PayrollResultDetailPage({
       tone: "info",
     },
   ];
-  const lstNotesItems: SummaryDisplayItem[] = [
-    {
-      key: "remarks",
-      label: t("remarks", "Remarks"),
-      value: objResult.strRemarks || t("no_remarks", "No remarks available."),
-      tone: "note",
-    },
-    {
-      key: "calculation-engine-note",
-      label: t("calculation_engine", "Calculation Engine"),
-      value: t("generated_by_payroll_calculation_engine", "Generated by payroll calculation engine."),
-      tone: "note",
-    },
-    {
-      key: "wage-rule-help",
-      label: t("wage_rule_preview", "Wage Rule Preview"),
-      value: t("wage_rule_preview_note", "Wage rule preview is for statutory calculation. Final applicability depends on statutory configuration and payroll processing."),
-      tone: "info",
-    },
-  ];
   // Read-only synthesis of already-returned deemed-wage fields into a short business-facing
   // summary - no calculation logic here, purely presentation. Shown only when a deemed-wage
   // shortfall is actually in effect (i.e. relevant), not for every employee.
@@ -798,12 +755,10 @@ export default function PayrollResultDetailPage({
     { key: "compliance-minimum-required", label: t("minimum_required_wage", "Minimum Required Wage"), value: formatOptionalCurrency(dicWageRulePreview.minimum_required_wage) },
   ];
   const lstSummaryGuide = [
-    { key: "pay-summary", label: t("pay_summary", "Pay Summary"), icon: <PersonOutlineRoundedIcon sx={{ fontSize: 18 }} /> },
     { key: "earnings-deductions", label: t("earnings_deductions", "Earnings & Deductions"), icon: <RequestQuoteRoundedIcon sx={{ fontSize: 18 }} /> },
     { key: "tax-summary", label: t("tax_summary", "Tax Summary"), icon: <PercentRoundedIcon sx={{ fontSize: 18 }} /> },
     { key: "statutory-summary", label: t("statutory_summary", "Statutory Summary"), icon: <SummarizeOutlinedIcon sx={{ fontSize: 18 }} /> },
     { key: "attendance-lop", label: t("attendance_lop_impact", "Attendance-LOP Impact"), icon: <CalendarMonthRoundedIcon sx={{ fontSize: 18 }} /> },
-    { key: "calculation-trace", label: t("calculation_trace", "Calculation Trace"), icon: <NoteAltOutlinedIcon sx={{ fontSize: 18 }} /> },
   ] as const;
 
   return (
@@ -1037,19 +992,8 @@ export default function PayrollResultDetailPage({
             </Tabs>
 
             <Box sx={{ p: { xs: 1.5, md: 1.8 } }}>
-              {strActiveTab === "pay-summary" ? (
-                <Box
-                  sx={{
-                    display: "grid",
-                    gap: 1.5,
-                    gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(3, minmax(0, 1fr))" },
-                    alignItems: "stretch",
-                  }}
-                >
-                  <PaginatedSummaryCard strTitle={t("employee_details", "Employee Details")} objIcon={<PersonOutlineRoundedIcon sx={{ color: "#2563eb", fontSize: 20 }} />} lstItems={lstEmployeeSummaryItems} strAriaLabel={t("employee_details", "Employee Details")} />
-                  <PaginatedSummaryCard strTitle={t("job_payroll", "Job & Payroll")} objIcon={<CalendarMonthRoundedIcon sx={{ color: "#4f46e5", fontSize: 20 }} />} lstItems={lstJobPayrollItems} strAriaLabel={t("job_payroll", "Job & Payroll")} />
-                  <PaginatedSummaryCard strTitle={t("notes", "Notes")} objIcon={<NoteAltOutlinedIcon sx={{ color: "#f97316", fontSize: 20 }} />} lstItems={lstNotesItems} strAriaLabel={t("notes", "Notes")} />
-                </Box>
+              {strActiveTab === "earnings-deductions" ? (
+                <PayrollResultBreakdown objResult={objResult} />
               ) : null}
 
               {strActiveTab === "tax-summary" ? (
@@ -1081,10 +1025,6 @@ export default function PayrollResultDetailPage({
               ) : null}
             </Box>
           </Paper>
-
-          {strActiveTab === "earnings-deductions" ? (
-            <ResultLinesTable lstLines={objResult.lstLines} />
-          ) : null}
 
           {strActiveTab === "attendance-lop" && blnCanViewAttendanceIntegration ? (
             <Paper
@@ -1255,29 +1195,6 @@ export default function PayrollResultDetailPage({
             <Alert severity="info">
               {t("access_denied", "Not available for your user group.")}
             </Alert>
-          ) : null}
-
-          {strActiveTab === "calculation-trace" ? (
-            <Paper
-              sx={{
-                borderRadius: "12px",
-                border: "1px solid #dbe7f3",
-                boxShadow: "0 10px 24px rgba(15, 23, 42, 0.04)",
-                background: "#fff",
-                p: { xs: 1.5, md: 1.8 },
-              }}
-            >
-              <Typography sx={{ display: "flex", alignItems: "center", gap: 1, color: "#0f172a", fontSize: "1.05rem", fontWeight: 900, mb: 1.2 }}>
-                <NoteAltOutlinedIcon sx={{ color: "#2563eb", fontSize: 22 }} />
-                {t("calculation_trace", "Calculation Trace")}
-              </Typography>
-              <Alert severity="info">
-                {tAttendance(
-                  "CALCULATION_TRACE_UNAVAILABLE",
-                  "Calculation trace is not available from this screen yet - no payroll input lookup by run and employee exists."
-                )}
-              </Alert>
-            </Paper>
           ) : null}
 
           {strPayslipPreviewHtml ? (

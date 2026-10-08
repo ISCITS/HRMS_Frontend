@@ -23,6 +23,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { MasterBreadcrumbs, MasterGridSkeleton, MasterMoreFilters, dicMasterRowSx, onSearchEnter } from "@/components/master/MasterListUi";
 import masterStyles from "@/components/master/MasterScreen.module.css";
+import CommonRowActions from "@/components/master/CommonRowActions";
 import CommonPayrollDialog from "@/features/payroll/components/CommonPayrollDialog";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
@@ -501,25 +502,33 @@ export default function PayrollResultListPage({
                   </Button>
                 ) : null}
               </>
-            ) : null}
+            ) : (
+              <CommonRowActions
+                testIdPrefix="payroll-results.list.row"
+                rowKey={dicRow.intID}
+                blnCanView={blnCanAccessResults}
+                onView={() => openResult(dicRow.strRecordUUID)}
+              />
+            )}
           </Box>
         ),
         strRecordUUID: dicRow.strRecordUUID,
-        strEmployeeCode: blnPayslipScreen || !blnCanAccessResults ? dicRow.strEmployeeCode : (
+        strEmployeeCode: dicRow.strEmployeeCode,
+        strEmployeeCodeSort: dicRow.strEmployeeCode,
+        strEmployeeNameSort: dicRow.strEmployeeName,
+        strEmployeeName: blnPayslipScreen || !blnCanAccessResults ? dicRow.strEmployeeName : (
           <Link
             className="app-master-first-column-link"
             component="button"
             type="button"
             underline="none"
-            data-controlid="payroll-results.list.row.employee-code.link"
+            data-controlid="payroll-results.list.row.employee-name.link"
             data-row-key={String(dicRow.intID)}
             onClick={(objEvent) => { objEvent.stopPropagation(); openResult(dicRow.strRecordUUID); }}
           >
-            {dicRow.strEmployeeCode}
+            {dicRow.strEmployeeName}
           </Link>
         ),
-        strEmployeeCodeSort: dicRow.strEmployeeCode,
-        strEmployeeName: dicRow.strEmployeeName,
         strPayslipNumber: dicRow.strPayslipNumber || "-",
         strRunName: dicRow.strRunName,
         dtPayrollMonth: formatMonth(dicRow.dtPayrollMonth),
@@ -558,8 +567,8 @@ export default function PayrollResultListPage({
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(() => {
     const lstColumns: CommonTableColumn<(typeof lstTableRows)[number]>[] = [
+      { field: "strEmployeeName", headerName: t("employee_name", "Employee Name"), width: 220, sortAccessor: (dicRow) => dicRow.strEmployeeNameSort },
       { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code"), sortAccessor: (dicRow) => dicRow.strEmployeeCodeSort },
-      { field: "strEmployeeName", headerName: t("employee_name", "Employee Name"), width: 220 },
       { field: "strRunName", headerName: t("payroll_run", "Payroll Run"), width: 220 },
       { field: "dtPayrollMonth", headerName: t("payroll_month", "Payroll Month"), width: 140, sortAccessor: (dicRow) => dicRow.dtPayrollMonthSortValue },
       { field: "decGrossEarningsAmount", headerName: t("gross_earnings", "Gross Earnings"), align: "right", width: 160, sortAccessor: (dicRow) => dicRow.decGrossEarningsAmountSortValue },
@@ -571,19 +580,20 @@ export default function PayrollResultListPage({
       { field: "strStatus", headerName: t("status", "Status"), sortable: false, filterable: false, width: 140 },
     ];
 
-    if (blnPayslipScreen && blnCanUsePayslipRowActions) {
-      lstColumns.unshift({
+    // Employee name first, then the row actions (view icon), then the employee code.
+    if (blnPayslipScreen ? blnCanUsePayslipRowActions : blnCanAccessResults) {
+      lstColumns.splice(1, 0, {
         field: "action",
         headerName: t("actions", "Actions"),
         sortable: false,
         filterable: false,
         exportable: false,
-        width: 340,
+        width: blnPayslipScreen ? 340 : 90,
       });
     }
 
     if (blnPayslipScreen) {
-      lstColumns.splice(3, 0, {
+      lstColumns.splice(lstColumns.findIndex((dicColumn) => dicColumn.field === "strRunName"), 0, {
         field: "strPayslipNumber",
         headerName: t("payslip_no", "Payslip No."),
         width: 150,
@@ -597,7 +607,7 @@ export default function PayrollResultListPage({
     }
 
     return lstColumns;
-  }, [blnCanUsePayslipRowActions, blnPayslipScreen, t]);
+  }, [blnCanAccessResults, blnCanUsePayslipRowActions, blnPayslipScreen, t]);
 
   const blnBusy =
     blnRightsLoading ||

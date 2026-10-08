@@ -175,9 +175,9 @@ export default function AttendanceExceptionReportPage() {
   })), [lstRows]);
 
   const lstColumns = useMemo<CommonTableColumn<DisplayRow>[]>(() => [
-    { field: "dtWorkDate", headerName: t("date", "Date"), width: 120 },
-    { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code"), width: 140 },
     { field: "strEmployeeName", headerName: t("employee_name", "Employee"), width: 190 },
+    { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code"), width: 140 },
+    { field: "dtWorkDate", headerName: t("date", "Date"), width: 120 },
     { field: "strExceptionType", headerName: t("exception_type", "Type"), width: 190 },
     { field: "strSeverity", headerName: t("severity", "Severity"), width: 110 },
     { field: "strStatus", headerName: t("status", "Status"), width: 130 },
