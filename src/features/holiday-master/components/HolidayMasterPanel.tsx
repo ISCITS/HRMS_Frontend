@@ -402,11 +402,11 @@ export default function HolidayMasterPanel() {
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(() => [
     { field: "select", headerName: <Checkbox controlId="holiday-master.list.select-all.checkbox" checked={blnAllSelected} indeterminate={blnSomeSelected} onChange={toggleSelectAll} inputProps={{ "data-control-id": "holiday-master.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>} />, sortable: false, filterable: false, exportable: false, width: 56 },
-    { field: "date", headerName: t("date", "Date"), width: 150, sortAccessor: (row) => row.dateRaw },
     { field: "name", headerName: t("name", "Holiday Name"), sortAccessor: (row) => row.nameText },
-    { field: "code", headerName: t("code", "Holiday Code"), width: 150 },
-    { field: "type", headerName: t("type", "Holiday Type"), width: 170 },
-    { field: "status", headerName: t("status", "Status"), width: 120, sortAccessor: (row) => row.statusText },
+    { field: "date", headerName: t("date", "Date"), sortAccessor: (row) => row.dateRaw },
+    { field: "code", headerName: t("code", "Holiday Code") },
+    { field: "type", headerName: t("type", "Holiday Type") },
+    { field: "status", headerName: t("status", "Status"), sortAccessor: (row) => row.statusText },
   ], [blnAllSelected, blnSomeSelected, lstTableRows, t]);
 
   return (
