@@ -1008,10 +1008,13 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     );
   }
 
+  // Prior-month tax history gaps are expected (the engine estimates them) - never listed here, even
+  // when older saved validation rows still carry them.
+  const setHiddenValidationCodes = new Set(["TAX_YTD_INCOMPLETE_FOR_JOINING_DATE"]);
   const lstAllValidationRows = [
     ...(objValidationSummary?.lstIssues ?? objRun.lstValidationResults),
     ...(objRun.strRunTypeCode === "VARIABLE_PAY" ? lstVariablePayValidationIssues : []),
-  ];
+  ].filter((dicIssue) => !setHiddenValidationCodes.has(dicIssue.strValidationCode));
   const setAttendanceBlockingCodes = new Set(["PAY_ATT_MISSING_DAY", "PAY_ATT_NO_POLICY", "PAY_ATT_BLOCKING_EXCEPTION"]);
   // Warnings that can change what an employee is paid (or how it is paid) - everything else
   // (payslip-section gaps, override/proration notices, info rows, ...) is hidden by default.
@@ -1019,7 +1022,6 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     "MISSING_STATUTORY_PROFILE",
     "STATUTORY_APPLICABLE_BUT_RULE_DISABLED",
     "MISSING_TAX_PROFILE",
-    "TAX_YTD_INCOMPLETE_FOR_JOINING_DATE",
     "MISSING_BANK_ACCOUNT",
     "FLEXI_ALLOCATION_MISSING",
     "REIMBURSEMENT_PENDING_PUSH",
