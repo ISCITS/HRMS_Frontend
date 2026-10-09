@@ -245,6 +245,113 @@
   line-height: inherit;
 }
 
+.app-employee-tabs.MuiTabs-root {
+  min-height: 52px;
+}
+
+.app-employee-tabs .MuiTabs-scroller {
+  overflow-y: visible;
+}
+
+.app-employee-tabs .MuiTabs-flexContainer {
+  gap: 2px;
+}
+
+.app-employee-tabs .MuiTabs-indicator {
+  background-color: transparent;
+  border-radius: 999px 999px 0 0;
+  height: 3px;
+  transition: left 260ms cubic-bezier(0.4, 0, 0.2, 1), width 260ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.app-employee-tabs .MuiTab-root {
+  border-radius: 8px 8px 0 0;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  margin-left: 2px;
+  margin-right: 2px;
+  min-height: 52px;
+  overflow: hidden;
+  padding: 0 14px;
+  position: relative;
+  text-transform: none;
+  transition: color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+}
+
+.app-employee-tabs .app-employee-tab-label {
+  align-items: center;
+  display: flex;
+  height: 100%;
+  position: relative;
+}
+
+.app-employee-tabs .MuiTab-iconWrapper {
+  margin-bottom: 0 !important;
+  margin-right: 7px;
+}
+
+.app-employee-tabs .MuiTab-root svg {
+  font-size: 17px;
+}
+
+.app-employee-tabs .MuiTab-root.Mui-selected svg {
+  color: var(--app-primary-color);
+}
+
+.app-employee-tabs .app-employee-tab-label::after {
+  background-color: #5b8fba;
+  border-radius: 999px 999px 0 0;
+  bottom: 0;
+  content: "";
+  height: 3px;
+  left: 0;
+  opacity: 0;
+  position: absolute;
+  right: 0;
+  transition: left 260ms cubic-bezier(0.4, 0, 0.2, 1), right 260ms cubic-bezier(0.4, 0, 0.2, 1), opacity 190ms ease, background-color 180ms ease;
+}
+
+.app-employee-tabs .MuiTab-root:hover {
+  background-color: #f3f4f6;
+  box-shadow: inset 0 -1px 0 #d1d5db;
+  color: #215f91;
+}
+
+.app-employee-tabs .MuiTab-root.Mui-selected {
+  background-color: transparent;
+  color: #123f63;
+  font-weight: 800;
+}
+
+.app-employee-tabs .MuiTab-root.Mui-selected .app-employee-tab-label::after {
+  opacity: 1;
+}
+
+.app-employee-tabs .MuiTab-root.Mui-selected:hover {
+  background-color: #f3f4f6;
+  box-shadow: inset 0 -1px 0 #d1d5db;
+  color: #0f3554;
+}
+
+.app-employee-tabs .MuiTab-root.Mui-selected:hover .app-employee-tab-label::after {
+  left: -14px;
+  opacity: 1;
+  right: -14px;
+}
+
+.app-employee-tabs .MuiTab-root.Mui-focusVisible {
+  background-color: #f3f4f6;
+  outline: 2px solid #d1d5db;
+  outline-offset: -2px;
+}
+
+.app-employee-tabs .MuiTab-root.Mui-selected.Mui-focusVisible {
+  background-color: transparent;
+  outline-color: #8fb9d8;
+}
+
 .app-master-search-panel,
 .app-master-table-panel {
   background: var(--app-surface-color);

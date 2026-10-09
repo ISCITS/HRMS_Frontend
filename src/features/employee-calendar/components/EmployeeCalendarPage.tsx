@@ -2,7 +2,8 @@
 
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
-import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, Grid, InputLabel, MenuItem, Paper, Select, Stack, Typography } from "@mui/material";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
+import { Alert, Box, Breadcrumbs, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, Grid, InputLabel, MenuItem, Paper, Select, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import type { Theme } from "@mui/material/styles";
 import { useMemo, useState } from "react";
@@ -82,19 +83,37 @@ export default function EmployeeCalendarPage() {
   function selectMonth(intMonth: number) { setObjMonth(new Date(objMonth.getFullYear(), intMonth, 1)); }
   function selectYear(intYear: number) { setObjMonth(new Date(intYear, objMonth.getMonth(), 1)); }
 
-  if (!blnRightsLoading && !blnCanView) return <Alert data-control-id="employee-calendar.unauthorized.alert" severity="warning">{t("unauthorized", "Employee Calendar access is not available for your user group.")}</Alert>;
+  const nodeBreadcrumbs = (
+    <Breadcrumbs className="app-breadcrumbs app-breadcrumbs-master" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon className="app-breadcrumb-separator-icon" />}>
+      <Typography className="app-breadcrumb-label">Leave</Typography>
+      <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">Holiday Calendar</Typography>
+    </Breadcrumbs>
+  );
+  const nodeCalendarActions = (
+    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap sx={{ justifyContent: { xs: "flex-start", md: "flex-end" } }}>
+      <Button data-control-id="employee-calendar.previous-month.button" variant="outlined" aria-label={t("previous_month", "Previous month")} onClick={() => changeMonth(-1)} sx={{ minWidth: 40, bgcolor: "#fff", borderColor: "var(--app-primary-color)", color: "var(--app-primary-color)", "&:hover": { bgcolor: "rgba(255,255,255,.92)", borderColor: "var(--app-primary-color)" } }}><ChevronLeftRoundedIcon /></Button>
+      <FormControl size="small" sx={objBannerSelectSx}><InputLabel>{t("month", "Month")}</InputLabel><Select data-control-id="employee-calendar.month.select" label={t("month", "Month")} value={objMonth.getMonth()} onChange={(objEvent) => selectMonth(Number(objEvent.target.value))}>{Array.from({ length: 12 }, (_, intMonth) => <MenuItem data-control-id={`employee-calendar.month.option.${intMonth + 1}`} key={intMonth} value={intMonth}>{new Intl.DateTimeFormat(strLocale, { month: "long" }).format(new Date(2026, intMonth, 1))}</MenuItem>)}</Select></FormControl>
+      <FormControl size="small" sx={{ ...objBannerSelectSx, minWidth: 105 }}><InputLabel>{t("year", "Year")}</InputLabel><Select data-control-id="employee-calendar.year.select" label={t("year", "Year")} value={objMonth.getFullYear()} onChange={(objEvent) => selectYear(Number(objEvent.target.value))}>{lstYears.map((intYear) => <MenuItem data-control-id={`employee-calendar.year.option.${intYear}`} key={intYear} value={intYear}>{intYear}</MenuItem>)}</Select></FormControl>
+      <Button data-control-id="employee-calendar.today.button" variant="outlined" onClick={() => { const objNow = new Date(); setObjMonth(new Date(objNow.getFullYear(), objNow.getMonth(), 1)); }} sx={{ bgcolor: "#fff", borderColor: "var(--app-primary-color)", color: "var(--app-primary-color)", "&:hover": { bgcolor: "rgba(255,255,255,.92)", borderColor: "var(--app-primary-color)" } }}>{t("today", "Today")}</Button>
+      <Button data-control-id="employee-calendar.next-month.button" variant="outlined" aria-label={t("next_month", "Next month")} onClick={() => changeMonth(1)} sx={{ minWidth: 40, bgcolor: "#fff", borderColor: "var(--app-primary-color)", color: "var(--app-primary-color)", "&:hover": { bgcolor: "rgba(255,255,255,.92)", borderColor: "var(--app-primary-color)" } }}><ChevronRightRoundedIcon /></Button>
+    </Stack>
+  );
+
+  if (!blnRightsLoading && !blnCanView) {
+    return (
+      <Stack spacing={1.5}>
+        {nodeBreadcrumbs}
+        <Alert data-control-id="employee-calendar.unauthorized.alert" severity="warning">{t("unauthorized", "Employee Calendar access is not available for your user group.")}</Alert>
+      </Stack>
+    );
+  }
 
   return (
     <Stack spacing={1.5}>
-      <Box data-control-id="employee-calendar.header.banner" sx={{ display: "flex", flexWrap: { xs: "wrap", lg: "nowrap" } }}>
-        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap sx={{ ml: { lg: "auto" } }}>
-          <Button data-control-id="employee-calendar.previous-month.button" variant="outlined" aria-label={t("previous_month", "Previous month")} onClick={() => changeMonth(-1)} sx={{ minWidth: 40, bgcolor: "#fff", borderColor: "var(--app-primary-color)", color: "var(--app-primary-color)", "&:hover": { bgcolor: "rgba(255,255,255,.92)", borderColor: "var(--app-primary-color)" } }}><ChevronLeftRoundedIcon /></Button>
-          <FormControl size="small" sx={objBannerSelectSx}><InputLabel>{t("month", "Month")}</InputLabel><Select data-control-id="employee-calendar.month.select" label={t("month", "Month")} value={objMonth.getMonth()} onChange={(objEvent) => selectMonth(Number(objEvent.target.value))}>{Array.from({ length: 12 }, (_, intMonth) => <MenuItem data-control-id={`employee-calendar.month.option.${intMonth + 1}`} key={intMonth} value={intMonth}>{new Intl.DateTimeFormat(strLocale, { month: "long" }).format(new Date(2026, intMonth, 1))}</MenuItem>)}</Select></FormControl>
-          <FormControl size="small" sx={{ ...objBannerSelectSx, minWidth: 105 }}><InputLabel>{t("year", "Year")}</InputLabel><Select data-control-id="employee-calendar.year.select" label={t("year", "Year")} value={objMonth.getFullYear()} onChange={(objEvent) => selectYear(Number(objEvent.target.value))}>{lstYears.map((intYear) => <MenuItem data-control-id={`employee-calendar.year.option.${intYear}`} key={intYear} value={intYear}>{intYear}</MenuItem>)}</Select></FormControl>
-          <Button data-control-id="employee-calendar.today.button" variant="outlined" onClick={() => { const objNow = new Date(); setObjMonth(new Date(objNow.getFullYear(), objNow.getMonth(), 1)); }} sx={{ bgcolor: "#fff", borderColor: "var(--app-primary-color)", color: "var(--app-primary-color)", "&:hover": { bgcolor: "rgba(255,255,255,.92)", borderColor: "var(--app-primary-color)" } }}>{t("today", "Today")}</Button>
-          <Button data-control-id="employee-calendar.next-month.button" variant="outlined" aria-label={t("next_month", "Next month")} onClick={() => changeMonth(1)} sx={{ minWidth: 40, bgcolor: "#fff", borderColor: "var(--app-primary-color)", color: "var(--app-primary-color)", "&:hover": { bgcolor: "rgba(255,255,255,.92)", borderColor: "var(--app-primary-color)" } }}><ChevronRightRoundedIcon /></Button>
-        </Stack>
-      </Box>
+      <Stack data-control-id="employee-calendar.header.banner" direction={{ xs: "column", md: "row" }} spacing={1.25} alignItems={{ xs: "stretch", md: "center" }} justifyContent="space-between">
+        {nodeBreadcrumbs}
+        {nodeCalendarActions}
+      </Stack>
 
       {strError ? <Alert data-control-id="employee-calendar.error.alert" severity="error" action={<Button data-control-id="employee-calendar.retry.button" onClick={reload}>{t("retry", "Retry")}</Button>}>{strError}</Alert> : null}
       <Paper sx={{ p: 1.5, borderRadius: 3, position: "relative", minHeight: 420 }}>

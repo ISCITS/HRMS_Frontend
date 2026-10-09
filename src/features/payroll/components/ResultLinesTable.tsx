@@ -1,9 +1,9 @@
 "use client";
 
 import RequestQuoteRoundedIcon from "@mui/icons-material/RequestQuoteRounded";
-import { Box, Chip, Paper, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 
-import styles from "@/features/payroll/components/PayrollScreen.module.css";
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import type { PayrollResultLineRecord } from "@/features/payroll/types";
 
@@ -13,7 +13,7 @@ import type { PayrollResultLineRecord } from "@/features/payroll/types";
 
 type ResultLinesTableProps = {
   lstLines: PayrollResultLineRecord[];
-  /** When true, drops the outer Paper card + heading (for use inside a dialog). */
+  /** When true, drops the "Result Lines" heading (for use inside a dialog). */
   blnFlush?: boolean;
 };
 
@@ -64,20 +64,6 @@ function formatLabelTemplate(strTemplate: string, dicValues: Record<string, stri
     (strOutput, [strKey, objValue]) => strOutput.replaceAll(`{${strKey}}`, String(objValue)),
     strTemplate
   );
-}
-
-function getCategoryChipSx(strCategory: string | null | undefined) {
-  const strNormalized = String(strCategory ?? "").trim().toLowerCase().replace(/[\s_-]+/g, "");
-  if (strNormalized === "earning") {
-    return { background: "#dcfce7", color: "#15803d" };
-  }
-  if (strNormalized === "reimbursement") {
-    return { background: "#dbeafe", color: "#1d4ed8" };
-  }
-  if (strNormalized === "deduction") {
-    return { background: "#ffedd5", color: "#c2410c" };
-  }
-  return { background: "#e2e8f0", color: "#334155" };
 }
 
 function hasDisplayAmount(decAmount: number | null | undefined) {
@@ -243,145 +229,72 @@ function getLwpExplanation(
 
 export default function ResultLinesTable({ lstLines, blnFlush = false }: ResultLinesTableProps) {
   const { t } = useModuleLabels("payslips");
-  const lstResultLines = (lstLines ?? []).filter((dicLine) => hasDisplayAmount(dicLine.decAmount));
-
-  const objInner = (
-    <>
-      {blnFlush ? null : (
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: { xs: "column", lg: "row" },
-            alignItems: { xs: "stretch", lg: "center" },
-            justifyContent: "space-between",
-            gap: 1.5,
-            pb: 1.3,
-            mb: 1.2,
-            borderBottom: "1px solid #dbe7f3",
-          }}
-        >
-          <Typography sx={{ display: "flex", alignItems: "center", gap: 1, color: "#0f172a", fontSize: "1.05rem", fontWeight: 900 }}>
-            <RequestQuoteRoundedIcon sx={{ color: "#2563eb", fontSize: 22 }} />
-            {t("line_items", "Result Lines")}
-          </Typography>
-        </Box>
-      )}
-
-      <Box
-        sx={{
-          overflowX: "auto",
-          border: "1px solid #dbe7f3",
-          borderRadius: "10px",
-          maxWidth: "100%",
-        }}
-      >
-        <table className={`${styles.table} ${styles.resultLinesTable}`}>
-          <thead>
-            <tr>
-              <th>{t("component_code", "Component Code")}</th>
-              <th>{t("component_name", "Component Name")}</th>
-              <th>{t("category", "Category")}</th>
-              <th>{t("line_type", "Line Type")}</th>
-              <th>{t("amount", "Amount")}</th>
-              <th>{t("monthly_amount", "Monthly Amount")}</th>
-              <th>{t("payroll_impact", "Payroll Impact")}</th>
-              <th>{t("calculation_source", "Calculation Source")}</th>
-              <th>{t("taxable", "Taxable")}</th>
-              <th>{t("ctc_included", "CTC Included")}</th>
-              <th>{t("payslip_section", "Payslip Section")}</th>
-              <th>{t("lwp_audit", "LWP Audit")}</th>
-              <th>{t("remarks", "Remarks")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {lstResultLines.length === 0 ? (
-              <tr>
-                <td colSpan={13} className={styles.emptyState}>
-                  {t("line_empty", "No payroll result lines found.")}
-                </td>
-              </tr>
-            ) : (
-              lstResultLines.map((dicLine) => {
-                const objLwpSummary = getLineLwpSummary(dicLine);
-                return (
-                  <tr key={dicLine.intID}>
-                    <td>{dicLine.strComponentCode}</td>
-                    <td>{translateDynamicLabel(t, dicLine.strComponentName)}</td>
-                    <td>
-                      <Chip
-                        label={translateDynamicLabel(t, dicLine.strComponentCategory)}
-                        size="small"
-                        sx={{
-                          ...getCategoryChipSx(dicLine.strComponentCategory),
-                          fontWeight: 700,
-                          borderRadius: "8px",
-                        }}
-                      />
-                    </td>
-                    <td>{translateDynamicLabel(t, dicLine.strLineType)}</td>
-                    <td>{formatCurrency(dicLine.decAmount)}</td>
-                    <td>{formatCurrency(getLineMonthlyAmount(dicLine) ?? 0)}</td>
-                    <td>{translateDynamicLabel(t, getPayrollImpactLabel(dicLine))}</td>
-                    <td>{translateDynamicLabel(t, dicLine.strCalculationSource || dicLine.strSourceType)}</td>
-                    <td>{translateDynamicLabel(t, getTaxableLabel(dicLine))}</td>
-                    <td>{translateDynamicLabel(t, getCtcIncludedLabel(dicLine))}</td>
-                    <td>{translateDynamicLabel(t, dicLine.strPayslipSection)}</td>
-                    <td>
-                      {objLwpSummary ? (
-                        <span data-controlid="payroll.result-detail.line.lwp-summary" title={objLwpSummary.strOutcome ?? ""}>
-                          {translateDynamicLabel(t, objLwpSummary.strTreatment, "lwp_treatment")}
-                          {objLwpSummary.decReducedAmount > 0 ? ` (-${formatCurrency(objLwpSummary.decReducedAmount)})` : ""}
-                        </span>
-                      ) : (
-                        getLwpExplanation(t, dicLine)
-                      )}
-                    </td>
-                    <td>{dicLine.strRemarks || "-"}</td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </Box>
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: { xs: "column", sm: "row" },
-          alignItems: { xs: "flex-start", sm: "center" },
-          justifyContent: "space-between",
-          gap: 1.25,
-          pt: 1.8,
-        }}
-      >
-        <Typography sx={{ color: "#475569", fontSize: "0.92rem" }}>
-          {formatLabelTemplate(t("showing_results", "Showing {from} to {to} of {total} results"), {
-            from: lstResultLines.length ? 1 : 0,
-            to: lstResultLines.length,
-            total: lstResultLines.length,
-          })}
-        </Typography>
-      </Box>
-    </>
+  // Same rule as the payslip document (PayslipRepository): hide lines flagged out of the payslip, e.g. CTC provisions.
+  const lstResultLines = (lstLines ?? []).filter(
+    (dicLine) => hasDisplayAmount(dicLine.decAmount) && dicLine.blnIncludeInPayslip !== false
   );
 
-  if (blnFlush) {
-    return objInner;
-  }
+  const lstRows = lstResultLines.map((dicLine) => {
+    const objLwpSummary = getLineLwpSummary(dicLine);
+    const decMonthlyAmount = getLineMonthlyAmount(dicLine) ?? 0;
+    return {
+      id: dicLine.intID,
+      strComponentName: translateDynamicLabel(t, dicLine.strComponentName),
+      decAmount: formatCurrency(dicLine.decAmount),
+      decAmountSortValue: Number(dicLine.decAmount ?? 0),
+      decMonthlyAmount: formatCurrency(decMonthlyAmount),
+      decMonthlyAmountSortValue: Number(decMonthlyAmount),
+      strPayrollImpact: translateDynamicLabel(t, getPayrollImpactLabel(dicLine)),
+      strCalculationSource: translateDynamicLabel(t, dicLine.strCalculationSource || dicLine.strSourceType),
+      strTaxable: translateDynamicLabel(t, getTaxableLabel(dicLine)),
+      strCtcIncluded: translateDynamicLabel(t, getCtcIncludedLabel(dicLine)),
+      strPayslipSection: translateDynamicLabel(t, dicLine.strPayslipSection),
+      objLwpAudit: objLwpSummary ? (
+        <span data-controlid="payroll.result-detail.line.lwp-summary" title={objLwpSummary.strOutcome ?? ""}>
+          {translateDynamicLabel(t, objLwpSummary.strTreatment, "lwp_treatment")}
+          {objLwpSummary.decReducedAmount > 0 ? ` (-${formatCurrency(objLwpSummary.decReducedAmount)})` : ""}
+        </span>
+      ) : (
+        getLwpExplanation(t, dicLine)
+      ),
+      strRemarks: dicLine.strRemarks || "-",
+    };
+  });
+
+  const lstColumns: CommonTableColumn<(typeof lstRows)[number]>[] = [
+    { field: "strComponentName", headerName: t("component_name", "Component Name"), width: 200 },
+    { field: "decAmount", headerName: t("amount", "Amount"), align: "right", width: 120, sortAccessor: (dicRow) => dicRow.decAmountSortValue },
+    { field: "decMonthlyAmount", headerName: t("monthly_amount", "Monthly Amount"), align: "right", width: 140, sortAccessor: (dicRow) => dicRow.decMonthlyAmountSortValue },
+    { field: "strPayrollImpact", headerName: t("payroll_impact", "Payroll Impact"), width: 150 },
+    { field: "strCalculationSource", headerName: t("calculation_source", "Calculation Source"), width: 150 },
+    { field: "strTaxable", headerName: t("taxable", "Taxable"), width: 90 },
+    { field: "strCtcIncluded", headerName: t("ctc_included", "CTC Included"), width: 110 },
+    { field: "strPayslipSection", headerName: t("payslip_section", "Payslip Section"), width: 170 },
+    { field: "objLwpAudit", headerName: t("lwp_audit", "LWP Audit"), width: 150, exportable: false },
+    { field: "strRemarks", headerName: t("remarks", "Remarks"), width: 240 },
+  ];
 
   return (
-    <Paper
-      sx={{
-        borderRadius: "12px",
-        border: "1px solid #dbe7f3",
-        boxShadow: "0 10px 24px rgba(15, 23, 42, 0.04)",
-        background: "#fff",
-        p: { xs: 1.5, md: 1.8 },
-        maxWidth: "100%",
-        overflow: "hidden",
-      }}
-    >
-      {objInner}
-    </Paper>
+    <>
+      {blnFlush ? null : (
+        <Typography sx={{ display: "flex", alignItems: "center", gap: 1, color: "#0f172a", fontSize: "1.05rem", fontWeight: 900, mb: 1.2 }}>
+          <RequestQuoteRoundedIcon sx={{ color: "#2563eb", fontSize: 22 }} />
+          {t("line_items", "Result Lines")}
+        </Typography>
+      )}
+      <CommonTable
+        columns={lstColumns}
+        rows={lstRows}
+        rowIdField="id"
+        withPaper={false}
+        hideToolbar
+        hideRowClickHint
+        minTableWidth={1180}
+        defaultPageSize={20}
+        showPaginationSummary
+        emptyMessage={t("line_empty", "No payroll result lines found.")}
+        testIdPrefix="payroll.result-lines"
+      />
+    </>
   );
 }

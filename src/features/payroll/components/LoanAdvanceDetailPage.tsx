@@ -640,12 +640,12 @@ export default function LoanAdvanceDetailPage({ strLoanAdvanceID, strMode = "pay
           <Stepper activeStep={intWorkflowStep} alternativeLabel className={styles.fnfStepperShell}>
             {lstWorkflow.map((strStep) => <Step key={strStep}><StepLabel>{t(`workflow_${strStep}`, strStep.replaceAll("_", " "))}</StepLabel></Step>)}
           </Stepper>
-          <Tabs value={intTab} onChange={(_, intNextTab) => setIntTab(intNextTab)} sx={{ minHeight: 42, mt: 1 }}>
-            <Tab label={t("tab_form", "Request")} />
-            <Tab label={t("tab_approval", "Approval")} />
-            <Tab label={t("tab_disbursement", "Disbursement")} disabled={!["approved", "disbursed", "active", "closed"].includes(strStatus)} />
-            <Tab label={t("tab_schedule", "Repayment Schedule")} disabled={!objRecord && lstSchedulePreview.length === 0} />
-            <Tab label={t("tab_ledger", "Ledger / History")} disabled={!objRecord} />
+          <Tabs className="app-employee-tabs" value={intTab} onChange={(_, intNextTab) => setIntTab(intNextTab)} variant="scrollable" scrollButtons="auto" sx={{ mt: 1 }}>
+            <Tab label={<Box component="span" className="app-employee-tab-label">{t("tab_form", "Request")}</Box>} />
+            <Tab label={<Box component="span" className="app-employee-tab-label">{t("tab_approval", "Approval")}</Box>} />
+            <Tab label={<Box component="span" className="app-employee-tab-label">{t("tab_disbursement", "Disbursement")}</Box>} disabled={!["approved", "disbursed", "active", "closed"].includes(strStatus)} />
+            <Tab label={<Box component="span" className="app-employee-tab-label">{t("tab_schedule", "Repayment Schedule")}</Box>} disabled={!objRecord && lstSchedulePreview.length === 0} />
+            <Tab label={<Box component="span" className="app-employee-tab-label">{t("tab_ledger", "Ledger / History")}</Box>} disabled={!objRecord} />
           </Tabs>
           {intTab === 0 ? (
             <Box sx={{ display: "grid", gap: 2, mt: 2 }}>

@@ -36,13 +36,15 @@ type DetailPageHeaderProps = {
   fnListClick?: () => void;
   /** Last crumb, e.g. Add / Edit / View. */
   strCurrent: string;
+  /** Optional element (e.g. a status pill) shown right after the last crumb. */
+  objCurrentAdornment?: ReactNode;
   /** Action buttons kept visible in the sticky heading. */
   children?: ReactNode;
 };
 
 // Heading shared by detail (add / edit / view) screens: Section > List > Mode, with the screen's
 // action buttons pinned beside it like the Employee details screen.
-export function DetailPageHeader({ strSection, strListTitle, strListHref, fnListClick, strCurrent, children }: DetailPageHeaderProps) {
+export function DetailPageHeader({ strSection, strListTitle, strListHref, fnListClick, strCurrent, objCurrentAdornment, children }: DetailPageHeaderProps) {
   return (
     <Stack
       direction={{ xs: "column", sm: "row" }}
@@ -51,6 +53,7 @@ export function DetailPageHeader({ strSection, strListTitle, strListHref, fnList
       spacing={1.5}
       sx={{ position: "sticky", top: 0, zIndex: 10, bgcolor: "var(--app-bg-color)", py: 0.5 }}
     >
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ minWidth: 0 }}>
       <Breadcrumbs className="app-breadcrumbs app-breadcrumbs-master" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon className="app-breadcrumb-separator-icon" />}>
         <Typography className="app-breadcrumb-label">{strSection}</Typography>
         {fnListClick ? (
@@ -60,6 +63,8 @@ export function DetailPageHeader({ strSection, strListTitle, strListHref, fnList
         )}
         <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{strCurrent}</Typography>
       </Breadcrumbs>
+      {objCurrentAdornment}
+      </Stack>
       {children ? (
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: { xs: "100%", sm: "auto" }, flexShrink: 0 }}>
           {children}

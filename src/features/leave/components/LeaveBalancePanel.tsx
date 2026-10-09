@@ -13,7 +13,7 @@ import {
 import { useEffect, useState } from "react";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
-import { MasterGridSkeleton } from "@/components/master/MasterListUi";
+import { MasterBreadcrumbs, MasterGridSkeleton } from "@/components/master/MasterListUi";
 import { leaveService } from "@/features/leave/services/leaveService";
 import type { LeaveBalanceDto } from "@/features/leave/types";
 
@@ -51,6 +51,7 @@ export default function LeaveBalancePanel() {
 
   return (
     <Stack spacing={1.5}>
+      <MasterBreadcrumbs strSection="Leave" strTitle="My Leave Balance" />
       {blnLoading ? (
         <MasterGridSkeleton strControlId="ess.leave-balance.skeleton" intColumns={5} />
       ) : lstBalances.length === 0 ? (

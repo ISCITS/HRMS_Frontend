@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
+import { DetailPageHeader } from "@/components/master/MasterListUi";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import PayslipHtmlPreview from "@/features/payroll/components/PayslipHtmlPreview";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
@@ -64,7 +65,12 @@ export default function PayslipDocumentPage({ strPayslipID, strBackRoute }: Pays
 
   return (
     <Box className={styles.page}>
-      <Box className={styles.topBar} style={{ justifyContent: "flex-end" }}>
+      <DetailPageHeader
+        strSection={t("breadcrumb_ess", "ESS")}
+        strListTitle={t("ess_header_title", "My Payslips")}
+        strListHref={strBackRoute || "/ess/my-payslips"}
+        strCurrent={t("breadcrumb_document", "Document")}
+      >
         <Button
           className={styles.secondaryButton}
           startIcon={<ArrowBackRoundedIcon />}
@@ -72,7 +78,7 @@ export default function PayslipDocumentPage({ strPayslipID, strBackRoute }: Pays
         >
           {t("back_button", "Back")}
         </Button>
-      </Box>
+      </DetailPageHeader>
       {strError ? (
         <Alert severity="error">{strError}</Alert>
       ) : (

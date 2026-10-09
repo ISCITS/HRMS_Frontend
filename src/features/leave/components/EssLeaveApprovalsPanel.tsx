@@ -24,7 +24,7 @@ import {
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
-import { MasterGridSkeleton } from "@/components/master/MasterListUi";
+import { MasterBreadcrumbs, MasterGridSkeleton } from "@/components/master/MasterListUi";
 import { useLeaveApprovals } from "@/features/leave/hooks/useLeaveApprovals";
 import { useLeaveWorkflowPermissions } from "@/features/leave/hooks/useLeaveWorkflowPermissions";
 import { leaveService } from "@/features/leave/services/leaveService";
@@ -207,11 +207,13 @@ export default function EssLeaveApprovalsPanel() {
     }
   }
 
+  const nodeBreadcrumbs = <MasterBreadcrumbs strSection={t("breadcrumb_leave", "Leave")} strTitle={t("page_title", "Leave Approvals")} />;
+
   if (blnRightsLoading) {
-    return <MasterGridSkeleton strControlId="ess.leave.approvals.skeleton" intColumns={7} />;
+    return <Stack spacing={1.5}>{nodeBreadcrumbs}<MasterGridSkeleton strControlId="ess.leave.approvals.skeleton" intColumns={7} /></Stack>;
   }
   if (!blnCanView) {
-    return <Box sx={{ p: 3 }}><Alert severity="warning">{t("access_denied", "Leave approval access is not available for your user group.")}</Alert></Box>;
+    return <Stack spacing={1.5}>{nodeBreadcrumbs}<Box sx={{ p: 3 }}><Alert severity="warning">{t("access_denied", "Leave approval access is not available for your user group.")}</Alert></Box></Stack>;
   }
 
   const lstCards = [
@@ -229,6 +231,7 @@ export default function EssLeaveApprovalsPanel() {
   ];
 
   return <Stack spacing={2}>
+    {nodeBreadcrumbs}
     {/* Refresh sits at the right end of the tab bar rather than in its own row above the cards. */}
     <Grid container spacing={1.25}>
       {lstCards.map((objCard) => <Grid item xs={6} md={3} key={objCard.strKey}><Paper sx={{ p: 1.75, borderRadius: "16px", border: "1px solid #e2e8f0", height: "100%" }}><Stack direction="row" spacing={1.25} alignItems="center"><Box sx={{ width: 44, height: 44, borderRadius: "12px", bgcolor: `${objCard.strColor}18`, color: objCard.strColor, display: "grid", placeItems: "center" }}>{objCard.objIcon}</Box><Box>{blnLoading ? <Skeleton width={40} height={30} /> : <Typography sx={{ fontWeight: 800, fontSize: "1.5rem", lineHeight: 1 }}>{objCard.intValue}</Typography>}<Typography sx={{ fontSize: ".72rem", color: "#64748b", fontWeight: 600 }}>{objCard.strLabel}</Typography></Box></Stack></Paper></Grid>)}

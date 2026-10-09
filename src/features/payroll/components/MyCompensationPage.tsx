@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import { MasterBreadcrumbs } from "@/components/master/MasterListUi";
 import { employeeSalaryService } from "@/features/employee-salary/services/employeeSalaryService";
 import type { EmployeeSalaryComponentLine, EmployeeSalaryDetailRecord } from "@/features/employee-salary/types";
 import { calculateEmployeeSalaryBaseSummaryMetrics } from "@/features/employee-salary/utils/employeeSalarySummary";
@@ -204,6 +205,7 @@ export default function MyCompensationPage() {
   const [objItDeclarationCard, setObjItDeclarationCard] = useState<ItDeclarationDashboardCardDto | null>(null);
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
+  const nodeBreadcrumbs = <MasterBreadcrumbs strSection={t("breadcrumb_payroll_benefits", "Payroll & Benefits")} strTitle={t("page_title", "My Compensation")} />;
 
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list") || canDoAny("salary_view");
   const strCurrencyCode = objDetail?.objAssignedStructure?.strCurrencyCode ?? "INR";
@@ -276,15 +278,30 @@ export default function MyCompensationPage() {
   );
 
   if (blnRightsLoading || blnLoading) {
-    return <Box sx={{ display: "grid", placeItems: "center", py: 8 }}><DottedLoader /></Box>;
+    return (
+      <Stack spacing={1}>
+        {nodeBreadcrumbs}
+        <Box sx={{ display: "grid", placeItems: "center", py: 8 }}><DottedLoader /></Box>
+      </Stack>
+    );
   }
 
   if (!blnCanView) {
-    return <Alert severity="warning">My Compensation access is not available for your user group.</Alert>;
+    return (
+      <Stack spacing={1}>
+        {nodeBreadcrumbs}
+        <Alert severity="warning">My Compensation access is not available for your user group.</Alert>
+      </Stack>
+    );
   }
 
   if (!objDetail) {
-    return <Alert severity={strError ? "error" : "info"}>{strError || "No compensation detail is available."}</Alert>;
+    return (
+      <Stack spacing={1}>
+        {nodeBreadcrumbs}
+        <Alert severity={strError ? "error" : "info"}>{strError || "No compensation detail is available."}</Alert>
+      </Stack>
+    );
   }
 
   const objCurrentSalarySnapshot = objDetail.objCurrentSalarySnapshot;
@@ -335,6 +352,7 @@ export default function MyCompensationPage() {
 
   return (
     <Stack spacing={1}>
+      {nodeBreadcrumbs}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
 
       <Box

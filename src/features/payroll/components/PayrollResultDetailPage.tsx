@@ -37,6 +37,7 @@ import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import PayslipHtmlPreview from "@/features/payroll/components/PayslipHtmlPreview";
 import PayrollResultBreakdown from "@/features/payroll/components/PayrollResultBreakdown";
+import masterStyles from "@/components/master/MasterScreen.module.css";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payrollResultService } from "@/features/payroll/services/payrollResultService";
 import { payslipService } from "@/features/payroll/services/payslipService";
@@ -126,13 +127,13 @@ function formatPercent(decValue: number | null | undefined) {
 }
 
 function getStatusTone(strStatus: string) {
-  const dicToneByStatus: Record<string, { background: string; color: string }> = {
-    Calculated: { background: "#4f46e5", color: "#fff" },
-    Approved: { background: "#16a34a", color: "#fff" },
-    Published: { background: "#7c3aed", color: "#fff" },
-    Paid: { background: "#0f766e", color: "#fff" },
+  const dicToneByStatus: Record<string, { background: string; border: string; color: string }> = {
+    Calculated: { background: "#eff6ff", border: "#bfdbfe", color: "#1d4ed8" },
+    Approved: { background: "#ecfdf5", border: "#bbf7d0", color: "#15803d" },
+    Published: { background: "#f5f3ff", border: "#ddd6fe", color: "#6d28d9" },
+    Paid: { background: "#f0fdfa", border: "#99f6e4", color: "#0f766e" },
   };
-  return dicToneByStatus[strStatus] ?? { background: "#475569", color: "#fff" };
+  return dicToneByStatus[strStatus] ?? { background: "#f1f5f9", border: "#cbd5e1", color: "#334155" };
 }
 
 function getInitials(strName: string) {
@@ -252,14 +253,14 @@ function TaxInfoIconButton({
         onClick={onOpen}
         data-controlid={strControlID}
         sx={{
-          color: "#fff",
-          backgroundColor: "#1d4ed8",
-          border: "1px solid #1d4ed8",
+          color: "#0B5ED7",
+          backgroundColor: "#fff",
+          border: "1px solid #8FB8F9",
+          borderRadius: "8px",
           width: intSize,
           height: intSize,
           padding: 0,
-          boxShadow: "0 2px 6px rgba(29, 78, 216, 0.35)",
-          "&:hover": { backgroundColor: "#1e40af" },
+          "&:hover": { backgroundColor: "var(--app-grid-row-hover-background)" },
           ...sx,
         }}
       >
@@ -275,7 +276,7 @@ function KpiCard({
   objIcon,
   strIconBg,
   strIconColor,
-  strBorder = "#dbe7f3",
+  strBorder = "#DCE4EF",
   blnEmphasis = false,
   objHeaderAction,
 }: {
@@ -289,25 +290,24 @@ function KpiCard({
   objHeaderAction?: ReactNode;
 }) {
   return (
-    <Paper
+    <Box
       sx={{
         position: "relative",
-        borderRadius: "12px",
+        borderRadius: "10px",
         border: `1px solid ${strBorder}`,
         background: "#fff",
-        boxShadow: "0 10px 24px rgba(15, 23, 42, 0.04)",
-        minHeight: 82,
-        px: 2,
-        py: 1.6,
+        minHeight: 68,
+        px: 1.5,
+        py: 1.2,
       }}
     >
       {objHeaderAction ? <Box sx={{ position: "absolute", top: 8, right: 8 }}>{objHeaderAction}</Box> : null}
-      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ height: "100%" }}>
+      <Stack direction="row" spacing={1.2} alignItems="center" sx={{ height: "100%", pr: objHeaderAction ? 3.5 : 0 }}>
         <Box
           sx={{
-            width: 46,
-            height: 46,
-            borderRadius: "12px",
+            width: 40,
+            height: 40,
+            borderRadius: "10px",
             display: "grid",
             placeItems: "center",
             background: strIconBg,
@@ -318,15 +318,15 @@ function KpiCard({
           {objIcon}
         </Box>
         <Box sx={{ minWidth: 0 }}>
-          <Typography sx={{ color: "#344767", fontSize: "0.72rem", fontWeight: 900, textTransform: "uppercase", lineHeight: 1.25 }}>
+          <Typography sx={{ color: "#475569", fontSize: "0.75rem", fontWeight: 700, lineHeight: 1.15 }}>
             {strLabel}
           </Typography>
-          <Typography sx={{ color: blnEmphasis ? strIconColor : "#0f172a", fontSize: "1.08rem", fontWeight: 900, mt: 0.55, lineHeight: 1.15 }}>
+          <Typography sx={{ color: blnEmphasis ? strIconColor : "#0f172a", fontSize: "0.98rem", fontWeight: 900, mt: 0.35, lineHeight: 1.2 }}>
             {strValue}
           </Typography>
         </Box>
       </Stack>
-    </Paper>
+    </Box>
   );
 }
 
@@ -343,21 +343,20 @@ function PaginatedSummaryCard({
   objHeaderAction?: ReactNode;
 }) {
   return (
-    <Paper
+    <Box
       sx={{
         borderRadius: "10px",
-        border: "1px solid #dbe7f3",
-        boxShadow: "none",
-        minHeight: 220,
+        border: "1px solid #DCE4EF",
         display: "flex",
         flexDirection: "column",
         background: "#fff",
+        overflow: "hidden",
       }}
     >
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, px: 1.8, py: 1.1, borderBottom: "1px solid #e6eef7", flex: "0 0 auto" }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, px: 1.5, py: 1, borderBottom: "1px solid var(--app-grid-border-color)", flex: "0 0 auto" }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0 }}>
           {objIcon}
-          <Typography component="h3" sx={{ color: "#0f172a", fontSize: "0.84rem", fontWeight: 900, lineHeight: 1.2 }}>
+          <Typography component="h3" sx={{ color: "#0f172a", fontSize: "0.9rem", fontWeight: 800, lineHeight: 1.2 }}>
             {strTitle}
           </Typography>
         </Box>
@@ -365,25 +364,24 @@ function PaginatedSummaryCard({
       </Box>
       <Box
         sx={{
-          px: 1.8,
-          py: 0.4,
-          flex: "1 1 auto",
-          overflowY: "auto",
-          maxHeight: { xs: "none", sm: 420 },
-          "&::-webkit-scrollbar": { width: 6 },
-          "&::-webkit-scrollbar-thumb": { background: "#cbd8e8", borderRadius: "8px" },
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" },
+          columnGap: 4,
+          px: 1.5,
+          py: 0.25,
+          mb: "-1px",
         }}
       >
-        {lstItems.map((dicItem, intIndex) => (
+        {lstItems.map((dicItem) => (
           <Box
             key={dicItem.key}
             sx={{
-              minHeight: 44,
+              minHeight: 40,
               display: "grid",
               gridTemplateColumns: "minmax(0, 1fr) minmax(84px, auto)",
               alignItems: "center",
               gap: 1,
-              borderBottom: intIndex === lstItems.length - 1 ? "none" : "1px solid #edf3f9",
+              borderBottom: "1px solid var(--app-grid-border-color)",
             }}
           >
             {dicItem.tone === "note" || dicItem.tone === "info" ? (
@@ -406,12 +404,12 @@ function PaginatedSummaryCard({
             ) : (
               <>
                 <Tooltip title={dicItem.tooltip ?? dicItem.label} arrow>
-                  <Typography sx={{ color: "#3d5273", fontSize: "0.78rem", lineHeight: 1.25, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                  <Typography sx={{ color: "#475569", fontSize: "0.84rem", fontWeight: 600, lineHeight: 1.25, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
                     {dicItem.label}
                   </Typography>
                 </Tooltip>
                 <Tooltip title={dicItem.tooltip ?? ""} arrow disableHoverListener={!dicItem.tooltip}>
-                  <Box sx={{ color: "#0f172a", fontSize: "0.78rem", fontWeight: 900, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", textAlign: "right", whiteSpace: "normal" }}>
+                  <Box sx={{ color: "#0f172a", fontSize: "0.86rem", fontWeight: 800, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", textAlign: "right", whiteSpace: "normal" }}>
                     {dicItem.value}
                   </Box>
                 </Tooltip>
@@ -420,7 +418,7 @@ function PaginatedSummaryCard({
           </Box>
         ))}
       </Box>
-    </Paper>
+    </Box>
   );
 }
 
@@ -671,38 +669,31 @@ export default function PayrollResultDetailPage({
         strSection={blnEssRoute ? t("ess_breadcrumb_section", "Employee Services") : t("breadcrumb_section", "Payroll")}
         strListTitle={blnPayslipScreen ? (blnEssRoute ? t("ess_breadcrumbs", "My Payslips") : t("payslip_breadcrumbs", "Payslips")) : t("payroll_results_breadcrumbs", "Payroll Results")}
         strListHref={strResolvedBackRoute}
-        strCurrent={t("breadcrumb_view", "View")}
+        strCurrent={`${objResult.strEmployeeName} (${objResult.strEmployeeCode})`}
+        objCurrentAdornment={
+          <Chip
+            label={translateDynamicLabel(t, objResult.strStatus, "status")}
+            size="small"
+            sx={{
+              background: dicStatusTone.background,
+              border: `1px solid ${dicStatusTone.border}`,
+              color: dicStatusTone.color,
+              fontWeight: 800,
+              height: 24,
+              minWidth: 78,
+            }}
+          />
+        }
       >
               <Button
+                className={masterStyles.secondaryButton}
                 onClick={() => objRouter.push(strResolvedBackRoute)}
                 startIcon={<ArrowBackRoundedIcon />}
-                sx={{
-                  color: "#2563eb",
-                  px: 0,
-                  minWidth: 0,
-                  textTransform: "none",
-                  fontWeight: 900,
-                  fontSize: "0.86rem",
-                  lineHeight: 1,
-                  "& .MuiButton-startIcon": { mr: 0.6 },
-                  "&:hover": { background: "transparent", color: "#1d4ed8" },
-                }}
+                sx={{ flex: "0 0 auto", height: 38, minHeight: 38 }}
                 data-controlid="payroll.result-detail.back.button"
               >
                 {t("back_to_list", "Back to List")}
               </Button>
-                <Chip
-                  label={translateDynamicLabel(t, objResult.strStatus, "status")}
-                  sx={{
-                    alignSelf: { xs: "flex-start", sm: "center" },
-                    background: dicStatusTone.background,
-                    color: dicStatusTone.color,
-                    fontWeight: 800,
-                    borderRadius: "999px",
-                    height: 30,
-                    px: 1,
-                  }}
-                />
                 {blnPayslipScreen && blnCanUsePayslipDocumentActions ? (
                   <>
                   <Button
@@ -710,17 +701,8 @@ export default function PayrollResultDetailPage({
                     endIcon={<KeyboardArrowDownRoundedIcon />}
                     startIcon={<DownloadRoundedIcon />}
                     disabled={blnPayslipLoading}
-                    sx={{
-                      borderRadius: "10px",
-                      border: "1px solid #d7e4f3",
-                      color: "#0f172a",
-                      background: "#fff",
-                      boxShadow: "0 10px 24px rgba(15, 23, 42, 0.06)",
-                      px: 2,
-                      height: 38,
-                      textTransform: "none",
-                      fontWeight: 800,
-                    }}
+                    className={masterStyles.secondaryButton}
+                    sx={{ flex: "0 0 auto", height: 38, minHeight: 38 }}
                     data-controlid="payroll.result-detail.actions.button"
                   >
                     {blnCanDownloadPayslips ? t("download_payslip", "Download") : t("actions", "Actions")}
@@ -740,27 +722,15 @@ export default function PayrollResultDetailPage({
                   </>
                 ) : null}
       </DetailPageHeader>
-      <Paper
-        sx={{
-          borderRadius: "12px",
-          p: { xs: 1.5, md: 2 },
-          border: "1px solid #cfe0f5",
-          background: "#f6f9fd",
-          boxShadow: "0 16px 38px rgba(15, 23, 42, 0.05)",
-          maxWidth: "100%",
-          overflow: "hidden",
-        }}
-      >
-        <Stack spacing={1.7}>
-          <Paper
+      <Box sx={{ maxWidth: "100%", mt: 0.5 }}>
+        <Stack spacing={1.25}>
+          <Box
             sx={{
               borderRadius: "12px",
-              border: "1px solid #dbe7f3",
-              boxShadow: "0 10px 24px rgba(15, 23, 42, 0.04)",
+              border: "1px solid #DCE4EF",
               background: "#fff",
-              px: { xs: 1.5, md: 2.4 },
-              py: 1.7,
-              minHeight: 88,
+              px: { xs: 1.25, md: 1.5 },
+              py: 1.1,
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
@@ -771,11 +741,11 @@ export default function PayrollResultDetailPage({
               <Stack direction="row" spacing={1.8} alignItems="center" sx={{ minWidth: 0 }}>
                 <Avatar
                   sx={{
-                    width: 58,
-                    height: 58,
-                    background: "linear-gradient(135deg, #6157f2 0%, #5138d8 100%)",
-                    color: "#fff",
-                    fontSize: "1.25rem",
+                    width: 44,
+                    height: 44,
+                    background: "#eff6ff",
+                    color: "#1d4ed8",
+                    fontSize: "1rem",
                     fontWeight: 900,
                     flexShrink: 0,
                   }}
@@ -783,16 +753,16 @@ export default function PayrollResultDetailPage({
                   {getInitials(objResult.strEmployeeName)}
                 </Avatar>
                 <Box sx={{ minWidth: 0 }}>
-                  <Typography sx={{ color: "#0f172a", fontSize: { xs: "1.35rem", md: "1.55rem" }, fontWeight: 900, lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {blnPayslipScreen ? t("payslip_title", "Payslip") : t("payroll_results_title", "Payroll Results")}
+                  <Typography sx={{ color: "#0f172a", fontSize: "1.05rem", fontWeight: 900, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {objResult.strEmployeeName}
                   </Typography>
-                  <Typography sx={{ color: "#334d79", fontSize: "0.9rem", mt: 0.5, fontWeight: 600 }}>
-                    {objResult.strEmployeeName} {" | "} {objResult.strEmployeeCode} {" | "} {objResult.strRunName}
+                  <Typography sx={{ color: "#64748b", fontSize: "0.82rem", mt: 0.3, fontWeight: 600 }}>
+                    {objResult.strEmployeeCode} {" | "} {objResult.strRunName} {" | "} {formatMonth(objResult.dtPayrollMonth)}
                   </Typography>
                 </Box>
               </Stack>
 
-          </Paper>
+          </Box>
 
           {strError ? <Alert severity="error">{strError}</Alert> : null}
           {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
@@ -801,7 +771,7 @@ export default function PayrollResultDetailPage({
           <Box
             sx={{
               display: "grid",
-              gap: 1.5,
+              gap: 1.25,
               gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "repeat(3, minmax(0, 1fr))", lg: "repeat(6, minmax(0, 1fr))" },
             }}
           >
@@ -858,11 +828,10 @@ export default function PayrollResultDetailPage({
             />
           </Box>
 
-          <Paper
+          <Box
             sx={{
               borderRadius: "12px",
-              border: "1px solid #dbe7f3",
-              boxShadow: "0 10px 24px rgba(15, 23, 42, 0.04)",
+              border: "1px solid #DCE4EF",
               background: "#fff",
               overflow: "hidden",
             }}
@@ -872,7 +841,7 @@ export default function PayrollResultDetailPage({
               onChange={(objEvent, strValue) => setStrActiveTab(strValue)}
               variant="scrollable"
               scrollButtons="auto"
-              sx={{ borderBottom: "1px solid #e6eef7", px: { xs: 1, md: 1.8 }, minHeight: 48 }}
+              sx={{ borderBottom: "1px solid #DCE4EF", px: { xs: 1, md: 1.5 }, minHeight: 46 }}
               data-controlid="payroll.result-detail.tabs"
             >
               {lstSummaryGuide.map((dicItem) => (
@@ -882,13 +851,13 @@ export default function PayrollResultDetailPage({
                   label={dicItem.label}
                   icon={dicItem.icon}
                   iconPosition="start"
-                  sx={{ minHeight: 48, textTransform: "none", fontWeight: 800, fontSize: "0.8rem" }}
+                  sx={{ minHeight: 46, textTransform: "none", fontWeight: 800, fontSize: "0.82rem" }}
                   data-controlid={`payroll.result-detail.tab.${dicItem.key}.button`}
                 />
               ))}
             </Tabs>
 
-            <Box sx={{ p: { xs: 1.5, md: 1.8 } }}>
+            <Box sx={{ p: { xs: 1.1, md: 1.35 } }}>
               {strActiveTab === "earnings-deductions" ? (
                 <PayrollResultBreakdown objResult={objResult} />
               ) : null}
@@ -897,31 +866,31 @@ export default function PayrollResultDetailPage({
                 <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1fr)" } }}>
                   <PaginatedSummaryCard
                     strTitle={t("tax_summary", "Tax Summary")}
-                    objIcon={<PercentRoundedIcon sx={{ color: "#6d28d9", fontSize: 20 }} />}
+                    objIcon={<PercentRoundedIcon sx={{ color: "#2563eb", fontSize: 18 }} />}
                     lstItems={lstTaxSummaryItems}
                     strAriaLabel={t("tax_summary", "Tax Summary")}
                     objHeaderAction={
                       <TaxInfoIconButton
                         onOpen={handleOpenTaxInformation}
                         strControlID="payroll.result-detail.tax-summary.tax-information.button"
-                        intSize={32}
-                        intIconSize={19}
+                        intSize={30}
+                        intIconSize={18}
                       />
                     }
                   />
                 </Box>
               ) : null}
             </Box>
-          </Paper>
+          </Box>
 
           {strPayslipPreviewHtml ? (
             <Paper
               sx={{
-                borderRadius: "24px",
-                border: "1px solid rgba(226, 232, 240, 0.95)",
-                boxShadow: "0 20px 44px rgba(15, 23, 42, 0.05)",
+                borderRadius: "12px",
+                border: "1px solid #DCE4EF",
+                boxShadow: "none",
                 background: "#fff",
-                p: 2.8,
+                p: { xs: 1.25, md: 1.5 },
               }}
             >
               <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1} sx={{ pb: 2, mb: 2.2, borderBottom: "1px solid #e2e8f0" }}>
@@ -938,7 +907,7 @@ export default function PayrollResultDetailPage({
             </Paper>
           ) : null}
         </Stack>
-      </Paper>
+      </Box>
     </Box>
   );
 }
