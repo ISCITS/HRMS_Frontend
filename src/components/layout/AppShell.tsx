@@ -1021,6 +1021,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
     strPathname?.toLowerCase() === "/payroll/employee-reimbursement" ||
     objSearchParams.get("source") === "employee-reimbursement";
   const strLowerPathname = strPathname?.toLowerCase() || "";
+  const strNormalizedLowerPathname = strLowerPathname.replace(/\/+$/, "") || "/";
+  const blnEssMyProfileRoute =
+    strHeaderModuleName === "my-profile" ||
+    strNormalizedLowerPathname === "/ess/my-profile" ||
+    strNormalizedLowerPathname.startsWith("/ess/my-profile/");
   // The employee editor has its own breadcrumb and action toolbar.
   const blnEmployeeEditorRoute = /^\/employees\/(?:add|(?:edit|view)\/[\w-]+)$/.test(strLowerPathname);
   const blnEmployeeSalaryEditorRoute = /^\/employee-salary\/[\w-]+(?:\/revise)?$/.test(strLowerPathname);
@@ -1045,6 +1050,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const blnLeaveTypeEditorRoute = /^\/leave\/leave-types\/(?:new|[\w-]+)$/.test(strLowerPathname);
   const blnLeavePlanEditorRoute = /^\/leave\/plans\/(?:new|\d+)$/.test(strLowerPathname);
   const blnLeaveAssignmentEditorRoute = /^\/leave\/plan-assignments\/\d+$/.test(strLowerPathname);
+  const blnEssLeaveApplyRoute = strNormalizedLowerPathname === "/ess/leave" || strNormalizedLowerPathname.endsWith("/ess/leave");
   const blnLeaveApprovalsRoute = strLowerPathname === "/leave/approvals" || strLowerPathname === "/hr/leave/requests-approvals";
   // Leave and Attendance screens already show a breadcrumb, so the header title before the profile avatar is redundant.
   const blnLeaveAttendanceRoute = /^\/(?:leave|attendance|hr\/leave)(?:\/|$)/.test(strLowerPathname)
@@ -1107,6 +1113,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
     "/payroll/flexi-declaration-review",
     "/reports/payslips",
     "/ess/my-payslips",
+    "/ess/my-profile",
+    "/ess/leave-balance",
+    "/ess/calendar",
+    "/ess/my-compensation",
     "/reports/attendance/monthly-summary",
     "/reports/attendance/exceptions",
     "/reports/tds-register",
@@ -1149,6 +1159,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     /^\/salary\/flexi-pay-declaration$/,
     /^\/payroll\/reimbursements\/[\w-]+$/,
     /^\/(?:payroll\/results|payroll\/payslips?|reports\/payslips)\/[\w-]+(?:\/tax-information)?$/,
+    /^\/ess\/my-payslips\/document\/[\w-]+$/,
     /^\/(?:payroll|ess)\/loans-advances\/(?:new|[\w-]+)$/,
     /^\/ess\/reimbursements\/(?:new|[\w-]+(?:\/edit)?)$/,
     /^\/ess\/my-profile\/edit\/[\w-]+$/,
@@ -1176,6 +1187,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         objSearchParams.get("mode") || "",
         objSearchParams.get("source") || ""
       ));
+  const blnHideShellHeading = blnEssMyProfileRoute || strPageTitle.trim().toLowerCase() === "my profile";
   const blnDashboardRoute = (strPathname || "").toLowerCase() === "/dashboard";
   const strCompanyName = objUserContext?.objCompany?.strCompanyName?.trim() || "";
   const strCompanyLogoUrl = objUserContext?.objCompany?.strLogoUrl?.trim() || "";
@@ -1662,7 +1674,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               <Box sx={{ flex: 1, minWidth: 0 }} />
 
 
-              {strPathname === "/employees" || strPathname === "/departments" || strPathname === "/designations" || strPathname === "/settings" || strPathname === "/profile/change-password" || blnReferencedMasterRoute || blnDepartmentStyleMasterRoute || blnEmployeeEditorRoute || blnDashboardRoute || blnEmployeeSalaryListRoute || blnEmployeeSalaryEditorRoute || blnUserListRoute || blnUserGroupListRoute || blnSalaryComponentListRoute || blnSalaryStructureListRoute || blnCtcFormatRoute || blnSalaryRegisterRoute || blnSalaryStatementRoute || blnLoanBudgetListRoute || blnLoanRecoveryRoute || blnLoanAdvanceListRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnLeaveApprovalsRoute || blnLeaveAttendanceRoute || blnPayrollProcessLogRunRoute || blnDetailHeadingRoute ? null : (
+              {strPathname === "/employees" || strPathname === "/departments" || strPathname === "/designations" || strPathname === "/settings" || strPathname === "/profile/change-password" || blnHideShellHeading || blnReferencedMasterRoute || blnDepartmentStyleMasterRoute || blnEmployeeEditorRoute || blnDashboardRoute || blnEmployeeSalaryListRoute || blnEmployeeSalaryEditorRoute || blnUserListRoute || blnUserGroupListRoute || blnSalaryComponentListRoute || blnSalaryStructureListRoute || blnCtcFormatRoute || blnSalaryRegisterRoute || blnSalaryStatementRoute || blnLoanBudgetListRoute || blnLoanRecoveryRoute || blnLoanAdvanceListRoute || blnSalaryComponentEditorRoute || blnSalaryStructureEditorRoute || blnLeaveTypeEditorRoute || blnLeavePlanEditorRoute || blnLeaveAssignmentEditorRoute || blnEssLeaveApplyRoute || blnLeaveApprovalsRoute || blnLeaveAttendanceRoute || blnPayrollProcessLogRunRoute || blnDetailHeadingRoute ? null : (
                 <Box
                   sx={{
                     display: "flex",

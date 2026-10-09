@@ -20,6 +20,7 @@ import {
   TableHead, TablePagination, TableRow, TextField, Tooltip, Typography,
   useMediaQuery, useTheme,
 } from "@mui/material";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm, useWatch, type Control, type FieldErrors, type Resolver, type UseFormSetValue } from "react-hook-form";
 import * as yup from "yup";
@@ -27,6 +28,7 @@ import * as yup from "yup";
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
+import { MasterBreadcrumbs } from "@/components/master/MasterListUi";
 import FileRowActions from "@/components/shared/files/FileRowActions";
 import FileUploadButton from "@/components/shared/files/FileUploadButton";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -237,6 +239,7 @@ function LeaveTypeBadge({ strTypeCode, strTypeName, intSize = 34 }: { strTypeCod
 
 export default function EssLeaveApplicationPanel() {
   const objTheme = useTheme();
+  const objSearchParams = useSearchParams();
   const blnMobile = useMediaQuery(objTheme.breakpoints.down("sm"));
   const { t, intLanguageID } = useModuleLabels("ess-leave", "Unable to load Leave Application labels.");
   const { blnLoading: blnRightsLoading, canDo } = useActionRights();
@@ -325,11 +328,11 @@ export default function EssLeaveApplicationPanel() {
   useEffect(() => {
     if (blnLoading || blnInitialRouteHandledRef.current) return;
     blnInitialRouteHandledRef.current = true;
-    if (new URLSearchParams(window.location.search).get("view") === "apply") {
+    if (objSearchParams.get("view") === "apply") {
       setObjEditing(null); setObjPreview(null); setLstQueuedFiles([]); setLstExistingAttachments([]);
       setBlnShowValidation(false); setLstServerFormErrors([]); reset(fnDefaultForm(lstTypes[0]?.intID ?? 0)); setBlnFormOpen(true);
     }
-  }, [blnLoading, lstTypes, reset]);
+  }, [blnLoading, lstTypes, objSearchParams, reset]);
   useEffect(() => { setIntPage(0); }, [strSearch, strStatus]);
   // Half-day not allowed for the type (or Restricted Holiday) → force full day and drop sessions.
   useEffect(() => {
@@ -572,6 +575,7 @@ export default function EssLeaveApplicationPanel() {
   const intPendingCount = lstApplications.filter((objApplication) => objApplication.strStatus === "pending").length;
 
   return <Stack spacing={2}>
+    <MasterBreadcrumbs strSection={t("breadcrumb_leave", "Leave")} strTitle={t("apply_leave", "Apply Leave")} />
     {/* Apply Leave sits with the list filters (next to Status) rather than in its own row above. */}
     {blnLoading ? <LoadingSkeleton /> : strLoadError ? <Paper sx={{ p: 3, borderRadius: "18px", border: "1px solid #fecaca", textAlign: "center" }}><Alert severity="error" sx={{ mb: 2 }}>{strLoadError}</Alert><Button startIcon={<RefreshRoundedIcon />} variant="outlined" onClick={() => void fnLoadAll()}>{t("retry", "Retry")}</Button></Paper> : <>
       <Paper id="leave-applications" sx={{ borderRadius: "18px", border: "1px solid #e2e8f0", overflow: "hidden" }}>

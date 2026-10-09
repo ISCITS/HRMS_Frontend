@@ -302,12 +302,6 @@ export default function ChangePasswordForm({
     { strLabel: "One number", blnSatisfied: objPasswordRules.blnNumber(strNewPassword) },
     { strLabel: "One special character", blnSatisfied: objPasswordRules.blnSpecial(strNewPassword) }
   ];
-  const intSatisfiedRuleCount = lstPolicyRules.filter((objRule) => objRule.blnSatisfied).length;
-  const objStrength = intSatisfiedRuleCount >= 4
-    ? { strLabel: "Strong", strColor: "#2f7e3d", intBars: 3 }
-    : intSatisfiedRuleCount >= 2
-      ? { strLabel: "Medium", strColor: "#ef6b00", intBars: 2 }
-      : { strLabel: "Weak", strColor: "#e73a3a", intBars: 1 };
 
   const strSelfEmployeeLabel = [
     objCurrentEmployeeIdentity.strEmployeeName || "Current Employee",
@@ -404,23 +398,6 @@ export default function ChangePasswordForm({
             objRegister={objForm.register}
             strError={objForm.formState.errors.strNewPassword?.message}
           />
-          <Box sx={{ mt: -0.75 }}>
-            <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr)) auto", gap: 0.5, alignItems: "center" }}>
-              {[0, 1, 2].map((intIndex) => (
-                <Box
-                  key={intIndex}
-                  sx={{
-                    height: 4,
-                    borderRadius: 999,
-                    backgroundColor: intIndex < objStrength.intBars ? objStrength.strColor : "#e5e7eb"
-                  }}
-                />
-              ))}
-              <Typography sx={{ pl: 1, color: objStrength.strColor, fontSize: "0.78rem", fontWeight: 800, minWidth: 50, textAlign: "right" }}>
-                {objStrength.strLabel}
-              </Typography>
-            </Box>
-          </Box>
           <PasswordField
             strName="strConfirmPassword"
             strLabel="Confirm New Password"

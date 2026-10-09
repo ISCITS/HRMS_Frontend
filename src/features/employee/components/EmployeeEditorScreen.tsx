@@ -190,13 +190,13 @@ const dicEmployeeTabsSx = {
     letterSpacing: 0,
     textTransform: "none",
     transition: "color 180ms ease, background-color 180ms ease, box-shadow 180ms ease",
-    "& .employee-tab-label": {
+    "& .app-employee-tab-label": {
       position: "relative",
       display: "flex",
       alignItems: "center",
       height: "100%",
     },
-    "& .employee-tab-label::after": {
+    "& .app-employee-tab-label::after": {
       content: '""',
       position: "absolute",
       left: 0,
@@ -217,7 +217,7 @@ const dicEmployeeTabsSx = {
       color: "#123f63",
       bgcolor: "transparent",
       fontWeight: 800,
-      "& .employee-tab-label::after": {
+      "& .app-employee-tab-label::after": {
         opacity: 1,
       },
     },
@@ -225,7 +225,7 @@ const dicEmployeeTabsSx = {
       color: "#0f3554",
       bgcolor: "#f3f4f6",
       boxShadow: "inset 0 -1px 0 #d1d5db",
-      "& .employee-tab-label::after": {
+      "& .app-employee-tab-label::after": {
         opacity: 1,
         left: -14,
         right: -14,
@@ -2166,6 +2166,7 @@ export default function EmployeeEditorScreen({
         <Box sx={{ borderBottom: "1px solid #e2e8f0", px: { xs: 1, md: 1.5 }, bgcolor: "#ffffff" }}>
           <Tabs
             data-control-id="employee.editor.tabs"
+            className="app-employee-tabs"
             value={strVisibleActiveTab}
             onChange={(_, strNextValue) => setStrActiveTab(strNextValue)}
             variant="scrollable"
@@ -2177,7 +2178,7 @@ export default function EmployeeEditorScreen({
                 key={strTabKey}
                 value={strTabKey}
                 data-control-id={`employee.editor.${strTabKey}.tab`}
-                label={<Box component="span" className="employee-tab-label">
+                label={<Box component="span" className="app-employee-tab-label">
                   {strTabKey === "basicInfo"
                     ? t("tab_employment_info", "Employment Info")
                     : strTabKey === "personalIdentification"

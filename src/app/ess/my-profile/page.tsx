@@ -1,6 +1,7 @@
 "use client";
 
 // import EditRoundedIcon from "@mui/icons-material/EditRounded";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import PhotoCameraRoundedIcon from "@mui/icons-material/PhotoCameraRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import AccountBalanceOutlinedIcon from "@mui/icons-material/AccountBalanceOutlined";
@@ -17,6 +18,7 @@ import {
   Alert,
   Avatar,
   Box,
+  Breadcrumbs,
   Button,
   Chip,
   Divider,
@@ -89,10 +91,124 @@ function SectionHeading({ strText }: { strText: string }) {
   return <Typography sx={{ color: "#344054", fontWeight: 700, mb: 0.75 }}>{strText}</Typography>;
 }
 
+function ProfileBreadcrumbs({ strSection, strTitle }: { strSection: string; strTitle: string }) {
+  return (
+    <Breadcrumbs
+      className="app-breadcrumbs app-breadcrumbs-master"
+      aria-label="breadcrumb"
+      separator={<NavigateNextRoundedIcon className="app-breadcrumb-separator-icon" sx={{ fontSize: 16 }} />}
+      sx={{ color: "#697586", fontSize: 13, lineHeight: 1.2, ml: "3px", mb: 1, py: 0.5, flexShrink: 0 }}
+    >
+      <Typography className="app-breadcrumb-label" sx={{ color: "#697586", fontSize: "inherit", lineHeight: "inherit", m: 0 }}>{strSection}</Typography>
+      <Typography component="h1" className="app-breadcrumb-heading" aria-current="page" sx={{ color: "#243b53", fontSize: "inherit", fontWeight: 700, lineHeight: "inherit", m: 0 }}>{strTitle}</Typography>
+    </Breadcrumbs>
+  );
+}
+
 const dicReadOnlyCardSx = {
   borderRadius: "9px",
   overflow: "hidden",
   background: "linear-gradient(180deg, rgba(248, 250, 252, 0.98) 0%, #ffffff 88px)"
+} as const;
+
+const dicProfileTabsSx = {
+  minHeight: 52,
+  borderBottom: "1px solid #e7ebf1",
+  "& .MuiTabs-scroller": { overflowY: "visible" },
+  "& .MuiTabs-flexContainer": { gap: 0.25 },
+  "& .MuiTabs-indicator": {
+    height: 3,
+    borderRadius: "999px 999px 0 0",
+    backgroundColor: "transparent",
+    transition: "left 260ms cubic-bezier(0.4, 0, 0.2, 1), width 260ms cubic-bezier(0.4, 0, 0.2, 1)",
+  },
+  "& .MuiTab-root": {
+    position: "relative",
+    minHeight: 52,
+    px: 1.75,
+    py: 0,
+    mx: 0.25,
+    borderRadius: "8px 8px 0 0",
+    overflow: "hidden",
+    color: "#475569",
+    fontSize: 13,
+    fontWeight: 600,
+    letterSpacing: 0,
+    textTransform: "none",
+    transition: "color 180ms ease, background-color 180ms ease, box-shadow 180ms ease",
+    "& .app-employee-tab-label": {
+      position: "relative",
+      display: "flex",
+      alignItems: "center",
+      height: "100%",
+    },
+    "& .app-employee-tab-label::after": {
+      content: '""',
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: 3,
+      borderRadius: "999px 999px 0 0",
+      backgroundColor: "#5b8fba",
+      opacity: 0,
+      transition: "left 260ms cubic-bezier(0.4, 0, 0.2, 1), right 260ms cubic-bezier(0.4, 0, 0.2, 1), opacity 190ms ease, background-color 180ms ease",
+    },
+    "&:hover": {
+      color: "#215f91",
+      backgroundColor: "#f3f4f6",
+      boxShadow: "inset 0 -1px 0 #d1d5db",
+    },
+    "&.Mui-selected": {
+      color: "#123f63",
+      backgroundColor: "transparent",
+      fontWeight: 800,
+      "& .app-employee-tab-label::after": { opacity: 1 },
+      "& svg": { color: "var(--app-primary-color)" },
+    },
+    "&.Mui-selected:hover": {
+      color: "#0f3554",
+      backgroundColor: "#f3f4f6",
+      boxShadow: "inset 0 -1px 0 #d1d5db",
+      "& .app-employee-tab-label::after": {
+        opacity: 1,
+        left: -14,
+        right: -14,
+      },
+    },
+    "&.Mui-focusVisible": {
+      backgroundColor: "#f3f4f6",
+      outline: "2px solid #d1d5db",
+      outlineOffset: -2,
+    },
+    "&.Mui-selected.Mui-focusVisible": {
+      backgroundColor: "transparent",
+      outlineColor: "#8fb9d8",
+    },
+  },
+  "& .MuiTab-iconWrapper": { mr: 0.7, mb: "0 !important" },
+  "& .MuiTab-root svg": { fontSize: 17 },
+  "& .MuiTabs-scrollButtons": {
+    alignSelf: "center",
+    width: 36,
+    minWidth: 36,
+    height: 36,
+    mx: 0.5,
+    borderRadius: "10px",
+    backgroundColor: "var(--app-primary-color)",
+    color: "#fff",
+    boxShadow: "0 5px 12px color-mix(in srgb, var(--app-primary-color) 28%, transparent)",
+    transition: "background-color 160ms ease, color 160ms ease, box-shadow 160ms ease",
+    "&:hover": { backgroundColor: "var(--app-primary-color)", filter: "brightness(0.92)" },
+    "&.Mui-disabled": {
+      opacity: 1,
+      backgroundColor: "#f8fafc",
+      color: "#cbd5e1",
+      border: "1px solid #e2e8f0",
+      boxShadow: "none",
+    },
+    "& svg": { fontSize: 27 },
+  },
 } as const;
 
 function ReadOnlyCard({ lstRows }: { lstRows: Array<{ strLabel: string; strValue: string }> }) {
@@ -242,32 +358,39 @@ export default function EssMyProfilePage() {
 
   if (blnLoading || blnRightsLoading) {
     return (
-      <Box sx={{ minHeight: "50vh", display: "grid", placeItems: "center" }}>
-        <Stack spacing={1.5} alignItems="center">
-          <DottedLoader />
-          <Typography color="text.secondary">{t("loading_profile", "Loading your employee profile...")}</Typography>
-        </Stack>
-      </Box>
+      <Stack spacing={1.5} sx={{ px: "12px" }}>
+        <ProfileBreadcrumbs strSection={t("breadcrumb_ess", "ESS")} strTitle={t("page_title", "My Profile")} />
+        <Box sx={{ minHeight: "50vh", display: "grid", placeItems: "center" }}>
+          <Stack spacing={1.5} alignItems="center">
+            <DottedLoader />
+            <Typography color="text.secondary">{t("loading_profile", "Loading your employee profile...")}</Typography>
+          </Stack>
+        </Box>
+      </Stack>
     );
   }
 
   if (!canViewAny()) {
     return (
-      <Paper sx={{ p: 3, borderRadius: "24px" }}>
-        <Typography sx={{ fontWeight: 700, color: "#0f172a", mb: 1 }}>{t("page_title", "My Profile")}</Typography>
-        <Typography color="warning.main">
-          {strRightsError || t("access_not_available", "My Profile access is not available for your user group.")}
-        </Typography>
-      </Paper>
+      <Stack spacing={1.5} sx={{ px: "12px" }}>
+        <ProfileBreadcrumbs strSection={t("breadcrumb_ess", "ESS")} strTitle={t("page_title", "My Profile")} />
+        <Paper sx={{ p: 3, borderRadius: "24px" }}>
+          <Typography color="warning.main">
+            {strRightsError || t("access_not_available", "My Profile access is not available for your user group.")}
+          </Typography>
+        </Paper>
+      </Stack>
     );
   }
 
   if (!intEmployeeID) {
     return (
-      <Paper sx={{ p: 3, borderRadius: "24px" }}>
-        <Typography sx={{ fontWeight: 700, color: "#0f172a", mb: 1 }}>{t("page_title", "My Profile")}</Typography>
-        <Typography color="error">{strError || t("error_resolve_profile", "Unable to resolve employee profile.")}</Typography>
-      </Paper>
+      <Stack spacing={1.5} sx={{ px: "12px" }}>
+        <ProfileBreadcrumbs strSection={t("breadcrumb_ess", "ESS")} strTitle={t("page_title", "My Profile")} />
+        <Paper sx={{ p: 3, borderRadius: "24px" }}>
+          <Typography color="error">{strError || t("error_resolve_profile", "Unable to resolve employee profile.")}</Typography>
+        </Paper>
+      </Stack>
     );
   }
 
@@ -348,24 +471,9 @@ export default function EssMyProfilePage() {
   const strRelatedEmployee = resolveLookupLabel(objFormOptions?.lstManagers, objEmployee?.intRelatedEmployeeID ?? null, strNotAvailable);
   const yesNoOrNotAvailable = (blnValue: boolean | null | undefined) => blnValue == null ? strNotAvailable : (blnValue ? t("yes", "Yes") : t("no", "No"));
   const numberOrNotAvailable = (objValue: number | null | undefined) => objValue == null ? strNotAvailable : String(objValue);
-  const dicTabSx = {
-    minHeight: 48,
-    minWidth: { xs: 105, sm: 115 },
-    px: 1.2,
-    color: "#475467",
-    typography: "button",
-    textTransform: "none",
-    fontWeight: 600,
-    "&.Mui-selected": {
-      color: "var(--app-primary-color)",
-      "& svg": { color: "var(--app-primary-color)" }
-    },
-    "& .MuiTab-iconWrapper": { mr: 0.7, mb: "0 !important" },
-    "& svg": { fontSize: 17 }
-  } as const;
-
   return (
-    <Box sx={{ height: { xs: "auto", md: "100%" }, minHeight: 0, overflow: { xs: "visible", md: "hidden" }, display: "flex", flexDirection: "column", px: "12px" }}>
+    <Box sx={{ height: { xs: "auto", md: "100%" }, minHeight: 0, overflow: { xs: "visible", md: "hidden" }, display: "flex", flexDirection: "column", px: "12px", pt: 0.5 }}>
+      <ProfileBreadcrumbs strSection={t("breadcrumb_ess", "ESS")} strTitle={t("page_title", "My Profile")} />
       {strRightsError ? <Typography sx={{ mb: 1, color: "#b45309", typography: "body2" }}>{strRightsError}</Typography> : null}
       {strError ? <Alert severity="error" sx={{ mb: 1.5, borderRadius: "8px" }} onClose={() => setStrError("")}>{strError}</Alert> : null}
 
@@ -429,43 +537,19 @@ export default function EssMyProfilePage() {
                 variant="scrollable"
                 scrollButtons="auto"
                 allowScrollButtonsMobile
-                sx={{
-                  minHeight: 49,
-                  borderBottom: "1px solid #e7ebf1",
-                  "& .MuiTabs-indicator": { height: 2, bgcolor: "var(--app-primary-color)" },
-                  "& .MuiTabs-scrollButtons": {
-                    alignSelf: "center",
-                    width: 36,
-                    minWidth: 36,
-                    height: 36,
-                    mx: 0.5,
-                    borderRadius: "10px",
-                    bgcolor: "var(--app-primary-color)",
-                    color: "#fff",
-                    boxShadow: "0 5px 12px color-mix(in srgb, var(--app-primary-color) 28%, transparent)",
-                    transition: "background-color 160ms ease, color 160ms ease, box-shadow 160ms ease",
-                    "&:hover": { bgcolor: "var(--app-primary-color)", filter: "brightness(0.92)" },
-                    "&.Mui-disabled": {
-                      opacity: 1,
-                      bgcolor: "#f8fafc",
-                      color: "#cbd5e1",
-                      border: "1px solid #e2e8f0",
-                      boxShadow: "none"
-                    },
-                    "& svg": { fontSize: 27 }
-                  }
-                }}
+                className="app-employee-tabs"
+                sx={dicProfileTabsSx}
               >
-                <Tab value="basicInfo" icon={<WorkOutlineRoundedIcon />} iconPosition="start" label={t("tab_basic_info", "Employment Info")} sx={dicTabSx} />
-                <Tab value="personalIdentification" icon={<PersonRoundedIcon />} iconPosition="start" label={t("tab_personal_identification", "Personal & Identification")} sx={dicTabSx} />
-                <Tab value="serviceContract" icon={<WorkOutlineRoundedIcon />} iconPosition="start" label={t("tab_service_contract", "Service & Contract")} sx={dicTabSx} />
-                <Tab value="additionalEmployment" icon={<ApartmentOutlinedIcon />} iconPosition="start" label={t("tab_additional_employment", "Additional Employment Details")} sx={dicTabSx} />
-                <Tab value="address" icon={<PhoneOutlinedIcon />} iconPosition="start" label={t("tab_address", "Contact Details")} sx={dicTabSx} />
-                <Tab value="bankDetails" icon={<AccountBalanceWalletOutlinedIcon />} iconPosition="start" label={t("tab_bank_details", "Bank Details")} sx={dicTabSx} />
-                <Tab value="statutory" icon={<AccountBalanceOutlinedIcon />} iconPosition="start" label={t("tab_statutory", "Statutory")} sx={dicTabSx} />
-                <Tab value="experience" icon={<WorkOutlineRoundedIcon />} iconPosition="start" label={t("tab_experience", "Experience")} sx={dicTabSx} />
-                <Tab value="qualification" icon={<SchoolOutlinedIcon />} iconPosition="start" label={t("tab_qualification", "Qualification")} sx={dicTabSx} />
-                <Tab value="familyDetails" icon={<GroupsOutlinedIcon />} iconPosition="start" label={t("tab_family_details", "Family Details")} sx={dicTabSx} />
+                <Tab value="basicInfo" icon={<WorkOutlineRoundedIcon />} iconPosition="start" label={<Box component="span" className="app-employee-tab-label">{t("tab_basic_info", "Employment Info")}</Box>} />
+                <Tab value="personalIdentification" icon={<PersonRoundedIcon />} iconPosition="start" label={<Box component="span" className="app-employee-tab-label">{t("tab_personal_identification", "Personal & Identification")}</Box>} />
+                <Tab value="serviceContract" icon={<WorkOutlineRoundedIcon />} iconPosition="start" label={<Box component="span" className="app-employee-tab-label">{t("tab_service_contract", "Service & Contract")}</Box>} />
+                <Tab value="additionalEmployment" icon={<ApartmentOutlinedIcon />} iconPosition="start" label={<Box component="span" className="app-employee-tab-label">{t("tab_additional_employment", "Additional Employment Details")}</Box>} />
+                <Tab value="address" icon={<PhoneOutlinedIcon />} iconPosition="start" label={<Box component="span" className="app-employee-tab-label">{t("tab_address", "Contact Details")}</Box>} />
+                <Tab value="bankDetails" icon={<AccountBalanceWalletOutlinedIcon />} iconPosition="start" label={<Box component="span" className="app-employee-tab-label">{t("tab_bank_details", "Bank Details")}</Box>} />
+                <Tab value="statutory" icon={<AccountBalanceOutlinedIcon />} iconPosition="start" label={<Box component="span" className="app-employee-tab-label">{t("tab_statutory", "Statutory")}</Box>} />
+                <Tab value="experience" icon={<WorkOutlineRoundedIcon />} iconPosition="start" label={<Box component="span" className="app-employee-tab-label">{t("tab_experience", "Experience")}</Box>} />
+                <Tab value="qualification" icon={<SchoolOutlinedIcon />} iconPosition="start" label={<Box component="span" className="app-employee-tab-label">{t("tab_qualification", "Qualification")}</Box>} />
+                <Tab value="familyDetails" icon={<GroupsOutlinedIcon />} iconPosition="start" label={<Box component="span" className="app-employee-tab-label">{t("tab_family_details", "Family Details")}</Box>} />
               </Tabs>
             </Box>
 
