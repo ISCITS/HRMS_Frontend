@@ -763,30 +763,6 @@ export default function PayrollResultListPage({
         )}
       </Box>
 
-      {!blnPayslipScreen ? (
-        <Box
-          sx={{
-            alignItems: "center",
-            backgroundColor: "#f8fbff",
-            border: "1px solid rgba(191,219,254,0.7)",
-            borderRadius: "16px",
-            color: "#1f2937",
-            display: "flex",
-            gap: 1,
-            px: 1.5,
-            py: 1.25,
-          }}
-        >
-          <InfoOutlinedIcon sx={{ color: "#2b6cb0", fontSize: 20 }} />
-          <Typography sx={{ color: "inherit", lineHeight: 1.5 }}>
-            {t(
-              "payroll_results_help",
-              "Review processed payroll calculations before generating payslips."
-            )}
-          </Typography>
-        </Box>
-      ) : null}
-
       {blnPayslipScreen ? (
         <Box
           sx={{

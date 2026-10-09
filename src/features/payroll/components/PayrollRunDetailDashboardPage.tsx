@@ -485,6 +485,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
   const [blnRightsErrorDismissed, setBlnRightsErrorDismissed] = useState(false);
+  const [blnReviewHintDismissed, setBlnReviewHintDismissed] = useState(false);
   const [blnIsLocked, setBlnIsLocked] = useState(false);
   const [objValidationSummary, setObjValidationSummary] = useState<PayrollValidationSummary | null>(null);
   const [blnShowAllValidations, setBlnShowAllValidations] = useState(false);
@@ -1225,6 +1226,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
         strListTitle={t("breadcrumb_title", "Payroll Runs")}
         strListHref="/payroll/runs"
         strCurrent={objRun.strRunName}
+        objCurrentAdornment={<StatusPill strStatus={objRun.strRunStatus} />}
       >
           <Box sx={{ alignItems: "center", display: "flex", flex: "0 1 auto", gap: 0.75, minWidth: 0, overflowX: "auto", pb: 0.25 }}>
             {lstWorkflowSteps.map((dicStep, intIndex) => {
@@ -1316,21 +1318,15 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
         </Menu>
       </DetailPageHeader>
 
-      <Box sx={{ ...objCardSx, borderColor: "#DCE4EF", p: { xs: 1.1, md: 1.35 } }}>
-        <Box sx={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 1 }}>
-          <Box sx={{ alignItems: "center", display: "flex", flex: "0 0 auto", gap: 1.1, minWidth: 0 }}>
-            <Typography sx={{ color: "#0F2747", fontSize: { xs: "1.15rem", md: "1.3rem" }, fontWeight: 900, lineHeight: 1.05, whiteSpace: "nowrap" }}>
-              {objRun.strRunName}
-            </Typography>
-            <StatusPill strStatus={objRun.strRunStatus} />
-          </Box>
-        </Box>
-      </Box>
-
       {strRightsError && !blnRightsErrorDismissed ? <Alert severity="warning" onClose={() => setBlnRightsErrorDismissed(true)}>{strRightsError}</Alert> : null}
       {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success" onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
       {blnPayslipLoading ? <Alert severity="info">{t("payslip_preparing", "Preparing payslips...")}</Alert> : null}
+      {objRun.strRunStatus === "PROCESSED" && objRun.strRunTypeCode !== "VARIABLE_PAY" && !blnReviewHintDismissed ? (
+        <Alert severity="info" onClose={() => setBlnReviewHintDismissed(true)} data-controlid="payroll.run-detail.review-before-payslips.alert">
+          {t("payroll_results_help", "Review processed payroll calculations before generating payslips.")}
+        </Alert>
+      ) : null}
 
       <Box sx={{ ...objCardSx, borderColor: "#DCE4EF", overflow: "hidden", p: 0 }}>
         <Tabs
@@ -1369,26 +1365,6 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
             sx={{ fontSize: "0.82rem", fontWeight: 800, minHeight: 46, textTransform: "none" }}
             data-controlid="payroll.run-detail.tab.run.button"
           />
-          <Tab
-            value="valid"
-            label={
-              <Box sx={{ alignItems: "center", display: "flex", gap: 0.6 }}>
-                <span>{t("validation_summary", "Validation Summary")}</span>
-                {lstAllValidationRows.filter(fnIsKeyIssue).length ? (
-                  <Box
-                    component="span"
-                    sx={{ background: "#fef2f2", borderRadius: "999px", color: "#dc2626", fontSize: "0.68rem", fontWeight: 800, px: 0.9, py: 0.15 }}
-                  >
-                    {lstAllValidationRows.filter(fnIsKeyIssue).length}
-                  </Box>
-                ) : null}
-              </Box>
-            }
-            icon={<SummarizeRoundedIcon sx={{ fontSize: 18 }} />}
-            iconPosition="start"
-            sx={{ fontSize: "0.82rem", fontWeight: 800, minHeight: 46, textTransform: "none" }}
-            data-controlid="payroll.run-detail.tab.valid.button"
-          />
           {blnShowReviewResults ? (
             <Tab
               value="review"
@@ -1411,6 +1387,26 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
               data-controlid="payroll.run-detail.tab.review.button"
             />
           ) : null}
+          <Tab
+            value="valid"
+            label={
+              <Box sx={{ alignItems: "center", display: "flex", gap: 0.6 }}>
+                <span>{t("validation_summary", "Validation Summary")}</span>
+                {lstAllValidationRows.filter(fnIsKeyIssue).length ? (
+                  <Box
+                    component="span"
+                    sx={{ background: "#fef2f2", borderRadius: "999px", color: "#dc2626", fontSize: "0.68rem", fontWeight: 800, px: 0.9, py: 0.15 }}
+                  >
+                    {lstAllValidationRows.filter(fnIsKeyIssue).length}
+                  </Box>
+                ) : null}
+              </Box>
+            }
+            icon={<SummarizeRoundedIcon sx={{ fontSize: 18 }} />}
+            iconPosition="start"
+            sx={{ fontSize: "0.82rem", fontWeight: 800, minHeight: 46, textTransform: "none" }}
+            data-controlid="payroll.run-detail.tab.valid.button"
+          />
         </Tabs>
 
         <Box sx={{ p: { xs: 1.1, md: 1.35 } }}>
@@ -1654,12 +1650,6 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
 
         {strActiveTab === "review" ? (
         <Box className={masterStyles.controlsCard} sx={{ display: "flex", flexDirection: "column", minWidth: 0, p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
-          <Box sx={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 1, justifyContent: "space-between", mb: 1 }}>
-            <Typography sx={{ alignItems: "center", display: "flex", fontSize: "1rem", fontWeight: 900, gap: 0.75 }}>
-              <ReceiptLongRoundedIcon sx={{ color: "#2563eb", fontSize: 20 }} />
-              {t("review_results_panel", "Review Results")}
-            </Typography>
-          </Box>
           <TextField
             className="app-mui-text-field"
             label={t("review_results_search_label", "Employee name or code")}
@@ -1667,8 +1657,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
             onChange={(objEvent) => setStrReviewResultSearch(objEvent.target.value)}
             placeholder={t("review_results_search_placeholder", "Search by employee name or code")}
             size="small"
-            fullWidth
-            sx={{ mb: 1 }}
+            sx={{ alignSelf: "flex-start", mb: 1, mt: 0.75, width: { xs: "100%", sm: 340 } }}
             inputProps={{ "aria-label": t("review_results_search_placeholder", "Search by employee name or code") }}
             InputProps={{
               startAdornment: (
