@@ -882,7 +882,11 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                 size="large"
                 disabled={!blnCanSubmitCurrentStep}
                 className="login-primary-button"
-                endIcon={blnSubmitting ? <DottedLoader intSize={18} color="inherit" /> : <span className="login-submit-arrow"><ArrowForwardRoundedIcon /></span>}
+                endIcon={
+                  <span className="login-submit-arrow">
+                    {blnSubmitting ? <DottedLoader intSize={34} sx={{ color: "#ffffff" }} /> : <ArrowForwardRoundedIcon />}
+                  </span>
+                }
               >
                 {blnOtpStep ? getLoginLabel("verifyOtpTitle") : getLoginLabel("signInButton")}
               </Button>
