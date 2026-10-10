@@ -5,6 +5,7 @@ import type {
   PayrollRunFormOptions,
   PayrollRunFormValues,
   PayrollRunListRecord,
+  PayrollJobStatus,
   PayrollProcessSummary,
   PayrollRunStatus,
   PayrollValidationSummary,
@@ -190,6 +191,46 @@ export const payrollRunService = {
         lstEmployeeIDs: lstEmployeeIDs?.length ? lstEmployeeIDs : undefined,
       },
       strMenuAction: "PAYROLL_RUN_REPROCESS",
+    });
+    return objResult.Data;
+  },
+
+  /** Starts validation in the background and returns at once; follow it with getRunJobStatus. */
+  async startValidatePayrollRun(strRunID: string): Promise<PayrollJobStatus> {
+    const objResult = await requestApi<PayrollJobStatus>({
+      strPath: `/payroll/runs/${strRunID}/validate?blnBackground=true`,
+      strMethod: "POST",
+      strMenuAction: "PAYROLL_RUN_VALIDATE",
+    });
+    return objResult.Data;
+  },
+
+  /** Starts process in the background and returns at once; follow it with getRunJobStatus. */
+  async startProcessPayrollRun(strRunID: string): Promise<PayrollJobStatus> {
+    const objResult = await requestApi<PayrollJobStatus>({
+      strPath: `/payroll/runs/${strRunID}/process?blnBackground=true`,
+      strMethod: "POST",
+      strMenuAction: "PAYROLL_RUN_PROCESS",
+    });
+    return objResult.Data;
+  },
+
+  /** Starts reprocess in the background and returns at once; follow it with getRunJobStatus. */
+  async startReprocessPayrollRun(strRunID: string, strReason: string): Promise<PayrollJobStatus> {
+    const objResult = await requestApi<PayrollJobStatus>({
+      strPath: `/payroll/runs/${strRunID}/reprocess?blnBackground=true`,
+      strMethod: "POST",
+      objBody: { strReason },
+      strMenuAction: "PAYROLL_RUN_REPROCESS",
+    });
+    return objResult.Data;
+  },
+
+  async getRunJobStatus(strRunID: string): Promise<PayrollJobStatus> {
+    const objResult = await requestApi<PayrollJobStatus>({
+      strPath: `/payroll/runs/${strRunID}/job-status`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_RUN_VIEW",
     });
     return objResult.Data;
   },

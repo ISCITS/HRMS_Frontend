@@ -135,6 +135,23 @@ export type PayrollProcessSummary = {
   }[];
 };
 
+/** Live state of a run's background process/reprocess job (GET /payroll/runs/{id}/job-status). */
+export type PayrollJobStatus = {
+  strJobID?: string;
+  strKind?: "process" | "reprocess" | "validate" | "payslips";
+  /** idle = no job on this run; completed/failed are kept for a few minutes after the job ends. */
+  strStatus: "idle" | "running" | "completed" | "failed";
+  blnActive: boolean;
+  strPhase?: "queued" | "syncing" | "validating" | "processing" | "generating" | "finalizing";
+  strPhaseLabel?: string;
+  intDone?: number;
+  intTotal?: number;
+  intPercent: number;
+  /** Process/reprocess give a process summary; validate gives a validation summary. */
+  dicSummary?: PayrollProcessSummary | PayrollValidationSummary | PayslipGenerateAllSummary | null;
+  strError?: string | null;
+};
+
 export type PayrollRunRecord = {
   intID: number;
   /** Public identifier the UI routes on; the internal id stays out of the address bar. */

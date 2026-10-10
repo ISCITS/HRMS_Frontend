@@ -51,6 +51,8 @@ import BlockingLoader from "@/components/shared/BlockingLoader";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import masterStyles from "@/components/master/MasterScreen.module.css";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import PayrollJobProgressDialog from "@/features/payroll/components/PayrollJobProgressDialog";
+import { usePayslipGenerationProgress } from "@/features/payroll/hooks/usePayslipGenerationProgress";
 import PayslipHtmlPreview from "@/features/payroll/components/PayslipHtmlPreview";
 import ResultLinesTable from "@/features/payroll/components/ResultLinesTable";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
@@ -63,6 +65,8 @@ import PayrollRunVariablePayTab from "@/features/variable-pay-calculation/compon
 import type {
   PayslipRunListRecord,
   PayslipPreviewRecord,
+  PayrollJobStatus,
+  PayslipGenerateAllSummary,
   PayrollProcessSummary,
   PayrollResultDetailRecord,
   PayrollResultListRecord,
@@ -497,6 +501,11 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
   const [intPreviewResultID, setIntPreviewResultID] = useState<number | null>(null);
   const [blnPayslipLoading, setBlnPayslipLoading] = useState(false);
   const [strActionLoaderLabel, setStrActionLoaderLabel] = useState("");
+  const [objJobProgress, setObjJobProgress] = useState<PayrollJobStatus | null>(null);
+  const { objPayslipProgress, trackPayslipGeneration } = usePayslipGenerationProgress(
+    t("generating_payslip", "Generating payslip"),
+  );
+  const refResumedJobRunID = useRef<string | null>(null);
   const [blnPayslipDialogOpen, setBlnPayslipDialogOpen] = useState(false);
   const [blnReprocessDialogOpen, setBlnReprocessDialogOpen] = useState(false);
   const [strReprocessReason, setStrReprocessReason] = useState("");
@@ -547,13 +556,18 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
         }
       }
       if (["PROCESSED", "FINALIZED"].includes(dicRun.strRunStatus) && dicRun.strRunTypeCode !== "VARIABLE_PAY") {
-        setLstPayslips(await payslipService.getRunPayslips(strRunID));
-        try {
-          const lstResults = await payrollResultService.getPayrollResults({ strSearchRun: dicRun.strRunName });
-          setLstRunResults(lstResults.filter((dicResult) => dicResult.intPayrollRunID === dicRun.intID));
-        } catch {
-          setLstRunResults([]);
-        }
+        // Both lists are independent, so fetch them together; the results request is scoped to
+        // this run on the server instead of downloading every run's results.
+        const [lstRunPayslips, lstResults] = await Promise.all([
+          payslipService.getRunPayslips(strRunID),
+          payrollResultService
+            .getPayrollResults({ strPayrollRunID: strRunID })
+            .catch(() => null),
+        ]);
+        setLstPayslips(lstRunPayslips);
+        setLstRunResults(
+          lstResults ? lstResults.filter((dicResult) => dicResult.intPayrollRunID === dicRun.intID) : [],
+        );
       } else {
         setLstPayslips([]);
         setLstRunResults([]);
@@ -672,27 +686,8 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     if (!blnCanValidate) {
       return;
     }
-    setBlnSaving(true);
-    setStrActionLoaderLabel(t("validating_run", "Validating payroll run..."));
-    setStrError("");
-    setStrSuccess("");
     setObjProcessSummary(null);
-    try {
-      const dicSummary = await payrollRunService.validatePayrollRun(strRunID);
-      setObjValidationSummary(dicSummary);
-      setObjAttendanceValidationResult(dicSummary.dicAttendanceSync ?? null);
-      await loadRun(false);
-      setStrSuccess(
-        dicSummary.strStatus === "Passed"
-          ? t("validation_complete_approved", "Payroll validation completed. Run status updated to Validated.")
-          : t("validation_complete", "Payroll validation completed."),
-      );
-    } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to validate payroll run.");
-    } finally {
-      setBlnSaving(false);
-      setStrActionLoaderLabel("");
-    }
+    await runPayrollJob("validate", () => payrollRunService.startValidatePayrollRun(strRunID));
   }
 
   async function fetchAttendanceInPayroll() {
@@ -761,19 +756,73 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     }, 0);
   }
 
-  async function processRun() {
-    if (!blnCanProcess) {
-      return;
+  // Process/Reprocess run as a background job on the server (a large run takes minutes, longer
+  // than a browser/proxy will wait on one request). These helpers poll its live progress.
+  function waitMilliseconds(intMilliseconds: number) {
+    return new Promise<void>((fnResolve) => window.setTimeout(fnResolve, intMilliseconds));
+  }
+
+  async function followRunJob(): Promise<PayrollJobStatus> {
+    let intConsecutiveErrors = 0;
+    for (;;) {
+      try {
+        const dicStatus = await payrollRunService.getRunJobStatus(strRunID);
+        intConsecutiveErrors = 0;
+        setObjJobProgress(dicStatus);
+        if (dicStatus.strStatus !== "running") {
+          return dicStatus;
+        }
+      } catch (objError) {
+        // A brief network blip must not abandon a job that is still running on the server.
+        intConsecutiveErrors += 1;
+        if (intConsecutiveErrors >= 8) {
+          throw objError;
+        }
+      }
+      await waitMilliseconds(1000);
     }
-    setBlnSaving(true);
-    setStrActionLoaderLabel(t("processing_run", "Processing payroll run..."));
-    setStrError("");
-    setStrSuccess("");
-    try {
-      const dicSummary = await payrollRunService.processPayrollRun(strRunID);
+  }
+
+  async function finishRunJob(dicFinal: PayrollJobStatus, strKind: "process" | "reprocess" | "validate" | "payslips") {
+    if (dicFinal.strStatus === "completed") {
+      // Let the bar sit at 100% for a moment, then remove it.
+      setObjJobProgress({ ...dicFinal, intPercent: 100 });
+      await waitMilliseconds(1600);
+    }
+    setObjJobProgress(null);
+    if (dicFinal.strStatus === "failed") {
+      setStrError(
+        dicFinal.strError ||
+          (strKind === "process"
+            ? "Unable to process payroll run."
+            : strKind === "validate"
+              ? "Unable to validate payroll run."
+              : strKind === "payslips"
+                ? "Unable to generate payslips."
+                : "Unable to reprocess payroll run."),
+      );
+    } else if (dicFinal.strStatus === "idle" || !dicFinal.dicSummary) {
+      setStrError(t("job_status_unavailable", "The progress of this payroll job is no longer available. Refresh the page to see the current state of the run."));
+    } else if (strKind === "payslips") {
+      const dicGenerated = dicFinal.dicSummary as PayslipGenerateAllSummary;
+      setStrSuccess(t("payslip_generate_all_success", `${dicGenerated.intGeneratedCount} payslips generated successfully.`));
+    } else if (strKind === "validate") {
+      const dicValidation = dicFinal.dicSummary as PayrollValidationSummary;
+      setObjValidationSummary(dicValidation);
+      setObjAttendanceValidationResult(dicValidation.dicAttendanceSync ?? null);
+      setStrSuccess(
+        dicValidation.strStatus === "Passed"
+          ? t("validation_complete_approved", "Payroll validation completed. Run status updated to Validated.")
+          : t("validation_complete", "Payroll validation completed."),
+      );
+    } else {
+      const dicSummary = dicFinal.dicSummary as PayrollProcessSummary;
       setObjProcessSummary(dicSummary);
       setObjValidationSummary(dicSummary.dicValidationSummary ?? null);
-      if (dicSummary.strStatus === "ValidationFailed") {
+      if (strKind === "reprocess") {
+        setObjAttendanceValidationResult(dicSummary.dicAttendanceSync ?? null);
+        setStrSuccess(t("reprocess_complete", "Payroll reprocessing completed."));
+      } else if (dicSummary.strStatus === "ValidationFailed") {
         const intBlockingCount = dicSummary.dicValidationSummary?.intBlockingErrorCount ?? 0;
         setStrError(t("process_validation_failed", `Payroll processing blocked by ${intBlockingCount} validation error(s). Resolve the validation messages below and process again.`));
       } else if (dicSummary.strStatus === "Failed") {
@@ -781,13 +830,68 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
       } else {
         setStrSuccess(t("process_complete", "Payroll processing completed."));
       }
-      await loadRun(false);
+    }
+    // The run (status, totals, results, payslips) is reloaded so the screen shows the fresh payroll.
+    await loadRun(false);
+  }
+
+  async function runPayrollJob(strKind: "process" | "reprocess" | "validate" | "payslips", fnStart: () => Promise<PayrollJobStatus>) {
+    setBlnSaving(true);
+    setStrError("");
+    setStrSuccess("");
+    setObjJobProgress({ strStatus: "running", blnActive: true, intPercent: 0, strPhase: "queued", strKind });
+    try {
+      await fnStart();
+      await finishRunJob(await followRunJob(), strKind);
     } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to process payroll run.");
+      setObjJobProgress(null);
+      setStrError(
+        objError instanceof Error
+          ? objError.message
+          : strKind === "process"
+            ? "Unable to process payroll run."
+            : strKind === "validate"
+              ? "Unable to validate payroll run."
+              : strKind === "payslips"
+                ? "Unable to generate payslips."
+                : "Unable to reprocess payroll run.",
+      );
     } finally {
       setBlnSaving(false);
-      setStrActionLoaderLabel("");
     }
+  }
+
+  // If the page is opened (or refreshed) while a job is still running, pick its progress back up.
+  useEffect(() => {
+    if (blnRightsLoading || !blnCanView || refResumedJobRunID.current === strRunID) {
+      return;
+    }
+    refResumedJobRunID.current = strRunID;
+    payrollRunService
+      .getRunJobStatus(strRunID)
+      .then(async (dicStatus) => {
+        if (dicStatus.strStatus !== "running") {
+          return;
+        }
+        setBlnSaving(true);
+        setObjJobProgress(dicStatus);
+        try {
+          await finishRunJob(await followRunJob(), dicStatus.strKind ?? "process");
+        } catch (objError) {
+          setObjJobProgress(null);
+          setStrError(objError instanceof Error ? objError.message : "Unable to read the payroll job progress.");
+        } finally {
+          setBlnSaving(false);
+        }
+      })
+      .catch(() => undefined);
+  }, [strRunID, blnRightsLoading, blnCanView]);
+
+  async function processRun() {
+    if (!blnCanProcess) {
+      return;
+    }
+    await runPayrollJob("process", () => payrollRunService.startProcessPayrollRun(strRunID));
   }
 
   function openReprocessDialog() {
@@ -805,23 +909,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
       return;
     }
     setBlnReprocessDialogOpen(false);
-    setBlnSaving(true);
-    setStrActionLoaderLabel(t("reprocessing_run", "Reprocessing payroll run..."));
-    setStrError("");
-    setStrSuccess("");
-    try {
-      const dicSummary = await payrollRunService.reprocessPayrollRun(strRunID, strReason);
-      setObjProcessSummary(dicSummary);
-      setObjValidationSummary(dicSummary.dicValidationSummary ?? null);
-      setObjAttendanceValidationResult(dicSummary.dicAttendanceSync ?? null);
-      setStrSuccess(t("reprocess_complete", "Payroll reprocessing completed."));
-      await loadRun(false);
-    } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to reprocess payroll run.");
-    } finally {
-      setBlnSaving(false);
-      setStrActionLoaderLabel("");
-    }
+    await runPayrollJob("reprocess", () => payrollRunService.startReprocessPayrollRun(strRunID, strReason));
   }
 
   async function reloadPayslips() {
@@ -836,20 +924,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     if (!blnCanGeneratePayslip) {
       return;
     }
-    setBlnPayslipLoading(true);
-    setStrActionLoaderLabel(t("generating_payslips", "Generating payslips..."));
-    setStrError("");
-    setStrSuccess("");
-    try {
-      const dicSummary = await payslipService.generateAll(strRunID);
-      setStrSuccess(t("payslip_generate_all_success", `${dicSummary.intGeneratedCount} payslips generated successfully.`));
-      await reloadPayslips();
-    } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to generate payslips.");
-    } finally {
-      setBlnPayslipLoading(false);
-      setStrActionLoaderLabel("");
-    }
+    await runPayrollJob("payslips", () => payslipService.startGenerateAll(strRunID));
   }
 
   async function generatePayslip(dicRow: PayslipRunListRecord) {
@@ -861,7 +936,9 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     setStrError("");
     setStrSuccess("");
     try {
-      const dicPayslip = await payslipService.generatePayslip(strRunID, dicRow.intEmployeeID);
+      const dicPayslip = await trackPayslipGeneration(() =>
+        payslipService.generatePayslip(strRunID, dicRow.intEmployeeID),
+      );
       setStrSuccess(t("payslip_generated", "Payslip generated successfully."));
       await reloadPayslips();
       return dicPayslip;
@@ -1914,8 +1991,23 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
           </Button>
         </DialogActions>
       </Dialog>
+      <PayrollJobProgressDialog
+        objJob={objJobProgress ?? objPayslipProgress}
+        strTitle={
+          objJobProgress?.strKind === "reprocess"
+            ? t("reprocessing_run", "Reprocessing payroll run...")
+            : objJobProgress?.strKind === "validate"
+              ? t("validating_run", "Validating payroll run...")
+              : objJobProgress?.strKind === "payslips"
+                ? t("generating_payslips", "Generating payslips...")
+                : t("processing_run", "Processing payroll run...")
+        }
+        strFallbackPhaseLabel={t("job_starting", "Starting")}
+        strEmployeesLabel={t("job_employees", "employees")}
+        fnTranslate={t}
+      />
       <BlockingLoader
-        blnOpen={blnSaving || blnPayslipLoading || blnResultLinesLoading}
+        blnOpen={(blnSaving && !objJobProgress) || blnPayslipLoading || blnResultLinesLoading}
         strLabel={strActionLoaderLabel || tCommon("processing", "Processing...")}
       />
     </Box>

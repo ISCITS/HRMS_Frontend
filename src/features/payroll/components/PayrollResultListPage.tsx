@@ -28,6 +28,8 @@ import { useModuleActionAccess } from "@/features/security/hooks/useModuleAction
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import ReportMultiSelectField, { getUniqueOptions } from "@/features/reports/components/ReportMultiSelectField";
 import { payrollResultService } from "@/features/payroll/services/payrollResultService";
+import PayrollJobProgressDialog from "@/features/payroll/components/PayrollJobProgressDialog";
+import { usePayslipGenerationProgress } from "@/features/payroll/hooks/usePayslipGenerationProgress";
 import { payslipService } from "@/features/payroll/services/payslipService";
 import { authApiService } from "@/services";
 import type {
@@ -244,6 +246,9 @@ export default function PayrollResultListPage({
   const objSearchParams = useSearchParams();
   const dicInitialSearch = useMemo(() => buildInitialSearchFromQuery(objSearchParams), [objSearchParams]);
   const { t } = useModuleLabels("payslips");
+  const { objPayslipProgress, trackPayslipGeneration } = usePayslipGenerationProgress(
+    t("generating_payslip", "Generating payslip"),
+  );
   const lstAccessModuleHints = blnPayslipScreen
     ? (blnEssMode
         ? ["PAYSLIP", "PAYSLIPS", "MY_PAYSLIPS"]
@@ -410,9 +415,11 @@ export default function PayrollResultListPage({
         : blnPayslipScreen
         ? dicRow.intPayslipID ?? dicPayslip.intPayslipID
         : (
-            await payslipService.generatePayslip(
-              dicRow.strPayrollRunRecordUUID ?? String(dicRow.intPayrollRunID),
-              dicRow.intEmployeeID
+            await trackPayslipGeneration(() =>
+              payslipService.generatePayslip(
+                dicRow.strPayrollRunRecordUUID ?? String(dicRow.intPayrollRunID),
+                dicRow.intEmployeeID
+              )
             )
           ).intPayslipID;
       if (!intPayslipID) {
@@ -621,6 +628,13 @@ export default function PayrollResultListPage({
 
   return (
     <Box className={masterStyles.page}>
+      <PayrollJobProgressDialog
+        objJob={objPayslipProgress}
+        strTitle={t("generating_payslip", "Generating payslip...")}
+        strFallbackPhaseLabel={t("generating_payslip", "Generating payslip")}
+        strEmployeesLabel={t("job_employees", "employees")}
+        fnTranslate={t}
+      />
       <MasterBreadcrumbs
         strSection={blnPayslipScreen && blnEssMode ? t("ess_breadcrumb_section", "Employee Services") : t("breadcrumb_section", "Payroll")}
         strTitle={blnPayslipScreen

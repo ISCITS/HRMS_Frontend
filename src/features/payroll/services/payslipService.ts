@@ -2,6 +2,7 @@ import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { requestEncryptedApi, type ApiEnvelope } from "@/Common/utils/apiErrorHandler";
 import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
 import type {
+  PayrollJobStatus,
   PayslipGenerateAllSummary,
   PayslipPreviewRecord,
   PayslipRunListRecord,
@@ -87,6 +88,16 @@ export const payslipService = {
       strPath: `/payroll/runs/${strRunID}/payslips`,
       strMethod: "GET",
       strMenuAction: "PAYSLIP_LIST",
+    });
+    return objResult.Data;
+  },
+
+  /** Starts bulk payslip generation in the background; follow it with payrollRunService.getRunJobStatus. */
+  async startGenerateAll(strRunID: string): Promise<PayrollJobStatus> {
+    const objResult = await requestApi<PayrollJobStatus>({
+      strPath: `/payroll/runs/${strRunID}/payslips/generate-all?blnBackground=true`,
+      strMethod: "POST",
+      strMenuAction: "PAYSLIP_GENERATE_ALL",
     });
     return objResult.Data;
   },

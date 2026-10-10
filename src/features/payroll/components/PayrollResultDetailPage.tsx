@@ -40,6 +40,8 @@ import PayrollResultBreakdown from "@/features/payroll/components/PayrollResultB
 import masterStyles from "@/components/master/MasterScreen.module.css";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payrollResultService } from "@/features/payroll/services/payrollResultService";
+import PayrollJobProgressDialog from "@/features/payroll/components/PayrollJobProgressDialog";
+import { usePayslipGenerationProgress } from "@/features/payroll/hooks/usePayslipGenerationProgress";
 import { payslipService } from "@/features/payroll/services/payslipService";
 import type {
   PayrollResultDetailRecord,
@@ -430,6 +432,9 @@ export default function PayrollResultDetailPage({
   const objRouter = useRouter();
   const strPathname = usePathname();
   const { t } = useModuleLabels("payslips");
+  const { objPayslipProgress, trackPayslipGeneration } = usePayslipGenerationProgress(
+    t("generating_payslip", "Generating payslip"),
+  );
   const { blnLoading: blnRightsLoading, canDoAny } = useModuleActionAccess(
     blnPayslipScreen
       ? ["REPORT_PAYROLL_RESULTS", "PAYSLIPS", "PAYSLIP", "PAYROLL_PAYSLIPS", "PAYROLL_PAYSLIP"]
@@ -534,9 +539,11 @@ export default function PayrollResultDetailPage({
     setStrError("");
     setStrSuccess("");
     try {
-      const dicPayslip = await payslipService.generatePayslip(
-        objResult!.strPayrollRunRecordUUID ?? String(objResult!.intPayrollRunID),
-        objResult!.intEmployeeID
+      const dicPayslip = await trackPayslipGeneration(() =>
+        payslipService.generatePayslip(
+          objResult!.strPayrollRunRecordUUID ?? String(objResult!.intPayrollRunID),
+          objResult!.intEmployeeID
+        )
       );
       setObjPayslip(dicPayslip);
       setStrSuccess(t("payslip_generated", "Payslip generated successfully."));
@@ -665,6 +672,13 @@ export default function PayrollResultDetailPage({
         pb: 2,
       }}
     >
+      <PayrollJobProgressDialog
+        objJob={objPayslipProgress}
+        strTitle={t("generating_payslip", "Generating payslip...")}
+        strFallbackPhaseLabel={t("generating_payslip", "Generating payslip")}
+        strEmployeesLabel={t("job_employees", "employees")}
+        fnTranslate={t}
+      />
       <DetailPageHeader
         strSection={blnEssRoute ? t("ess_breadcrumb_section", "Employee Services") : t("breadcrumb_section", "Payroll")}
         strListTitle={blnPayslipScreen ? (blnEssRoute ? t("ess_breadcrumbs", "My Payslips") : t("payslip_breadcrumbs", "Payslips")) : t("payroll_results_breadcrumbs", "Payroll Results")}
