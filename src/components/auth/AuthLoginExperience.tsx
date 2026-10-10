@@ -2,10 +2,16 @@
  
 import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
 import AlternateEmailRoundedIcon from "@mui/icons-material/AlternateEmailRounded";
+import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
+import BarChartRoundedIcon from "@mui/icons-material/BarChartRounded";
+import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
+import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
+import MailOutlineRoundedIcon from "@mui/icons-material/MailOutlineRounded";
 import QrCode2RoundedIcon from "@mui/icons-material/QrCode2Rounded";
 import SecurityRoundedIcon from "@mui/icons-material/SecurityRounded";
+import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VpnKeyRoundedIcon from "@mui/icons-material/VpnKeyRounded";
@@ -13,10 +19,11 @@ import { Alert, Box, Button, ButtonBase, Dialog, DialogActions, DialogContent, D
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DottedLoader } from "@/components/shared/BlockingLoader";
+import { loginCompactSx, loginInputRootSx, loginTextFieldSx } from "@/components/auth/loginCompactSx";
 
-import styles from "@/components/auth/AuthLoginExperience.module.css";
 import { LoginUiMessage } from "@/Common/enums/AppEnums";
 import { handleSingleDialogActionEnter } from "@/Common/utils/dialogKeyboard";
+import { appConfig } from "@/config/app";
 import { apiConstants } from "@/config/constants";
 import { enMessages } from "@/i18n/messages/en";
 import { authHelpers } from "@/lib/auth";
@@ -28,7 +35,8 @@ import type {
   NormalizedTenantLoginMethod,
   SsoMfaLoginSuccessData,
   SsoMfaSetupSuccessData,
-  TenantAuthDetails
+  TenantAuthDetails,
+  TenantLookupData
 } from "@/models/AuthModels";
 import { getPostLoginRoute } from "@/lib/RouteGuard";
 import { authApiService } from "@/services";
@@ -185,14 +193,19 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
     authHelpers.clearStoredSessionState();
     setBlnTenantLoading(true);
  
-    authApiService
-      .getTenantAuthDetails(strTenantUUID)
-      .then((objAuthDetailsResult) => {
+    Promise.all([
+      authApiService.getTenantAuthDetails(strTenantUUID),
+      authApiService.getTenant(strTenantUUID).catch(() => null)
+    ])
+      .then(([objAuthDetailsResult, objTenantResult]) => {
         if (!blnActive) {
           return;
         }
  
-        const objAuthDetails = objAuthDetailsResult.Data;
+        const objAuthDetails = mergeTenantLookupNameIntoAuthDetails(
+          objAuthDetailsResult.Data,
+          objTenantResult?.Data
+        );
         if (!isTenantAuthDetails(objAuthDetails)) {
           throw new Error(getLoginLabel("tenantUnavailable"));
         }
@@ -476,6 +489,13 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
  
   const strTitle = strMode === "tenant" ? getLoginLabel("tenantTitle") : enMessages.auth.genericTitle;
   const strSubtitle = strMode === "tenant" ? getLoginLabel("tenantSubtitle") : enMessages.auth.genericSubtitle;
+  const strTenantName = resolveTenantDisplayName(objTenantAuthDetails);
+  const strWorkspaceName = strMode === "tenant"
+    ? strTenantName || (strTitle !== enMessages.auth.tenantTitle ? strTitle : appConfig.appName)
+    : appConfig.appName;
+  const strLoginWelcomeTarget = strMode === "tenant"
+    ? strTenantName || strWorkspaceName
+    : appConfig.appName;
   const blnShowTenantTransition =
     strMode === "tenant" &&
     (blnTenantLoading || blnSsoRedirecting || strTenantAuthMode === "sso") &&
@@ -486,35 +506,18 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
  
   if (blnShowTenantTransition) {
     return (
-      <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", p: 3, background: "#f8fafc" }}>
-        <Box sx={{ maxWidth: 520, width: "100%" }}>
-          <Box
-            sx={{
-              p: 4,
-              borderRadius: "28px",
-              textAlign: "center",
-              backgroundColor: "#ffffff",
-              boxShadow: "0 24px 60px rgba(15, 23, 42, 0.08)"
-            }}
-          >
+      <Box className="login-transition-root">
+        <Box className="login-transition-wrap">
+          <Box className="login-transition-card">
             <Stack spacing={2} alignItems="center">
-              <Box
-                sx={{
-                  width: 72,
-                  height: 72,
-                  display: "grid",
-                  placeItems: "center",
-                  borderRadius: "22px",
-                  backgroundColor: "rgba(14,116,144,0.1)"
-                }}
-              >
-                <CheckCircleOutlineRoundedIcon color="primary" sx={{ fontSize: 34 }} />
+              <Box className="login-transition-icon">
+                <CheckCircleOutlineRoundedIcon color="primary" fontSize="large" />
               </Box>
               <Typography variant="h4">{getLoginLabel("ssoCallbackTitle")}</Typography>
-              <Typography sx={{ color: "#64748b" }}>
+              <Typography className="login-muted-text">
                 {blnTenantLoading ? getLoginLabel("verifyingWorkspaceStatus") : strSsoStatus}
               </Typography>
-              <Typography variant="body2" sx={{ color: "#94a3b8" }}>
+              <Typography variant="body2" className="login-soft-text">
                 {strTenantUUID}
               </Typography>
               <DottedLoader />
@@ -532,34 +535,25 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
     const blnCanVerify = blnUseBackupCode ? Boolean(strBackupCode.trim()) : strGoogleCode.trim().length === 6;
 
     return (
-      <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", p: 3, background: "#f8fafc" }}>
-        <Paper sx={{ maxWidth: 620, width: "100%", p: 4, borderRadius: "28px" }}>
+      <Box className="login-transition-root">
+        <Paper className="login-mfa-card">
           <Stack spacing={3}>
             <Stack spacing={1} alignItems="center" textAlign="center">
-              <Box
-                sx={{
-                  width: 72,
-                  height: 72,
-                  display: "grid",
-                  placeItems: "center",
-                  borderRadius: "22px",
-                  backgroundColor: "rgba(14,116,144,0.1)"
-                }}
-              >
-                {objGoogleMfaChallenge.blnMfaSetupRequired ? <QrCode2RoundedIcon color="primary" sx={{ fontSize: 34 }} /> : <SecurityRoundedIcon color="primary" sx={{ fontSize: 34 }} />}
+              <Box className="login-transition-icon">
+                {objGoogleMfaChallenge.blnMfaSetupRequired ? <QrCode2RoundedIcon color="primary" fontSize="large" /> : <SecurityRoundedIcon color="primary" fontSize="large" />}
               </Box>
               <Typography variant="h4">{strResolvedMfaTitle}</Typography>
-              <Typography sx={{ color: "#64748b" }}>{objGoogleMfaChallenge.strMessage}</Typography>
+              <Typography className="login-muted-text">{objGoogleMfaChallenge.strMessage}</Typography>
             </Stack>
 
             {strError ? <Alert severity="error">{strError}</Alert> : null}
 
             {lstBackupCodes.length > 0 ? (
               <Alert severity="success">
-                <Typography sx={{ fontWeight: 700, mb: 1 }}>Backup codes</Typography>
+                <Typography className="login-alert-title">Backup codes</Typography>
                 <Stack spacing={0.5}>
                   {lstBackupCodes.map((strItem) => (
-                    <Typography key={strItem} sx={{ fontFamily: "monospace" }}>{strItem}</Typography>
+                    <Typography key={strItem} className="login-mono-text">{strItem}</Typography>
                   ))}
                 </Stack>
               </Alert>
@@ -568,14 +562,14 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
             {objGoogleMfaChallenge.blnMfaSetupRequired ? (
               <Stack spacing={2}>
                 {strQrCodeSrc ? (
-                  <Box sx={{ display: "grid", placeItems: "center", p: 2, background: "#fff", borderRadius: 3, border: "1px solid #e2e8f0" }}>
-                    <Box component="img" src={strQrCodeSrc} alt="Google Authenticator QR code" sx={{ width: 240, height: 240 }} />
+                  <Box className="login-qr-wrap">
+                    <Box component="img" src={strQrCodeSrc} alt="Google Authenticator QR code" className="login-qr-image" />
                   </Box>
                 ) : null}
 
-                <Box sx={{ p: 2, borderRadius: 3, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-                  <Typography sx={{ fontWeight: 700, mb: 1 }}>Manual setup key</Typography>
-                  <Typography sx={{ fontFamily: "monospace", wordBreak: "break-all" }}>
+                <Box className="login-manual-key">
+                  <Typography className="login-alert-title">Manual setup key</Typography>
+                  <Typography className="login-mono-text login-break-text">
                     {objGoogleMfaChallenge.strManualSecret || "Not available"}
                   </Typography>
                 </Box>
@@ -592,7 +586,9 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
               {blnUseBackupCode ? (
                 <TextField
                   label="Backup code"
+                  sx={loginTextFieldSx}
                   inputProps={{ "data-controlid": "auth.mfa.backup-code.input" }}
+                  InputProps={{ sx: loginInputRootSx }}
                   value={strBackupCode}
                   onChange={(objEvent) => setStrBackupCode(objEvent.target.value.toUpperCase())}
                   placeholder="Enter one backup code"
@@ -601,7 +597,9 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
               ) : (
                 <TextField
                   label="Authenticator code"
+                  sx={loginTextFieldSx}
                   inputProps={{ "data-controlid": "auth.mfa.code.input" }}
+                  InputProps={{ sx: loginInputRootSx }}
                   value={strGoogleCode}
                   onChange={(objEvent) => setStrGoogleCode(objEvent.target.value.replace(/\D/g, "").slice(0, 6))}
                   placeholder="Enter the 6-digit code"
@@ -617,7 +615,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                   void handleGoogleMfaVerification();
                 }}
                 startIcon={blnSubmitting ? <DottedLoader intSize={18} color="inherit" /> : undefined}
-                sx={{ minHeight: 52, borderRadius: "10px" }}
+                className="login-primary-button"
               >
                 {strResolvedVerifyButtonLabel}
               </Button>
@@ -647,28 +645,59 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
   }
  
   return (
-    <Box className={styles.pageRoot}>
-      <Box className={styles.shell}>
-        <Box className={styles.heroPanel}>
-          <Box className={styles.heroContent}>
-            <Box className={styles.heroIllustrationFrame}>
-              <Box component="img" src={withBasePath("/images/hrms-login.png")} alt={getLoginLabel("heroImageAlt")} className={styles.heroImage} />
+    <Box className="login-page-root login-auth-page" sx={loginCompactSx}>
+      <Box className="login-shell">
+        <Box className="login-hero-panel">
+          <Box className="login-brand-row">
+            <Box className="login-brand-mark" aria-hidden="true">
+              <span />
+              <span />
+            </Box>
+            <Typography component="span" className="login-brand-name">{appConfig.appName}</Typography>
+            {/* <span className="login-brand-divider" />
+            <Typography component="span" className="login-powered-label">Powered by</Typography>
+            <Box className="login-powered-mark" aria-hidden="true">
+              <span />
+            </Box>
+            <Typography component="span" className="login-powered-name">NavCode.ai</Typography> */}
+          </Box>
+          <Box className="login-hero-content">
+            <Typography component="h1" className="login-hero-title">
+              Your people.<br />
+              <span>A stronger tomorrow.</span>
+            </Typography>
+            <Typography className="login-hero-copy">
+              A unified HR platform to manage your people, payroll and workplace simply and securely.
+            </Typography>
+            <Box className="login-benefit-list">
+              <Box className="login-benefit-item">
+                <Box className="login-benefit-icon"><GroupsRoundedIcon /></Box>
+                <Typography>Empower<br />your workforce</Typography>
+              </Box>
+              <Box className="login-benefit-item">
+                <Box className="login-benefit-icon"><SettingsRoundedIcon /></Box>
+                <Typography>Simplify<br />HR operations</Typography>
+              </Box>
+              <Box className="login-benefit-item">
+                <Box className="login-benefit-icon"><BarChartRoundedIcon /></Box>
+                <Typography>Drive<br />growth together</Typography>
+              </Box>
             </Box>
           </Box>
         </Box>
  
-        <Box className={styles.formPanel}>
-          <Box className={styles.formCard}>
+        <Box className="login-form-panel">
+          <Box className="login-form-card">
             {blnLanguageSwitching ? (
-              <Box className={styles.languageLoadingOverlay}>
+              <Box className="login-language-loading-overlay">
                 <DottedLoader intSize={22} />
               </Box>
             ) : null}
             {lstLanguageOptions.length > 1 ? (
-              <Box className={styles.languageSwitcherRow}>
-                <Box className={styles.languageSwitcher} role="tablist" aria-label="Login language switcher">
-                  <Box className={styles.languageSwitcherIcon}>
-                    {blnLanguageSwitching ? <DottedLoader intSize={14} /> : <LanguageRoundedIcon sx={{ fontSize: 16 }} />}
+              <Box className="login-language-switcher-row">
+                <Box className="login-language-switcher" role="tablist" aria-label="Login language switcher">
+                  <Box className="login-language-switcher-icon">
+                    {blnLanguageSwitching ? <DottedLoader intSize={14} /> : <LanguageRoundedIcon fontSize="small" />}
                   </Box>
                   {lstLanguageOptions.map((dicLanguageOption) => (
                     <button
@@ -676,7 +705,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                       type="button"
                       data-controlid="auth.login.language.button"
                       data-option-key={dicLanguageOption.intLanguageID}
-                      className={`${styles.languageButton} ${intSelectedLanguageID === dicLanguageOption.intLanguageID ? styles.languageButtonActive : ""}`}
+                      className={`login-language-button ${intSelectedLanguageID === dicLanguageOption.intLanguageID ? "login-language-button-active" : ""}`}
                       onClick={() => {
                         if (dicLanguageOption.intLanguageID === intLoadedLanguageID) {
                           setIntSelectedLanguageID(dicLanguageOption.intLanguageID);
@@ -697,52 +726,46 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                 </Box>
               </Box>
             ) : null}
-            <Box className={styles.formIntro}>
-              <Typography className={styles.welcomeTitle}>{getLoginLabel("welcomeTitle")}</Typography>
-              <Typography className={styles.welcomeSubtitle}>{getLoginLabel("welcomeSubtitle")}</Typography>
+            <Box className="login-form-intro">
+              <Typography className="login-welcome-title">
+                Sign in to<br />
+                <span>{strLoginWelcomeTarget}</span>
+              </Typography>
+              <Typography className="login-welcome-subtitle">Use your work account to access the HR platform.</Typography>
             </Box>
-            <Typography className={lstPortalChoices.length > 1 ? styles.portalChoiceTitle : styles.title}>
-              {lstPortalChoices.length > 1
-                ? getLoginLabel("continueToTitle")
-                : blnOtpStep
-                  ? getLoginLabel("verifyOtpTitle")
-                  : getLoginLabel("signInButton")}
-            </Typography>
+            {lstPortalChoices.length > 1 || blnOtpStep ? (
+              <Typography className={lstPortalChoices.length > 1 ? "login-portal-choice-title" : "login-title login-title-visible"}>
+                {lstPortalChoices.length > 1 ? getLoginLabel("continueToTitle") : getLoginLabel("verifyOtpTitle")}
+              </Typography>
+            ) : null}
  
             {lstPortalChoices.length > 1 ? (
-              <Stack spacing={2} sx={{ mt: 3 }}>
-                <Typography className={styles.portalChoiceIntro} sx={{ color: "#64748b" }}>
+              <Stack spacing={2} className="login-form-stack">
+                <Typography className="login-portal-choice-intro">
                   {getLoginLabel("continueToSubtitle")}
                 </Typography>
                 {/* Each portal is a card rather than a bare button: the two names alone do not tell
                     a dual-access user which side of the product they are choosing, so each carries
                     a line describing what it lets them do. HRMS is shown first, independent of the
                     order the server returns. */}
-                <Box
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
-                    gap: 1.5,
-                    alignItems: "stretch",
-                  }}
-                >
+                <Box className="login-portal-grid">
                   {lstPortalDisplayOrder.map((strPortal) => (
                     <ButtonBase
                       key={strPortal}
-                      className={styles.portalCard}
+                      className="login-portal-card"
                       disabled={blnPortalSwitching}
                       onClick={() => void selectPortal(strPortal)}
                       data-controlid={`auth.login.portal.${strPortal.toLowerCase()}.button`}
                     >
-                      <Typography component="span" className={styles.portalCardTitle}>
+                      <Typography component="span" className="login-portal-card-title">
                         {strPortal === "HRMS" ? getLoginLabel("portalHrms") : getLoginLabel("portalEss")}
                       </Typography>
-                      <Box component="ul" className={styles.portalCardPoints}>
+                      <Box component="ul" className="login-portal-card-points">
                         {(strPortal === "HRMS"
                           ? (["portalHrmsPoint1", "portalHrmsPoint2", "portalHrmsPoint3"] as const)
                           : (["portalEssPoint1", "portalEssPoint2", "portalEssPoint3"] as const)
                         ).map((strPointKey) => (
-                          <Typography key={strPointKey} component="li" className={styles.portalCardPoint}>
+                          <Typography key={strPointKey} component="li" className="login-portal-card-point">
                             {getLoginLabel(strPointKey)}
                           </Typography>
                         ))}
@@ -753,14 +776,16 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                 {strError ? <Alert severity="error">{strError}</Alert> : null}
               </Stack>
             ) : (
-            <Stack component="form" onSubmit={handleLoginSubmit} spacing={2.25} sx={{ mt: 3 }}>
+            <Stack component="form" onSubmit={handleLoginSubmit} spacing={2.25} className="login-form-stack">
               <Box>
-                <Typography className={styles.fieldLabel}>
-                  {getLoginLabel("loginIdLabel")}
-                </Typography>
                 <TextField
-                  inputProps={{ "data-controlid": "auth.login.login-id.input" }}
+                  variant="outlined"
+                  label={getLoginLabel("loginIdLabel")}
                   placeholder={getLoginLabel("loginIdPlaceholder")}
+                  sx={[loginTextFieldSx, { "--login-label-start": "54px" }]}
+                  inputProps={{
+                    "data-controlid": "auth.login.login-id.input"
+                  }}
                   value={strLoginID}
                   onChange={(objEvent) => {
                     setStrLoginID(objEvent.target.value);
@@ -771,11 +796,12 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                   fullWidth
                   disabled={blnOtpStep}
                   error={Boolean(strIdentityValidationError)}
-                  helperText={strIdentityValidationError ?? " "}
+                  helperText={strIdentityValidationError || undefined}
                   InputProps={{
+                    sx: loginInputRootSx,
                     startAdornment: (
                       <InputAdornment position="start">
-                        <AlternateEmailRoundedIcon sx={{ color: "#94a3b8", fontSize: 20 }} />
+                        {strResolvedLoginIdentity === "login_id" ? <AlternateEmailRoundedIcon className="login-input-icon" /> : <MailOutlineRoundedIcon className="login-input-icon" />}
                       </InputAdornment>
                     )
                   }}
@@ -783,19 +809,24 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
               </Box>
  
               <Box>
-                <Typography className={styles.fieldLabel}>{getLoginLabel("passwordLabel")}</Typography>
                 <TextField
-                  inputProps={{ "data-controlid": "auth.login.password.input" }}
+                  variant="outlined"
+                  label={getLoginLabel("passwordLabel")}
                   placeholder={getLoginLabel("passwordPlaceholder")}
+                  sx={[loginTextFieldSx, { "--login-label-start": "52px" }]}
+                  inputProps={{
+                    "data-controlid": "auth.login.password.input"
+                  }}
                   type={blnPasswordVisible ? "text" : "password"}
                   value={strPassword}
                   onChange={(objEvent) => setStrPassword(objEvent.target.value)}
                   fullWidth
                   disabled={blnOtpStep}
                   InputProps={{
+                    sx: loginInputRootSx,
                     startAdornment: (
                       <InputAdornment position="start">
-                        <LockRoundedIcon sx={{ color: "#94a3b8", fontSize: 20 }} />
+                        <LockRoundedIcon className="login-input-icon" />
                       </InputAdornment>
                     ),
                     endAdornment: (
@@ -811,27 +842,38 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
  
               {blnOtpStep ? (
                 <Box>
-                  <Typography className={styles.fieldLabel}>{getLoginLabel("otpLabel")}</Typography>
                   <TextField
-                    inputProps={{ "data-controlid": "auth.login.otp.input" }}
+                    variant="outlined"
+                    label={getLoginLabel("otpLabel")}
                     placeholder={getLoginLabel("otpPlaceholder")}
+                    sx={loginTextFieldSx}
+                    inputProps={{
+                      "data-controlid": "auth.login.otp.input"
+                    }}
+                    InputProps={{ sx: loginInputRootSx }}
                     value={strOtp}
                     onChange={(objEvent) => setStrOtp(objEvent.target.value.replace(/\D/g, "").slice(0, 6))}
                     fullWidth
                   />
-                  <Typography variant="body2" sx={{ mt: 1, color: "#64748b" }}>
+                  <Typography variant="body2" className="login-otp-help-text">
                     {getLoginLabel("otpSentMessage")}
                   </Typography>
                 </Box>
               ) : null}
  
-              {!blnOtpStep ? (
-                <Box sx={{ display: "flex", justifyContent: "flex-end", mt: -0.5 }}>
-                  <Typography sx={{ color: "#0f172a", fontWeight: 600, fontSize: "0.92rem" }}>
-                    {/* {getLoginLabel("forgotPassword")} */}
+              {/* {!blnOtpStep ? (
+                <Box className="login-options-row">
+                  <Box className="login-remember-item">
+                    <Box className="login-remember-check" aria-hidden="true">
+                      <CheckRoundedIcon />
+                    </Box>
+                    <Typography className="login-remember-label">Remember me on this device</Typography>
+                  </Box>
+                  <Typography className="login-forgot-link">
+                    {getLoginLabel("forgotPassword")}
                   </Typography>
                 </Box>
-              ) : null}
+              ) : null} */}
  
               <Button
                 data-controlid="auth.login.submit.button"
@@ -839,13 +881,8 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                 variant="contained"
                 size="large"
                 disabled={!blnCanSubmitCurrentStep}
-                sx={{
-                  minHeight: 52,
-                  borderRadius: "10px",
-                  background: "linear-gradient(135deg, #132a63 0%, #184a8b 100%)",
-                  boxShadow: "0 10px 20px rgba(24, 74, 139, 0.24)"
-                }}
-                startIcon={blnSubmitting ? <DottedLoader intSize={18} color="inherit" /> : <LockRoundedIcon />}
+                className="login-primary-button"
+                endIcon={blnSubmitting ? <DottedLoader intSize={18} color="inherit" /> : <span className="login-submit-arrow"><ArrowForwardRoundedIcon /></span>}
               >
                 {blnOtpStep ? getLoginLabel("verifyOtpTitle") : getLoginLabel("signInButton")}
               </Button>
@@ -865,8 +902,8 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                 </Button>
               ) : null}
  
-              <Box className={styles.helperLinks}>
-                <Typography variant="body2" sx={{ color: "#64748b" }}>
+              <Box className="login-helper-links">
+                <Typography variant="body2" className="login-helper-text">
                   {blnOtpStep ? getLoginLabel("otpContinueMessage") : strMode === "tenant" ? strTitle : strSubtitle}
                 </Typography>
               </Box>
@@ -1027,6 +1064,57 @@ function resolveLoginIdentity(
   }
  
   return "email_address";
+}
+
+function resolveTenantDisplayName(objTenantAuthDetails: TenantAuthDetails | null): string {
+  const strTenantName =
+    objTenantAuthDetails?.tenant_name?.trim() ||
+    objTenantAuthDetails?.tenantName?.trim() ||
+    objTenantAuthDetails?.TenantName?.trim() ||
+    objTenantAuthDetails?.strTenantName?.trim() ||
+    objTenantAuthDetails?.StrTenantName?.trim();
+  return strTenantName ?? "";
+}
+
+function mergeTenantLookupNameIntoAuthDetails(
+  objAuthDetails: TenantAuthDetails,
+  objTenant?: TenantLookupData | null
+): TenantAuthDetails {
+  const strExistingTenantName = resolveTenantDisplayName(objAuthDetails);
+  const strLookupTenantName = resolveTenantLookupDisplayName(objTenant);
+
+  if (strExistingTenantName || !strLookupTenantName) {
+    return objAuthDetails;
+  }
+
+  return {
+    ...objAuthDetails,
+    tenant_name: strLookupTenantName,
+    tenantName: strLookupTenantName,
+    strTenantName: strLookupTenantName
+  };
+}
+
+function resolveTenantLookupDisplayName(objTenant?: TenantLookupData | null): string {
+  if (!objTenant) {
+    return "";
+  }
+
+  const dicTenant = objTenant as TenantLookupData & {
+    tenant_name?: string | null;
+    tenantName?: string | null;
+    TenantName?: string | null;
+    StrTenantName?: string | null;
+  };
+
+  return (
+    dicTenant.strTenantName?.trim() ||
+    dicTenant.tenant_name?.trim() ||
+    dicTenant.tenantName?.trim() ||
+    dicTenant.TenantName?.trim() ||
+    dicTenant.StrTenantName?.trim() ||
+    ""
+  );
 }
  
 function validateLoginIdentifier(strLoginID: string, strLoginMethod: NormalizedTenantLoginMethod): string | null {

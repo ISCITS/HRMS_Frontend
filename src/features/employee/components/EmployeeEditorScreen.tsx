@@ -1715,6 +1715,7 @@ export default function EmployeeEditorScreen({
 
     return (
       <Box
+        className="app-mui-text-field"
         data-has-value={Boolean(strNumberValue)}
         sx={{
           position: "relative",
@@ -1735,9 +1736,9 @@ export default function EmployeeEditorScreen({
             left: 0,
             zIndex: 1,
             px: "5px",
-            color: "rgba(15, 23, 42, 0.6)",
+            color: "var(--app-field-label-color)",
             fontSize: 14,
-            lineHeight: 1,
+            lineHeight: 1.45,
             transform: "translate(104px, -50%) scale(1)",
             transformOrigin: "top left",
             transition: "color 200ms cubic-bezier(0, 0, 0.2, 1), transform 200ms cubic-bezier(0, 0, 0.2, 1), top 200ms cubic-bezier(0, 0, 0.2, 1)",
@@ -1751,15 +1752,18 @@ export default function EmployeeEditorScreen({
             display: "grid",
             gridTemplateColumns: "32px 72px 1px minmax(0, 1fr)",
             alignItems: "center",
-            minHeight: 38,
+            minHeight: 41,
             border: "1px solid",
-            borderColor: strNumberError ? "#d32f2f" : "#cbd5e1",
-            borderRadius: "4px",
+            borderColor: strNumberError ? "var(--app-field-error-color)" : "var(--app-field-border-color)",
+            borderRadius: "var(--app-input-radius)",
             bgcolor: blnViewOnly ? "#f8fafc" : "#fff",
             transition: "border-color 160ms ease, box-shadow 160ms ease",
+            "&:hover": {
+              borderColor: strNumberError ? "var(--app-field-error-color)" : "var(--app-field-hover-border-color)",
+            },
             "&:focus-within": {
-              borderColor: strNumberError ? "#d32f2f" : "#1d5d96",
-              boxShadow: strNumberError ? "0 0 0 1px rgba(211, 47, 47, 0.16)" : "0 0 0 1px rgba(29, 93, 150, 0.16)",
+              borderColor: strNumberError ? "var(--app-field-error-color)" : "var(--app-field-focus-color)",
+              boxShadow: strNumberError ? "none" : "var(--app-field-focus-ring)",
             },
           }}
         >
@@ -1806,7 +1810,7 @@ export default function EmployeeEditorScreen({
             }}
           />
         </Box>
-        {strNumberError ? <Typography sx={{ mt: 0.5, color: "#d32f2f", fontSize: "0.75rem" }}>{strNumberError}</Typography> : null}
+        {strNumberError ? <Typography sx={{ mt: 0.5, color: "var(--app-field-error-color)", fontSize: "0.75rem" }}>{strNumberError}</Typography> : null}
       </Box>
     );
   }
@@ -2362,8 +2366,8 @@ export default function EmployeeEditorScreen({
                   <Box><Typography sx={dicEmployeeTabCardTitleSx}>{t("contact_work_personal_title", "Work & personal contact")}</Typography><Typography sx={dicEmployeeTabCardSubtitleSx}>{t("contact_work_personal_description", "Your official and personal contact information.")}</Typography></Box>
                 </Stack>
                 <Stack spacing={2}>
-                  <TextField size="small" data-control-id="employee.editor.work-email.input" inputProps={{ "data-control-id": "employee.editor.work-email.input" }} label={renderRequiredLabel(t("field_work_email", dicConstant.employeeMaster.fields.workEmail))} inputRef={dicFieldRefs.strWorkEmail} value={dicBasicForm.strWorkEmail} onChange={(objEvent) => updateBasicField("strWorkEmail", objEvent.target.value)} error={Boolean(dicBasicErrors.strWorkEmail)} helperText={dicBasicErrors.strWorkEmail} disabled={blnViewOnly} fullWidth />
-                  <TextField size="small" data-control-id="employee.editor.personal-email.input" inputProps={{ "data-control-id": "employee.editor.personal-email.input" }} label={t("field_personal_email", dicConstant.employeeMaster.fields.personalEmail)} inputRef={dicFieldRefs.strPersonalEmail} value={dicBasicForm.strPersonalEmail} onChange={(objEvent) => updateBasicField("strPersonalEmail", objEvent.target.value)} error={Boolean(dicBasicErrors.strPersonalEmail)} helperText={dicBasicErrors.strPersonalEmail} disabled={blnViewOnly} fullWidth />
+                  <TextField className="app-mui-text-field" size="small" data-control-id="employee.editor.work-email.input" inputProps={{ "data-control-id": "employee.editor.work-email.input" }} label={renderRequiredLabel(t("field_work_email", dicConstant.employeeMaster.fields.workEmail))} inputRef={dicFieldRefs.strWorkEmail} value={dicBasicForm.strWorkEmail} onChange={(objEvent) => updateBasicField("strWorkEmail", objEvent.target.value)} error={Boolean(dicBasicErrors.strWorkEmail)} helperText={dicBasicErrors.strWorkEmail} disabled={blnViewOnly} fullWidth />
+                  <TextField className="app-mui-text-field" size="small" data-control-id="employee.editor.personal-email.input" inputProps={{ "data-control-id": "employee.editor.personal-email.input" }} label={t("field_personal_email", dicConstant.employeeMaster.fields.personalEmail)} inputRef={dicFieldRefs.strPersonalEmail} value={dicBasicForm.strPersonalEmail} onChange={(objEvent) => updateBasicField("strPersonalEmail", objEvent.target.value)} error={Boolean(dicBasicErrors.strPersonalEmail)} helperText={dicBasicErrors.strPersonalEmail} disabled={blnViewOnly} fullWidth />
                   {renderContactPhoneField({
                     strLabel: t("field_mobile_number", dicConstant.employeeMaster.fields.mobileNumber),
                     strCountryCodeField: "strMobileCountryCode",

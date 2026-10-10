@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./ESSBanner.css";
+import "./(auth)/login.css";
 import ThemeRegistry from "@/components/shared/ThemeRegistry";
 import ThemeModeProvider from "@/components/shared/ThemeModeProvider";
 import AppLayoutBoundary from "@/components/layout/AppLayoutBoundary";

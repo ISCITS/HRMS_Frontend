@@ -21,6 +21,11 @@ export type TenantLookupData = {
 export type TenantAuthDetails = {
   tenant_id: number;
   tenant_uuid: string;
+  tenant_name?: string | null;
+  tenantName?: string | null;
+  TenantName?: string | null;
+  strTenantName?: string | null;
+  StrTenantName?: string | null;
   language_id?: number | null;
   secondary_language_id?: number | null;
   active_language_id?: number | null;
