@@ -6,34 +6,38 @@ export const loginCompactSx: SxProps<Theme> = {
   paddingBlock: "clamp(20px, 4.8vh, 76px)",
   "& .login-shell": {
     width: "min(1370px, 100%)",
-    height: "min(790px, calc(100dvh - clamp(40px, 8vh, 118px)))",
-    gap: "clamp(54px, 7.4vw, 112px)",
+    height: "min(760px, calc(100dvh - clamp(40px, 8vh, 118px)))",
+    gap: "clamp(48px, 6.6vw, 104px)",
   },
   "& .login-hero-panel": {
     gap: "clamp(28px, 5vh, 72px)",
     justifyContent: "flex-start",
   },
   "& .login-hero-content": {
-    maxWidth: 560,
+    maxWidth: 520,
     pb: 0,
     mt: "auto",
     mb: "auto",
   },
   "& .login-hero-title": {
-    fontSize: "clamp(3rem, min(4.6vw, 8.7vh), 4.3rem)",
+    fontSize: "clamp(3rem, min(4.25vw, 8vh), 4rem)",
     fontWeight: 700,
     lineHeight: 1.03,
   },
   "& .login-hero-copy": {
-    mt: "clamp(20px, 2.7vh, 30px)",
-    mb: "clamp(24px, 4.3vh, 42px)",
-    fontSize: "clamp(1.12rem, min(1.55vw, 2.45vh), 1.55rem)",
+    mt: "clamp(18px, 2.45vh, 26px)",
+    mb: "clamp(22px, 3.8vh, 36px)",
+    fontSize: "clamp(1.06rem, min(1.32vw, 2.2vh), 1.32rem)",
     fontWeight: 500,
   },
   "& .login-form-card": {
-    width: "min(100%, 565px)",
-    p: "clamp(34px, 4.2vh, 46px) clamp(44px, 4.6vw, 62px)",
-    borderRadius: "28px",
+    width: "min(100%, 535px)",
+    minHeight: "min(620px, calc(100dvh - 56px))",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    p: "clamp(78px, 9vh, 96px) clamp(42px, 4vw, 54px) clamp(58px, 7vh, 78px)",
+    borderRadius: "24px",
   },
   "& .login-form-panel": {
     height: "100%",
@@ -48,23 +52,23 @@ export const loginCompactSx: SxProps<Theme> = {
     fontWeight: 700,
   },
   "& .login-welcome-title": {
-    fontSize: "clamp(2rem, min(3.1vw, 5.6vh), 2.8rem)",
+    fontSize: "clamp(1.86rem, min(2.7vw, 5vh), 2.45rem)",
   },
   "& .login-welcome-subtitle": {
-    mt: "18px",
-    fontSize: "clamp(1rem, min(1.22vw, 2vh), 1.16rem)",
+    mt: "16px",
+    fontSize: "clamp(0.94rem, min(1.05vw, 1.8vh), 1.06rem)",
     fontWeight: 400,
   },
   "& .login-form-stack": {
-    mt: "24px",
-    gap: "clamp(14px, 2vh, 20px)",
+    mt: "22px",
+    gap: "clamp(14px, 1.9vh, 18px)",
   },
   "& .login-form-card .MuiOutlinedInput-root": {
-    minHeight: "66px",
+    minHeight: "58px",
     borderRadius: "14px",
   },
   "& .login-form-card .MuiInputBase-input": {
-    fontSize: "1.22rem",
+    fontSize: "1rem",
     fontWeight: 500,
   },
   "& .login-form-card .MuiInputLabel-root": {
@@ -72,11 +76,11 @@ export const loginCompactSx: SxProps<Theme> = {
     fontWeight: 700,
   },
   "& .login-input-icon": {
-    fontSize: "33px !important",
+    fontSize: "30px !important",
   },
   "& .login-primary-button.MuiButton-root": {
-    minHeight: "64px",
-    fontSize: "1.45rem",
+    minHeight: "58px",
+    fontSize: "1.25rem",
     fontWeight: 600,
   },
   "& .login-helper-links": {

@@ -764,11 +764,11 @@
 }
 
 .login-shell {
-  width: min(1100px, 100%) !important;
+  width: min(1370px, 100%) !important;
   min-height: 0 !important;
-  height: min(790px, calc(100dvh - clamp(28px, 8vw, 118px))) !important;
-  grid-template-columns: minmax(420px, 0.92fr) minmax(500px, 0.98fr) !important;
-  gap: clamp(28px, 4.2vw, 72px) !important;
+  height: min(760px, calc(100dvh - clamp(28px, 8vw, 118px))) !important;
+  grid-template-columns: minmax(500px, 0.94fr) minmax(500px, 0.88fr) !important;
+  gap: clamp(48px, 6.6vw, 104px) !important;
   align-items: center !important;
 }
 
@@ -787,22 +787,23 @@
 }
 
 .login-hero-content {
+  max-width: 520px !important;
   padding-bottom: 0 !important;
   margin-top: auto !important;
   margin-bottom: auto !important;
 }
 
 .login-hero-title {
-  font-size: clamp(2.55rem, min(4.4vw, 8.4vh), 4.3rem) !important;
+  font-size: clamp(3rem, min(4.25vw, 8vh), 4rem) !important;
   font-weight: 700 !important;
-  line-height: 0.98 !important;
+  line-height: 1.03 !important;
 }
 
 .login-hero-copy {
-  max-width: 560px !important;
-  margin-top: clamp(16px, 2.7vh, 30px) !important;
-  margin-bottom: clamp(18px, 4vh, 42px) !important;
-  font-size: clamp(1rem, min(1.45vw, 2.35vh), 1.55rem) !important;
+  max-width: 520px !important;
+  margin-top: clamp(18px, 2.45vh, 26px) !important;
+  margin-bottom: clamp(22px, 3.8vh, 36px) !important;
+  font-size: clamp(1.06rem, min(1.32vw, 2.2vh), 1.32rem) !important;
   font-weight: 500 !important;
   line-height: 1.24 !important;
 }
@@ -816,9 +817,13 @@
 }
 
 .login-form-card {
-  width: min(100%, 565px) !important;
-  padding: clamp(28px, 4vh, 46px) clamp(28px, 4.4vw, 62px) !important;
-  border-radius: clamp(18px, 2vw, 28px) !important;
+  width: min(100%, 535px) !important;
+  min-height: min(620px, calc(100dvh - 56px)) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  padding: clamp(78px, 9vh, 96px) clamp(42px, 4vw, 54px) clamp(58px, 7vh, 78px) !important;
+  border-radius: clamp(18px, 2vw, 24px) !important;
   background: rgba(245, 252, 255, 0.74) !important;
   box-shadow: 0 28px 78px rgba(37, 129, 213, 0.22), inset 0 1px 24px rgba(255, 255, 255, 0.8) !important;
 }
@@ -834,23 +839,23 @@
 }
 
 .login-welcome-title {
-  font-size: clamp(1.7rem, min(2.8vw, 5.6vh), 2rem) !important;
+  font-size: clamp(1.86rem, min(2.7vw, 5vh), 2.45rem) !important;
 }
 
 .login-welcome-subtitle {
-  margin-top: 14px !important;
-  font-size: clamp(0.92rem, min(1.12vw, 2vh), 1.16rem) !important;
+  margin-top: 16px !important;
+  font-size: clamp(0.94rem, min(1.05vw, 1.8vh), 1.06rem) !important;
   font-weight: 400 !important;
 }
 
 .login-form-stack {
-  margin-top: clamp(18px, 2.5vh, 24px) !important;
-  gap: clamp(14px, 2vh, 20px) !important;
+  margin-top: clamp(18px, 2.4vh, 22px) !important;
+  gap: clamp(14px, 1.9vh, 18px) !important;
 }
 
 .login-form-card .MuiOutlinedInput-root {
   --login-label-start: 57px;
-  min-height: clamp(54px, 7vh, 64px) !important;
+  min-height: clamp(54px, 6.4vh, 58px) !important;
   border-radius: 14px !important;
   background: rgba(239, 249, 255, 0.66) !important;
   align-items: center !important;
@@ -865,10 +870,10 @@
 
 .login-form-card .MuiInputBase-input {
   height: auto !important;
-  padding-top: 23px !important;
-  padding-bottom: 8px !important;
+  padding-top: 21px !important;
+  padding-bottom: 7px !important;
   padding-left: 0 !important;
-  font-size: clamp(0.92rem, 1.2vw, 1.04rem) !important;
+  font-size: clamp(0.9rem, 1.05vw, 1rem) !important;
   font-weight: 500 !important;
   line-height: 1.2 !important;
 }
@@ -876,14 +881,14 @@
 .login-form-card .MuiInputLabel-root {
   left: 0 !important;
   top: 0 !important;
-  transform: translate(var(--login-label-start), 22px) scale(1) !important;
+  transform: translate(var(--login-label-start), 20px) scale(1) !important;
   transform-origin: top left !important;
   max-width: calc(100% - 96px) !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
   color: #07063f !important;
-  font-size: clamp(0.92rem, 1.2vw, 1.04rem) !important;
+  font-size: clamp(0.9rem, 1.05vw, 1rem) !important;
   font-weight: 700 !important;
   line-height: 1.1 !important;
 }
@@ -891,9 +896,9 @@
 .login-form-card .MuiInputLabel-root.MuiInputLabel-shrink,
 .login-form-card .MuiInputLabel-root.Mui-focused,
 .login-form-card .MuiInputLabel-root.MuiFormLabel-filled {
-  transform: translate(var(--login-label-start), 8px) scale(1) !important;
+  transform: translate(var(--login-label-start), 7px) scale(1) !important;
   color: #07063f !important;
-  font-size: 0.84rem !important;
+  font-size: 0.78rem !important;
 }
 
 .login-form-card .MuiOutlinedInput-notchedOutline legend {
@@ -912,13 +917,13 @@
 }
 
 .login-input-icon {
-  font-size: clamp(26px, 3.7vh, 33px) !important;
+  font-size: clamp(26px, 3.3vh, 30px) !important;
 }
 
 .login-primary-button.MuiButton-root {
-  min-height: clamp(52px, 7vh, 64px) !important;
+  min-height: clamp(52px, 6.4vh, 58px) !important;
   padding-inline: 56px !important;
-  font-size: clamp(1.04rem, 1.9vw, 1.45rem) !important;
+  font-size: clamp(1.04rem, 1.5vw, 1.25rem) !important;
   font-weight: 600 !important;
 }
 
@@ -1208,7 +1213,7 @@
   }
 
   .login-form-card {
-    padding-top: 24px !important;
-    padding-bottom: 24px !important;
+    padding-top: clamp(70px, 9vh, 82px) !important;
+    padding-bottom: clamp(48px, 6vh, 60px) !important;
   }
 }

@@ -664,7 +664,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
           <Box className="login-hero-content">
             <Typography component="h1" className="login-hero-title">
               Your people.<br />
-              <span>A stronger tomorrow.</span>
+              <span>A stronger<br />tomorrow.</span>
             </Typography>
             <Typography className="login-hero-copy">
               A unified HR platform to manage your people, payroll and workplace simply and securely.
