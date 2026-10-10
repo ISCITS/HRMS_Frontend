@@ -1,7 +1,8 @@
 "use client";
 
-import SecurityRoundedIcon from "@mui/icons-material/SecurityRounded";
-import { Box, Paper, Stack, Typography } from "@mui/material";
+import LockRoundedIcon from "@mui/icons-material/LockRounded";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
+import { Box, Breadcrumbs, Paper, Stack, Typography } from "@mui/material";
 import { useCallback, useState } from "react";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -28,21 +29,30 @@ export default function ChangePasswordPage() {
       <Stack
         sx={{
           width: "100%",
-          maxWidth: 580,
           minHeight: "100%",
-          mx: "auto",
-          py: { xs: 2, sm: 3 },
+          py: 0,
           boxSizing: "border-box",
-          justifyContent: "center",
+          justifyContent: "flex-start",
           visibility: blnLoadingEmployeeOptions ? "hidden" : "visible"
         }}
       >
+      <Breadcrumbs aria-label="breadcrumb" className="app-breadcrumbs app-breadcrumbs-master" separator={<NavigateNextRoundedIcon className="app-breadcrumb-separator-icon" />}>
+        <Typography className="app-breadcrumb-label">
+          Administration
+        </Typography>
+        <Typography component="h1" aria-current="page" className="app-breadcrumb-heading">
+          Change Password
+        </Typography>
+      </Breadcrumbs>
       <Paper
         elevation={0}
         sx={{
-          p: { xs: 2.5, sm: 4 },
+          width: "min(750px, 100%)",
+          mx: "auto",
+          mt: 1.5,
+          p: { xs: 2, sm: 2.5 },
           border: "1px solid #e5e7eb",
-          borderRadius: "12px",
+          borderRadius: "8px",
           backgroundColor: "#ffffff",
           boxShadow: "0 24px 60px rgba(15, 23, 42, 0.10)"
         }}
@@ -52,24 +62,22 @@ export default function ChangePasswordPage() {
             alignItems="center"
             justifyContent="center"
             sx={{
-              width: 48,
-              height: 48,
+              width: 52,
+              height: 52,
               flexShrink: 0,
-              borderRadius: "10px",
-              color: "#2563eb",
-              backgroundColor: "#eff6ff"
+              borderRadius: "50%",
+              color: "var(--app-primary-color)",
+              backgroundColor: "var(--app-primary-soft)"
             }}
           >
-            <SecurityRoundedIcon sx={{ fontSize: 30 }} />
+            <LockRoundedIcon sx={{ fontSize: 28 }} />
           </Stack>
           <Stack spacing={0.5}>
             <Typography sx={{ color: "#0f172a", fontSize: "1.5rem", fontWeight: 700, lineHeight: 1.2 }}>
-              {blnAdminResetMode ? "Reset Employee Password" : "Change Password"}
+              Change Password
             </Typography>
             <Typography sx={{ color: "#64748b", fontSize: "0.95rem", fontWeight: 500 }}>
-              {blnAdminResetMode
-                ? "Select an employee and set a new password for their account"
-                : "Fill the form to change your password"}
+              Update your account password to keep your account secure.
             </Typography>
           </Stack>
         </Stack>

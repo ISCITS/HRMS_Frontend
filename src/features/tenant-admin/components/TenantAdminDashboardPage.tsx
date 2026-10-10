@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Alert,
@@ -8,15 +10,15 @@ import {
   Card,
   CardActionArea,
   CardContent,
-  CircularProgress,
   Stack,
-  Typography,
+  Typography
 } from "@mui/material";
 
 import TenantAdminShell from "@/features/tenant-admin/components/TenantAdminShell";
 import type { TenantAdminDashboardCounts } from "@/models/TenantAdministrationModels";
 import { authHelpers } from "@/lib/auth";
 import { tenantAdministrationService } from "@/services";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 const lstQuickLinks = [
   {
@@ -76,7 +78,7 @@ export default function TenantAdminDashboardPage() {
 
         {!objCounts ? (
           <Box sx={{ minHeight: 240, display: "grid", placeItems: "center" }}>
-            <CircularProgress />
+            <DottedLoader />
           </Box>
         ) : (
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, 1fr)", xl: "repeat(4, 1fr)" }, gap: 3 }}>

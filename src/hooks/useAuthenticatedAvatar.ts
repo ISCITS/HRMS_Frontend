@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { authHelpers } from "@/lib/auth";
+import { withBasePath } from "@/lib/basePath";
 
 export function useAuthenticatedAvatar(strAvatarUrl: string) {
   const [strResolvedAvatarUrl, setStrResolvedAvatarUrl] = useState("");
@@ -38,7 +39,11 @@ export function useAuthenticatedAvatar(strAvatarUrl: string) {
           objHeaders["X-Company-Id"] = String(intCompanyID);
         }
 
-        const objResponse = await fetch(strNormalizedAvatarUrl, {
+        // Avatar URLs returned by the backend omit the frontend deployment base path.
+        const strRequestUrl = strNormalizedAvatarUrl.startsWith("/") && !strNormalizedAvatarUrl.startsWith("//")
+          ? withBasePath(strNormalizedAvatarUrl)
+          : strNormalizedAvatarUrl;
+        const objResponse = await fetch(strRequestUrl, {
           method: "GET",
           headers: objHeaders,
           cache: "no-store",

@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, type ReactNode, useContext } from "react";
-import { Backdrop, Box, CircularProgress, Stack, Typography } from "@mui/material";
+import { Backdrop, Box, type BoxProps, Stack, Typography } from "@mui/material";
 import { createPortal } from "react-dom";
 
 type BlockingLoaderProps = {
@@ -33,6 +33,54 @@ export function BlockingLoaderViewportProvider({
   );
 }
 
+type DottedLoaderProps = BoxProps & {
+  intSize?: number;
+  controlId?: string;
+};
+
+export function DottedLoader({ intSize = 64, controlId, className, sx, ...objProps }: DottedLoaderProps) {
+  const intDotCount = 10;
+  const intDotSize = Math.max(3, Math.round(intSize * 0.17));
+
+  return (
+    <Box
+      aria-hidden="true"
+      className={["app-dotted-loader", className].filter(Boolean).join(" ")}
+      data-controlid={controlId}
+      {...objProps}
+      sx={[
+        {
+          position: "relative",
+          width: intSize,
+          height: intSize,
+          color: "var(--app-primary-color, #1d5d96)",
+        },
+        ...(Array.isArray(sx) ? sx : sx ? [sx] : []),
+      ]}
+    >
+      {Array.from({ length: intDotCount }, (_, intIndex) => (
+        <Box
+          key={intIndex}
+          className="app-dotted-loader-position"
+          sx={{ transform: `rotate(${intIndex * 36}deg)` }}
+        >
+          <Box
+            className="app-dotted-loader-dot"
+            style={{
+              width: intDotSize,
+              height: intDotSize,
+              marginLeft: -(intDotSize / 2),
+              animationDelay: `${(intDotCount - intIndex) * -0.1}s`,
+            }}
+          />
+        </Box>
+      ))}
+    </Box>
+  );
+}
+
+export const WindowsCircularLoader = DottedLoader;
+
 export default function BlockingLoader({
   blnOpen,
   strLabel = "Loading...",
@@ -51,13 +99,7 @@ export default function BlockingLoader({
         borderRadius: "20px",
       }}
     >
-      <CircularProgress
-        size={36}
-        thickness={4.4}
-        sx={{
-          color: "#2563eb",
-        }}
-      />
+      <DottedLoader />
       <Typography
         sx={{
           fontWeight: 500,

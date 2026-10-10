@@ -3,16 +3,17 @@
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField, Typography } from "@mui/material";
+import { Alert, Box, Breadcrumbs, Button, Checkbox, Typography } from "@mui/material";
 import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
-import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
-import ReportMultiSelectField, { getUniqueOptions } from "@/features/reports/components/ReportMultiSelectField";
+import { ReportMoreFilters, SingleSelectFilter } from "@/features/reports/components/ReportFilterUi";
+import { getUniqueOptions } from "@/features/reports/components/ReportMultiSelectField";
 import { payrollReportService } from "@/features/reports/services/payrollReportService";
 import type { VariablePayRegisterRow } from "@/features/payroll/types";
 
@@ -32,6 +33,8 @@ const dicEmptySearch: SearchForm = {
   strVariablePayType: "",
 };
 const lstRowsPerPageOptions = [10, 20, 50];
+type MoreFiltersForm = Pick<SearchForm, "strVariablePayType">;
+const dicEmptyMoreFilters: MoreFiltersForm = { strVariablePayType: "" };
 
 type VariablePayRegisterLabels = {
   strEmployeeCode: string;
@@ -220,19 +223,18 @@ export default function VariablePayRegisterReportPage() {
   ]);
   const [lstRows, setLstRows] = useState<VariablePayRegisterRow[]>([]);
   const [blnLoading, setBlnLoading] = useState(false);
-  const [blnHasLoadedRows, setBlnHasLoadedRows] = useState(false);
-  const [blnFilterDialogOpen, setBlnFilterDialogOpen] = useState(false);
+  const [dicMoreFiltersDraft, setDicMoreFiltersDraft] = useState<MoreFiltersForm>(dicEmptyMoreFilters);
   const [strError, setStrError] = useState("");
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [setSelectedRowIDs, setSetSelectedRowIDs] = useState<Set<number>>(new Set());
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
+  const blnPageLoading = blnRightsLoading || blnLoading;
 
   async function loadRows(objFilters: SearchForm) {
     setBlnLoading(true);
     setStrError("");
     try {
       setLstRows(await payrollReportService.getVariablePayRegisterRows(objFilters));
-      setBlnHasLoadedRows(true);
       setSetSelectedRowIDs(new Set());
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to load Variable Pay register.");
@@ -299,13 +301,17 @@ export default function VariablePayRegisterReportPage() {
 
   function applyFilters(dicFilters: SearchForm) {
     setDicSearchDraft(dicFilters);
-    setBlnFilterDialogOpen(false);
     loadRows(dicFilters).catch(() => undefined);
   }
 
   function clearFilters() {
     setDicSearchDraft(dicEmptySearch);
+    setDicMoreFiltersDraft(dicEmptyMoreFilters);
     loadRows(dicEmptySearch).catch(() => undefined);
+  }
+
+  function applyMoreFilters() {
+    applyFilters({ ...dicSearchDraft, ...dicMoreFiltersDraft });
   }
 
   useEffect(() => {
@@ -372,8 +378,8 @@ export default function VariablePayRegisterReportPage() {
         exportable: false,
         width: 56,
       },
-      { field: "strEmployeeCode", headerName: dicLabels.strEmployeeCode, width: 150 },
       { field: "strEmployeeName", headerName: dicLabels.strEmployeeName, width: 200 },
+      { field: "strEmployeeCode", headerName: dicLabels.strEmployeeCode, width: 150 },
       { field: "strVariablePayTypeName", headerName: dicLabels.strVariablePayType, width: 160 },
       { field: "strComponentName", headerName: dicLabels.strComponent, width: 160 },
       { field: "strPayrollPeriod", headerName: dicLabels.strPayrollPeriod, width: 140, sortAccessor: (dicRow) => dicRow.strPayrollPeriodSortValue },
@@ -390,36 +396,39 @@ export default function VariablePayRegisterReportPage() {
     [blnAllFilteredSelected, blnSomeFilteredSelected, dicLabels, lstFilteredRows.length]
   );
 
-  if (blnRightsLoading || (blnLoading && !blnHasLoadedRows)) {
-    return <BlockingLoader blnOpen strLabel="Loading Variable Pay register..." />;
-  }
-
   return (
     <Box className={styles.page}>
-      <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>Variable Pay Register</Typography>
-      <Box className={styles.controlsCard}>
-        <Box className={styles.controlsHeader} sx={{ mb: 1.25 }}>
-          <Box />
-        </Box>
-        <Box className={styles.reportSearchPanelRow}>
-          <Box className={styles.reportSearchField}>
-            <ReportMultiSelectField value={dicSearchDraft.strSearchEmployee} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: strValue }))} options={dicFilterOptions.lstEmployees} placeholder="Search by employee code or name" controlId="reports.variable-pay-register.employee-search.input" />
+      <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ ml: "3px" }}>
+        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>Reports</Typography>
+        <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">Variable Pay Register</Typography>
+      </Breadcrumbs>
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        <Box className={styles.reportSearchPanelRow} sx={{ py: "0 !important" }}>
+          <Box className={styles.reportSearchField} sx={{ flex: "2 1 340px", minWidth: { xs: "100%", md: 320 } }}>
+            <SingleSelectFilter strLabel="Employee" strValue={dicSearchDraft.strSearchEmployee} fnOnChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: strValue }))} lstOptions={dicFilterOptions.lstEmployees} strPlaceholder="Search by employee code or name" strControlId="reports.variable-pay-register.employee-search.input" blnDisabled={blnPageLoading} />
           </Box>
           <Box className={styles.reportSearchField}>
-            <ReportMultiSelectField value={dicSearchDraft.strSearchRun} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: strValue }))} options={dicFilterOptions.lstRuns} placeholder="Payroll run" controlId="reports.variable-pay-register.run-search.input" />
+            <SingleSelectFilter strLabel="Payroll Run" strValue={dicSearchDraft.strSearchRun} fnOnChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: strValue }))} lstOptions={dicFilterOptions.lstRuns} strPlaceholder="Payroll run" strControlId="reports.variable-pay-register.run-search.input" blnDisabled={blnPageLoading} />
           </Box>
           <Box className={styles.reportSearchField}>
-            <ReportMultiSelectField value={dicSearchDraft.strPayrollMonth} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: strValue }))} options={dicFilterOptions.lstMonths} label="Payroll Month" placeholder="Payroll Month" controlId="reports.variable-pay-register.payroll-month.input" />
+            <SingleSelectFilter strLabel="Payroll Month" strValue={dicSearchDraft.strPayrollMonth} fnOnChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: strValue }))} lstOptions={dicFilterOptions.lstMonths} strPlaceholder="Payroll Month" strControlId="reports.variable-pay-register.payroll-month.input" blnDisabled={blnPageLoading} />
           </Box>
-          <Box className={styles.reportSearchField}>
-            <ReportMultiSelectField value={dicSearchDraft.strVariablePayType} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strVariablePayType: strValue }))} options={dicFilterOptions.lstVariablePayTypes} label="Variable Pay Type" placeholder="Variable Pay Type" controlId="reports.variable-pay-register.variable-pay-type.input" />
+          <Box className={styles.reportSearchField} sx={{ flexBasis: 160, minWidth: 160 }}>
+            <SingleSelectFilter strLabel="Run Status" strValue={dicSearchDraft.strStatus === "All" ? "" : dicSearchDraft.strStatus} fnOnChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: strValue || "All" }))} lstOptions={dicFilterOptions.lstStatuses.length ? dicFilterOptions.lstStatuses : ["Processed", "Finalized"]} strPlaceholder="All Statuses" strControlId="reports.variable-pay-register.status.select" blnDisabled={blnPageLoading} />
           </Box>
-          <Box className={styles.reportSearchField}>
-            <ReportMultiSelectField label="Run Status" value={dicSearchDraft.strStatus === "All" ? "" : dicSearchDraft.strStatus} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: (strValue || "All") as SearchForm["strStatus"] }))} options={dicFilterOptions.lstStatuses.length ? dicFilterOptions.lstStatuses : ["Processed", "Finalized"]} placeholder="All statuses" controlId="reports.variable-pay-register.status.select" />
-          </Box>
-          <Box className={`${styles.searchActions} ${styles.reportBottomRightActions}`}>
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} data-controlid="reports.variable-pay-register.search.button">Search</Button>
-            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} data-controlid="reports.variable-pay-register.clear.button">Clear</Button>
+          <Box className={styles.searchActions}>
+            <ReportMoreFilters
+              strControlPrefix="reports.variable-pay-register"
+              intActiveCount={dicSearchDraft.strVariablePayType ? 1 : 0}
+              blnDisabled={blnPageLoading}
+              onOpen={() => setDicMoreFiltersDraft({ strVariablePayType: dicSearchDraft.strVariablePayType })}
+              onApply={applyMoreFilters}
+              onClearAll={() => setDicMoreFiltersDraft(dicEmptyMoreFilters)}
+            >
+              <SingleSelectFilter strLabel="Variable Pay Type" strValue={dicMoreFiltersDraft.strVariablePayType} fnOnChange={(strValue) => setDicMoreFiltersDraft({ strVariablePayType: strValue })} lstOptions={dicFilterOptions.lstVariablePayTypes} strPlaceholder="All" strControlId="reports.variable-pay-register.variable-pay-type.input" blnDisabled={blnPageLoading} />
+            </ReportMoreFilters>
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} disabled={blnPageLoading} data-controlid="reports.variable-pay-register.search.button">Search</Button>
+            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} disabled={blnPageLoading} data-controlid="reports.variable-pay-register.clear.button">Clear</Button>
           </Box>
         </Box>
       </Box>
@@ -443,8 +452,8 @@ export default function VariablePayRegisterReportPage() {
         </Typography>
       </Box>
 
-      <Box className={styles.tableCard}>
-        {!blnCanView && !strError ? <Alert severity="warning" sx={{ mb: 1.5 }}>Variable Pay register view access is not available for your user group.</Alert> : null}
+      <Box className={styles.tableCard} sx={{ p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        {!blnRightsLoading && !blnCanView && !strError ? <Alert severity="warning" sx={{ mb: 1.5 }}>Variable Pay register view access is not available for your user group.</Alert> : null}
         {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
         <CommonTable
           columns={lstTableColumns}
@@ -456,6 +465,11 @@ export default function VariablePayRegisterReportPage() {
           showPaginationSummary
           withPaper={false}
           testIdPrefix="reports.variable-pay-register"
+          loading={blnPageLoading}
+          loadingHeaderSkeleton
+          skeletonRowCount={10}
+          hideRowClickHint
+          onRowClick={() => undefined}
           toolbarLeft={(
             <Box className={styles.listUtilityActions}>
               {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("variable-pay-register.csv", lstExportRows, dicLabels)} data-controlid="reports.variable-pay-register.export-excel.button">Export Excel</Button> : null}
@@ -483,44 +497,6 @@ export default function VariablePayRegisterReportPage() {
           sx={{ p: 0, boxShadow: "none", background: "transparent" }}
         />
       </Box>
-
-      <Dialog open={blnFilterDialogOpen} maxWidth="sm" fullWidth>
-        <DialogTitle>Variable Pay Register</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2, pt: 1 }}>
-            <TextField
-              label="Payroll Month"
-              type="month"
-              value={dicSearchDraft.strPayrollMonth}
-              onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: objEvent.target.value }))}
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-            />
-            <TextField
-              label="Variable Pay Type"
-              value={dicSearchDraft.strVariablePayType}
-              onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strVariablePayType: objEvent.target.value }))}
-              fullWidth
-            />
-            <TextField
-              label="Run Status"
-              select
-              value={dicSearchDraft.strStatus}
-              onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))}
-              fullWidth
-            >
-              <MenuItem value="All">All statuses</MenuItem>
-              <MenuItem value="Processed">Processed</MenuItem>
-              <MenuItem value="Finalized">Finalized</MenuItem>
-            </TextField>
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => setDicSearchDraft(dicEmptySearch)}>Reset</Button>
-          {blnHasLoadedRows ? <Button className={styles.secondaryButton} onClick={() => setBlnFilterDialogOpen(false)}>Close</Button> : null}
-          <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} disabled={blnLoading}>Show Report</Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 }

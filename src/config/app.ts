@@ -4,7 +4,7 @@ function normalizePublicApiBaseUrl(strValue: string | undefined) {
 }
 
 export const appConfig = {
-  appName: "HRMS",
+  appName: "NavHR",
   apiBaseUrl: normalizePublicApiBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL),
   defaultTenantUuid: process.env.NEXT_PUBLIC_DEFAULT_TENANT_UUID ?? "",
   authCookieName: "hrms_access_token",

@@ -1,6 +1,6 @@
 .app-theme {
   /* Typography and page */
-  --app-font-family: 'Inter var', Roboto, Helvetica Neue, Arial, sans-serif;
+  --app-font-family: 'Segoe UI Variable', 'Segoe UI', Arial, sans-serif;
   --app-header-color: #1c2536;
   --app-text-color: #334155;
   --app-muted-color: #64748b;
@@ -19,6 +19,14 @@
   --app-success-color: #2f7e3d;
   --app-warning-color: #ef6b00;
   --app-danger-color: #e73a3a;
+  --app-field-label-color: #1d2a44;
+  --app-field-border-color: #8a97b1;
+  --app-field-hover-border-color: #6f7f9e;
+  --app-field-focus-color: #5f8fd8;
+  --app-field-focus-ring: 0 0 0 2px rgba(95, 143, 216, 0.16);
+  --app-field-error-color: #ff2b2b;
+  --app-input-font-size: 0.875rem;
+  --app-input-font-weight: 400;
 
   /* Application banner */
   --app-banner-background: linear-gradient(90deg, #f7faff 0%, #e6f0fc 45%, #d5e7f8 100%);
@@ -79,6 +87,41 @@
   --app-shadow-soft: 0 16px 38px rgba(31, 93, 150, 0.1);
   --app-card-radius: 24px;
   --app-input-radius: 14px;
+}
+
+.app-dotted-loader-position {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 50%;
+}
+
+.app-dotted-loader-dot {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 11px;
+  height: 11px;
+  margin-left: -5.5px;
+  border-radius: 50%;
+  background-color: currentColor;
+  opacity: 0.12;
+  transform: scale(0.35);
+  transform-origin: center;
+  will-change: transform, opacity;
+  animation: app-dotted-loader-pulse 1s ease-in-out infinite;
+}
+
+@keyframes app-dotted-loader-pulse {
+  0%,
+  100% {
+    opacity: 0.12;
+    transform: scale(0.35);
+  }
+
+  40% {
+    opacity: 1;
+    transform: scale(1.35);
+  }
 }
 
 @media (max-width: 900px) {
@@ -159,6 +202,578 @@
   background: var(--app-grid-row-hover-background);
 }
 
+.app-breadcrumbs {
+  color: #697586;
+  font-size: 13px;
+  line-height: 1.2;
+  padding: 4px 0;
+}
+
+.app-breadcrumbs-master {
+  margin-left: 3px;
+}
+
+.app-breadcrumb-separator-icon {
+  font-size: 16px !important;
+}
+
+.app-breadcrumb-label {
+  color: #697586;
+  font-size: inherit;
+  line-height: inherit;
+  margin: 0;
+}
+
+.app-breadcrumb-label.MuiTypography-root {
+  color: #697586;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.app-breadcrumb-heading {
+  color: #243b53;
+  font-size: inherit;
+  font-weight: 700;
+  line-height: inherit;
+  margin: 0;
+}
+
+.app-breadcrumb-heading.MuiTypography-root {
+  color: #243b53;
+  font-size: inherit;
+  font-weight: 700;
+  line-height: inherit;
+}
+
+.app-employee-tabs.MuiTabs-root {
+  min-height: 52px;
+}
+
+.app-employee-tabs .MuiTabs-scroller {
+  overflow-y: visible;
+}
+
+.app-employee-tabs .MuiTabs-flexContainer {
+  gap: 2px;
+}
+
+.app-employee-tabs .MuiTabs-indicator {
+  background-color: transparent;
+  border-radius: 999px 999px 0 0;
+  height: 3px;
+  transition: left 260ms cubic-bezier(0.4, 0, 0.2, 1), width 260ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.app-employee-tabs .MuiTab-root {
+  border-radius: 8px 8px 0 0;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  margin-left: 2px;
+  margin-right: 2px;
+  min-height: 52px;
+  overflow: hidden;
+  padding: 0 14px;
+  position: relative;
+  text-transform: none;
+  transition: color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+}
+
+.app-employee-tabs .app-employee-tab-label {
+  align-items: center;
+  display: flex;
+  height: 100%;
+  position: relative;
+}
+
+.app-employee-tabs .MuiTab-iconWrapper {
+  margin-bottom: 0 !important;
+  margin-right: 7px;
+}
+
+.app-employee-tabs .MuiTab-root svg {
+  font-size: 17px;
+}
+
+.app-employee-tabs .MuiTab-root.Mui-selected svg {
+  color: var(--app-primary-color);
+}
+
+.app-employee-tabs .app-employee-tab-label::after {
+  background-color: #5b8fba;
+  border-radius: 999px 999px 0 0;
+  bottom: 0;
+  content: "";
+  height: 3px;
+  left: 0;
+  opacity: 0;
+  position: absolute;
+  right: 0;
+  transition: left 260ms cubic-bezier(0.4, 0, 0.2, 1), right 260ms cubic-bezier(0.4, 0, 0.2, 1), opacity 190ms ease, background-color 180ms ease;
+}
+
+.app-employee-tabs .MuiTab-root:hover {
+  background-color: #f3f4f6;
+  box-shadow: inset 0 -1px 0 #d1d5db;
+  color: #215f91;
+}
+
+.app-employee-tabs .MuiTab-root.Mui-selected {
+  background-color: transparent;
+  color: #123f63;
+  font-weight: 800;
+}
+
+.app-employee-tabs .MuiTab-root.Mui-selected .app-employee-tab-label::after {
+  opacity: 1;
+}
+
+.app-employee-tabs .MuiTab-root.Mui-selected:hover {
+  background-color: #f3f4f6;
+  box-shadow: inset 0 -1px 0 #d1d5db;
+  color: #0f3554;
+}
+
+.app-employee-tabs .MuiTab-root.Mui-selected:hover .app-employee-tab-label::after {
+  left: -14px;
+  opacity: 1;
+  right: -14px;
+}
+
+.app-employee-tabs .MuiTab-root.Mui-focusVisible {
+  background-color: #f3f4f6;
+  outline: 2px solid #d1d5db;
+  outline-offset: -2px;
+}
+
+.app-employee-tabs .MuiTab-root.Mui-selected.Mui-focusVisible {
+  background-color: transparent;
+  outline-color: #8fb9d8;
+}
+
+.app-master-search-panel,
+.app-master-table-panel {
+  background: var(--app-surface-color);
+  border: 1px solid var(--app-card-border-color);
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.app-master-search-panel {
+  flex: 0 0 auto;
+  padding: 12px;
+}
+
+.app-master-page-relative {
+  position: relative;
+}
+
+.app-master-search-row-centered {
+  align-items: center;
+}
+
+.app-master-search-row-centered .MuiButton-root {
+  align-self: center;
+}
+
+.app-master-access-message.MuiTypography-root {
+  font-size: 0.85rem;
+  margin-top: 8px;
+}
+
+.app-master-access-warning.MuiTypography-root {
+  color: #b45309;
+}
+
+.app-master-access-info.MuiTypography-root {
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+.app-master-table-panel {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.app-master-empty-title.MuiTypography-root {
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.app-master-empty-help.MuiTypography-root {
+  color: #64748b;
+  margin-top: 8px;
+}
+
+.app-master-toolbar-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.app-master-common-table-reset.MuiPaper-root {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.app-master-common-table-reset tbody tr {
+  background: #ffffff;
+}
+
+.app-master-common-table-reset tbody tr.MuiTableRow-hover:hover {
+  background: #f8fbff;
+}
+
+.app-master-common-table-reset tbody tr.MuiTableRow-hover:hover td:first-of-type .MuiLink-root {
+  text-decoration: underline;
+}
+
+.app-master-grid-skeleton {
+  background-color: #ffffff;
+  border: 1px solid #e8eef5;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.app-master-grid-skeleton-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 10px 14px;
+}
+
+.app-master-grid-skeleton-toolbar-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.app-master-grid-skeleton-table {
+  min-width: 800px;
+}
+
+.app-master-grid-skeleton-header,
+.app-master-grid-skeleton-row {
+  display: grid;
+  grid-template-columns: 48px 1fr 1fr 0.8fr 0.8fr;
+}
+
+.app-master-grid-skeleton-header {
+  background-color: #edf3f9;
+  border-bottom: 1px solid #d9e3ee;
+  border-top: 1px solid #e8eef5;
+}
+
+.app-master-grid-skeleton-row {
+  align-items: center;
+  border-bottom: 1px solid #edf1f6;
+  min-height: 40px;
+}
+
+.app-master-grid-skeleton-header-cell {
+  padding: 8px 16px;
+}
+
+.app-master-grid-skeleton-cell {
+  padding: 6px 16px;
+}
+
+.app-master-first-column-link {
+  background: transparent;
+  border: 0;
+  color: #0757b8;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 500;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  padding: 0;
+  text-align: left;
+  text-underline-offset: 3px;
+  user-select: text;
+  vertical-align: baseline;
+  -webkit-user-select: text;
+}
+
+.app-master-first-column-link.MuiLink-root {
+  color: #0757b8;
+  font: inherit;
+  font-weight: 500;
+}
+
+.app-master-first-column-link:hover,
+.app-master-first-column-link.MuiLink-root:hover {
+  color: #064a9f;
+  text-decoration: underline !important;
+}
+
+.app-master-status-pill {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 2px 9px;
+}
+
+.app-master-status-active {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.app-master-status-inactive {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.app-master-dialog-heading.MuiDialogTitle-root {
+  align-items: center;
+  color: #0f172a;
+  display: flex;
+  font-family: var(--app-font-family);
+  font-size: 1.25rem;
+  font-weight: 700;
+  gap: 16px;
+  justify-content: space-between;
+  line-height: 1.35;
+  max-height: 50px;
+  padding: 10px 18px;
+}
+
+@media (max-width: 600px) {
+  .app-master-dialog-heading.MuiDialogTitle-root {
+    gap: 8px;
+  }
+}
+
+.app-master-dialog-title-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.app-master-dialog-title-action {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.app-master-dialog-title-action > * {
+  min-height: unset !important;
+}
+
+.app-master-dialog-close-button.MuiIconButton-root {
+  color: #94a3b8;
+}
+
+.app-master-dialog-close-button-spaced.MuiIconButton-root {
+  margin-left: 8px;
+}
+
+.app-master-dialog-close-button-auto.MuiIconButton-root {
+  margin-left: auto;
+}
+
+.app-master-dialog-status-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  min-height: auto;
+}
+
+.app-master-dialog-status-switch.MuiSwitch-root {
+  height: 22px;
+  overflow: visible;
+  padding: 0;
+  width: 40px;
+}
+
+.app-master-dialog-status-switch .MuiSwitch-switchBase {
+  color: #ffffff !important;
+  padding: 3px;
+  transition-duration: 180ms;
+}
+
+.app-master-dialog-status-switch .MuiSwitch-switchBase.Mui-checked {
+  color: #ffffff !important;
+  transform: translateX(18px);
+}
+
+.app-master-dialog-status-switch .MuiSwitch-switchBase.Mui-disabled {
+  color: #ffffff !important;
+  opacity: 0.7;
+}
+
+.app-master-dialog-status-switch .MuiSwitch-thumb {
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.2);
+  height: 16px;
+  width: 16px;
+}
+
+.app-master-dialog-status-switch .MuiSwitch-track {
+  background-color: #98a2b3 !important;
+  border-radius: 11px;
+  opacity: 1 !important;
+  transition: background-color 180ms;
+}
+
+.app-master-dialog-status-switch .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track {
+  background-color: #00b86b !important;
+}
+
+.app-master-dialog-status-text.MuiTypography-root {
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.app-master-dialog-section-heading.MuiTypography-root {
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.app-master-dialog-section-subheading.MuiTypography-root {
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.45;
+  margin-top: 2px;
+}
+
+.app-master-dialog-section-subheading-spaced.MuiTypography-root {
+  margin-bottom: 8px;
+}
+
+.app-master-dialog-required-fields.MuiTypography-root {
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.app-master-dialog-required-asterisk {
+  color: #dc2626;
+}
+
+.app-master-dialog-actions.MuiDialogActions-root {
+  padding: 16px 24px;
+}
+
+.app-master-dialog-footer-start {
+  margin-right: auto;
+}
+
+.app-master-dialog-compact-buttons .MuiButton-root {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+.app-master-dialog-content-compact.MuiDialogContent-root {
+  border-color: #e5edf5;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 12px 20px;
+}
+
+.app-master-dialog-form-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.app-master-dialog-two-column-grid {
+  align-items: start;
+  column-gap: 13px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  row-gap: 12px;
+}
+
+.app-master-dialog-full-row {
+  grid-column: 1 / -1;
+}
+
+.app-master-translation-panel {
+  background: #f7faff;
+  border: 1px solid #e3edfc;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.app-master-translation-header {
+  align-items: center;
+  background: #eff6ff;
+  border-bottom: 1px solid #e3edfc;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 8px;
+}
+
+.app-master-translation-icon {
+  color: #1473cf;
+}
+
+.app-master-translation-title {
+  flex: 1;
+  min-width: 180px;
+}
+
+.app-master-translation-button.MuiButton-root {
+  min-height: 34px;
+  white-space: nowrap;
+}
+
+.app-master-translation-rows {
+  display: grid;
+  gap: 12px;
+  padding: 8px;
+}
+
+.app-master-translation-row {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(100px, 0.3fr) minmax(0, 1fr);
+}
+
+.app-master-translation-label.MuiTypography-root {
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.app-master-translation-loader {
+  color: #2563eb;
+}
+
+.app-search-adornment-icon {
+  color: #94a3b8;
+  font-size: 18px !important;
+}
+
+.app-master-toast-alert {
+  width: 100%;
+}
+
+@media (max-width: 600px) {
+  .app-master-dialog-two-column-grid,
+  .app-master-translation-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .app-header {
   margin: 0;
   font-family: var(--app-font-family);
@@ -188,8 +803,9 @@
   color: var(--app-muted-color);
 }
 
-.app-btn {
-  border: none;
+.app-btn,
+.app-btn.MuiButton-root {
+  border: 1px solid transparent;
   border-radius: var(--app-button-radius);
   min-height: var(--app-button-height);
   padding: 0 var(--app-button-horizontal-padding);
@@ -197,76 +813,221 @@
   font-size: var(--app-button-font-size);
   font-weight: var(--app-button-font-weight);
   cursor: pointer;
-  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+  line-height: 1.2;
+  text-transform: none;
+  transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease, color 120ms ease, opacity 120ms ease;
 }
 
-.app-btn:hover {
-  transform: translateY(-1px);
+.app-btn.MuiButton-sizeSmall,
+.app-btn.app-btn-small {
+  min-height: 32px;
+  padding-left: 9px;
+  padding-right: 9px;
+  font-size: 0.84rem;
+  font-weight: 700;
 }
 
-.app-btn:disabled {
+.app-btn:focus-visible,
+.app-btn.MuiButton-root:focus-visible {
+  outline: 2px solid var(--app-primary-color);
+  outline-offset: 2px;
+}
+
+.app-btn:disabled,
+.app-btn.Mui-disabled {
   cursor: not-allowed;
   opacity: 0.6;
 }
 
-.app-btn-primary {
+.app-btn-primary,
+.app-btn-primary.MuiButton-root {
   background: var(--app-button-primary-background);
+  border-color: var(--app-button-primary-background);
   color: var(--app-button-primary-text);
   box-shadow: var(--app-button-primary-shadow);
 }
 
-.app-btn-primary:hover {
+.app-btn-primary:hover,
+.app-btn-primary.MuiButton-root:hover {
   background: var(--app-button-primary-hover);
+  border-color: var(--app-button-primary-hover);
 }
 
-.app-btn-secondary {
+.app-btn-secondary,
+.app-btn-secondary.MuiButton-root {
   background: #e2e8f0;
+  border-color: #cbd5e1;
   color: #0f172a;
 }
 
-.app-btn-outline {
-  background: transparent;
-  color: var(--app-button-secondary-text);
-  border: 1px solid var(--app-button-secondary-border);
+.app-btn-secondary:hover,
+.app-btn-secondary.MuiButton-root:hover {
+  background: #cbd5e1;
+}
+
+.app-btn-outline,
+.app-btn-outline.MuiButton-root {
+  background: var(--app-button-secondary-background) !important;
+  border: 1px solid var(--app-button-secondary-border) !important;
+  color: var(--app-button-secondary-text) !important;
+}
+
+.app-btn-outline:hover,
+.app-btn-outline.MuiButton-root:hover {
+  background: var(--app-grid-row-hover-background) !important;
+  border-color: var(--app-primary-color) !important;
+}
+
+.app-btn-text,
+.app-btn-text.MuiButton-root {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: var(--app-button-secondary-text) !important;
+  box-shadow: none;
+}
+
+.app-btn-text:hover,
+.app-btn-text.MuiButton-root:hover {
+  background: var(--app-grid-row-hover-background) !important;
+}
+
+.app-btn-white,
+.app-btn-white.MuiButton-root,
+.app-btn-white:hover,
+.app-btn-white.MuiButton-root:hover {
+  background: #ffffff;
+}
+
+/* Shared typography for text inputs, autocomplete fields, and select values. */
+.app-theme .MuiInputBase-input.MuiInputBase-input,
+.app-theme .MuiAutocomplete-input.MuiAutocomplete-input,
+.app-theme .MuiSelect-select.MuiSelect-select,
+.app-theme input:not([type='button']):not([type='submit']):not([type='reset']):not([type='checkbox']):not([type='radio']),
+.app-theme textarea,
+.app-theme select {
+  font-family: var(--app-font-family);
+  font-size: var(--app-input-font-size);
+  font-weight: var(--app-input-font-weight);
+  line-height: 1.45;
 }
 
 .app-mui-text-field .MuiFormLabel-asterisk {
-  color: #ef4444;
+  color: var(--app-field-error-color);
 }
 
 .app-mui-text-field .MuiInputLabel-root {
-  transform: translate(14px, 15px) scale(1);
+  color: var(--app-field-label-color);
+  top: 0;
+  line-height: 1.45;
+  transform: translate(14px, 9px) scale(1) !important;
+  transform-origin: top left;
+  transition:
+    color 200ms cubic-bezier(0, 0, 0.2, 1),
+    transform 200ms cubic-bezier(0, 0, 0.2, 1),
+    max-width 200ms cubic-bezier(0, 0, 0.2, 1);
+  will-change: transform;
+}
+
+.app-mui-text-field .MuiInputLabel-root.Mui-focused:not(.Mui-error) {
+  color: var(--app-field-label-color);
+}
+
+.app-mui-text-field .MuiInputLabel-root.Mui-error {
+  color: var(--app-field-label-color);
 }
 
 .app-mui-text-field .MuiInputLabel-root.MuiInputLabel-shrink {
-  transform: translate(14px, -9px) scale(0.75);
+  transform: translate(14px, -9px) scale(0.75) !important;
+  z-index: 1;
+  padding: 0 3px;
+  background-color: var(--app-surface-color, #ffffff);
 }
 
 .app-mui-text-field .MuiOutlinedInput-root {
-  min-height: 52px;
   border-radius: var(--app-input-radius);
   align-items: center;
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.app-mui-text-field .MuiInputBase-root.Mui-focused:not(.Mui-error),
+.app-mui-text-field .MuiOutlinedInput-root.Mui-focused:not(.Mui-error),
+.app-mui-text-field .MuiInputBase-root:focus-within:not(.Mui-error),
+.app-mui-text-field .MuiOutlinedInput-root:focus-within:not(.Mui-error) {
+  box-shadow: var(--app-field-focus-ring) !important;
+}
+
+.app-mui-text-field.app-mui-text-field--rounded .MuiOutlinedInput-root,
+.app-mui-text-field.app-mui-text-field--rounded .MuiOutlinedInput-notchedOutline {
+  border-radius: 9999px;
 }
 
 .app-mui-text-field .MuiOutlinedInput-input {
-  padding: 14px;
+  padding: 10px 14px;
+  color: #111936;
+}
+
+.app-mui-text-field .MuiSelect-select.MuiOutlinedInput-input {
+  padding-right: 32px;
+}
+
+.app-mui-text-field .MuiSelect-icon {
+  color: var(--app-field-label-color);
+  transition: color 0.2s ease;
+}
+
+.app-mui-text-field .MuiInputBase-root.Mui-focused:not(.Mui-error) .MuiSelect-icon {
+  color: var(--app-field-focus-color);
+}
+
+.app-mui-text-field .MuiOutlinedInput-input.MuiInputBase-inputAdornedStart {
+  padding-left: 0;
+}
+
+.app-mui-text-field .MuiInputAdornment-root.MuiInputAdornment-positionStart {
+  margin-right: 4px;
+}
+
+.app-theme .MuiAutocomplete-root .MuiInputBase-root > .MuiSvgIcon-root[data-testid='SearchRoundedIcon'],
+.app-theme .MuiInputBase-root > .MuiSvgIcon-root[data-testid='SearchRoundedIcon'] {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  flex-shrink: 0;
 }
 
 .app-mui-text-field .MuiOutlinedInput-notchedOutline {
-  border: 1px solid var(--app-border-color);
+  border: 1px solid var(--app-field-border-color);
 }
 
 .app-mui-text-field .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
-  border-color: #cbd5e1;
+  border-color: var(--app-field-hover-border-color);
 }
 
-.app-mui-text-field .MuiOutlinedInput-root.Mui-focused {
-  background-color: #f8fafc;
+.app-mui-text-field .MuiInputBase-root.Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline,
+.app-mui-text-field .MuiOutlinedInput-root.Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline,
+.app-mui-text-field .MuiInputBase-root:focus-within:not(.Mui-error) .MuiOutlinedInput-notchedOutline,
+.app-mui-text-field .MuiOutlinedInput-root:focus-within:not(.Mui-error) .MuiOutlinedInput-notchedOutline {
+  border-color: var(--app-field-focus-color) !important;
+  border-width: 1px !important;
 }
 
-.app-mui-text-field .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
-  border-color: var(--app-primary-color);
+.app-mui-text-field .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline,
+.app-mui-text-field .MuiOutlinedInput-root.Mui-error:hover .MuiOutlinedInput-notchedOutline,
+.app-mui-text-field .MuiOutlinedInput-root.Mui-error.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: var(--app-field-error-color);
+  border-width: 1px;
+}
+
+.app-mui-text-field .MuiOutlinedInput-root.Mui-error,
+.app-mui-text-field .MuiOutlinedInput-root.Mui-error.Mui-focused {
+  box-shadow: none;
+}
+
+.app-mui-text-field .MuiFormHelperText-root.Mui-error {
+  color: var(--app-field-error-color);
+  margin-left: 0;
+  margin-right: 0;
+  background: transparent;
 }
 
 .app-mui-icon-button.MuiIconButton-root {
@@ -274,7 +1035,7 @@
 }
 
 .app-mui-icon-button.MuiIconButton-root:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--app-primary-color);
   outline-offset: 2px;
 }
 
@@ -294,7 +1055,7 @@
 }
 
 .app-mui-link-muted:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--app-primary-color);
   outline-offset: 3px;
   border-radius: 4px;
 }

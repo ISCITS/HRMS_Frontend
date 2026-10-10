@@ -23,6 +23,7 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { DetailPageHeader } from "@/components/master/MasterListUi";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { payrollResultService } from "@/features/payroll/services/payrollResultService";
@@ -260,32 +261,37 @@ export default function TaxCalculationDetailPage({ strResultID, blnPayslipScreen
 
   return (
     <Stack spacing={1.4}>
+      <DetailPageHeader
+        strSection={strResolvedBackRoute.startsWith("/ess/") ? "Employee Services" : "Payroll"}
+        strListTitle={blnPayslipScreen ? (strResolvedBackRoute.startsWith("/ess/") ? "My Payslips" : "Payslips") : "Payroll Results"}
+        strListHref={blnPayslipScreen ? (strResolvedBackRoute.startsWith("/ess/") ? "/ess/my-payslips" : "/reports/payslips") : "/payroll/results"}
+        strCurrent="Tax Information"
+      >
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<ArrowBackRoundedIcon />}
+          onClick={() => objRouter.push(strResolvedBackRoute)}
+          data-controlid="payroll.tax-information.back.button"
+        >
+          {t("back", "Back")}
+        </Button>
+      </DetailPageHeader>
       <Paper sx={{ p: 1.35, borderRadius: "8px", border: "1px solid #ddd6fe", backgroundColor: "#f5f3ff", boxShadow: "0 3px 10px rgba(15,23,42,0.04)" }}>
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1} alignItems={{ xs: "flex-start", md: "center" }}>
-          <Stack spacing={0.35}>
-            <Typography sx={{ fontWeight: 900, color: "#0f172a", fontSize: "1.08rem" }}>
-              Tax Information - {objDetail.strEmployeeName} ({objDetail.strEmployeeCode})
+        <Stack spacing={0.35}>
+          <Typography sx={{ fontWeight: 900, color: "#0f172a", fontSize: "1.08rem" }}>
+            Tax Information - {objDetail.strEmployeeName} ({objDetail.strEmployeeCode})
+          </Typography>
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+            <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>
+              Financial Year: {objDetail.strFinancialYearCode || "-"}
             </Typography>
-            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-              <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>
-                Financial Year: {objDetail.strFinancialYearCode || "-"}
-              </Typography>
-              <Chip
-                size="small"
-                label={`${objDetail.strRegimeUsed || "-"} Regime`}
-                sx={{ backgroundColor: "#ede9fe", color: "#6d28d9", fontWeight: 800 }}
-              />
-            </Stack>
+            <Chip
+              size="small"
+              label={`${objDetail.strRegimeUsed || "-"} Regime`}
+              sx={{ backgroundColor: "#ede9fe", color: "#6d28d9", fontWeight: 800 }}
+            />
           </Stack>
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<ArrowBackRoundedIcon />}
-            onClick={() => objRouter.push(strResolvedBackRoute)}
-            data-controlid="payroll.tax-information.back.button"
-          >
-            {t("back", "Back")}
-          </Button>
         </Stack>
       </Paper>
 
@@ -295,6 +301,46 @@ export default function TaxCalculationDetailPage({ strResultID, blnPayslipScreen
         <SummaryMetric strLabel="Net Taxable Income" strValue={formatCurrency(objDetail.decNetTaxableIncome)} objIcon={<PercentRoundedIcon fontSize="small" />} />
         <SummaryMetric strLabel="Total Tax Liability" strValue={formatCurrency(objDetail.decTotalTaxLiability)} objIcon={<PaymentsOutlinedIcon fontSize="small" />} />
       </Box>
+
+      {objDetail.lstVariablePayProjectedIncomeBreakdown.length ? (
+        <SectionCard
+          strTitle="Variable Pay Projected Income"
+          objIcon={<AccountBalanceWalletOutlinedIcon sx={{ color: "#b45309" }} />}
+          strSubtitle="Separate-Payroll components (e.g. an Allocation-Based Incentive) configured to project their remaining CTC/base entitlement into this run's annual tax - added here even before the actual amount is calculated and paid through a Separate Payroll run, so this month's TDS is not understated."
+        >
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 800, color: "#475569" }}>Component</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 800, color: "#475569" }}>Monthly Base Amount</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 800, color: "#475569" }}>Remaining Months</TableCell>
+                <TableCell sx={{ fontWeight: 800, color: "#475569" }}>Calculation</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 800, color: "#475569" }}>Projected Contribution</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {objDetail.lstVariablePayProjectedIncomeBreakdown.map((objRow, intIndex) => (
+                <TableRow key={`variable-pay-projection-${objRow.strComponentCode ?? intIndex}`}>
+                  <TableCell>{objRow.strComponentName || objRow.strComponentCode || "-"}</TableCell>
+                  <TableCell align="right">{formatCurrency(objRow.decMonthlyBaseAmount)}</TableCell>
+                  <TableCell align="right">{objRow.intRemainingMonths}</TableCell>
+                  <TableCell sx={{ color: "#64748b", fontSize: "0.76rem", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
+                    {formatCurrency(objRow.decMonthlyBaseAmount)} x {objRow.intRemainingMonths}
+                  </TableCell>
+                  <TableCell align="right">{formatCurrency(objRow.decProjectedAmount)}</TableCell>
+                </TableRow>
+              ))}
+              <TableRow>
+                <TableCell colSpan={4} sx={{ fontWeight: 900 }}>Total Variable Pay Projected Income</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 900 }}>{formatCurrency(objDetail.decVariablePayProjectedIncome)}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+          <FormulaLine
+            strFormula={`Projected Taxable Income (${formatCurrency(objDetail.decProjectedTaxableIncome)}) already includes this Variable Pay Projected Income (${formatCurrency(objDetail.decVariablePayProjectedIncome)}) - it is not added again anywhere else.`}
+          />
+        </SectionCard>
+      ) : null}
 
       <SectionCard strTitle="Exemptions" objIcon={<ReceiptLongOutlinedIcon sx={{ color: "#2563eb" }} />} strSubtitle="Income excluded from tax based on your approved declarations (e.g. HRA, LTA).">
         <DeclarationItemsTable lstItems={objDetail.dicExemptions.lstItems} decTotal={objDetail.dicExemptions.decTotalAmount} strTotalLabel="Total Exemptions" />

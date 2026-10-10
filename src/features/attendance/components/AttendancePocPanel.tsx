@@ -3,26 +3,47 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import EditRoundedIcon from "@mui/icons-material/EditRounded";
+
 import GroupAddRoundedIcon from "@mui/icons-material/GroupAddRounded";
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
-import { yupResolver } from "@hookform/resolvers/yup";
+
 import {
-  Alert, Box, Button, Checkbox, Chip, CircularProgress, FormControlLabel, Grid, IconButton,
-  MenuItem, Paper, Snackbar, Stack, Switch, Table, TableBody, TableCell, TableHead,
-  TableRow, TextField, Typography,
+  yupResolver } from "@hookform/resolvers/yup";
+import {
+  Alert,
+  Box,
+  Button,
+  Checkbox,
+  Chip,
+  FormControlLabel,
+  Grid,
+  InputAdornment,
+  Link,
+  MenuItem,
+  Paper,
+  Snackbar,
+  Stack,
+  Switch,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm, type Resolver } from "react-hook-form";
 import * as yup from "yup";
 
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import BlockingLoader, { DottedLoader } from "@/components/shared/BlockingLoader";
 import styles from "@/components/master/MasterScreen.module.css";
+import { onSearchEnter, dicMasterNameLinkSx, dicMasterRowSx, MasterBreadcrumbs, MasterGridSkeleton, MasterStatusPill } from "@/components/master/MasterListUi";
 import { LATE_ARRIVAL_BADGE_COLOR } from "@/features/attendance/dto";
 import { useAttendancePoc } from "@/features/attendance/hooks/useAttendancePoc";
 import type { AttendancePolicyAssignmentEmployee, AttendancePolicyAssignmentHistory, AttendancePolicyFormValues, DailyAttendanceFinalizeResult, DailyAttendanceRow, DailyAttendanceSaveRow } from "@/features/attendance/types";
@@ -122,10 +143,10 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
   const [lstPolicyUsageEmployees, setLstPolicyUsageEmployees] = useState<AttendancePolicyAssignmentEmployee[]>([]);
   const [lstSelectedEmployeeIDs, setLstSelectedEmployeeIDs] = useState<number[]>([]);
   const [strAssignmentSearch, setStrAssignmentSearch] = useState("");
-  const [strAssignmentDepartment, setStrAssignmentDepartment] = useState("");
+  const [intAssignmentDepartmentID, setIntAssignmentDepartmentID] = useState<number | "">("");
   const [strAssignmentStatus, setStrAssignmentStatus] = useState("Active");
-  const [strAssignmentCurrentPolicyID, setStrAssignmentCurrentPolicyID] = useState("");
-  const [strAssignmentPolicyID, setStrAssignmentPolicyID] = useState("");
+  const [intAssignmentCurrentPolicyID, setIntAssignmentCurrentPolicyID] = useState<number | "">("");
+  const [intAssignmentPolicyID, setIntAssignmentPolicyID] = useState<number | "">("");
   const [strAssignmentEffectiveFrom, setStrAssignmentEffectiveFrom] = useState(strToday);
   const [strAssignmentEffectiveTo, setStrAssignmentEffectiveTo] = useState("");
   const [strAssignmentReason, setStrAssignmentReason] = useState("");
@@ -135,7 +156,7 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
   const [lstLeaveTypeOptions, setLstLeaveTypeOptions] = useState<LeaveTypeDto[]>([]);
   const [blnPolicyTranslating, setBlnPolicyTranslating] = useState(false);
   const [strDate, setStrDate] = useState(strToday); const [strEmployeeSearch, setStrEmployeeSearch] = useState("");
-  const [strDepartment, setStrDepartment] = useState(""); const [strLocation, setStrLocation] = useState("");
+  const [intDepartment, setIntDepartment] = useState<number | "">(""); const [intLocation, setIntLocation] = useState<number | "">("");
   const [lstEditableRows, setLstEditableRows] = useState<DailyAttendanceRow[]>([]);
   const [objToast, setObjToast] = useState({ blnOpen: false, strMessage: "", strSeverity: "success" as "success" | "error" });
   const [blnFillDialogOpen, setBlnFillDialogOpen] = useState(false); const [intFillEmployeeID, setIntFillEmployeeID] = useState<number | "">("");
@@ -154,9 +175,9 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
   const strPattern = watch("strWeeklyOffPattern"); const blnOtEnabled = watch("blnOtEnabled"); const blnLateDeductionEnabled = watch("blnLateDeductionEnabled");
   const blnOtCompOffConversionEnabled = watch("blnOtCompOffConversionEnabled");
 
-  const lstDepartmentsFromDailyRows = useMemo(() => Array.from(new Map(lstDailyRows.filter((objRow) => objRow.intDepartmentID).map((objRow) => [objRow.intDepartmentID, objRow.strDepartmentName])).entries()), [lstDailyRows]);
+  const lstDepartmentsFromDailyRows = useMemo(() => Array.from(new Map(lstDailyRows.filter((objRow) => objRow.intDepartmentID).map((objRow): [number, string] => [objRow.intDepartmentID as number, objRow.strDepartmentName ?? ""])).entries()), [lstDailyRows]);
   const lstDepartments = lstDepartmentOptions.length > 0 ? lstDepartmentOptions : lstDepartmentsFromDailyRows;
-  const lstLocations = useMemo(() => Array.from(new Map(lstDailyRows.filter((objRow) => objRow.intLocationID).map((objRow) => [objRow.intLocationID, objRow.strLocationName])).entries()), [lstDailyRows]);
+  const lstLocations = useMemo(() => Array.from(new Map(lstDailyRows.filter((objRow) => objRow.intLocationID).map((objRow): [number, string] => [objRow.intLocationID as number, objRow.strLocationName ?? ""])).entries()), [lstDailyRows]);
   const lstFillEmployeeOptions = useMemo(() => Array.from(new Map(lstDailyRows.map((objRow) => [objRow.intEmployeeID, `${objRow.strEmployeeCode} - ${objRow.strEmployeeName}`])).entries()), [lstDailyRows]);
 
   useEffect(() => {
@@ -209,8 +230,8 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
     setBlnDetailLoading(true);
     try {
       setIntPolicyID(intSelectedPolicyID);
-      setStrAssignmentPolicyID(intSelectedPolicyID ? String(intSelectedPolicyID) : "");
-      setStrAssignmentCurrentPolicyID("");
+      setIntAssignmentPolicyID(intSelectedPolicyID ?? "");
+      setIntAssignmentCurrentPolicyID("");
       setLstSelectedEmployeeIDs([]);
       setStrPolicyWorkspace("assignment");
       await loadAssignments("");
@@ -218,12 +239,12 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
       setBlnDetailLoading(false);
     }
   }
-  async function loadAssignments(strPolicyFilter = strAssignmentCurrentPolicyID) {
+  async function loadAssignments(intPolicyFilter: number | "" = intAssignmentCurrentPolicyID) {
     try {
-      const lstEmployees = await listPolicyAssignmentEmployees({ strSearch: strAssignmentSearch, intDepartmentID: strAssignmentDepartment ? Number(strAssignmentDepartment) : undefined, intCurrentPolicyID: strPolicyFilter ? Number(strPolicyFilter) : undefined, strEmployeeStatus: strAssignmentStatus });
+      const lstEmployees = await listPolicyAssignmentEmployees({ strSearch: strAssignmentSearch, intDepartmentID: intAssignmentDepartmentID === "" ? undefined : intAssignmentDepartmentID, intCurrentPolicyID: intPolicyFilter === "" ? undefined : intPolicyFilter, strEmployeeStatus: strAssignmentStatus });
       setLstAssignmentEmployees(lstEmployees);
       try {
-        setLstAssignmentHistory(await listPolicyAssignmentHistory({ intPolicyID: strPolicyFilter ? Number(strPolicyFilter) : undefined }));
+        setLstAssignmentHistory(await listPolicyAssignmentHistory({ intPolicyID: intPolicyFilter === "" ? undefined : intPolicyFilter }));
       } catch {
         setLstAssignmentHistory([]);
       }
@@ -232,9 +253,9 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
     }
   }
   async function submitAssignment() {
-    if (!strAssignmentPolicyID || lstSelectedEmployeeIDs.length === 0) { showToast(t("assignment_required", "Select employees and an attendance policy."), "error"); return; }
+    if (!intAssignmentPolicyID || lstSelectedEmployeeIDs.length === 0) { showToast(t("assignment_required", "Select employees and an attendance policy."), "error"); return; }
     try {
-      const objResult = await assignAttendancePolicy({ lstEmployeeIDs: lstSelectedEmployeeIDs, intAttendancePolicyID: Number(strAssignmentPolicyID), dtEffectiveFrom: strAssignmentEffectiveFrom, dtEffectiveTo: strAssignmentEffectiveTo || null, strAssignmentReason: strAssignmentReason || null, blnReplaceExisting: true });
+      const objResult = await assignAttendancePolicy({ lstEmployeeIDs: lstSelectedEmployeeIDs, intAttendancePolicyID: intAssignmentPolicyID, dtEffectiveFrom: strAssignmentEffectiveFrom, dtEffectiveTo: strAssignmentEffectiveTo || null, strAssignmentReason: strAssignmentReason || null, blnReplaceExisting: true });
       showToast(t("assignment_saved", `${objResult.intAssignedCount} employee assignments saved.`), "success");
       setLstAssignmentHistory(objResult.lstAssignments ?? []);
       await loadAssignments();
@@ -244,15 +265,15 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
     }
   }
   async function searchPolicies() { await loadPolicies({ strSearch: strPolicySearch, blnIsActive: strPolicyStatus === "" ? undefined : strPolicyStatus === "active", intPage: 1, intPageSize: 10 }); }
-  async function searchDaily() { await loadDaily({ strDate, intDepartmentID: strDepartment ? Number(strDepartment) : undefined, intLocationID: strLocation ? Number(strLocation) : undefined, strSearch: strEmployeeSearch }); }
+  async function searchDaily() { await loadDaily({ strDate, intDepartmentID: intDepartment === "" ? undefined : intDepartment, intLocationID: intLocation === "" ? undefined : intLocation, strSearch: strEmployeeSearch }); }
   async function clearPolicySearch() {
     setStrPolicySearch("");
     setStrPolicyStatus("");
     await loadPolicies({ intPage: 1, intPageSize: 10 });
   }
   async function clearDailySearch() {
-    setStrDepartment("");
-    setStrLocation("");
+    setIntDepartment("");
+    setIntLocation("");
     setStrEmployeeSearch("");
     await loadDaily({ strDate });
   }
@@ -284,7 +305,7 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
   async function submitFinalize() {
     setBlnFinalizeSubmitting(true);
     try {
-      const objResult = await finalizeAttendance({ dtWorkDate: strDate, intDepartmentID: strDepartment ? Number(strDepartment) : undefined, intLocationID: strLocation ? Number(strLocation) : undefined });
+      const objResult = await finalizeAttendance({ dtWorkDate: strDate, intDepartmentID: intDepartment === "" ? undefined : intDepartment, intLocationID: intLocation === "" ? undefined : intLocation });
       setBlnFinalizeConfirmOpen(false);
       setObjFinalizeResult(objResult);
       await searchDaily();
@@ -343,10 +364,16 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
 
   const nodeFillDialogContent = <Grid container spacing={1.5} sx={{ minWidth: { sm: 420 }, pt: 0.5 }}>
     <Grid item xs={12}>
-      <TextField data-control-id="attendance.daily.fill-month.employee.select" select fullWidth label={t("employee", "Employee")} value={intFillEmployeeID} onChange={(objEvent) => setIntFillEmployeeID(Number(objEvent.target.value))}>
-        {lstFillEmployeeOptions.map(([intID, strLabel]) => <MenuItem key={intID} value={intID ?? ""}>{strLabel}</MenuItem>)}
-        {lstFillEmployeeOptions.length === 0 ? <MenuItem value="" disabled>{t("generate_attendance_no_employees", "Search and load employees for a date first.")}</MenuItem> : null}
-      </TextField>
+      <CommonSearchableSelect
+        controlId="attendance.daily.fill-month.employee.select"
+        fullWidth
+        label={t("employee", "Employee")}
+        value={intFillEmployeeID}
+        options={lstFillEmployeeOptions.map(([intID, strLabel]) => ({ intID, strLabel }))}
+        onChange={(intValue) => setIntFillEmployeeID(intValue)}
+        disabled={lstFillEmployeeOptions.length === 0}
+        placeholder={lstFillEmployeeOptions.length === 0 ? t("generate_attendance_no_employees", "Search and load employees for a date first.") : undefined}
+      />
     </Grid>
     <Grid item xs={6}>
       <TextField data-control-id="attendance.daily.fill-month.from.input" type="date" fullWidth label={t("from_date", "From Date")} InputLabelProps={{ shrink: true }} value={strFillFromDate} onChange={(objEvent) => setStrFillFromDate(objEvent.target.value)} />
@@ -381,7 +408,7 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
   const blnCanView = ["view", "read", "list", "attendance_view"].some((strAction) => setManagementActions.has(strAction));
   const blnCanManage = ["manage", "add", "create", "edit", "update", "delete", "save", "attendance_manage"].some((strAction) => setManagementActions.has(strAction));
   const blnCanOverride = ["override", "attendance_correction"].some((strAction) => setManagementActions.has(strAction));
-  if (blnRightsLoading) return <BlockingLoader blnOpen strLabel={t("loading", "Loading...")} />;
+  if (blnRightsLoading) return <Box className={styles.page}><MasterBreadcrumbs strSection={t("breadcrumb_attendance", "Attendance")} strTitle={strView === "policy" ? t("breadcrumb_policies", "Attendance Policies") : t("breadcrumb_daily_attendance", "Daily Attendance")} /><MasterGridSkeleton strControlId={`attendance.${strView}.list.skeleton`} intColumns={strView === "policy" ? 7 : 9} /></Box>;
   if (!blnCanView) return <Alert severity="warning">{t("permission_denied", "Attendance Management access is not available for your user group. Sign in with an HR or Administrator account.")}</Alert>;
   const nodeActionLoader = <BlockingLoader blnOpen={blnActionWorking} strLabel={t("working", "Please wait...")} />;
   const blnReadOnly = !blnCanManage;
@@ -523,30 +550,24 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
           name="intCompOffLeaveTypeID"
           control={control}
           render={({ field }) => (
-            <TextField
-              {...field}
+            <CommonSearchableSelect
+              controlId="attendance.policy.ot-compoff.leave-type.select"
               value={field.value ?? ""}
-              onChange={(objEvent) => field.onChange(objEvent.target.value ? Number(objEvent.target.value) : null)}
-              select
-              data-control-id="attendance.policy.ot-compoff.leave-type.select"
+              onChange={(intValue) => field.onChange(intValue === "" ? null : intValue)}
+              options={lstLeaveTypeOptions.map((objLeaveType) => ({ intID: objLeaveType.intID, strLabel: objLeaveType.strTypeName }))}
               disabled={!blnOtCompOffConversionEnabled}
               label={t("compoff_leave_type", "Comp-Off Leave Type")}
               error={!!errors.intCompOffLeaveTypeID}
               helperText={errors.intCompOffLeaveTypeID?.message}
               fullWidth
-            >
-              <MenuItem value="">{t("select", "Select")}</MenuItem>
-              {lstLeaveTypeOptions.map((objLeaveType) => (
-                <MenuItem key={objLeaveType.intID} value={objLeaveType.intID}>{objLeaveType.strTypeName}</MenuItem>
-              ))}
-            </TextField>
+            />
           )}
         />
       </Grid>
       <Grid item xs={12}><Box sx={{ border: "1px solid #d9e6ef", borderRadius: "9px", px: 1.25, py: 0.75, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 0.5 }}>{lstWeekdays.map((strDay,intIndex) => <FormControlLabel sx={{ mr: 1 }} key={strDay} control={<Checkbox size="small" data-control-id={`attendance.policy.weekly-off.${intIndex}.checkbox`} checked={strPattern[intIndex] === "1"} onChange={(objEvent) => { const lstPattern = strPattern.split(""); lstPattern[intIndex] = objEvent.target.checked ? "1" : "0"; setValue("strWeeklyOffPattern", lstPattern.join(""), { shouldDirty: true }); }} />} label={t(`weekday_${strDay.toLowerCase()}`,strDay)} />)}</Box></Grid>
     </Grid></Paper></Grid>
     <Grid item xs={12} lg={6}><Paper variant="outlined" sx={{ p: 1.5, height: "100%" }}><Typography fontWeight={800} sx={{ mb: 1 }}>{t("effective_dates_status", "Effective Dates and Status")}</Typography><Grid container spacing={1} alignItems="center"><Grid item xs={12} md={6}><Controller name="dtEffectiveFrom" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance.policy.effective-from.input" type="date" label={t("effective_from", "Effective From")} InputLabelProps={{ shrink: true }} fullWidth />} /></Grid><Grid item xs={12} md={6}><Controller name="dtEffectiveTo" control={control} render={({ field }) => <TextField {...field} value={field.value ?? ""} data-control-id="attendance.policy.effective-to.input" type="date" label={t("effective_to", "Effective To")} InputLabelProps={{ shrink: true }} fullWidth error={!!errors.dtEffectiveTo} helperText={errors.dtEffectiveTo?.message} />} /></Grid><Grid item xs={12} md={6}><Controller name="blnIsDefault" control={control} render={({ field }) => <Box sx={{ border: "1px solid #d9e6ef", borderRadius: "9px", px: 1.25, height: 48, display: "flex", alignItems: "center" }}><FormControlLabel control={<Switch data-control-id="attendance.policy.default.switch" checked={field.value} onChange={field.onChange} />} label={t("default_policy", "Default")} sx={{ m: 0 }} /></Box>} /></Grid><Grid item xs={12} md={6}><Controller name="blnIsActive" control={control} render={({ field }) => <Box sx={{ border: "1px solid #d9e6ef", borderRadius: "9px", px: 1.25, height: 48, display: "flex", alignItems: "center" }}><FormControlLabel control={<Switch data-control-id="attendance.policy.active.switch" checked={field.value} onChange={field.onChange} />} label={t("active", "Active")} sx={{ m: 0 }} /></Box>} /></Grid><Grid item xs={12}><Controller name="strRemarks" control={control} render={({ field }) => <TextField {...field} value={field.value ?? ""} data-control-id="attendance.policy.remarks.input" label={t("remarks", "Remarks")} fullWidth />} /></Grid></Grid></Paper></Grid>
-    {intSecondaryLanguageID ? <Grid item xs={12} lg={6}><Paper variant="outlined" sx={{ p: 1.5, minHeight: 245 }}><Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1.5, mb: 1 }}><Box><Typography fontWeight={800}>{t("multilingual_text", "Multilingual Text")}</Typography><Typography variant="body2" color="text.secondary">{t("policy_translation_help", "Add translated attendance policy names and descriptions for supported languages.")}</Typography></Box><Stack direction="row" spacing={1}><Button data-control-id="attendance.policy.translation.add.button" className={styles.secondaryButton} startIcon={<AddRoundedIcon />} disabled={blnPolicyViewMode || lstPolicyTexts.length + 1 >= lstPolicyLanguageOptions.length} onClick={addPolicyTranslation}>{t("add_language", "Add Language")}</Button><Button data-control-id="attendance.policy.translation.ai.button" className={styles.primaryButton} disabled={blnPolicyViewMode || blnPolicyTranslating || !watch("strPolicyName")} onClick={() => void translatePolicyText()}>{blnPolicyTranslating ? <CircularProgress size={18} sx={{ color: "#fff" }} /> : t("ai_translate", "AI Translate")}</Button></Stack></Box><Box sx={{ display: "grid", gap: 1.2 }}><Box sx={{ display: "grid", gap: 1.2, gridTemplateColumns: { xs: "1fr", md: "minmax(0,.8fr) minmax(0,1.1fr) minmax(0,1.2fr)" }, border: "1px solid #d9e6ef", borderRadius: "12px", p: 1.2, backgroundColor: "#f8fafc" }}><TextField data-control-id="attendance.policy.translation.base.language.input" label={t("language", "Language")} value={objDefaultLanguage?.strLabel ?? t("english", "English")} disabled fullWidth /><Controller name="strPolicyName" control={control} render={({ field }) => <TextField {...field} value={field.value ?? ""} data-control-id="attendance.policy.translation.base.name.input" label={t("policy_name", "Policy Name")} disabled={blnPolicyViewMode} fullWidth />} /><Controller name="strDescription" control={control} render={({ field }) => <TextField {...field} value={field.value ?? ""} data-control-id="attendance.policy.translation.base.description.input" label={t("description", "Description")} disabled={blnPolicyViewMode} fullWidth />} /></Box>{lstPolicyTexts.map((objText, intIndex) => <Box key={`${objText.intLanguageID}-${intIndex}`} sx={{ display: "grid", gap: 1.2, gridTemplateColumns: { xs: "1fr", md: "minmax(0,.8fr) minmax(0,1.1fr) minmax(0,1.2fr)" }, border: "1px solid #d9e6ef", borderRadius: "12px", p: 1.2, backgroundColor: "#f8fafc" }}><TextField data-control-id={`attendance.policy.translation.${intIndex}.language.select`} select label={t("language", "Language")} value={objText.intLanguageID} onChange={(objEvent) => updatePolicyTranslation(intIndex, "intLanguageID", Number(objEvent.target.value))} disabled={blnPolicyViewMode} fullWidth>{lstPolicyLanguageOptions.filter((objLanguage) => objLanguage.intID === objText.intLanguageID || (objLanguage.intID !== intDefaultLanguageID && !lstPolicyTexts.some((objExisting, intExistingIndex) => intExistingIndex !== intIndex && objExisting.intLanguageID === objLanguage.intID))).map((objLanguage) => <MenuItem key={objLanguage.intID} value={objLanguage.intID}>{objLanguage.strLabel}</MenuItem>)}</TextField><TextField data-control-id={`attendance.policy.translation.${intIndex}.name.input`} label={t("policy_name", "Policy Name")} value={objText.strPolicyName ?? ""} onChange={(objEvent) => updatePolicyTranslation(intIndex, "strPolicyName", objEvent.target.value)} disabled={blnPolicyViewMode} fullWidth /><TextField data-control-id={`attendance.policy.translation.${intIndex}.description.input`} label={t("description", "Description")} value={objText.strDescription ?? ""} onChange={(objEvent) => updatePolicyTranslation(intIndex, "strDescription", objEvent.target.value || null)} disabled={blnPolicyViewMode} fullWidth /></Box>)}</Box></Paper></Grid> : null}
+    {intSecondaryLanguageID ? <Grid item xs={12} lg={6}><Paper variant="outlined" sx={{ p: 1.5, minHeight: 245 }}><Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1.5, mb: 1 }}><Box><Typography fontWeight={800}>{t("multilingual_text", "Multilingual Text")}</Typography><Typography variant="body2" color="text.secondary">{t("policy_translation_help", "Add translated attendance policy names and descriptions for supported languages.")}</Typography></Box><Stack direction="row" spacing={1}><Button data-control-id="attendance.policy.translation.add.button" className={styles.secondaryButton} startIcon={<AddRoundedIcon />} disabled={blnPolicyViewMode || lstPolicyTexts.length + 1 >= lstPolicyLanguageOptions.length} onClick={addPolicyTranslation}>{t("add_language", "Add Language")}</Button><Button data-control-id="attendance.policy.translation.ai.button" className={styles.primaryButton} disabled={blnPolicyViewMode || blnPolicyTranslating || !watch("strPolicyName")} onClick={() => void translatePolicyText()}>{blnPolicyTranslating ? <DottedLoader intSize={18} sx={{ color: "#fff" }} /> : t("ai_translate", "AI Translate")}</Button></Stack></Box><Box sx={{ display: "grid", gap: 1.2 }}><Box sx={{ display: "grid", gap: 1.2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "minmax(0,.8fr) minmax(0,1.1fr) minmax(0,1.2fr)" }, border: "1px solid #d9e6ef", borderRadius: "12px", p: 1.2, backgroundColor: "#f8fafc" }}><TextField data-control-id="attendance.policy.translation.base.language.input" label={t("language", "Language")} value={objDefaultLanguage?.strLabel ?? t("english", "English")} disabled fullWidth /><Controller name="strPolicyName" control={control} render={({ field }) => <TextField {...field} value={field.value ?? ""} data-control-id="attendance.policy.translation.base.name.input" label={t("policy_name", "Policy Name")} disabled={blnPolicyViewMode} fullWidth />} /><Controller name="strDescription" control={control} render={({ field }) => <TextField {...field} value={field.value ?? ""} data-control-id="attendance.policy.translation.base.description.input" label={t("description", "Description")} disabled={blnPolicyViewMode} fullWidth />} /></Box>{lstPolicyTexts.map((objText, intIndex) => <Box key={`${objText.intLanguageID}-${intIndex}`} sx={{ display: "grid", gap: 1.2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "minmax(0,.8fr) minmax(0,1.1fr) minmax(0,1.2fr)" }, border: "1px solid #d9e6ef", borderRadius: "12px", p: 1.2, backgroundColor: "#f8fafc" }}><TextField data-control-id={`attendance.policy.translation.${intIndex}.language.select`} select label={t("language", "Language")} value={objText.intLanguageID} onChange={(objEvent) => updatePolicyTranslation(intIndex, "intLanguageID", Number(objEvent.target.value))} disabled={blnPolicyViewMode} fullWidth>{lstPolicyLanguageOptions.filter((objLanguage) => objLanguage.intID === objText.intLanguageID || (objLanguage.intID !== intDefaultLanguageID && !lstPolicyTexts.some((objExisting, intExistingIndex) => intExistingIndex !== intIndex && objExisting.intLanguageID === objLanguage.intID))).map((objLanguage) => <MenuItem key={objLanguage.intID} value={objLanguage.intID}>{objLanguage.strLabel}</MenuItem>)}</TextField><TextField data-control-id={`attendance.policy.translation.${intIndex}.name.input`} label={t("policy_name", "Policy Name")} value={objText.strPolicyName ?? ""} onChange={(objEvent) => updatePolicyTranslation(intIndex, "strPolicyName", objEvent.target.value)} disabled={blnPolicyViewMode} fullWidth /><TextField data-control-id={`attendance.policy.translation.${intIndex}.description.input`} label={t("description", "Description")} value={objText.strDescription ?? ""} onChange={(objEvent) => updatePolicyTranslation(intIndex, "strDescription", objEvent.target.value || null)} disabled={blnPolicyViewMode} fullWidth /></Box>)}</Box></Paper></Grid> : null}
     <Grid item xs={12} lg={6}><Paper variant="outlined" sx={{ p: 1.5, minHeight: 245 }}><Typography fontWeight={800} sx={{ mb: 1 }}>{t("usage_information", "Usage Information")}</Typography><Box sx={{ border: "1px solid #d9e6ef", borderRadius: "12px", p: 1.5, backgroundColor: "#fff", minHeight: 156 }}><Typography variant="caption" color="text.secondary">{t("assignment_usage", "Assignment / Usage")}</Typography><Stack direction="row" spacing={0.75} flexWrap="wrap" sx={{ mt: 0.75, mb: 1 }}><Chip size="small" label={watch("blnIsActive") ? t("active", "Active") : t("inactive", "Inactive")} color={watch("blnIsActive") ? "success" : "default"} /><Chip size="small" label={watch("blnIsDefault") ? t("company_default_policy", "Company Default") : t("employee_specific_policy", "Employee Specific")} color={watch("blnIsDefault") ? "primary" : "default"} /></Stack><Typography sx={{ fontWeight: 900, fontSize: 20 }}>{strUsageSummary}</Typography>{intPolicyAssignedEmployeeCount > 0 ? <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>{t("current_employees", "Current employees")}: {strAssignedEmployeePreview}{intPolicyAssignedEmployeeCount > 3 ? ` +${intPolicyAssignedEmployeeCount - 3}` : ""}</Typography> : intPolicyHistoryCount > 0 ? <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>{t("assigned_employees", "Assigned employees")}: {strHistoryEmployeePreview}{intPolicyHistoryCount > 3 ? ` +${intPolicyHistoryCount - 3}` : ""}</Typography> : objLatestAssignment ? <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>{t("latest_assignment", "Latest assignment")}: {objLatestAssignment.strEmployeeName ?? objLatestAssignment.strEmployeeCode ?? "-"} | {objLatestAssignment.dtEffectiveFrom} - {objLatestAssignment.dtEffectiveTo ?? t("open_ended", "Open ended")}</Typography> : null}</Box></Paper></Grid>
   </Grid>;
 
@@ -555,45 +576,82 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
     const nodeToast = <Snackbar data-control-id="attendance.notification" open={objToast.blnOpen} autoHideDuration={5000} onClose={() => setObjToast((objCurrent) => ({ ...objCurrent, blnOpen: false }))}><Alert severity={objToast.strSeverity}>{objToast.strMessage}</Alert></Snackbar>;
     if (strPolicyWorkspace === "editor") return <Box className={styles.page} sx={{ "& .MuiOutlinedInput-root": { borderRadius: "9px !important" }, "& .MuiInputBase-root": { minHeight: 48 }, "& .MuiAlert-root": { borderRadius: "9px !important" } }}>
       {nodeActionLoader}
+      <MasterBreadcrumbs strSection={t("breadcrumb_attendance", "Attendance")} strTitle={intPolicyID ? (blnPolicyViewMode ? t("view_policy_title", "View Attendance Policy") : t("edit_policy_title", "Edit Attendance Policy")) : t("add_policy_title", "Add Attendance Policy")} />
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       <Box className={styles.tableCard} sx={{ minHeight: 0 }}><Box className={styles.tableHeaderActions} style={{ justifyContent: "flex-end" }}><Button data-control-id="attendance.policy.editor.back.button" className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => setStrPolicyWorkspace("list")}>{t("back", "Back")}</Button>{!blnPolicyViewMode ? <Button data-control-id="attendance.policy.editor.save.button" className={styles.primaryButton} startIcon={<SaveRoundedIcon />} disabled={blnSaving || blnReadOnly} onClick={() => void handleSubmit(submitPolicy)()}>{t("save", "Save")}</Button> : null}</Box><Box sx={{ flex: "1 1 auto", minHeight: 0, overflowX: "hidden", overflowY: "auto", pr: 0.5, scrollbarGutter: "stable" }}>{nodePolicyForm}</Box></Box>{nodeToast}</Box>;
     if (strPolicyWorkspace === "assignment") return <Box className={styles.page} sx={{ "& .MuiOutlinedInput-root": { borderRadius: "9px !important" }, "& .MuiInputBase-root": { minHeight: 48 }, "& .MuiAlert-root": { borderRadius: "9px !important" } }}>
       {nodeActionLoader}
+      <MasterBreadcrumbs strSection={t("breadcrumb_attendance", "Attendance")} strTitle={t("breadcrumb_policy_assignment", "Attendance Policy Assignment")} />
       {strError ? <Alert severity="error">{strError}</Alert> : null}
-      <Box className={styles.controlsCard}><Box className={styles.searchRow} sx={{ gridTemplateColumns: "minmax(220px,1fr) minmax(170px,.55fr) minmax(190px,.65fr) minmax(150px,.45fr) auto auto !important" }}><TextField data-control-id="attendance.assignment.search.input" value={strAssignmentSearch} onChange={(objEvent) => setStrAssignmentSearch(objEvent.target.value)} placeholder={t("search_employee", "Search Employee")} size="small" /><TextField data-control-id="attendance.assignment.department.select" select label={t("department", "Department")} value={strAssignmentDepartment} onChange={(objEvent) => setStrAssignmentDepartment(objEvent.target.value)} size="small" SelectProps={{ displayEmpty: true }} InputLabelProps={{ shrink: true }}><MenuItem value="">{t("all", "All")}</MenuItem>{lstDepartments.map(([intID, strName]) => <MenuItem key={intID} value={intID ?? ""}>{strName}</MenuItem>)}</TextField><TextField data-control-id="attendance.assignment.current-policy.select" select label={t("current_policy", "Current Policy")} value={strAssignmentCurrentPolicyID} onChange={(objEvent) => setStrAssignmentCurrentPolicyID(objEvent.target.value)} size="small" SelectProps={{ displayEmpty: true }} InputLabelProps={{ shrink: true }}><MenuItem value="">{t("all", "All")}</MenuItem>{objPolicyList.lstItems.map((objPolicy) => <MenuItem key={objPolicy.intID} value={objPolicy.intID}>{objPolicy.strPolicyName}</MenuItem>)}</TextField><TextField data-control-id="attendance.assignment.status.select" select label={t("employee_status", "Employee Status")} value={strAssignmentStatus} onChange={(objEvent) => setStrAssignmentStatus(objEvent.target.value)} size="small">{["Active", "Inactive", "All"].map((strStatus) => <MenuItem key={strStatus} value={strStatus}>{t(`employee_status_${strStatus.toLowerCase()}`, strStatus)}</MenuItem>)}</TextField><Button data-control-id="attendance.assignment.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => void loadAssignments()}>{t("search", "Search")}</Button><Button data-control-id="attendance.assignment.back.button" className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => setStrPolicyWorkspace("list")}>{t("back", "Back")}</Button></Box></Box>
-      <Box className={styles.tableCard}><Box className={styles.tableHeaderActions}><TextField data-control-id="attendance.assignment.policy.select" select label={t("attendance_policy", "Attendance Policy")} value={strAssignmentPolicyID} onChange={(objEvent) => setStrAssignmentPolicyID(objEvent.target.value)} size="small" sx={{ minWidth: 240 }}>{objPolicyList.lstItems.filter((objPolicy) => objPolicy.blnIsActive).map((objPolicy) => <MenuItem key={objPolicy.intID} value={objPolicy.intID}>{objPolicy.strPolicyName}</MenuItem>)}</TextField><TextField data-control-id="attendance.assignment.effective-from.input" type="date" label={t("effective_from", "Effective From")} InputLabelProps={{ shrink: true }} value={strAssignmentEffectiveFrom} onChange={(objEvent) => setStrAssignmentEffectiveFrom(objEvent.target.value)} size="small" /><TextField data-control-id="attendance.assignment.effective-to.input" type="date" label={t("effective_to_optional", "Effective To")} InputLabelProps={{ shrink: true }} value={strAssignmentEffectiveTo} onChange={(objEvent) => setStrAssignmentEffectiveTo(objEvent.target.value)} size="small" /><TextField data-control-id="attendance.assignment.reason.input" label={t("assignment_reason", "Assignment Reason")} value={strAssignmentReason} onChange={(objEvent) => setStrAssignmentReason(objEvent.target.value)} size="small" sx={{ minWidth: 240 }} /><Button data-control-id="attendance.assignment.save.button" className={styles.primaryButton} startIcon={<GroupAddRoundedIcon />} disabled={blnReadOnly || blnSaving || lstSelectedEmployeeIDs.length === 0 || !strAssignmentPolicyID} onClick={() => void submitAssignment()}>{t("assign_employees", "Assign Employees")}</Button><Button data-control-id="attendance.assignment.history.button" className={styles.secondaryButton} startIcon={<HistoryRoundedIcon />} onClick={() => setBlnAssignmentHistoryOpen(true)}>{t("assignment_history", "Assignment History")}</Button></Box><Box className={styles.tableWrap}><Table size="small" className={styles.table} sx={{ minWidth: 1100 }}><TableHead><TableRow>{["Select","Employee Code","Employee Name","Department","Status","Current Policy","Current From","Current To"].map((strLabel, intIndex) => <TableCell key={strLabel}>{intIndex === 0 ? <Checkbox data-control-id="attendance.assignment.select-all.checkbox" checked={blnAllSelected} indeterminate={lstSelectedEmployeeIDs.length > 0 && !blnAllSelected} onChange={(objEvent) => setLstSelectedEmployeeIDs(objEvent.target.checked ? lstAssignmentEmployees.map((objEmployee) => objEmployee.intEmployeeID) : [])} /> : t(`table_${strLabel.toLowerCase().replaceAll(" ","_")}`, strLabel)}</TableCell>)}</TableRow></TableHead><TableBody>{lstAssignmentEmployees.map((objEmployee) => <TableRow key={objEmployee.intEmployeeID} hover><TableCell><Checkbox data-control-id={`attendance.assignment.employee.${objEmployee.intEmployeeID}.checkbox`} checked={lstSelectedEmployeeIDs.includes(objEmployee.intEmployeeID)} onChange={(objEvent) => setLstSelectedEmployeeIDs((lstCurrent) => objEvent.target.checked ? [...lstCurrent, objEmployee.intEmployeeID] : lstCurrent.filter((intID) => intID !== objEmployee.intEmployeeID))} /></TableCell><TableCell>{objEmployee.strEmployeeCode}</TableCell><TableCell>{objEmployee.strEmployeeName}</TableCell><TableCell>{objEmployee.strDepartmentName ?? ""}</TableCell><TableCell>{objEmployee.strEmployeeStatus}</TableCell><TableCell>{objEmployee.strCurrentPolicyName ?? t("company_default", "Company Default")}</TableCell><TableCell>{objEmployee.dtCurrentEffectiveFrom ?? ""}</TableCell><TableCell>{objEmployee.dtCurrentEffectiveTo ?? ""}</TableCell></TableRow>)}{!blnLoading && lstAssignmentEmployees.length === 0 ? <TableRow><TableCell colSpan={8} align="center">{t("no_assignment_employees", "No employees found.")}</TableCell></TableRow> : null}</TableBody></Table></Box>{blnLoading ? <Box sx={{ p: 3, textAlign: "center" }}><CircularProgress /></Box> : null}</Box><CommonMasterDialog blnOpen={blnAssignmentHistoryOpen} strTitle={t("assignment_history", "Assignment History")} nodeContent={nodeAssignmentHistoryContent} strSecondaryLabel={t("close", "Close")} onClose={() => setBlnAssignmentHistoryOpen(false)} blnHidePrimary maxWidth={false} paperSx={{ width: "calc(100vw - 120px)", maxWidth: "1440px", minWidth: { md: "1120px" }, height: "min(86vh, 860px)", borderRadius: "20px", overflow: "hidden" }} rootControlId="attendance.assignment.history.dialog" cancelButtonControlId="attendance.assignment.history.dialog.close.button" titleSx={{ px: 3, py: 2, fontWeight: 900, borderBottom: "1px solid #d9e6ef", backgroundColor: "#f8fbfe" }} contentSx={{ p: 0, overflow: "hidden", backgroundColor: "#fbfdff" }} />{nodeToast}</Box>;
+      <Box className={styles.controlsCard}><Box className={styles.searchRow} onKeyDown={onSearchEnter(() => void loadAssignments())} sx={{ gridTemplateColumns: "minmax(220px,1fr) minmax(170px,.55fr) minmax(190px,.65fr) minmax(150px,.45fr) auto auto !important" }}><TextField data-control-id="attendance.assignment.search.input" value={strAssignmentSearch} onChange={(objEvent) => setStrAssignmentSearch(objEvent.target.value)} placeholder={t("search_employee", "Search Employee")} size="small" /><CommonSearchableSelect controlId="attendance.assignment.department.select" label={t("department", "Department")} value={intAssignmentDepartmentID} onChange={(intValue) => setIntAssignmentDepartmentID(intValue)} placeholder={t("all", "All")} options={lstDepartments.map(([intID, strName]) => ({ intID, strLabel: strName }))} /><CommonSearchableSelect controlId="attendance.assignment.current-policy.select" label={t("current_policy", "Current Policy")} value={intAssignmentCurrentPolicyID} onChange={(intValue) => setIntAssignmentCurrentPolicyID(intValue)} placeholder={t("all", "All")} options={objPolicyList.lstItems.map((objPolicy) => ({ intID: objPolicy.intID, strLabel: objPolicy.strPolicyName ?? "" }))} /><TextField data-control-id="attendance.assignment.status.select" select label={t("employee_status", "Employee Status")} value={strAssignmentStatus} onChange={(objEvent) => setStrAssignmentStatus(objEvent.target.value)} size="small">{["Active", "Inactive", "All"].map((strStatus) => <MenuItem key={strStatus} value={strStatus}>{t(`employee_status_${strStatus.toLowerCase()}`, strStatus)}</MenuItem>)}</TextField><Button data-control-id="attendance.assignment.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => void loadAssignments()}>{t("search", "Search")}</Button><Button data-control-id="attendance.assignment.back.button" className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => setStrPolicyWorkspace("list")}>{t("back", "Back")}</Button></Box></Box>
+      <Box className={styles.tableCard}><Box className={styles.tableHeaderActions}><CommonSearchableSelect controlId="attendance.assignment.policy.select" label={t("attendance_policy", "Attendance Policy")} value={intAssignmentPolicyID} onChange={(intValue) => setIntAssignmentPolicyID(intValue)} options={objPolicyList.lstItems.filter((objPolicy) => objPolicy.blnIsActive).map((objPolicy) => ({ intID: objPolicy.intID, strLabel: objPolicy.strPolicyName ?? "" }))} sx={{ minWidth: 240 }} /><TextField data-control-id="attendance.assignment.effective-from.input" type="date" label={t("effective_from", "Effective From")} InputLabelProps={{ shrink: true }} value={strAssignmentEffectiveFrom} onChange={(objEvent) => setStrAssignmentEffectiveFrom(objEvent.target.value)} size="small" /><TextField data-control-id="attendance.assignment.effective-to.input" type="date" label={t("effective_to_optional", "Effective To")} InputLabelProps={{ shrink: true }} value={strAssignmentEffectiveTo} onChange={(objEvent) => setStrAssignmentEffectiveTo(objEvent.target.value)} size="small" /><TextField data-control-id="attendance.assignment.reason.input" label={t("assignment_reason", "Assignment Reason")} value={strAssignmentReason} onChange={(objEvent) => setStrAssignmentReason(objEvent.target.value)} size="small" sx={{ minWidth: 240 }} /><Button data-control-id="attendance.assignment.save.button" className={styles.primaryButton} startIcon={<GroupAddRoundedIcon />} disabled={blnReadOnly || blnSaving || lstSelectedEmployeeIDs.length === 0 || !intAssignmentPolicyID} onClick={() => void submitAssignment()}>{t("assign_employees", "Assign Employees")}</Button><Button data-control-id="attendance.assignment.history.button" className={styles.secondaryButton} startIcon={<HistoryRoundedIcon />} onClick={() => setBlnAssignmentHistoryOpen(true)}>{t("assignment_history", "Assignment History")}</Button></Box><Box className={styles.tableWrap}><Table size="small" className={styles.table} sx={{ minWidth: 1100 }}><TableHead><TableRow>{["Select","Employee Code","Employee Name","Department","Status","Current Policy","Current From","Current To"].map((strLabel, intIndex) => <TableCell key={strLabel}>{intIndex === 0 ? <Checkbox data-control-id="attendance.assignment.select-all.checkbox" checked={blnAllSelected} indeterminate={lstSelectedEmployeeIDs.length > 0 && !blnAllSelected} onChange={(objEvent) => setLstSelectedEmployeeIDs(objEvent.target.checked ? lstAssignmentEmployees.map((objEmployee) => objEmployee.intEmployeeID) : [])} /> : t(`table_${strLabel.toLowerCase().replaceAll(" ","_")}`, strLabel)}</TableCell>)}</TableRow></TableHead><TableBody>{lstAssignmentEmployees.map((objEmployee) => <TableRow key={objEmployee.intEmployeeID} hover><TableCell><Checkbox data-control-id={`attendance.assignment.employee.${objEmployee.intEmployeeID}.checkbox`} checked={lstSelectedEmployeeIDs.includes(objEmployee.intEmployeeID)} onChange={(objEvent) => setLstSelectedEmployeeIDs((lstCurrent) => objEvent.target.checked ? [...lstCurrent, objEmployee.intEmployeeID] : lstCurrent.filter((intID) => intID !== objEmployee.intEmployeeID))} /></TableCell><TableCell>{objEmployee.strEmployeeCode}</TableCell><TableCell>{objEmployee.strEmployeeName}</TableCell><TableCell>{objEmployee.strDepartmentName ?? ""}</TableCell><TableCell>{objEmployee.strEmployeeStatus}</TableCell><TableCell>{objEmployee.strCurrentPolicyName ?? t("company_default", "Company Default")}</TableCell><TableCell>{objEmployee.dtCurrentEffectiveFrom ?? ""}</TableCell><TableCell>{objEmployee.dtCurrentEffectiveTo ?? ""}</TableCell></TableRow>)}{!blnLoading && lstAssignmentEmployees.length === 0 ? <TableRow><TableCell colSpan={8} align="center">{t("no_assignment_employees", "No employees found.")}</TableCell></TableRow> : null}</TableBody></Table></Box>{blnLoading ? <Box sx={{ p: 3, textAlign: "center" }}><DottedLoader /></Box> : null}</Box><CommonMasterDialog blnOpen={blnAssignmentHistoryOpen} strTitle={t("assignment_history", "Assignment History")} nodeContent={nodeAssignmentHistoryContent} strSecondaryLabel={t("close", "Close")} onClose={() => setBlnAssignmentHistoryOpen(false)} blnHidePrimary maxWidth={false} paperSx={{ width: "calc(100vw - 120px)", maxWidth: "1440px", minWidth: { md: "1120px" }, height: "min(86vh, 860px)", borderRadius: "20px", overflow: "hidden" }} rootControlId="attendance.assignment.history.dialog" cancelButtonControlId="attendance.assignment.history.dialog.close.button" titleSx={{ px: 3, py: 2, fontWeight: 900, borderBottom: "1px solid #d9e6ef", backgroundColor: "#f8fbfe" }} contentSx={{ p: 0, overflow: "hidden", backgroundColor: "#fbfdff" }} />{nodeToast}</Box>;
     const lstPolicyRows = objPolicyList.lstItems.map((objPolicy) => ({
       id: objPolicy.intID,
-      action: (
-        <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="center">
-          <IconButton data-control-id={`attendance.policy.${objPolicy.intID}.view.button`} aria-label={t("view_policy", "View attendance policy")} onClick={() => void openPolicy(objPolicy.intID, true)} sx={{ p: 0.5, color: "#2563eb", "& .MuiSvgIcon-root": { fontSize: 20 } }}><VisibilityRoundedIcon /></IconButton>
-          <IconButton data-control-id={`attendance.policy.${objPolicy.intID}.edit.button`} aria-label={t("edit_policy", "Edit attendance policy")} disabled={blnReadOnly} onClick={() => void openPolicy(objPolicy.intID)} sx={{ p: 0.5, color: "#17639b", "& .MuiSvgIcon-root": { fontSize: 20 } }}><EditRoundedIcon /></IconButton>
-          <IconButton data-control-id={`attendance.policy.${objPolicy.intID}.assign.button`} aria-label={t("assign_employees", "Assign employees")} disabled={blnReadOnly} onClick={() => void openAssignment(objPolicy.intID)} sx={{ p: 0.5, color: "#0f766e", "& .MuiSvgIcon-root": { fontSize: 20 } }}><GroupAddRoundedIcon /></IconButton>
-        </Stack>
+      nameText: objPolicy.strPolicyName ?? "",
+      name: (
+        <Link
+          component="button"
+          type="button"
+          underline="none"
+          className="app-master-first-column-link"
+          data-control-id={`attendance.policy.${objPolicy.intID}.name.button`}
+          onClick={(objEvent) => {
+            if (window.getSelection()?.toString()) { objEvent.stopPropagation(); return; }
+            void openPolicy(objPolicy.intID, blnReadOnly);
+          }}
+          sx={dicMasterNameLinkSx}
+        >
+          {objPolicy.strPolicyName}
+        </Link>
       ),
       code: objPolicy.strPolicyCode,
-      name: objPolicy.strPolicyName,
       fullDay: objPolicy.decFullDayThresholdHours,
       halfDay: objPolicy.decHalfDayThresholdHours,
       effectiveFrom: objPolicy.dtEffectiveFrom,
       isDefault: objPolicy.blnIsDefault ? t("yes", "Yes") : t("no", "No"),
-      status: <Chip size="small" color={objPolicy.blnIsActive ? "success" : "default"} label={objPolicy.blnIsActive ? t("active", "Active") : t("inactive", "Inactive")} />,
+      statusText: objPolicy.blnIsActive ? "Active" : "Inactive",
+      status: <MasterStatusPill blnActive={objPolicy.blnIsActive} strActiveLabel={t("active", "Active")} strInactiveLabel={t("inactive", "Inactive")} />,
     }));
     const lstPolicyColumns: CommonTableColumn<(typeof lstPolicyRows)[number]>[] = [
-      { field: "action", headerName: t("table_actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 120 },
+      { field: "name", headerName: t("table_policy_name", "Policy Name"), width: 190, sortAccessor: (row) => row.nameText },
       { field: "code", headerName: t("table_code", "Code"), width: 120 },
-      { field: "name", headerName: t("table_policy_name", "Policy Name"), width: 190 },
       { field: "fullDay", headerName: t("table_full_day", "Full Day"), width: 100 },
       { field: "halfDay", headerName: t("table_half_day", "Half Day"), width: 100 },
       { field: "effectiveFrom", headerName: t("table_effective_from", "Effective From"), width: 140 },
       { field: "isDefault", headerName: t("table_default", "Default"), width: 100 },
-      { field: "status", headerName: t("table_status", "Status"), sortable: false, width: 110 },
+      { field: "status", headerName: t("table_status", "Status"), filterable: false, width: 110, sortAccessor: (row) => row.statusText },
     ];
-    return <Box className={styles.page} sx={{ "& .MuiOutlinedInput-root": { borderRadius: "9px !important" }, "& .MuiInputBase-root": { minHeight: 48 }, "& .MuiAlert-root": { borderRadius: "9px !important" } }}>
+    return <Box className={styles.page} sx={{ position: "relative" }}>
       {nodeActionLoader}
+      <MasterBreadcrumbs strSection={t("breadcrumb_attendance", "Attendance")} strTitle={t("breadcrumb_policies", "Attendance Policies")} />
       {strError ? <Alert severity="error">{strError}</Alert> : null}
-      <Box className={styles.controlsCard}><Box className={styles.searchRow} sx={{ gridTemplateColumns: "minmax(280px, 1fr) minmax(190px, .35fr) auto auto !important" }}><TextField data-control-id="attendance.policy.search.input" value={strPolicySearch} onChange={(objEvent) => setStrPolicySearch(objEvent.target.value)} placeholder={t("search_policy", "Search Code or Name")} size="small" /><TextField data-control-id="attendance.policy.status.select" select value={strPolicyStatus} onChange={(objEvent) => setStrPolicyStatus(objEvent.target.value)} label={t("status", "Status")} size="small" SelectProps={{ displayEmpty: true }} InputLabelProps={{ shrink: true }}><MenuItem value="">{t("all", "All")}</MenuItem><MenuItem value="active">{t("active", "Active")}</MenuItem><MenuItem value="inactive">{t("inactive", "Inactive")}</MenuItem></TextField><Box className={styles.searchActions}><Button data-control-id="attendance.policy.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => void searchPolicies()}>{t("search", "Search")}</Button></Box><Box className={styles.searchActions}><Button data-control-id="attendance.policy.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => void clearPolicySearch()}>{t("clear", "Clear")}</Button></Box></Box></Box>
-      <Box className={styles.tableCard}><Box className={styles.tableHeaderActions}><Button data-control-id="attendance.policy.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} disabled={blnReadOnly} onClick={() => void openPolicy(null)}>{t("add_policy", "Add Policy")}</Button><Button data-control-id="attendance.policy.assign.button" className={styles.secondaryButton} startIcon={<GroupAddRoundedIcon />} disabled={blnReadOnly} onClick={() => void openAssignment(null)}>{t("assign_employees", "Assign Employees")}</Button></Box><CommonTable columns={lstPolicyColumns} rows={lstPolicyRows} rowIdField="id" hideToolbar minTableWidth={1000} emptyMessage={t("no_policies", "No attendance policies found.")} testIdPrefix="attendance.policy.list" onRowDoubleClick={(objRow) => void openPolicy(Number(objRow.id), blnReadOnly)} />{blnLoading ? <Box sx={{ p: 3, textAlign: "center" }}><CircularProgress /></Box> : null}</Box>{nodeToast}</Box>;
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        <Box className={styles.searchRow} onKeyDown={onSearchEnter(() => void searchPolicies())} sx={{ alignItems: "center", "&&": { gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "minmax(220px, 1.2fr) minmax(150px, 0.7fr) auto auto 1fr" } }, "& .MuiButton-root": { alignSelf: "center" } }}>
+          <TextField className="app-mui-text-field" data-control-id="attendance.policy.search.input" label={t("search_policy_label", "Policy Name / Code")} value={strPolicySearch} onChange={(objEvent) => setStrPolicySearch(objEvent.target.value)} placeholder={t("search_policy", "Search Code or Name")} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} fullWidth />
+          <TextField className="app-mui-text-field" data-control-id="attendance.policy.status.select" select value={strPolicyStatus} onChange={(objEvent) => setStrPolicyStatus(objEvent.target.value)} label={t("status", "Status")} size="small" SelectProps={{ displayEmpty: true }} InputLabelProps={{ shrink: true }} fullWidth><MenuItem value="">{t("all", "All")}</MenuItem><MenuItem value="active">{t("active", "Active")}</MenuItem><MenuItem value="inactive">{t("inactive", "Inactive")}</MenuItem></TextField>
+          <Box className={styles.searchActions}><Button data-control-id="attendance.policy.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => void searchPolicies()}>{t("search", "Search")}</Button></Box>
+          <Box className={styles.searchActions}><Button data-control-id="attendance.policy.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => void clearPolicySearch()}>{t("clear", "Clear")}</Button></Box>
+        </Box>
+      </Box>
+      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        {blnLoading && objPolicyList.lstItems.length === 0 ? <MasterGridSkeleton strControlId="attendance.policy.list.skeleton" intColumns={7} /> : <CommonTable
+          columns={lstPolicyColumns}
+          rows={lstPolicyRows}
+          rowIdField="id"
+          showPaginationSummary
+          hideRowClickHint
+          minTableWidth={1000}
+          emptyMessage={t("no_policies", "No attendance policies found.")}
+          testIdPrefix="attendance.policy.list"
+          onRowClick={(objRow) => void openPolicy(Number(objRow.id), blnReadOnly)}
+          toolbarLeft={<Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+            <Button data-control-id="attendance.policy.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} disabled={blnReadOnly} onClick={() => void openPolicy(null)}>{t("add_policy", "Add Policy")}</Button>
+            <Button data-control-id="attendance.policy.assign.button" className={styles.secondaryButton} startIcon={<GroupAddRoundedIcon />} disabled={blnReadOnly} onClick={() => void openAssignment(null)}>{t("assign_employees", "Assign Employees")}</Button>
+          </Box>}
+          getRowSx={() => dicMasterRowSx}
+          sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+        />}
+      </Box>{nodeToast}</Box>;
   }
 
   const SET_BLANK_REMARK_PLACEHOLDERS = new Set(["NA", "N/A", "N.A.", "-", "NIL", "NONE"]);
@@ -660,11 +718,12 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
     </Stack>
   );
 
-  return <Box className={styles.page}>
+  return <Box className={styles.page} sx={{ position: "relative" }}>
     {nodeActionLoader}
+    <MasterBreadcrumbs strSection={t("breadcrumb_attendance", "Attendance")} strTitle={t("breadcrumb_daily_attendance", "Daily Attendance")} />
     {strError ? <Alert severity="error">{strError}</Alert> : null}
     <>
-      <Box className={styles.controlsCard}><Box className={styles.searchRow} sx={{ gridTemplateColumns: "165px minmax(190px,.65fr) minmax(190px,.65fr) 320px auto auto !important" }}><TextField data-control-id="attendance.daily.date.input" type="date" InputLabelProps={{ shrink: true }} label={t("date","Date")} value={strDate} onChange={(objEvent) => setStrDate(objEvent.target.value)} fullWidth /><TextField data-control-id="attendance.daily.department.select" select label={t("department","Department")} value={strDepartment} onChange={(objEvent) => setStrDepartment(objEvent.target.value)} fullWidth SelectProps={{ displayEmpty: true }} InputLabelProps={{ shrink: true }}><MenuItem value="">{t("all","All")}</MenuItem>{lstDepartments.map(([intID,strName]) => <MenuItem key={intID} value={intID ?? ""}>{strName}</MenuItem>)}</TextField><TextField data-control-id="attendance.daily.location.select" select label={t("location","Location")} value={strLocation} onChange={(objEvent) => setStrLocation(objEvent.target.value)} fullWidth SelectProps={{ displayEmpty: true }} InputLabelProps={{ shrink: true }}><MenuItem value="">{t("all","All")}</MenuItem>{lstLocations.map(([intID,strName]) => <MenuItem key={intID} value={intID}>{strName}</MenuItem>)}</TextField><TextField data-control-id="attendance.daily.employee-search.input" placeholder={t("employee_search","Employee Code or Name")} value={strEmployeeSearch} onChange={(objEvent) => setStrEmployeeSearch(objEvent.target.value)} fullWidth /><Box className={styles.searchActions}><Button data-control-id="attendance.daily.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => void searchDaily()}>{t("search","Search")}</Button></Box><Box className={styles.searchActions}><Button data-control-id="attendance.daily.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => void clearDailySearch()}>{t("clear","Clear")}</Button></Box></Box>
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}><Box className={styles.searchRow} onKeyDown={onSearchEnter(() => void searchDaily())} sx={{ alignItems: "center", "&&": { gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "165px minmax(170px,.65fr) minmax(170px,.65fr) minmax(220px,1fr) auto auto 1fr" } }, "& .MuiButton-root": { alignSelf: "center" } }}><TextField className="app-mui-text-field" data-control-id="attendance.daily.date.input" type="date" size="small" InputLabelProps={{ shrink: true }} label={t("date","Date")} value={strDate} onChange={(objEvent) => setStrDate(objEvent.target.value)} fullWidth /><CommonSearchableSelect className="app-mui-text-field" controlId="attendance.daily.department.select" label={t("department","Department")} value={intDepartment} onChange={(intValue) => setIntDepartment(intValue)} placeholder={t("all","All")} showSearchIcon={false} fullWidth options={lstDepartments.map(([intID,strName]) => ({ intID, strLabel: strName }))} /><CommonSearchableSelect className="app-mui-text-field" controlId="attendance.daily.location.select" label={t("location","Location")} value={intLocation} onChange={(intValue) => setIntLocation(intValue)} placeholder={t("all","All")} showSearchIcon={false} fullWidth options={lstLocations.map(([intID,strName]) => ({ intID, strLabel: strName }))} /><TextField className="app-mui-text-field" data-control-id="attendance.daily.employee-search.input" label={t("employee_search_label","Employee")} placeholder={t("employee_search","Employee Code or Name")} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} value={strEmployeeSearch} onChange={(objEvent) => setStrEmployeeSearch(objEvent.target.value)} fullWidth /><Box className={styles.searchActions}><Button data-control-id="attendance.daily.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => void searchDaily()}>{t("search","Search")}</Button></Box><Box className={styles.searchActions}><Button data-control-id="attendance.daily.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => void clearDailySearch()}>{t("clear","Clear")}</Button></Box></Box>
         <Stack direction={{ xs: "column", lg: "row" }} spacing={1.5} alignItems={{ xs: "stretch", lg: "flex-end" }} justifyContent="space-between" sx={{ mt: 1, px: 0.5 }}>
           <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
             {([
@@ -681,10 +740,9 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
               </Box>
             ))}
           </Stack>
-          {nodeDailyAttendanceActions}
         </Stack>
       </Box>
-      <Box className={styles.tableCard}><CommonTable columns={lstDailyColumns} rows={lstDailyGridRows} rowIdField="intEmployeeID" hideToolbar showPaginationSummary minTableWidth={1650} emptyMessage={t("load_daily_prompt","Select filters and load employees for the date.")} testIdPrefix="attendance.daily.list" hideRowClickHint onRowDoubleClick={blnCanOverride ? (objRow) => { const objSourceRow = lstEditableRows.find((objSource) => objSource.intEmployeeID === objRow.intEmployeeID); if (objSourceRow) { openOverrideDialog(objSourceRow); } } : undefined} />{blnLoading ? <Box sx={{ p: 3, textAlign: "center" }}><CircularProgress /></Box> : null}</Box>
+      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>{blnLoading ? <MasterGridSkeleton strControlId="attendance.daily.list.skeleton" intColumns={9} /> : <CommonTable columns={lstDailyColumns} rows={lstDailyGridRows} rowIdField="intEmployeeID" hideToolbar toolbarLeft={nodeDailyAttendanceActions} showPaginationSummary minTableWidth={1650} emptyMessage={t("load_daily_prompt","Select filters and load employees for the date.")} testIdPrefix="attendance.daily.list" hideRowClickHint getRowSx={() => dicMasterRowSx} sx={{ p: 0, boxShadow: "none", background: "transparent" }} onRowDoubleClick={blnCanOverride ? (objRow) => { const objSourceRow = lstEditableRows.find((objSource) => objSource.intEmployeeID === objRow.intEmployeeID); if (objSourceRow) { openOverrideDialog(objSourceRow); } } : undefined} />}</Box>
     </>
     <CommonMasterDialog blnOpen={blnFillDialogOpen} strTitle={t("generate_attendance_title","Generate Attendance for a Date Range")} nodeContent={nodeFillDialogContent} strSecondaryLabel={t("cancel","Cancel")} onClose={() => setBlnFillDialogOpen(false)} strPrimaryLabel={t("generate_attendance_submit","Generate")} onPrimaryAction={() => void submitFillRange()} blnPrimaryDisabled={blnFillSubmitting || !intFillEmployeeID || !strFillStatus} maxWidth="sm" rootControlId="attendance.daily.fill-month.dialog" cancelButtonControlId="attendance.daily.fill-month.dialog.cancel.button" primaryButtonControlId="attendance.daily.fill-month.dialog.submit.button" titleSx={{ px: 2.5, py: 1.5 }} contentSx={{ px: 2.5, py: 1.25 }} />
     <CommonMasterDialog blnOpen={objOverrideRow !== null} strTitle={t("override_dialog_title", `Edit / Override Attendance${objOverrideRow ? ` — ${objOverrideRow.strEmployeeName}` : ""}`)} nodeContent={

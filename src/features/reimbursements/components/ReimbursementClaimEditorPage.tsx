@@ -13,8 +13,10 @@ import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogContent
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import { DetailPageHeader } from "@/components/master/MasterListUi";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import CommonDataGrid, { type DataGridColumn } from "@/components/ui/CommonDataGrid";
+import { withBasePath } from "@/lib/basePath";
 import ReimbursementClaimItemForm from "@/features/reimbursements/components/ReimbursementClaimItemForm";
 import ReimbursementClaimStatusBadge from "@/features/reimbursements/components/ReimbursementClaimStatusBadge";
 import { formatCurrency, formatDateLabel, toInputDate, translateKnownReimbursementText } from "@/features/reimbursements/formatters";
@@ -463,13 +465,13 @@ export default function ReimbursementClaimEditorPage({ strClaimID, strMode }: { 
     setStrSuccess("");
     if (strClaimIDToLoadAfterSuccess === strDeletedClaimSentinel) {
       setStrClaimIDToLoadAfterSuccess(null);
-      window.location.href = "/ess/reimbursements";
+      window.location.href = withBasePath("/ess/reimbursements");
       return;
     }
     if (strClaimIDToLoadAfterSuccess) {
       const strSubmittedClaimID = strClaimIDToLoadAfterSuccess;
       setStrClaimIDToLoadAfterSuccess(null);
-      window.location.href = buildEssClaimRoute(strSubmittedClaimID, "view");
+      window.location.href = withBasePath(buildEssClaimRoute(strSubmittedClaimID, "view"));
     }
   }
 
@@ -536,7 +538,7 @@ export default function ReimbursementClaimEditorPage({ strClaimID, strMode }: { 
 
   const lstItemTableColumns = useMemo<DataGridColumn<(typeof lstItemTableRows)[number]>[]>(
     () => [
-      { field: "rowActions", headerName: t("actions", "Actions"), align: "center", width: 130, sortable: false, exportable: false },
+      { field: "rowActions", headerName: t("actions", "Actions"), width: 130, sortable: false, exportable: false },
       { field: "reimbursementType", headerName: t("reimbursement_type", "Reimbursement Type"), width: 260, sortable: false },
       { field: "expenseDate", headerName: t("expense_date", "Expense Date"), width: 140, sortable: false },
       { field: "claimedAmount", headerName: t("claimed_amount", "Claimed Amount"), align: "right", width: 150, sortable: false },
@@ -549,16 +551,12 @@ export default function ReimbursementClaimEditorPage({ strClaimID, strMode }: { 
   return (
     <Stack spacing={1.4}>
       <BlockingLoader blnOpen={blnLoading || blnRightsLoading} strLabel={t("loading_claim", "Loading reimbursement claim...")} />
-      <Paper sx={{ p: 0.9, borderRadius: "12px", border: "1px solid #dbe3ef", backgroundColor: "#ffffff", color: "#0f172a", boxShadow: "none" }}>
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} gap={1}>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <ReceiptLongOutlinedIcon sx={{ fontSize: 20, color: "#0b3f73" }} />
-            <Box>
-              <Typography sx={{ color: "#0f172a", fontWeight: 800, fontSize: "1rem" }}>{strPageTitle}</Typography>
-              <Typography sx={{ color: "#64748b", fontSize: "0.74rem" }}>{blnReadOnly ? t("view_claim_details_subtitle", "View claim details and reviewer/payroll status.") : t("edit_claim_subtitle", "Add expense items, upload proof, and submit for review.")}</Typography>
-            </Box>
-          </Stack>
-          <Stack direction="row" spacing={0.8} flexWrap="wrap" justifyContent={{ xs: "flex-start", md: "flex-end" }} alignItems="center">
+      <DetailPageHeader
+        strSection={strSelectedEmployeeID ? "Employee Services" : t("breadcrumb_payroll_benefits", "Payroll & Benefits")}
+        strListTitle={strSelectedEmployeeID ? (strSourceContext === "employee-reimbursement" ? "Employee Reimbursements" : "Review Reimbursements") : t("breadcrumb_my_reimbursements", "My Reimbursements")}
+        strListHref={strSelectedEmployeeID ? (strSourceContext === "employee-reimbursement" ? "/payroll/employee-reimbursement" : "/payroll/reimbursements") : "/ess/reimbursements"}
+        strCurrent={strMode === "create" ? t("breadcrumb_add", "Add") : blnReadOnly ? t("breadcrumb_view", "View") : t("breadcrumb_edit", "Edit")}
+      >
             {blnShowClaimStatusBadge && objClaim ? <ReimbursementClaimStatusBadge strStatus={objClaim.strClaimStatus} size="medium" /> : null}
             {blnReadOnly && blnCanEdit && objClaim && canEditReimbursementClaim(objClaim.strClaimStatus) ? (
               <Button variant="contained" size="small" startIcon={<EditRoundedIcon />} onClick={() => objRouter.push(buildEssClaimRoute(objClaim.strRecordUUID, "edit"))} sx={{ ...objDetailActionButtonSx, backgroundColor: "#0b3f73", color: "#ffffff", fontWeight: 700, boxShadow: "none", "&:hover": { backgroundColor: "#0a355f", boxShadow: "none" } }}>{t("edit", "Edit")}</Button>
@@ -576,7 +574,14 @@ export default function ReimbursementClaimEditorPage({ strClaimID, strMode }: { 
               <Button variant="contained" color="primary" size="small" startIcon={<SendRoundedIcon />} onClick={() => void submitClaim()} disabled={blnSaving} controlId="reimbursements.claim-editor.submit.button" sx={{ ...objDetailActionButtonSx, fontWeight: 800, boxShadow: "none" }}>{t("submit", "Submit")}</Button>
             ) : null}
             <Button variant="outlined" size="small" startIcon={<ArrowBackRoundedIcon />} onClick={() => window.history.back()} controlId="reimbursements.claim-editor.back.button" sx={{ ...objDetailActionButtonSx, borderColor: "#98a2b3", color: "#344054", fontWeight: 800, "&:hover": { borderColor: "#667085", backgroundColor: "#f8fafc" } }}>{t("back", "Back")}</Button>
-          </Stack>
+      </DetailPageHeader>
+      <Paper sx={{ p: 0.9, borderRadius: "12px", border: "1px solid #dbe3ef", backgroundColor: "#ffffff", color: "#0f172a", boxShadow: "none" }}>
+        <Stack direction="row" spacing={1} alignItems="center">
+            <ReceiptLongOutlinedIcon sx={{ fontSize: 20, color: "#0b3f73" }} />
+            <Box>
+              <Typography sx={{ color: "#0f172a", fontWeight: 800, fontSize: "1rem" }}>{strPageTitle}</Typography>
+              <Typography sx={{ color: "#64748b", fontSize: "0.74rem" }}>{blnReadOnly ? t("view_claim_details_subtitle", "View claim details and reviewer/payroll status.") : t("edit_claim_subtitle", "Add expense items, upload proof, and submit for review.")}</Typography>
+            </Box>
         </Stack>
       </Paper>
 

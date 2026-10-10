@@ -2,7 +2,10 @@
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
@@ -10,18 +13,22 @@ import {
   Alert,
   Autocomplete,
   Box,
+  Breadcrumbs,
   Button,
   Checkbox,
   IconButton,
   InputAdornment,
+  Link,
   MenuItem,
+  Radio,
+  Skeleton,
   Snackbar,
   Switch,
   TextField,
   Tooltip,
   Typography
 } from "@mui/material";
-import { useEffect, useMemo, useState, type HTMLAttributes, type InputHTMLAttributes, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type HTMLAttributes, type InputHTMLAttributes, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
@@ -29,8 +36,8 @@ import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
-import CommonRowActions from "@/components/master/CommonRowActions";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
@@ -79,14 +86,15 @@ type UserRecord = {
 type UserTableRow = {
   id: string;
   select: ReactNode;
-  rowActions: ReactNode;
-  loginName: string;
+  loginName: ReactNode;
+  loginNameText: string;
   loginId: string;
   email: string;
   mobile: string;
   employeeName: string;
   userGroupName: string;
   status: ReactNode;
+  statusSortValue: string;
 };
 
 type UserForm = {
@@ -151,6 +159,73 @@ const dicEmptyForm: UserForm = {
 const dicEmptySearch: SearchForm = { code: "", name: "", employeeName: "", status: "All" };
 const objSelectAllCheckboxInputProps = { "data-controlid": "user-master.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>;
 const lstDefaultUsers: UserRecord[] = [];
+const intUserSkeletonRows = 8;
+const lstUserDialogErrorFieldOrder: Array<keyof UserForm | "portalAccess"> = [
+  "employeeID",
+  "loginId",
+  "loginName",
+  "email",
+  "mobile",
+  "password",
+  "confirmPassword",
+  "portalAccess",
+  "hrmsUserGroupID",
+  "essUserGroupID",
+];
+
+function UserGridSkeleton() {
+  return (
+    <Box
+      data-control-id="user-master.list.skeleton"
+      sx={{
+        border: "1px solid #e8eef5",
+        borderRadius: "8px",
+        overflow: "hidden",
+        backgroundColor: "#fff",
+      }}
+    >
+      <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, px: 1.75, py: 1.25, flexWrap: "wrap" }}>
+        <Skeleton variant="rounded" width={112} height={36} />
+        <Box sx={{ display: "flex", gap: 1.25, alignItems: "center", flexWrap: "wrap" }}>
+          <Skeleton variant="rounded" width={64} height={36} />
+          <Skeleton variant="text" width={72} height={24} />
+          <Skeleton variant="rounded" width={116} height={32} />
+        </Box>
+      </Box>
+      <Box sx={{ minWidth: 1180 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "48px 1fr 0.9fr 1.2fr 0.8fr 1fr 1fr 0.7fr", bgcolor: "#edf3f9", borderTop: "1px solid #e8eef5", borderBottom: "1px solid #d9e3ee" }}>
+          {[0, 1, 2, 3, 4, 5, 6, 7].map((intColumn) => (
+            <Box key={intColumn} sx={{ px: 2, py: 1 }}>
+              <Skeleton variant="text" width={intColumn === 0 ? 18 : intColumn === 7 ? 76 : 118} height={22} />
+            </Box>
+          ))}
+        </Box>
+        {Array.from({ length: intUserSkeletonRows }).map((_, intIndex) => (
+          <Box
+            key={intIndex}
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "48px 1fr 0.9fr 1.2fr 0.8fr 1fr 1fr 0.7fr",
+              borderBottom: "1px solid #edf1f6",
+              minHeight: 40,
+              alignItems: "center",
+            }}
+          >
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="rounded" width={18} height={18} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${58 + (intIndex % 3) * 8}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${46 + (intIndex % 2) * 12}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${66 + (intIndex % 2) * 8}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={92} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${48 + (intIndex % 3) * 10}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${42 + (intIndex % 2) * 10}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="rounded" width={72} height={22} /></Box>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+}
+
 function normalizeSelectToken(strValue: string) {
   return strValue.trim().toLowerCase().replace(/[\s_-]+/g, "");
 }
@@ -223,6 +298,7 @@ export default function UserMasterPanel() {
   const [intTenantLanguageID, setIntTenantLanguageID] = useState<number | null>(authHelpers.getLanguageID());
   const [blnPasswordVisible, setBlnPasswordVisible] = useState(false);
   const [blnConfirmPasswordVisible, setBlnConfirmPasswordVisible] = useState(false);
+  const objDialogRootRef = useRef<HTMLElement | null>(null);
   const dicCommonLabels = {
     cancel: t("cancel"),
     close: t("close"),
@@ -328,6 +404,7 @@ export default function UserMasterPanel() {
     confirmBulkDeactivateTitle: t("confirm_bulk_deactivate_title"),
     confirmBulkDeactivateMessage: t("confirm_bulk_deactivate_message"),
   };
+  const strBreadcrumbParent = t("breadcrumb_administration", "Administration");
 
   async function loadData() {
     if (!canViewAny()) {
@@ -379,11 +456,13 @@ export default function UserMasterPanel() {
   }, [blnRightsLoading]);
 
   const lstFilteredUsers = useMemo(() => lstUsers.filter((dicUser) => {
-    const blnCodeMatch = !dicSearchApplied.code || dicUser.loginName.toLowerCase().includes(dicSearchApplied.code.toLowerCase());
-    const blnNameMatch = !dicSearchApplied.name || dicUser.email.toLowerCase().includes(dicSearchApplied.name.toLowerCase());
+    const strLoginOrEmailSearch = dicSearchApplied.code.toLowerCase();
+    const blnLoginOrEmailMatch = !strLoginOrEmailSearch ||
+      dicUser.loginName.toLowerCase().includes(strLoginOrEmailSearch) ||
+      dicUser.email.toLowerCase().includes(strLoginOrEmailSearch);
     const blnEmployeeMatch = !dicSearchApplied.employeeName || dicUser.employeeName.toLowerCase().includes(dicSearchApplied.employeeName.toLowerCase());
     const blnStatusMatch = dicSearchApplied.status === "All" || dicUser.status === dicSearchApplied.status;
-    return blnCodeMatch && blnNameMatch && blnEmployeeMatch && blnStatusMatch;
+    return blnLoginOrEmailMatch && blnEmployeeMatch && blnStatusMatch;
   }), [dicSearchApplied, lstUsers]);
 
   const blnAllVisibleSelected = lstFilteredUsers.length > 0 && lstFilteredUsers.every((dicUser) => lstSelectedIds.includes(dicUser.id));
@@ -394,6 +473,7 @@ export default function UserMasterPanel() {
   const blnCanDelete = canDoAny("delete");
   const blnCanExport = canDoAny("export");
   const blnReadOnly = isReadOnly();
+  const blnSearchPanelFrozen = blnRightsLoading || blnLoading || blnSubmitting;
   const blnShowOtpOnlyOption =
     (objFormOptions.objMfaPolicy?.blnUserMfaToggleVisible ?? false)
     && !(objFormOptions.objMfaPolicy?.blnUserMfaToggleDisabled ?? false);
@@ -408,6 +488,13 @@ export default function UserMasterPanel() {
   const blnEssAccessDisabled = strMode === "view" || !blnEmployeeLinked;
   // Identity fields sourced from Employee Master are shown read-only in User Master.
   const blnEmployeeDerivedReadOnly = strMode === "view" || blnEmployeeLinked;
+  const lstPasswordHints = useMemo(() => [
+    { strLabel: "12+ characters", blnMet: dicForm.password.length >= 12 },
+    { strLabel: "Uppercase, lowercase and number", blnMet: /[A-Z]/.test(dicForm.password) && /[a-z]/.test(dicForm.password) && /\d/.test(dicForm.password) },
+    { strLabel: "Special character", blnMet: /[^A-Za-z0-9]/.test(dicForm.password) },
+  ], [dicForm.password]);
+  const intPasswordStrength = lstPasswordHints.filter((objHint) => objHint.blnMet).length;
+  const strPasswordStrengthLabel = intPasswordStrength >= 3 ? "Strong" : intPasswordStrength === 2 ? "Good" : intPasswordStrength === 1 ? "Weak" : "Enter password";
   const lstTableRows = useMemo<UserTableRow[]>(() => lstFilteredUsers.map((dicUser) => ({
     id: dicUser.id,
     select: (
@@ -417,30 +504,39 @@ export default function UserMasterPanel() {
         onChange={() => toggleSelection(dicUser.id)}
       />
     ),
-    rowActions: (
-      <CommonRowActions
-        testIdPrefix="user-master.list.row"
-        rowKey={dicUser.id}
-        blnCanView
-        blnCanEdit={blnCanEdit}
-        blnCanDelete={blnCanDelete}
-        onView={() => { void openDialog("view", dicUser); }}
-        onEdit={() => { void openDialog("edit", dicUser); }}
-        onDelete={() => deleteUser(dicUser.id)}
-      />
+    loginNameText: dicUser.loginName,
+    loginName: (
+      <Link
+        component="button"
+        type="button"
+        underline="none"
+        className="app-master-first-column-link"
+        disabled={!blnCanView && !blnCanEdit}
+        data-controlid="user-master.list.row.login-name.button"
+        onClick={(objEvent) => {
+          if (window.getSelection()?.toString()) {
+            objEvent.stopPropagation();
+            return;
+          }
+          void openDialog(blnCanEdit ? "edit" : "view", dicUser);
+        }}
+        sx={{ "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}
+      >
+        {dicUser.loginName}
+      </Link>
     ),
-    loginName: dicUser.loginName,
     loginId: dicUser.loginId || "-",
     email: dicUser.email,
     mobile: dicUser.mobile || "-",
     employeeName: dicUser.employeeName || "-",
     userGroupName: dicUser.userGroupName || "-",
     status: (
-      <span className={`${styles.statusPill} ${dicUser.status === "Active" ? styles.statusActive : styles.statusInactive}`}>
+      <span className={`app-master-status-pill ${dicUser.status === "Active" ? "app-master-status-active" : "app-master-status-inactive"}`}>
         {dicUser.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}
       </span>
     ),
-  })), [blnCanDelete, blnCanEdit, dicCommonLabels.statusActive, dicCommonLabels.statusInactive, lstFilteredUsers, lstSelectedIds]);
+    statusSortValue: dicUser.status,
+  })), [blnCanEdit, blnCanView, dicCommonLabels.statusActive, dicCommonLabels.statusInactive, lstFilteredUsers, lstSelectedIds]);
   const lstTableColumns = useMemo<CommonTableColumn<UserTableRow>[]>(() => [
     {
       field: "select",
@@ -450,15 +546,14 @@ export default function UserMasterPanel() {
       filterable: false,
       exportable: false,
     },
-    { field: "rowActions", headerName: dicModuleLabels.tableActions, width: 140, sortable: false, filterable: false, exportable: false },
-    { field: "loginName", headerName: dicModuleLabels.tableLoginName },
+    { field: "loginName", headerName: dicModuleLabels.tableLoginName, sortAccessor: (dicRow) => dicRow.loginNameText },
     { field: "loginId", headerName: dicModuleLabels.tableLoginId },
     { field: "email", headerName: dicModuleLabels.tableEmail },
     { field: "mobile", headerName: dicModuleLabels.tableMobile },
     { field: "employeeName", headerName: dicModuleLabels.tableLinkedEmployee },
     { field: "userGroupName", headerName: dicModuleLabels.tableUserGroup },
-    { field: "status", headerName: dicModuleLabels.tableStatus, sortable: false, filterable: false },
-  ], [blnAllVisibleSelected, blnSomeVisibleSelected, dicModuleLabels.tableActions, dicModuleLabels.tableEmail, dicModuleLabels.tableLinkedEmployee, dicModuleLabels.tableLoginId, dicModuleLabels.tableLoginName, dicModuleLabels.tableMobile, dicModuleLabels.tableStatus, dicModuleLabels.tableUserGroup]);
+    { field: "status", headerName: dicModuleLabels.tableStatus, filterable: false, sortAccessor: (dicRow) => dicRow.statusSortValue },
+  ], [blnAllVisibleSelected, blnSomeVisibleSelected, dicModuleLabels.tableEmail, dicModuleLabels.tableLinkedEmployee, dicModuleLabels.tableLoginId, dicModuleLabels.tableLoginName, dicModuleLabels.tableMobile, dicModuleLabels.tableStatus, dicModuleLabels.tableUserGroup]);
 
   async function openDialog(strNextMode: UserMode, dicUser?: UserRecord) {
     let objResolvedFormOptions = objFormOptions;
@@ -599,6 +694,36 @@ export default function UserMasterPanel() {
     }
   }
 
+  function focusFirstDialogError(dicNextErrors: Partial<Record<keyof UserForm | "portalAccess", string>>) {
+    const strFirstErrorField = lstUserDialogErrorFieldOrder.find((strField) => Boolean(dicNextErrors[strField]));
+    if (!strFirstErrorField) {
+      return;
+    }
+    window.setTimeout(() => {
+      const objDialogRoot = objDialogRootRef.current ?? document.querySelector<HTMLElement>('[data-control-id="user-master.dialog"]');
+      const dicControlIds: Partial<Record<keyof UserForm | "portalAccess", string>> = {
+        employeeID: "user-master.dialog.employee.select",
+        loginId: "user-master.dialog.login-id.input",
+        loginName: "user-master.dialog.login-name.input",
+        email: "user-master.dialog.email.input",
+        mobile: "user-master.dialog.mobile.input",
+        password: "user-master.dialog.password.input",
+        confirmPassword: "user-master.dialog.confirm-password.input",
+        hrmsUserGroupID: "user-master.dialog.hrms-user-group.select",
+        essUserGroupID: "user-master.dialog.ess-user-group.select",
+      };
+      const strControlId = dicControlIds[strFirstErrorField];
+      const objTarget = strControlId
+        ? objDialogRoot?.querySelector<HTMLElement>(`[data-controlid="${strControlId}"], [data-control-id="${strControlId}"]`)
+        : objDialogRoot?.querySelector<HTMLElement>('[data-controlid="user-master.dialog.portal-access.error"]');
+      const objFocusable = objTarget?.matches("input, textarea, button, [tabindex]")
+        ? objTarget
+        : objTarget?.querySelector<HTMLElement>("input, textarea, button, [tabindex]");
+      objFocusable?.focus();
+      objFocusable?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 0);
+  }
+
   function validateForm() {
     const dicNextErrors: Partial<Record<keyof UserForm | "portalAccess", string>> = {};
     const strLoginName = dicForm.loginName.trim();
@@ -666,7 +791,11 @@ export default function UserMasterPanel() {
     }
 
     setDicErrors(dicNextErrors);
-    return Object.keys(dicNextErrors).length === 0;
+    const blnValid = Object.keys(dicNextErrors).length === 0;
+    if (!blnValid) {
+      focusFirstDialogError(dicNextErrors);
+    }
+    return blnValid;
   }
 
   function saveUser() {
@@ -750,58 +879,69 @@ export default function UserMasterPanel() {
     });
   }
 
-  function deleteUser(strUserId: string) {
-    openConfirmDialog({
-      strTitle: dicModuleLabels.confirmDeleteTitle,
-      strMessage: dicModuleLabels.confirmDeleteMessage,
-      strConfirmLabel: dicCommonLabels.delete,
-      fnOnConfirm: async () => {
-        await masterApiService.bulkUserDelete([Number(strUserId)]);
-        await loadData();
-        showToast(dicModuleLabels.deleteSuccess);
-      }
-    });
-  }
-
   return (
-    <Box className={styles.page}>
+    <Box className={`${styles.page} app-master-page-relative`}>
       <Box className={styles.topBar}>
         <Button data-controlid="user-master.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/dashboard")}>
           {dicModuleLabels.backButton}
         </Button>
       </Box>
 
-      <Box className={styles.controlsCard}>
+      <Breadcrumbs className="app-breadcrumbs app-breadcrumbs-master" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon className="app-breadcrumb-separator-icon" />}>
+        <Typography className="app-breadcrumb-label">{strBreadcrumbParent}</Typography>
+        <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{dicModuleLabels.pageTitle}</Typography>
+      </Breadcrumbs>
+
+      <Box className="app-master-search-panel">
         {strRightsError ? <Alert severity="warning" sx={{ mb: 2 }}>{strRightsError}</Alert> : null}
         {blnReadOnly ? <Alert severity="info" sx={{ mb: 2 }}>You have read-only access to this screen.</Alert> : null}
-        <Box className={styles.userSearchRow}>
+        <Box
+          className={`${styles.searchRow} ${styles.userSearchRow}`}
+          aria-busy={blnSearchPanelFrozen}
+          sx={{
+            alignItems: "center",
+            "& .MuiButton-root": { alignSelf: "center" },
+          }}
+        >
           <TextField
-            inputProps={{ "data-controlid": "user-master.list.search.login-id.input" }}
+            className="app-mui-text-field"
+            id="user-search-login-id"
+            controlId="user-master.list.search.login-id.input"
+            inputProps={{ "data-controlid": "user-master.list.search.login-id.input", "controlId": "user-master.list.search.login-id.input" }}
+            label={t("search_login_or_email_label", "Search by login name or email")}
             value={dicSearchDraft.code}
-            placeholder={dicModuleLabels.searchCodePlaceholder}
+            placeholder={t("search_login_or_email_placeholder", "Enter login name or email")}
+            size="small"
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon className="app-search-adornment-icon" /></InputAdornment> }}
+            disabled={blnSearchPanelFrozen}
             fullWidth
             onChange={(objEvent) => setDicSearchDraft((objPrevious) => ({ ...objPrevious, code: objEvent.target.value }))}
           />
           <TextField
-            inputProps={{ "data-controlid": "user-master.list.search.name.input" }}
-            value={dicSearchDraft.name}
-            placeholder={dicModuleLabels.searchNamePlaceholder}
-            fullWidth
-            onChange={(objEvent) => setDicSearchDraft((objPrevious) => ({ ...objPrevious, name: objEvent.target.value }))}
-          />
-          <TextField
-            inputProps={{ "data-controlid": "user-master.list.search.employee.input" }}
+            className="app-mui-text-field"
+            id="user-search-employee"
+            controlId="user-master.list.search.employee.input"
+            inputProps={{ "data-controlid": "user-master.list.search.employee.input", "controlId": "user-master.list.search.employee.input" }}
+            label={dicModuleLabels.tableLinkedEmployee}
             value={dicSearchDraft.employeeName}
             placeholder={dicModuleLabels.searchEmployeePlaceholder}
+            size="small"
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon className="app-search-adornment-icon" /></InputAdornment> }}
+            disabled={blnSearchPanelFrozen}
             fullWidth
             onChange={(objEvent) => setDicSearchDraft((objPrevious) => ({ ...objPrevious, employeeName: objEvent.target.value }))}
           />
           <TextField
+            className="app-mui-text-field"
+            id="user-search-status"
+            controlId="user-master.list.search.status.select"
             select
             SelectProps={{ native: false }}
-            inputProps={{ "data-controlid": "user-master.list.search.status.select" }}
-            label={dicModuleLabels.searchStatusPlaceholder}
+            inputProps={{ "data-controlid": "user-master.list.search.status.select", "controlId": "user-master.list.search.status.select" }}
+            label={dicModuleLabels.tableStatus}
             value={dicSearchDraft.status}
+            size="small"
+            disabled={blnSearchPanelFrozen}
             fullWidth
             onChange={(objEvent) => setDicSearchDraft((objPrevious) => ({ ...objPrevious, status: objEvent.target.value as SearchForm["status"] }))}
           >
@@ -810,51 +950,67 @@ export default function UserMasterPanel() {
             <MenuItem data-controlid="user-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
-            <Button data-controlid="user-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }}>
+            <Button data-controlid="user-master.list.search.button" className="app-btn app-btn-primary" startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }} disabled={blnSearchPanelFrozen}>
               {dicCommonLabels.search}
             </Button>
-          </Box>
-          <Box className={styles.searchActions}>
-            <Button data-controlid="user-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }}>
+            <Button data-controlid="user-master.list.clear.button" className="app-btn app-btn-outline" startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnSearchPanelFrozen}>
               {dicCommonLabels.clear}
             </Button>
           </Box>
         </Box>
 
-        {lstSelectedIds.length > 0 && (blnCanEdit || blnCanDelete) ? (
+        {!blnSubmitting && lstSelectedIds.length > 0 && !blnReadOnly && (blnCanEdit || blnCanDelete) ? (
           <Box className={styles.bulkBar}>
             <Typography className={styles.bulkCount}>{lstSelectedIds.length} {dicModuleLabels.bulkRowsSelected}</Typography>
-            {blnCanEdit ? <Button data-controlid="user-master.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")}>{dicModuleLabels.bulkActivate}</Button> : null}
-            {blnCanEdit ? <Button data-controlid="user-master.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")}>{dicModuleLabels.bulkDeactivate}</Button> : null}
-            {blnCanDelete ? <Button data-controlid="user-master.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete}>{dicModuleLabels.bulkDelete}</Button> : null}
+            {blnCanEdit ? <Button data-controlid="user-master.list.bulk-activate.button" className={styles.bulkActivate} onClick={() => bulkUpdateStatus("Active")} disabled={blnSubmitting}>{dicModuleLabels.bulkActivate}</Button> : null}
+            {blnCanEdit ? <Button data-controlid="user-master.list.bulk-deactivate.button" className={styles.bulkDeactivate} onClick={() => bulkUpdateStatus("Inactive")} disabled={blnSubmitting}>{dicModuleLabels.bulkDeactivate}</Button> : null}
+            {blnCanDelete ? <Button data-controlid="user-master.list.bulk-delete.button" className={styles.bulkDelete} onClick={bulkDelete} disabled={blnSubmitting}>{dicModuleLabels.bulkDelete}</Button> : null}
           </Box>
         ) : null}
       </Box>
 
-      <Box className={styles.tableCard}>
-        <Box className={styles.tableWrap}>
-          {!blnCanView ? (
+      <Box className="app-master-table-panel app-master-page-relative">
+        {(blnLoading || blnRightsLoading) && !blnDialogOpen ? (
+          <UserGridSkeleton />
+        ) : !blnCanView ? (
             <Box className={styles.emptyState}>
               <Typography>You do not have permission to view this screen.</Typography>
             </Box>
-          ) : (
-            <CommonTable
-              columns={lstTableColumns}
-              rows={lstTableRows}
-              rowIdField="id"
-              emptyMessage={dicModuleLabels.emptyMessage}
-              exportFileName="user-master"
-              showExportOptions={blnCanExport}
-              showPaginationSummary
-              testIdPrefix="user-master.list"
-              withPaper={false}
-              toolbarLeft={
-                blnCanAdd ? <Button data-controlid="user-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => { void openDialog("add"); }} disabled={blnRightsLoading || blnLoading || blnSubmitting}>{dicModuleLabels.addButton}</Button> : null
-              }
-              getRowSx={(dicRow) => lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : undefined}
-            />
-          )}
-        </Box>
+        ) : (
+          <CommonTable
+            columns={lstTableColumns}
+            rows={lstTableRows}
+            rowIdField="id"
+            emptyMessage={dicModuleLabels.emptyMessage}
+            exportFileName="user-master"
+            exportButtonClassName="app-btn app-btn-outline"
+            showExportOptions={blnCanExport}
+            showPaginationSummary
+            hideRowClickHint
+            testIdPrefix="user-master.list"
+            minTableWidth={1180}
+            toolbarLeft={
+              blnCanAdd ? <Button data-controlid="user-master.list.add.button" className="app-btn app-btn-primary" startIcon={<AddRoundedIcon />} onClick={() => { void openDialog("add"); }} disabled={blnRightsLoading || blnLoading || blnSubmitting}>{dicModuleLabels.addButton}</Button> : null
+            }
+            onRowClick={(dicRow) => {
+              if (blnRightsLoading || blnLoading || blnSubmitting || (!blnCanEdit && !blnCanView)) return;
+              const dicUser = lstUsers.find((dicItem) => dicItem.id === dicRow.id);
+              if (dicUser) void openDialog(blnCanEdit ? "edit" : "view", dicUser);
+            }}
+            getRowSx={(dicRow) => ({
+              backgroundColor: lstSelectedIds.includes(dicRow.id) ? "rgba(37, 99, 235, 0.08)" : "#fff",
+              "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
+              "&.MuiTableRow-hover:hover td:first-of-type .MuiLink-root": { textDecoration: "underline" },
+            })}
+            className="app-master-common-table-reset"
+          />
+        )}
+        <BlockingLoader
+          blnOpen={blnSubmitting}
+          strLabel={dicCommonLabels.processing}
+          intZIndex={1400}
+          blnLocal
+        />
       </Box>
 
       <CommonMasterDialog
@@ -863,40 +1019,117 @@ export default function UserMasterPanel() {
         primaryButtonTestId="user-master.dialog.primary.button"
         blnOpen={blnDialogOpen}
         onClose={closeDialog}
-        onDialogClose={blnSubmitting ? undefined : closeDialog}
-        maxWidth="md"
-        paperClassName={styles.dialogPaperDapartment}
+        onDialogClose={(_, strReason) => {
+          if (!blnSubmitting && strReason !== "backdropClick") {
+            closeDialog();
+          }
+        }}
+        maxWidth={false}
+        fullWidth={false}
+        paperClassName={`${styles.dialogPaperDapartment} app-master-dialog-compact-buttons`}
         paperSx={{
           overflow: "hidden",
           maxHeight: "86vh",
           background: "linear-gradient(180deg, rgba(250,253,255,1) 0%, rgba(255,255,255,1) 55%, rgba(247,250,252,1) 100%)",
+          borderRadius: "10px !important",
+          width: "min(860px, calc(100vw - 32px)) !important",
+          maxWidth: "860px !important",
+          "& .MuiButton-root": { fontSize: "12px !important", fontWeight: "600 !important" },
+          "& .MuiSvgIcon-root": { color: "var(--app-primary-color)" },
         }}
         strTitle={strMode === "add" ? "Add User" : strMode === "edit" ? "Edit User" : "View User"}
         strSecondaryLabel={strMode === "view" ? dicCommonLabels.close : dicCommonLabels.cancel}
         strPrimaryLabel={strMode === "add" ? dicModuleLabels.saveButton : dicModuleLabels.updateButton}
+        strSecondaryButtonClassName="app-btn app-btn-outline"
+        strPrimaryButtonClassName="app-btn app-btn-primary"
         onPrimaryAction={saveUser}
         blnPrimaryDisabled={blnSubmitting}
         blnHidePrimary={strMode === "view"}
         nodeTitleAction={
-          <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
-            <Typography className={styles.switchLabel}>{dicModuleLabels.fieldStatus}</Typography>
-            <ActiveStatusSwitch testId="user-master.dialog.status.switch" blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setFormField("status", blnChecked ? "Active" : "Inactive")} />
+          <Box className={`${styles.switchRow} app-master-dialog-status-row`}>
+            <ActiveStatusSwitch
+              className="app-master-dialog-status-switch"
+              testId="user-master.dialog.status.switch"
+              blnIsActive={dicForm.status === "Active"}
+              disabled={strMode === "view"}
+              onChange={(blnChecked) => setFormField("status", blnChecked ? "Active" : "Inactive")}
+            />
+            <Typography className={`${styles.switchLabel} app-master-dialog-status-text`}>{dicCommonLabels.statusActive}</Typography>
+            <IconButton aria-label={dicCommonLabels.close} onClick={closeDialog} size="small" className="app-master-dialog-close-button app-master-dialog-close-button-spaced">
+              <CloseRoundedIcon fontSize="small" />
+            </IconButton>
           </Box>
         }
-        titleSx={{ px: 2.25, py: 1.25, fontSize: "1rem", maxHeight: 50 }}
-        nodeContent={<Box sx={{ display: "grid", gap: 2.25, pt: 1 }}>
-          <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{dicModuleLabels.sectionAccountAssociation}</Typography>
+        nodeFooterStart={<Typography className="app-master-dialog-required-fields">Required fields are marked <Box component="span" className="app-master-dialog-required-asterisk">*</Box></Typography>}
+        contentClassName="app-master-dialog-content-compact"
+        contentSx={{
+          overflowX: "hidden",
+          overflowY: "auto",
+          px: "20px",
+          py: "12px",
+          borderColor: "#e5edf5",
+          "& .MuiFormLabel-asterisk": { color: "var(--app-field-error-color)" },
+          "& .MuiAutocomplete-popupIndicator svg": { color: "var(--app-primary-color)", fontSize: 18 },
+          "& .MuiIconButton-root svg": { color: "var(--app-primary-color)" },
+        }}
+        nodeContent={<Box ref={objDialogRootRef} sx={{ display: "grid", gap: "12px" }}>
+          <Box sx={{ border: "1px solid #e3edfc", borderRadius: "6px", background: "#f7faff", p: "12px", display: "grid", gap: "12px" }}>
+          <Box>
+            <Typography className="app-master-dialog-section-heading">{dicModuleLabels.sectionAccountAssociation}</Typography>
+            <Typography className="app-master-dialog-section-subheading app-master-dialog-section-subheading-spaced">Link this account to an employee profile when needed.</Typography>
+          </Box>
           <Box
             sx={{
               display: "grid",
               gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-              gap: 2,
-              alignItems: "center",
+              gap: "12px",
+              alignItems: "end",
             }}
           >
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Typography sx={{ fontWeight: 400, color: "#0f172a" }}>{dicModuleLabels.fieldLoginAsEmployee}</Typography>
-              <Switch inputProps={{ "data-controlid": "user-master.dialog.login-as-employee.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.loginAsEmployee} onChange={(_, blnChecked) => setFormField("loginAsEmployee", blnChecked)} disabled={blnLoginAsEmployeeDisabled} />
+            <Box sx={{ display: "grid", gap: 0.75 }}>
+              <Typography sx={{ color: "#1d2a44", fontSize: "12px", fontWeight: 600 }}>Account Type</Typography>
+              <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, minHeight: 40 }}>
+                <Button
+                  variant="outlined"
+                  disabled={blnLoginAsEmployeeDisabled}
+                  onClick={() => setFormField("loginAsEmployee", false)}
+                  startIcon={<Radio checked={!dicForm.loginAsEmployee} disableRipple size="small" sx={{ color: "var(--app-primary-color)", p: 0, "&.Mui-checked": { color: "var(--app-primary-color)" } }} />}
+                  sx={{
+                    justifyContent: "flex-start",
+                    minHeight: 40,
+                    borderRadius: "6px",
+                    boxShadow: "none",
+                    borderColor: !dicForm.loginAsEmployee ? "var(--app-primary-color)" : "#d7e4f2",
+                    color: "var(--app-primary-color)",
+                    backgroundColor: !dicForm.loginAsEmployee ? "rgba(29, 93, 150, 0.08)" : "#fff",
+                    px: 1.25,
+                    "& .MuiButton-startIcon": { mr: 0.75, ml: 0 },
+                    "&:hover": { backgroundColor: "#f8fbff", borderColor: "var(--app-primary-color)" },
+                  }}
+                >
+                  Regular account
+                </Button>
+                <Button
+                  variant="outlined"
+                  disabled={blnLoginAsEmployeeDisabled}
+                  onClick={() => setFormField("loginAsEmployee", true)}
+                  startIcon={<Radio checked={dicForm.loginAsEmployee} disableRipple size="small" sx={{ color: "var(--app-primary-color)", p: 0, "&.Mui-checked": { color: "var(--app-primary-color)" } }} />}
+                  sx={{
+                    justifyContent: "flex-start",
+                    minHeight: 40,
+                    borderRadius: "6px",
+                    boxShadow: "none",
+                    borderColor: dicForm.loginAsEmployee ? "var(--app-primary-color)" : "#d7e4f2",
+                    color: "var(--app-primary-color)",
+                    backgroundColor: dicForm.loginAsEmployee ? "rgba(29, 93, 150, 0.08)" : "#fff",
+                    px: 1.25,
+                    "& .MuiButton-startIcon": { mr: 0.75, ml: 0 },
+                    "&:hover": { backgroundColor: "#f8fbff", borderColor: "var(--app-primary-color)" },
+                  }}
+                >
+                  Employee-linked account
+                </Button>
+              </Box>
             </Box>
 
             {dicForm.loginAsEmployee ? (
@@ -910,17 +1143,29 @@ export default function UserMasterPanel() {
                 onChange={(_, objEmployee) => setFormField("employeeID", objEmployee?.intID ?? "")}
                 disabled={strMode === "view"}
                 fullWidth
+                className="app-mui-text-field"
                 renderInput={(objParams) => (
                   <TextField
                     {...objParams}
+                    className="app-mui-text-field"
                     label={dicModuleLabels.fieldEmployee}
                     inputProps={{
                       ...objParams.inputProps,
                       "data-controlid": "user-master.dialog.employee.select",
                     }}
+                    placeholder="Search and select employee"
                     error={Boolean(dicErrors.employeeID)}
                     helperText={dicErrors.employeeID}
                     required
+                    InputProps={{
+                      ...objParams.InputProps,
+                      startAdornment: (
+                        <>
+                          <SearchRoundedIcon sx={{ color: "var(--app-primary-color)", fontSize: 18, ml: 0.5, mr: 0.5 }} />
+                          {objParams.InputProps.startAdornment}
+                        </>
+                      ),
+                    }}
                   />
                 )}
               />
@@ -933,10 +1178,12 @@ export default function UserMasterPanel() {
             sx={{
               display: "grid",
               gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-              gap: 2,
+              gap: "12px",
             }}
           >
             <TextField
+              className="app-mui-text-field"
+              size="small"
               label={dicModuleLabels.fieldLoginId}
               inputProps={{ "data-controlid": "user-master.dialog.login-id.input" }}
               value={dicForm.loginId}
@@ -947,18 +1194,18 @@ export default function UserMasterPanel() {
               fullWidth
               required
             />
-            <TextField label={dicModuleLabels.fieldLoginName} inputProps={{ "data-controlid": "user-master.dialog.login-name.input" }} value={dicForm.loginName} onChange={(objEvent) => setFormField("loginName", objEvent.target.value)} error={Boolean(dicErrors.loginName)} helperText={dicErrors.loginName} disabled={blnEmployeeDerivedReadOnly} fullWidth required />
+            <TextField className="app-mui-text-field" size="small" label={dicModuleLabels.fieldLoginName} inputProps={{ "data-controlid": "user-master.dialog.login-name.input" }} value={dicForm.loginName} onChange={(objEvent) => setFormField("loginName", objEvent.target.value)} error={Boolean(dicErrors.loginName)} helperText={dicErrors.loginName} disabled={blnEmployeeDerivedReadOnly} fullWidth required />
           </Box>
 
           <Box
             sx={{
               display: "grid",
               gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-              gap: 2,
+              gap: "12px",
             }}
           >
-            <TextField label={dicModuleLabels.fieldEmail} inputProps={{ "data-controlid": "user-master.dialog.email.input" }} value={dicForm.email} onChange={(objEvent) => setFormField("email", objEvent.target.value)} error={Boolean(dicErrors.email)} helperText={dicErrors.email} disabled={blnEmployeeDerivedReadOnly} fullWidth required />
-            <TextField label={dicModuleLabels.fieldMobile} inputProps={{ "data-controlid": "user-master.dialog.mobile.input" }} value={dicForm.mobile} onChange={(objEvent) => setFormField("mobile", objEvent.target.value)} error={Boolean(dicErrors.mobile)} helperText={dicErrors.mobile} disabled={blnEmployeeDerivedReadOnly} fullWidth required />
+            <TextField className="app-mui-text-field" size="small" label={dicModuleLabels.fieldEmail} inputProps={{ "data-controlid": "user-master.dialog.email.input" }} value={dicForm.email} onChange={(objEvent) => setFormField("email", objEvent.target.value)} error={Boolean(dicErrors.email)} helperText={dicErrors.email} disabled={blnEmployeeDerivedReadOnly} fullWidth required />
+            <TextField className="app-mui-text-field" size="small" label={dicModuleLabels.fieldMobile} inputProps={{ "data-controlid": "user-master.dialog.mobile.input" }} value={dicForm.mobile} onChange={(objEvent) => setFormField("mobile", objEvent.target.value)} error={Boolean(dicErrors.mobile)} helperText={dicErrors.mobile} disabled={blnEmployeeDerivedReadOnly} fullWidth required />
           </Box>
 
           {strMode === "add" ? (
@@ -966,31 +1213,66 @@ export default function UserMasterPanel() {
               sx={{
                 display: "grid",
                 gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-                gap: 2,
+                columnGap: "12px",
+                rowGap: "6px",
+                alignItems: "start",
               }}
             >
+              <Box sx={{ display: "grid" }}>
+                <TextField
+                  className="app-mui-text-field"
+                  size="small"
+                  label={dicModuleLabels.fieldPassword}
+                  inputProps={{ "data-controlid": "user-master.dialog.password.input" }}
+                  type={blnPasswordVisible ? "text" : "password"}
+                  value={dicForm.password}
+                  onChange={(objEvent) => setFormField("password", objEvent.target.value)}
+                  error={Boolean(dicErrors.password)}
+                  helperText={dicErrors.password}
+                  disabled={false}
+                  fullWidth
+                  required
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton data-controlid="user-master.dialog.password-visibility.toggle" onClick={() => setBlnPasswordVisible((blnValue) => !blnValue)} edge="end" sx={{ p: 0.25 }}>
+                          {blnPasswordVisible ? <VisibilityOffRoundedIcon sx={{ fontSize: 31 }} /> : <VisibilityRoundedIcon sx={{ fontSize: 31 }} />}
+                        </IconButton>
+                      </InputAdornment>
+                    )
+                  }}
+                />
+                <Box sx={{ display: "grid", gap: "6px", mt: "6px" }}>
+                  <Box sx={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr)) auto", gap: 0.5, alignItems: "center" }}>
+                    {[0, 1, 2, 3].map((intIndex) => (
+                      <Box
+                        key={intIndex}
+                        sx={{
+                          height: 6,
+                          borderRadius: 999,
+                          backgroundColor: dicForm.password && intIndex < intPasswordStrength + 1 ? "var(--app-success-color)" : "#dbe7f2",
+                        }}
+                      />
+                    ))}
+                    <Typography sx={{ color: dicForm.password ? "var(--app-success-color)" : "#64748b", fontSize: "10.5px", fontWeight: 700, lineHeight: 1 }}>
+                      {strPasswordStrengthLabel}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: "flex", flexWrap: "wrap", columnGap: 1.5, rowGap: 0.35 }}>
+                    {lstPasswordHints.map((objHint) => (
+                      <Box key={objHint.strLabel} sx={{ display: "inline-flex", alignItems: "center", gap: 0.35, color: objHint.blnMet ? "#2f7e3d" : "#64748b", fontSize: "10.5px" }}>
+                        <Box sx={{ alignItems: "center", backgroundColor: objHint.blnMet ? "#49a267" : "#94a3b8", borderRadius: "50%", color: "#fff", display: "inline-flex", height: 14, justifyContent: "center", width: 14 }}>
+                          <CheckRoundedIcon sx={{ color: "#fff !important", fontSize: 11 }} />
+                        </Box>
+                        <Typography component="span" sx={{ color: "inherit", fontSize: "10.5px", lineHeight: 1.2 }}>{objHint.strLabel}</Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                </Box>
+              </Box>
               <TextField
-                label={dicModuleLabels.fieldPassword}
-                inputProps={{ "data-controlid": "user-master.dialog.password.input" }}
-                type={blnPasswordVisible ? "text" : "password"}
-                value={dicForm.password}
-                onChange={(objEvent) => setFormField("password", objEvent.target.value)}
-                error={Boolean(dicErrors.password)}
-                helperText={dicErrors.password}
-                disabled={false}
-                fullWidth
-                required
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton data-controlid="user-master.dialog.password-visibility.toggle" onClick={() => setBlnPasswordVisible((blnValue) => !blnValue)} edge="end">
-                        {blnPasswordVisible ? <VisibilityOffRoundedIcon /> : <VisibilityRoundedIcon />}
-                      </IconButton>
-                    </InputAdornment>
-                  )
-                }}
-              />
-              <TextField
+                className="app-mui-text-field"
+                size="small"
                 label={dicModuleLabels.fieldConfirmPassword}
                 inputProps={{ "data-controlid": "user-master.dialog.confirm-password.input" }}
                 type={blnConfirmPasswordVisible ? "text" : "password"}
@@ -1004,8 +1286,8 @@ export default function UserMasterPanel() {
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
-                      <IconButton data-controlid="user-master.dialog.confirm-password-visibility.toggle" onClick={() => setBlnConfirmPasswordVisible((blnValue) => !blnValue)} edge="end">
-                        {blnConfirmPasswordVisible ? <VisibilityOffRoundedIcon /> : <VisibilityRoundedIcon />}
+                      <IconButton data-controlid="user-master.dialog.confirm-password-visibility.toggle" onClick={() => setBlnConfirmPasswordVisible((blnValue) => !blnValue)} edge="end" sx={{ p: 0.25 }}>
+                        {blnConfirmPasswordVisible ? <VisibilityOffRoundedIcon sx={{ fontSize: 31 }} /> : <VisibilityRoundedIcon sx={{ fontSize: 31 }} />}
                       </IconButton>
                     </InputAdornment>
                   )
@@ -1017,11 +1299,15 @@ export default function UserMasterPanel() {
           <Box
             sx={{
               display: "grid",
-              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-              gap: 2,
+              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" , mt: "1"},
+              gap: "15px",
+              alignItems: "center",
             }}
           >
             <TextField
+              className="app-mui-text-field"
+              sx={{ mt: 1 }}
+              size="small"
               select
               label={dicModuleLabels.fieldPreferredLanguage}
               inputProps={{ "data-controlid": "user-master.dialog.preferred-language.select" }}
@@ -1037,31 +1323,37 @@ export default function UserMasterPanel() {
               ))}
             </TextField>
             {blnShowOtpOnlyOption ? (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, justifyContent: "space-between" }}>
                 <Typography sx={{ fontWeight: 400, color: "#0f172a" }}>{dicModuleLabels.fieldEnableOtpOnly}</Typography>
-                <Switch inputProps={{ "data-controlid": "user-master.dialog.otp-only.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.mfaEnabled} onChange={(_, blnChecked) => setFormField("mfaEnabled", blnChecked)} disabled={strMode === "view" || blnDisableOtpOnlyOption} />
+                <Switch className="app-master-dialog-status-switch" inputProps={{ "data-controlid": "user-master.dialog.otp-only.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.mfaEnabled} onChange={(_, blnChecked) => setFormField("mfaEnabled", blnChecked)} disabled={strMode === "view" || blnDisableOtpOnlyOption} />
               </Box>
             ) : null}
           </Box>
 
           {dicForm.ssoEnabled ? (
-            <TextField label={dicModuleLabels.fieldSsoLoginMapping} inputProps={{ "data-controlid": "user-master.dialog.sso-login-mapping.input" }} value={dicForm.ssoLoginMapping} onChange={(objEvent) => setFormField("ssoLoginMapping", objEvent.target.value)} disabled={strMode === "view"} fullWidth />
+            <TextField className="app-mui-text-field" size="small" label={dicModuleLabels.fieldSsoLoginMapping} inputProps={{ "data-controlid": "user-master.dialog.sso-login-mapping.input" }} value={dicForm.ssoLoginMapping} onChange={(objEvent) => setFormField("ssoLoginMapping", objEvent.target.value)} disabled={strMode === "view"} fullWidth />
           ) : null}
+          </Box>
 
 
           {/* Application Access: one identity, an explicit primary group per portal. HRMS is listed
               first; each toggle sits inline beside the group it governs. */}
-          <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{dicModuleLabels.sectionApplicationAccess}</Typography>
+          <Box sx={{ border: "1px solid #e3edfc", borderRadius: "6px", background: "#f7faff", p: "12px", display: "grid", gap: "12px" }}>
+          <Box>
+            <Typography className="app-master-dialog-section-heading">{dicModuleLabels.sectionApplicationAccess}</Typography>
+            <Typography className="app-master-dialog-section-subheading app-master-dialog-section-subheading-spaced">Turn on the portals this user can access.</Typography>
+          </Box>
           {dicErrors.portalAccess ? (
-            <Typography sx={{ color: "#d32f2f", fontSize: "0.8rem" }} data-controlid="user-master.dialog.portal-access.error">
+            <Typography sx={{ color: "#d32f2f", fontSize: "0.8rem" }} tabIndex={-1} data-controlid="user-master.dialog.portal-access.error">
               {dicErrors.portalAccess}
             </Typography>
           ) : null}
 
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2, alignItems: "center" }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr) auto", md: "minmax(120px, 164px) auto" }, alignItems: "center", gap: 1 }}>
               <Typography sx={{ fontWeight: 400, color: "#0f172a" }}>{dicModuleLabels.fieldHrmsAccess}</Typography>
               <Switch
+                className="app-master-dialog-status-switch"
                 inputProps={{ "data-controlid": "user-master.dialog.hrms-access.switch" } as InputHTMLAttributes<HTMLInputElement>}
                 checked={dicForm.hrmsAccessEnabled}
                 onChange={(_, blnChecked) => setFormField("hrmsAccessEnabled", blnChecked)}
@@ -1069,32 +1361,27 @@ export default function UserMasterPanel() {
               />
             </Box>
 
-            <TextField
-              select
+            <CommonSearchableSelect
+              controlId="user-master.dialog.hrms-user-group.select"
               label={dicModuleLabels.fieldHrmsUserGroup}
-              inputProps={{ "data-controlid": "user-master.dialog.hrms-user-group.select" }}
-              value={String(dicForm.hrmsUserGroupID)}
-              onChange={(objEvent) => setFormField("hrmsUserGroupID", objEvent.target.value ? Number(objEvent.target.value) : "")}
+              value={dicForm.hrmsUserGroupID}
+              options={lstHrmsGroupOptions}
+              onChange={(intValue) => setFormField("hrmsUserGroupID", intValue)}
               error={Boolean(dicErrors.hrmsUserGroupID)}
               helperText={dicErrors.hrmsUserGroupID}
               disabled={strMode === "view" || !dicForm.hrmsAccessEnabled}
               fullWidth
               required={dicForm.hrmsAccessEnabled}
-              SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.hrms-user-group.select" } as HTMLAttributes<HTMLDivElement> }}
-            >
-              <MenuItem value="" data-controlid="user-master.dialog.hrms-user-group.select.option">{dicModuleLabels.optionSelect}</MenuItem>
-              {lstHrmsGroupOptions.map((objGroup) => (
-                <MenuItem key={objGroup.intID} value={String(objGroup.intID)} data-controlid={`user-master.dialog.hrms-user-group.${normalizeSelectToken(objGroup.strCode || objGroup.strLabel)}.option`}>
-                  {objGroup.strCode ? `${objGroup.strCode} - ${objGroup.strLabel}` : objGroup.strLabel}
-                </MenuItem>
-              ))}
-            </TextField>
+              className="app-mui-text-field"
+              searchIconSize={18}
+            />
 
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr) auto", md: "minmax(120px, 164px) auto" }, alignItems: "center", gap: 1 }}>
               <Typography sx={{ fontWeight: 400, color: "#0f172a" }}>{dicModuleLabels.fieldEssAccess}</Typography>
               <Tooltip title={blnEssAccessDisabled && strMode !== "view" ? dicModuleLabels.validationEssRequiresEmployee : ""} arrow>
                 <span>
                   <Switch
+                    className="app-master-dialog-status-switch"
                     inputProps={{ "data-controlid": "user-master.dialog.ess-access.switch" } as InputHTMLAttributes<HTMLInputElement>}
                     checked={dicForm.essAccessEnabled}
                     onChange={(_, blnChecked) => setFormField("essAccessEnabled", blnChecked)}
@@ -1104,27 +1391,22 @@ export default function UserMasterPanel() {
               </Tooltip>
             </Box>
 
-            <TextField
-              select
+            <CommonSearchableSelect
+              controlId="user-master.dialog.ess-user-group.select"
               label={dicModuleLabels.fieldEssUserGroup}
-              inputProps={{ "data-controlid": "user-master.dialog.ess-user-group.select" }}
-              value={String(dicForm.essUserGroupID)}
-              onChange={(objEvent) => setFormField("essUserGroupID", objEvent.target.value ? Number(objEvent.target.value) : "")}
+              value={dicForm.essUserGroupID}
+              options={lstEssGroupOptions}
+              onChange={(intValue) => setFormField("essUserGroupID", intValue)}
               error={Boolean(dicErrors.essUserGroupID)}
               helperText={dicErrors.essUserGroupID}
               disabled={strMode === "view" || !dicForm.essAccessEnabled}
               fullWidth
               required={dicForm.essAccessEnabled}
-              SelectProps={{ SelectDisplayProps: { "data-controlid": "user-master.dialog.ess-user-group.select" } as HTMLAttributes<HTMLDivElement> }}
-            >
-              <MenuItem value="" data-controlid="user-master.dialog.ess-user-group.select.option">{dicModuleLabels.optionSelect}</MenuItem>
-              {lstEssGroupOptions.map((objGroup) => (
-                <MenuItem key={objGroup.intID} value={String(objGroup.intID)} data-controlid={`user-master.dialog.ess-user-group.${normalizeSelectToken(objGroup.strCode || objGroup.strLabel)}.option`}>
-                  {objGroup.strCode ? `${objGroup.strCode} - ${objGroup.strLabel}` : objGroup.strLabel}
-                </MenuItem>
-              ))}
-            </TextField>
+              className="app-mui-text-field"
+              searchIconSize={18}
+            />
 
+          </Box>
           </Box>
         </Box>}
       />
@@ -1143,18 +1425,8 @@ export default function UserMasterPanel() {
         onConfirm={executeConfirmedAction}
       />
 
-      {/* The page-level loader sits above the modal layer, so it must never be raised while the
-          dialog is open - a background list refresh would otherwise cover the dialog and swallow
-          every click on it. Submitting still blocks, because that is user-initiated and the dialog
-          shows a disabled primary button while it runs. */}
-      <BlockingLoader
-        blnOpen={blnSubmitting || ((blnLoading || blnRightsLoading) && !blnDialogOpen)}
-        strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing}
-        intZIndex={1400}
-      />
-
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
-        <Alert severity={objToast.strSeverity} onClose={closeToast} variant="filled" sx={{ width: "100%" }}>{objToast.strMessage}</Alert>
+        <Alert severity={objToast.strSeverity} onClose={closeToast} variant="filled" className="app-master-toast-alert">{objToast.strMessage}</Alert>
       </Snackbar>
     </Box>
   );

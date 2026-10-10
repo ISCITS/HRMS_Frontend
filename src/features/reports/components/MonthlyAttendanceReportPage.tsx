@@ -19,8 +19,8 @@ export default function MonthlyAttendanceReportPage() {
   const { lstEmployees, lstDepartments, lstLocations } = useReportFilterOptions();
 
   const lstColumns = useMemo<CommonTableColumn<ReportDisplayRow>[]>(() => [
-    { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code"), width: 160 },
     { field: "strEmployeeName", headerName: t("employee_name", "Employee"), width: 200 },
+    { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code"), width: 160 },
     { field: "strDepartment", headerName: t("department", "Department"), width: 160 },
     { field: "intDaysRecorded", headerName: t("days_recorded", "Days"), width: 90, align: "right" },
     { field: "intPresent", headerName: t("present", "Present"), width: 105, align: "right" },
@@ -67,6 +67,9 @@ export default function MonthlyAttendanceReportPage() {
   return (
     <ReportGridPage
       strTitle={t("monthly_attendance", "Monthly Attendance Summary")}
+      strBreadcrumbRoot={t("reports", "Reports")}
+      strBreadcrumbSection={t("attendance_reports", "Attendance Reports")}
+      strBreadcrumbTitle={t("monthly_attendance", "Monthly Attendance Summary")}
       strInfo={t("monthly_attendance_info", "Per-employee attendance totals for the selected month by final day status, paid days, late minutes and OT.")}
       lstColumns={lstColumns}
       lstFilters={lstFilters}
@@ -74,6 +77,8 @@ export default function MonthlyAttendanceReportPage() {
       strRowIdField="intEmployeeID"
       strCsvFileName="monthly-attendance"
       blnWrapColumnHeaders={false}
+      blnEqualSearchFilterWidths
+      blnUseMasterStyle
       lstRightsHints={["REPORTS_ATTENDANCE_SUMMARY", "REPORTS"]}
       strEmptyMessage={t("monthly_attendance_empty", "No attendance recorded for the selected month/filters.")}
       fnLoad={async (dicFilters) => {

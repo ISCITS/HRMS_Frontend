@@ -18,7 +18,6 @@ import {
   Button,
   Checkbox,
   Chip,
-  CircularProgress,
   Fade,
   Dialog,
   DialogActions,
@@ -26,7 +25,6 @@ import {
   DialogTitle,
   FormControlLabel,
   IconButton,
-  MenuItem,
   Tooltip,
   Snackbar,
   Grid,
@@ -41,16 +39,17 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Typography,
+  Typography
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { ApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import BlockingLoader, { DottedLoader } from "@/components/shared/BlockingLoader";
 import FileUploadButton from "@/components/shared/files/FileUploadButton";
 import ITDeclarationStatusBadge from "@/features/it-declaration/components/ITDeclarationStatusBadge";
 import { hrItDeclarationService, itDeclarationService, type ItDeclarationDto } from "@/features/it-declaration/services/itDeclarationService";
@@ -707,6 +706,17 @@ export default function SalaryEssDeclarationsPage() {
     [lstSectionRows, strSectionFilter]
   );
 
+  const lstSectionFilterSelectOptions = useMemo(
+    () => [
+      { intID: "All", strLabel: t("all_sections", "All Sections") },
+      ...lstSectionFilterOptions.map((objOption) => ({
+        intID: objOption.strSection,
+        strLabel: `${objOption.strSection} - ${objOption.strDescription}`,
+      })),
+    ],
+    [lstSectionFilterOptions, t]
+  );
+
   function renderDeclarationRowAction(objRow: DeclarationRow) {
     const blnHasAmount = objRow.decDeclaredAmount > 0;
     const strDash = <Typography sx={{ fontSize: "0.76rem", color: "#94a3b8", fontWeight: 700 }}>-</Typography>;
@@ -776,7 +786,7 @@ export default function SalaryEssDeclarationsPage() {
     { field: "declaredAmount", headerName: t("declared_amount", "Declared Amount"), width: 130, sortable: false },
     { field: "maxLimit", headerName: t("max_limit", "Max Limit"), width: 90, sortable: false },
     { field: "status", headerName: t("status", "Status"), width: 100, sortable: false },
-    { field: "action", headerName: t("action", "Action"), width: 90, sortable: false, align: "center", exportable: false },
+    { field: "action", headerName: t("action", "Action"), width: 90, sortable: false, exportable: false },
   ];
 
   function openAddDeclarationFromTable() {
@@ -1780,22 +1790,13 @@ export default function SalaryEssDeclarationsPage() {
             <Stack direction="row" alignItems="center" justifyContent="space-between" mb={0.8} flexWrap="wrap" rowGap={0.6} sx={{ flex: "0 0 auto" }}>
               <Typography sx={{ fontWeight: 800, color: "#0f172a", fontSize: "0.95rem" }}>{t("your_declarations", "Your Declarations")}</Typography>
               <Stack direction="row" alignItems="center" spacing={1}>
-                <TextField
-                  select
-                  size="small"
-                  value={strSectionFilter}
-                  onChange={(objEvent) => setStrSectionFilter(objEvent.target.value)}
-                  sx={{ minWidth: 190 }}
+                <CommonSearchableSelect
                   label={t("filter_by_section", "Section")}
-                  InputLabelProps={{ shrink: true }}
-                >
-                  <MenuItem value="All">{t("all_sections", "All Sections")}</MenuItem>
-                  {lstSectionFilterOptions.map((objOption) => (
-                    <MenuItem key={objOption.strSection} value={objOption.strSection}>
-                      {objOption.strSection} - {objOption.strDescription}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                  value={strSectionFilter}
+                  options={lstSectionFilterSelectOptions}
+                  onChange={(strValue) => setStrSectionFilter(strValue || "All")}
+                  sx={{ minWidth: 190 }}
+                />
               </Stack>
             </Stack>
             <Box sx={{ flex: "1 1 auto", minHeight: 0, borderRadius: "8px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
@@ -2069,7 +2070,7 @@ export default function SalaryEssDeclarationsPage() {
           <Button onClick={closeEditModal}>{blnDeclarationReadOnly ? t("close", "Close") : t("cancel", "Cancel")}</Button>
           {!blnDeclarationReadOnly ? (
             <Button variant="contained" onClick={() => void saveDeclarationEdit()} disabled={blnSaveEditDisabled || blnModalSaving || !blnCanEditDeclaration}>
-              {blnModalSaving ? <CircularProgress size={16} color="inherit" /> : t("save", "Save")}
+              {blnModalSaving ? <DottedLoader intSize={16} color="inherit" /> : t("save", "Save")}
             </Button>
           ) : null}
         </DialogActions>
@@ -2312,7 +2313,7 @@ export default function SalaryEssDeclarationsPage() {
           <Button onClick={() => setBlnSubmitModalOpen(false)}>{t("cancel", "Cancel")}</Button>
           {blnCanSubmitDeclaration ? (
             <Button variant="contained" onClick={() => void submitDeclaration()} disabled={blnSubmitModalLoading}>
-              {blnSubmitModalLoading ? <CircularProgress size={16} color="inherit" /> : t("confirm_submit", "Confirm & Submit")}
+              {blnSubmitModalLoading ? <DottedLoader intSize={16} color="inherit" /> : t("confirm_submit", "Confirm & Submit")}
             </Button>
           ) : null}
         </DialogActions>

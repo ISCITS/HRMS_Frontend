@@ -1,19 +1,16 @@
 "use client";
 
-import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import {
   Alert,
   Box,
-  Button,
   Chip,
-  CircularProgress,
-  Paper,
+  Link,
   Stack,
-  Typography,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { MasterBreadcrumbs, MasterGridSkeleton, dicMasterRowSx } from "@/components/master/MasterListUi";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import styles from "@/components/master/MasterScreen.module.css";
@@ -154,20 +151,25 @@ export default function SalaryFlexiPayDeclarationsRoute() {
     return [
       {
         id: "current",
-        action: (
-          <Button
-            size="small"
-            variant="contained"
-            endIcon={<ArrowForwardRoundedIcon />}
-            onClick={() => objRouter.push("/salary/flexi-pay-declaration")}
-            controlId={`flexi-pay-declarations.row.${objListRow.blnCanDeclare ? "edit" : "view"}.button`}
+        strFinancialYearCode: (
+          <Link
+            className="app-master-first-column-link"
+            component="button"
+            type="button"
+            underline="none"
+            title={objListRow.blnCanDeclare ? t("open", "Open") : t("view", "View")}
+            controlId={`flexi-pay-declarations.row.${objListRow.blnCanDeclare ? "edit" : "view"}.link`}
+            onClick={(objEvent) => {
+              objEvent.stopPropagation();
+              objRouter.push("/salary/flexi-pay-declaration");
+            }}
           >
-            {objListRow.blnCanDeclare ? t("open", "Open") : t("view", "View")}
-          </Button>
+            {objListRow.strFinancialYearCode}
+          </Link>
         ),
+        strFinancialYearCodeSort: objListRow.strFinancialYearCode,
         strEmployeeCode: objListRow.strEmployeeCode,
         strEmployeeName: objListRow.strEmployeeName,
-        strFinancialYearCode: objListRow.strFinancialYearCode,
         strStructureName: objListRow.strStructureName,
         strStatus: <Chip size="small" color={getStatusColor(objListRow.strStatus)} label={getTranslatedStatus(objListRow.strStatus)} />,
         strStatusSort: objListRow.strStatus,
@@ -181,10 +183,9 @@ export default function SalaryFlexiPayDeclarationsRoute() {
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      { field: "action", headerName: t("action", "Action"), align: "center", sortable: false, filterable: false, exportable: false, width: 110 },
+      { field: "strFinancialYearCode", headerName: t("financial_year", "Financial Year"), width: 140, filterable: false, sortAccessor: (objRow) => String(objRow.strFinancialYearCodeSort) },
       { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code"), width: 150 },
       { field: "strEmployeeName", headerName: t("employee_name", "Employee Name"), width: 200 },
-      { field: "strFinancialYearCode", headerName: t("financial_year", "Financial Year"), width: 140 },
       { field: "strStructureName", headerName: t("assigned_salary_structure", "Assigned Salary Structure"), width: 200 },
       { field: "strStatus", headerName: t("current_status", "Current Status"), filterable: false, width: 150, sortAccessor: (objRow) => String(objRow.strStatusSort) },
       { field: "decBasket", headerName: t("flexi_basket_available", "Flexi Basket Available"), align: "right", width: 190 },
@@ -195,16 +196,23 @@ export default function SalaryFlexiPayDeclarationsRoute() {
     [t]
   );
 
+  const nodeBreadcrumbs = <MasterBreadcrumbs strSection={t("breadcrumb_payroll_benefits", "Payroll & Benefits")} strTitle={t("breadcrumb_flexi_pay_declaration", "Flexi Pay Declaration")} />;
+  const dicTableCardSx = { position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none", mt: "0 !important" } as const;
+
   if (blnLoading) {
     return (
-      <Box sx={{ display: "grid", placeItems: "center", minHeight: "48vh" }}>
-        <CircularProgress size={30} />
+      <Box className={styles.page} data-controlid="flexi-pay-declarations.loading">
+        {nodeBreadcrumbs}
+        <Box className={styles.tableCard} sx={dicTableCardSx}>
+          <MasterGridSkeleton strControlId="flexi-pay-declarations.skeleton" intColumns={7} intRows={2} />
+        </Box>
       </Box>
     );
   }
 
   return (
     <Stack spacing={0} className={styles.page} sx={{ gap: 0.5 }}>
+      {nodeBreadcrumbs}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
 
       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ px: 2, py: 0.25 }}>
@@ -227,7 +235,7 @@ export default function SalaryFlexiPayDeclarationsRoute() {
         </Alert>
       ) : null}
 
-      <Paper className={styles.tableCard} sx={{ mt: "0 !important" }}>
+      <Box className={styles.tableCard} sx={dicTableCardSx}>
         <CommonTable
           columns={lstTableColumns}
           rows={lstTableRows}
@@ -236,9 +244,13 @@ export default function SalaryFlexiPayDeclarationsRoute() {
           minTableWidth={1400}
           emptyMessage={t("flexi_declaration_summary_not_available", "Flexi declaration summary is not available right now.")}
           testIdPrefix="flexi-pay-declarations.list"
+          onRowClick={() => objRouter.push("/salary/flexi-pay-declaration")}
+          hideRowClickHint
+          getRowSx={() => dicMasterRowSx}
           withPaper={false}
+          sx={{ p: 0, boxShadow: "none", background: "transparent" }}
         />
-      </Paper>
+      </Box>
     </Stack>
   );
 }

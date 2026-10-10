@@ -12,6 +12,7 @@ export type UserGroupRecord = {
   strGroupType: UserGroupType;
   blnIsActive: boolean;
   intLanguageID: number | null;
+  intAssignedUserCount?: number | null;
 };
 
 export type UserGroupFormPayload = {

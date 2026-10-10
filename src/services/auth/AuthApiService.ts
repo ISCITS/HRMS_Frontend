@@ -117,6 +117,8 @@ function deriveTenantAuthDetails(objTenant: TenantLookupData, objLabels?: Module
   return {
     tenant_id: objTenant.intTenantID,
     tenant_uuid: objTenant.strTenantUUID,
+    tenant_name: objTenant.strTenantName,
+    strTenantName: objTenant.strTenantName,
     language_id: objTenant.intLanguageID ?? null,
     is_active: true,
     auth_mode: blnSsoEnabled ? "SSO" : "LOCAL",

@@ -4,22 +4,41 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
-import { yupResolver } from "@hookform/resolvers/yup";
 import {
-  Alert, Box, Button, Checkbox, CircularProgress,
-  Chip, FormControlLabel, IconButton, MenuItem, Paper, Snackbar, Stack, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, TextField, Typography,
+  yupResolver } from "@hookform/resolvers/yup";
+import {
+  Alert,
+  Box,
+  Button,
+  Checkbox,
+  Chip,
+  FormControlLabel,
+  IconButton,
+  Paper,
+  Snackbar,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography
 } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
 import { Controller, useFieldArray, useForm, useWatch, type Resolver } from "react-hook-form";
 import * as yup from "yup";
+import { DetailPageHeader } from "@/components/master/MasterListUi";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import CommonEditModeBanner from "@/Common/components/CommonEditModeBanner";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import styles from "@/components/master/MasterScreen.module.css";
 import { useLeavePlanEditor } from "@/features/leave-plan/hooks/useLeavePlanEditor";
-import type { LeavePlanItem, LeavePlanSaveRequest, LeavePlanText, LeavePolicyOption } from "@/features/leave-plan/types/LeavePlanTypes";
+import type { LeavePlanItem, LeavePlanSaveRequest, LeavePlanText, LeavePolicyOption, LeaveTypeOption } from "@/features/leave-plan/types/LeavePlanTypes";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
 
@@ -107,6 +126,15 @@ function collectFirstErrorMessage(objErrors: unknown): string | undefined {
   return undefined;
 }
 
+function getLeaveTypeDisplayName(objType: LeaveTypeOption): string {
+  return objType.strDisplayName || objType.strTypeName || objType.strTypeCode;
+}
+
+function getLeaveTypeTone(objType: LeaveTypeOption | undefined): string {
+  const strColor = objType?.strColorCode?.trim();
+  return strColor || "var(--app-primary-color)";
+}
+
 // The URL carries the plan's public identifier (record_uuid), not the internal row id.
 export default function LeavePlanEditorPage({ strMode, strPlanID, strReturnTo }: { strMode: "new" | "edit"; strPlanID?: string; strReturnTo?: string }) {
   const objRouter = useRouter();
@@ -122,6 +150,9 @@ export default function LeavePlanEditorPage({ strMode, strPlanID, strReturnTo }:
   const strEffectiveFrom = useWatch({ control, name: "dtEffectiveFrom" });
   // Whether each Leave Type permits a negative balance — gates the plan's Negative Balance Limit column.
   const dicTypeAllowNeg = useMemo(() => Object.fromEntries(lstLeaveTypes.map((objType) => [objType.intID, Boolean(objType.blnAllowNegativeBalance)])), [lstLeaveTypes]);
+  // CommonSearchableSelect expects {intID, strLabel, strCode?}; LeaveTypeOption carries strTypeCode/strTypeName instead.
+  const dicLeaveTypesByID = useMemo(() => Object.fromEntries(lstLeaveTypes.map((objType) => [objType.intID, objType])), [lstLeaveTypes]);
+  const lstLeaveTypeSelectOptions = useMemo(() => lstLeaveTypes.map((objType) => ({ ...objType, strLabel: getLeaveTypeDisplayName(objType), strCode: objType.strTypeCode })), [lstLeaveTypes]);
   const lstWatchedItems = useWatch({ control, name: "lstItems" });
   const lstWatchedTexts = useWatch({ control, name: "lstText" });
   const blnCanManage = canDo("LEAVE_PLANS", "EDIT") || canDo("LEAVE_PLANS", "ADD") || canDo("LEAVE_PLANS", "LEAVE_MANAGE");
@@ -170,7 +201,11 @@ export default function LeavePlanEditorPage({ strMode, strPlanID, strReturnTo }:
       blnIsDefault: objValues.blnIsDefault, blnIsActive: objValues.blnIsActive, intVersionNo: objValues.intVersionNo, strRemarks: objValues.strRemarks.trim() || null,
       // Strip the DB-row intID and the server-computed base snapshot from items — the backend item
       // schema forbids extra inputs (policy is resolved server-side, snapshot captured on save).
-      lstItems: objValues.lstItems.map(({ intID: _intItemID, decBaseEntitlementSnapshot: _decBaseSnapshot, ...objItem }) => ({ ...objItem, intLeavePolicyID: objItem.intLeavePolicyID || null })),
+      lstItems: objValues.lstItems.map(({ intID: _intItemID, decBaseEntitlementSnapshot: _decBaseSnapshot, strOverrideReason, ...objItem }) => ({
+        ...objItem,
+        intLeavePolicyID: objItem.intLeavePolicyID || null,
+        strOverrideReason: objItem.blnIsEntitlementOverride ? (strOverrideReason?.trim() || null) : null,
+      })),
       lstText: objValues.lstText.map(({ intID: _intTextID, ...objText }) => ({ ...objText, strPlanName: objText.strPlanName.trim(), strDescription: objText.strDescription.trim() || null })),
     };
     try {
@@ -209,60 +244,42 @@ export default function LeavePlanEditorPage({ strMode, strPlanID, strReturnTo }:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dicPolicies, strEffectiveFrom]);
 
-  if (blnLoading || blnRightsLoading) return <Box sx={{ py: 10, textAlign: "center" }}><CircularProgress /><Typography sx={{ mt: 1 }}>{t("editor_loading", "Loading Leave Plan...")}</Typography></Box>;
+  if (blnLoading || blnRightsLoading) return <Box sx={{ py: 10, textAlign: "center" }}><DottedLoader /><Typography sx={{ mt: 1 }}>{t("editor_loading", "Loading Leave Plan...")}</Typography></Box>;
 
   return (
     <Stack spacing={1.5} sx={{ height: "100%", overflow: "auto", pr: 0.5, pb: 4 }} component="form" onSubmit={handleSubmit(submitForm, onInvalidForm)}>
-      {/* Header (matches the Salary Component editor chrome) */}
-      <Paper
-        sx={{
-          borderRadius: "28px",
-          px: { xs: 2, md: 3 },
-          py: { xs: 1.5, md: 2 },
-          border: "1px solid rgba(148,163,184,0.18)",
-          background: "linear-gradient(135deg, #f9fbff 0%, #eef4ff 50%, #f8fafc 100%)",
-        }}
+      <DetailPageHeader
+        strSection={t("breadcrumb_leave", "Leave Management")}
+        strListTitle={t("breadcrumb_leave_plans", "Leave Plans")}
+        strListHref="/leave/plans"
+        strCurrent={strMode === "new" ? t("breadcrumb_add", "Add") : blnReadOnly ? t("breadcrumb_view", "View") : t("breadcrumb_edit", "Edit")}
       >
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={1.5}>
-          {/* The page title lives here rather than in the app-shell header (see blnLeavePlanEditorRoute). */}
-          <Typography component="h1" sx={{ fontWeight: 800, fontSize: { xs: "1.1rem", md: "1.28rem" }, color: "#0f172a" }}>
-            {strMode === "new"
-              ? t("editor_title_new", "New Leave Plan")
-              : blnReadOnly
-                ? t("editor_title_view", "View Leave Plan")
-                : t("editor_title_edit", "Edit Leave Plan")}
-          </Typography>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ width: { xs: "100%", sm: "auto" } }}>
-            <Button
-              className={styles.secondaryButton}
-              startIcon={<ArrowBackRoundedIcon />}
-              onClick={() => objRouter.push(strBackPath)}
-              sx={{ borderRadius: "14px", height: 38, minHeight: 38, py: 0, px: 2.25, minWidth: 100, fontSize: "0.9rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }}
-              data-control-id="leave-plan.editor.back.button"
-            >
-              {t("back_button", "Back")}
-            </Button>
-            {!blnReadOnly ? (
-              <Button
-                type="submit"
-                className={styles.primaryButton}
-                startIcon={<SaveRoundedIcon />}
-                disabled={blnSaving}
-                sx={{ borderRadius: "14px", height: 38, minHeight: 38, py: 0, px: 2.25, minWidth: 168, fontSize: "0.9rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }}
-                data-control-id="leave-plan.editor.save.button"
-              >
-                {blnSaving ? t("saving", "Saving...") : t("save_plan", "Save Leave Plan")}
-              </Button>
-            ) : null}
-          </Stack>
-        </Stack>
-        <Box sx={{ mt: 1.5 }}>
-          <CommonEditModeBanner
-            blnReadOnly={blnReadOnly}
-            strReadOnlyMessage={t("plan_read_only", "You have view-only access to Leave Plans.")}
-          />
-        </Box>
-      </Paper>
+        <Button
+          className={styles.secondaryButton}
+          startIcon={<ArrowBackRoundedIcon />}
+          onClick={() => objRouter.push(strBackPath)}
+          sx={{ height: 32, minHeight: 32, py: 0, px: 1.5, fontSize: "0.8125rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }}
+          data-control-id="leave-plan.editor.back.button"
+        >
+          {t("back_button", "Back")}
+        </Button>
+        {!blnReadOnly ? (
+          <Button
+            type="submit"
+            className={styles.primaryButton}
+            startIcon={<SaveRoundedIcon />}
+            disabled={blnSaving}
+            sx={{ height: 32, minHeight: 32, py: 0, px: 1.75, fontSize: "0.8125rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }}
+            data-control-id="leave-plan.editor.save.button"
+          >
+            {blnSaving ? t("saving", "Saving...") : t("save_plan", "Save Leave Plan")}
+          </Button>
+        ) : null}
+      </DetailPageHeader>
+      <CommonEditModeBanner
+        blnReadOnly={blnReadOnly}
+        strReadOnlyMessage={t("plan_read_only", "You have view-only access to Leave Plans.")}
+      />
 
       {strError ? <Alert severity="error">{strError}</Alert> : null}
 
@@ -307,10 +324,50 @@ export default function LeavePlanEditorPage({ strMode, strPlanID, strReturnTo }:
                 const intTypeID = Number(lstWatchedItems?.[intIndex]?.intLeaveTypeID ?? 0);
                 const blnOverride = Boolean(lstWatchedItems?.[intIndex]?.blnIsEntitlementOverride);
                 const blnAllowNeg = Boolean(dicTypeAllowNeg[intTypeID]);
+                const objSelectedType = dicLeaveTypesByID[intTypeID];
                 return <TableRow key={objField.id}>
                   {/* Leave Type: equal fixed width; selecting one resolves the inherited entitlement and clamps
                       the negative limit. Policy is resolved on the server (not shown). */}
-                  <TableCell><Controller name={`lstItems.${intIndex}.intLeaveTypeID`} control={control} render={({ field }) => <TextField select size="small" value={field.value || ""} onChange={async (objEvent) => { const intValue = Number(objEvent.target.value); field.onChange(intValue); objForm.setValue(`lstItems.${intIndex}.intLeavePolicyID`, null); objForm.setValue(`lstItems.${intIndex}.blnIsEntitlementOverride`, false); objForm.setValue(`lstItems.${intIndex}.strOverrideReason`, null); const lstLoaded = await loadPolicies(intValue, strEffectiveFrom); const decInherited = resolveInheritedEntitlement(lstLoaded, strEffectiveFrom || new Date().toISOString().slice(0, 10)); objForm.setValue(`lstItems.${intIndex}.decBaseEntitlementSnapshot`, decInherited); objForm.setValue(`lstItems.${intIndex}.decAnnualEntitlement`, decInherited, { shouldValidate: true }); if (!dicTypeAllowNeg[intValue]) objForm.setValue(`lstItems.${intIndex}.decNegativeBalanceLimit`, 0); }} error={Boolean(errors.lstItems?.[intIndex]?.intLeaveTypeID)} inputProps={{ "data-control-id": `leave-plan.editor.item.${intIndex}.leave-type.select` }} sx={{ width: 200 }}><MenuItem value="" data-control-id={`leave-plan.editor.item.${intIndex}.leave-type.empty.option`}>{t("select_leave_type", "Select Leave Type")}</MenuItem>{lstLeaveTypes.map((objType) => <MenuItem key={objType.intID} value={objType.intID} data-control-id={`leave-plan.editor.item.${intIndex}.leave-type.${objType.intID}.option`}>{objType.strTypeCode} - {objType.strTypeName}</MenuItem>)}</TextField>} /></TableCell>
+                  <TableCell>
+                    <Controller
+                      name={`lstItems.${intIndex}.intLeaveTypeID`}
+                      control={control}
+                      render={({ field }) => (
+                        <Stack spacing={0.75}>
+                          <CommonSearchableSelect
+                            label=""
+                            placeholder={t("select_leave_type", "Select Leave Type")}
+                            value={field.value || ""}
+                            options={lstLeaveTypeSelectOptions}
+                            onChange={async (intOption) => {
+                              const intValue = intOption === "" ? 0 : Number(intOption);
+                              field.onChange(intValue);
+                              objForm.setValue(`lstItems.${intIndex}.intLeavePolicyID`, null);
+                              objForm.setValue(`lstItems.${intIndex}.blnIsEntitlementOverride`, false);
+                              objForm.setValue(`lstItems.${intIndex}.strOverrideReason`, null);
+                              const lstLoaded = await loadPolicies(intValue, strEffectiveFrom);
+                              const decInherited = resolveInheritedEntitlement(lstLoaded, strEffectiveFrom || new Date().toISOString().slice(0, 10));
+                              objForm.setValue(`lstItems.${intIndex}.decBaseEntitlementSnapshot`, decInherited);
+                              objForm.setValue(`lstItems.${intIndex}.decAnnualEntitlement`, decInherited, { shouldValidate: true });
+                              if (!dicTypeAllowNeg[intValue]) objForm.setValue(`lstItems.${intIndex}.decNegativeBalanceLimit`, 0);
+                            }}
+                            error={Boolean(errors.lstItems?.[intIndex]?.intLeaveTypeID)}
+                            controlId={`leave-plan.editor.item.${intIndex}.leave-type.select`}
+                            fullWidth={false}
+                            sx={{ width: 220 }}
+                          />
+                          {objSelectedType ? (
+                            <Stack direction="row" spacing={0.75} alignItems="center" sx={{ pl: 0.25 }}>
+                              <Box sx={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: getLeaveTypeTone(objSelectedType), border: "1px solid rgba(15,23,42,0.12)", flex: "0 0 auto" }} />
+                              <Typography variant="caption" sx={{ color: "#64748b", lineHeight: 1.2 }}>
+                                {[objSelectedType.strLeaveCategoryCode, objSelectedType.strUnit].filter(Boolean).join(" / ")}
+                              </Typography>
+                            </Stack>
+                          ) : null}
+                        </Stack>
+                      )}
+                    />
+                  </TableCell>
                   {/* Annual Entitlement: read-only (inherited) unless override is enabled. */}
                   <TableCell><Controller name={`lstItems.${intIndex}.decAnnualEntitlement`} control={control} render={({ field }) => <TextField {...field} type="number" size="small" disabled={!blnOverride} inputProps={{ "data-control-id": `leave-plan.editor.item.${intIndex}.annual-entitlement.input`, min: 0, step: .5 }} onChange={(objEvent) => field.onChange(Number(objEvent.target.value))} sx={{ width: 110 }} helperText={blnOverride ? t("entitlement_overridden", "Overridden") : undefined} />} /></TableCell>
                   {/* Override toggle: turning it off restores the inherited value and clears the reason. */}
@@ -337,7 +394,7 @@ export default function LeavePlanEditorPage({ strMode, strPlanID, strReturnTo }:
           {fieldError("lstText") ? <Typography color="error" variant="caption" sx={{ display: "block", mb: 1 }}>{fieldError("lstText")}</Typography> : null}
           <Box>
             <Box sx={{ display: "grid", gap: 1.5 }}>{objTexts.fields.map((objField, intIndex) => <Box key={objField.id} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "220px 1fr 2fr auto" }, gap: 1 }}>
-              <Controller name={`lstText.${intIndex}.intLanguageID`} control={control} render={({ field }) => <TextField {...field} select size="small" label={t("language", "Language")} inputProps={{ "data-control-id": `leave-plan.editor.translation.${intIndex}.language.select` }} onChange={(objEvent) => field.onChange(Number(objEvent.target.value))}>{objLanguages.lstLanguages.map((objLanguage) => <MenuItem key={objLanguage.intID} value={objLanguage.intID} data-control-id={`leave-plan.editor.translation.${intIndex}.language.${objLanguage.intID}.option`}>{objLanguage.strLabel}</MenuItem>)}</TextField>} />
+              <Controller name={`lstText.${intIndex}.intLanguageID`} control={control} render={({ field }) => <CommonSearchableSelect label={t("language", "Language")} value={field.value || ""} options={objLanguages.lstLanguages} onChange={(intOption) => field.onChange(intOption === "" ? 0 : Number(intOption))} controlId={`leave-plan.editor.translation.${intIndex}.language.select`} />} />
               <Controller name={`lstText.${intIndex}.strPlanName`} control={control} render={({ field }) => <TextField {...field} size="small" label={t("translation_plan_name", "Translated Plan Name")} inputProps={{ "data-control-id": `leave-plan.editor.translation.${intIndex}.name.input`, maxLength: 150 }} />} />
               <Controller name={`lstText.${intIndex}.strDescription`} control={control} render={({ field }) => <TextField {...field} size="small" label={t("translation_description", "Translated Description")} inputProps={{ "data-control-id": `leave-plan.editor.translation.${intIndex}.description.input`, maxLength: 500 }} />} />
               {!blnReadOnly ? <IconButton onClick={() => objTexts.remove(intIndex)} disabled={Number(objForm.getValues(`lstText.${intIndex}.intLanguageID`)) === objLanguages.intDefaultLanguageID} data-control-id={`leave-plan.editor.translation.${intIndex}.delete.button`}><DeleteOutlineRoundedIcon /></IconButton> : null}

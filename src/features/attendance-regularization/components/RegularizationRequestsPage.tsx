@@ -5,7 +5,7 @@ import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle,
-  Divider, Grid, MenuItem, Paper,
+  Divider, Grid, Link, MenuItem, Paper,
   TextField, Typography,
 } from "@mui/material";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -13,7 +13,8 @@ import { useSearchParams } from "next/navigation";
 
 import LookupChip, { lookupLabel } from "@/features/attendance-regularization/components/LookupChip";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
-import CommonRowActions from "@/components/master/CommonRowActions";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
+import { onSearchEnter, dicMasterNameLinkSx, dicMasterRowSx, MasterBreadcrumbs, MasterGridSkeleton } from "@/components/master/MasterListUi";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import styles from "@/components/master/MasterScreen.module.css";
 import { attendanceRegularizationService } from "@/features/attendance-regularization/services/attendanceRegularizationService";
@@ -240,51 +241,59 @@ export default function RegularizationRequestsPage({ blnEssManagerMode = false }
     setStrStatus("");
   }
 
-  if (blnRightsLoading) return <BlockingLoader blnOpen strLabel={t("loading", "Loading...")} />;
+  if (blnRightsLoading) return <Box className={styles.page}><MasterBreadcrumbs strSection={t("breadcrumb_attendance", "Attendance")} strTitle={blnEssManagerMode ? t("breadcrumb_regularization_approvals", "Regularization Approvals") : t("breadcrumb_regularization_requests", "Regularization Requests")} /><MasterGridSkeleton strControlId="regularization-requests.list.skeleton" intColumns={5} /></Box>;
   if (!canViewAny()) return <Alert severity="warning">{t("access_denied", "Regularization Requests access is not available.")}</Alert>;
   const blnCanCreateOnBehalf = !blnEssManagerMode && canDoAny("ATT_REG_REQUEST_CREATE_ON_BEHALF");
   const lstTableRows = lstRequests.map((objRequest) => ({
     id: objRequest.intID,
-    action: (
-      <CommonRowActions
-        testIdPrefix={`regularization-requests.${objRequest.intID}`}
-        rowKey={objRequest.intID}
-        blnCanView
-        onView={() => void openDetail(objRequest.intID)}
-      />
+    requestNumberText: objRequest.strRequestNumber ?? "",
+    requestNumber: (
+      <Link
+        component="button"
+        type="button"
+        underline="none"
+        className="app-master-first-column-link"
+        data-control-id={`regularization-requests.${objRequest.intID}.request.button`}
+        onClick={(objEvent) => {
+          if (window.getSelection()?.toString()) { objEvent.stopPropagation(); return; }
+          void openDetail(objRequest.intID);
+        }}
+        sx={dicMasterNameLinkSx}
+      >
+        {objRequest.strRequestNumber}
+      </Link>
     ),
-    requestNumber: objRequest.strRequestNumber,
     employee: objRequest.strEmployeeName ?? objRequest.strEmployeeCode,
     workDate: objRequest.dtWorkDate,
     type: lookupLabel(lstTypes, objRequest.strRequestTypeCode, t("unavailable", "Unavailable")),
+    statusText: lookupLabel(lstStatuses, objRequest.strRequestStatus, objRequest.strRequestStatus),
     requestStatus: (
       <LookupChip lstOptions={lstStatuses} strCode={objRequest.strRequestStatus} strFallback={t("unavailable", "Unavailable")} blnHideIcon />
     ),
   }));
   const lstTableColumns: CommonTableColumn<(typeof lstTableRows)[number]>[] = [
-    { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 90 },
-    { field: "requestNumber", headerName: t("request_number", "Request"), width: 140 },
+    { field: "requestNumber", headerName: t("request_number", "Request"), width: 140, sortAccessor: (row) => row.requestNumberText },
     { field: "employee", headerName: t("employee", "Employee"), width: 180 },
     { field: "workDate", headerName: t("work_date", "Work Date"), width: 130 },
     { field: "type", headerName: t("type", "Type"), width: 170 },
-    { field: "requestStatus", headerName: t("status", "Status"), sortable: false, width: 150 },
+    { field: "requestStatus", headerName: t("status", "Status"), filterable: false, width: 150, sortAccessor: (row) => row.statusText },
   ];
   return (
-    <Box className={styles.page} sx={{ "& .MuiOutlinedInput-root": { borderRadius: "9px" }, "& .MuiAlert-root": { borderRadius: "9px" } }}>
+    <Box className={styles.page} sx={{ position: "relative", "& .MuiAlert-root": { borderRadius: "9px" } }}>
       <BlockingLoader blnOpen={blnWorking} strLabel={t("working", "Please wait...")} />
+      <MasterBreadcrumbs strSection={t("breadcrumb_attendance", "Attendance")} strTitle={blnEssManagerMode ? t("breadcrumb_regularization_approvals", "Regularization Approvals") : t("breadcrumb_regularization_requests", "Regularization Requests")} />
       {strError ? <Alert severity="error">{strError}</Alert> : null}
-      <Paper className={styles.controlsCard}>
-        <Box className={styles.searchRow} sx={{ gridTemplateColumns: "minmax(190px,.65fr) minmax(190px,.65fr) minmax(220px,.8fr) auto auto !important" }}>
-          <TextField data-control-id="regularization-requests.from-date.input" type="date" label={t("from_date", "From Date")} value={strFromDate} onChange={(objEvent) => setStrFromDate(objEvent.target.value)} InputLabelProps={{ shrink: true }} size="small" />
-          <TextField data-control-id="regularization-requests.to-date.input" type="date" label={t("to_date", "To Date")} value={strToDate} onChange={(objEvent) => setStrToDate(objEvent.target.value)} InputLabelProps={{ shrink: true }} size="small" />
-          <TextField data-control-id="regularization-requests.status.select" select label={t("status", "Status")} value={strStatus} onChange={(objEvent) => setStrStatus(objEvent.target.value)} size="small" SelectProps={{ displayEmpty: true, renderValue: (objValue) => objValue ? lookupLabel(lstStatuses, String(objValue), String(objValue)) : t("all", "All") }} InputLabelProps={{ shrink: true }}><MenuItem value="">{t("all", "All")}</MenuItem>{lstStatuses.map((objOption) => <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>{objOption.strDisplayName}</MenuItem>)}</TextField>
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        <Box className={styles.searchRow} onKeyDown={onSearchEnter(() => void loadData())} sx={{ alignItems: "center", "&&": { gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "minmax(170px,.6fr) minmax(170px,.6fr) minmax(200px,.8fr) auto auto 1fr" } }, "& .MuiButton-root": { alignSelf: "center" } }}>
+          <TextField className="app-mui-text-field" data-control-id="regularization-requests.from-date.input" type="date" label={t("from_date", "From Date")} value={strFromDate} onChange={(objEvent) => setStrFromDate(objEvent.target.value)} InputLabelProps={{ shrink: true }} size="small" fullWidth />
+          <TextField className="app-mui-text-field" data-control-id="regularization-requests.to-date.input" type="date" label={t("to_date", "To Date")} value={strToDate} onChange={(objEvent) => setStrToDate(objEvent.target.value)} InputLabelProps={{ shrink: true }} size="small" fullWidth />
+          <TextField className="app-mui-text-field" data-control-id="regularization-requests.status.select" select label={t("status", "Status")} value={strStatus} onChange={(objEvent) => setStrStatus(objEvent.target.value)} size="small" fullWidth SelectProps={{ displayEmpty: true, renderValue: (objValue) => objValue ? lookupLabel(lstStatuses, String(objValue), String(objValue)) : t("all", "All") }} InputLabelProps={{ shrink: true }}><MenuItem value="">{t("all", "All")}</MenuItem>{lstStatuses.map((objOption) => <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>{objOption.strDisplayName}</MenuItem>)}</TextField>
           <Box className={styles.searchActions}><Button data-control-id="regularization-requests.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => void loadData()}>{t("search", "Search")}</Button></Box>
           <Box className={styles.searchActions}><Button data-control-id="regularization-requests.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters}>{t("clear", "Clear")}</Button></Box>
         </Box>
-      </Paper>
-      <Paper className={styles.tableCard} sx={{ position: "relative", minHeight: blnLoading ? 160 : undefined }}>
-        <BlockingLoader blnOpen={blnLoading} blnLocal strLabel={t("loading", "Loading...")} />
-        {blnLoading ? null : (
+      </Box>
+      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        {blnLoading ? <MasterGridSkeleton strControlId="regularization-requests.list.skeleton" intColumns={5} /> : (
           <CommonTable
             columns={lstTableColumns}
             rows={lstTableRows}
@@ -292,14 +301,17 @@ export default function RegularizationRequestsPage({ blnEssManagerMode = false }
             defaultPageSize={25}
             pageSizeOptions={[25, 50, 100]}
             showPaginationSummary
+            hideRowClickHint
             minTableWidth={850}
             emptyMessage={t("empty", "No requests found.")}
             toolbarLeft={blnCanCreateOnBehalf ? <Button data-control-id="regularization-requests.on-behalf.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => setBlnOnBehalfOpen(true)}>{t("create_on_behalf", "Create on Behalf")}</Button> : undefined}
             testIdPrefix="regularization-requests.list"
-            onRowDoubleClick={(objRow) => void openDetail(Number(objRow.id))}
+            onRowClick={(objRow) => void openDetail(Number(objRow.id))}
+            getRowSx={() => dicMasterRowSx}
+            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
           />
         )}
-      </Paper>
+      </Box>
       <Dialog data-control-id="regularization-requests.detail.dialog" open={Boolean(objDetail)} onClose={() => setObjDetail(null)} fullWidth maxWidth="lg">
         <DialogTitle>{t("approval_detail", "Approval Detail")}</DialogTitle>
         <DialogContent dividers><Grid container spacing={2}><Grid item xs={12} md={6}><Paper variant="outlined" sx={{ p: 2, height: "100%" }}><Typography fontWeight={850}>{t("original", "Original")}</Typography><Typography>{lookupLabel(lstAttendanceStatuses, objDetail?.objOriginalSnapshot.strStatus, t("not_recorded", "No attendance record"))}</Typography><Typography>{t("first_in", "First IN")}: {formatTime(objDetail?.objOriginalSnapshot.tmFirstIn)}</Typography><Typography>{t("last_out", "Last OUT")}: {formatTime(objDetail?.objOriginalSnapshot.tmLastOut)}</Typography><Typography>{t("worked_hours", "Worked Hours")}: {objDetail?.objOriginalSnapshot.decWorkedHours ?? "—"}</Typography></Paper></Grid><Grid item xs={12} md={6}><Paper variant="outlined" sx={{ p: 2, height: "100%" }}><Typography fontWeight={850}>{t("proposed", "Proposed")}</Typography><Typography>{lookupLabel(lstAttendanceStatuses, objDetail?.objProposalSnapshot.strProposedStatus, t("unavailable", "Unavailable"))}</Typography><Typography>{t("first_in", "First IN")}: {formatTime(objDetail?.objProposalSnapshot.tmProposedFirstIn)}</Typography><Typography>{t("last_out", "Last OUT")}: {formatTime(objDetail?.objProposalSnapshot.tmProposedLastOut)}</Typography><Typography>{t("worked_hours", "Worked Hours")}: {objDetail?.objProposalSnapshot.decProposedWorkedHours ?? "—"}</Typography></Paper></Grid><Grid item xs={12}><Typography fontWeight={850}>{t("reason", "Correction Reason")}</Typography><Typography>{objDetail?.strEmployeeReason}</Typography><Divider sx={{ my: 2 }} /><Typography fontWeight={850}>{t("timeline", "Timeline")}</Typography>{objDetail?.lstActions.map((objItem) => <Box key={objItem.intID} sx={{ borderLeft: "3px solid", borderColor: "primary.main", pl: 1.5, my: 1 }}><Typography fontWeight={750}>{lookupLabel(lstActions, objItem.strActionCode, t("action", "Action"))}</Typography><Typography variant="caption">{formatDateTime(objItem.dtActionOn)}{objItem.strRemarks ? ` · ${objItem.strRemarks}` : ""}</Typography></Box>)}</Grid></Grid></DialogContent>
@@ -317,9 +329,7 @@ export default function RegularizationRequestsPage({ blnEssManagerMode = false }
               <TextField data-control-id="regularization-requests.on-behalf.date.input" fullWidth type="date" required label={t("work_date", "Work Date")} InputLabelProps={{ shrink: true }} value={objOnBehalf.dtWorkDate} onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, dtWorkDate: objEvent.target.value }))} />
             </Grid>
             <Grid item xs={12} md={blnOnBehalfNeedsTimes ? 4 : 6}>
-              <TextField data-control-id="regularization-requests.on-behalf.type.select" fullWidth select required label={t("request_type", "Request Type")} value={objOnBehalf.strRequestTypeCode} onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, strRequestTypeCode: objEvent.target.value }))}>
-                {lstTypes.map((objOption) => <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>{objOption.strDisplayName}</MenuItem>)}
-              </TextField>
+              <CommonSearchableSelect controlId="regularization-requests.on-behalf.type.select" fullWidth required label={t("request_type", "Request Type")} value={objOnBehalf.strRequestTypeCode} onChange={(intValue) => setObjOnBehalf((objValue) => ({ ...objValue, strRequestTypeCode: intValue }))} options={lstTypes.map((objOption) => ({ intID: objOption.strValueCode, strLabel: objOption.strDisplayName }))} />
             </Grid>
             {blnOnBehalfNeedsTimes ? (
               <>
@@ -350,19 +360,17 @@ export default function RegularizationRequestsPage({ blnEssManagerMode = false }
               </>
             ) : null}
             <Grid item xs={12} sm={6}>
-              <TextField
-                data-control-id="regularization-requests.on-behalf.status.select"
+              <CommonSearchableSelect
+                controlId="regularization-requests.on-behalf.status.select"
                 fullWidth
-                select
                 required
                 disabled={blnOnBehalfAutoCalculated}
                 label={t("proposed_status", "Proposed Status")}
                 value={objOnBehalf.strProposedStatus}
                 helperText={blnOnBehalfAutoCalculated ? t("calculated_from_timings", "Calculated from timings") : " "}
-                onChange={(objEvent) => setObjOnBehalf((objValue) => ({ ...objValue, strProposedStatus: objEvent.target.value }))}
-              >
-                {lstAttendanceStatuses.map((objOption) => <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>{objOption.strDisplayName}</MenuItem>)}
-              </TextField>
+                onChange={(intValue) => setObjOnBehalf((objValue) => ({ ...objValue, strProposedStatus: intValue }))}
+                options={lstAttendanceStatuses.map((objOption) => ({ intID: objOption.strValueCode, strLabel: objOption.strDisplayName }))}
+              />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField

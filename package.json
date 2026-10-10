@@ -7,7 +7,8 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@emotion/cache": "11.14.0",
@@ -31,10 +32,11 @@
     "@types/react-dom": "19.2.3",
     "eslint": "9.39.3",
     "eslint-config-next": "16.1.6",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "^3.2.7"
   },
   "description": "A complete Human Resource Management System UI template built with: - Next.js (App Router) - TypeScript - Material UI v5+",
-  "main": "next.config.js",
+  "main": "next.config.ts",
   "directories": {
     "lib": "lib"
   },

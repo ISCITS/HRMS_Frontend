@@ -1,16 +1,17 @@
 ﻿"use client";
 
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import FilterListRoundedIcon from "@mui/icons-material/FilterListRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, Checkbox, Chip, CircularProgress, ListItemText, ListSubheader, MenuItem, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Checkbox, Chip, Divider, IconButton, ListItemText, ListSubheader, MenuItem, Popover, TextField, Typography } from "@mui/material";
 import type { SelectChangeEvent } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ChangeEventHandler, type ReactNode } from "react";
 
 import type { CommonTableColumn } from "@/Common/components/CommonTable";
 import CommonTable from "@/Common/components/CommonTable";
-import BlockingLoader from "@/components/shared/BlockingLoader";
 import { employeeService } from "@/features/employee/services/employeeService";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { salaryRegisterReportService, type SalaryRegisterRow } from "@/features/reports/services/salaryRegisterReportService";
@@ -29,6 +30,7 @@ type SearchForm = {
 };
 
 const lstEmploymentStatusOptions = ["Active", "Inactive", "All"];
+type MoreFiltersForm = Pick<SearchForm, "strDesignationIDs" | "strLocationIDs" | "strCostCenterIDs">;
 
 function getCurrentPeriod() {
   const objDate = new Date();
@@ -56,15 +58,6 @@ function formatBodyAmount(decValue: number | null | undefined) {
 
 function formatTotalAmount(decValue: number) {
   return decValue.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-// Columns hidden from the on-screen grid only (kept in the Excel export, which shows full
-// detail) — a curated subset for at-a-glance viewing, per an explicit ask to declutter the list.
-const SET_HIDDEN_GRID_COLUMNS = new Set(["hra payment", "bonus / ex gratia payment", "hostel fee payment"]);
-
-function isColumnHiddenOnGrid(strColumnLabel: string) {
-  const strLower = strColumnLabel.trim().toLowerCase();
-  return strLower.includes("reimbursement") || SET_HIDDEN_GRID_COLUMNS.has(strLower);
 }
 
 function collapseValues(lstRows: SalaryRegisterRow[], fnGetValue: (dicRow: SalaryRegisterRow) => string | null | undefined, strFallback: string) {
@@ -138,7 +131,7 @@ function buildExportHtml(
   </tr>`;
 
   const fnMetaRow = (strLabel: string, strValue: string) =>
-    `<tr class="meta-row"><td class="label">${escapeHtml(strLabel)}</td><td colspan="${intColumnCount - 1}">${escapeHtml(strValue)}</td></tr>`;
+    `<tr class="meta-row"><td class="label">${escapeHtml(strLabel)}</td><td class="value" colspan="${intColumnCount - 1}" style="text-align:left">${escapeHtml(strValue)}</td></tr>`;
 
   return `
     <html>
@@ -152,7 +145,8 @@ function buildExportHtml(
           .company td { font-size: 18px; font-weight: 800; padding-top: 8px; }
           .title td { font-size: 15px; font-weight: 800; padding-bottom: 10px; }
           tr.meta-row td { border: none; vertical-align: top; }
-          tr.meta-row td.label { font-weight: 700; white-space: nowrap; }
+          tr.meta-row td.label { font-weight: 700; white-space: nowrap; text-align: right; }
+          tr.meta-row td.value { text-align: left; }
           tr.spacer td { border: none; padding: 4px; }
           thead th { border: 1px solid #000; text-align: center; font-weight: 700; background: #f3f4f6; }
           tbody td { border: 1px solid #000; text-align: right; }
@@ -202,6 +196,7 @@ function CheckboxMultiSelectFilter(objProps: {
   strValue: string;
   lstOptions: SelectOption[];
   fnOnChange: (strValue: string) => void;
+  blnDisabled?: boolean;
 }) {
   const [strSearch, setStrSearch] = useState("");
   const lstSelectedValues = useMemo(() => (objProps.strValue ? objProps.strValue.split(",").filter(Boolean) : []), [objProps.strValue]);
@@ -230,11 +225,13 @@ function CheckboxMultiSelectFilter(objProps: {
 
   return (
     <TextField
+      className="app-mui-text-field"
       select
       size="small"
       label={objProps.strLabel}
       value={lstSelectedValues}
-      onChange={handleChange as unknown as React.ChangeEventHandler<HTMLInputElement>}
+      onChange={handleChange as unknown as ChangeEventHandler<HTMLInputElement>}
+      disabled={objProps.blnDisabled}
       fullWidth
       InputLabelProps={{ shrink: true }}
       SelectProps={{
@@ -251,6 +248,7 @@ function CheckboxMultiSelectFilter(objProps: {
     >
       <ListSubheader sx={{ lineHeight: "normal", py: 1 }} onClickCapture={(objEvent) => objEvent.stopPropagation()}>
         <TextField
+          className="app-mui-text-field"
           size="small"
           autoFocus
           fullWidth
@@ -290,6 +288,8 @@ export default function SalaryRegisterReportPage() {
   const [blnLoadingMasters, setBlnLoadingMasters] = useState(true);
   const [blnLoadingReport, setBlnLoadingReport] = useState(false);
   const [blnHasSearched, setBlnHasSearched] = useState(false);
+  const [objMoreFiltersAnchor, setObjMoreFiltersAnchor] = useState<HTMLElement | null>(null);
+  const [dicMoreFiltersDraft, setDicMoreFiltersDraft] = useState<MoreFiltersForm>({ strDesignationIDs: "", strLocationIDs: "", strCostCenterIDs: "" });
   const [strError, setStrError] = useState("");
 
   const [lstRows, setLstRows] = useState<SalaryRegisterRow[]>([]);
@@ -297,9 +297,15 @@ export default function SalaryRegisterReportPage() {
   const [lstRecoveryColumns, setLstRecoveryColumns] = useState<string[]>([]);
   const [strCompanyName, setStrCompanyName] = useState("");
   const [strMonthLabel, setStrMonthLabel] = useState("");
+  const blnPageLoading = blnRightsLoading || blnLoadingMasters || blnLoadingReport;
+  const blnMoreFiltersOpen = Boolean(objMoreFiltersAnchor);
 
   useEffect(() => {
-    if (!blnCanView) return;
+    if (blnRightsLoading) return;
+    if (!blnCanView) {
+      setBlnLoadingMasters(false);
+      return;
+    }
     let blnActive = true;
     setBlnLoadingMasters(true);
     Promise.all([employeeService.getEmployees(), employeeService.getFormOptions()])
@@ -316,7 +322,7 @@ export default function SalaryRegisterReportPage() {
       .catch((objError) => setStrError(objError instanceof Error ? objError.message : "Unable to load salary register filters."))
       .finally(() => { if (blnActive) setBlnLoadingMasters(false); });
     return () => { blnActive = false; };
-  }, [blnCanView]);
+  }, [blnCanView, blnRightsLoading]);
 
   async function loadReport() {
     setStrError("");
@@ -349,32 +355,40 @@ export default function SalaryRegisterReportPage() {
 
   function clearFilters() {
     setDicSearch(getDefaultSearch());
+    setDicMoreFiltersDraft({ strDesignationIDs: "", strLocationIDs: "", strCostCenterIDs: "" });
+    setObjMoreFiltersAnchor(null);
     setLstRows([]);
     setBlnHasSearched(false);
     setStrError("");
   }
 
-  const lstVisiblePaymentColumns = useMemo(() => lstPaymentColumns.filter((strColumn) => !isColumnHiddenOnGrid(strColumn)), [lstPaymentColumns]);
-  const lstVisibleRecoveryColumns = useMemo(() => lstRecoveryColumns.filter((strColumn) => !isColumnHiddenOnGrid(strColumn)), [lstRecoveryColumns]);
+  function clearMoreFilters() {
+    setDicMoreFiltersDraft({ strDesignationIDs: "", strLocationIDs: "", strCostCenterIDs: "" });
+  }
 
-  const lstColumns = useMemo<CommonTableColumn<Record<string, React.ReactNode>>[]>(() => [
-    { field: "strEmployeeCode", headerName: "Employee No", width: 120 },
+  function applyMoreFilters() {
+    setDicSearch((dicPrevious) => ({ ...dicPrevious, ...dicMoreFiltersDraft }));
+    setObjMoreFiltersAnchor(null);
+  }
+
+  const lstColumns = useMemo<CommonTableColumn<Record<string, ReactNode>>[]>(() => [
     { field: "strEmployeeName", headerName: "Employee Name", width: 190 },
+    { field: "strEmployeeCode", headerName: "Employee No", width: 120 },
     { field: "strDepartment", headerName: "Department", width: 150 },
     { field: "strDesignation", headerName: "Designation", width: 150 },
     { field: "strLocation", headerName: "Location", width: 140 },
     { field: "strDataSource", headerName: "Status", width: 130 },
     { field: "decTotalPresentDays", headerName: "Total Present Days", width: 130, align: "right" },
-    ...lstVisiblePaymentColumns.map((strColumn): CommonTableColumn<Record<string, React.ReactNode>> => ({ field: strColumn, headerName: strColumn, width: 150, align: "right" })),
+    ...lstPaymentColumns.map((strColumn): CommonTableColumn<Record<string, ReactNode>> => ({ field: strColumn, headerName: strColumn, width: 150, align: "right" })),
     { field: "decGrossEarning", headerName: "Gross Earning", width: 140, align: "right" },
-    ...lstVisibleRecoveryColumns.map((strColumn): CommonTableColumn<Record<string, React.ReactNode>> => ({ field: strColumn, headerName: strColumn, width: 150, align: "right" })),
+    ...lstRecoveryColumns.map((strColumn): CommonTableColumn<Record<string, ReactNode>> => ({ field: strColumn, headerName: strColumn, width: 150, align: "right" })),
     { field: "decGrossDeduction", headerName: "Gross Deduction", width: 140, align: "right" },
     { field: "decNetEarning", headerName: "Net Earning", width: 140, align: "right" },
-  ], [lstVisiblePaymentColumns, lstVisibleRecoveryColumns]);
+  ], [lstPaymentColumns, lstRecoveryColumns]);
 
   const lstDisplayRows = useMemo(() => lstRows.map((dicRow, intIndex) => {
     const blnProcessed = dicRow.strDataSource === "Processed";
-    const dicMapped: Record<string, React.ReactNode> = {
+    const dicMapped: Record<string, ReactNode> = {
       __rowid: String(dicRow.intEmployeeID || intIndex),
       strEmployeeCode: dicRow.strEmployeeCode,
       strEmployeeName: dicRow.strEmployeeName,
@@ -405,51 +419,102 @@ export default function SalaryRegisterReportPage() {
     downloadExcel(`salary-register-${dicSearch.strPeriod}.xls`, strHtml);
   }
 
-  if (blnRightsLoading || blnLoadingMasters) {
-    return <BlockingLoader blnOpen strLabel="Loading salary register..." />;
-  }
-
   return (
     <Box className={styles.page}>
       <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>Salary Register</Typography>
 
-      <Box className={styles.controlsCard}>
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <Box className={styles.reportSearchPanelRow}>
           <Box className={styles.reportSearchField} sx={{ flex: "0 1 190px", minWidth: 170 }}>
             <TextField
+              className="app-mui-text-field"
               type="month"
               label="Month"
               value={dicSearch.strPeriod}
               onChange={(objEvent) => setDicSearch((dicPrevious) => ({ ...dicPrevious, strPeriod: objEvent.target.value }))}
+              disabled={blnPageLoading}
               fullWidth
               InputLabelProps={{ shrink: true }}
             />
           </Box>
           <Box className={styles.reportSearchField} sx={{ flex: "1 1 220px", minWidth: 200 }}>
-            <CheckboxMultiSelectFilter strLabel="Employee" strValue={dicSearch.strEmployeeIDs} lstOptions={lstEmployeeOptions} fnOnChange={(strValue) => setDicSearch((dicPrevious) => ({ ...dicPrevious, strEmployeeIDs: strValue }))} />
+            <CheckboxMultiSelectFilter strLabel="Employee" strValue={dicSearch.strEmployeeIDs} lstOptions={lstEmployeeOptions} fnOnChange={(strValue) => setDicSearch((dicPrevious) => ({ ...dicPrevious, strEmployeeIDs: strValue }))} blnDisabled={blnPageLoading} />
           </Box>
           <Box className={styles.reportSearchField} sx={{ flex: "1 1 200px", minWidth: 180 }}>
-            <CheckboxMultiSelectFilter strLabel="Department" strValue={dicSearch.strDepartmentIDs} lstOptions={lstDepartmentOptions} fnOnChange={(strValue) => setDicSearch((dicPrevious) => ({ ...dicPrevious, strDepartmentIDs: strValue }))} />
-          </Box>
-          <Box className={styles.reportSearchField} sx={{ flex: "1 1 200px", minWidth: 180 }}>
-            <CheckboxMultiSelectFilter strLabel="Designation" strValue={dicSearch.strDesignationIDs} lstOptions={lstDesignationOptions} fnOnChange={(strValue) => setDicSearch((dicPrevious) => ({ ...dicPrevious, strDesignationIDs: strValue }))} />
-          </Box>
-          <Box className={styles.reportSearchField} sx={{ flex: "1 1 200px", minWidth: 180 }}>
-            <CheckboxMultiSelectFilter strLabel="Location" strValue={dicSearch.strLocationIDs} lstOptions={lstLocationOptions} fnOnChange={(strValue) => setDicSearch((dicPrevious) => ({ ...dicPrevious, strLocationIDs: strValue }))} />
-          </Box>
-          <Box className={styles.reportSearchField} sx={{ flex: "1 1 200px", minWidth: 180 }}>
-            <CheckboxMultiSelectFilter strLabel="Cost Centre" strValue={dicSearch.strCostCenterIDs} lstOptions={lstCostCenterOptions} fnOnChange={(strValue) => setDicSearch((dicPrevious) => ({ ...dicPrevious, strCostCenterIDs: strValue }))} />
+            <CheckboxMultiSelectFilter strLabel="Department" strValue={dicSearch.strDepartmentIDs} lstOptions={lstDepartmentOptions} fnOnChange={(strValue) => setDicSearch((dicPrevious) => ({ ...dicPrevious, strDepartmentIDs: strValue }))} blnDisabled={blnPageLoading} />
           </Box>
           <Box className={styles.reportSearchField} sx={{ flex: "0 1 160px", minWidth: 150 }}>
-            <TextField select label="Employment Status" value={dicSearch.strEmploymentStatus} onChange={(objEvent) => setDicSearch((dicPrevious) => ({ ...dicPrevious, strEmploymentStatus: objEvent.target.value }))} fullWidth>
+            <TextField className="app-mui-text-field" select label="Employment Status" value={dicSearch.strEmploymentStatus} onChange={(objEvent) => setDicSearch((dicPrevious) => ({ ...dicPrevious, strEmploymentStatus: objEvent.target.value }))} disabled={blnPageLoading} fullWidth>
               {lstEmploymentStatusOptions.map((strStatus) => <MenuItem key={strStatus} value={strStatus}>{strStatus}</MenuItem>)}
             </TextField>
           </Box>
           <Box className={styles.searchActions} sx={{ flex: "0 0 auto", ml: "auto" }}>
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={loadReport} disabled={blnLoadingReport} sx={{ whiteSpace: "nowrap" }}>Search</Button>
-            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} disabled={blnLoadingReport} sx={{ whiteSpace: "nowrap" }}>Clear</Button>
+            <Button
+              className={styles.secondaryButton}
+              startIcon={<FilterListRoundedIcon />}
+              onClick={(objEvent) => {
+                setDicMoreFiltersDraft({
+                  strDesignationIDs: dicSearch.strDesignationIDs,
+                  strLocationIDs: dicSearch.strLocationIDs,
+                  strCostCenterIDs: dicSearch.strCostCenterIDs,
+                });
+                setObjMoreFiltersAnchor(objEvent.currentTarget);
+              }}
+              aria-expanded={blnMoreFiltersOpen}
+              aria-haspopup="dialog"
+              disabled={blnPageLoading}
+              sx={{ whiteSpace: "nowrap" }}
+            >
+              More filters
+            </Button>
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={loadReport} disabled={blnPageLoading} sx={{ whiteSpace: "nowrap" }}>Search</Button>
+            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} disabled={blnPageLoading} sx={{ whiteSpace: "nowrap" }}>Clear</Button>
           </Box>
         </Box>
+        <Popover
+          open={blnMoreFiltersOpen}
+          anchorEl={objMoreFiltersAnchor}
+          onClose={() => setObjMoreFiltersAnchor(null)}
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+          transformOrigin={{ vertical: "top", horizontal: "right" }}
+          slotProps={{
+            paper: {
+              sx: {
+                mt: 1,
+                width: 374,
+                maxWidth: "calc(100vw - 24px)",
+                border: "1px solid #d8e2ef",
+                borderRadius: "22px",
+                boxShadow: "0 18px 42px rgba(15, 23, 42, 0.18)",
+                overflow: "hidden",
+              },
+            },
+          }}
+        >
+          <Box data-controlid="reports.salary-register.more-filters.panel">
+            <Box sx={{ px: 2.5, pt: 2.25, pb: 1.5, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <Typography sx={{ fontSize: 15, fontWeight: 700, color: "#0f172a", lineHeight: 1.2 }}>More filters</Typography>
+              <IconButton size="small" onClick={() => setObjMoreFiltersAnchor(null)} aria-label="Close more filters" data-controlid="reports.salary-register.more-filters.close.button" sx={{ color: "#64748b" }}>
+                <CloseRoundedIcon fontSize="small" />
+              </IconButton>
+            </Box>
+            <Box sx={{ px: 2.5, pb: 2, display: "grid", gap: 1.5 }}>
+              <CheckboxMultiSelectFilter strLabel="Designation" strValue={dicMoreFiltersDraft.strDesignationIDs} lstOptions={lstDesignationOptions} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strDesignationIDs: strValue }))} blnDisabled={blnPageLoading} />
+              <CheckboxMultiSelectFilter strLabel="Location" strValue={dicMoreFiltersDraft.strLocationIDs} lstOptions={lstLocationOptions} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strLocationIDs: strValue }))} blnDisabled={blnPageLoading} />
+              <CheckboxMultiSelectFilter strLabel="Cost Centre" strValue={dicMoreFiltersDraft.strCostCenterIDs} lstOptions={lstCostCenterOptions} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strCostCenterIDs: strValue }))} blnDisabled={blnPageLoading} />
+            </Box>
+            <Divider />
+            <Box sx={{ px: 2.5, py: 1.75, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1.25 }}>
+              <Button onClick={clearMoreFilters} disabled={blnPageLoading} data-controlid="reports.salary-register.more-filters.clear-all.button" sx={{ px: 0, minWidth: 0, fontWeight: 700, textTransform: "none", color: "var(--app-primary-color)", "&:hover": { backgroundColor: "var(--app-primary-soft)" } }}>
+                Clear all
+              </Button>
+              <Box sx={{ display: "flex", gap: 1.25 }}>
+                <Button className={styles.secondaryButton} onClick={() => setObjMoreFiltersAnchor(null)} disabled={blnPageLoading} data-controlid="reports.salary-register.more-filters.cancel.button">Cancel</Button>
+                <Button className={styles.primaryButton} onClick={applyMoreFilters} disabled={blnPageLoading} data-controlid="reports.salary-register.more-filters.apply.button">Apply</Button>
+              </Box>
+            </Box>
+          </Box>
+        </Popover>
       </Box>
 
       <Box sx={{ alignItems: "center", backgroundColor: "#f8fbff", border: "1px solid rgba(191,219,254,0.7)", borderRadius: "16px", color: "#1f2937", display: "flex", gap: 1, px: 1.5, py: 1.25 }}>
@@ -462,33 +527,27 @@ export default function SalaryRegisterReportPage() {
       {!blnCanView && !strError ? <Alert severity="warning">Salary register view access is not available for your user group.</Alert> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
 
-      <Box className={styles.tableCard}>
-        <Box sx={{ alignItems: "center", display: "flex", flex: "0 0 auto", justifyContent: "space-between", gap: 2, mb: 1 }}>
-          <Typography sx={{ fontWeight: 700 }}>Salary Register{strMonthLabel ? ` - ${strMonthLabel}` : ""}</Typography>
-          <Box sx={{ display: "flex", flexWrap: "nowrap", gap: 1 }}>
-            {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={exportExcel} disabled={!lstRows.length} sx={{ whiteSpace: "nowrap" }}>Export Excel</Button> : null}
-          </Box>
-        </Box>
-
-        {blnLoadingReport ? (
-          <Box sx={{ alignItems: "center", display: "flex", gap: 1.5, justifyContent: "center", minHeight: 220 }}>
-            <CircularProgress size={24} />
-            <Typography>Building salary register...</Typography>
-          </Box>
-        ) : (
-          <CommonTable
-            columns={lstColumns}
-            rows={lstDisplayRows}
-            rowIdField="__rowid"
-            defaultPageSize={20}
-            pageSizeOptions={[20, 50, 100]}
-            emptyMessage={blnHasSearched ? "No employees with a processed payroll result or a configured salary structure found for the selected month and filters." : "Select filters and search to generate the salary register."}
-            showPaginationSummary
-            withPaper={false}
-            wrapColumnHeaders
-            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
-          />
-        )}
+      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        <CommonTable
+          columns={lstColumns}
+          rows={lstDisplayRows}
+          rowIdField="__rowid"
+          defaultPageSize={20}
+          pageSizeOptions={[20, 50, 100]}
+          emptyMessage={blnHasSearched ? "No employees with a processed payroll result or a configured salary structure found for the selected month and filters." : "Select filters and search to generate the salary register."}
+          showPaginationSummary
+          withPaper={false}
+          wrapColumnHeaders
+          loading={blnPageLoading}
+          loadingHeaderSkeleton
+          skeletonRowCount={10}
+          hideRowClickHint
+          onRowClick={() => undefined}
+          toolbarLeft={canDoAny("export") ? (
+            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={exportExcel} disabled={!lstRows.length} sx={{ whiteSpace: "nowrap" }}>Export Excel</Button>
+          ) : null}
+          sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+        />
       </Box>
     </Box>
   );

@@ -11,7 +11,6 @@ import {
   Box,
   Button,
   Chip,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -20,7 +19,6 @@ import {
   FormControlLabel,
   Grid,
   IconButton,
-  MenuItem,
   Paper,
   Snackbar,
   Stack,
@@ -34,11 +32,13 @@ import {
   Tabs,
   TextField,
   Tooltip,
-  Typography,
+  Typography
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
+import { MasterGridSkeleton } from "@/components/master/MasterListUi";
 import { leaveService } from "@/features/leave/services/leaveService";
 import {
   formatLeaveDate,
@@ -221,9 +221,7 @@ export default function EssLeaveApplyPanel() {
       </Paper>
 
       {blnLoading ? (
-        <Box sx={{ display: "grid", placeItems: "center", py: 6 }}>
-          <CircularProgress />
-        </Box>
+        <MasterGridSkeleton strControlId="ess.leave.apply.skeleton" intColumns={6} />
       ) : (
         <>
           {/* Balance summary cards */}
@@ -383,21 +381,14 @@ export default function EssLeaveApplyPanel() {
         <DialogContent dividers>
           <Grid container spacing={1.5} sx={{ mt: 0 }}>
             <Grid item xs={12}>
-              <TextField
+              <CommonSearchableSelect
                 controlId="ess.leave.type.select"
                 label="Leave Type"
-                select
                 fullWidth
-                size="small"
                 value={objForm.intLeaveTypeID || ""}
-                onChange={(objEvent) => setObjForm((objPrev) => ({ ...objPrev, intLeaveTypeID: Number(objEvent.target.value) }))}
-              >
-                {lstTypes.map((objType) => (
-                  <MenuItem key={objType.intID} value={objType.intID}>
-                    {objType.strTypeName} ({objType.strTypeCode})
-                  </MenuItem>
-                ))}
-              </TextField>
+                options={lstTypes.map((objType) => ({ ...objType, strLabel: `${objType.strTypeName} (${objType.strTypeCode})` }))}
+                onChange={(intValue) => setObjForm((objPrev) => ({ ...objPrev, intLeaveTypeID: intValue === "" ? 0 : Number(intValue) }))}
+              />
             </Grid>
             <Grid item xs={6}>
               <TextField

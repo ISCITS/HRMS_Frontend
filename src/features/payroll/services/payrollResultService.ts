@@ -32,8 +32,12 @@ export const payrollResultService = {
     strLocation?: string;
     strPayrollMonth?: string;
     blnGeneratedPayslipsOnly?: boolean;
+    strPayrollRunID?: string;
   }): Promise<PayrollResultListRecord[]> {
     const objParams = new URLSearchParams();
+    if (objFilters?.strPayrollRunID?.trim()) {
+      objParams.set("strPayrollRunID", objFilters.strPayrollRunID.trim());
+    }
     if (objFilters?.strSearchEmployee?.trim()) {
       objParams.set("strSearchEmployee", objFilters.strSearchEmployee.trim());
     }

@@ -10,7 +10,6 @@ import {
   Box,
   Button,
   Chip,
-  CircularProgress,
   Collapse,
   Divider,
   FormControlLabel,
@@ -21,11 +20,14 @@ import {
   Stack,
   Switch,
   TextField,
-  Typography,
+  Typography
 } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { DetailPageHeader } from "@/components/master/MasterListUi";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import styles from "@/components/master/MasterScreen.module.css";
 import { employeeService } from "@/features/employee/services/employeeService";
@@ -616,7 +618,7 @@ export default function LeaveTypeEditorPage({ strMode, strLeaveTypeID }: { strMo
   if (blnLoading) {
     return (
       <Box sx={{ display: "grid", placeItems: "center", py: 8 }}>
-        <CircularProgress />
+        <DottedLoader />
       </Box>
     );
   }
@@ -627,44 +629,32 @@ export default function LeaveTypeEditorPage({ strMode, strLeaveTypeID }: { strMo
   // header does from the toolbar below it.
   return (
     <Stack spacing={1.5} sx={{ height: "100%", overflow: "auto", pr: 0.5, pb: 4 }}>
-      {/* Header (matches the Salary Component editor chrome) */}
-      <Paper
-        sx={{
-          borderRadius: "28px",
-          px: { xs: 2, md: 3 },
-          py: { xs: 1.5, md: 2 },
-          border: "1px solid rgba(148,163,184,0.18)",
-          background: "linear-gradient(135deg, #f9fbff 0%, #eef4ff 50%, #f8fafc 100%)",
-        }}
+      <DetailPageHeader
+        strSection="Leave Management"
+        strListTitle="Leave Types"
+        strListHref="/leave"
+        strCurrent={strMode === "new" ? "Add" : blnReadOnly ? "View" : "Edit"}
       >
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={1.5}>
-          {/* The page title lives here rather than in the app-shell header (see blnLeaveTypeEditorRoute). */}
-          <Typography component="h1" sx={{ fontWeight: 800, fontSize: { xs: "1.1rem", md: "1.28rem" }, color: "#0f172a" }}>
-            {strMode === "new" ? "New Leave Type" : blnReadOnly ? "View Leave Type" : "Edit Leave Type"}
-          </Typography>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ width: { xs: "100%", sm: "auto" } }}>
-            <Button
-              className={styles.secondaryButton}
-              startIcon={<ArrowBackRoundedIcon />}
-              onClick={() => objRouter.push("/leave")}
-              sx={{ borderRadius: "14px", height: 38, minHeight: 38, py: 0, px: 2.25, minWidth: 100, fontSize: "0.9rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }}
-            >
-              Back
-            </Button>
-            {!blnReadOnly ? (
-              <Button
-                className={styles.primaryButton}
-                startIcon={<SaveRoundedIcon />}
-                onClick={submit}
-                disabled={blnSaving}
-                sx={{ borderRadius: "14px", height: 38, minHeight: 38, py: 0, px: 2.25, minWidth: 168, fontSize: "0.9rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }}
-              >
-                {blnSaving ? "Saving..." : "Save Leave Type"}
-              </Button>
-            ) : null}
-          </Stack>
-        </Stack>
-      </Paper>
+        <Button
+          className={styles.secondaryButton}
+          startIcon={<ArrowBackRoundedIcon />}
+          onClick={() => objRouter.push("/leave")}
+          sx={{ height: 32, minHeight: 32, py: 0, px: 1.5, fontSize: "0.8125rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }}
+        >
+          Back
+        </Button>
+        {!blnReadOnly ? (
+          <Button
+            className={styles.primaryButton}
+            startIcon={<SaveRoundedIcon />}
+            onClick={submit}
+            disabled={blnSaving}
+            sx={{ height: 32, minHeight: 32, py: 0, px: 1.75, fontSize: "0.8125rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }}
+          >
+            {blnSaving ? "Saving..." : "Save Leave Type"}
+          </Button>
+        ) : null}
+      </DetailPageHeader>
 
       {/* The 12px top margin is set here rather than left to the Stack: an inline margin outranks the
           Stack's spacing class, so relying on it would leave this one seam flush. */}
@@ -897,22 +887,17 @@ export default function LeaveTypeEditorPage({ strMode, strLeaveTypeID }: { strMo
                     {optsWithCurrent(lstPocApproverSources, objStep.strApproverSourceCode).map((o) => <MenuItem key={o.code} value={o.code}>{o.label}</MenuItem>)}
                   </TextField>
                   {objStep.strApproverSourceCode === strFixedEmployeeSource ? (
-                    <TextField
+                    <CommonSearchableSelect
                       label="Employee"
-                      select
-                      size="small"
-                      value={lstEmployeeOptions.some((objEmployee) => objEmployee.intID === objStep.intFixedEmployeeID) ? String(objStep.intFixedEmployeeID) : ""}
-                      onChange={(e) => updateStep(intIndex, { intFixedEmployeeID: Number(e.target.value) || null })}
+                      value={objStep.intFixedEmployeeID ?? ""}
+                      options={lstEmployeeOptions.map((objEmployee) => ({ ...objEmployee, strLabel: `${objEmployee.strEmployeeCode} - ${objEmployee.strFullName}` }))}
+                      onChange={(intValue) => updateStep(intIndex, { intFixedEmployeeID: intValue === "" ? null : Number(intValue) })}
+                      placeholder={blnEmployeesLoading ? "Loading employees..." : "Select Employee"}
                       error={!objStep.intFixedEmployeeID}
                       helperText={!objStep.intFixedEmployeeID ? "Select the approving employee." : undefined}
                       sx={{ width: 260 }}
                       {...objInputProps}
-                    >
-                      <MenuItem value="">{blnEmployeesLoading ? "Loading employees..." : "Select Employee"}</MenuItem>
-                      {lstEmployeeOptions.map((objEmployee) => (
-                        <MenuItem key={objEmployee.intID} value={String(objEmployee.intID)}>{objEmployee.strEmployeeCode} - {objEmployee.strFullName}</MenuItem>
-                      ))}
-                    </TextField>
+                    />
                   ) : null}
                   <TextField label="Action Due Within (Days)" type="number" size="small" value={objStep.intNoActionAfterDays ?? ""} onChange={(e) => updateStep(intIndex, { intNoActionAfterDays: toNum(e.target.value) })} sx={{ width: 170 }} {...objInputProps} />
                   <TextField label="If No Action" select size="small" value={objStep.strNoActionRuleCode} onChange={(e) => updateStep(intIndex, { strNoActionRuleCode: e.target.value })} sx={{ width: 200 }} {...objInputProps}>
@@ -967,9 +952,14 @@ export default function LeaveTypeEditorPage({ strMode, strLeaveTypeID }: { strMo
           <Stack spacing={1}>
             {objForm.lstApplicability.map((objRow, intIndex) => (
               <Stack key={intIndex} direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                <TextField label="Type" select size="small" value={objRow.strApplicabilityTypeCode} onChange={(e) => updateApplicability(intIndex, { strApplicabilityTypeCode: e.target.value })} sx={{ width: 180 }} {...objInputProps}>
-                  {lstApplicabilityTypes.map((c) => <MenuItem key={c} value={c}>{c.replace(/_/g, " ")}</MenuItem>)}
-                </TextField>
+                <CommonSearchableSelect
+                  label="Type"
+                  value={objRow.strApplicabilityTypeCode}
+                  options={lstApplicabilityTypes.map((c) => ({ intID: c, strLabel: c.replace(/_/g, " ") }))}
+                  onChange={(v) => updateApplicability(intIndex, { strApplicabilityTypeCode: v === "" ? "" : String(v) })}
+                  disabled={blnReadOnly}
+                  sx={{ width: 180 }}
+                />
                 <TextField label="Entity ID" type="number" size="small" value={objRow.intApplicabilityEntityID ?? ""} onChange={(e) => updateApplicability(intIndex, { intApplicabilityEntityID: toNum(e.target.value) })} sx={{ width: 120 }} {...objInputProps} />
                 <TextField label="Value code" size="small" value={objRow.strApplicabilityValueCode ?? ""} onChange={(e) => updateApplicability(intIndex, { strApplicabilityValueCode: e.target.value.toUpperCase() })} sx={{ width: 150 }} {...objInputProps} />
                 <TextField label="Priority" type="number" size="small" value={objRow.intPriority} onChange={(e) => updateApplicability(intIndex, { intPriority: Number(e.target.value) || 100 })} sx={{ width: 100 }} {...objInputProps} />
@@ -995,9 +985,14 @@ export default function LeaveTypeEditorPage({ strMode, strLeaveTypeID }: { strMo
                   <TextField label="Group" type="number" size="small" value={objRow.intRuleGroupNo} onChange={(e) => updateRule(intIndex, { intRuleGroupNo: Number(e.target.value) || 1 })} sx={{ width: 80 }} {...objInputProps} />
                   <TextField label="Seq" type="number" size="small" value={objRow.intRuleSequence} onChange={(e) => updateRule(intIndex, { intRuleSequence: Number(e.target.value) || 0 })} sx={{ width: 80 }} {...objInputProps} />
                   <TextField label="Attribute" size="small" value={objRow.strAttributeCode} onChange={(e) => updateRule(intIndex, { strAttributeCode: e.target.value.toUpperCase() })} placeholder="e.g. GENDER, TENURE_MONTHS" sx={{ width: 190 }} {...objInputProps} />
-                  <TextField label="Operator" select size="small" value={objRow.strOperatorCode} onChange={(e) => updateRule(intIndex, { strOperatorCode: e.target.value })} sx={{ width: 160 }} {...objInputProps}>
-                    {lstRuleOperators.map((c) => <MenuItem key={c} value={c}>{c.replace(/_/g, " ")}</MenuItem>)}
-                  </TextField>
+                  <CommonSearchableSelect
+                    label="Operator"
+                    value={objRow.strOperatorCode}
+                    options={lstRuleOperators.map((c) => ({ intID: c, strLabel: c.replace(/_/g, " ") }))}
+                    onChange={(v) => updateRule(intIndex, { strOperatorCode: v === "" ? "" : String(v) })}
+                    disabled={blnReadOnly}
+                    sx={{ width: 160 }}
+                  />
                   <TextField label={blnRange ? "From" : "Value"} size="small" value={objRow.strValueFrom ?? ""} onChange={(e) => updateRule(intIndex, { strValueFrom: e.target.value })} sx={{ width: 120 }} {...objInputProps} />
                   {blnRange ? <TextField label="To" size="small" value={objRow.strValueTo ?? ""} onChange={(e) => updateRule(intIndex, { strValueTo: e.target.value })} sx={{ width: 120 }} {...objInputProps} /> : null}
                   <TextField label="Failure message" size="small" value={objRow.strFailureMessage ?? ""} onChange={(e) => updateRule(intIndex, { strFailureMessage: e.target.value })} sx={{ width: 220 }} {...objInputProps} />
@@ -1018,9 +1013,14 @@ export default function LeaveTypeEditorPage({ strMode, strLeaveTypeID }: { strMo
           <Stack spacing={1}>
             {objForm.lstCombinationRules.map((objRow, intIndex) => (
               <Stack key={intIndex} direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                <TextField label="Other leave type" select size="small" value={objRow.intOtherLeaveTypeID} onChange={(e) => updateCombo(intIndex, { intOtherLeaveTypeID: Number(e.target.value) })} sx={{ width: 220 }} {...objInputProps}>
-                  {lstOtherTypes.filter((t) => t.intID !== objForm.intID).map((t) => <MenuItem key={t.intID} value={t.intID}>{t.strDisplayName} ({t.strTypeCode})</MenuItem>)}
-                </TextField>
+                <CommonSearchableSelect
+                  label="Other leave type"
+                  value={objRow.intOtherLeaveTypeID}
+                  options={lstOtherTypes.filter((t) => t.intID !== objForm.intID).map((t) => ({ ...t, strLabel: `${t.strDisplayName} (${t.strTypeCode})` }))}
+                  onChange={(intValue) => updateCombo(intIndex, { intOtherLeaveTypeID: intValue === "" ? 0 : Number(intValue) })}
+                  sx={{ width: 220 }}
+                  {...objInputProps}
+                />
                 <TextField label="Rule" select size="small" value={objRow.strCombinationRuleCode} onChange={(e) => updateCombo(intIndex, { strCombinationRuleCode: e.target.value })} sx={{ width: 180 }} {...objInputProps}>
                   {lstCombinationRuleCodes.map((c) => <MenuItem key={c} value={c}>{c.replace(/_/g, " ")}</MenuItem>)}
                 </TextField>

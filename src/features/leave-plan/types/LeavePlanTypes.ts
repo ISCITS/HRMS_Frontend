@@ -54,7 +54,20 @@ export type LeavePlanSaveRequest = Omit<LeavePlan, "intID" | "strRecordUUID" | "
   lstText: LeavePlanText[];
 };
 
-export type LeaveTypeOption = { intID: number; strTypeCode: string; strTypeName: string; blnIsActive: boolean; blnAllowNegativeBalance?: boolean };
+export type LeaveTypeOption = {
+  intID: number;
+  strTypeCode: string;
+  strTypeName: string;
+  strDisplayName?: string;
+  strDescription?: string | null;
+  strLeaveCategoryCode?: string | null;
+  strUnit?: string | null;
+  decEntitlementQty?: number | null;
+  blnIsActive: boolean;
+  blnAllowNegativeBalance?: boolean;
+  strColorCode?: string | null;
+  strIconName?: string | null;
+};
 export type LeavePolicyOption = {
   intID: number;
   intLeaveTypeID: number;
