@@ -127,7 +127,7 @@
 }
 
 .login-hero-content {
-  max-width: 560px;
+  max-width: 300px;
   padding-bottom: clamp(0px, 1vh, 10px);
 }
 
@@ -764,11 +764,11 @@
 }
 
 .login-shell {
-  width: min(1370px, 100%) !important;
+  width: min(1100px, 100%) !important;
   min-height: 0 !important;
   height: min(790px, calc(100dvh - clamp(28px, 8vw, 118px))) !important;
-  grid-template-columns: minmax(440px, 1fr) minmax(440px, 0.86fr) !important;
-  gap: clamp(36px, 6.5vw, 112px) !important;
+  grid-template-columns: minmax(420px, 0.92fr) minmax(500px, 0.98fr) !important;
+  gap: clamp(28px, 4.2vw, 72px) !important;
   align-items: center !important;
 }
 
@@ -812,7 +812,7 @@
   height: auto !important;
   display: flex !important;
   align-items: center !important;
-  justify-content: center !important;
+  justify-content: flex-start !important;
 }
 
 .login-form-card {
