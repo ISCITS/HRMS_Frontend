@@ -1297,7 +1297,23 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
   ];
 
   return (
-    <Box sx={{ background: "#F6F8FC", color: "#0F2747", display: "flex", flexDirection: "column", gap: 1.25, height: "100%", minHeight: 0, overflow: "auto", p: { xs: 1.25, md: 1.5 } }}>
+    <Box
+      sx={{
+        background: "#F6F8FC",
+        color: "#0F2747",
+        display: "flex",
+        flexDirection: "column",
+        gap: 1.25,
+        height: "100%",
+        minHeight: 0,
+        overflow: "auto",
+        p: { xs: 1.25, md: 1.5 },
+        // Sections keep their natural height and the page scrolls. Without this, the flex column
+        // shrinks the tabs card (it has overflow: hidden) to fit the viewport, which clipped the
+        // Payslips section and left it unreachable at any zoom level.
+        "& > *": { flexShrink: 0 },
+      }}
+    >
       <DetailPageHeader
         strSection={t("breadcrumb_section", "Payroll")}
         strListTitle={t("breadcrumb_title", "Payroll Runs")}

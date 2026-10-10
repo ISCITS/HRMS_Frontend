@@ -447,8 +447,10 @@
    page's Payslips panel) -- a same-file class beats an inline sx override reliably, while sx
    alone races against CSS Modules injection order and loses (see .sectionBarTight above). */
 .tableWrapBounded {
-  max-height: 420px;
-  min-height: 300px;
+  /* Scales with the window (so it also works when zoomed out) instead of a fixed pixel height;
+     the table scrolls inside this box and the page scrolls around it. */
+  max-height: max(280px, calc(100vh - 300px));
+  min-height: min(300px, 45vh);
 }
 
 .table {
