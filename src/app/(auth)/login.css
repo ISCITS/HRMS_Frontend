@@ -815,7 +815,7 @@
 }
 
 .login-welcome-title {
-  font-size: clamp(2rem, min(3.1vw, 5.6vh), 2.8rem) !important;
+  font-size: clamp(2rem, min(2vw, 5.6vh), 2rem) !important;
 }
 
 .login-welcome-subtitle {
