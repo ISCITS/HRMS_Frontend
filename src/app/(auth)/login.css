@@ -134,7 +134,7 @@
 .login-hero-title {
   margin: 0;
   color: #07063f;
-  font-size: clamp(2.15rem, min(3.9vw, 7.4vh), 3.85rem);
+  font-size: clamp(2rem, min(2vw, 7.4vh),2rem);
   font-weight: 600;
   line-height: 1.02;
   letter-spacing: 0;
