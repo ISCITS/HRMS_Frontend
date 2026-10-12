@@ -51,7 +51,6 @@ import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonT
 import masterStyles from "@/components/master/MasterScreen.module.css";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import PayrollJobProgressDialog from "@/features/payroll/components/PayrollJobProgressDialog";
-import { usePayslipGenerationProgress } from "@/features/payroll/hooks/usePayslipGenerationProgress";
 import PayslipHtmlPreview from "@/features/payroll/components/PayslipHtmlPreview";
 import ResultLinesTable from "@/features/payroll/components/ResultLinesTable";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
@@ -430,9 +429,6 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
   const [blnPayslipLoading, setBlnPayslipLoading] = useState(false);
   const [strActionLoaderLabel, setStrActionLoaderLabel] = useState("");
   const [objJobProgress, setObjJobProgress] = useState<PayrollJobStatus | null>(null);
-  const { objPayslipProgress, trackPayslipGeneration } = usePayslipGenerationProgress(
-    t("generating_payslip", "Generating payslip"),
-  );
   const refResumedJobRunID = useRef<string | null>(null);
   const [blnPayslipDialogOpen, setBlnPayslipDialogOpen] = useState(false);
   const [blnReprocessDialogOpen, setBlnReprocessDialogOpen] = useState(false);
@@ -855,27 +851,19 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     await runPayrollJob("payslips", () => payslipService.startGenerateAll(strRunID));
   }
 
+  // Only reached while opening a payslip (row click / preview) whose document is missing or stale, so it
+  // runs silently under the caller's app loader - no progress dialog, no loader flicker, no success banner.
   async function generatePayslip(dicRow: PayslipRunListRecord) {
     if (!blnCanGeneratePayslip) {
       return null;
     }
-    setBlnPayslipLoading(true);
-    setStrActionLoaderLabel(t("generating_payslip", "Generating payslip..."));
-    setStrError("");
-    setStrSuccess("");
     try {
-      const dicPayslip = await trackPayslipGeneration(() =>
-        payslipService.generatePayslip(strRunID, dicRow.intEmployeeID),
-      );
-      setStrSuccess(t("payslip_generated", "Payslip generated successfully."));
+      const dicPayslip = await payslipService.generatePayslip(strRunID, dicRow.intEmployeeID);
       await reloadPayslips();
       return dicPayslip;
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to generate payslip.");
       return null;
-    } finally {
-      setBlnPayslipLoading(false);
-      setStrActionLoaderLabel("");
     }
   }
 
@@ -936,7 +924,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
       return;
     }
     setBlnPayslipLoading(true);
-    setStrActionLoaderLabel(blnPrint ? t("preparing_print", "Preparing print view...") : t("preparing_download", "Preparing download..."));
+    setStrActionLoaderLabel(blnPrint ? t("opening_payslip_tab", "Opening payslip...") : t("preparing_download", "Preparing download..."));
     setStrError("");
     try {
       const { intPayslipID, strPayslipRecordUUID } = await resolveFreshPayslipID(dicRow);
@@ -1411,7 +1399,6 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
       {strRightsError && !blnRightsErrorDismissed ? <Alert severity="warning" onClose={() => setBlnRightsErrorDismissed(true)}>{strRightsError}</Alert> : null}
       {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success" onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
-      {blnPayslipLoading ? <Alert severity="info">{t("payslip_preparing", "Preparing payslips...")}</Alert> : null}
       {objRun.strRunStatus === "PROCESSED" && objRun.strRunTypeCode !== "VARIABLE_PAY" && !blnReviewHintDismissed ? (
         <Alert severity="info" onClose={() => setBlnReviewHintDismissed(true)} data-controlid="payroll.run-detail.review-before-payslips.alert">
           {t("payroll_results_help", "Review processed payroll calculations before generating payslips.")}
@@ -2072,7 +2059,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
         </DialogActions>
       </Dialog>
       <PayrollJobProgressDialog
-        objJob={objJobProgress ?? objPayslipProgress}
+        objJob={objJobProgress}
         strTitle={
           objJobProgress?.strKind === "reprocess"
             ? t("reprocessing_run", "Reprocessing payroll run...")
