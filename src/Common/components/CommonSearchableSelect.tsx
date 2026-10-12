@@ -56,14 +56,14 @@ export default function CommonSearchableSelect<T extends CommonSearchableSelectO
   getOptionLabel,
 }: CommonSearchableSelectProps<T>) {
   const resolveLabel = getOptionLabel ?? ((dicOption: T) => (dicOption.strCode ? `${dicOption.strCode} - ${dicOption.strLabel}` : dicOption.strLabel));
-  const dicSelected = options.find((dicOption) => dicOption.intID === value) ?? null;
+  const dicSelected = options.find((dicOption) => String(dicOption.intID) === String(value)) ?? null;
 
   return (
     <Autocomplete
       options={options}
       value={dicSelected}
       getOptionLabel={resolveLabel}
-      isOptionEqualToValue={(dicA, dicB) => dicA.intID === dicB.intID}
+      isOptionEqualToValue={(dicA, dicB) => String(dicA.intID) === String(dicB.intID)}
       onChange={(_objEvent, dicOption) => onChange(dicOption ? dicOption.intID : "")}
       disabled={disabled}
       fullWidth={fullWidth}

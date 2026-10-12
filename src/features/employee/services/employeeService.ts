@@ -33,6 +33,14 @@ function normalizeOptionalNumber(intValue: number | ""): number | null {
   return intValue === "" ? null : intValue;
 }
 
+function normalizeApiOptionalNumber(objValue: unknown): number | null {
+  if (objValue === null || objValue === undefined || objValue === "") {
+    return null;
+  }
+  const intValue = Number(objValue);
+  return Number.isFinite(intValue) ? intValue : null;
+}
+
 const lstExtendedEmployeeFields: Array<keyof EmployeeFormValues> = [
   "strFatherOrHusbandName", "strMotherName", "strSpouseName", "strSpouseOccupation",
   "strBloodGroup", "intNationalityCountryID",
@@ -83,6 +91,7 @@ function mapEmployeePayload(dicValues: EmployeeFormValues): Record<string, unkno
     intPayrollGroupID: normalizeOptionalNumber(dicValues.intPayrollGroupID),
     intManagerEmployeeID: normalizeOptionalNumber(dicValues.intManagerEmployeeID),
     intLineManagerEmployeeID: normalizeOptionalNumber(dicValues.intLineManagerEmployeeID || dicValues.intManagerEmployeeID),
+    intAllocationEntityID: normalizeOptionalNumber(dicValues.intAllocationEntityID),
     strWorkEmail: dicValues.strWorkEmail.trim() || null,
     strPersonalEmail: dicValues.strPersonalEmail.trim() || null,
     strMobileNumber: dicValues.strMobileNumber.trim() || null,
@@ -118,6 +127,14 @@ function mapEmployeeDetailRecord(dicRecord: EmployeeDetailApiRecord): EmployeeDe
     intPayrollGroupID: dicRecord.intPayrollGroupID,
     intManagerEmployeeID: dicRecord.intManagerEmployeeID,
     intLineManagerEmployeeID: dicRecord.intLineManagerEmployeeID ?? null,
+    intAllocationEntityID: normalizeApiOptionalNumber(
+      dicRecord.intAllocationEntityID
+      ?? dicRecord.intAllocationEntityId
+      ?? dicRecord.allocation_entity_id
+    ),
+    strAllocationEntityCode: dicRecord.strAllocationEntityCode ?? null,
+    strAllocationEntityName: dicRecord.strAllocationEntityName ?? null,
+    strAllocationEntityLabel: dicRecord.strAllocationEntityLabel ?? null,
     strWorkEmail: dicRecord.strWorkEmail,
     strPersonalEmail: dicRecord.strPersonalEmail,
     strMobileNumber: dicRecord.strMobileNumber,

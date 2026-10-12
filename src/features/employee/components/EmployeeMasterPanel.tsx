@@ -34,7 +34,7 @@ import dicConstant from "@/constants/Constant.json";
 import { useEmployeeLabels } from "@/features/employee/hooks/useEmployeeLabels";
 import { employeeService } from "@/features/employee/services/employeeService";
 import { dicEmptyEmployeeForm, toEmployeeFormValues } from "@/features/employee/EmployeeFormUtils";
-import type { EmployeeDetailRecord, EmployeeFormOptions, EmployeeFormValues, EmployeeListRecord, EmployeeStatus } from "@/features/employee/types";
+import type { EmployeeDetailRecord, EmployeeFormOptions, EmployeeFormValues, EmployeeListRecord, EmployeeLookupOption, EmployeeStatus } from "@/features/employee/types";
 
 type EmployeeMode = "add" | "edit" | "view";
 type SearchForm = {
@@ -72,6 +72,7 @@ export default function EmployeeMasterPanel() {
   const [blnDialogOpen, setBlnDialogOpen] = useState(false);
   const [intEditingEmployeeID, setIntEditingEmployeeID] = useState<number | null>(null);
   const [dicForm, setDicForm] = useState<EmployeeFormValues>(dicEmptyForm);
+  const [objSelectedAllocationEntityOption, setObjSelectedAllocationEntityOption] = useState<EmployeeLookupOption | null>(null);
   const [dicErrors, setDicErrors] = useState<Partial<Record<keyof EmployeeFormValues, string>>>({});
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
@@ -125,10 +126,21 @@ export default function EmployeeMasterPanel() {
   const blnSomeVisibleSelected = !blnAllVisibleSelected && lstSelectedIDs.some((intID) => lstVisibleEmployees.some((dicEmployee) => dicEmployee.intID == intID));
 
   const lstManagerOptions = useMemo(() => (objFormOptions?.lstManagers ?? []).filter((dicOption) => dicOption.intID !== intEditingEmployeeID), [intEditingEmployeeID, objFormOptions]);
+  const lstAllocationEntityOptions = useMemo(() => {
+    const lstOptions = objFormOptions?.lstAllocationEntities ?? [];
+    if (
+      objSelectedAllocationEntityOption
+      && !lstOptions.some((dicOption) => dicOption.intID === objSelectedAllocationEntityOption.intID)
+    ) {
+      return [...lstOptions, objSelectedAllocationEntityOption];
+    }
+    return lstOptions;
+  }, [objFormOptions, objSelectedAllocationEntityOption]);
 
   function resetDialog() {
     setIntEditingEmployeeID(null);
     setDicForm(dicEmptyForm);
+    setObjSelectedAllocationEntityOption(null);
     setDicErrors({});
     setStrError("");
   }
@@ -148,6 +160,15 @@ export default function EmployeeMasterPanel() {
     try {
       const dicEmployee = await employeeService.getEmployeeById(intEmployeeID);
       setIntEditingEmployeeID(intEmployeeID);
+      setObjSelectedAllocationEntityOption(
+        dicEmployee.intAllocationEntityID && dicEmployee.strAllocationEntityLabel
+          ? {
+              intID: dicEmployee.intAllocationEntityID,
+              strCode: dicEmployee.strAllocationEntityCode ?? undefined,
+              strLabel: dicEmployee.strAllocationEntityLabel,
+            }
+          : null
+      );
       setDicForm(toFormValues(dicEmployee));
       setBlnDialogOpen(true);
     } catch (objError) {
@@ -478,6 +499,7 @@ export default function EmployeeMasterPanel() {
             {renderOptionField(`${dicConstant.employeeMaster.fields.location} *`, "intLocationID", objFormOptions?.lstLocations ?? [])}
             {renderOptionField(dicConstant.employeeMaster.fields.payrollGroup, "intPayrollGroupID", objFormOptions?.lstPayrollGroups ?? [])}
             {renderOptionField(dicConstant.employeeMaster.fields.manager, "intManagerEmployeeID", lstManagerOptions)}
+            {renderOptionField(dicConstant.employeeMaster.fields.allocationEntity ?? "Allocation Entity", "intAllocationEntityID", lstAllocationEntityOptions)}
           </Box>
 
           <Typography className={styles.sectionBar}>Contact & Preferences</Typography>

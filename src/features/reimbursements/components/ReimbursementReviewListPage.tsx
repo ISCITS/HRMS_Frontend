@@ -48,6 +48,7 @@ const objEmptyEmployeeOptions: EmployeeFormOptions = {
   lstStates: [],
   lstBanks: [],
   lstManagers: [],
+  lstAllocationEntities: [],
   lstTitles: [],
   lstGenders: [],
   lstEmploymentStatuses: [],

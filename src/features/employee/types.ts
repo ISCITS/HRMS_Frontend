@@ -48,6 +48,10 @@ export type EmployeeDetailRecord = {
   intPayrollGroupID: number | null;
   intManagerEmployeeID: number | null;
   intLineManagerEmployeeID: number | null;
+  intAllocationEntityID: number | null;
+  strAllocationEntityCode?: string | null;
+  strAllocationEntityName?: string | null;
+  strAllocationEntityLabel?: string | null;
   strWorkEmail: string | null;
   strPersonalEmail: string | null;
   strMobileNumber: string | null;
@@ -143,6 +147,7 @@ export type EmployeeFormValues = {
   intPayrollGroupID: number | "";
   intManagerEmployeeID: number | "";
   intLineManagerEmployeeID: number | "";
+  intAllocationEntityID: number | "";
   strWorkEmail: string;
   strPersonalEmail: string;
   strMobileNumber: string;
@@ -232,6 +237,7 @@ export type EmployeeFormOptions = {
   lstStates: EmployeeLookupOption[];
   lstBanks: EmployeeLookupOption[];
   lstManagers: EmployeeLookupOption[];
+  lstAllocationEntities: EmployeeLookupOption[];
   lstTitles: string[];
   lstGenders: string[];
   lstEmploymentStatuses: EmployeeStatus[];

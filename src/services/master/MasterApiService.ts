@@ -571,6 +571,12 @@ export type EmployeeDetailApiRecord = {
   intPayrollGroupID: number | null;
   intManagerEmployeeID: number | null;
   intLineManagerEmployeeID?: number | null;
+  intAllocationEntityID?: number | null;
+  intAllocationEntityId?: number | null;
+  allocation_entity_id?: number | null;
+  strAllocationEntityCode?: string | null;
+  strAllocationEntityName?: string | null;
+  strAllocationEntityLabel?: string | null;
   strWorkEmail: string | null;
   strPersonalEmail: string | null;
   strMobileNumber: string | null;
@@ -676,6 +682,7 @@ export type EmployeeFormOptionsApiRecord = {
   lstStates: EmployeeLookupOptionApiRecord[];
   lstBanks: EmployeeLookupOptionApiRecord[];
   lstManagers: EmployeeLookupOptionApiRecord[];
+  lstAllocationEntities: EmployeeLookupOptionApiRecord[];
   lstTitles: string[];
   lstGenders: Array<"Male" | "Female" | "Other">;
   lstEmploymentStatuses: Array<"Active" | "Inactive">;

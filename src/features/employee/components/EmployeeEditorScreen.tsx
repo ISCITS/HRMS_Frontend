@@ -100,6 +100,7 @@ import type {
   EmployeeFormValues,
   EmployeeExperienceFormValues,
   EmployeeExperienceRecord,
+  EmployeeLookupOption,
   EmployeeListRecord,
   EmployeeQualificationFormValues,
   EmployeeQualificationRecord,
@@ -301,7 +302,6 @@ const lstPersonalOptionalFields: Array<{ strField: keyof EmployeeFormValues; str
 const lstEmploymentAssignmentFields: Array<{ strField: keyof EmployeeFormValues; strLabel: string; strType?: string }> = [
   { strField: "strEmployeeFunction", strLabel: "Employee Function" },
   { strField: "strFunctionalArea", strLabel: "Functional Area" },
-  { strField: "strJobType", strLabel: "Job Type" },
   { strField: "strPaymentType", strLabel: "Payment Type" },
 ];
 
@@ -415,6 +415,7 @@ export default function EmployeeEditorScreen({
   });
   const [lstEmployees, setLstEmployees] = useState<EmployeeListRecord[]>([]);
   const [objFormOptions, setObjFormOptions] = useState<EmployeeFormOptions | null>(null);
+  const [objSelectedAllocationEntityOption, setObjSelectedAllocationEntityOption] = useState<EmployeeLookupOption | null>(null);
   const [dicBasicForm, setDicBasicForm] = useState<EmployeeFormValues>(dicEmptyEmployeeForm);
   const [dicAddressForm, setDicAddressForm] = useState<EmployeeAddressFormValues>(dicEmptyEmployeeAddressForm);
   const [dicBankForm, setDicBankForm] = useState<EmployeeBankFormValues>(dicEmptyEmployeeBankForm);
@@ -526,6 +527,16 @@ export default function EmployeeEditorScreen({
     ? t("breadcrumb_add", "Add")
     : strDisplayEmployeeName || t("breadcrumb_employee", "Employee");
   const strAuthenticatedAvatarUrl = useAuthenticatedAvatar(strEmployeeAvatarUrl);
+  const lstAllocationEntityOptions = useMemo(() => {
+    const lstOptions = objFormOptions?.lstAllocationEntities ?? [];
+    if (
+      objSelectedAllocationEntityOption
+      && !lstOptions.some((dicOption) => dicOption.intID === objSelectedAllocationEntityOption.intID)
+    ) {
+      return [...lstOptions, objSelectedAllocationEntityOption];
+    }
+    return lstOptions;
+  }, [objFormOptions, objSelectedAllocationEntityOption]);
 
   function getFooterActionConfig() {
     if (blnViewOnly) {
@@ -596,6 +607,15 @@ export default function EmployeeEditorScreen({
           // The record carries the internal id; every child request below uses that rather than
           // the public identifier from the URL.
           const intEmployeeID = dicEmployee.intID;
+          setObjSelectedAllocationEntityOption(
+            dicEmployee.intAllocationEntityID && dicEmployee.strAllocationEntityLabel
+              ? {
+                  intID: dicEmployee.intAllocationEntityID,
+                  strCode: dicEmployee.strAllocationEntityCode ?? undefined,
+                  strLabel: dicEmployee.strAllocationEntityLabel,
+                }
+              : null
+          );
           setDicBasicForm(toEmployeeFormValues(dicEmployee));
           setStrEmployeeAvatarUrl(buildEmployeeAvatarUrl(intEmployeeID, dicEmployee.strProfilePhotoUrl));
           setIntResolvedEmployeeID(intEmployeeID);
@@ -1668,10 +1688,16 @@ export default function EmployeeEditorScreen({
     blnRequired = false,
     strControlId?: string
   ) {
-    const lstValidOptions = lstOptions.filter(
-      (objOption): objOption is { intID: number; strLabel: string; strCode?: string } =>
-        typeof objOption.intID === "number" && typeof objOption.strLabel === "string"
-    );
+    const lstValidOptions = lstOptions.flatMap((objOption) => {
+      const intOptionID = Number(objOption.intID);
+      if (!Number.isFinite(intOptionID) || typeof objOption.strLabel !== "string") {
+        return [];
+      }
+      return [{ intID: intOptionID, strLabel: objOption.strLabel, strCode: objOption.strCode }];
+    });
+    const lstResolvedOptions = objValue !== "" && !lstValidOptions.some((objOption) => objOption.intID === objValue)
+      ? [...lstValidOptions, { intID: objValue, strLabel: t("selected_option_unavailable", "Selected option is unavailable") }]
+      : lstValidOptions;
     return (
       <CommonSearchableSelect
         controlId={strControlId ?? `employee.editor.${strLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.select`}
@@ -1680,7 +1706,7 @@ export default function EmployeeEditorScreen({
         size="small"
         showSearchIcon={strLabel.toLowerCase().includes("manager")}
         value={objValue}
-        options={lstValidOptions}
+        options={lstResolvedOptions}
         onChange={(objSelected) => fnOnChange(objSelected === "" ? "" : Number(objSelected))}
         disabled={blnDisabled}
         error={blnError}
@@ -2235,6 +2261,7 @@ export default function EmployeeEditorScreen({
                   {renderSearchableSelectField(t("field_payroll_group", dicConstant.employeeMaster.fields.payrollGroup), dicBasicForm.intPayrollGroupID, (objValue) => updateBasicField("intPayrollGroupID", objValue), objFormOptions?.lstPayrollGroups ?? [], blnViewOnly)}
                   {renderSearchableSelectField(t("field_manager", dicConstant.employeeMaster.fields.manager), dicBasicForm.intManagerEmployeeID, (objValue) => updateReportingManagerField(objValue), lstManagerOptions, blnViewOnly, dicBasicErrors.intManagerEmployeeID, Boolean(dicBasicErrors.intManagerEmployeeID), true)}
                   {renderSearchableSelectField(t("field_line_manager", "Line Manager"), dicBasicForm.intLineManagerEmployeeID, (objValue) => updateBasicField("intLineManagerEmployeeID", objValue || dicBasicForm.intManagerEmployeeID), lstManagerOptions, blnViewOnly, dicBasicErrors.intLineManagerEmployeeID, Boolean(dicBasicErrors.intLineManagerEmployeeID), true)}
+                  {renderSearchableSelectField(t("field_allocation_entity", "Allocation Entities"), dicBasicForm.intAllocationEntityID, (objValue) => updateBasicField("intAllocationEntityID", objValue), lstAllocationEntityOptions, blnViewOnly)}
                   {lstEmploymentAssignmentFields.map((dicField) => renderOptionalEmployeeField(dicField.strField, dicField.strLabel, dicField.strType))}
                 </Box>
               </Box> : null}

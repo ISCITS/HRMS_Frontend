@@ -148,6 +148,7 @@
             "location": "Location",
             "payrollGroup": "Payroll Group",
             "manager": "Reporting Manager",
+            "allocationEntity": "Allocation Entity",
             "workEmail": "Work Email",
             "personalEmail": "Personal Email",
             "mobileNumber": "Mobile Number",
