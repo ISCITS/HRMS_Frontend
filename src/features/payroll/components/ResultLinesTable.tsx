@@ -1,21 +1,22 @@
 "use client";
 
 import RequestQuoteRoundedIcon from "@mui/icons-material/RequestQuoteRounded";
-import { Typography } from "@mui/material";
+import { Box, Chip, Typography } from "@mui/material";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
-import type { PayrollResultLineRecord } from "@/features/payroll/types";
+import type { PayrollResultDetailRecord, PayrollResultLineRecord } from "@/features/payroll/types";
 
-// Shared "Result Lines" (Earnings & Deductions) table. Rendered identically on the
-// Payroll Results detail screen and inside the Payroll Run "Review Results" dialog so
-// both stay in lockstep - keep any column/logic change in this one place.
+// Payslip-style "Result Lines" table used inside the Payroll Run "Review Results" dialog:
+// one row per payslip component (plus TDS), followed by the employee's final totals.
 
 type ResultLinesTableProps = {
-  lstLines: PayrollResultLineRecord[];
+  objResult: PayrollResultDetailRecord;
   /** When true, drops the "Result Lines" heading (for use inside a dialog). */
   blnFlush?: boolean;
 };
+
+type LineKind = "earning" | "deduction" | "employer" | "tax";
 
 function formatCurrency(decValue: number) {
   return new Intl.NumberFormat("en-IN", {
@@ -26,15 +27,12 @@ function formatCurrency(decValue: number) {
   }).format(decValue || 0);
 }
 
-function formatBasisLabel(strValue: string | null | undefined) {
-  if (!strValue) {
-    return "-";
+function formatDays(objValue: unknown) {
+  const fltValue = typeof objValue === "number" ? objValue : Number(objValue);
+  if (objValue === null || objValue === undefined || objValue === "" || !Number.isFinite(fltValue)) {
+    return null;
   }
-  return strValue
-    .split("_")
-    .filter(Boolean)
-    .map((strPart) => strPart.charAt(0).toUpperCase() + strPart.slice(1))
-    .join(" ");
+  return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(fltValue);
 }
 
 function toLabelKey(strValue: string | null | undefined) {
@@ -46,30 +44,6 @@ function toLabelKey(strValue: string | null | undefined) {
     .toLowerCase();
 }
 
-function translateDynamicLabel(
-  t: (strKey: string, strFallback?: string) => string,
-  strValue: string | null | undefined,
-  strPrefix = "",
-  strFallback?: string
-) {
-  const strKey = toLabelKey(strValue);
-  if (!strKey) {
-    return "-";
-  }
-  return t(strPrefix ? `${strPrefix}_${strKey}` : strKey, strFallback ?? formatBasisLabel(strValue));
-}
-
-function formatLabelTemplate(strTemplate: string, dicValues: Record<string, string | number>) {
-  return Object.entries(dicValues).reduce(
-    (strOutput, [strKey, objValue]) => strOutput.replaceAll(`{${strKey}}`, String(objValue)),
-    strTemplate
-  );
-}
-
-function hasDisplayAmount(decAmount: number | null | undefined) {
-  return Number(decAmount ?? 0) > 0;
-}
-
 function asRecord(objValue: unknown): Record<string, unknown> | null {
   if (!objValue || typeof objValue !== "object" || Array.isArray(objValue)) {
     return null;
@@ -77,201 +51,99 @@ function asRecord(objValue: unknown): Record<string, unknown> | null {
   return objValue as Record<string, unknown>;
 }
 
-function getNumberValue(objRecord: Record<string, unknown>, strKey: string) {
-  const objValue = objRecord[strKey];
-  if (typeof objValue === "number") {
-    return objValue;
-  }
-  if (typeof objValue === "string" && objValue.trim() !== "") {
-    const fltValue = Number(objValue);
-    return Number.isFinite(fltValue) ? fltValue : null;
-  }
-  return null;
+function getLineKind(dicLine: PayrollResultLineRecord): LineKind {
+  if (dicLine.blnIsTaxLine) return "tax";
+  if (dicLine.blnIsEmployerContribution) return "employer";
+  if (dicLine.blnIsEmployeeDeduction) return "deduction";
+  return "earning";
 }
 
-function getStringValue(objRecord: Record<string, unknown>, strKey: string) {
-  const objValue = objRecord[strKey];
-  return typeof objValue === "string" && objValue.trim() !== "" ? objValue : null;
+const dicKindChipSx: Record<LineKind, { background: string; border: string; color: string }> = {
+  earning: { background: "#ecfdf5", border: "#bbf7d0", color: "#15803d" },
+  deduction: { background: "#fff7ed", border: "#fed7aa", color: "#c2410c" },
+  employer: { background: "#f1f5f9", border: "#cbd5e1", color: "#334155" },
+  tax: { background: "#f5f3ff", border: "#ddd6fe", color: "#6d28d9" },
+};
+
+// Paid days the component was prorated on (LWP trace), else the employee's payable days.
+// Only earnings are prorated by days; deductions / contributions / tax show "-".
+function getLinePayableDays(dicLine: PayrollResultLineRecord, objResult: PayrollResultDetailRecord) {
+  if (getLineKind(dicLine) !== "earning") return "-";
+  const objLwpTrace = asRecord(dicLine.dicLwpTrace) ?? asRecord(asRecord(dicLine.objCalculationTrace)?.lwp);
+  return formatDays(objLwpTrace?.paid_units) ?? formatDays(objResult.decPayableDays ?? objResult.decPaidDays) ?? "-";
 }
 
-function getCalculationTraceValue(
-  objTrace: Record<string, unknown> | null | undefined,
-  ...lstKeys: string[]
-) {
-  if (!objTrace) {
-    return null;
-  }
-  for (const strKey of lstKeys) {
-    const objValue = objTrace[strKey];
-    if (objValue !== null && objValue !== undefined && objValue !== "") {
-      return objValue;
-    }
-  }
-  return null;
-}
-
-function getLineMonthlyAmount(dicLine: PayrollResultLineRecord) {
-  const objTrace = dicLine.objCalculationTrace;
-  const objMonthlyValue = getCalculationTraceValue(objTrace, "approved_monthly_amount", "monthly_amount");
-  if (typeof objMonthlyValue === "number") {
-    return objMonthlyValue;
-  }
-  return dicLine.decProratedAmount ?? dicLine.decCalculatedAmount ?? dicLine.decAmount;
-}
-
-function getPayrollImpactLabel(dicLine: PayrollResultLineRecord) {
-  if (dicLine.blnIsEmployerContribution) {
-    return "Employer Only";
-  }
-  if (dicLine.blnIsTaxLine) {
-    return "Tax";
-  }
-  if (dicLine.blnIsEmployeeDeduction) {
-    return "Net Pay Reduction";
-  }
-  if (String(dicLine.strPayslipSection || "").trim().toUpperCase() === "REIMBURSEMENTS") {
-    return "Reimbursement";
-  }
-  if (dicLine.blnIncludeInGross) {
-    return "Gross Earning";
-  }
-  return "Informational";
-}
-
-function getLineLwpSummary(dicLine: PayrollResultLineRecord) {
-  const objTrace = asRecord(asRecord(dicLine.objCalculationTrace)?.lwp);
-  if (!objTrace) {
-    return null;
-  }
-  const strTreatment = getStringValue(objTrace, "lwp_treatment_code");
-  if (!strTreatment || strTreatment === "NONE") {
-    return null;
-  }
-  return {
-    strTreatment,
-    decReducedAmount: getNumberValue(objTrace, "reduced_amount") ?? 0,
-    strOutcome: getCalculationTraceValue(objTrace, "reduced_handling_code", "handling", "reduced_handling_outcome") as string | null,
-  };
-}
-
-function getTaxableLabel(dicLine: PayrollResultLineRecord) {
-  const objTrace = dicLine.objCalculationTrace;
-  const objTaxable = getCalculationTraceValue(objTrace, "taxable", "is_taxable");
-  if (typeof objTaxable === "boolean") {
-    return objTaxable ? "Yes" : "No";
-  }
-  if (dicLine.blnIsTaxLine || dicLine.blnIsResidualTaxable) {
-    return "Yes";
-  }
-  return "-";
-}
-
-function getCtcIncludedLabel(dicLine: PayrollResultLineRecord) {
-  if (dicLine.blnIsEmployerContribution) {
-    return "Yes";
-  }
-  if (dicLine.blnIsEmployeeDeduction) {
-    return "No";
-  }
-  return dicLine.blnIncludeInGross ? "Yes" : "-";
-}
-
-function getLineLwpTrace(dicLine: PayrollResultLineRecord) {
-  const objDirectTrace = asRecord(dicLine.dicLwpTrace);
-  if (objDirectTrace) {
-    return objDirectTrace;
-  }
-  return asRecord(asRecord(dicLine.objCalculationTrace)?.lwp);
-}
-
-function formatTraceNumber(objValue: unknown) {
-  if (typeof objValue === "number") {
-    return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 4 }).format(objValue);
-  }
-  if (typeof objValue === "string" && objValue.trim() !== "") {
-    const fltValue = Number(objValue);
-    return Number.isFinite(fltValue)
-      ? new Intl.NumberFormat("en-IN", { maximumFractionDigits: 4 }).format(fltValue)
-      : objValue;
-  }
-  return "-";
-}
-
-function getLwpExplanation(
-  t: (strKey: string, strFallback?: string) => string,
-  dicLine: PayrollResultLineRecord
-) {
-  const objTrace = getLineLwpTrace(dicLine);
-  if (!objTrace) {
-    return "-";
-  }
-  const strTreatment = String(objTrace.lwp_treatment_code ?? objTrace.treatment ?? "NONE");
-  const strHandling = String(objTrace.reduced_handling_code ?? objTrace.handling ?? "NOT_APPLICABLE");
-  if (strTreatment === "NONE") {
-    return t("lwp_trace_none", "No LWP reduction");
-  }
-  return formatLabelTemplate(
-    t(
-      "lwp_trace_summary",
-      "{treatment}: {paid}/{denominator}, factor {factor}, reduced {reduced}, handling {handling}, residual {residual}"
-    ),
-    {
-      treatment: translateDynamicLabel(t, strTreatment),
-      paid: formatTraceNumber(objTrace.paid_units),
-      denominator: formatTraceNumber(objTrace.denominator_units ?? objTrace.denominator),
-      factor: formatTraceNumber(objTrace.proration_factor ?? objTrace.factor),
-      reduced: formatCurrency(Number(objTrace.reduced_amount ?? 0)),
-      handling: translateDynamicLabel(t, strHandling),
-      residual: formatCurrency(Number(objTrace.residual_transfer_amount ?? 0)),
-    }
-  );
-}
-
-export default function ResultLinesTable({ lstLines, blnFlush = false }: ResultLinesTableProps) {
+export default function ResultLinesTable({ objResult, blnFlush = false }: ResultLinesTableProps) {
   const { t } = useModuleLabels("payslips");
+  const translate = (strValue: string | null | undefined) => {
+    const strKey = toLabelKey(strValue);
+    return strKey ? t(strKey, String(strValue)) : "-";
+  };
+  const dicKindLabel: Record<LineKind, string> = {
+    earning: t("type_earning", "Earning"),
+    deduction: t("type_deduction", "Deduction"),
+    employer: t("type_employer_contribution", "Employer Contribution"),
+    tax: t("type_tds", "TDS"),
+  };
+
   // Same rule as the payslip document (PayslipRepository): hide lines flagged out of the payslip, e.g. CTC provisions.
-  const lstResultLines = (lstLines ?? []).filter(
-    (dicLine) => hasDisplayAmount(dicLine.decAmount) && dicLine.blnIncludeInPayslip !== false
+  const lstResultLines = (objResult.lstLines ?? []).filter(
+    (dicLine) => Number(dicLine.decAmount ?? 0) > 0 && dicLine.blnIncludeInPayslip !== false
+  );
+  const decTaxTotal = Number(objResult.decTaxTotal ?? objResult.decTaxAmount ?? 0);
+  const blnHasTaxLine = lstResultLines.some((dicLine) => dicLine.blnIsTaxLine);
+
+  const renderKind = (strKind: LineKind) => (
+    <Chip
+      label={dicKindLabel[strKind]}
+      size="small"
+      sx={{ background: dicKindChipSx[strKind].background, border: `1px solid ${dicKindChipSx[strKind].border}`, color: dicKindChipSx[strKind].color, fontWeight: 800, height: 22 }}
+    />
   );
 
   const lstRows = lstResultLines.map((dicLine) => {
-    const objLwpSummary = getLineLwpSummary(dicLine);
-    const decMonthlyAmount = getLineMonthlyAmount(dicLine) ?? 0;
+    const strKind = getLineKind(dicLine);
+    const decMonthlySalary = Number(dicLine.decOriginalAmount ?? dicLine.decCalculatedAmount ?? dicLine.decAmount ?? 0);
     return {
-      id: dicLine.intID,
-      strComponentName: translateDynamicLabel(t, dicLine.strComponentName),
-      decAmount: formatCurrency(dicLine.decAmount),
-      decAmountSortValue: Number(dicLine.decAmount ?? 0),
-      decMonthlyAmount: formatCurrency(decMonthlyAmount),
-      decMonthlyAmountSortValue: Number(decMonthlyAmount),
-      strPayrollImpact: translateDynamicLabel(t, getPayrollImpactLabel(dicLine)),
-      strCalculationSource: translateDynamicLabel(t, dicLine.strCalculationSource || dicLine.strSourceType),
-      strTaxable: translateDynamicLabel(t, getTaxableLabel(dicLine)),
-      strCtcIncluded: translateDynamicLabel(t, getCtcIncludedLabel(dicLine)),
-      strPayslipSection: translateDynamicLabel(t, dicLine.strPayslipSection),
-      objLwpAudit: objLwpSummary ? (
-        <span data-controlid="payroll.result-detail.line.lwp-summary" title={objLwpSummary.strOutcome ?? ""}>
-          {translateDynamicLabel(t, objLwpSummary.strTreatment, "lwp_treatment")}
-          {objLwpSummary.decReducedAmount > 0 ? ` (-${formatCurrency(objLwpSummary.decReducedAmount)})` : ""}
-        </span>
-      ) : (
-        getLwpExplanation(t, dicLine)
-      ),
-      strRemarks: dicLine.strRemarks || "-",
+      id: String(dicLine.intID),
+      strComponentName: translate(dicLine.strComponentName),
+      objType: renderKind(strKind),
+      strTypeSortValue: dicKindLabel[strKind],
+      decMonthlySalary: strKind === "tax" ? "-" : formatCurrency(decMonthlySalary),
+      decMonthlySalarySortValue: decMonthlySalary,
+      strPayableDays: getLinePayableDays(dicLine, objResult),
+      decPayrollAmount: formatCurrency(dicLine.decAmount),
+      decPayrollAmountSortValue: Number(dicLine.decAmount ?? 0),
     };
   });
+  // TDS is a result-level figure; show it as its own row when no tax line was posted to the payslip lines.
+  if (!blnHasTaxLine && decTaxTotal > 0) {
+    lstRows.push({
+      id: "tds",
+      strComponentName: t("tds_income_tax", "TDS (Income Tax)"),
+      objType: renderKind("tax"),
+      strTypeSortValue: dicKindLabel.tax,
+      decMonthlySalary: "-",
+      decMonthlySalarySortValue: 0,
+      strPayableDays: "-",
+      decPayrollAmount: formatCurrency(decTaxTotal),
+      decPayrollAmountSortValue: decTaxTotal,
+    });
+  }
 
   const lstColumns: CommonTableColumn<(typeof lstRows)[number]>[] = [
-    { field: "strComponentName", headerName: t("component_name", "Component Name"), width: 200 },
-    { field: "decAmount", headerName: t("amount", "Amount"), align: "right", width: 120, sortAccessor: (dicRow) => dicRow.decAmountSortValue },
-    { field: "decMonthlyAmount", headerName: t("monthly_amount", "Monthly Amount"), align: "right", width: 140, sortAccessor: (dicRow) => dicRow.decMonthlyAmountSortValue },
-    { field: "strPayrollImpact", headerName: t("payroll_impact", "Payroll Impact"), width: 150 },
-    { field: "strCalculationSource", headerName: t("calculation_source", "Calculation Source"), width: 150 },
-    { field: "strTaxable", headerName: t("taxable", "Taxable"), width: 90 },
-    { field: "strCtcIncluded", headerName: t("ctc_included", "CTC Included"), width: 110 },
-    { field: "strPayslipSection", headerName: t("payslip_section", "Payslip Section"), width: 170 },
-    { field: "objLwpAudit", headerName: t("lwp_audit", "LWP Audit"), width: 150, exportable: false },
-    { field: "strRemarks", headerName: t("remarks", "Remarks"), width: 240 },
+    { field: "strComponentName", headerName: t("component_name", "Component Name"), width: 220 },
+    { field: "objType", headerName: t("type", "Type"), width: 170, sortAccessor: (dicRow) => dicRow.strTypeSortValue, exportable: false },
+    { field: "decMonthlySalary", headerName: t("monthly_salary", "Monthly Salary"), align: "right", width: 150, sortAccessor: (dicRow) => dicRow.decMonthlySalarySortValue },
+    { field: "strPayableDays", headerName: t("payable_days", "Payable Days"), align: "right", width: 120 },
+    { field: "decPayrollAmount", headerName: t("payroll_amount", "Payroll Amount"), align: "right", width: 150, sortAccessor: (dicRow) => dicRow.decPayrollAmountSortValue },
+  ];
+
+  const lstSummaryItems = [
+    { strKey: "gross", strLabel: t("gross_earnings", "Gross Earnings"), decValue: objResult.decGrossEarningsAmount ?? objResult.decGrossAmount },
+    { strKey: "deductions", strLabel: t("employee_deductions", "Employee Deductions"), decValue: objResult.decEmployeeDeductionTotal ?? objResult.decDeductionAmount },
+    { strKey: "tax", strLabel: t("tax", "Tax"), decValue: decTaxTotal },
+    { strKey: "net", strLabel: t("net_pay", "Net Pay"), decValue: objResult.decNetPayAmount },
   ];
 
   return (
@@ -289,12 +161,43 @@ export default function ResultLinesTable({ lstLines, blnFlush = false }: ResultL
         withPaper={false}
         hideToolbar
         hideRowClickHint
-        minTableWidth={1180}
-        defaultPageSize={20}
-        showPaginationSummary
+        minTableWidth={760}
+        defaultPageSize={50}
         emptyMessage={t("line_empty", "No payroll result lines found.")}
         testIdPrefix="payroll.result-lines"
       />
+      <Box
+        data-controlid="payroll.result-lines.summary"
+        sx={{
+          border: "1px solid #DCE4EF",
+          borderRadius: "10px",
+          display: "grid",
+          gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))" },
+          mt: 1.25,
+          overflow: "hidden",
+        }}
+      >
+        {lstSummaryItems.map((dicItem) => {
+          const blnNet = dicItem.strKey === "net";
+          return (
+            <Box
+              key={dicItem.strKey}
+              sx={{
+                background: blnNet ? "#f0fdf4" : "#f8fafc",
+                borderLeft: { md: "1px solid #DCE4EF" },
+                "&:first-of-type": { borderLeft: "none" },
+                px: 1.5,
+                py: 1,
+              }}
+            >
+              <Typography sx={{ color: "#64748b", fontSize: "0.74rem", fontWeight: 800 }}>{dicItem.strLabel}</Typography>
+              <Typography sx={{ color: blnNet ? "#15803d" : "#0f172a", fontSize: blnNet ? "1.05rem" : "0.95rem", fontWeight: 900, mt: 0.25, whiteSpace: "nowrap" }}>
+                {formatCurrency(Number(dicItem.decValue ?? 0))}
+              </Typography>
+            </Box>
+          );
+        })}
+      </Box>
     </>
   );
 }

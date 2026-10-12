@@ -4,7 +4,7 @@ import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import DescriptionRoundedIcon from "@mui/icons-material/DescriptionRounded";
 import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded";
 import ErrorOutlineRoundedIcon from "@mui/icons-material/ErrorOutlineRounded";
 import GroupRoundedIcon from "@mui/icons-material/GroupRounded";
@@ -14,7 +14,6 @@ import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
 import PaidRoundedIcon from "@mui/icons-material/PaidRounded";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
-import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
@@ -314,77 +313,6 @@ function MetricTile({ objIcon, strLabel, strValue, strTone, onClick, controlId }
   );
 }
 
-type DataTableColumn<T> = {
-  strKey: string;
-  objHeader: ReactNode;
-  numWidth?: number;
-  strClassName?: string;
-  fnRender: (dicRow: T, intIndex: number) => ReactNode;
-};
-
-function DataTable<T>({
-  lstColumns,
-  lstRows,
-  fnKey,
-  strEmptyMessage,
-  numMinWidth,
-  objSx,
-  strWrapClassName,
-}: {
-  lstColumns: DataTableColumn<T>[];
-  lstRows: T[];
-  fnKey: (dicRow: T, intIndex: number) => string;
-  strEmptyMessage: string;
-  numMinWidth?: number;
-  objSx?: Record<string, unknown>;
-  strWrapClassName?: string;
-}) {
-  return (
-    <Box
-      className={strWrapClassName ? `${styles.tableWrap} ${strWrapClassName}` : styles.tableWrap}
-      sx={{ border: "1px solid #DCE4EF", borderRadius: "10px", ...objSx }}
-    >
-      <table className={styles.table} style={numMinWidth ? { minWidth: numMinWidth } : undefined}>
-        {lstColumns.some((dicColumn) => dicColumn.numWidth) ? (
-          <colgroup>
-            {lstColumns.map((dicColumn) => (
-              <col key={dicColumn.strKey} style={dicColumn.numWidth ? { width: dicColumn.numWidth } : undefined} />
-            ))}
-          </colgroup>
-        ) : null}
-        <thead>
-          <tr>
-            {lstColumns.map((dicColumn) => (
-              <th key={dicColumn.strKey} className={dicColumn.strClassName}>
-                {dicColumn.objHeader}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {lstRows.length ? (
-            lstRows.map((dicRow, intIndex) => (
-              <tr key={fnKey(dicRow, intIndex)}>
-                {lstColumns.map((dicColumn) => (
-                  <td key={dicColumn.strKey} className={dicColumn.strClassName}>
-                    {dicColumn.fnRender(dicRow, intIndex)}
-                  </td>
-                ))}
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan={lstColumns.length} className={styles.emptyState}>
-                {strEmptyMessage}
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </Box>
-  );
-}
-
 function getWorkflowStepIcon(strStep: string) {
   if (strStep === "Draft") {
     return <TaskAltRoundedIcon sx={{ fontSize: 18 }} />;
@@ -515,7 +443,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
   const [objActionsAnchor, setObjActionsAnchor] = useState<null | HTMLElement>(null);
   const [objAttendanceValidationResult, setObjAttendanceValidationResult] = useState<AttendanceValidateRunResult | null>(null);
   const [blnAttendanceBlockedFilterActive, setBlnAttendanceBlockedFilterActive] = useState(false);
-  const [strActiveTab, setStrActiveTab] = useState<"run" | "valid" | "review" | "variablePay" | "declaration">("run");
+  const [strActiveTab, setStrActiveTab] = useState<"run" | "valid" | "review" | "payslips" | "variablePay" | "declaration">("run");
   const refDefaultedTabForRunID = useRef<number | null>(null);
   const [lstRunResults, setLstRunResults] = useState<PayrollResultListRecord[]>([]);
   const [lstVariablePayValidationIssues, setLstVariablePayValidationIssues] = useState<PayrollValidationResultRecord[]>([]);
@@ -1016,10 +944,11 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
         return;
       }
       const strHtml = await payslipService.getDownloadHtml(strPayslipRecordUUID ?? String(intPayslipID));
+      const strFileName = buildPayslipFileName("payslip", dicRow.strPayslipNumber, dicRow.strEmployeeCode);
       if (blnPrint) {
-        printPayslipHtml(strHtml);
+        printPayslipHtml(strHtml, strFileName);
       } else {
-        downloadPayslipHtml(strHtml, buildPayslipFileName("payslip", dicRow.strPayslipNumber, dicRow.strEmployeeCode));
+        downloadPayslipHtml(strHtml, strFileName);
       }
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to download payslip document.");
@@ -1127,6 +1056,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     : (objRun.strPayrollGroupName ?? t("scope_payroll_group", "Payroll Group"));
   const lstWorkflowSteps = getWorkflowSteps(objRun.strRunStatus, objRun.strRunTypeCode === "VARIABLE_PAY");
   const blnShowReviewResults = ["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus);
+  const blnShowPayslipsTab = blnShowReviewResults && objRun.strRunTypeCode !== "VARIABLE_PAY";
 
   const objCardSx = {
     background: "#fff",
@@ -1135,18 +1065,23 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     boxShadow: "0 8px 24px rgba(15, 23, 42, 0.04)",
   };
 
-  const lstSummaryTiles = [
-    { strLabel: t("payroll_month", "Payroll Month"), strValue: formatMonth(objRun.dtPayrollMonth), objIcon: <CalendarMonthRoundedIcon sx={{ fontSize: 18 }} />, strTone: "blue" as Tone },
-    { strLabel: t("run_scope", "Payroll Group / Scope"), strValue: strScopeLabel, objIcon: <GroupRoundedIcon sx={{ fontSize: 18 }} />, strTone: "blue" as Tone },
-    { strLabel: t("employees_in_run", "Employees in Run"), strValue: String(objRun.intEmployeeCount || objRun.dicSummary.intInputCount), objIcon: <TaskAltRoundedIcon sx={{ fontSize: 18 }} />, strTone: "green" as Tone },
+  const lstRunDetailItems = [
+    { strLabel: t("payroll_month", "Payroll Month"), strValue: formatMonth(objRun.dtPayrollMonth), objIcon: <CalendarMonthRoundedIcon sx={{ fontSize: 16 }} />, strTone: "blue" as Tone },
+    { strLabel: t("run_scope", "Payroll Group / Scope"), strValue: strScopeLabel, objIcon: <GroupRoundedIcon sx={{ fontSize: 16 }} />, strTone: "blue" as Tone },
+    { strLabel: t("employees_in_run", "Employees in Run"), strValue: String(objRun.intEmployeeCount || objRun.dicSummary.intInputCount), objIcon: <TaskAltRoundedIcon sx={{ fontSize: 16 }} />, strTone: "green" as Tone },
+    { strLabel: t("total_lwp", "Total LWP Days"), strValue: String(objRun.dicSummary.decTotalLwpDays ?? 0), objIcon: <CalendarMonthRoundedIcon sx={{ fontSize: 16 }} />, strTone: "amber" as Tone },
+    { strLabel: t("total_lop", "Total LOP Days"), strValue: String(objRun.dicSummary.decTotalLopDays ?? 0), objIcon: <CalendarMonthRoundedIcon sx={{ fontSize: 16 }} />, strTone: "amber" as Tone },
+  ];
+  const lstPayrollTotalTiles = [
     { strLabel: t("gross_pay", "Gross Pay"), strValue: formatCurrency(objRun.decGrossPayTotal), objIcon: <PaidRoundedIcon sx={{ fontSize: 18 }} />, strTone: "blue" as Tone },
     { strLabel: t("deduction_total", "Employee Deductions"), strValue: formatCurrency(objRun.decDeductionTotal), objIcon: <WalletRoundedIcon sx={{ fontSize: 18 }} />, strTone: "red" as Tone },
-    { strLabel: t("tax_total", "Tax"), strValue: formatCurrency(objRun.decTaxTotal), objIcon: <SummarizeRoundedIcon sx={{ fontSize: 18 }} />, strTone: "green" as Tone },
-    { strLabel: t("employer_contribution_total", "Employer Contributions"), strValue: formatCurrency(objRun.decEmployerContributionTotal), objIcon: <WalletRoundedIcon sx={{ fontSize: 18 }} />, strTone: "blue" as Tone },
-    { strLabel: t("net_total", "Net Pay"), strValue: formatCurrency(objRun.decNetPayTotal), objIcon: <PaidRoundedIcon sx={{ fontSize: 18 }} />, strTone: "green" as Tone },
-    { strLabel: t("total_lwp", "Total LWP Days"), strValue: String(objRun.dicSummary.decTotalLwpDays ?? 0), objIcon: <CalendarMonthRoundedIcon sx={{ fontSize: 18 }} />, strTone: "amber" as Tone },
-    { strLabel: t("total_lop", "Total LOP Days"), strValue: String(objRun.dicSummary.decTotalLopDays ?? 0), objIcon: <CalendarMonthRoundedIcon sx={{ fontSize: 18 }} />, strTone: "amber" as Tone },
+    { strLabel: t("tax_total", "Tax"), strValue: formatCurrency(objRun.decTaxTotal), objIcon: <SummarizeRoundedIcon sx={{ fontSize: 18 }} />, strTone: "amber" as Tone },
+    { strLabel: t("employer_contribution_total", "Employer Contributions"), strValue: formatCurrency(objRun.decEmployerContributionTotal), objIcon: <WalletRoundedIcon sx={{ fontSize: 18 }} />, strTone: "slate" as Tone },
   ];
+  const intGeneratedPayslipCount = lstPayslips.filter((dicPayslip) => dicPayslip.blnGenerated).length;
+  const intPayslipProgressPercent = lstPayslips.length ? Math.round((intGeneratedPayslipCount / lstPayslips.length) * 100) : 0;
+  const objSummaryPanelSx = { border: "1px solid #DCE4EF", borderRadius: "10px", minWidth: 0, p: 1.25 };
+  const objSummaryPanelTitleSx = { color: "#64748b", fontSize: "0.72rem", fontWeight: 800, letterSpacing: "0.04em", mb: 0.5, textTransform: "uppercase" };
 
   const strPayslipSearchNormalized = strPayslipSearch.trim().toLowerCase();
   const lstFilteredPayslips = strPayslipSearchNormalized
@@ -1156,6 +1091,68 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
           dicPayslip.strEmployeeCode.toLowerCase().includes(strPayslipSearchNormalized),
       )
     : lstPayslips;
+
+  // Row click opens the payslip document in a new tab (Print / Download live in that tab's toolbar);
+  // users without export rights get the in-page preview dialog instead.
+  function openPayslipFromRow(dicPayslip: PayslipRunListRecord) {
+    if (blnPayslipLoading) return;
+    if (blnCanExport) {
+      void openPayslipDocument(dicPayslip, true);
+    } else {
+      void viewPayslip(dicPayslip);
+    }
+  }
+
+  const dicPayslipByRowID = new Map(lstFilteredPayslips.map((dicPayslip) => [`${dicPayslip.intPayrollRunID}-${dicPayslip.intEmployeeID}`, dicPayslip]));
+  const lstPayslipRows = lstFilteredPayslips.map((dicPayslip) => ({
+    id: `${dicPayslip.intPayrollRunID}-${dicPayslip.intEmployeeID}`,
+    strEmployeeName: (
+      <Link
+        component="button"
+        type="button"
+        underline="none"
+        onClick={(objEvent) => {
+          objEvent.stopPropagation();
+          if (window.getSelection()?.toString()) return;
+          openPayslipFromRow(dicPayslip);
+        }}
+        sx={{
+          color: "#334155", cursor: "pointer", fontSize: "inherit", fontWeight: 500,
+          textAlign: "left", textUnderlineOffset: "3px", userSelect: "text", WebkitUserSelect: "text",
+          "&:hover": { color: "#0066df", textDecoration: "underline" },
+          "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 },
+        }}
+      >
+        {dicPayslip.strEmployeeName}
+      </Link>
+    ),
+    strEmployeeNameSortValue: dicPayslip.strEmployeeName,
+    strEmployeeCode: dicPayslip.strEmployeeCode,
+    strPayslipNumber: dicPayslip.strPayslipNumber || "-",
+    decNetPay: formatCurrency(dicPayslip.decNetPay),
+    decNetPaySortValue: Number(dicPayslip.decNetPay ?? 0),
+    strPayslipStatus: (
+      <Chip
+        label={dicPayslip.strPayslipStatus}
+        size="small"
+        sx={dicPayslip.blnGenerated
+          ? { background: "#ecfdf5", border: "1px solid #bbf7d0", color: "#15803d", fontWeight: 800, height: 22 }
+          : { background: "#f1f5f9", border: "1px solid #cbd5e1", color: "#475569", fontWeight: 800, height: 22 }}
+      />
+    ),
+    strPayslipStatusSortValue: dicPayslip.strPayslipStatus,
+    dtGeneratedOn: formatDateTime(dicPayslip.dtGeneratedOn),
+    dtGeneratedOnSortValue: dicPayslip.dtGeneratedOn ? new Date(dicPayslip.dtGeneratedOn).getTime() : 0,
+  }));
+
+  const lstPayslipColumns: CommonTableColumn<(typeof lstPayslipRows)[number]>[] = [
+    { field: "strEmployeeName", headerName: t("employee_name", "Employee Name"), width: 220, sortAccessor: (dicRow) => dicRow.strEmployeeNameSortValue },
+    { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code"), width: 130 },
+    { field: "strPayslipNumber", headerName: t("payslip_no", "Payslip No."), width: 240 },
+    { field: "decNetPay", headerName: t("net_pay", "Net Pay"), align: "right", width: 140, sortAccessor: (dicRow) => dicRow.decNetPaySortValue },
+    { field: "strPayslipStatus", headerName: t("status", "Status"), width: 120, sortAccessor: (dicRow) => dicRow.strPayslipStatusSortValue },
+    { field: "dtGeneratedOn", headerName: t("generated_on", "Generated On"), width: 170, sortAccessor: (dicRow) => dicRow.dtGeneratedOnSortValue },
+  ];
 
   const lstValidationTableRows = lstValidationRows.map((dicIssue, intIndex) => {
     const strSeverity = dicIssue.strSeverity ?? (dicIssue.blnIsBlocking ? "BLOCKING" : "WARNING");
@@ -1423,7 +1420,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
 
       <Box sx={{ ...objCardSx, borderColor: "#DCE4EF", overflow: "hidden", p: 0 }}>
         <Tabs
-          value={strActiveTab === "review" && !blnShowReviewResults ? "run" : strActiveTab}
+          value={(strActiveTab === "review" && !blnShowReviewResults) || (strActiveTab === "payslips" && !blnShowPayslipsTab) ? "run" : strActiveTab}
           onChange={(_objEvent, strValue) => setStrActiveTab(strValue)}
           variant="scrollable"
           scrollButtons="auto"
@@ -1478,6 +1475,28 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
               iconPosition="start"
               sx={{ fontSize: "0.82rem", fontWeight: 800, minHeight: 46, textTransform: "none" }}
               data-controlid="payroll.run-detail.tab.review.button"
+            />
+          ) : null}
+          {blnShowPayslipsTab ? (
+            <Tab
+              value="payslips"
+              label={
+                <Box sx={{ alignItems: "center", display: "flex", gap: 0.6 }}>
+                  <span>{t("payslip_panel", "Payslips")}</span>
+                  {lstPayslips.length ? (
+                    <Box
+                      component="span"
+                      sx={{ background: "#ecfdf5", borderRadius: "999px", color: "#15803d", fontSize: "0.68rem", fontWeight: 800, px: 0.9, py: 0.15 }}
+                    >
+                      {intGeneratedPayslipCount}/{lstPayslips.length}
+                    </Box>
+                  ) : null}
+                </Box>
+              }
+              icon={<DescriptionRoundedIcon sx={{ fontSize: 18 }} />}
+              iconPosition="start"
+              sx={{ fontSize: "0.82rem", fontWeight: 800, minHeight: 46, textTransform: "none" }}
+              data-controlid="payroll.run-detail.tab.payslips.button"
             />
           ) : null}
           <Tab
@@ -1572,20 +1591,79 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
               ) : null}
             </Box>
           </Box>
-          <Box
-            sx={{
-              border: "1px solid #DCE4EF",
-              borderRadius: "10px",
-              display: "grid",
-              gap: { xs: 0.75, md: 1 },
-              gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))",
-              px: 1.25,
-              py: 1,
-            }}
-          >
-            {lstSummaryTiles.map((dicTile) => (
-              <KpiTile key={dicTile.strLabel} objIcon={dicTile.objIcon} strLabel={dicTile.strLabel} strValue={dicTile.strValue} strTone={dicTile.strTone} />
-            ))}
+          <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) minmax(0, 2fr)" } }}>
+            <Box sx={objSummaryPanelSx} data-controlid="payroll.run-detail.summary.details">
+              <Typography sx={objSummaryPanelTitleSx}>{t("run_details", "Run Details")}</Typography>
+              {lstRunDetailItems.map((dicItem) => {
+                const objTone = getToneStyles(dicItem.strTone);
+                return (
+                  <Box key={dicItem.strLabel} sx={{ alignItems: "center", borderBottom: "1px solid #EEF2F7", display: "flex", gap: 1, py: 0.75 }}>
+                    <Box sx={{ alignItems: "center", background: objTone.soft, borderRadius: "8px", color: objTone.text, display: "flex", flex: "0 0 auto", height: 28, justifyContent: "center", width: 28 }}>
+                      {dicItem.objIcon}
+                    </Box>
+                    <Typography sx={{ color: "#475569", flex: 1, fontSize: "0.8rem", fontWeight: 700, minWidth: 0 }}>{dicItem.strLabel}</Typography>
+                    <Typography title={dicItem.strValue} sx={{ color: "#0f172a", fontSize: "0.86rem", fontWeight: 900, overflow: "hidden", textAlign: "right", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {dicItem.strValue}
+                    </Typography>
+                  </Box>
+                );
+              })}
+              {blnShowPayslipsTab ? (
+                <Box sx={{ pt: 1 }} data-controlid="payroll.run-detail.summary.payslip-progress">
+                  <Box sx={{ alignItems: "center", display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+                    <Link component="button" type="button" underline="hover" onClick={() => setStrActiveTab("payslips")} sx={{ color: "#475569", fontSize: "0.8rem", fontWeight: 700 }}>
+                      {t("payslips_generated", "Payslips Generated")}
+                    </Link>
+                    <Typography sx={{ color: "#0f172a", fontSize: "0.86rem", fontWeight: 900 }}>
+                      {intGeneratedPayslipCount} / {lstPayslips.length}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ background: "#EEF2F7", borderRadius: "999px", height: 6, overflow: "hidden" }}>
+                    <Box sx={{ background: intPayslipProgressPercent === 100 ? "#16a34a" : "#2563eb", height: "100%", transition: "width 200ms ease", width: `${intPayslipProgressPercent}%` }} />
+                  </Box>
+                </Box>
+              ) : null}
+            </Box>
+
+            <Box sx={{ ...objSummaryPanelSx, display: "flex", flexDirection: "column", gap: 1 }} data-controlid="payroll.run-detail.summary.totals">
+              <Typography sx={{ ...objSummaryPanelTitleSx, mb: 0 }}>{t("payroll_totals", "Payroll Totals")}</Typography>
+              <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" } }}>
+                {lstPayrollTotalTiles.map((dicTile) => (
+                  <MetricTile key={dicTile.strLabel} objIcon={dicTile.objIcon} strLabel={dicTile.strLabel} strValue={dicTile.strValue} strTone={dicTile.strTone} />
+                ))}
+              </Box>
+              <Box
+                sx={{
+                  alignItems: "center",
+                  background: "#f0fdf4",
+                  border: "1px solid #bbf7d0",
+                  borderRadius: "10px",
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 1.5,
+                  justifyContent: "space-between",
+                  mt: "auto",
+                  px: 1.5,
+                  py: 1.1,
+                }}
+                data-controlid="payroll.run-detail.summary.net-pay"
+              >
+                <Box sx={{ alignItems: "center", display: "flex", gap: 1, minWidth: 0 }}>
+                  <Box sx={{ alignItems: "center", background: "#dcfce7", borderRadius: "10px", color: "#15803d", display: "flex", height: 38, justifyContent: "center", width: 38 }}>
+                    <PaidRoundedIcon sx={{ fontSize: 20 }} />
+                  </Box>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography sx={{ color: "#0f172a", fontSize: "0.9rem", fontWeight: 900 }}>{t("net_total", "Net Pay")}</Typography>
+                    <Typography sx={{ color: "#64748b", fontSize: "0.76rem" }}>
+                      {t("net_pay_formula", "Gross Pay − Employee Deductions − Tax")}
+                    </Typography>
+                  </Box>
+                </Box>
+                <Typography sx={{ color: "#15803d", fontSize: "1.35rem", fontWeight: 900, whiteSpace: "nowrap" }}>
+                  {formatCurrency(objRun.decNetPayTotal)}
+                </Typography>
+              </Box>
+            </Box>
           </Box>
           {objRun.strRunTypeCode !== "VARIABLE_PAY" && objAttendanceValidationResult && objAttendanceValidationResult.intBlockedCount > 0 ? (
             <Box sx={{ mt: 1 }}>
@@ -1604,89 +1682,75 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
           ) : null}
         </Box>
 
-        {objRun.strRunTypeCode !== "VARIABLE_PAY" ? (
-        <Box sx={{ ...objCardSx, minWidth: 0, mt: 1.25, p: 1.25 }}>
-          <Box sx={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 1, justifyContent: "space-between", mb: 1 }}>
-            <Typography sx={{ alignItems: "center", display: "flex", fontSize: "1rem", fontWeight: 900, gap: 0.75 }}>
-              <ReceiptLongRoundedIcon sx={{ color: "#2563eb", fontSize: 20 }} />
-              {t("payslip_panel", "Payslips")}
+        </>
+        ) : null}
+
+        {strActiveTab === "payslips" && blnShowPayslipsTab ? (
+        <Box className={masterStyles.controlsCard} sx={{ display: "flex", flexDirection: "column", minWidth: 0, p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+          <Box sx={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 1.25, mb: 1, mt: 0.75 }}>
+            <TextField
+              className="app-mui-text-field"
+              label={t("review_results_search_label", "Employee name or code")}
+              value={strPayslipSearch}
+              onChange={(objEvent) => setStrPayslipSearch(objEvent.target.value)}
+              placeholder={t("payslip_search_placeholder", "Search by employee name or code")}
+              size="small"
+              sx={{ width: { xs: "100%", sm: 340 } }}
+              inputProps={{ "aria-label": t("payslip_search_placeholder", "Search by employee name or code") }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchRoundedIcon sx={{ color: "#94a3b8", fontSize: 20 }} />
+                  </InputAdornment>
+                ),
+                endAdornment: strPayslipSearch ? (
+                  <InputAdornment position="end">
+                    <IconButton
+                      size="small"
+                      aria-label={t("clear_search", "Clear search")}
+                      onClick={() => setStrPayslipSearch("")}
+                      controlId="payroll.run-detail.payslips.search.clear.icon-button"
+                    >
+                      <CloseRoundedIcon fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                ) : undefined,
+              }}
+              controlId="payroll.run-detail.payslips.search.input"
+            />
+            <Typography sx={{ alignItems: "center", color: "#64748b", display: "flex", fontSize: "0.78rem", gap: 0.5 }}>
+              <InfoOutlinedIcon sx={{ fontSize: 16 }} />
+              {t("payslip_row_click_hint", "Click a row to open the payslip in a new tab.")}
             </Typography>
-            {blnCanGeneratePayslip ? (
-              <Button
-                className={styles.secondaryButton}
-                startIcon={<ReceiptLongRoundedIcon />}
-                onClick={generateAllPayslips}
-                disabled={blnPayslipLoading}
-                controlId="payroll.run-detail.payslips.generate-all.button"
-              >
-                {t("generate_all", "Generate All Payslips")}
-              </Button>
-            ) : null}
           </Box>
-          <TextField
-            value={strPayslipSearch}
-            onChange={(objEvent) => setStrPayslipSearch(objEvent.target.value)}
-            placeholder={t("payslip_search_placeholder", "Search by employee name or code")}
-            size="small"
-            fullWidth
-            sx={{ mb: 1 }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchRoundedIcon sx={{ color: "#94a3b8", fontSize: 20 }} />
-                </InputAdornment>
-              ),
+          <CommonTable
+            key={strPayslipSearchNormalized}
+            columns={lstPayslipColumns}
+            rows={lstPayslipRows}
+            rowIdField="id"
+            minTableWidth={980}
+            defaultPageSize={20}
+            showPaginationSummary
+            hideRowClickHint
+            showExportOptions={blnCanExport}
+            exportFileName={`payslips-${objRun.strRunCode || objRun.intID}`}
+            onRowClick={(dicRow) => {
+              const dicPayslip = dicPayslipByRowID.get(String(dicRow.id));
+              if (dicPayslip) openPayslipFromRow(dicPayslip);
             }}
-            controlId="payroll.run-detail.payslips.search.input"
-          />
-          <DataTable<PayslipRunListRecord>
-            lstColumns={[
-              {
-                strKey: "employee",
-                objHeader: t("employee", "Employee"),
-                fnRender: (dicRow) => (
-                  <>
-                    {dicRow.strEmployeeName}
-                    <Typography sx={{ color: "#64748b", fontSize: "0.75rem", fontWeight: 700 }}>{dicRow.strEmployeeCode}</Typography>
-                  </>
-                ),
-              },
-              { strKey: "payslipNo", objHeader: t("payslip_no", "Payslip No."), fnRender: (dicRow) => dicRow.strPayslipNumber || "-" },
-              { strKey: "netPay", objHeader: t("net_pay", "Net Pay"), fnRender: (dicRow) => formatCurrency(dicRow.decNetPay) },
-              {
-                strKey: "status",
-                objHeader: t("status", "Status"),
-                fnRender: (dicRow) => (
-                  <Chip label={dicRow.strPayslipStatus} size="small" sx={{ background: "#ecfdf5", border: "1px solid #bbf7d0", color: "#15803d", fontWeight: 800, height: 22 }} />
-                ),
-              },
-              { strKey: "generatedOn", objHeader: t("generated_on", "Generated On"), fnRender: (dicRow) => formatDateTime(dicRow.dtGeneratedOn) },
-              {
-                strKey: "actions",
-                objHeader: t("actions", "Actions"),
-                strClassName: styles.actionsColumn,
-                fnRender: (dicRow) => (
-                  <Stack direction="row" spacing={1} justifyContent="center" flexWrap="wrap">
-                    <Button className={styles.secondaryButton} onClick={() => viewPayslip(dicRow)} disabled={blnPayslipLoading} controlId="payroll.run-detail.payslip.view.button" data-row-key={dicRow.intEmployeeID}>{t("view", "View")}</Button>
-                    {blnCanGeneratePayslip ? <Button className={styles.secondaryButton} onClick={() => generatePayslip(dicRow)} disabled={blnPayslipLoading} controlId="payroll.run-detail.payslip.generate.button" data-row-key={dicRow.intEmployeeID}>{t("generate", "Generate")}</Button> : null}
-                    {blnCanExport ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => openPayslipDocument(dicRow, false)} disabled={blnPayslipLoading} controlId="payroll.run-detail.payslip.download.button" data-row-key={dicRow.intEmployeeID}>{t("download", "Download")}</Button> : null}
-                    {blnCanExport ? <Button className={styles.secondaryButton} startIcon={<PrintRoundedIcon />} onClick={() => openPayslipDocument(dicRow, true)} disabled={blnPayslipLoading} controlId="payroll.run-detail.payslip.print.button" data-row-key={dicRow.intEmployeeID}>{t("print", "Print")}</Button> : null}
-                  </Stack>
-                ),
-              },
-            ]}
-            lstRows={lstFilteredPayslips}
-            fnKey={(dicRow) => `${dicRow.intPayrollRunID}-${dicRow.intEmployeeID}`}
-            strEmptyMessage={
-              strPayslipSearchNormalized
-                ? t("payslip_search_empty", "No employees match your search.")
-                : t("payslip_empty", "No processed payroll results are available for payslip generation.")
-            }
-            strWrapClassName={styles.tableWrapBounded}
+            getRowSx={() => ({
+              backgroundColor: "#fff",
+              cursor: "pointer",
+              "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
+              "&.MuiTableRow-hover:hover td:first-of-type .MuiLink-root": { textDecoration: "underline" },
+            })}
+            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+            emptyMessage={strPayslipSearchNormalized
+              ? t("payslip_search_empty", "No employees match your search.")
+              : t("payslip_empty", "No processed payroll results are available for payslip generation.")}
+            testIdPrefix="payroll.run-detail.payslips"
           />
         </Box>
-        ) : null}
-        </>
         ) : null}
 
         {strActiveTab === "valid" ? (
@@ -1825,7 +1889,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
       <Dialog
         open={Boolean(objResultLinesRecord)}
         onClose={() => setObjResultLinesRecord(null)}
-        maxWidth="lg"
+        maxWidth="md"
         fullWidth
         controlId="payroll.run-detail.result-lines.dialog"
       >
@@ -1838,7 +1902,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
           </IconButton>
         </DialogTitle>
         <DialogContent dividers>
-          {objResultLinesRecord ? <ResultLinesTable lstLines={objResultLinesRecord.lstLines} blnFlush /> : null}
+          {objResultLinesRecord ? <ResultLinesTable objResult={objResultLinesRecord} blnFlush /> : null}
         </DialogContent>
       </Dialog>
 
