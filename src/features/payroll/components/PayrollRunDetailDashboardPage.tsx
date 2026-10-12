@@ -419,6 +419,10 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
   const [blnReviewHintDismissed, setBlnReviewHintDismissed] = useState(false);
   const [blnIsLocked, setBlnIsLocked] = useState(false);
   const [objValidationSummary, setObjValidationSummary] = useState<PayrollValidationSummary | null>(null);
+  // Validation warnings/blockings are only meaningful until the run is processed (processing
+  // already passed them). Once Processed/Finalized they are hidden, unless the user just ran
+  // Validate again on this page.
+  const [blnValidationJustRun, setBlnValidationJustRun] = useState(false);
   const [blnShowAllValidations, setBlnShowAllValidations] = useState(false);
   const [objProcessSummary, setObjProcessSummary] = useState<PayrollProcessSummary | null>(null);
   const [lstPayslips, setLstPayslips] = useState<PayslipRunListRecord[]>([]);
@@ -485,7 +489,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
         const [lstRunPayslips, lstResults] = await Promise.all([
           payslipService.getRunPayslips(strRunID),
           payrollResultService
-            .getPayrollResults({ strPayrollRunID: strRunID })
+            .getPayrollResults({ strPayrollRunID: strRunID, blnExcludeCalculationDetails: true })
             .catch(() => null),
         ]);
         setLstPayslips(lstRunPayslips);
@@ -516,7 +520,16 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     if (strActiveTab === "review" && objRun && !["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus)) {
       setStrActiveTab("run");
     }
-  }, [strActiveTab, objRun]);
+    // The Validation Summary tab is hidden once a run is processed (see blnHideValidationIssues).
+    if (
+      strActiveTab === "valid" &&
+      objRun &&
+      ["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus) &&
+      !blnValidationJustRun
+    ) {
+      setStrActiveTab("run");
+    }
+  }, [strActiveTab, objRun, blnValidationJustRun]);
 
   async function saveLockState(blnNextLocked: boolean = blnIsLocked) {
     if (!blnCanEdit || !objRun) {
@@ -731,6 +744,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
       const dicGenerated = dicFinal.dicSummary as PayslipGenerateAllSummary;
       setStrSuccess(t("payslip_generate_all_success", `${dicGenerated.intGeneratedCount} payslips generated successfully.`));
     } else if (strKind === "validate") {
+      setBlnValidationJustRun(true);
       const dicValidation = dicFinal.dicSummary as PayrollValidationSummary;
       setObjValidationSummary(dicValidation);
       setObjAttendanceValidationResult(dicValidation.dicAttendanceSync ?? null);
@@ -740,6 +754,8 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
           : t("validation_complete", "Payroll validation completed."),
       );
     } else {
+      // Process/reprocess supersedes any earlier validation view.
+      setBlnValidationJustRun(false);
       const dicSummary = dicFinal.dicSummary as PayrollProcessSummary;
       setObjProcessSummary(dicSummary);
       setObjValidationSummary(dicSummary.dicValidationSummary ?? null);
@@ -1006,10 +1022,12 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
   // Prior-month tax history gaps are expected (the engine estimates them) - never listed here, even
   // when older saved validation rows still carry them.
   const setHiddenValidationCodes = new Set(["TAX_YTD_INCOMPLETE_FOR_JOINING_DATE"]);
-  const lstAllValidationRows = [
+  const blnHideValidationIssues =
+    ["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus) && !blnValidationJustRun;
+  const lstAllValidationRows = (blnHideValidationIssues ? [] : [
     ...(objValidationSummary?.lstIssues ?? objRun.lstValidationResults),
     ...(objRun.strRunTypeCode === "VARIABLE_PAY" ? lstVariablePayValidationIssues : []),
-  ].filter((dicIssue) => !setHiddenValidationCodes.has(dicIssue.strValidationCode));
+  ]).filter((dicIssue) => !setHiddenValidationCodes.has(dicIssue.strValidationCode));
   const setAttendanceBlockingCodes = new Set(["PAY_ATT_MISSING_DAY", "PAY_ATT_NO_POLICY", "PAY_ATT_BLOCKING_EXCEPTION"]);
   // Warnings that can change what an employee is paid (or how it is paid) - everything else
   // (payslip-section gaps, override/proration notices, info rows, ...) is hidden by default.
@@ -1407,7 +1425,13 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
 
       <Box sx={{ ...objCardSx, borderColor: "#DCE4EF", overflow: "hidden", p: 0 }}>
         <Tabs
-          value={(strActiveTab === "review" && !blnShowReviewResults) || (strActiveTab === "payslips" && !blnShowPayslipsTab) ? "run" : strActiveTab}
+          value={
+            (strActiveTab === "review" && !blnShowReviewResults) ||
+            (strActiveTab === "payslips" && !blnShowPayslipsTab) ||
+            (strActiveTab === "valid" && blnHideValidationIssues)
+              ? "run"
+              : strActiveTab
+          }
           onChange={(_objEvent, strValue) => setStrActiveTab(strValue)}
           variant="scrollable"
           scrollButtons="auto"
@@ -1486,6 +1510,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
               data-controlid="payroll.run-detail.tab.payslips.button"
             />
           ) : null}
+          {!blnHideValidationIssues ? (
           <Tab
             value="valid"
             label={
@@ -1506,6 +1531,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
             sx={{ fontSize: "0.82rem", fontWeight: 800, minHeight: 46, textTransform: "none" }}
             data-controlid="payroll.run-detail.tab.valid.button"
           />
+          ) : null}
         </Tabs>
 
         <Box sx={{ p: { xs: 1.1, md: 1.35 } }}>
@@ -1652,7 +1678,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
               </Box>
             </Box>
           </Box>
-          {objRun.strRunTypeCode !== "VARIABLE_PAY" && objAttendanceValidationResult && objAttendanceValidationResult.intBlockedCount > 0 ? (
+          {!blnHideValidationIssues && objRun.strRunTypeCode !== "VARIABLE_PAY" && objAttendanceValidationResult && objAttendanceValidationResult.intBlockedCount > 0 ? (
             <Box sx={{ mt: 1 }}>
               <Chip
                 label={tAttendance(
@@ -1740,7 +1766,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
         </Box>
         ) : null}
 
-        {strActiveTab === "valid" ? (
+        {strActiveTab === "valid" && !blnHideValidationIssues ? (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
         <Box id="payroll-run-validation-summary" sx={{ ...objCardSx, display: "flex", flexDirection: "column", scrollMarginTop: 88, minHeight: 0, minWidth: 0, p: 1.25 }}>
           <Box sx={{ alignItems: "flex-start", display: "flex", flexWrap: "wrap", gap: 1, justifyContent: "space-between", mb: 1 }}>
