@@ -66,17 +66,12 @@ function TenantAdminLoginPageContent() {
       <Box className="login-shell">
         <Box className="login-hero-panel">
           <Box className="login-brand-row">
-            <Box className="login-brand-mark" aria-hidden="true">
-              <span />
-              <span />
-            </Box>
+            <Box component="img" src="/images/NavHRLogo.svg" alt="NavHR" className="login-brand-mark" />
             <Typography component="span" className="login-brand-name">{appConfig.appName}</Typography>
-            {/* <span className="login-brand-divider" />
+            <span className="login-brand-divider" />
             <Typography component="span" className="login-powered-label">Powered by</Typography>
-            <Box className="login-powered-mark" aria-hidden="true">
-              <span />
-            </Box>
-            <Typography component="span" className="login-powered-name">NavCode.ai</Typography> */}
+            <Box component="img" src="/images/PoweredByLogo.svg" alt="" className="login-powered-mark" aria-hidden="true" />
+            <Typography component="span" className="login-powered-name">NavCode.ai</Typography> 
           </Box>
           <Box className="login-hero-content">
             <Typography component="h1" className="login-hero-title">

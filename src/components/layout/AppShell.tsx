@@ -86,12 +86,26 @@ function AppMenuLogo() {
       "&:hover .app-logo-image, .MuiIconButton-root:hover & .app-logo-image": { opacity: 0 },
       "&:hover .app-logo-hover-icon, .MuiIconButton-root:hover & .app-logo-hover-icon": { opacity: 1 }
     }}>
-      <Box className="app-logo-image" component="img" src={withBasePath("/app_logo/NavHR_Menu_Icon_96px.jpg")} alt="" sx={{ width: 40, height: 40, borderRadius: "16px", objectFit: "contain" }} />
+      <Box className="app-logo-image" component="img" src={withBasePath("/images/NavHRLogo.svg")} alt="" sx={{ width: 40, height: 40, borderRadius: "16px", objectFit: "contain" }} />
       <SvgIcon className="app-logo-hover-icon" viewBox="0 0 24 24" sx={{ fontSize: 24, color: "var(--app-menu-icon-color, #2463a0)" }}>
         <rect x="4" y="4" width="16" height="16" rx="2" fill="none" stroke="currentColor" strokeWidth="1.7" />
         <path d="M10 4v16" fill="none" stroke="currentColor" strokeWidth="1.7" />
       </SvgIcon>
     </Box>
+  );
+}
+
+function AppBrandName({ objFontSize = objAppBarHeadingFontSize }: { objFontSize?: typeof objAppBarHeadingFontSize | string }) {
+  const strBrandName = appConfig.appName;
+  const intHrStartIndex = strBrandName.toUpperCase().lastIndexOf("HR");
+  const strNavText = intHrStartIndex >= 0 ? strBrandName.slice(0, intHrStartIndex) : strBrandName;
+  const strHrText = intHrStartIndex >= 0 ? strBrandName.slice(intHrStartIndex) : "";
+
+  return (
+    <Typography variant="h5" sx={{ fontSize: objFontSize, fontWeight: 800, letterSpacing: 0, lineHeight: 1.1, whiteSpace: "nowrap" }}>
+      <Box component="span" sx={{ color: "#07063f" }}>{strNavText}</Box>
+      {strHrText ? <Box component="span" sx={{ color: "#0577f8" }}>{strHrText}</Box> : null}
+    </Typography>
   );
 }
 
@@ -1285,9 +1299,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               <AppMenuLogo />
             </Box>
             <Box sx={{ minWidth: 0 }}>
-              <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
-                {appConfig.appName}
-              </Typography>
+              <AppBrandName objFontSize="1.5rem" />
               {strCompanyName ? (
                 <Typography title={strCompanyName} noWrap sx={{ mt: 0.25, color: "#64748b", fontSize: "0.78rem", lineHeight: 1.1, fontWeight: 500, letterSpacing: 0 }}>
                   {strCompanyName}
@@ -1394,6 +1406,32 @@ export default function AppShell({ children }: { children: ReactNode }) {
           {tCommon("logout", "Logout")}
         </Typography>
       </ButtonBase>
+      <Box
+        sx={{
+          flexShrink: 0,
+          px: 2,
+          pb: 1.5,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 0.75,
+          color: "#60769f"
+        }}
+      >
+        <Typography component="span" sx={{ fontSize: "0.78rem", fontWeight: 500, lineHeight: 1 }}>
+          Powered by
+        </Typography>
+        <Box
+          component="img"
+          src={withBasePath("/images/PoweredByLogo.svg")}
+          alt=""
+          aria-hidden="true"
+          sx={{ width: 22, height: 22, display: "block", objectFit: "contain", flexShrink: 0 }}
+        />
+        <Typography component="span" sx={{ color: "#07063f", fontSize: "0.9rem", fontWeight: 700, lineHeight: 1 }}>
+          NavCode.ai
+        </Typography>
+      </Box>
     </Box>
   );
 
@@ -1645,9 +1683,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   pr: { lg: 1 }
                 }}
               >
-                <Typography sx={{ fontSize: objAppBarHeadingFontSize, color: "var(--app-banner-text-color)", fontWeight: 800, lineHeight: 1, whiteSpace: "nowrap", flexShrink: 0 }}>
-                  {appConfig.appName}
-                </Typography>
+                <Box sx={{ flexShrink: 0 }}>
+                  <AppBrandName />
+                </Box>
                 {strCompanyName ? (
                   <Divider orientation="vertical" flexItem sx={{ borderColor: "var(--app-banner-border-color)", my: 0.5, flexShrink: 0 }} />
                 ) : null}
