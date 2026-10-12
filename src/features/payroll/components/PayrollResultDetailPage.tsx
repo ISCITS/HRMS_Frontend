@@ -855,17 +855,17 @@ export default function PayrollResultDetailPage({
               onChange={(objEvent, strValue) => setStrActiveTab(strValue)}
               variant="scrollable"
               scrollButtons="auto"
-              sx={{ borderBottom: "1px solid #DCE4EF", px: { xs: 1, md: 1.5 }, minHeight: 46 }}
+              className="app-employee-tabs"
+              sx={{ borderBottom: "1px solid #DCE4EF", px: { xs: 1, md: 1.5 } }}
               data-controlid="payroll.result-detail.tabs"
             >
               {lstSummaryGuide.map((dicItem) => (
                 <Tab
                   key={dicItem.key}
                   value={dicItem.key}
-                  label={dicItem.label}
+                  label={<span className="app-employee-tab-label">{dicItem.label}</span>}
                   icon={dicItem.icon}
                   iconPosition="start"
-                  sx={{ minHeight: 46, textTransform: "none", fontWeight: 800, fontSize: "0.82rem" }}
                   data-controlid={`payroll.result-detail.tab.${dicItem.key}.button`}
                 />
               ))}

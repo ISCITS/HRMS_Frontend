@@ -1435,42 +1435,40 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
           onChange={(_objEvent, strValue) => setStrActiveTab(strValue)}
           variant="scrollable"
           scrollButtons="auto"
-          sx={{ borderBottom: "1px solid #DCE4EF", minHeight: 46, px: { xs: 1, md: 1.5 } }}
+          className="app-employee-tabs"
+          sx={{ borderBottom: "1px solid #DCE4EF", px: { xs: 1, md: 1.5 } }}
           data-controlid="payroll.run-detail.tabs"
         >
           {objRun.strRunTypeCode === "VARIABLE_PAY" ? (
             <Tab
               value="declaration"
-              label={t("declaration_tab", "Declaration")}
+              label={<span className="app-employee-tab-label">{t("declaration_tab", "Declaration")}</span>}
               icon={<EditNoteRoundedIcon sx={{ fontSize: 18 }} />}
               iconPosition="start"
-              sx={{ fontSize: "0.82rem", fontWeight: 800, minHeight: 46, textTransform: "none" }}
               data-controlid="payroll.run-detail.tab.declaration.button"
             />
           ) : null}
           {objRun.strRunTypeCode === "VARIABLE_PAY" ? (
             <Tab
               value="variablePay"
-              label={t("variable_pay_tab", "Variable Pay")}
+              label={<span className="app-employee-tab-label">{t("variable_pay_tab", "Variable Pay")}</span>}
               icon={<PaidRoundedIcon sx={{ fontSize: 18 }} />}
               iconPosition="start"
-              sx={{ fontSize: "0.82rem", fontWeight: 800, minHeight: 46, textTransform: "none" }}
               data-controlid="payroll.run-detail.tab.variable-pay.button"
             />
           ) : null}
           <Tab
             value="run"
-            label={t("summary_title", "Run Summary")}
+            label={<span className="app-employee-tab-label">{t("summary_title", "Run Summary")}</span>}
             icon={<TaskAltRoundedIcon sx={{ fontSize: 18 }} />}
             iconPosition="start"
-            sx={{ fontSize: "0.82rem", fontWeight: 800, minHeight: 46, textTransform: "none" }}
             data-controlid="payroll.run-detail.tab.run.button"
           />
           {blnShowReviewResults ? (
             <Tab
               value="review"
               label={
-                <Box sx={{ alignItems: "center", display: "flex", gap: 0.6 }}>
+                <Box component="span" className="app-employee-tab-label" sx={{ gap: 0.6 }}>
                   <span>{t("workflow_review_results", "Review Results")}</span>
                   {lstRunResults.length ? (
                     <Box
@@ -1484,7 +1482,6 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
               }
               icon={<ReceiptLongRoundedIcon sx={{ fontSize: 18 }} />}
               iconPosition="start"
-              sx={{ fontSize: "0.82rem", fontWeight: 800, minHeight: 46, textTransform: "none" }}
               data-controlid="payroll.run-detail.tab.review.button"
             />
           ) : null}
@@ -1492,7 +1489,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
             <Tab
               value="payslips"
               label={
-                <Box sx={{ alignItems: "center", display: "flex", gap: 0.6 }}>
+                <Box component="span" className="app-employee-tab-label" sx={{ gap: 0.6 }}>
                   <span>{t("payslip_panel", "Payslips")}</span>
                   {lstPayslips.length ? (
                     <Box
@@ -1506,7 +1503,6 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
               }
               icon={<DescriptionRoundedIcon sx={{ fontSize: 18 }} />}
               iconPosition="start"
-              sx={{ fontSize: "0.82rem", fontWeight: 800, minHeight: 46, textTransform: "none" }}
               data-controlid="payroll.run-detail.tab.payslips.button"
             />
           ) : null}
@@ -1514,7 +1510,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
           <Tab
             value="valid"
             label={
-              <Box sx={{ alignItems: "center", display: "flex", gap: 0.6 }}>
+              <Box component="span" className="app-employee-tab-label" sx={{ gap: 0.6 }}>
                 <span>{t("validation_summary", "Validation Summary")}</span>
                 {lstAllValidationRows.filter(fnIsKeyIssue).length ? (
                   <Box
@@ -1528,7 +1524,6 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
             }
             icon={<SummarizeRoundedIcon sx={{ fontSize: 18 }} />}
             iconPosition="start"
-            sx={{ fontSize: "0.82rem", fontWeight: 800, minHeight: 46, textTransform: "none" }}
             data-controlid="payroll.run-detail.tab.valid.button"
           />
           ) : null}

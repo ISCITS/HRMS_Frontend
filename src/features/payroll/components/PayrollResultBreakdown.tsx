@@ -4,7 +4,7 @@ import AccountBalanceRoundedIcon from "@mui/icons-material/AccountBalanceRounded
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
 import RemoveCircleOutlineRoundedIcon from "@mui/icons-material/RemoveCircleOutlineRounded";
 import WalletRoundedIcon from "@mui/icons-material/WalletRounded";
-import { Box, Paper, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
+import { Box, Paper, Table, TableBody, TableCell, TableRow, Typography } from "@mui/material";
 import { Fragment, type ReactNode } from "react";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import type { PayrollResultDetailRecord, PayrollResultLineRecord } from "@/features/payroll/types";
@@ -25,16 +25,7 @@ const objCellSx = {
   fontSize: "0.82rem",
   lineHeight: 1.35,
 } as const;
-const objHeadCellSx = {
-  ...objCellSx,
-  background: "var(--app-grid-header-background)",
-  color: "var(--app-grid-header-color)",
-  fontSize: "0.72rem",
-  fontWeight: 700,
-  py: 0.5,
-} as const;
-
-type Group = { key: string; title?: string; lines: PayrollResultLineRecord[] };
+type Group = { key: string; lines: PayrollResultLineRecord[] };
 
 function CardTitle({ strTitle, strTotal, objIcon }: { strTitle: string; strTotal?: string; objIcon?: ReactNode }) {
   return (
@@ -57,28 +48,15 @@ export default function PayrollResultBreakdown({ objResult }: { objResult: Payro
     const decTotal = sumPayrollAmounts(lstGroups.flatMap((dicGroup) => dicGroup.lines));
     const blnEmpty = lstGroups.every((dicGroup) => dicGroup.lines.length === 0);
     return (
-      <Paper key={strKey} variant="outlined" sx={objCardSx} data-controlid={`payroll.result-detail.breakdown.${strKey}`}>
+      <Paper key={strKey} variant="outlined" sx={{ ...objCardSx, height: "100%" }} data-controlid={`payroll.result-detail.breakdown.${strKey}`}>
         <CardTitle strTitle={strTitle} strTotal={currency(decTotal)} objIcon={objIcon} />
         <Table size="small" aria-label={strTitle}>
-          <TableHead>
-            <TableRow>
-              <TableCell sx={objHeadCellSx}>{t("component", "Component")}</TableCell>
-              <TableCell align="right" sx={objHeadCellSx}>{t("amount", "Amount")}</TableCell>
-            </TableRow>
-          </TableHead>
           <TableBody>
             {blnEmpty ? (
               <TableRow><TableCell colSpan={2} sx={{ ...objCellSx, color: "#94a3b8" }}>{t("no_components", "No components for this period.")}</TableCell></TableRow>
             ) : null}
             {lstGroups.map((dicGroup) => dicGroup.lines.length === 0 ? null : (
               <Fragment key={dicGroup.key}>
-                {dicGroup.title ? (
-                  <TableRow>
-                    <TableCell colSpan={2} sx={{ ...objCellSx, color: "#475569", fontSize: "0.72rem", fontWeight: 800, letterSpacing: 0.3, pt: 0.9, textTransform: "uppercase" }}>
-                      {dicGroup.title}
-                    </TableCell>
-                  </TableRow>
-                ) : null}
                 {dicGroup.lines.map((line) => (
                   <TableRow key={line.intID} hover>
                     <TableCell sx={objCellSx}>{line.strComponentName || line.strComponentCode}</TableCell>
@@ -94,8 +72,8 @@ export default function PayrollResultBreakdown({ objResult }: { objResult: Payro
   };
 
   const netPay = (
-    <Paper key="net-pay" variant="outlined" sx={{ ...objCardSx, background: "#f0fdf4", borderColor: "#bbf7d0" }} data-controlid="payroll.result-detail.breakdown.net-pay">
-      <Box sx={{ alignItems: "center", display: "flex", gap: 2, justifyContent: "space-between", px: 1.5, py: 1.1 }}>
+    <Paper key="net-pay" variant="outlined" sx={{ ...objCardSx, alignItems: "center", background: "#f0fdf4", borderColor: "#bbf7d0", display: "flex" }} data-controlid="payroll.result-detail.breakdown.net-pay">
+      <Box sx={{ alignItems: "center", display: "flex", flex: 1, gap: 2, justifyContent: "space-between", px: 1.5, py: 1.1 }}>
         <Box>
           <Typography component="h2" sx={{ alignItems: "center", display: "flex", fontSize: "0.88rem", fontWeight: 800, gap: 0.75 }}>
             <PaymentsRoundedIcon sx={{ color: "#15803d", fontSize: 18 }} />
@@ -112,25 +90,21 @@ export default function PayrollResultBreakdown({ objResult }: { objResult: Payro
     </Paper>
   );
 
-  // Two equal columns that each stack their cards: earnings + employer cost on the left,
-  // deductions (incl. employee contributions) + net pay on the right. One column on phones.
+  // 2 x 2 grid: Earnings | Deductions on the first row, Employer contribution | Net Pay on the second.
+  // Cards stretch to the row height, so the two cards in a row always match. One column on phones.
   return (
-    <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", lg: "repeat(2, minmax(0, 1fr))" }, alignItems: "start" }}>
-      <Stack spacing={1.5}>
-        {renderCard("earnings", t("earnings", "Earnings"), <WalletRoundedIcon sx={{ color: "#15803d", fontSize: 18 }} />, [
-          { key: "earnings", lines: breakdown.earnings },
-        ])}
-        {renderCard("employer", t("total_employer_contribution", "Total Employer Contribution"), <AccountBalanceRoundedIcon sx={{ color: "#4338ca", fontSize: 18 }} />, [
-          { key: "employer", lines: breakdown.employerContributions },
-        ])}
-      </Stack>
-      <Stack spacing={1.5}>
-        {renderCard("deductions", t("deductions", "Deductions"), <RemoveCircleOutlineRoundedIcon sx={{ color: "#ea580c", fontSize: 18 }} />, [
-          { key: "deductions", title: t("employee_deductions", "Employee Deductions"), lines: breakdown.deductions },
-          { key: "employee", title: t("employee_contributions", "Employee Contributions"), lines: breakdown.employeeContributions },
-        ])}
-        {netPay}
-      </Stack>
+    <Box sx={{ display: "grid", columnGap: 1.5, rowGap: 1.5, gridTemplateColumns: { xs: "1fr", lg: "repeat(2, minmax(0, 1fr))" }, alignItems: "stretch" }}>
+      {renderCard("earnings", t("earnings", "Earnings"), <WalletRoundedIcon sx={{ color: "#15803d", fontSize: 18 }} />, [
+        { key: "earnings", lines: breakdown.earnings },
+      ])}
+      {renderCard("deductions", t("deductions", "Deductions"), <RemoveCircleOutlineRoundedIcon sx={{ color: "#ea580c", fontSize: 18 }} />, [
+        { key: "deductions", lines: breakdown.deductions },
+        { key: "employee", lines: breakdown.employeeContributions },
+      ])}
+      {renderCard("employer", t("total_employer_contribution", "Total Employer Contribution"), <AccountBalanceRoundedIcon sx={{ color: "#4338ca", fontSize: 18 }} />, [
+        { key: "employer", lines: breakdown.employerContributions },
+      ])}
+      {netPay}
     </Box>
   );
 }
