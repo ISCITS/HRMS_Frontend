@@ -879,13 +879,13 @@
   transform: translate(var(--login-label-start), 20px) scale(1) !important;
   transform-origin: top left !important;
   max-width: calc(100% - 96px) !important;
-  overflow: hidden !important;
+  overflow: visible !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
   color: #07063f !important;
   font-size: clamp(0.9rem, 1.05vw, 1rem) !important;
   font-weight: 700 !important;
-  line-height: 1.1 !important;
+  line-height: 1.35 !important;
 }
 
 .login-form-card .MuiInputLabel-root.MuiInputLabel-shrink,
@@ -894,6 +894,7 @@
   transform: translate(var(--login-label-start), 7px) scale(1) !important;
   color: #07063f !important;
   font-size: 0.78rem !important;
+  line-height: 1.35 !important;
 }
 
 .login-form-card .MuiOutlinedInput-notchedOutline legend {
