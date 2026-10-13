@@ -94,18 +94,28 @@ async function downloadSalaryRegisterExcel(
   const strPayCycle = collapseValues(lstRows, (dicRow) => dicRow.strPayCycle, "Monthly");
   const strEmployeeCategory = collapseValues(lstRows, (dicRow) => dicRow.strEmployeeCategory, "All");
 
+  // Excel layout mirrors the client's salary register sheet (Employee No before Employee Name).
+  // Component columns keep our configured names. The on-screen grid is unchanged.
+  const lstLeadingLabels = [
+    "Sl No", "Employee No", "Employee Name", "Status", "Site", "Cost Center", "Grade", "Department",
+    "Designation", "Location", "Category", "Payment Mode", "Bank Name", "Branch Name", "Bank Account No",
+    "IFSC Code", "PAN No",
+  ];
+  const lstTrailingLabels = ["Salary Released For", "Employee UAN", "WorkGroup Name"];
   const lstColumnLabels = [
-    "Sl No", "Employee Name", "Employee No", "Department", "Designation", "Location", "Payable Days",
+    ...lstLeadingLabels, "Payable Days", "Negative Salary Dtl",
     ...lstPaymentColumns, "Gross Earning",
     ...lstRecoveryColumns, "Gross Deduction", "Net Earning",
+    ...lstTrailingLabels,
   ];
   const intColumnCount = lstColumnLabels.length;
-  const intFirstNumericColumn = 7; // 1-based: everything from Payable Days onward is numeric
+  const intFirstNumericColumn = lstLeadingLabels.length + 1; // 1-based: Payable Days
+  const intLastNumericColumn = intColumnCount - lstTrailingLabels.length;
 
   const objWorkbook = new Workbook();
   const objSheet = objWorkbook.addWorksheet("Salary Register");
   objSheet.columns = lstColumnLabels.map((_, intIndex) => ({
-    width: intIndex === 0 ? 8 : intIndex === 1 ? 30 : intIndex === 2 ? 16 : intIndex <= 5 ? 26 : 18,
+    width: intIndex === 0 ? 8 : intIndex === 2 ? 30 : intIndex < intFirstNumericColumn - 1 ? 22 : intIndex >= intLastNumericColumn ? 22 : 18,
   }));
   const objThinBorder = { top: { style: "thin" as const }, left: { style: "thin" as const }, bottom: { style: "thin" as const }, right: { style: "thin" as const } };
 
@@ -148,7 +158,7 @@ async function downloadSalaryRegisterExcel(
       objCell.border = objThinBorder;
       objCell.font = { bold: blnBold };
       if (intColumn === 1) objCell.alignment = { horizontal: "center" };
-      else if (intColumn < intFirstNumericColumn) objCell.alignment = { horizontal: "left" };
+      else if (intColumn < intFirstNumericColumn || intColumn > intLastNumericColumn) objCell.alignment = { horizontal: "left" };
       else {
         objCell.alignment = { horizontal: "right" };
         objCell.numFmt = "#,##0.00";
@@ -156,35 +166,59 @@ async function downloadSalaryRegisterExcel(
     }
   };
 
-  lstRows.forEach((dicRow, intIndex) => {
+  // Excel row order mirrors the client sheet: Site (company) A-Z, then Employee No ascending.
+  // The on-screen grid keeps its own order.
+  const lstSortedRows = [...lstRows].sort((dicLeft, dicRight) =>
+    (dicLeft.strAllocationEntity ?? "").localeCompare(dicRight.strAllocationEntity ?? "", undefined, { sensitivity: "base" })
+    || dicLeft.strEmployeeCode.localeCompare(dicRight.strEmployeeCode, undefined, { numeric: true }));
+
+  lstSortedRows.forEach((dicRow, intIndex) => {
     const objRow = objSheet.addRow([
       intIndex + 1,
-      dicRow.strEmployeeName,
       dicRow.strEmployeeCode,
+      dicRow.strEmployeeName,
+      dicRow.strEmploymentStatus ?? "",
+      dicRow.strAllocationEntity ?? "",
+      dicRow.strCostCenter ?? "",
+      dicRow.strGrade ?? "",
       dicRow.strDepartment ?? "-",
       dicRow.strDesignation ?? "-",
       dicRow.strLocation ?? "-",
+      dicRow.strEmployeeCategory ?? "",
+      dicRow.strPaymentMode ?? "",
+      dicRow.strBankName ?? "",
+      dicRow.strBranchName ?? "",
+      dicRow.strAccountNumber ?? "",
+      dicRow.strIfscCode ?? "",
+      dicRow.strPanNumber ?? "",
       toExportNumber(dicRow.decTotalPresentDays),
+      // Only a processed, fully-computed negative net shows here; projected rows have no final net.
+      !dicRow.blnStatutoryPending && dicRow.decNetEarning < 0 ? Math.round(dicRow.decNetEarning * 100) / 100 : null,
       ...lstPaymentColumns.map((strColumn) => toExportNumber(dicRow.dicPayments[strColumn])),
       toExportNumber(dicRow.decGrossEarning),
       ...lstRecoveryColumns.map((strColumn) => toExportNumber(dicRow.dicRecoveries[strColumn])),
       dicRow.blnStatutoryPending ? "Not yet computed" : toExportNumber(dicRow.decGrossDeduction),
       dicRow.blnStatutoryPending ? "Not yet computed" : toExportNumber(dicRow.decNetEarning),
+      "", // Salary Released For: no source data yet
+      dicRow.strUanNumber ?? "",
+      dicRow.strWorkgroup ?? "",
     ]);
     fnStyleDataRow(objRow, false);
   });
 
   const fnSum = (fnValue: (dicRow: SalaryRegisterRow) => number | null) => lstRows.reduce((decTotal, dicRow) => decTotal + (fnValue(dicRow) || 0), 0);
   const objTotalRow = objSheet.addRow([
-    "Grand Total", "", "", "", "", "",
+    "Grand Total", ...lstLeadingLabels.slice(1).map(() => ""),
     fnSum((dicRow) => dicRow.decTotalPresentDays),
+    fnSum((dicRow) => (!dicRow.blnStatutoryPending && dicRow.decNetEarning < 0 ? dicRow.decNetEarning : 0)),
     ...lstPaymentColumns.map((strColumn) => fnSum((dicRow) => dicRow.dicPayments[strColumn] || 0)),
     fnSum((dicRow) => dicRow.decGrossEarning),
     ...lstRecoveryColumns.map((strColumn) => fnSum((dicRow) => dicRow.dicRecoveries[strColumn] || 0)),
     fnSum((dicRow) => dicRow.decGrossDeduction),
     fnSum((dicRow) => dicRow.decNetEarning),
+    ...lstTrailingLabels.map(() => ""),
   ]);
-  objSheet.mergeCells(objTotalRow.number, 1, objTotalRow.number, 6);
+  objSheet.mergeCells(objTotalRow.number, 1, objTotalRow.number, lstLeadingLabels.length);
   fnStyleDataRow(objTotalRow, true);
   objTotalRow.getCell(1).alignment = { horizontal: "center" };
 

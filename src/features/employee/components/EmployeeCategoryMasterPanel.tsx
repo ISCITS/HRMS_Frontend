@@ -255,7 +255,6 @@ export default function EmployeeCategoryMasterPanel() {
     fieldIsActive: t("field_is_active", "Is Active"),
     saving: t("saving", "Saving..."),
     validationNameRequired: t("validation_name_required", dicConstant.employeeCategories.validation.nameRequired),
-    validationNameMin: t("validation_name_min", dicConstant.employeeCategories.validation.nameMin),
     validationCodeRequired: t("validation_code_required", dicConstant.employeeCategories.validation.codeRequired),
     validationCodeFormat: t("validation_code_format", dicConstant.employeeCategories.validation.codeFormat),
     validationCodeDuplicate: t("validation_code_duplicate", dicConstant.employeeCategories.validation.codeDuplicate),
@@ -504,6 +503,8 @@ export default function EmployeeCategoryMasterPanel() {
     setDicForm((dicPrevious) => ensureTenantLanguageRows(dicPrevious));
   }, [intDefaultLanguageID, intSecondaryLanguageID, objFormOptions.lstLanguages.length]);
 
+  // Focus only when the dialog opens or a validation error asks for it. It must not re-run on every
+  // keystroke (typing clears the field error, which changes dicErrors) or focus jumps to Name.
   useEffect(() => {
     if (!blnDialogOpen || strMode === "view") {
       return;
@@ -518,7 +519,16 @@ export default function EmployeeCategoryMasterPanel() {
       objNameInputRef.current?.focus();
     }, 0);
     return () => window.clearTimeout(intTimer);
-  }, [blnDialogOpen, dicErrors, strMode]);
+  }, [blnDialogOpen, strMode]);
+
+  useEffect(() => {
+    if (!blnDialogOpen || strMode === "view" || !strPendingErrorFocusRef.current) {
+      return;
+    }
+    const strField = strPendingErrorFocusRef.current;
+    strPendingErrorFocusRef.current = null;
+    (strField === "code" ? objCodeInputRef : objNameInputRef).current?.focus();
+  }, [dicErrors]);
 
   function openDialog(strNextMode: EmployeeCategoryMode, dicEmployeeCategory?: EmployeeCategoryRecord) {
     // Reuses one dialog for add, edit, and read-only view modes.
@@ -573,8 +583,6 @@ export default function EmployeeCategoryMasterPanel() {
 
     if (!strName) {
       dicNextErrors.name = dicEmployeeCategoryLabels.validationNameRequired;
-    } else if (strName.length < 3) {
-      dicNextErrors.name = dicEmployeeCategoryLabels.validationNameMin;
     }
 
     if (!strCode) {
