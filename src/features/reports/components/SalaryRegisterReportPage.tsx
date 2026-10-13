@@ -166,7 +166,13 @@ async function downloadSalaryRegisterExcel(
     }
   };
 
-  lstRows.forEach((dicRow, intIndex) => {
+  // Excel row order mirrors the client sheet: Site (company) A-Z, then Employee No ascending.
+  // The on-screen grid keeps its own order.
+  const lstSortedRows = [...lstRows].sort((dicLeft, dicRight) =>
+    (dicLeft.strAllocationEntity ?? "").localeCompare(dicRight.strAllocationEntity ?? "", undefined, { sensitivity: "base" })
+    || dicLeft.strEmployeeCode.localeCompare(dicRight.strEmployeeCode, undefined, { numeric: true }));
+
+  lstSortedRows.forEach((dicRow, intIndex) => {
     const objRow = objSheet.addRow([
       intIndex + 1,
       dicRow.strEmployeeCode,
