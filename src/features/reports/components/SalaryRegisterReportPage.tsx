@@ -166,10 +166,9 @@ async function downloadSalaryRegisterExcel(
     }
   };
 
-  // Excel row order mirrors the client sheet: Site (company) A-Z, then Employee No ascending.
-  // The on-screen grid keeps its own order.
+  // Excel rows are listed alphabetically by Employee Name (Employee No breaks ties).
   const lstSortedRows = [...lstRows].sort((dicLeft, dicRight) =>
-    (dicLeft.strAllocationEntity ?? "").localeCompare(dicRight.strAllocationEntity ?? "", undefined, { sensitivity: "base" })
+    dicLeft.strEmployeeName.trim().localeCompare(dicRight.strEmployeeName.trim(), undefined, { sensitivity: "base" })
     || dicLeft.strEmployeeCode.localeCompare(dicRight.strEmployeeCode, undefined, { numeric: true }));
 
   lstSortedRows.forEach((dicRow, intIndex) => {
