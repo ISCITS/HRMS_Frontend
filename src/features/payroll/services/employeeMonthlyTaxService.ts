@@ -61,6 +61,7 @@ export type MonthlyTaxImportPreviewRow = {
   strSourceType: string;
   strExternalReference: string | null;
   strRemarks: string | null;
+  strComponentCode?: string | null;
   blnValid: boolean;
   strErrorMessage: string | null;
 };
@@ -307,6 +308,7 @@ export const employeeMonthlyTaxService = {
             strSourceType: objRow.strSourceType,
             strExternalReference: objRow.strExternalReference,
             strRemarks: objRow.strRemarks,
+            strComponentCode: objRow.strComponentCode ?? null,
           })),
       },
     });

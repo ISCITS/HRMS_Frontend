@@ -14,6 +14,17 @@ export type SalaryRegisterRow = {
   strEmployeeCategory: string | null;
   strState: string | null;
   strPayCycle: string | null;
+  strEmploymentStatus: string | null;
+  strCostCenter: string | null;
+  strGrade: string | null;
+  strPaymentMode: string | null;
+  strWorkgroup: string | null;
+  strBankName: string | null;
+  strBranchName: string | null;
+  strAccountNumber: string | null;
+  strIfscCode: string | null;
+  strPanNumber: string | null;
+  strUanNumber: string | null;
   strDataSource: "Processed" | "Configured";
   decTotalPresentDays: number | null;
   dicPayments: Record<string, number>;
