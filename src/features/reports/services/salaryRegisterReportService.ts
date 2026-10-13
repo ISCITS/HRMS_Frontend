@@ -10,7 +10,7 @@ export type SalaryRegisterRow = {
   strDepartment: string | null;
   strDesignation: string | null;
   strLocation: string | null;
-  strCostCenter: string | null;
+  strAllocationEntity: string | null;
   strEmployeeCategory: string | null;
   strState: string | null;
   strPayCycle: string | null;

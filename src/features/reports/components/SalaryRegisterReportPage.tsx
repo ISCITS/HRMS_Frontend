@@ -6,7 +6,7 @@ import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import FilterListRoundedIcon from "@mui/icons-material/FilterListRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, Checkbox, Chip, Divider, IconButton, ListItemText, ListSubheader, MenuItem, Popover, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Checkbox, Divider, IconButton, ListItemText, ListSubheader, MenuItem, Popover, TextField, Typography } from "@mui/material";
 import type { SelectChangeEvent } from "@mui/material";
 import { useEffect, useMemo, useState, type ChangeEventHandler, type ReactNode } from "react";
 
@@ -25,12 +25,12 @@ type SearchForm = {
   strDepartmentIDs: string;
   strDesignationIDs: string;
   strLocationIDs: string;
-  strCostCenterIDs: string;
+  strAllocationEntityIDs: string;
   strEmploymentStatus: string;
 };
 
 const lstEmploymentStatusOptions = ["Active", "Inactive", "All"];
-type MoreFiltersForm = Pick<SearchForm, "strDesignationIDs" | "strLocationIDs" | "strCostCenterIDs">;
+type MoreFiltersForm = Pick<SearchForm, "strDesignationIDs" | "strLocationIDs">;
 
 function getCurrentPeriod() {
   const objDate = new Date();
@@ -44,7 +44,7 @@ function getDefaultSearch(): SearchForm {
     strDepartmentIDs: "",
     strDesignationIDs: "",
     strLocationIDs: "",
-    strCostCenterIDs: "",
+    strAllocationEntityIDs: "",
     strEmploymentStatus: "Active",
   };
 }
@@ -86,8 +86,7 @@ function buildExportHtml(
   strMonthLabel: string
 ) {
   const strState = collapseValues(lstRows, (dicRow) => dicRow.strState, "All");
-  const strCostCentre = collapseValues(lstRows, (dicRow) => dicRow.strCostCenter, "All");
-  const strSite = collapseValues(lstRows, (dicRow) => dicRow.strLocation, "All");
+  const strAllocationEntity = collapseValues(lstRows, (dicRow) => dicRow.strAllocationEntity, "All");
   const strPayCycle = collapseValues(lstRows, (dicRow) => dicRow.strPayCycle, "Monthly");
   const strEmployeeCategory = collapseValues(lstRows, (dicRow) => dicRow.strEmployeeCategory, "All");
 
@@ -96,7 +95,7 @@ function buildExportHtml(
   // spreadsheet columns anyway, but only a single table lets us size them deliberately via one
   // <colgroup> instead of Excel falling back to a default width that clips long labels.
   const lstColumnLabels = [
-    "Sl No", "Employee No", "Employee Name", "Status", "Total Present Days",
+    "Sl No", "Employee No", "Employee Name", "Total Present Days",
     ...lstPaymentColumns, "Gross Earning",
     ...lstRecoveryColumns, "Gross Deduction", "Net Earning",
   ];
@@ -109,19 +108,18 @@ function buildExportHtml(
   const strHeaderCells = lstColumnLabels.map((strLabel) => `<th>${escapeHtml(strLabel)}</th>`).join("");
 
   const strBodyRows = lstRows.map((dicRow, intIndex) => `<tr>
-      <td>${intIndex + 1}</td><td>${escapeHtml(dicRow.strEmployeeCode)}</td><td class="text">${escapeHtml(dicRow.strEmployeeName)}</td>
-      <td class="text">${dicRow.strDataSource === "Processed" ? "Processed" : "Projected"}</td>
+      <td>${intIndex + 1}</td><td>${escapeHtml(dicRow.strEmployeeCode)}</td><td>${escapeHtml(dicRow.strEmployeeName)}</td>
       <td>${formatBodyAmount(dicRow.decTotalPresentDays)}</td>
       ${lstPaymentColumns.map((strColumn) => `<td>${formatBodyAmount(dicRow.dicPayments[strColumn])}</td>`).join("")}
       <td>${formatBodyAmount(dicRow.decGrossEarning)}</td>
       ${lstRecoveryColumns.map((strColumn) => `<td>${formatBodyAmount(dicRow.dicRecoveries[strColumn])}</td>`).join("")}
-      <td class="text">${dicRow.blnStatutoryPending ? "Not yet computed" : formatBodyAmount(dicRow.decGrossDeduction)}</td>
-      <td class="text">${dicRow.blnStatutoryPending ? "Not yet computed" : formatBodyAmount(dicRow.decNetEarning)}</td>
+      <td>${dicRow.blnStatutoryPending ? "Not yet computed" : formatBodyAmount(dicRow.decGrossDeduction)}</td>
+      <td>${dicRow.blnStatutoryPending ? "Not yet computed" : formatBodyAmount(dicRow.decNetEarning)}</td>
     </tr>`).join("");
 
   const fnSum = (fnValue: (dicRow: SalaryRegisterRow) => number | null) => lstRows.reduce((decTotal, dicRow) => decTotal + (fnValue(dicRow) || 0), 0);
   const strTotalRow = `<tr class="total">
-    <td colspan="4" style="text-align:center">Grand Total</td>
+    <td colspan="3" style="text-align:center">Grand Total</td>
     <td>${formatTotalAmount(fnSum((dicRow) => dicRow.decTotalPresentDays))}</td>
     ${lstPaymentColumns.map((strColumn) => `<td>${formatTotalAmount(fnSum((dicRow) => dicRow.dicPayments[strColumn] || 0))}</td>`).join("")}
     <td>${formatTotalAmount(fnSum((dicRow) => dicRow.decGrossEarning))}</td>
@@ -150,7 +148,6 @@ function buildExportHtml(
           tr.spacer td { border: none; padding: 4px; }
           thead th { border: 1px solid #000; text-align: center; font-weight: 700; background: #f3f4f6; }
           tbody td { border: 1px solid #000; text-align: right; }
-          tbody td.text { text-align: left; }
           tr.total td { font-weight: 800; }
         </style>
       </head>
@@ -162,8 +159,8 @@ function buildExportHtml(
             <tr class="title"><td colspan="${intColumnCount}">Salary register for the month ${escapeHtml(strMonthLabel)}</td></tr>
             ${fnMetaRow("Date And Time:", formatExportTimestamp(new Date()))}
             ${fnMetaRow("State Name:", strState)}
-            ${fnMetaRow("Cost Centre:", strCostCentre)}
-            ${fnMetaRow("Site:", strSite)}
+            ${fnMetaRow("Payroll Month:", strMonthLabel)}
+            ${fnMetaRow("Allocation Entity:", strAllocationEntity)}
             ${fnMetaRow("Pay Cycle:", strPayCycle)}
             ${fnMetaRow("Employee Category:", strEmployeeCategory)}
             <tr class="spacer"><td colspan="${intColumnCount}"></td></tr>
@@ -284,12 +281,12 @@ export default function SalaryRegisterReportPage() {
   const [lstDepartmentOptions, setLstDepartmentOptions] = useState<SelectOption[]>([]);
   const [lstDesignationOptions, setLstDesignationOptions] = useState<SelectOption[]>([]);
   const [lstLocationOptions, setLstLocationOptions] = useState<SelectOption[]>([]);
-  const [lstCostCenterOptions, setLstCostCenterOptions] = useState<SelectOption[]>([]);
+  const [lstAllocationEntityOptions, setLstAllocationEntityOptions] = useState<SelectOption[]>([]);
   const [blnLoadingMasters, setBlnLoadingMasters] = useState(true);
   const [blnLoadingReport, setBlnLoadingReport] = useState(false);
   const [blnHasSearched, setBlnHasSearched] = useState(false);
   const [objMoreFiltersAnchor, setObjMoreFiltersAnchor] = useState<HTMLElement | null>(null);
-  const [dicMoreFiltersDraft, setDicMoreFiltersDraft] = useState<MoreFiltersForm>({ strDesignationIDs: "", strLocationIDs: "", strCostCenterIDs: "" });
+  const [dicMoreFiltersDraft, setDicMoreFiltersDraft] = useState<MoreFiltersForm>({ strDesignationIDs: "", strLocationIDs: "" });
   const [strError, setStrError] = useState("");
 
   const [lstRows, setLstRows] = useState<SalaryRegisterRow[]>([]);
@@ -317,7 +314,7 @@ export default function SalaryRegisterReportPage() {
         setLstDepartmentOptions(dicOptions.lstDepartments.map((objDept) => ({ strValue: String(objDept.intID), strLabel: objDept.strLabel })));
         setLstDesignationOptions(dicOptions.lstDesignations.map((objDesignation) => ({ strValue: String(objDesignation.intID), strLabel: objDesignation.strLabel })));
         setLstLocationOptions(dicOptions.lstLocations.map((objLocation) => ({ strValue: String(objLocation.intID), strLabel: objLocation.strLabel })));
-        setLstCostCenterOptions(dicOptions.lstCostCenters.map((objCostCenter) => ({ strValue: String(objCostCenter.intID), strLabel: objCostCenter.strLabel })));
+        setLstAllocationEntityOptions((dicOptions.lstAllocationEntities ?? []).map((objEntity) => ({ strValue: String(objEntity.intID), strLabel: objEntity.strLabel })));
       })
       .catch((objError) => setStrError(objError instanceof Error ? objError.message : "Unable to load salary register filters."))
       .finally(() => { if (blnActive) setBlnLoadingMasters(false); });
@@ -336,7 +333,7 @@ export default function SalaryRegisterReportPage() {
         department_id: dicSearch.strDepartmentIDs,
         designation_id: dicSearch.strDesignationIDs,
         location_id: dicSearch.strLocationIDs,
-        cost_center_id: dicSearch.strCostCenterIDs,
+        allocation_entity_id: dicSearch.strAllocationEntityIDs,
         employment_status: dicSearch.strEmploymentStatus,
       });
       setLstRows(objEnvelope.lstItems);
@@ -355,7 +352,7 @@ export default function SalaryRegisterReportPage() {
 
   function clearFilters() {
     setDicSearch(getDefaultSearch());
-    setDicMoreFiltersDraft({ strDesignationIDs: "", strLocationIDs: "", strCostCenterIDs: "" });
+    setDicMoreFiltersDraft({ strDesignationIDs: "", strLocationIDs: "" });
     setObjMoreFiltersAnchor(null);
     setLstRows([]);
     setBlnHasSearched(false);
@@ -363,7 +360,7 @@ export default function SalaryRegisterReportPage() {
   }
 
   function clearMoreFilters() {
-    setDicMoreFiltersDraft({ strDesignationIDs: "", strLocationIDs: "", strCostCenterIDs: "" });
+    setDicMoreFiltersDraft({ strDesignationIDs: "", strLocationIDs: "" });
   }
 
   function applyMoreFilters() {
@@ -377,7 +374,6 @@ export default function SalaryRegisterReportPage() {
     { field: "strDepartment", headerName: "Department", width: 150 },
     { field: "strDesignation", headerName: "Designation", width: 150 },
     { field: "strLocation", headerName: "Location", width: 140 },
-    { field: "strDataSource", headerName: "Status", width: 130 },
     { field: "decTotalPresentDays", headerName: "Total Present Days", width: 130, align: "right" },
     ...lstPaymentColumns.map((strColumn): CommonTableColumn<Record<string, ReactNode>> => ({ field: strColumn, headerName: strColumn, width: 150, align: "right" })),
     { field: "decGrossEarning", headerName: "Gross Earning", width: 140, align: "right" },
@@ -387,7 +383,6 @@ export default function SalaryRegisterReportPage() {
   ], [lstPaymentColumns, lstRecoveryColumns]);
 
   const lstDisplayRows = useMemo(() => lstRows.map((dicRow, intIndex) => {
-    const blnProcessed = dicRow.strDataSource === "Processed";
     const dicMapped: Record<string, ReactNode> = {
       __rowid: String(dicRow.intEmployeeID || intIndex),
       strEmployeeCode: dicRow.strEmployeeCode,
@@ -395,15 +390,6 @@ export default function SalaryRegisterReportPage() {
       strDepartment: dicRow.strDepartment ?? "-",
       strDesignation: dicRow.strDesignation ?? "-",
       strLocation: dicRow.strLocation ?? "-",
-      strDataSource: (
-        <Chip
-          size="small"
-          label={blnProcessed ? "Processed" : "Projected"}
-          sx={blnProcessed
-            ? { backgroundColor: "rgba(22, 163, 74, 0.12)", color: "#166534", fontWeight: 700 }
-            : { backgroundColor: "rgba(217, 119, 6, 0.12)", color: "#92400e", fontWeight: 700 }}
-        />
-      ),
       decTotalPresentDays: formatBodyAmount(dicRow.decTotalPresentDays),
       decGrossEarning: formatBodyAmount(dicRow.decGrossEarning),
       decGrossDeduction: dicRow.blnStatutoryPending ? "Not yet computed" : formatBodyAmount(dicRow.decGrossDeduction),
@@ -443,6 +429,9 @@ export default function SalaryRegisterReportPage() {
           <Box className={styles.reportSearchField} sx={{ flex: "1 1 200px", minWidth: 180 }}>
             <CheckboxMultiSelectFilter strLabel="Department" strValue={dicSearch.strDepartmentIDs} lstOptions={lstDepartmentOptions} fnOnChange={(strValue) => setDicSearch((dicPrevious) => ({ ...dicPrevious, strDepartmentIDs: strValue }))} blnDisabled={blnPageLoading} />
           </Box>
+          <Box className={styles.reportSearchField} sx={{ flex: "1 1 200px", minWidth: 180 }}>
+            <CheckboxMultiSelectFilter strLabel="Allocation Entity" strValue={dicSearch.strAllocationEntityIDs} lstOptions={lstAllocationEntityOptions} fnOnChange={(strValue) => setDicSearch((dicPrevious) => ({ ...dicPrevious, strAllocationEntityIDs: strValue }))} blnDisabled={blnPageLoading} />
+          </Box>
           <Box className={styles.reportSearchField} sx={{ flex: "0 1 160px", minWidth: 150 }}>
             <TextField className="app-mui-text-field" select label="Employment Status" value={dicSearch.strEmploymentStatus} onChange={(objEvent) => setDicSearch((dicPrevious) => ({ ...dicPrevious, strEmploymentStatus: objEvent.target.value }))} disabled={blnPageLoading} fullWidth>
               {lstEmploymentStatusOptions.map((strStatus) => <MenuItem key={strStatus} value={strStatus}>{strStatus}</MenuItem>)}
@@ -456,7 +445,6 @@ export default function SalaryRegisterReportPage() {
                 setDicMoreFiltersDraft({
                   strDesignationIDs: dicSearch.strDesignationIDs,
                   strLocationIDs: dicSearch.strLocationIDs,
-                  strCostCenterIDs: dicSearch.strCostCenterIDs,
                 });
                 setObjMoreFiltersAnchor(objEvent.currentTarget);
               }}
@@ -501,7 +489,6 @@ export default function SalaryRegisterReportPage() {
             <Box sx={{ px: 2.5, pb: 2, display: "grid", gap: 1.5 }}>
               <CheckboxMultiSelectFilter strLabel="Designation" strValue={dicMoreFiltersDraft.strDesignationIDs} lstOptions={lstDesignationOptions} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strDesignationIDs: strValue }))} blnDisabled={blnPageLoading} />
               <CheckboxMultiSelectFilter strLabel="Location" strValue={dicMoreFiltersDraft.strLocationIDs} lstOptions={lstLocationOptions} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strLocationIDs: strValue }))} blnDisabled={blnPageLoading} />
-              <CheckboxMultiSelectFilter strLabel="Cost Centre" strValue={dicMoreFiltersDraft.strCostCenterIDs} lstOptions={lstCostCenterOptions} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strCostCenterIDs: strValue }))} blnDisabled={blnPageLoading} />
             </Box>
             <Divider />
             <Box sx={{ px: 2.5, py: 1.75, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1.25 }}>
@@ -520,7 +507,7 @@ export default function SalaryRegisterReportPage() {
       <Box sx={{ alignItems: "center", backgroundColor: "#f8fbff", border: "1px solid rgba(191,219,254,0.7)", borderRadius: "16px", color: "#1f2937", display: "flex", gap: 1, px: 1.5, py: 1.25 }}>
         <InfoOutlinedIcon sx={{ color: "#2b6cb0", fontSize: 20 }} />
         <Typography sx={{ color: "inherit", lineHeight: 1.5 }}>
-          Shows actual processed payroll figures ("Processed") when payroll has been run for the selected month; otherwise falls back to the employee's configured CTC/salary structure ("Projected") so a figure is always available.
+          Shows actual processed payroll figures when payroll has been run for the selected month; otherwise falls back to the employee's configured CTC/salary structure so a figure is always available.
         </Typography>
       </Box>
 
