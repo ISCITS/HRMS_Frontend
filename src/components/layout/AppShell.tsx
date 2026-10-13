@@ -28,11 +28,11 @@ import {
   Tooltip,
   Typography
 } from "@mui/material";
-import { ReactNode, useEffect, useRef, useState } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchOnEnter } from "@/components/layout/useSearchOnEnter";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import { DashboardHeaderModeContext } from "@/components/layout/DashboardHeaderModeContext";
+import { DashboardBootstrapDataContext, DashboardContentLoadingContext, DashboardHeaderModeContext } from "@/components/layout/DashboardHeaderModeContext";
 import BannerSearch from "@/components/layout/BannerSearch";
 import DynamicMenu from "@/components/navigation/DynamicMenu";
 import BlockingLoader, { BlockingLoaderViewportProvider, DottedLoader } from "@/components/shared/BlockingLoader";
@@ -53,7 +53,7 @@ import {
   readAuthenticatedRouteHistory,
   writeAuthenticatedRouteHistory
 } from "@/lib/routeAccess";
-import type { CurrentUserContext, MenuItem as AuthMenuItem, MenuResponse, PortalCode, TenantAuthDetails } from "@/models/AuthModels";
+import type { CurrentUserContext, DashboardResponse, MenuItem as AuthMenuItem, MenuResponse, PortalCode, TenantAuthDetails } from "@/models/AuthModels";
 import { ApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { authApiService } from "@/services";
 
@@ -620,6 +620,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [objUserContext, setObjUserContext] = useState<CurrentUserContext | null>(null);
   const [strFailedCompanyLogoUrl, setStrFailedCompanyLogoUrl] = useState("");
   const [blnEssDashboardActive, setBlnEssDashboardActive] = useState(false);
+  const [blnDashboardContentLoading, setBlnDashboardContentLoading] = useState(true);
+  const [objBootstrappedDashboard, setObjBootstrappedDashboard] = useState<DashboardResponse | null>(null);
   const [objMenu, setObjMenu] = useState<MenuResponse>({ lstMenuItems: [], strHomeRoute: "/dashboard" });
   const [blnMenuLoaded, setBlnMenuLoaded] = useState(false);
   const [blnMenuLoading, setBlnMenuLoading] = useState(false);
@@ -829,11 +831,22 @@ export default function AppShell({ children }: { children: ReactNode }) {
         }
         setStrBootstrapError("");
         const intResolvedLanguageID = authHelpers.getLanguageID() ?? 1;
+        const blnBootstrapDashboard = (strPathname || "").toLowerCase() === "/dashboard";
         const lstBootstrapResults = await Promise.allSettled([
           // Older backend images do not expose the optional bulk label endpoint.
           // Keep shell bootstrap resilient and let per-module label loading fall back.
           labelService.preloadAllLabels(intResolvedLanguageID).catch(() => undefined),
-          ensureMenuLoaded(intResolvedLanguageID, true)
+          ensureMenuLoaded(intResolvedLanguageID, true),
+          ...(blnBootstrapDashboard
+            ? [
+                authApiService.getDashboard(null).then((objDashboardResult) => {
+                  if (blnMounted) {
+                    setObjBootstrappedDashboard(objDashboardResult.Data);
+                    setBlnDashboardContentLoading(false);
+                  }
+                })
+              ]
+            : [])
         ]);
 
         const objRejectedBootstrapStep = lstBootstrapResults.find(
@@ -845,6 +858,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
           if (isSessionExpiredError(objReason)) {
             throw objReason;
           }
+          if (blnBootstrapDashboard) {
+            throw objReason;
+          }
           console.error("App shell bootstrap step failed.", objReason);
         }
       })
@@ -854,7 +870,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
             redirectToSessionExpired();
           } else {
             console.error("App shell bootstrap failed.", objError);
-            setStrBootstrapError("");
+            setStrBootstrapError(
+              objError instanceof Error
+                ? objError.message
+                : "Unable to load dashboard."
+            );
           }
         }
       })
@@ -1206,10 +1226,18 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const strCompanyName = objUserContext?.objCompany?.strCompanyName?.trim() || "";
   const strCompanyLogoUrl = objUserContext?.objCompany?.strLogoUrl?.trim() || "";
   const blnProfileMenuOpen = Boolean(objProfileAnchorEl);
+  const objDashboardBootstrapData = useMemo(
+    () => ({
+      objUserContext,
+      objDashboard: objBootstrappedDashboard,
+    }),
+    [objBootstrappedDashboard, objUserContext]
+  );
 
   useEffect(() => {
     if (!blnDashboardRoute) {
       setBlnEssDashboardActive(false);
+      setBlnDashboardContentLoading(false);
     }
   }, [blnDashboardRoute]);
 
@@ -1439,7 +1467,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     return (
       <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", backgroundColor: "#f8fafc" }}>
         <Stack spacing={2} alignItems="center">
-          <DottedLoader intSize={36} />
+          <DottedLoader intSize={64} />
           <Typography sx={{ color: "#64748b" }}>{tCommon("preparing_workspace", "Preparing your workspace...")}</Typography>
         </Stack>
       </Box>
@@ -1812,7 +1840,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
             }}
           >
             <DashboardHeaderModeContext.Provider value={setBlnEssDashboardActive}>
-              {children}
+              <DashboardBootstrapDataContext.Provider value={objDashboardBootstrapData}>
+                <DashboardContentLoadingContext.Provider value={setBlnDashboardContentLoading}>
+                  {children}
+                </DashboardContentLoadingContext.Provider>
+              </DashboardBootstrapDataContext.Provider>
             </DashboardHeaderModeContext.Provider>
             <BlockingLoader
               blnOpen={blnLoggingOut}
@@ -1835,6 +1867,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </Box>
         </Box>
       </BlockingLoaderViewportProvider>
+      <BlockingLoader
+        blnOpen={blnDashboardRoute && blnDashboardContentLoading}
+        strLabel={tCommon("loading_dashboard", "Loading dashboard...")}
+        intZIndex={intMenuZIndex + 1}
+      />
 
       <Menu
         id="app-shell-profile-menu"

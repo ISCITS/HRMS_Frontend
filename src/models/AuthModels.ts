@@ -68,6 +68,15 @@ export type ChangePasswordResponse = {
   intRevokedSessionCount: number;
 };
 
+export type ForgotPasswordRequest = {
+  strEmailAddress: string;
+  strTenantUUID?: string | null;
+};
+
+export type ForgotPasswordResponse = {
+  blnResetRequested: boolean;
+};
+
 export type PasswordResetEmployeeOption = {
   intEmployeeID: number;
   strEmployeeCode: string;
