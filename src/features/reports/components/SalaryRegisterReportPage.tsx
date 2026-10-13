@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
@@ -50,15 +50,12 @@ function getDefaultSearch(): SearchForm {
 }
 
 function formatBodyAmount(decValue: number | null | undefined) {
-  if (decValue === null) return "-"; // explicitly unknown (e.g. Total Present Days with no attendance source)
+  if (decValue === null) return "-"; // explicitly unknown (e.g. Payable Days with no attendance source)
   const decNumber = Number(decValue ?? 0); // undefined = component not present for this row
   if (!decNumber) return "";
   return Number.isInteger(decNumber) ? String(decNumber) : decNumber.toFixed(2);
 }
 
-function formatTotalAmount(decValue: number) {
-  return decValue.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
 function collapseValues(lstRows: SalaryRegisterRow[], fnGetValue: (dicRow: SalaryRegisterRow) => string | null | undefined, strFallback: string) {
   const setValues = new Set(lstRows.map((dicRow) => (fnGetValue(dicRow) || "").trim()).filter(Boolean));
@@ -74,107 +71,125 @@ function formatExportTimestamp(objDate: Date) {
   return `${fnPad(objDate.getMonth() + 1)}/${fnPad(objDate.getDate())}/${objDate.getFullYear()} ${fnPad(intHours)}:${fnPad(objDate.getMinutes())}:${fnPad(objDate.getSeconds())} ${strMeridiem}`;
 }
 
-function escapeHtml(strValue: string) {
-  return strValue.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+// Numeric export cell: null = explicitly unknown ("-"), missing/zero = blank, otherwise a real number
+// so Excel can sum/format it.
+function toExportNumber(decValue: number | null | undefined): number | string | null {
+  if (decValue === null) return "-";
+  const decNumber = Number(decValue ?? 0);
+  if (!decNumber) return null;
+  return Math.round(decNumber * 100) / 100;
 }
 
-function buildExportHtml(
+async function downloadSalaryRegisterExcel(
+  strFileName: string,
   lstRows: SalaryRegisterRow[],
   lstPaymentColumns: string[],
   lstRecoveryColumns: string[],
   strCompanyName: string,
   strMonthLabel: string
 ) {
+  const { Workbook } = await import("exceljs");
   const strState = collapseValues(lstRows, (dicRow) => dicRow.strState, "All");
   const strAllocationEntity = collapseValues(lstRows, (dicRow) => dicRow.strAllocationEntity, "All");
   const strPayCycle = collapseValues(lstRows, (dicRow) => dicRow.strPayCycle, "Monthly");
   const strEmployeeCategory = collapseValues(lstRows, (dicRow) => dicRow.strEmployeeCategory, "All");
 
-  // A single table (not separate meta/data tables) so Excel keeps one consistent set of column
-  // widths across the header block and the data grid - two stacked tables share physical
-  // spreadsheet columns anyway, but only a single table lets us size them deliberately via one
-  // <colgroup> instead of Excel falling back to a default width that clips long labels.
   const lstColumnLabels = [
-    "Sl No", "Employee No", "Employee Name", "Total Present Days",
+    "Sl No", "Employee Name", "Employee No", "Department", "Designation", "Location", "Payable Days",
     ...lstPaymentColumns, "Gross Earning",
     ...lstRecoveryColumns, "Gross Deduction", "Net Earning",
   ];
   const intColumnCount = lstColumnLabels.length;
-  const strColGroup = lstColumnLabels.map((_, intIndex) => {
-    const intWidth = intIndex === 0 ? 150 : intIndex === 1 ? 130 : intIndex === 2 ? 190 : 140;
-    return `<col style="width:${intWidth}px" />`;
-  }).join("");
+  const intFirstNumericColumn = 7; // 1-based: everything from Payable Days onward is numeric
 
-  const strHeaderCells = lstColumnLabels.map((strLabel) => `<th>${escapeHtml(strLabel)}</th>`).join("");
+  const objWorkbook = new Workbook();
+  const objSheet = objWorkbook.addWorksheet("Salary Register");
+  objSheet.columns = lstColumnLabels.map((_, intIndex) => ({
+    width: intIndex === 0 ? 8 : intIndex === 1 ? 30 : intIndex === 2 ? 16 : intIndex <= 5 ? 26 : 18,
+  }));
+  const objThinBorder = { top: { style: "thin" as const }, left: { style: "thin" as const }, bottom: { style: "thin" as const }, right: { style: "thin" as const } };
 
-  const strBodyRows = lstRows.map((dicRow, intIndex) => `<tr>
-      <td>${intIndex + 1}</td><td>${escapeHtml(dicRow.strEmployeeCode)}</td><td>${escapeHtml(dicRow.strEmployeeName)}</td>
-      <td>${formatBodyAmount(dicRow.decTotalPresentDays)}</td>
-      ${lstPaymentColumns.map((strColumn) => `<td>${formatBodyAmount(dicRow.dicPayments[strColumn])}</td>`).join("")}
-      <td>${formatBodyAmount(dicRow.decGrossEarning)}</td>
-      ${lstRecoveryColumns.map((strColumn) => `<td>${formatBodyAmount(dicRow.dicRecoveries[strColumn])}</td>`).join("")}
-      <td>${dicRow.blnStatutoryPending ? "Not yet computed" : formatBodyAmount(dicRow.decGrossDeduction)}</td>
-      <td>${dicRow.blnStatutoryPending ? "Not yet computed" : formatBodyAmount(dicRow.decNetEarning)}</td>
-    </tr>`).join("");
+  const fnTitleRow = (strText: string, intSize: number) => {
+    const objRow = objSheet.addRow([strText]);
+    objSheet.mergeCells(objRow.number, 1, objRow.number, intColumnCount);
+    objRow.getCell(1).font = { bold: true, size: intSize };
+    objRow.getCell(1).alignment = { horizontal: "center", vertical: "middle" };
+  };
+  fnTitleRow(strCompanyName, 14);
+  fnTitleRow(`Salary register for the month ${strMonthLabel}`, 12);
+
+  const fnMetaRow = (strLabel: string, strValue: string) => {
+    const objRow = objSheet.addRow([strLabel, "", "", strValue]);
+    objSheet.mergeCells(objRow.number, 1, objRow.number, 3);
+    objSheet.mergeCells(objRow.number, 4, objRow.number, Math.max(4, intColumnCount));
+    objRow.getCell(1).font = { bold: true };
+    objRow.getCell(1).alignment = { horizontal: "left" };
+    objRow.getCell(4).alignment = { horizontal: "left" };
+  };
+  fnMetaRow("Date And Time:", formatExportTimestamp(new Date()));
+  fnMetaRow("State Name:", strState);
+  fnMetaRow("Payroll Month:", strMonthLabel);
+  fnMetaRow("Allocation Entity:", strAllocationEntity);
+  fnMetaRow("Pay Cycle:", strPayCycle);
+  fnMetaRow("Employee Category:", strEmployeeCategory);
+  objSheet.addRow([]);
+
+  const objHeaderRow = objSheet.addRow(lstColumnLabels);
+  objHeaderRow.eachCell((objCell) => {
+    objCell.font = { bold: true };
+    objCell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+    objCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F4F6" } };
+    objCell.border = objThinBorder;
+  });
+
+  const fnStyleDataRow = (objRow: ReturnType<typeof objSheet.addRow>, blnBold: boolean) => {
+    for (let intColumn = 1; intColumn <= intColumnCount; intColumn += 1) {
+      const objCell = objRow.getCell(intColumn);
+      objCell.border = objThinBorder;
+      objCell.font = { bold: blnBold };
+      if (intColumn === 1) objCell.alignment = { horizontal: "center" };
+      else if (intColumn < intFirstNumericColumn) objCell.alignment = { horizontal: "left" };
+      else {
+        objCell.alignment = { horizontal: "right" };
+        objCell.numFmt = "#,##0.00";
+      }
+    }
+  };
+
+  lstRows.forEach((dicRow, intIndex) => {
+    const objRow = objSheet.addRow([
+      intIndex + 1,
+      dicRow.strEmployeeName,
+      dicRow.strEmployeeCode,
+      dicRow.strDepartment ?? "-",
+      dicRow.strDesignation ?? "-",
+      dicRow.strLocation ?? "-",
+      toExportNumber(dicRow.decTotalPresentDays),
+      ...lstPaymentColumns.map((strColumn) => toExportNumber(dicRow.dicPayments[strColumn])),
+      toExportNumber(dicRow.decGrossEarning),
+      ...lstRecoveryColumns.map((strColumn) => toExportNumber(dicRow.dicRecoveries[strColumn])),
+      dicRow.blnStatutoryPending ? "Not yet computed" : toExportNumber(dicRow.decGrossDeduction),
+      dicRow.blnStatutoryPending ? "Not yet computed" : toExportNumber(dicRow.decNetEarning),
+    ]);
+    fnStyleDataRow(objRow, false);
+  });
 
   const fnSum = (fnValue: (dicRow: SalaryRegisterRow) => number | null) => lstRows.reduce((decTotal, dicRow) => decTotal + (fnValue(dicRow) || 0), 0);
-  const strTotalRow = `<tr class="total">
-    <td colspan="3" style="text-align:center">Grand Total</td>
-    <td>${formatTotalAmount(fnSum((dicRow) => dicRow.decTotalPresentDays))}</td>
-    ${lstPaymentColumns.map((strColumn) => `<td>${formatTotalAmount(fnSum((dicRow) => dicRow.dicPayments[strColumn] || 0))}</td>`).join("")}
-    <td>${formatTotalAmount(fnSum((dicRow) => dicRow.decGrossEarning))}</td>
-    ${lstRecoveryColumns.map((strColumn) => `<td>${formatTotalAmount(fnSum((dicRow) => dicRow.dicRecoveries[strColumn] || 0))}</td>`).join("")}
-    <td>${formatTotalAmount(fnSum((dicRow) => dicRow.decGrossDeduction))}</td>
-    <td>${formatTotalAmount(fnSum((dicRow) => dicRow.decNetEarning))}</td>
-  </tr>`;
+  const objTotalRow = objSheet.addRow([
+    "Grand Total", "", "", "", "", "",
+    fnSum((dicRow) => dicRow.decTotalPresentDays),
+    ...lstPaymentColumns.map((strColumn) => fnSum((dicRow) => dicRow.dicPayments[strColumn] || 0)),
+    fnSum((dicRow) => dicRow.decGrossEarning),
+    ...lstRecoveryColumns.map((strColumn) => fnSum((dicRow) => dicRow.dicRecoveries[strColumn] || 0)),
+    fnSum((dicRow) => dicRow.decGrossDeduction),
+    fnSum((dicRow) => dicRow.decNetEarning),
+  ]);
+  objSheet.mergeCells(objTotalRow.number, 1, objTotalRow.number, 6);
+  fnStyleDataRow(objTotalRow, true);
+  objTotalRow.getCell(1).alignment = { horizontal: "center" };
 
-  const fnMetaRow = (strLabel: string, strValue: string) =>
-    `<tr class="meta-row"><td class="label">${escapeHtml(strLabel)}</td><td class="value" colspan="${intColumnCount - 1}" style="text-align:left">${escapeHtml(strValue)}</td></tr>`;
-
-  return `
-    <html>
-      <head>
-        <title>Salary Register</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 16px; color: #111827; }
-          table.report { border-collapse: collapse; table-layout: fixed; }
-          table.report td, table.report th { padding: 4px 6px; font-size: 12px; }
-          .company td, .title td { text-align: center; border: none; }
-          .company td { font-size: 18px; font-weight: 800; padding-top: 8px; }
-          .title td { font-size: 15px; font-weight: 800; padding-bottom: 10px; }
-          tr.meta-row td { border: none; vertical-align: top; }
-          tr.meta-row td.label { font-weight: 700; white-space: nowrap; text-align: right; }
-          tr.meta-row td.value { text-align: left; }
-          tr.spacer td { border: none; padding: 4px; }
-          thead th { border: 1px solid #000; text-align: center; font-weight: 700; background: #f3f4f6; }
-          tbody td { border: 1px solid #000; text-align: right; }
-          tr.total td { font-weight: 800; }
-        </style>
-      </head>
-      <body>
-        <table class="report">
-          <colgroup>${strColGroup}</colgroup>
-          <tbody>
-            <tr class="company"><td colspan="${intColumnCount}">${escapeHtml(strCompanyName)}</td></tr>
-            <tr class="title"><td colspan="${intColumnCount}">Salary register for the month ${escapeHtml(strMonthLabel)}</td></tr>
-            ${fnMetaRow("Date And Time:", formatExportTimestamp(new Date()))}
-            ${fnMetaRow("State Name:", strState)}
-            ${fnMetaRow("Payroll Month:", strMonthLabel)}
-            ${fnMetaRow("Allocation Entity:", strAllocationEntity)}
-            ${fnMetaRow("Pay Cycle:", strPayCycle)}
-            ${fnMetaRow("Employee Category:", strEmployeeCategory)}
-            <tr class="spacer"><td colspan="${intColumnCount}"></td></tr>
-          </tbody>
-          <thead><tr>${strHeaderCells}</tr></thead>
-          <tbody>${strBodyRows}${strTotalRow}</tbody>
-        </table>
-      </body>
-    </html>
-  `;
-}
-
-function downloadExcel(strFileName: string, strHtml: string) {
-  const objBlob = new Blob([strHtml], { type: "application/vnd.ms-excel;charset=utf-8;" });
+  const objBuffer = await objWorkbook.xlsx.writeBuffer();
+  const objBlob = new Blob([objBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
   const strUrl = URL.createObjectURL(objBlob);
   const objLink = document.createElement("a");
   objLink.href = strUrl;
@@ -372,9 +387,9 @@ export default function SalaryRegisterReportPage() {
     { field: "strEmployeeName", headerName: "Employee Name", width: 190 },
     { field: "strEmployeeCode", headerName: "Employee No", width: 120 },
     { field: "strDepartment", headerName: "Department", width: 150 },
-    { field: "strDesignation", headerName: "Designation", width: 150 },
+    { field: "strDesignation", headerName: "Designation", width: 230 },
     { field: "strLocation", headerName: "Location", width: 140 },
-    { field: "decTotalPresentDays", headerName: "Total Present Days", width: 130, align: "right" },
+    { field: "decTotalPresentDays", headerName: "Payable Days", width: 130, align: "right" },
     ...lstPaymentColumns.map((strColumn): CommonTableColumn<Record<string, ReactNode>> => ({ field: strColumn, headerName: strColumn, width: 150, align: "right" })),
     { field: "decGrossEarning", headerName: "Gross Earning", width: 140, align: "right" },
     ...lstRecoveryColumns.map((strColumn): CommonTableColumn<Record<string, ReactNode>> => ({ field: strColumn, headerName: strColumn, width: 150, align: "right" })),
@@ -401,8 +416,8 @@ export default function SalaryRegisterReportPage() {
   }), [lstRows, lstPaymentColumns, lstRecoveryColumns]);
 
   function exportExcel() {
-    const strHtml = buildExportHtml(lstRows, lstPaymentColumns, lstRecoveryColumns, strCompanyName, strMonthLabel);
-    downloadExcel(`salary-register-${dicSearch.strPeriod}.xls`, strHtml);
+    downloadSalaryRegisterExcel(`salary-register-${dicSearch.strPeriod}.xlsx`, lstRows, lstPaymentColumns, lstRecoveryColumns, strCompanyName, strMonthLabel)
+      .catch((objError) => setStrError(objError instanceof Error ? objError.message : "Unable to export the salary register."));
   }
 
   return (

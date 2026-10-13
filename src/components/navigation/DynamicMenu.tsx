@@ -951,14 +951,38 @@ function groupHrEmployeeServicesMenus(lstItems: MenuItem[]): MenuItem[] {
   ];
 }
 
+// Reports module order: Salary Register first, then Payslips, then everything else in its
+// existing order.
+function getReportsMenuPriority(objItem: MenuItem): number {
+  const strRoute = resolveMenuRoute(objItem)?.toLowerCase() ?? "";
+  if (strRoute === "/reports/salary-register") return 0;
+  if (strRoute === "/reports/payslips" || strRoute === "/reports/payslip") return 1;
+  return 2;
+}
+
+function orderReportsMenu(lstItems: MenuItem[]): MenuItem[] {
+  return lstItems.map((objItem) => {
+    const lstChildren = orderReportsMenu(objItem.lstChildren);
+    const lstOrderedChildren = isDirectReportsMenu(objItem)
+      ? lstChildren
+          .map((objChild, intIndex) => ({ objChild, intIndex }))
+          .sort((dicA, dicB) => getReportsMenuPriority(dicA.objChild) - getReportsMenuPriority(dicB.objChild) || dicA.intIndex - dicB.intIndex)
+          .map((dicEntry) => dicEntry.objChild)
+      : lstChildren;
+    return { ...objItem, lstChildren: lstOrderedChildren };
+  });
+}
+
 function prepareMenuItems(lstItems: MenuItem[], blnEssOnly: boolean, canViewCtc: boolean): MenuItem[] {
   const lstPreparedItems = promoteEssWorkOnHolidayMenu(
-    collapseDuplicateMenuBranches(
-      appendGeneratedReportsMenu(
-        appendGeneratedPayslipMenu(
-          appendGeneratedEssLoansAdvancesMenu(
-            removeReportsFromPayrollBranches(
-              promoteDashboardMenu(lstItems),
+    orderReportsMenu(
+      collapseDuplicateMenuBranches(
+        appendGeneratedReportsMenu(
+          appendGeneratedPayslipMenu(
+            appendGeneratedEssLoansAdvancesMenu(
+              removeReportsFromPayrollBranches(
+                promoteDashboardMenu(lstItems),
+              ),
             ),
           ),
         ),
