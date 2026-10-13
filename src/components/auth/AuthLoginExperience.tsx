@@ -4,7 +4,6 @@ import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlin
 import AlternateEmailRoundedIcon from "@mui/icons-material/AlternateEmailRounded";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import BarChartRoundedIcon from "@mui/icons-material/BarChartRounded";
-import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
@@ -15,8 +14,9 @@ import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VpnKeyRoundedIcon from "@mui/icons-material/VpnKeyRounded";
-import { Alert, Box, Button, ButtonBase, Dialog, DialogActions, DialogContent, DialogTitle, Divider, IconButton, InputAdornment, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, ButtonBase, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, Divider, IconButton, InputAdornment, Paper, Stack, TextField, Typography } from "@mui/material";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DottedLoader } from "@/components/shared/BlockingLoader";
 import { loginCompactSx, loginInputRootSx, loginTextFieldSx } from "@/components/auth/loginCompactSx";
@@ -48,6 +48,10 @@ type AuthLoginExperienceProps = {
   strTenantUUID?: string;
   strTenantHint?: string;
 };
+
+const strRememberLoginStorageKey = "navhr_remember_login";
+const strRememberLoginIDStorageKey = "navhr_remember_login_id";
+const strRememberLoginTenantStorageKey = "navhr_remember_login_tenant_uuid";
  
 export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLoginExperienceProps) {
   const objRouter = useRouter();
@@ -61,6 +65,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
   const [blnSubmitting, setBlnSubmitting] = useState(false);
   const [blnResendingOtp, setBlnResendingOtp] = useState(false);
   const [blnPasswordVisible, setBlnPasswordVisible] = useState(false);
+  const [blnRememberDevice, setBlnRememberDevice] = useState(false);
   const [objTenantAuthDetails, setObjTenantAuthDetails] = useState<TenantAuthDetails | null>(null);
   const [objOtpChallenge, setObjOtpChallenge] = useState<AuthOtpChallengeData | null>(null);
   const [objGoogleMfaChallenge, setObjGoogleMfaChallenge] = useState<GoogleMfaChallengeData | null>(null);
@@ -131,6 +136,41 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
     intLanguageID,
     strLabel: resolveLanguageToggleLabel(intLanguageID, dicLanguageLabelByID[intLanguageID])
   }));
+  const strForgotPasswordHref = strMode === "tenant" && strTenantUUID
+    ? `/forgot-password?tenantUuid=${encodeURIComponent(strTenantUUID)}`
+    : "/forgot-password";
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const blnRemembered = window.localStorage.getItem(strRememberLoginStorageKey) === "true";
+    const strRememberedTenantUUID = window.localStorage.getItem(strRememberLoginTenantStorageKey) ?? "";
+    const blnSameTenantContext = strMode !== "tenant" || strRememberedTenantUUID === (strTenantUUID ?? "");
+    setBlnRememberDevice(blnRemembered && blnSameTenantContext);
+
+    if (blnRemembered && blnSameTenantContext) {
+      setStrLoginID(window.localStorage.getItem(strRememberLoginIDStorageKey) ?? "");
+    }
+  }, [strMode, strTenantUUID]);
+
+  function persistRememberedLogin() {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (blnRememberDevice) {
+      window.localStorage.setItem(strRememberLoginStorageKey, "true");
+      window.localStorage.setItem(strRememberLoginIDStorageKey, strLoginID.trim());
+      window.localStorage.setItem(strRememberLoginTenantStorageKey, strTenantUUID ?? "");
+      return;
+    }
+
+    window.localStorage.removeItem(strRememberLoginStorageKey);
+    window.localStorage.removeItem(strRememberLoginIDStorageKey);
+    window.localStorage.removeItem(strRememberLoginTenantStorageKey);
+  }
  
   function showErrorDialog(strMessage: string) {
     const strResolvedMessage = strMessage.trim();
@@ -374,6 +414,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
           setBlnUseBackupCode(false);
           return;
         }
+        persistRememberedLogin();
         completeAuthentication(objResult.Data);
         return;
       }
@@ -397,6 +438,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
           setBlnUseBackupCode(false);
           return;
         }
+        persistRememberedLogin();
         completeAuthentication(objResult.Data);
         return;
       }
@@ -418,6 +460,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         setBlnUseBackupCode(false);
         return;
       }
+      persistRememberedLogin();
       completeAuthentication(objResult.Data);
     } catch (objError) {
       if (objError instanceof clsApiRequestError) {
@@ -448,6 +491,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         strPreAuthToken: objGoogleMfaChallenge.strPreAuthToken,
         strBackupCode: strBackupCode
       });
+      persistRememberedLogin();
       objRouter.replace(getPostLoginRoute(objResult.Data.objAuth.strHomeRoute));
       return;
     }
@@ -459,6 +503,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
       });
       setLstBackupCodes(objResult.Data.lstBackupCodes);
       setObjGoogleMfaChallenge(null);
+      persistRememberedLogin();
       objRouter.replace(getPostLoginRoute(objResult.Data.objAuth.strHomeRoute));
       return;
     }
@@ -468,6 +513,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
       strCode: strGoogleCode
     });
     setObjGoogleMfaChallenge(null);
+    persistRememberedLogin();
     objRouter.replace(getPostLoginRoute(objResult.Data.objAuth.strHomeRoute));
   }
  
@@ -870,19 +916,34 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                 </Box>
               ) : null}
  
-              {/* {!blnOtpStep ? (
+              {!blnOtpStep ? (
                 <Box className="login-options-row">
-                  <Box className="login-remember-item">
-                    <Box className="login-remember-check" aria-hidden="true">
-                      <CheckRoundedIcon />
-                    </Box>
-                    <Typography className="login-remember-label">Remember me on this device</Typography>
+                  <Box
+                    component="label"
+                    className="login-remember-item"
+                    data-controlid="auth.login.remember-device.label"
+                  >
+                    <Checkbox
+                      checked={blnRememberDevice}
+                      onChange={(objEvent) => setBlnRememberDevice(objEvent.target.checked)}
+                      className="login-remember-check"
+                      inputProps={{
+                        "aria-label": "Remember me on this device",
+                        "data-controlid": "auth.login.remember-device.checkbox"
+                      }}
+                    />
+                    <Typography component="span" className="login-remember-label">Remember me on this device</Typography>
                   </Box>
-                  <Typography className="login-forgot-link">
+                  <Typography
+                    component={Link}
+                    href={strForgotPasswordHref}
+                    className="login-forgot-link"
+                    data-controlid="auth.login.forgot-password.link"
+                  >
                     {getLoginLabel("forgotPassword")}
                   </Typography>
                 </Box>
-              ) : null} */}
+              ) : null} 
  
               <Button
                 data-controlid="auth.login.submit.button"

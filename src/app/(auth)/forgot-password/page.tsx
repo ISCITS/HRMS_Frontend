@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { type FormEvent, useMemo, useState } from "react";
 import MailOutlineRoundedIcon from "@mui/icons-material/MailOutlineRounded";
 import ShieldRoundedIcon from "@mui/icons-material/ShieldRounded";
+import { useSearchParams } from "next/navigation";
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -13,9 +16,50 @@ import {
   TextField,
   Typography
 } from "@mui/material";
+import { authApiService } from "@/services";
+import { resolveErrorMessage } from "@/services/auth/AuthApiService";
 import styles from "./forgot-password.module.css";
 
 export default function ForgotPasswordPage() {
+  const objSearchParams = useSearchParams();
+  const strTenantUUID = useMemo(() => objSearchParams.get("tenantUuid")?.trim() || null, [objSearchParams]);
+  const [strEmailAddress, setStrEmailAddress] = useState("");
+  const [strEmailError, setStrEmailError] = useState("");
+  const [strStatusMessage, setStrStatusMessage] = useState("");
+  const [strErrorMessage, setStrErrorMessage] = useState("");
+  const [blnSubmitting, setBlnSubmitting] = useState(false);
+
+  async function submitForgotPassword(objEvent: FormEvent<HTMLFormElement>) {
+    objEvent.preventDefault();
+    const strEmail = strEmailAddress.trim();
+    setStrStatusMessage("");
+    setStrErrorMessage("");
+
+    if (!strEmail) {
+      setStrEmailError("Email address is required.");
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(strEmail)) {
+      setStrEmailError("Enter a valid email address.");
+      return;
+    }
+
+    setStrEmailError("");
+    setBlnSubmitting(true);
+    try {
+      await authApiService.forgotPassword({
+        strEmailAddress: strEmail,
+        strTenantUUID: strTenantUUID ?? undefined
+      });
+      setStrStatusMessage("If the email is linked to an active HRMS account, password reset instructions will be sent shortly.");
+    } catch (objError) {
+      setStrErrorMessage(resolveErrorMessage(objError, "Unable to request password reset."));
+    } finally {
+      setBlnSubmitting(false);
+    }
+  }
+
   return (
     <Box className={styles.pageRoot}>
       <Card elevation={0} className={styles.recoveryCard}>
@@ -68,21 +112,50 @@ export default function ForgotPasswordPage() {
               Enter your company email address and we will send password reset instructions.
             </Typography>
 
-            <Stack component="form" spacing={3} noValidate>
+            <Stack component="form" spacing={3} noValidate onSubmit={submitForgotPassword}>
+              {strStatusMessage ? (
+                <Alert severity="success" data-controlid="auth.forgot-password.success.alert">
+                  {strStatusMessage}
+                </Alert>
+              ) : null}
+
+              {strErrorMessage ? (
+                <Alert severity="error" data-controlid="auth.forgot-password.error.alert">
+                  {strErrorMessage}
+                </Alert>
+              ) : null}
+
               <TextField
                 controlId="auth.forgot-password.email.input"
                 inputProps={{ "controlId": "auth.forgot-password.email.input" }}
                 className="app-mui-text-field"
                 label="Email Address"
                 type="email"
+                value={strEmailAddress}
+                onChange={(objEvent) => {
+                  setStrEmailAddress(objEvent.target.value);
+                  if (strEmailError) {
+                    setStrEmailError("");
+                  }
+                }}
+                error={Boolean(strEmailError)}
+                helperText={strEmailError}
                 fullWidth
                 required
                 autoFocus
                 placeholder="name@company.com"
               />
 
-              <Button controlId="auth.forgot-password.submit.button" className="app-mui-button-primary" variant="contained" size="large" fullWidth>
-                Send Reset Link
+              <Button
+                controlId="auth.forgot-password.submit.button"
+                className="app-mui-button-primary"
+                variant="contained"
+                size="large"
+                type="submit"
+                disabled={blnSubmitting}
+                fullWidth
+              >
+                {blnSubmitting ? "Sending..." : "Send Reset Instructions"}
               </Button>
 
               <Box className={styles.footerRow}>
