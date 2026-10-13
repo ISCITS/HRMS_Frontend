@@ -203,9 +203,10 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
   }, [blnRightsLoading, blnCanView, blnIsEssMode]);
 
   useEffect(() => {
-    if (blnRightsLoading || !blnCanView) return;
+    // ESS lists only the logged-in employee's own requests, so no employee/department filter data is needed.
+    if (blnRightsLoading || !blnCanView || blnIsEssMode) return;
     employeeService.getEmployees().then(setLstEmployees).catch(() => setLstEmployees([]));
-  }, [blnRightsLoading, blnCanView]);
+  }, [blnRightsLoading, blnCanView, blnIsEssMode]);
 
   const lstEmployeeOptions = useMemo(
     () => {
@@ -368,10 +369,13 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
       aria-busy={blnSearchPanelFrozen}
       sx={{
         alignItems: "center",
+        ...(blnIsEssMode ? { "&&": { gridTemplateColumns: "minmax(170px, 1fr) minmax(200px, 1.2fr) minmax(170px, 1fr) repeat(3, minmax(110px, max-content))" } } : {}),
         "& .MuiButton-root": { alignSelf: "center", whiteSpace: "nowrap" },
         "& .MuiOutlinedInput-root": { borderRadius: "6px", backgroundColor: "#fff" },
       }}
     >
+      {!blnIsEssMode ? (
+      <>
       <Autocomplete
         fullWidth
         size="small"
@@ -396,6 +400,8 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
         renderInput={(params) => <TextField {...params} className="app-mui-text-field" label={t("filter_department", "Department")} placeholder="Search department..."
           InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "#94a3b8", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />}
       />
+      </>
+      ) : null}
       <TextField className="app-mui-text-field" fullWidth select size="small" label={t("filter_request_type", "Request Type")} value={dicFilters.request_type} onChange={(e) => setDicFilters((d) => ({ ...d, request_type: e.target.value }))} disabled={blnSearchPanelFrozen} SelectProps={{ MenuProps: objSelectMenuProps }}>
         {["All", "loan", "advance"].map((strValue) => <MenuItem key={strValue} value={strValue}>{strValue === "All" ? t("all", "All") : t(`type_${strValue}`, strValue)}</MenuItem>)}
       </TextField>

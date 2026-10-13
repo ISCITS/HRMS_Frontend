@@ -652,13 +652,24 @@ export default function PayrollResultListPage({
             onKeyDown={onSearchEnter(applySearch)}
             sx={{
               alignItems: "center",
-              "&&": { gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "minmax(200px, 1.3fr) minmax(160px, 1fr) minmax(150px, 0.9fr) minmax(150px, 0.9fr) max-content max-content max-content" } },
+              "&&": {
+                gridTemplateColumns: blnEssMode
+                  ? { xs: "minmax(0, 1fr) max-content max-content", md: "minmax(220px, 320px) max-content max-content" }
+                  : { xs: "repeat(2, minmax(0, 1fr))", md: "minmax(200px, 1.3fr) minmax(160px, 1fr) minmax(150px, 0.9fr) minmax(150px, 0.9fr) max-content max-content max-content" },
+              },
               "& .MuiButton-root": { alignSelf: "center", whiteSpace: "nowrap" },
             }}
           >
-            <ReportMultiSelectField blnCompact disabled={blnBusy} label={t("employee", "Employee")} value={dicSearchDraft.strSearchEmployee} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: strValue }))} options={dicPayslipFilterOptions.lstEmployees} placeholder={t("employee_search_placeholder", "Search by employee code or name")} controlId="payroll-results.list.employee-search.input" />
-            <ReportMultiSelectField blnCompact disabled={blnBusy} label={t("payroll_run", "Payroll Run")} value={dicSearchDraft.strSearchRun} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: strValue }))} options={dicPayslipFilterOptions.lstRuns} placeholder={t("run_search_placeholder", "Search by payroll run")} />
+            {/* ESS: the list is already scoped to the logged-in employee, so only the month filter is meaningful. */}
+            {!blnEssMode ? (
+              <>
+                <ReportMultiSelectField blnCompact disabled={blnBusy} label={t("employee", "Employee")} value={dicSearchDraft.strSearchEmployee} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: strValue }))} options={dicPayslipFilterOptions.lstEmployees} placeholder={t("employee_search_placeholder", "Search by employee code or name")} controlId="payroll-results.list.employee-search.input" />
+                <ReportMultiSelectField blnCompact disabled={blnBusy} label={t("payroll_run", "Payroll Run")} value={dicSearchDraft.strSearchRun} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: strValue }))} options={dicPayslipFilterOptions.lstRuns} placeholder={t("run_search_placeholder", "Search by payroll run")} />
+              </>
+            ) : null}
             <ReportMultiSelectField blnCompact disabled={blnBusy} value={dicSearchDraft.strPayrollMonth} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: strValue }))} options={dicPayslipFilterOptions.lstMonths} label={t("payroll_month", "Payroll Month")} placeholder={t("payroll_month", "Payroll Month")} />
+            {!blnEssMode ? (
+            <>
             <ReportMultiSelectField blnCompact disabled={blnBusy} label={t("status", "Status")} value={dicSearchDraft.strStatus === "All" ? "" : dicSearchDraft.strStatus} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: strValue || "All" }))} options={dicPayslipFilterOptions.lstStatuses.length ? dicPayslipFilterOptions.lstStatuses : ["Generated"]} placeholder={t("status_all", "All")} />
             <MasterMoreFilters
               strControlPrefix="payroll-results.list"
@@ -671,6 +682,8 @@ export default function PayrollResultListPage({
               <ReportMultiSelectField blnCompact label={t("department", "Department")} value={dicSearchDraft.strDepartment} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: strValue }))} options={dicPayslipFilterOptions.lstDepartments} placeholder={t("department", "Department")} />
               <ReportMultiSelectField blnCompact label={t("location", "Location")} value={dicSearchDraft.strLocation} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: strValue }))} options={dicPayslipFilterOptions.lstLocations} placeholder={t("location", "Location")} />
             </MasterMoreFilters>
+            </>
+            ) : null}
             <Box className={masterStyles.searchActions}>
               <Button controlId="payroll-results.list.search.button" className={masterStyles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={applySearch} disabled={blnBusy}>
                 {t("search", "Search")}
