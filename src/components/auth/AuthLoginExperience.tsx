@@ -102,6 +102,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
   const [blnUseBackupCode, setBlnUseBackupCode] = useState(false);
   const [lstBackupCodes, setLstBackupCodes] = useState<string[]>([]);
   const [blnTenantLoading, setBlnTenantLoading] = useState(strMode === "tenant");
+  const [blnTenantLookupFailed, setBlnTenantLookupFailed] = useState(false);
   const [blnSsoRedirecting, setBlnSsoRedirecting] = useState(false);
   const [strSsoStatus, setStrSsoStatus] = useState("Verifying your workspace and preparing Microsoft sign-in.");
   const [intLockRemainingSeconds, setIntLockRemainingSeconds] = useState(0);
@@ -113,7 +114,16 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
   const [dicLoginLabelsByLanguageID, setDicLoginLabelsByLanguageID] = useState<Record<number, Record<string, string>>>({});
   const [blnLanguageSwitching, setBlnLanguageSwitching] = useState(false);
   const strTenantAuthMode = normalizeTenantAuthMode(objTenantAuthDetails?.auth_mode);
-  const strResolvedLoginIdentity = resolveLoginIdentity(strMode, objTenantAuthDetails);
+  const strResolvedLoginIdentity = blnTenantLookupFailed
+    ? "email_address"
+    : strMode === "tenant"
+      ? "login_id"
+      : "email_address";
+  const blnUseHindiLoginIdentityLabels = isHindiLoginLanguage(
+    intSelectedLanguageID,
+    objTenantAuthDetails,
+    dicLoginLabels
+  );
   const lstLanguageOptions = buildLanguageOptions(
     objTenantAuthDetails?.language_id,
     objTenantAuthDetails?.secondary_language_id
@@ -192,6 +202,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
     let blnActive = true;
     authHelpers.clearStoredSessionState();
     setBlnTenantLoading(true);
+    setBlnTenantLookupFailed(false);
  
     Promise.all([
       authApiService.getTenantAuthDetails(strTenantUUID),
@@ -211,6 +222,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         }
  
         setObjTenantAuthDetails(objAuthDetails);
+        setBlnTenantLookupFailed(false);
         const intResolvedLanguageID = objAuthDetails.language_id ?? null;
         setIntSelectedLanguageID(intResolvedLanguageID);
         setIntLoadedLanguageID(objAuthDetails.language_id ?? null);
@@ -270,6 +282,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
           document.cookie = `${authHelpers.tenantCookieName}=; Path=/; Max-Age=0; SameSite=Lax`;
         }
         authHelpers.clearStoredSessionState();
+        setBlnTenantLookupFailed(true);
         setObjTenantAuthDetails(null);
         setIntSelectedLanguageID(null);
         setIntLoadedLanguageID(null);
@@ -365,7 +378,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
         return;
       }
  
-      if (strMode === "tenant" && strTenantUUID) {
+      if (strMode === "tenant" && strTenantUUID && !blnTenantLookupFailed) {
         const objResult = await authApiService.login({
           strTenantUUID,
           strLoginID,
@@ -633,7 +646,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
     !strIdentityValidationError &&
     !blnSubmitting &&
     intLockRemainingSeconds <= 0 &&
-    !(strMode === "tenant" && (blnTenantLoading || !objTenantAuthDetails));
+    !(strMode === "tenant" && (blnTenantLoading || (!objTenantAuthDetails && !blnTenantLookupFailed)));
   const blnCanSubmitOtpStep = Boolean(strOtp.trim()) && !blnSubmitting;
   const blnCanSubmitCurrentStep = blnOtpStep ? blnCanSubmitOtpStep : blnCanSubmitLoginStep;
  
@@ -659,24 +672,24 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
           </Box>
           <Box className="login-hero-content">
             <Typography component="h1" className="login-hero-title">
-              Your people.<br />
-              <span>A stronger<br />tomorrow.</span>
+              {getLoginLabel("heroTitleLine1")}<br />
+              <span>{getLoginLabel("heroTitleLine2")}<br />{getLoginLabel("heroTitleLine3")}</span>
             </Typography>
             <Typography className="login-hero-copy">
-              A unified HR platform to manage your people, payroll and workplace simply and securely.
+              {getLoginLabel("heroSubtitle")}
             </Typography>
             <Box className="login-benefit-list">
               <Box className="login-benefit-item">
                 <Box className="login-benefit-icon"><GroupsRoundedIcon /></Box>
-                <Typography>Empower<br />your workforce</Typography>
+                <Typography>{getLoginLabel("benefitEmpowerLine1")}<br />{getLoginLabel("benefitEmpowerLine2")}</Typography>
               </Box>
               <Box className="login-benefit-item">
                 <Box className="login-benefit-icon"><SettingsRoundedIcon /></Box>
-                <Typography>Simplify<br />HR operations</Typography>
+                <Typography>{getLoginLabel("benefitSimplifyLine1")}<br />{getLoginLabel("benefitSimplifyLine2")}</Typography>
               </Box>
               <Box className="login-benefit-item">
                 <Box className="login-benefit-icon"><BarChartRoundedIcon /></Box>
-                <Typography>Drive<br />growth together</Typography>
+                <Typography>{getLoginLabel("benefitDriveLine1")}<br />{getLoginLabel("benefitDriveLine2")}</Typography>
               </Box>
             </Box>
           </Box>
@@ -724,10 +737,10 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
             ) : null}
             <Box className="login-form-intro">
               <Typography className="login-welcome-title">
-                Sign in to<br />
+                {getLoginLabel("signInTo")}<br />
                 <span>{strLoginWelcomeTarget}</span>
               </Typography>
-              <Typography className="login-welcome-subtitle">Use your work account to access the HR platform.</Typography>
+              <Typography className="login-welcome-subtitle">{getLoginLabel("workAccountSubtitle")}</Typography>
             </Box>
             {lstPortalChoices.length > 1 || blnOtpStep ? (
               <Typography className={lstPortalChoices.length > 1 ? "login-portal-choice-title" : "login-title login-title-visible"}>
@@ -910,7 +923,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                 ) : (
                   <Typography variant="body2" className="login-helper-text login-managed-access-text">
                     <LockRoundedIcon aria-hidden="true" />
-                    <span>Your access is managed by {strManagedAccessTenantName}.</span>
+                    <span>{getLoginLabel("managedAccessPrefix")} {strManagedAccessTenantName}.</span>
                   </Typography>
                 )}
               </Box>
@@ -937,11 +950,39 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
  
   function getLoginLabel(strKey: LoginLabelKey): string {
     if (strKey === "loginIdLabel") {
-      return strResolvedLoginIdentity === "login_id" ? "Login ID" : "Work Email";
+      const blnUseLoginIDIdentityLabel = blnUseHindiLoginIdentityLabels || strResolvedLoginIdentity === "login_id";
+      const strIdentityLabelKey = blnUseLoginIDIdentityLabel ? "loginIdLabel" : "workEmailLabel";
+      const strServerKey = dicLoginServerKeyMap[strIdentityLabelKey];
+      const strTranslatedLabel = blnUseHindiLoginIdentityLabels
+        ? dicLoginLabels.id_label ?? dicLoginLabels.login_id_label ?? dicLoginLabels.loginIdLabel
+        : dicLoginLabels[strIdentityLabelKey] ?? (strServerKey ? dicLoginLabels[strServerKey] : undefined);
+      if (strTranslatedLabel) {
+        if (shouldUseDefaultIdentityLabel(strTranslatedLabel, strResolvedLoginIdentity)) {
+          return blnUseLoginIDIdentityLabel ? "Login ID" : "Work Email";
+        }
+
+        return strTranslatedLabel;
+      }
+
+      return blnUseLoginIDIdentityLabel ? "Login ID" : "Work Email";
     }
  
     if (strKey === "loginIdPlaceholder") {
-      return strResolvedLoginIdentity === "login_id" ? "Enter your login ID" : "Enter your work email";
+      const blnUseLoginIDIdentityPlaceholder = blnUseHindiLoginIdentityLabels || strResolvedLoginIdentity === "login_id";
+      const strIdentityPlaceholderKey = blnUseLoginIDIdentityPlaceholder ? "loginIdPlaceholder" : "workEmailPlaceholder";
+      const strServerKey = dicLoginServerKeyMap[strIdentityPlaceholderKey];
+      const strTranslatedPlaceholder = blnUseHindiLoginIdentityLabels
+        ? dicLoginLabels.id_placeholder ?? dicLoginLabels.login_id_placeholder ?? dicLoginLabels.loginIdPlaceholder
+        : dicLoginLabels[strIdentityPlaceholderKey] ?? (strServerKey ? dicLoginLabels[strServerKey] : undefined);
+      if (strTranslatedPlaceholder) {
+        if (shouldUseDefaultIdentityPlaceholder(strTranslatedPlaceholder, strResolvedLoginIdentity)) {
+          return blnUseLoginIDIdentityPlaceholder ? "Enter your login ID" : "Enter your work email";
+        }
+
+        return strTranslatedPlaceholder;
+      }
+
+      return blnUseLoginIDIdentityPlaceholder ? "Enter your login ID" : "Enter your work email";
     }
  
     const strServerKey = dicLoginServerKeyMap[strKey];
@@ -995,6 +1036,34 @@ function resolveLanguageDisplayLabel(
  
 function resolveLanguageToggleLabel(intLanguageID: number, strLanguageLabel?: string) {
   return resolveLanguageDisplayLabel(strLanguageLabel, intLanguageID);
+}
+
+function isHindiLoginLanguage(
+  intSelectedLanguageID: number | null,
+  objTenantAuthDetails: TenantAuthDetails | null,
+  dicLoginLabels: Record<string, string>
+) {
+  if (hasDevanagariText(dicLoginLabels.login_id_label) || hasDevanagariText(dicLoginLabels.loginIdLabel)) {
+    return true;
+  }
+
+  if (!intSelectedLanguageID) {
+    return false;
+  }
+
+  const strLanguageCode =
+    intSelectedLanguageID === objTenantAuthDetails?.language_id
+      ? objTenantAuthDetails.language_code
+      : intSelectedLanguageID === objTenantAuthDetails?.secondary_language_id
+        ? objTenantAuthDetails.secondary_language_code
+        : null;
+  const strNormalizedCode = strLanguageCode?.trim().toLowerCase().replace("_", "-") ?? "";
+
+  return strNormalizedCode === "hin" || strNormalizedCode === "hi" || strNormalizedCode.startsWith("hi-") || intSelectedLanguageID === 2;
+}
+
+function hasDevanagariText(strValue: string | undefined) {
+  return Boolean(strValue && /[\u0900-\u097F]/.test(strValue));
 }
  
 function extractRemainingSeconds(objData: unknown): number {
@@ -1123,6 +1192,21 @@ function resolveTenantLookupDisplayName(objTenant?: TenantLookupData | null): st
     ""
   );
 }
+
+function shouldUseDefaultIdentityLabel(strLabel: string, strLoginMethod: NormalizedTenantLoginMethod): boolean {
+  const strNormalizedLabel = strLabel.trim().toLowerCase();
+  const blnMentionsWorkEmail = strNormalizedLabel.includes("work email");
+  const blnMentionsLoginID = strNormalizedLabel.includes("login id");
+  return (blnMentionsWorkEmail && blnMentionsLoginID) ||
+    (strLoginMethod === "login_id" && blnMentionsWorkEmail) ||
+    (strLoginMethod === "email_address" && blnMentionsLoginID);
+}
+
+function shouldUseDefaultIdentityPlaceholder(strPlaceholder: string, strLoginMethod: NormalizedTenantLoginMethod): boolean {
+  const strNormalizedPlaceholder = strPlaceholder.trim().toLowerCase();
+  return (strLoginMethod === "login_id" && strNormalizedPlaceholder.includes("work email")) ||
+    (strLoginMethod === "email_address" && strNormalizedPlaceholder.includes("login id"));
+}
  
 function validateLoginIdentifier(strLoginID: string, strLoginMethod: NormalizedTenantLoginMethod): string | null {
   const strCandidate = strLoginID.trim();
@@ -1153,6 +1237,12 @@ function formatDuration(intSeconds: number): string {
 }
  
 type LoginLabelKey =
+  | "benefitDriveLine1"
+  | "benefitDriveLine2"
+  | "benefitEmpowerLine1"
+  | "benefitEmpowerLine2"
+  | "benefitSimplifyLine1"
+  | "benefitSimplifyLine2"
   | "continueToTitle"
   | "continueToSubtitle"
   | "portalHrms"
@@ -1165,8 +1255,13 @@ type LoginLabelKey =
   | "portalEssPoint3"
   | "forgotPassword"
   | "heroImageAlt"
+  | "heroSubtitle"
+  | "heroTitleLine1"
+  | "heroTitleLine2"
+  | "heroTitleLine3"
   | "loginIdLabel"
   | "loginIdPlaceholder"
+  | "managedAccessPrefix"
   | "otpContinueMessage"
   | "otpLabel"
   | "otpPlaceholder"
@@ -1179,6 +1274,7 @@ type LoginLabelKey =
   | "resolvedWorkspaceLabel"
   | "resolvingTenantStatus"
   | "signInButton"
+  | "signInTo"
   | "ssoCallbackTitle"
   | "ssoRedirectStatus"
   | "tenantSubtitle"
@@ -1186,14 +1282,28 @@ type LoginLabelKey =
   | "tenantUnavailable"
   | "verifyOtpTitle"
   | "verifyingWorkspaceStatus"
+  | "workEmailLabel"
+  | "workEmailPlaceholder"
+  | "workAccountSubtitle"
   | "welcomeSubtitle"
   | "welcomeTitle";
  
 const dicLoginFallbacks: Record<LoginLabelKey, string> = {
+  benefitDriveLine1: "Drive",
+  benefitDriveLine2: "growth together",
+  benefitEmpowerLine1: "Empower",
+  benefitEmpowerLine2: "your workforce",
+  benefitSimplifyLine1: "Simplify",
+  benefitSimplifyLine2: "HR operations",
   forgotPassword: "Forgot Password?",
   heroImageAlt: "HRMS login visual",
+  heroSubtitle: "A unified HR platform to manage your people, payroll and workplace simply and securely.",
+  heroTitleLine1: "Your people.",
+  heroTitleLine2: "A stronger",
+  heroTitleLine3: "tomorrow.",
   loginIdLabel: enMessages.auth.loginIdLabel,
-  loginIdPlaceholder: "Enter your work email",
+  loginIdPlaceholder: "Enter your login ID",
+  managedAccessPrefix: "Your access is managed by",
   otpContinueMessage: "Complete OTP verification to continue.",
   otpLabel: "OTP",
   otpPlaceholder: "Enter the 6-digit OTP",
@@ -1206,6 +1316,7 @@ const dicLoginFallbacks: Record<LoginLabelKey, string> = {
   resolvedWorkspaceLabel: "Resolved workspace",
   resolvingTenantStatus: "Resolving tenant...",
   signInButton: "Sign In",
+  signInTo: "Sign in to",
   continueToTitle: "Continue To",
   continueToSubtitle: "This account can access both portals. Click on the card to continue.",
   portalHrms: "Go to HRMS",
@@ -1223,15 +1334,29 @@ const dicLoginFallbacks: Record<LoginLabelKey, string> = {
   tenantUnavailable: "Tenant unavailable",
   verifyOtpTitle: "Verify OTP",
   verifyingWorkspaceStatus: "Verifying your workspace and sign-in method.",
+  workEmailLabel: "Work Email",
+  workEmailPlaceholder: "Enter your work email",
+  workAccountSubtitle: "Use your work account to access the HR platform.",
   welcomeSubtitle: "Human Resource Management System",
   welcomeTitle: "Welcome to HRMS",
 };
  
 const dicLoginServerKeyMap: Record<LoginLabelKey, string> = {
+  benefitDriveLine1: "benefit_drive_line_1",
+  benefitDriveLine2: "benefit_drive_line_2",
+  benefitEmpowerLine1: "benefit_empower_line_1",
+  benefitEmpowerLine2: "benefit_empower_line_2",
+  benefitSimplifyLine1: "benefit_simplify_line_1",
+  benefitSimplifyLine2: "benefit_simplify_line_2",
   forgotPassword: "forgot_password",
   heroImageAlt: "hero_image_alt",
+  heroSubtitle: "hero_subtitle",
+  heroTitleLine1: "hero_title_line_1",
+  heroTitleLine2: "hero_title_line_2",
+  heroTitleLine3: "hero_title_line_3",
   loginIdLabel: "login_id_label",
   loginIdPlaceholder: "login_id_placeholder",
+  managedAccessPrefix: "managed_access_prefix",
   otpContinueMessage: "otp_continue_message",
   otpLabel: "otp_label",
   otpPlaceholder: "otp_placeholder",
@@ -1254,6 +1379,7 @@ const dicLoginServerKeyMap: Record<LoginLabelKey, string> = {
   resolvedWorkspaceLabel: "resolved_workspace_label",
   resolvingTenantStatus: "resolving_tenant_status",
   signInButton: "sign_in_button",
+  signInTo: "sign_in_to",
   ssoCallbackTitle: "sso_callback_title",
   ssoRedirectStatus: "sso_redirect_status",
   tenantSubtitle: "tenant_subtitle",
@@ -1261,6 +1387,9 @@ const dicLoginServerKeyMap: Record<LoginLabelKey, string> = {
   tenantUnavailable: "tenant_unavailable",
   verifyOtpTitle: "verify_otp_title",
   verifyingWorkspaceStatus: "verifying_workspace_status",
+  workEmailLabel: "work_email_label",
+  workEmailPlaceholder: "work_email_placeholder",
+  workAccountSubtitle: "work_account_subtitle",
   welcomeSubtitle: "welcome_subtitle",
   welcomeTitle: "welcome_title",
 };
