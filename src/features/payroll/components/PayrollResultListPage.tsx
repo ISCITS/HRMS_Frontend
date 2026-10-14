@@ -1,11 +1,14 @@
 "use client";
 
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import MoreHorizRoundedIcon from "@mui/icons-material/MoreHorizRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
   Box,
   Button,
+  Drawer,
+  IconButton,
   InputAdornment,
   Link,
   MenuItem,
@@ -444,6 +447,9 @@ export default function PayrollResultListPage({
     }
   }
 
+  // Payslip screen: secondary amounts live in a details drawer (like the Employee master) so the grid fits without horizontal scroll.
+  const [objDetailsRow, setObjDetailsRow] = useState<PayrollResultListRecord | null>(null);
+
   function openResult(strRecordUUID: string) {
     objRouter.push(`/payroll/results/${strRecordUUID}`);
   }
@@ -527,6 +533,17 @@ export default function PayrollResultListPage({
         ),
         dtPayslipGeneratedOn: formatDateTime(dicRow.dtPayslipGeneratedOn),
         dtPayslipGeneratedOnSortValue: dicRow.dtPayslipGeneratedOn ? new Date(dicRow.dtPayslipGeneratedOn).getTime() : 0,
+        details: (
+          <IconButton
+            data-controlid="payroll-results.list.row.details.button"
+            data-row-key={String(dicRow.intID)}
+            aria-label={`${t("more_details", "More details")} ${dicRow.strPayslipNumber || ""}`}
+            size="small"
+            onClick={(objEvent) => { objEvent.stopPropagation(); setObjDetailsRow(dicRow); }}
+          >
+            <MoreHorizRoundedIcon fontSize="small" />
+          </IconButton>
+        ),
       })),
     [blnCanAccessResults, blnPayslipScreen, lstFilteredRows, objRouter, t]
   );
@@ -550,23 +567,24 @@ export default function PayrollResultListPage({
     // Payslip screen: payslip number first; a row click opens the payslip in a new tab with its own
     // Print / Download toolbar (same as the Payroll Run "Payslips" tab).
     if (blnPayslipScreen) {
-      lstColumns.unshift({
-        field: "strPayslipNumber",
-        headerName: t("payslip_no", "Payslip No."),
-        width: 160,
-        filterable: false,
-        sortAccessor: (dicRow) => String(dicRow.strPayslipNumberSort),
-      });
-      lstColumns.push({
-        field: "dtPayslipGeneratedOn",
-        headerName: t("generated_on", "Generated On"),
-        width: 180,
-        sortAccessor: (dicRow) => dicRow.dtPayslipGeneratedOnSortValue,
-      });
+      // Few columns at fixed widths + a "..." details drawer, like the Employee master, so the grid
+      // fits the screen. ESS is already scoped to the logged-in employee, so name/code are dropped there.
+      return [
+        { field: "strPayslipNumber", headerName: t("payslip_no", "Payslip No."), width: 190, filterable: false, sortAccessor: (dicRow) => String(dicRow.strPayslipNumberSort) },
+        ...(blnEssMode ? [] : [
+          { field: "strEmployeeName", headerName: t("employee_name", "Employee Name"), width: 180, sortAccessor: (dicRow) => dicRow.strEmployeeNameSort },
+          { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code"), width: 130, sortAccessor: (dicRow) => dicRow.strEmployeeCodeSort },
+        ] as CommonTableColumn<(typeof lstTableRows)[number]>[]),
+        { field: "dtPayrollMonth", headerName: t("payroll_month", "Payroll Month"), width: 130, sortAccessor: (dicRow) => dicRow.dtPayrollMonthSortValue },
+        { field: "decGrossEarningsAmount", headerName: t("gross_earnings", "Gross Earnings"), align: "right", width: 140, sortAccessor: (dicRow) => dicRow.decGrossEarningsAmountSortValue },
+        { field: "decNetPayAmount", headerName: t("net_pay", "Net Pay"), align: "right", width: 140, sortAccessor: (dicRow) => dicRow.decNetPayAmountSortValue },
+        { field: "strStatus", headerName: t("status", "Status"), sortable: false, filterable: false, width: 120 },
+        { field: "details", headerName: "", sortable: false, filterable: false, exportable: false, width: 70 },
+      ];
     }
 
     return lstColumns;
-  }, [blnPayslipScreen, t]);
+  }, [blnEssMode, blnPayslipScreen, t]);
 
   const blnBusy =
     blnRightsLoading ||
@@ -786,13 +804,43 @@ export default function PayrollResultListPage({
             const dicSourceRow = lstFilteredRows.find((dicCandidate) => dicCandidate.intID === dicRow.intPayslipRowID);
             if (dicSourceRow && intPayslipActionID === null) void openPayslipDocument(dicSourceRow, true);
           }}
-          minTableWidth={blnPayslipScreen ? 1500 : 1400}
+          minTableWidth={blnPayslipScreen ? 0 : 1400}
+          wrapColumnHeaders={blnPayslipScreen ? false : undefined}
           hideRowClickHint
           getRowSx={() => dicMasterRowSx}
           sx={{ p: 0, boxShadow: "none", background: "transparent" }}
         />
         )}
       </Box>
+
+      <Drawer anchor="right" open={Boolean(objDetailsRow)} onClose={() => setObjDetailsRow(null)} PaperProps={{ className: masterStyles.employeeDetailsDrawer, "data-controlid": "payroll-results.list.details.drawer" } as object}>
+        {objDetailsRow ? <>
+          <Box className={masterStyles.employeeDetailsHeader}>
+            <Box>
+              <Typography variant="h6" fontWeight={700}>{objDetailsRow.strPayslipNumber || "-"}</Typography>
+              <Typography color="text.secondary">{`${objDetailsRow.strEmployeeName} (${objDetailsRow.strEmployeeCode}) · ${formatMonth(objDetailsRow.dtPayrollMonth)}`}</Typography>
+            </Box>
+            <IconButton data-controlid="payroll-results.list.details.close.button" aria-label={t("close", "Close")} onClick={() => setObjDetailsRow(null)}><ClearRoundedIcon /></IconButton>
+          </Box>
+          <Box className={masterStyles.employeeDetailsContent}>
+            {[
+              [t("payroll_run", "Payroll Run"), objDetailsRow.strRunName],
+              [t("gross_earnings", "Gross Earnings"), formatCurrency(objDetailsRow.decGrossEarningsAmount)],
+              [t("employee_deductions", "Employee Deductions"), formatCurrency(objDetailsRow.decEmployeeDeductionTotal)],
+              [t("tax", "Tax"), formatCurrency(objDetailsRow.decTaxTotal)],
+              [t("net_pay", "Net Pay"), formatCurrency(objDetailsRow.decNetPayAmount)],
+              [t("employer_contribution", "Employer Contributions"), formatCurrency(objDetailsRow.decEmployerContributionTotal)],
+              [t("total_employer_cost", "Total Employer Cost"), formatCurrency(objDetailsRow.decTotalEmployerCost)],
+              [t("generated_on", "Generated On"), formatDateTime(objDetailsRow.dtPayslipGeneratedOn)],
+            ].map(([strLabel, strValue]) => (
+              <Box key={strLabel} className={masterStyles.employeeDetailsField}>
+                <Typography color="text.secondary" variant="body2">{strLabel}</Typography>
+                <Typography>{strValue || "-"}</Typography>
+              </Box>
+            ))}
+          </Box>
+        </> : null}
+      </Drawer>
 
       <CommonPayrollDialog
         blnOpen={Boolean(objPreviewRecord)}
