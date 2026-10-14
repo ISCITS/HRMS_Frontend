@@ -26,6 +26,15 @@ import { resolveErrorMessage } from "@/services/auth/AuthApiService";
 import styles from "./forgot-password.module.css";
 
 const emailAddressPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const forgotPasswordEmailTextFieldSx = {
+  "--email-label-start": "56px",
+  "& .MuiInputLabel-root": {
+    transform: "translate(var(--email-label-start), 22px) scale(1)"
+  },
+  "& .MuiInputLabel-root.MuiInputLabel-shrink, & .MuiInputLabel-root.Mui-focused, & .MuiInputLabel-root.MuiFormLabel-filled": {
+    transform: "translate(var(--email-label-start), 8px) scale(1)"
+  }
+};
 
 export default function ForgotPasswordPage() {
   const objSearchParams = useSearchParams();
@@ -196,7 +205,7 @@ export default function ForgotPasswordPage() {
               <TextField
                 controlId="auth.forgot-password.email.input"
                 inputProps={{ "controlId": "auth.forgot-password.email.input" }}
-                sx={{ ...(loginTextFieldSx as object), "--login-label-start": "62px" }}
+                sx={[loginTextFieldSx, forgotPasswordEmailTextFieldSx]}
                 label="Email Address"
                 type="email"
                 value={strEmailAddress}

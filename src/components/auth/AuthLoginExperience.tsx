@@ -837,7 +837,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                   variant="outlined"
                   label={getLoginLabel("loginIdLabel")}
                   placeholder={getLoginLabel("loginIdPlaceholder")}
-                  sx={[loginTextFieldSx, { "--login-label-start": "54px" }]}
+                  sx={[loginTextFieldSx, { "--login-label-start": "55px" }]}
                   inputProps={{
                     "data-controlid": "auth.login.login-id.input"
                   }}
@@ -868,7 +868,7 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
                   variant="outlined"
                   label={getLoginLabel("passwordLabel")}
                   placeholder={getLoginLabel("passwordPlaceholder")}
-                  sx={[loginTextFieldSx, { "--login-label-start": "52px" }]}
+                  sx={[loginTextFieldSx, { "--login-label-start": "55px" }]}
                   inputProps={{
                     "data-controlid": "auth.login.password.input"
                   }}
