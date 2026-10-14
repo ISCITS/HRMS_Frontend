@@ -575,7 +575,11 @@ export default function PayrollResultDetailPage({
       }
       const strHtml = await payslipService.getDownloadHtml(dicPayslip.strPayslipRecordUUID ?? String(dicPayslip.intPayslipID));
       if (blnPrint) {
-        printPayslipHtml(strHtml);
+        printPayslipHtml(
+          strHtml,
+          buildPayslipFileName("payslip", dicPayslip.strPayslipNumber, objResult!.strEmployeeCode),
+          strTaxInformationHref
+        );
       } else {
         downloadPayslipHtml(
           strHtml,

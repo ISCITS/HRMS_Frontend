@@ -950,7 +950,12 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
       const strHtml = await payslipService.getDownloadHtml(strPayslipRecordUUID ?? String(intPayslipID));
       const strFileName = buildPayslipFileName("payslip", dicRow.strPayslipNumber, dicRow.strEmployeeCode);
       if (blnPrint) {
-        printPayslipHtml(strHtml, strFileName);
+        // Employee's result in this run -> the same tax page the Payroll Results "i" opens.
+        const strResultUUID = lstRunResults.find((dicResult) => dicResult.intEmployeeID === dicRow.intEmployeeID)?.strRecordUUID;
+        const strTaxInformationUrl = strResultUUID
+          ? `/payroll/results/${strResultUUID}/tax-information?backRoute=${encodeURIComponent(`/payroll/runs/${strRunID}`)}`
+          : undefined;
+        printPayslipHtml(strHtml, strFileName, strTaxInformationUrl);
       } else {
         downloadPayslipHtml(strHtml, strFileName);
       }

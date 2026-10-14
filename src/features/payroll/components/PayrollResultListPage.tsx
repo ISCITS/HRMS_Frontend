@@ -1,9 +1,6 @@
 "use client";
 
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
-import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
@@ -28,6 +25,7 @@ import { useModuleActionAccess } from "@/features/security/hooks/useModuleAction
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import ReportMultiSelectField, { getUniqueOptions } from "@/features/reports/components/ReportMultiSelectField";
 import { payrollResultService } from "@/features/payroll/services/payrollResultService";
+import BlockingLoader from "@/components/shared/BlockingLoader";
 import PayrollJobProgressDialog from "@/features/payroll/components/PayrollJobProgressDialog";
 import { usePayslipGenerationProgress } from "@/features/payroll/hooks/usePayslipGenerationProgress";
 import { payslipService } from "@/features/payroll/services/payslipService";
@@ -276,9 +274,6 @@ export default function PayrollResultListPage({
     canDoAny("get") ||
     canDoAny("PAYROLL_RESULT_VIEW") ||
     canDoAny("PAYROLL_RESULT_LIST");
-  const blnCanExportPayslips = canDoAny("export");
-  const blnCanDownloadPayslips = canDoAny("download") || blnCanExportPayslips;
-  const blnCanPrintPayslips = canDoAny("print");
   const strEssBackRoute = encodeURIComponent("/ess/my-payslips");
   const strLatestPayrollMonth = useMemo(() => getLatestPayrollMonth(lstResults), [lstResults]);
   const dicPayslipFilterOptions = useMemo(() => ({
@@ -427,13 +422,18 @@ export default function PayrollResultListPage({
         return;
       }
       const strHtml = await payslipService.getDownloadHtml(String(intPayslipID));
+      const strFileName = buildPayslipFileName("payslip", dicRow.strPayslipNumber, dicRow.strEmployeeCode);
       if (blnPrint) {
-        printPayslipHtml(strHtml);
-      } else {
-        downloadPayslipHtml(
+        // Same tax page the Payroll Results "i" opens; ESS goes through the payslip report route.
+        const strListRoute = blnEssMode ? "/ess/my-payslips" : blnPayslipScreen ? "/reports/payslips" : "/payroll/results";
+        const strTaxBase = blnPayslipScreen ? "/reports/payslips" : "/payroll/results";
+        printPayslipHtml(
           strHtml,
-          buildPayslipFileName("payslip", dicRow.strPayslipNumber, dicRow.strEmployeeCode)
+          strFileName,
+          `${strTaxBase}/${dicRow.strRecordUUID}/tax-information?backRoute=${encodeURIComponent(strListRoute)}`
         );
+      } else {
+        downloadPayslipHtml(strHtml, strFileName);
       }
     } catch (objError) {
       setStrError(
@@ -442,14 +442,6 @@ export default function PayrollResultListPage({
     } finally {
       setIntPayslipActionID(null);
     }
-  }
-
-  function openPayslipView(dicRow: PayrollResultListRecord) {
-    if (!dicRow.intPayslipID) {
-      setStrError(t("payslip_not_generated", "Payslip could not be generated for this employee."));
-      return;
-    }
-    window.open(blnEssMode ? `/ess/my-payslips/document/${dicRow.intPayslipID}` : `/reports/payslips/document/${dicRow.intPayslipID}`, "_blank", "noopener,noreferrer");
   }
 
   function openResult(strRecordUUID: string) {
@@ -472,34 +464,6 @@ export default function PayrollResultListPage({
     () =>
       lstFilteredRows.map((dicRow) => ({
         id: dicRow.intID,
-        action: (
-          <Box className={styles.actionCell} sx={{ gap: 0.75 }} onClick={(objEvent) => objEvent.stopPropagation()}>
-            {blnPayslipScreen ? (
-              <>
-                {blnCanDownloadPayslips ? (
-                  <Button
-                    className={`${styles.secondaryButton} ${styles.compactButton}`}
-                    startIcon={<ReceiptLongRoundedIcon />}
-                    onClick={() => openPayslipDocument(dicRow, false)}
-                    disabled={intPayslipActionID === dicRow.intID}
-                  >
-                    {t("download_payslip", "Download")}
-                  </Button>
-                ) : null}
-                {blnCanPrintPayslips ? (
-                  <Button
-                    className={`${styles.secondaryButton} ${styles.compactButton}`}
-                    startIcon={<PrintRoundedIcon />}
-                    onClick={() => openPayslipDocument(dicRow, true)}
-                    disabled={intPayslipActionID === dicRow.intID}
-                  >
-                    {t("print_payslip", "Print")}
-                  </Button>
-                ) : null}
-              </>
-            ) : null}
-          </Box>
-        ),
         strRecordUUID: dicRow.strRecordUUID,
         strEmployeeCode: dicRow.strEmployeeCode,
         strEmployeeCodeSort: dicRow.strEmployeeCode,
@@ -525,7 +489,7 @@ export default function PayrollResultListPage({
             underline="none"
             data-controlid="payroll-results.list.row.payslip-number.link"
             data-row-key={String(dicRow.intID)}
-            onClick={(objEvent) => { objEvent.stopPropagation(); openPayslipView(dicRow); }}
+            onClick={(objEvent) => { objEvent.stopPropagation(); void openPayslipDocument(dicRow, true); }}
           >
             {dicRow.strPayslipNumber || "-"}
           </Link>
@@ -564,7 +528,7 @@ export default function PayrollResultListPage({
         dtPayslipGeneratedOn: formatDateTime(dicRow.dtPayslipGeneratedOn),
         dtPayslipGeneratedOnSortValue: dicRow.dtPayslipGeneratedOn ? new Date(dicRow.dtPayslipGeneratedOn).getTime() : 0,
       })),
-    [blnCanAccessResults, blnCanDownloadPayslips, blnCanPrintPayslips, blnEssMode, blnPayslipScreen, intPayslipActionID, lstFilteredRows, objRouter, t]
+    [blnCanAccessResults, blnPayslipScreen, lstFilteredRows, objRouter, t]
   );
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(() => {
@@ -582,8 +546,9 @@ export default function PayrollResultListPage({
       { field: "strStatus", headerName: t("status", "Status"), sortable: false, filterable: false, width: 140 },
     ];
 
-    // Payroll results screen: no actions column - the employee name (first column) opens the result.
-    // Payslip screen: payslip number (opens the payslip) first, download/print actions last.
+    // Payroll results screen: the employee name (first column) opens the result.
+    // Payslip screen: payslip number first; a row click opens the payslip in a new tab with its own
+    // Print / Download toolbar (same as the Payroll Run "Payslips" tab).
     if (blnPayslipScreen) {
       lstColumns.unshift({
         field: "strPayslipNumber",
@@ -598,20 +563,10 @@ export default function PayrollResultListPage({
         width: 180,
         sortAccessor: (dicRow) => dicRow.dtPayslipGeneratedOnSortValue,
       });
-      if (blnCanDownloadPayslips || blnCanPrintPayslips) {
-        lstColumns.push({
-          field: "action",
-          headerName: t("actions", "Actions"),
-          sortable: false,
-          filterable: false,
-          exportable: false,
-          width: 230,
-        });
-      }
     }
 
     return lstColumns;
-  }, [blnCanDownloadPayslips, blnCanPrintPayslips, blnPayslipScreen, t]);
+  }, [blnPayslipScreen, t]);
 
   const blnBusy =
     blnRightsLoading ||
@@ -628,6 +583,7 @@ export default function PayrollResultListPage({
 
   return (
     <Box className={masterStyles.page}>
+      <BlockingLoader blnOpen={intPayslipActionID !== null} strLabel={t("opening_payslip_tab", "Opening payslip...")} />
       <PayrollJobProgressDialog
         objJob={objPayslipProgress}
         strTitle={t("generating_payslip", "Generating payslip...")}
@@ -790,30 +746,6 @@ export default function PayrollResultListPage({
         )}
       </Box>
 
-      {blnPayslipScreen ? (
-        <Box
-          sx={{
-            alignItems: "center",
-            backgroundColor: "#f8fbff",
-            border: "1px solid rgba(191,219,254,0.7)",
-            borderRadius: "16px",
-            color: "#1f2937",
-            display: "flex",
-            gap: 1,
-            px: 1.5,
-            py: 1.25,
-          }}
-        >
-          <InfoOutlinedIcon sx={{ color: "#2b6cb0", fontSize: 20 }} />
-          <Typography sx={{ color: "inherit", lineHeight: 1.5 }}>
-            {t(
-              "payslips_help_generated",
-              "View, download, print, or revise generated employee payslips."
-            )}
-          </Typography>
-        </Box>
-      ) : null}
-
       {!blnBusy && !blnCanAccessResults && !strError ? (
         <Alert severity="warning">
           {t(
@@ -852,7 +784,7 @@ export default function PayrollResultListPage({
               return;
             }
             const dicSourceRow = lstFilteredRows.find((dicCandidate) => dicCandidate.intID === dicRow.intPayslipRowID);
-            if (dicSourceRow) openPayslipView(dicSourceRow);
+            if (dicSourceRow && intPayslipActionID === null) void openPayslipDocument(dicSourceRow, true);
           }}
           minTableWidth={blnPayslipScreen ? 1500 : 1400}
           hideRowClickHint
