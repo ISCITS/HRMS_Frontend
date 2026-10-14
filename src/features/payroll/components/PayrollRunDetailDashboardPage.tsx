@@ -943,18 +943,24 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     setStrActionLoaderLabel(blnPrint ? t("opening_payslip_tab", "Opening payslip...") : t("preparing_download", "Preparing download..."));
     setStrError("");
     try {
-      const { intPayslipID, strPayslipRecordUUID } = await resolveFreshPayslipID(dicRow);
+      const { intPayslipID, strPayslipRecordUUID, dicPayslip } = await resolveFreshPayslipID(dicRow);
       if (!intPayslipID) {
         return;
       }
       const strHtml = await payslipService.getDownloadHtml(strPayslipRecordUUID ?? String(intPayslipID));
       const strFileName = buildPayslipFileName("payslip", dicRow.strPayslipNumber, dicRow.strEmployeeCode);
       if (blnPrint) {
-        // Employee's result in this run -> the same tax page the Payroll Results "i" opens.
+        // Employee's result in this run -> the same tax page the Payroll Results "i" opens. The run's
+        // results list can be empty (no Payroll Results rights, or its fetch failed), so fall back to
+        // the result id carried on the payslip itself - the same source the preview dialog uses.
+        const strBackRoute = encodeURIComponent(`/payroll/runs/${strRunID}`);
         const strResultUUID = lstRunResults.find((dicResult) => dicResult.intEmployeeID === dicRow.intEmployeeID)?.strRecordUUID;
+        const intFooterResultID = dicPayslip?.dicFooter?.intPayrollResultID ?? null;
         const strTaxInformationUrl = strResultUUID
-          ? `/payroll/results/${strResultUUID}/tax-information?backRoute=${encodeURIComponent(`/payroll/runs/${strRunID}`)}`
-          : undefined;
+          ? `/payroll/results/${strResultUUID}/tax-information?backRoute=${strBackRoute}`
+          : intFooterResultID
+            ? `/reports/payslips/${intFooterResultID}/tax-information?backRoute=${strBackRoute}`
+            : undefined;
         printPayslipHtml(strHtml, strFileName, strTaxInformationUrl);
       } else {
         downloadPayslipHtml(strHtml, strFileName);
