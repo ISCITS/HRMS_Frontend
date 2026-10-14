@@ -409,6 +409,12 @@
   color: #004fae;
   font-size: 0.92rem;
   font-weight: 700;
+  text-decoration: none;
+}
+
+.login-forgot-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 .login-primary-button.MuiButton-root {
