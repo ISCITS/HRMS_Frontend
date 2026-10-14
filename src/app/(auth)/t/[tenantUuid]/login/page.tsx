@@ -1,4 +1,4 @@
-import AuthLoginExperience from "@/components/auth/AuthLoginExperience";
+import { redirect } from "next/navigation";
 
 export default async function TenantLoginPage({
   params
@@ -6,5 +6,5 @@ export default async function TenantLoginPage({
   params: Promise<{ tenantUuid: string }>;
 }) {
   const { tenantUuid } = await params;
-  return <AuthLoginExperience strMode="tenant" strTenantUUID={tenantUuid} />;
+  redirect(`/login/${encodeURIComponent(tenantUuid)}`);
 }

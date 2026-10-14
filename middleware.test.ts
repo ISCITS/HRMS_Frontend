@@ -48,6 +48,14 @@ describe("middleware - unauthenticated redirects", () => {
     const objLocation = new URL(objResponse.headers.get("location") ?? "", "http://localhost:3000");
     expect(objLocation.pathname).toBe("/login/tenant-123");
   });
+
+  it("redirects the legacy tenant login route to the canonical tenant login route", () => {
+    const objResponse = middleware(buildRequest("/t/tenant-123/login"));
+    const objLocation = new URL(objResponse.headers.get("location") ?? "", "http://localhost:3000");
+
+    expect(objResponse.status).toBe(307);
+    expect(objLocation.pathname).toBe("/login/tenant-123");
+  });
 });
 
 describe("middleware - authenticated requests", () => {

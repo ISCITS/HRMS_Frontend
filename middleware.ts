@@ -16,13 +16,19 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  const objLegacyTenantLoginMatch = strPathname.match(/^\/t\/([^/]+)\/login\/?$/);
+  if (objLegacyTenantLoginMatch) {
+    const dicCanonicalLoginUrl = req.nextUrl.clone();
+    dicCanonicalLoginUrl.pathname = `${appRoutes.login}/${objLegacyTenantLoginMatch[1]}`;
+    return NextResponse.redirect(dicCanonicalLoginUrl);
+  }
+
   const lstPublicRoutes = [appRoutes.login, appRoutes.register, appRoutes.forgotPassword, "/signup", "/session-expired", appRoutes.tenantAdminLogin];
   const blnIsTenantLoginRoute = strPathname.startsWith(`${appRoutes.login}/`);
   const blnIsAdminRoute = strPathname === appRoutes.tenantAdminBase || strPathname.startsWith(`${appRoutes.tenantAdminBase}/`);
   const intIsPublicRoute =
     lstPublicRoutes.includes(strPathname) ||
     blnIsTenantLoginRoute ||
-    strPathname.startsWith("/t/") ||
     strPathname.startsWith("/sso/callback")
       ? 1
       : 0;
@@ -58,7 +64,7 @@ export function middleware(req: NextRequest) {
   if (
     intIsAuthenticated === 1 &&
     intIsPublicRoute === 1 &&
-    (strPathname === appRoutes.login || strPathname.startsWith("/t/"))
+    strPathname === appRoutes.login
   ) {
     const dicDashboardUrl = req.nextUrl.clone();
     dicDashboardUrl.pathname = appRoutes.dashboard;

@@ -45,7 +45,7 @@ export default function ForgotPasswordPage() {
   const [strErrorMessage, setStrErrorMessage] = useState("");
   const [strTenantDisplayName, setStrTenantDisplayName] = useState("");
   const [blnSubmitting, setBlnSubmitting] = useState(false);
-  const strBackToLoginHref = strTenantUUID ? `/t/${encodeURIComponent(strTenantUUID)}/login` : "/login";
+  const strBackToLoginHref = strTenantUUID ? `/login/${encodeURIComponent(strTenantUUID)}` : "/login";
   const strCompanyDisplayName = strTenantDisplayName || "Company Name";
   const blnEmailAddressValid = emailAddressPattern.test(strEmailAddress.trim());
 
