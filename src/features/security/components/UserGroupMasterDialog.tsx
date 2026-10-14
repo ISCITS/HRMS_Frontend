@@ -40,6 +40,99 @@ type UserGroupMasterDialogProps = {
   onSave: (lstRights: UserGroupRightSaveItem[]) => void;
 };
 
+const dicUserGroupDialogTabsSx = {
+  minHeight: 52,
+  mb: 2,
+  borderBottom: "1px solid #e2e8f0",
+  "& .MuiTabs-scroller": {
+    overflowY: "visible",
+  },
+  "& .MuiTabs-flexContainer": {
+    gap: 0.25,
+  },
+  "& .MuiTabs-indicator": {
+    height: 3,
+    borderRadius: "999px 999px 0 0",
+    bgcolor: "transparent",
+    transition: "left 260ms cubic-bezier(0.4, 0, 0.2, 1), width 260ms cubic-bezier(0.4, 0, 0.2, 1)",
+  },
+  "& .MuiTab-root": {
+    position: "relative",
+    minHeight: 52,
+    px: 1.75,
+    py: 0,
+    mx: 0.25,
+    borderRadius: "8px 8px 0 0",
+    overflow: "hidden",
+    color: "#475569",
+    fontSize: 13,
+    fontWeight: 600,
+    letterSpacing: 0,
+    textTransform: "none",
+    transition: "color 180ms ease, background-color 180ms ease, box-shadow 180ms ease",
+    "& .app-user-group-tab-label": {
+      position: "relative",
+      display: "flex",
+      alignItems: "center",
+      height: "100%",
+    },
+    "& .app-user-group-tab-label::after": {
+      content: '""',
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: 3,
+      borderRadius: "999px 999px 0 0",
+      bgcolor: "#5b8fba",
+      opacity: 0,
+      transition: "left 260ms cubic-bezier(0.4, 0, 0.2, 1), right 260ms cubic-bezier(0.4, 0, 0.2, 1), opacity 190ms ease, background-color 180ms ease",
+    },
+    "&:hover": {
+      color: "#215f91",
+      bgcolor: "#f3f4f6",
+      boxShadow: "inset 0 -1px 0 #d1d5db",
+    },
+    "&.Mui-selected": {
+      color: "#123f63",
+      bgcolor: "transparent",
+      fontWeight: 800,
+      "& .app-user-group-tab-label::after": {
+        opacity: 1,
+      },
+    },
+    "&.Mui-selected:hover": {
+      color: "#0f3554",
+      bgcolor: "#f3f4f6",
+      boxShadow: "inset 0 -1px 0 #d1d5db",
+      "& .app-user-group-tab-label::after": {
+        opacity: 1,
+        left: -14,
+        right: -14,
+      },
+    },
+    "&.Mui-focusVisible": {
+      bgcolor: "#f3f4f6",
+      outline: "2px solid #d1d5db",
+      outlineOffset: -2,
+    },
+    "&.Mui-selected.Mui-focusVisible": {
+      bgcolor: "transparent",
+      outlineColor: "#8fb9d8",
+    },
+  },
+} as const;
+
+const dicUserGroupSummarySx = {
+  display: "grid",
+  gridTemplateColumns: { xs: "1fr", sm: "repeat(3, minmax(0, 1fr))" },
+  alignItems: "center",
+  bgcolor: "#eef7ff",
+  borderRadius: "8px",
+  border: "1px solid #d8eafa",
+  overflow: "hidden",
+} as const;
+
 export default function UserGroupMasterDialog({
   blnOpen,
   strMode,
@@ -269,10 +362,10 @@ export default function UserGroupMasterDialog({
             value={intActiveTab}
             onChange={(_, intNextValue) => setIntActiveTab(intNextValue)}
             data-control-id="security.user-group.dialog.tabs"
-            sx={{ px: 0, borderBottom: "1px solid #e2e8f0", minHeight: 42, mb: 2 }}
+            sx={dicUserGroupDialogTabsSx}
           >
-            <Tab label={dicLabels.tabBasicDetails} sx={{ textTransform: "none", fontWeight: 800, minHeight: 42, py: 0.5 }} data-control-id="security.user-group.dialog.basic-details.tab" />
-            <Tab label={dicLabels.tabRights} sx={{ textTransform: "none", fontWeight: 800, minHeight: 42, py: 0.5 }} data-control-id="security.user-group.dialog.rights.tab" />
+            <Tab label={<Box component="span" className="app-user-group-tab-label">{dicLabels.tabBasicDetails}</Box>} data-control-id="security.user-group.dialog.basic-details.tab" />
+            <Tab label={<Box component="span" className="app-user-group-tab-label">{dicLabels.tabRights}</Box>} data-control-id="security.user-group.dialog.rights.tab" />
           </Tabs>
 
           {intActiveTab === 0 ? (
@@ -328,24 +421,22 @@ export default function UserGroupMasterDialog({
               onChange={(objEvent) => updateField("strGroupDescription", objEvent.target.value)}
               disabled={blnReadOnly}
               multiline
-              minRows={3}
+              minRows={1}
+              sx={{
+                "& .MuiInputBase-root": {
+                  alignItems: "flex-start",
+                  minHeight: 40,
+                  pl: 0.25,
+                  pr: 0.75,
+                  py: "8.5px",
+                },
+                "& .MuiInputBase-inputMultiline": {
+                  py: 0,
+                  lineHeight: 1.45,
+                },
+              }}
               inputProps={{ controlId: "security.user-group.dialog.group-description.input" }}
             />
-
-            <TextField
-              className="app-mui-text-field"
-              select
-              label={dicLabels.fieldGroupScope}
-              value={objForm.intCompanyID == null ? "tenant" : "company"}
-              onChange={(objEvent) => updateField("intCompanyID", objEvent.target.value === "tenant" ? null : intCurrentCompanyID)}
-              disabled={blnReadOnly || intCurrentCompanyID == null}
-              SelectProps={{
-                SelectDisplayProps: { "data-control-id": "security.user-group.dialog.group-scope.select" } as HTMLAttributes<HTMLDivElement>,
-              }}
-            >
-              <MenuItem value="tenant" data-control-id="security.user-group.dialog.group-scope.tenant.option">{dicLabels.scopeTenantOption}</MenuItem>
-              <MenuItem value="company" data-control-id="security.user-group.dialog.group-scope.company.option">{dicLabels.scopeCompanyOption}</MenuItem>
-            </TextField>
 
             <Box
               sx={{
@@ -355,6 +446,20 @@ export default function UserGroupMasterDialog({
                 alignItems: "stretch",
               }}
             >
+              <TextField
+                className="app-mui-text-field"
+                select
+                label={dicLabels.fieldGroupScope}
+                value={objForm.intCompanyID == null ? "tenant" : "company"}
+                onChange={(objEvent) => updateField("intCompanyID", objEvent.target.value === "tenant" ? null : intCurrentCompanyID)}
+                disabled={blnReadOnly || intCurrentCompanyID == null}
+                SelectProps={{
+                  SelectDisplayProps: { "data-control-id": "security.user-group.dialog.group-scope.select" } as HTMLAttributes<HTMLDivElement>,
+                }}
+              >
+                <MenuItem value="tenant" data-control-id="security.user-group.dialog.group-scope.tenant.option">{dicLabels.scopeTenantOption}</MenuItem>
+                <MenuItem value="company" data-control-id="security.user-group.dialog.group-scope.company.option">{dicLabels.scopeCompanyOption}</MenuItem>
+              </TextField>
               <TextField
                 className="app-mui-text-field"
                 select
@@ -380,23 +485,19 @@ export default function UserGroupMasterDialog({
 
             {objMetadata ? (
               <Box
-                sx={{
-                  display: "grid",
-                  gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" },
-                  gap: 1.25,
-                }}
+                sx={dicUserGroupSummarySx}
               >
-                <Box sx={{ p: 1.6 }}>
-                  <Typography sx={{ color: "#64748b", fontSize: "0.78rem", fontWeight: 800, textTransform: "uppercase" }}>{dicLabels.summaryVisibleMenus}</Typography>
-                  <Typography sx={{ mt: 0.9, color: "#0f172a", fontWeight: 400, fontSize: "1.5rem", lineHeight: 1 }}>{objMetadata.objSummary.intVisibleMenuCount}</Typography>
+                <Box sx={{ px: 2, py: 1.25, textAlign: "center", borderRight: { xs: 0, sm: "1px solid #bdd5ea" }, borderBottom: { xs: "1px solid #bdd5ea", sm: 0 } }}>
+                  <Typography sx={{ color: "#17496f", fontSize: "0.68rem", fontWeight: 700 }}>{dicLabels.summaryVisibleMenus}</Typography>
+                  <Typography sx={{ mt: 0.35, color: "#0f2f4d", fontWeight: 900, fontSize: "1rem", lineHeight: 1.1 }}>{objMetadata.objSummary.intVisibleMenuCount}</Typography>
                 </Box>
-                <Box sx={{ p: 1.6 }}>
-                  <Typography sx={{ color: "#64748b", fontSize: "0.78rem", fontWeight: 800, textTransform: "uppercase" }}>{dicLabels.summaryAllowedActions}</Typography>
-                  <Typography sx={{ mt: 0.9, color: "#0f172a", fontWeight: 400, fontSize: "1.5rem", lineHeight: 1 }}>{objMetadata.objSummary.intAllowedActionCount}</Typography>
+                <Box sx={{ px: 2, py: 1.25, textAlign: "center", borderRight: { xs: 0, sm: "1px solid #bdd5ea" }, borderBottom: { xs: "1px solid #bdd5ea", sm: 0 } }}>
+                  <Typography sx={{ color: "#17496f", fontSize: "0.68rem", fontWeight: 700 }}>{dicLabels.summaryAllowedActions}</Typography>
+                  <Typography sx={{ mt: 0.35, color: "#0f2f4d", fontWeight: 900, fontSize: "1rem", lineHeight: 1.1 }}>{objMetadata.objSummary.intAllowedActionCount}</Typography>
                 </Box>
-                <Box sx={{ p: 1.6 }}>
-                  <Typography sx={{ color: "#64748b", fontSize: "0.78rem", fontWeight: 800, textTransform: "uppercase" }}>{dicLabels.summaryAssignedUsers}</Typography>
-                  <Typography sx={{ mt: 0.9, color: "#0f172a", fontWeight: 400, fontSize: "1.5rem", lineHeight: 1 }}>{objMetadata.objSummary.intAssignedUserCount}</Typography>
+                <Box sx={{ px: 2, py: 1.25, textAlign: "center" }}>
+                  <Typography sx={{ color: "#17496f", fontSize: "0.68rem", fontWeight: 700 }}>{dicLabels.summaryAssignedUsers}</Typography>
+                  <Typography sx={{ mt: 0.35, color: "#0f2f4d", fontWeight: 900, fontSize: "1rem", lineHeight: 1.1 }}>{objMetadata.objSummary.intAssignedUserCount}</Typography>
                 </Box>
               </Box>
             ) : null}
