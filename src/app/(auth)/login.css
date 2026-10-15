@@ -753,6 +753,36 @@
   }
 }
 
+/* Keep labels, placeholders, values and validation text on one text column. */
+.login-form-card .login-credential-field {
+  --login-field-inset: 14px;
+  --login-icon-width: 30px;
+  --login-icon-gap: 12px;
+  --login-label-start: calc(var(--login-field-inset) + var(--login-icon-width) + var(--login-icon-gap));
+}
+
+.login-form-card .login-credential-field .MuiOutlinedInput-root {
+  padding-left: var(--login-field-inset) !important;
+}
+
+.login-form-card .login-credential-field .MuiInputAdornment-root.MuiInputAdornment-positionStart {
+  flex: 0 0 var(--login-icon-width);
+  width: var(--login-icon-width) !important;
+  margin-right: var(--login-icon-gap) !important;
+  align-self: center;
+}
+
+.login-form-card .login-credential-field .MuiFormHelperText-root {
+  margin-left: var(--login-label-start);
+}
+
+@media (max-width: 760px) {
+  .login-form-card .login-credential-field {
+    --login-icon-width: 26px;
+    --login-icon-gap: 10px;
+  }
+}
+
 /* Responsive login layout. Kept at the end so it wins over MUI/runtime styles. */
 .login-page-root,
 .login-transition-root {
