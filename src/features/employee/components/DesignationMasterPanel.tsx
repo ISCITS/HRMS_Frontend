@@ -564,6 +564,8 @@ export default function DesignationMasterPanel() {
   useEffect(() => {
     if (!blnDialogOpen || strMode === "view") return;
     const strField = strPendingErrorFocusRef.current;
+    // Only validation requests should move focus; editing a field also updates dicErrors.
+    if (!strField) return;
     strPendingErrorFocusRef.current = null;
     if (strField === "code") {
       objCodeInputRef.current?.focus();
@@ -901,7 +903,6 @@ export default function DesignationMasterPanel() {
                     <span>
                       <Button
                         controlId="designation-master.dialog.translate.button"
-                        className="app-btn app-btn-outline"
                         variant="outlined"
                         startIcon={<AutoAwesomeRoundedIcon />}
                         onClick={() => void handleTranslateClick()}

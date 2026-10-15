@@ -41,8 +41,8 @@ type UserGroupMasterDialogProps = {
 };
 
 const dicUserGroupDialogTabsSx = {
-  minHeight: 52,
-  mb: 2,
+  minHeight: 40,
+  mb: 0.5,
   borderBottom: "1px solid #e2e8f0",
   "& .MuiTabs-scroller": {
     overflowY: "visible",
@@ -58,7 +58,7 @@ const dicUserGroupDialogTabsSx = {
   },
   "& .MuiTab-root": {
     position: "relative",
-    minHeight: 52,
+    minHeight: 40,
     px: 1.75,
     py: 0,
     mx: 0.25,
@@ -131,6 +131,8 @@ const dicUserGroupSummarySx = {
   borderRadius: "8px",
   border: "1px solid #d8eafa",
   overflow: "hidden",
+  minHeight: 100,
+  flexShrink: 0,
 } as const;
 
 export default function UserGroupMasterDialog({
@@ -149,6 +151,12 @@ export default function UserGroupMasterDialog({
   const blnReadOnly = strMode === "view";
   const intCurrentCompanyID = authHelpers.getCompanyID();
   const [intActiveTab, setIntActiveTab] = useState(0);
+  const [intSaveAttempt, setIntSaveAttempt] = useState(0);
+
+  useEffect(() => {
+    if (!intSaveAttempt || (!dicFieldErrors.strGroupCode && !dicFieldErrors.strGroupName)) return;
+    setIntActiveTab(0);
+  }, [dicFieldErrors, intSaveAttempt]);
   const [objMetadata, setObjMetadata] = useState<UserGroupAuthorizationMetadata | null>(null);
   const [blnMetadataLoading, setBlnMetadataLoading] = useState(false);
   const [lstRightsNodes, setLstRightsNodes] = useState<SecurityMenuNode[]>([]);
@@ -316,10 +324,14 @@ export default function UserGroupMasterDialog({
     <CommonMasterDialog
       blnOpen={blnOpen}
       onClose={onClose}
+      onDialogClose={(_, strReason) => { if (strReason !== "backdropClick") onClose(); }}
       strTitle={strMode === "add" ? dicLabels.dialogAddTitle : strMode === "edit" ? dicLabels.dialogEditTitle : dicLabels.dialogViewTitle}
       strSecondaryLabel={blnReadOnly ? dicLabels.closeButton : dicLabels.cancelButton}
       strPrimaryLabel={strMode === "add" ? dicLabels.saveButton : dicLabels.saveChangesButton}
-      onPrimaryAction={() => onSave(serializeRights(lstRightsNodes))}
+      onPrimaryAction={() => {
+        setIntSaveAttempt((intPrevious) => intPrevious + 1);
+        onSave(serializeRights(lstRightsNodes));
+      }}
       blnPrimaryDisabled={blnSaving || blnMetadataLoading || blnRightsLoading}
       blnHidePrimary={blnReadOnly}
       strSecondaryButtonClassName="app-btn app-btn-outline"
@@ -351,11 +363,12 @@ export default function UserGroupMasterDialog({
       }
       nodeFooterStart={<Typography className="app-master-dialog-required-fields">Required fields are marked <Box component="span" className="app-master-dialog-required-asterisk">*</Box></Typography>}
       paperClassName={`${styles.dialogPaperDapartment} app-master-dialog-compact-buttons`}
+      paperSx={{ "&&": { maxWidth: 700, width: "min(90vw, 700px)", height: "85dvh" } }}
       maxWidth={false}
       fullWidth={false}
       titleSx={{ px: 2.25, py: 1.25, fontSize: "1rem", maxHeight: 50 }}
       contentClassName="app-master-dialog-content-compact"
-      contentSx={{ display: "flex", flexDirection: "column", minHeight: 0, overflowX: "hidden" }}
+      contentSx={{ display: "flex", flexDirection: "column", minHeight: 0, "&&": { paddingTop: 0, overflow: "hidden" } }}
       nodeContent={(
         <>
           <Tabs
@@ -369,7 +382,7 @@ export default function UserGroupMasterDialog({
           </Tabs>
 
           {intActiveTab === 0 ? (
-            <Stack spacing={2.25} sx={{ pt: 1 }}>
+            <Stack spacing={2.25} sx={{ pt: 1, minHeight: 0, overflowY: "auto" }}>
             {strSaveError ? (
               <Alert severity="error" variant="outlined" sx={{ borderRadius: 2 }}>
                 {strSaveError}
@@ -421,7 +434,7 @@ export default function UserGroupMasterDialog({
               onChange={(objEvent) => updateField("strGroupDescription", objEvent.target.value)}
               disabled={blnReadOnly}
               multiline
-              minRows={1}
+              minRows={3}
               sx={{
                 "& .MuiInputBase-root": {
                   alignItems: "flex-start",
@@ -488,15 +501,15 @@ export default function UserGroupMasterDialog({
                 sx={dicUserGroupSummarySx}
               >
                 <Box sx={{ px: 2, py: 1.25, textAlign: "center", borderRight: { xs: 0, sm: "1px solid #bdd5ea" }, borderBottom: { xs: "1px solid #bdd5ea", sm: 0 } }}>
-                  <Typography sx={{ color: "#17496f", fontSize: "0.68rem", fontWeight: 700 }}>{dicLabels.summaryVisibleMenus}</Typography>
+                  <Typography sx={{ color: "#17496f", fontSize: "0.95rem", fontWeight: 700 }}>{dicLabels.summaryVisibleMenus}</Typography>
                   <Typography sx={{ mt: 0.35, color: "#0f2f4d", fontWeight: 900, fontSize: "1rem", lineHeight: 1.1 }}>{objMetadata.objSummary.intVisibleMenuCount}</Typography>
                 </Box>
                 <Box sx={{ px: 2, py: 1.25, textAlign: "center", borderRight: { xs: 0, sm: "1px solid #bdd5ea" }, borderBottom: { xs: "1px solid #bdd5ea", sm: 0 } }}>
-                  <Typography sx={{ color: "#17496f", fontSize: "0.68rem", fontWeight: 700 }}>{dicLabels.summaryAllowedActions}</Typography>
+                  <Typography sx={{ color: "#17496f", fontSize: "0.95rem", fontWeight: 700 }}>{dicLabels.summaryAllowedActions}</Typography>
                   <Typography sx={{ mt: 0.35, color: "#0f2f4d", fontWeight: 900, fontSize: "1rem", lineHeight: 1.1 }}>{objMetadata.objSummary.intAllowedActionCount}</Typography>
                 </Box>
                 <Box sx={{ px: 2, py: 1.25, textAlign: "center" }}>
-                  <Typography sx={{ color: "#17496f", fontSize: "0.68rem", fontWeight: 700 }}>{dicLabels.summaryAssignedUsers}</Typography>
+                  <Typography sx={{ color: "#17496f", fontSize: "0.95rem", fontWeight: 700 }}>{dicLabels.summaryAssignedUsers}</Typography>
                   <Typography sx={{ mt: 0.35, color: "#0f2f4d", fontWeight: 900, fontSize: "1rem", lineHeight: 1.1 }}>{objMetadata.objSummary.intAssignedUserCount}</Typography>
                 </Box>
               </Box>
@@ -505,8 +518,8 @@ export default function UserGroupMasterDialog({
         ) : (
           <Box sx={{ flex: 1, minHeight: 0, pt: 1 }}>
             {blnRightsLoading ? (
-              <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1.5, minHeight: 240 }}>
-                <DottedLoader intSize={28} />
+              <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1.5, height: "100%", minHeight: 0 }}>
+                <DottedLoader />
                 <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>{dicLabels.rightsLoading}</Typography>
               </Box>
             ) : lstRightsNodes.length > 0 ? (
