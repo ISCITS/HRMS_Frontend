@@ -7,7 +7,6 @@ import FingerprintRoundedIcon from "@mui/icons-material/FingerprintRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import {
   Alert,
-  Autocomplete,
   Box,
   Button,
   ButtonBase,
@@ -32,6 +31,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
+import { MasterBreadcrumbs, MasterGridSkeleton } from "@/components/master/MasterListUi";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import styles from "@/components/master/MasterScreen.module.css";
 import { ATTENDANCE_STATUS_COLORS, LATE_ARRIVAL_BADGE_COLOR, type AttendanceDayDto } from "@/features/attendance/dto";
@@ -45,10 +46,6 @@ import { useModuleActionAccess } from "@/features/security/hooks/useModuleAction
 // Selectable employee for the Employee dropdown: HR mode's "Employee Attendance" (any employee)
 // or ESS manager mode (self + direct reports).
 type ReviewEmployeeDto = { intEmployeeID: number; strFullName: string; strEmployeeCode: string | null; blnIsSelf: boolean };
-
-function reviewEmployeeLabel(objEmployee: ReviewEmployeeDto): string {
-  return objEmployee.strEmployeeCode ? `${objEmployee.strFullName} (${objEmployee.strEmployeeCode})` : objEmployee.strFullName;
-}
 
 type ToastState = {
   blnOpen: boolean;
@@ -502,7 +499,12 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
   }
 
   if (blnRightsLoading) {
-    return <BlockingLoader blnOpen strLabel={t("loading", "Loading...")} />;
+    return (
+      <Stack spacing={1.5}>
+        <MasterBreadcrumbs strSection={t("breadcrumb_attendance", "Attendance")} strTitle={blnHrMode ? t("breadcrumb_attendance_review", "Employee Attendance") : t("breadcrumb_my_attendance", "My Attendance")} />
+        <MasterGridSkeleton strControlId="attendance.review.skeleton" intColumns={7} />
+      </Stack>
+    );
   }
   if (!blnCanViewMyAttendance) {
     return (
@@ -515,43 +517,37 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
   }
 
   const objEmployeeSelector = blnShowEmployeeSelector ? (
-    <Autocomplete
-      size="small"
-      options={lstEmployees}
-      value={objSelectedEmployee}
-      getOptionLabel={(objOption) => reviewEmployeeLabel(objOption)}
-      isOptionEqualToValue={(objA, objB) => objA.intEmployeeID === objB.intEmployeeID}
-      onChange={(_objEvent, objNext) => {
+    <CommonSearchableSelect
+      className="app-mui-text-field"
+      showSearchIcon={false}
+      controlId="attendance-review.employee.select"
+      label="Employee"
+      placeholder="Search employee..."
+      options={lstEmployees.map((objEmployee) => ({
+        intID: objEmployee.intEmployeeID,
+        strLabel: objEmployee.strFullName,
+        strCode: objEmployee.strEmployeeCode ?? undefined,
+      }))}
+      getOptionLabel={(dicOption) => (dicOption.strCode ? `${dicOption.strLabel} (${dicOption.strCode})` : dicOption.strLabel)}
+      value={objSelectedEmployee?.intEmployeeID ?? ""}
+      onChange={(intValue) => {
+        if (intValue === "") return;
+        const objNext = lstEmployees.find((objEmployee) => objEmployee.intEmployeeID === intValue) ?? null;
         if (objNext) setObjSelectedEmployee(objNext);
       }}
-      sx={{ width: { xs: "100%", sm: 300 }, "& .MuiAutocomplete-clearIndicator": { display: "none" } }}
-      renderInput={(objParams) => (
-        <TextField
-          {...objParams}
-          label="Employee"
-          placeholder="Search employee..."
-          controlId="attendance-review.employee.select"
-          InputLabelProps={{ ...objParams.InputLabelProps, shrink: true }}
-        />
-      )}
+      sx={{ width: { xs: "100%", sm: 300 } }}
     />
   ) : null;
 
   return (
     <Stack spacing={1.5}>
-      {blnHrMode && objEmployeeSelector ? (
-        <Box className={styles.controlsCard} data-control-id="attendance-review.filters.card">
+      <MasterBreadcrumbs strSection={t("breadcrumb_attendance", "Attendance")} strTitle={blnHrMode ? t("breadcrumb_attendance_review", "Employee Attendance") : t("breadcrumb_my_attendance", "My Attendance")} />
+      {blnHrMode && objEmployeeSelector && !objSelectedEmployee ? (
+        <Box className={styles.controlsCard} data-control-id="attendance-review.filters.card" sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
           <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", sm: "minmax(260px, 420px)" }, alignItems: "center", mt: 1 }}>
             {objEmployeeSelector}
           </Box>
         </Box>
-      ) : null}
-
-      {objSelectedEmployee && !objSelectedEmployee.blnIsSelf ? (
-        <Alert severity="info" variant="outlined" sx={{ borderRadius: "12px", py: 0.25 }}>
-          Viewing attendance for <strong>{objSelectedEmployee.strFullName}</strong>
-          {objSelectedEmployee.strEmployeeCode ? ` (${objSelectedEmployee.strEmployeeCode})` : ""}
-        </Alert>
       ) : null}
 
       {blnHrMode && !objSelectedEmployee ? (
@@ -573,12 +569,23 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
           flexWrap: "wrap",
           rowGap: 1,
           alignItems: "center",
-          justifyContent: !blnHrMode && objEmployeeSelector ? "space-between" : "flex-end",
+          columnGap: 1.5,
+          justifyContent: objEmployeeSelector ? "space-between" : "flex-end",
           boxShadow: "none",
           border: "1px solid rgba(31, 91, 142, 0.18)",
         }}
       >
-        {!blnHrMode ? objEmployeeSelector : null}
+        {objEmployeeSelector}
+        {objSelectedEmployee && !objSelectedEmployee.blnIsSelf ? (
+          <Alert
+            severity="info"
+            variant="outlined"
+            sx={{ borderRadius: "12px", py: 0, flex: "1 1 240px", minWidth: 0, "& .MuiAlert-message": { py: 0.75 } }}
+          >
+            Viewing attendance for <strong>{objSelectedEmployee.strFullName}</strong>
+            {objSelectedEmployee.strEmployeeCode ? ` (${objSelectedEmployee.strEmployeeCode})` : ""}
+          </Alert>
+        ) : null}
         <Stack
           direction="row"
           spacing={0.75}
@@ -873,7 +880,7 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
         <Typography variant="h6" fontWeight={900} sx={{ mb: 1 }}>{t("monthly_history", "Monthly Attendance")}</Typography>
 
         {blnLoading ? (
-          <Box sx={{ position: "relative", minHeight: 160 }}><BlockingLoader blnOpen blnLocal strLabel={t("loading", "Loading...")} /></Box>
+          <MasterGridSkeleton strControlId="ess.my-attendance.history.skeleton" intColumns={7} intRows={6} />
         ) : blnMobile ? (
           <Stack spacing={0.75}>
             {lstMonthDays.map((strDate) => {
@@ -1126,9 +1133,7 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
           }}
         >
           {blnTimelineLoading ? (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
-              <BlockingLoader blnOpen blnLocal strLabel={t("loading", "Loading")} />
-            </Box>
+            <MasterGridSkeleton strControlId="ess.my-attendance.punch-timeline.skeleton" intColumns={4} intRows={4} />
           ) : strTimelineError ? (
             <Alert severity="error">{strTimelineError}</Alert>
           ) : objPunchTimeline.lstRows.length > 0 ? (

@@ -23,7 +23,8 @@ import type {
 export function useAttendancePoc(blnLoadPolicies = true) {
   const [objPolicyList, setObjPolicyList] = useState<AttendancePolicyList>({ lstItems: [], intTotal: 0, intPage: 1, intPageSize: 10 });
   const [lstDailyRows, setLstDailyRows] = useState<DailyAttendanceRow[]>([]);
-  const [blnLoading, setBlnLoading] = useState(false);
+  // Both views fetch on mount, so start in the loading state to avoid an empty-table flash before the skeleton.
+  const [blnLoading, setBlnLoading] = useState(true);
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
 

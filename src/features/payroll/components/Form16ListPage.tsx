@@ -4,7 +4,6 @@ import AutorenewRoundedIcon from "@mui/icons-material/AutorenewRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import {
   Alert,
   Autocomplete,
@@ -13,6 +12,7 @@ import {
   Checkbox,
   Chip,
   FormControlLabel,
+  Link,
   MenuItem,
   Stack,
   TextField,
@@ -23,7 +23,8 @@ import { useEffect, useMemo, useState } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import CommonPayrollDialog from "@/features/payroll/components/CommonPayrollDialog";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import { MasterAddColumnsControl, MasterBreadcrumbs, MasterGridSkeleton, dicMasterRowSx, type MasterOptionalColumn } from "@/components/master/MasterListUi";
+import masterStyles from "@/components/master/MasterScreen.module.css";
 import { employeeService } from "@/features/employee/services/employeeService";
 import type { EmployeeListRecord } from "@/features/employee/types";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -55,6 +56,8 @@ function statusChipColor(strStatus: string): { bg: string; fg: string } {
   }
 }
 
+type OptionalColumnKey = "period";
+
 type Form16ListPageProps = {
   blnAdminMode?: boolean;
 };
@@ -83,9 +86,14 @@ export default function Form16ListPage({ blnAdminMode = false }: Form16ListPageP
   const [strReissueReason, setStrReissueReason] = useState("");
   const [blnGenerating, setBlnGenerating] = useState(false);
   const [objGenerateSummary, setObjGenerateSummary] = useState<Form16GenerateCompanySummary | null>(null);
+  const [lstVisibleOptionalColumns, setLstVisibleOptionalColumns] = useState<OptionalColumnKey[]>([]);
 
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
   const blnCanGenerate = blnAdminMode && (canDoAny("add") || canDoAny("generate") || canDoAny("export"));
+  const blnBusy = blnLoading || blnRightsLoading;
+  const lstOptionalColumns: MasterOptionalColumn<OptionalColumnKey>[] = [
+    { strKey: "period", strLabel: t("table_period", "Period") },
+  ];
 
   async function loadRows(strFinancialYearCode = strSelectedFinancialYear) {
     if (!blnCanView) {
@@ -203,6 +211,7 @@ export default function Form16ListPage({ blnAdminMode = false }: Form16ListPageP
         const objColor = statusChipColor(objRow.strGenerationStatus);
         return {
           id: objRow.intForm16ID,
+          strRecordUUID: objRow.strRecordUUID,
           employee: blnAdminMode ? (
             <>
               <Typography sx={{ fontWeight: 900, fontSize: "0.86rem" }}>{objRow.strEmployeeName || "-"}</Typography>
@@ -212,7 +221,24 @@ export default function Form16ListPage({ blnAdminMode = false }: Form16ListPageP
             objRow.strFinancialYearCode
           ),
           financialYear: objRow.strFinancialYearCode,
-          form16Number: objRow.strForm16Number,
+          form16Number: (
+            <Link
+              className="app-master-first-column-link"
+              component="button"
+              type="button"
+              underline="none"
+              data-controlid="form16.list.row.number.link"
+              data-row-key={String(objRow.intForm16ID)}
+              onClick={(objEvent) => {
+                objEvent.stopPropagation();
+                void handleView(objRow);
+              }}
+            >
+              {objRow.strForm16Number || "-"}
+            </Link>
+          ),
+          form16NumberSortValue: objRow.strForm16Number || "",
+          employeeSortValue: blnAdminMode ? objRow.strEmployeeName || "" : objRow.strFinancialYearCode || "",
           period: `${(objRow.dtPeriodStart || "-").slice(0, 10)} to ${(objRow.dtPeriodEnd || "-").slice(0, 10)}`,
           grossSalary: formatCurrency(objRow.decGrossSalary),
           grossSalarySortValue: Number(objRow.decGrossSalary || 0),
@@ -225,11 +251,9 @@ export default function Form16ListPage({ blnAdminMode = false }: Form16ListPageP
               sx={{ backgroundColor: objColor.bg, color: objColor.fg, fontWeight: 800 }}
             />
           ),
+          statusSortValue: objRow.strGenerationStatus || "",
           action: (
-            <Stack direction="row" spacing={0.5}>
-              <Button size="small" className={styles.compactButton} startIcon={<VisibilityRoundedIcon fontSize="small" />} onClick={() => handleView(objRow)}>
-                {t("view", "View")}
-              </Button>
+            <Stack direction="row" spacing={0.5} onClick={(objEvent) => objEvent.stopPropagation()}>
               <Button
                 size="small"
                 className={styles.compactButton}
@@ -256,29 +280,41 @@ export default function Form16ListPage({ blnAdminMode = false }: Form16ListPageP
   );
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
-    () => [
-      { field: "action", headerName: t("table_actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 260 },
-      { field: "employee", headerName: blnAdminMode ? t("table_employee", "Employee") : t("table_financial_year", "Financial Year"), width: 200, sortable: false },
-      { field: "form16Number", headerName: t("table_form16_number", "Certificate No."), width: 220 },
-      { field: "period", headerName: t("table_period", "Period"), width: 220, sortable: false },
-      { field: "grossSalary", headerName: t("table_gross_salary", "Gross Salary"), align: "right", width: 160, sortAccessor: (dicRow) => dicRow.grossSalarySortValue },
-      { field: "taxDeducted", headerName: t("table_tax_deducted", "Tax Deducted"), align: "right", width: 160, sortAccessor: (dicRow) => dicRow.taxDeductedSortValue },
-      { field: "status", headerName: t("table_status", "Status"), sortable: false, filterable: false, width: 140 },
-    ],
-    [t, blnAdminMode]
+    () => {
+      const lstColumns: CommonTableColumn<(typeof lstTableRows)[number]>[] = [
+        { field: "employee", headerName: blnAdminMode ? t("table_employee", "Employee") : t("table_financial_year", "Financial Year"), width: 200, sortAccessor: (dicRow) => String(dicRow.employeeSortValue) },
+        { field: "form16Number", headerName: t("table_form16_number", "Certificate No."), width: 220, filterable: false, sortAccessor: (dicRow) => String(dicRow.form16NumberSortValue) },
+        { field: "grossSalary", headerName: t("table_gross_salary", "Gross Salary"), align: "right", width: 160, sortAccessor: (dicRow) => dicRow.grossSalarySortValue },
+        { field: "taxDeducted", headerName: t("table_tax_deducted", "Tax Deducted"), align: "right", width: 160, sortAccessor: (dicRow) => dicRow.taxDeductedSortValue },
+        { field: "status", headerName: t("table_status", "Status"), filterable: false, width: 140, sortAccessor: (dicRow) => String(dicRow.statusSortValue) },
+      ];
+      if (lstVisibleOptionalColumns.includes("period")) {
+        lstColumns.push({ field: "period", headerName: t("table_period", "Period"), width: 220, sortable: false });
+      }
+      lstColumns.push({ field: "action", headerName: t("table_actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 200 });
+      return lstColumns;
+    },
+    [t, blnAdminMode, lstVisibleOptionalColumns]
   );
 
   return (
-    <Box className={styles.page}>
-      <Box className={styles.controlsCard}>
-        <Box sx={{ display: "flex", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
+    <Box className={masterStyles.page} data-controlid="form16.list.page">
+      <MasterBreadcrumbs
+        strSection={blnAdminMode ? t("breadcrumb_reports", "Reports") : t("breadcrumb_payroll_benefits", "Payroll & Benefits")}
+        strTitle={blnAdminMode ? t("breadcrumb_form16", "Form 16") : t("breadcrumb_my_form16", "My Form 16")}
+      />
+      <Box className={masterStyles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        <Box className={masterStyles.searchRow} aria-busy={blnBusy} sx={{ gridTemplateColumns: "minmax(180px, 240px)", alignItems: "center" }}>
           <TextField
+            className="app-mui-text-field"
             select
             size="small"
             label={t("filter_financial_year", "Financial Year")}
             value={strSelectedFinancialYear}
             onChange={(e) => setStrSelectedFinancialYear(e.target.value)}
-            sx={{ minWidth: 180 }}
+            disabled={blnBusy}
+            fullWidth
+            inputProps={{ "data-controlid": "form16.list.financial-year.select" }}
           >
             {lstFinancialYearOptions.map((strFY) => (
               <MenuItem key={strFY} value={strFY}>
@@ -286,26 +322,22 @@ export default function Form16ListPage({ blnAdminMode = false }: Form16ListPageP
               </MenuItem>
             ))}
           </TextField>
-          {blnCanGenerate ? (
-            <Button className={styles.primaryButton} startIcon={<AutorenewRoundedIcon />} onClick={openGenerateDialog}>
-              {t("generate_button", "Generate Form 16")}
-            </Button>
-          ) : null}
         </Box>
       </Box>
 
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {strActionError ? <Alert severity="error">{strActionError}</Alert> : null}
-      {!blnCanView && !blnRightsLoading ? (
-        <Alert severity="warning">
-          {blnAdminMode
-            ? t("no_access", "Form 16 access is not available for your user group.")
-            : t("ess_no_access", "Form 16 access is not available for your user group.")}
-        </Alert>
-      ) : null}
 
-      {blnCanView ? (
-        <Box className={styles.tableCard}>
+      <Box className={masterStyles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        {blnBusy ? (
+          <MasterGridSkeleton strControlId="form16.list.skeleton" intColumns={6} />
+        ) : !blnCanView ? (
+          <Alert severity="warning" sx={{ m: 2 }}>
+            {blnAdminMode
+              ? t("no_access", "Form 16 access is not available for your user group.")
+              : t("ess_no_access", "Form 16 access is not available for your user group.")}
+          </Alert>
+        ) : (
           <CommonTable
             columns={lstTableColumns}
             rows={lstTableRows}
@@ -314,10 +346,31 @@ export default function Form16ListPage({ blnAdminMode = false }: Form16ListPageP
             showPaginationSummary
             emptyMessage={t("empty_message", "No Form 16 records found for this selection.")}
             testIdPrefix="form16.list"
+            toolbarLeft={blnCanGenerate ? (
+              <Button className={masterStyles.primaryButton} startIcon={<AutorenewRoundedIcon />} onClick={openGenerateDialog} data-controlid="form16.list.generate.button">
+                {t("generate_button", "Generate Form 16")}
+              </Button>
+            ) : undefined}
+            toolbarAfterExport={(
+              <MasterAddColumnsControl
+                strControlPrefix="form16.list"
+                strButtonLabel={t("add_columns", "Add columns")}
+                lstColumns={lstOptionalColumns}
+                lstVisibleKeys={lstVisibleOptionalColumns}
+                onChange={setLstVisibleOptionalColumns}
+              />
+            )}
+            onRowClick={(dicRow) => {
+              const objRow = lstRows.find((objCandidate) => objCandidate.intForm16ID === dicRow.id);
+              if (objRow) void handleView(objRow);
+            }}
+            hideRowClickHint
+            minTableWidth={1000}
+            getRowSx={() => dicMasterRowSx}
             sx={{ p: 0, boxShadow: "none", background: "transparent" }}
           />
-        </Box>
-      ) : null}
+        )}
+      </Box>
 
       <CommonPayrollDialog
         blnOpen={blnGenerateDialogOpen}
@@ -404,8 +457,6 @@ export default function Form16ListPage({ blnAdminMode = false }: Form16ListPageP
           </Stack>
         }
       />
-
-      <BlockingLoader blnOpen={blnLoading || blnRightsLoading} strLabel={t("loading", "Loading Form 16 records...")} />
     </Box>
   );
 }

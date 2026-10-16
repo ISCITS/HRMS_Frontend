@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
@@ -12,6 +12,7 @@ import {
   DialogContent,
   DialogTitle,
   Grid,
+  Link,
   MenuItem,
   Paper,
   Snackbar,
@@ -26,7 +27,8 @@ import LookupChip, {
   lookupLabel,
 } from "@/features/attendance-regularization/components/LookupChip";
 import CommonDataGrid, { type DataGridColumn } from "@/components/ui/CommonDataGrid";
-import CommonRowActions from "@/components/master/CommonRowActions";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
+import { onSearchEnter, dicMasterNameLinkSx, dicMasterRowSxAnyColumn, MasterBreadcrumbs, MasterGridSkeleton, MasterMoreFilters } from "@/components/master/MasterListUi";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import styles from "@/components/master/MasterScreen.module.css";
 import { attendanceRegularizationService } from "@/features/attendance-regularization/services/attendanceRegularizationService";
@@ -251,15 +253,23 @@ export default function AttendanceExceptionsPage() {
     () =>
       (objList?.lstItems ?? []).map((objItem) => ({
         id: objItem.intID,
-        action: (
-          <CommonRowActions
-            testIdPrefix={`attendance-exceptions.${objItem.intID}`}
-            rowKey={objItem.intID}
-            blnCanView
-            onView={() => void openDetail(objItem)}
-          />
+        employeeText: objItem.strEmployeeName ?? objItem.strEmployeeCode ?? "",
+        employee: (
+          <Link
+            component="button"
+            type="button"
+            underline="none"
+            className="app-master-first-column-link"
+            data-control-id={`attendance-exceptions.${objItem.intID}.employee.button`}
+            onClick={(objEvent) => {
+              if (window.getSelection()?.toString()) { objEvent.stopPropagation(); return; }
+              void openDetail(objItem);
+            }}
+            sx={dicMasterNameLinkSx}
+          >
+            {objItem.strEmployeeName ?? objItem.strEmployeeCode}
+          </Link>
         ),
-        employee: objItem.strEmployeeName ?? objItem.strEmployeeCode,
         date: objItem.dtWorkDate,
         type: lookupLabel(lstTypes, objItem.strExceptionTypeCode, t("unavailable", "Unavailable")),
         severity: (
@@ -270,6 +280,7 @@ export default function AttendanceExceptionsPage() {
             blnHideIcon
           />
         ),
+        statusText: lookupLabel(lstStatuses, objItem.strExceptionStatus, objItem.strExceptionStatus),
         exceptionStatus: (
           <LookupChip
             lstOptions={lstStatuses}
@@ -288,19 +299,18 @@ export default function AttendanceExceptionsPage() {
 
   const lstTableColumns = useMemo<DataGridColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 90 },
-      { field: "employee", headerName: t("employee", "Employee"), width: 170 },
+      { field: "employee", headerName: t("employee", "Employee"), width: 170, sortAccessor: (row) => row.employeeText },
       { field: "date", headerName: t("date", "Date"), width: 120 },
       { field: "type", headerName: t("type", "Type"), width: 160 },
       { field: "severity", headerName: t("severity", "Severity"), sortable: false, width: 120 },
-      { field: "exceptionStatus", headerName: t("status", "Status"), sortable: false, width: 120 },
+      { field: "exceptionStatus", headerName: t("status", "Status"), filterable: false, width: 120, sortAccessor: (row) => row.statusText },
       { field: "punchRequest", headerName: t("punch_request", "Punch / Request"), width: 240 },
       { field: "age", headerName: t("age", "Age"), width: 110 },
     ],
     [t],
   );
 
-  if (blnRightsLoading) return <BlockingLoader blnOpen strLabel={t("loading", "Loading...")} />;
+  if (blnRightsLoading) return <Box className={styles.page}><MasterBreadcrumbs strSection={t("breadcrumb_attendance", "Attendance")} strTitle={t("breadcrumb_exceptions", "Attendance Exceptions")} /><MasterGridSkeleton strControlId="attendance-exceptions.list.skeleton" intColumns={7} /></Box>;
   if (!canViewAny())
     return (
       <Alert severity="warning">
@@ -315,10 +325,11 @@ export default function AttendanceExceptionsPage() {
     INFO: { strAccent: "#1565c0", strSurface: "#e3f2fd" },
   };
   return (
-    <Box className={styles.page} sx={{ "& .MuiOutlinedInput-root": { borderRadius: "9px" }, "& .MuiAlert-root": { borderRadius: "9px" } }}>
+    <Box className={styles.page} sx={{ position: "relative", "& .MuiAlert-root": { borderRadius: "9px" } }}>
       <BlockingLoader blnOpen={blnWorking} strLabel={t("working", "Please wait...")} />
+      <MasterBreadcrumbs strSection={t("breadcrumb_attendance", "Attendance")} strTitle={t("breadcrumb_exceptions", "Attendance Exceptions")} />
       {/* Keep actions and severity summaries in one row so the queue begins below a single toolbar. */}
-      <Paper className={styles.controlsCard}>
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="stretch">
           {blnCanGenerate ? (
             <>
@@ -407,13 +418,13 @@ export default function AttendanceExceptionsPage() {
           );
         })}
         </Stack>
-      </Paper>
+      </Box>
       {strError ? <Alert severity="error">{strError}</Alert> : null}
-      <Paper className={styles.controlsCard}>
-        <Grid container spacing={1}>
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        <Grid container spacing={1} onKeyDown={onSearchEnter(() => void loadQueue())}>
           {/* Content-sized controls and actions share one toolbar row on desktop. */}
           <Grid item xs={12} sm={6} md={2} lg={1.45}>
-            <TextField
+            <TextField className="app-mui-text-field" size="small"
               data-control-id="attendance-exceptions.from-date.input"
               fullWidth
               type="date"
@@ -429,7 +440,7 @@ export default function AttendanceExceptionsPage() {
             />
           </Grid>
           <Grid item xs={12} sm={6} md={2} lg={1.45}>
-            <TextField
+            <TextField className="app-mui-text-field" size="small"
               data-control-id="attendance-exceptions.to-date.input"
               fullWidth
               type="date"
@@ -445,34 +456,26 @@ export default function AttendanceExceptionsPage() {
             />
           </Grid>
           <Grid item xs={12} sm={6} md={2} lg={1.3}>
-            <TextField
-              data-control-id="attendance-exceptions.type.select"
+            <CommonSearchableSelect className="app-mui-text-field"
+              controlId="attendance-exceptions.type.select"
               fullWidth
-              select
               label={t("type", "Type")}
+              placeholder={t("all", "All")}
               value={objFilters.strExceptionTypeCode ?? ""}
-              onChange={(objEvent) =>
+              onChange={(intValue) =>
                 setObjFilters((objValue) => ({
                   ...objValue,
-                  strExceptionTypeCode: objEvent.target.value || undefined,
+                  strExceptionTypeCode: intValue || undefined,
                 }))
               }
-              SelectProps={{ displayEmpty: true }}
-              InputLabelProps={{ shrink: true }}
-            >
-              <MenuItem value="">{t("all", "All")}</MenuItem>
-              {lstTypes.map((objOption) => (
-                <MenuItem
-                  key={objOption.strValueCode}
-                  value={objOption.strValueCode}
-                >
-                  {objOption.strDisplayName}
-                </MenuItem>
-              ))}
-            </TextField>
+              options={lstTypes.map((objOption) => ({
+                intID: objOption.strValueCode,
+                strLabel: objOption.strDisplayName,
+              }))}
+            />
           </Grid>
           <Grid item xs={12} sm={6} md={2} lg={1.3}>
-            <TextField
+            <TextField className="app-mui-text-field" size="small"
               data-control-id="attendance-exceptions.status.select"
               fullWidth
               select
@@ -499,7 +502,7 @@ export default function AttendanceExceptionsPage() {
             </TextField>
           </Grid>
           <Grid item xs={12} sm={6} md={2} lg={1.05}>
-            <TextField
+            <TextField className="app-mui-text-field" size="small"
               data-control-id="attendance-exceptions.ageing.input"
               fullWidth
               type="number"
@@ -515,49 +518,6 @@ export default function AttendanceExceptionsPage() {
               }
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={2} lg={1.4}>
-            <TextField
-              data-control-id="attendance-exceptions.sort-by.select"
-              fullWidth
-              select
-              label={t("sort_by", "Sort By")}
-              value={objFilters.strSortBy ?? ""}
-              onChange={(objEvent) =>
-                setObjFilters((objValue) => ({
-                  ...objValue,
-                  strSortBy: (objEvent.target.value || undefined) as ExceptionFilters["strSortBy"],
-                }))
-              }
-              SelectProps={{ displayEmpty: true }}
-              InputLabelProps={{ shrink: true }}
-            >
-              <MenuItem value="">{t("default_priority", "Default Priority")}</MenuItem>
-              <MenuItem value="severity">{t("severity", "Severity")}</MenuItem>
-              <MenuItem value="status">{t("status", "Status")}</MenuItem>
-              <MenuItem value="detected_on">{t("detected_on", "Detected On")}</MenuItem>
-              <MenuItem value="work_date">{t("work_date", "Work Date")}</MenuItem>
-              <MenuItem value="employee">{t("employee", "Employee")}</MenuItem>
-            </TextField>
-          </Grid>
-          <Grid item xs={12} sm={6} md={2} lg={1.55}>
-            <TextField
-              data-control-id="attendance-exceptions.sort-direction.select"
-              fullWidth
-              select
-              disabled={!objFilters.strSortBy}
-              label={t("sort_direction", "Sort Direction")}
-              value={objFilters.strSortDirection ?? "asc"}
-              onChange={(objEvent) =>
-                setObjFilters((objValue) => ({
-                  ...objValue,
-                  strSortDirection: objEvent.target.value as "asc" | "desc",
-                }))
-              }
-            >
-              <MenuItem value="asc">{t("ascending", "Ascending")}</MenuItem>
-              <MenuItem value="desc">{t("descending", "Descending")}</MenuItem>
-            </TextField>
-          </Grid>
           <Grid item xs={12} lg="auto" sx={{ ml: { lg: "auto" } }}>
             <Stack
               direction="row"
@@ -567,7 +527,6 @@ export default function AttendanceExceptionsPage() {
               className={styles.filterActions}
               sx={{
                 height: "100%",
-                minWidth: { lg: 224 },
                 "& .MuiButton-root": {
                   flex: "0 0 auto",
                   minWidth: 104,
@@ -575,6 +534,54 @@ export default function AttendanceExceptionsPage() {
                 },
               }}
             >
+              <MasterMoreFilters
+                strControlPrefix="attendance-exceptions"
+                intActiveCount={objFilters.strSortBy ? 1 : 0}
+                onApply={() => void loadQueue()}
+                onClearAll={() =>
+                  setObjFilters((objValue) => ({ ...objValue, strSortBy: undefined, strSortDirection: undefined }))
+                }
+              >
+                <TextField className="app-mui-text-field" size="small"
+                  data-control-id="attendance-exceptions.sort-by.select"
+                  fullWidth
+                  select
+                  label={t("sort_by", "Sort By")}
+                  value={objFilters.strSortBy ?? ""}
+                  onChange={(objEvent) =>
+                    setObjFilters((objValue) => ({
+                      ...objValue,
+                      strSortBy: (objEvent.target.value || undefined) as ExceptionFilters["strSortBy"],
+                    }))
+                  }
+                  SelectProps={{ displayEmpty: true }}
+                  InputLabelProps={{ shrink: true }}
+                >
+                  <MenuItem value="">{t("default_priority", "Default Priority")}</MenuItem>
+                  <MenuItem value="severity">{t("severity", "Severity")}</MenuItem>
+                  <MenuItem value="status">{t("status", "Status")}</MenuItem>
+                  <MenuItem value="detected_on">{t("detected_on", "Detected On")}</MenuItem>
+                  <MenuItem value="work_date">{t("work_date", "Work Date")}</MenuItem>
+                  <MenuItem value="employee">{t("employee", "Employee")}</MenuItem>
+                </TextField>
+                <TextField className="app-mui-text-field" size="small"
+                  data-control-id="attendance-exceptions.sort-direction.select"
+                  fullWidth
+                  select
+                  disabled={!objFilters.strSortBy}
+                  label={t("sort_direction", "Sort Direction")}
+                  value={objFilters.strSortDirection ?? "asc"}
+                  onChange={(objEvent) =>
+                    setObjFilters((objValue) => ({
+                      ...objValue,
+                      strSortDirection: objEvent.target.value as "asc" | "desc",
+                    }))
+                  }
+                >
+                  <MenuItem value="asc">{t("ascending", "Ascending")}</MenuItem>
+                  <MenuItem value="desc">{t("descending", "Descending")}</MenuItem>
+                </TextField>
+              </MasterMoreFilters>
               <Button
                 data-control-id="attendance-exceptions.search.button"
                 className={styles.primaryButton}
@@ -596,10 +603,9 @@ export default function AttendanceExceptionsPage() {
             </Stack>
           </Grid>
         </Grid>
-      </Paper>
-      <Paper className={styles.tableCard} sx={{ position: "relative", minHeight: blnLoading ? 160 : undefined }}>
-        <BlockingLoader blnOpen={blnLoading} blnLocal strLabel={t("loading", "Loading...")} />
-        {blnLoading ? null : (
+      </Box>
+      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        {blnLoading ? <MasterGridSkeleton strControlId="attendance-exceptions.list.skeleton" intColumns={7} /> : (
           <CommonDataGrid
             columns={lstTableColumns}
             rows={lstTableRows}
@@ -613,13 +619,15 @@ export default function AttendanceExceptionsPage() {
             emptyMessage={t("no_exceptions", "No exceptions found.")}
             testIdPrefix="attendance-exceptions.list"
             withPaper={false}
-            onRowDoubleClick={(objRow) => {
+            hideRowClickHint
+            getRowSx={() => dicMasterRowSxAnyColumn}
+            onRowClick={(objRow) => {
               const objException = objList?.lstItems.find((objItem) => objItem.intID === objRow.id);
               if (objException) void openDetail(objException);
             }}
           />
         )}
-      </Paper>
+      </Box>
       <Dialog
         data-control-id="attendance-exceptions.detail.dialog"
         open={Boolean(objDetail)}
@@ -657,7 +665,7 @@ export default function AttendanceExceptionsPage() {
               </Typography>
               <Typography>
                 {t("worked_hours", "Worked Hours")}:{" "}
-                {objDrilldownContext?.objAttendanceDay.decWorkedHours ?? "—"}
+                {objDrilldownContext?.objAttendanceDay.decWorkedHours ?? "â€”"}
               </Typography>
             </Grid>
             <Grid item xs={12} md={4}>
@@ -715,7 +723,7 @@ export default function AttendanceExceptionsPage() {
                       String(objItem.strActionCode ?? ""),
                       t("action", "Action"),
                     )}{" "}
-                    ·{" "}
+                    Â·{" "}
                     {new Date(
                       String(objItem.dtActionOn ?? ""),
                     ).toLocaleString()}
@@ -835,44 +843,38 @@ export default function AttendanceExceptionsPage() {
         <DialogContent>
           {objDialog?.strAction === "create-request" ? (
             <Stack spacing={2} sx={{ mt: 1 }}>
-              <TextField
-                data-control-id="attendance-exceptions.request.type.select"
-                select
+              <CommonSearchableSelect
+                controlId="attendance-exceptions.request.type.select"
                 required
                 label={t("request_type", "Request Type")}
                 value={objRequestDraft.strRequestTypeCode}
-                onChange={(objEvent) =>
+                onChange={(intValue) =>
                   setObjRequestDraft((objValue) => ({
                     ...objValue,
-                    strRequestTypeCode: objEvent.target.value,
+                    strRequestTypeCode: intValue,
                   }))
                 }
-              >
-                {lstRequestTypes.map((objOption) => (
-                  <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>
-                    {objOption.strDisplayName}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                data-control-id="attendance-exceptions.request.status.select"
-                select
+                options={lstRequestTypes.map((objOption) => ({
+                  intID: objOption.strValueCode,
+                  strLabel: objOption.strDisplayName,
+                }))}
+              />
+              <CommonSearchableSelect
+                controlId="attendance-exceptions.request.status.select"
                 required
                 label={t("proposed_status", "Proposed Status")}
                 value={objRequestDraft.strProposedStatus}
-                onChange={(objEvent) =>
+                onChange={(intValue) =>
                   setObjRequestDraft((objValue) => ({
                     ...objValue,
-                    strProposedStatus: objEvent.target.value,
+                    strProposedStatus: intValue,
                   }))
                 }
-              >
-                {lstAttendanceStatuses.map((objOption) => (
-                  <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>
-                    {objOption.strDisplayName}
-                  </MenuItem>
-                ))}
-              </TextField>
+                options={lstAttendanceStatuses.map((objOption) => ({
+                  intID: objOption.strValueCode,
+                  strLabel: objOption.strDisplayName,
+                }))}
+              />
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                 <TextField
                   data-control-id="attendance-exceptions.request.in-time.input"

@@ -1,34 +1,38 @@
-﻿"use client";
+"use client";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
   Box,
   Button,
-  CircularProgress,
+  IconButton,
   InputAdornment,
+  Link,
   MenuItem,
+  Skeleton,
   Snackbar,
-  Switch,
   TextField,
+  Tooltip,
   Typography
 } from "@mui/material";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
+import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
-import CommonRowActions from "@/components/master/CommonRowActions";
+import MasterBreadcrumbs from "@/components/master/MasterBreadcrumbs";
 import styles from "@/components/master/MasterScreen.module.css";
-import BlockingLoader from "@/components/shared/BlockingLoader";
-import CommonDataGrid, { type DataGridColumn } from "@/components/ui/CommonDataGrid";
+import BlockingLoader, { DottedLoader } from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
-import { labelService } from "@/features/labels/services/labelService";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { authHelpers } from "@/lib/auth";
@@ -50,15 +54,6 @@ type CostCenterRecord = {
   code: string;
   name: string;
   status: CostCenterStatus;
-};
-
-type CostCenterTableRow = {
-  id: string;
-  action: ReactNode;
-  name: string;
-  code: string;
-  status: ReactNode;
-  statusSortValue: string;
 };
 
 type SearchForm = {
@@ -84,6 +79,55 @@ const dicEmptyForm = createInitialCostCenterForm();
 const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
 const lstDefaultCostCenters: CostCenterRecord[] = [];
 const lstCostCenterModuleCodes = ["COST_CENTER", "COSTCENTER", "COST_CENTRE"];
+const intCostCenterSkeletonRows = 8;
+
+function CostCenterGridSkeleton() {
+  return (
+    <Box
+      data-control-id="cost-center-master.list.skeleton"
+      sx={{
+        border: "1px solid #e8eef5",
+        borderRadius: "8px",
+        overflow: "hidden",
+        backgroundColor: "#fff",
+      }}
+    >
+      <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, px: 1.75, py: 1.25, flexWrap: "wrap" }}>
+        <Skeleton variant="rounded" width={142} height={36} />
+        <Box sx={{ display: "flex", gap: 1.25, alignItems: "center", flexWrap: "wrap" }}>
+          <Skeleton variant="rounded" width={64} height={36} />
+          <Skeleton variant="text" width={72} height={24} />
+          <Skeleton variant="rounded" width={116} height={32} />
+        </Box>
+      </Box>
+      <Box sx={{ minWidth: 760 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 0.7fr 0.55fr", bgcolor: "#edf3f9", borderTop: "1px solid #e8eef5", borderBottom: "1px solid #d9e3ee" }}>
+          {[0, 1, 2].map((intColumn) => (
+            <Box key={intColumn} sx={{ px: 2, py: 1 }}>
+              <Skeleton variant="text" width={intColumn === 2 ? 76 : 118} height={22} />
+            </Box>
+          ))}
+        </Box>
+        {Array.from({ length: intCostCenterSkeletonRows }).map((_, intIndex) => (
+          <Box
+            key={intIndex}
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "1fr 0.7fr 0.55fr",
+              borderBottom: "1px solid #edf1f6",
+              minHeight: 40,
+              alignItems: "center",
+            }}
+          >
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${62 + (intIndex % 3) * 8}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${36 + (intIndex % 2) * 10}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="rounded" width={72} height={22} /></Box>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+}
 
 // The API record includes backend naming; the panel works against a compact UI-facing record shape.
 function mapCostCenterRecord(dicRecord: CostCenterApiRecord): CostCenterRecord {
@@ -107,6 +151,9 @@ export default function CostCenterMasterPanel() {
   const [strEditingCostCenterId, setStrEditingCostCenterId] = useState("");
   const [dicForm, setDicForm] = useState<CostCenterFormValues>(dicEmptyForm);
   const [dicErrors, setDicErrors] = useState<Partial<Record<"code" | "name", string>>>({});
+  const objNameInputRef = useRef<HTMLInputElement>(null);
+  const objCodeInputRef = useRef<HTMLInputElement>(null);
+  const strPendingErrorFocusRef = useRef<"name" | "code" | null>(null);
   const [dicTextTranslationLoading, setDicTextTranslationLoading] = useState<Record<string, boolean>>({});
   const [dicLastTranslatedSourceByRow, setDicLastTranslatedSourceByRow] = useState<Record<string, string>>({});
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
@@ -115,7 +162,6 @@ export default function CostCenterMasterPanel() {
   const [blnSubmitting, setBlnSubmitting] = useState(false);
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
-  const [dicRowLabelsByLanguageID, setDicRowLabelsByLanguageID] = useState<Record<number, Record<string, string>>>({});
 
   const dicCommonLabels = {
     cancel: t("cancel"),
@@ -152,8 +198,8 @@ export default function CostCenterMasterPanel() {
     bulkDeactivate: t("bulk_deactivate"),
     bulkDelete: t("bulk_delete"),
     emptyMessage: t("empty_message"),
-    tableName: t("table_name"),
-    tableCode: t("table_code"),
+    tableName: "Cost Center Name",
+    tableCode: "Cost Center Code",
     tableStatus: t("table_status"),
     tableActions: t("table_actions"),
     saveSuccess: t("save_success"),
@@ -184,8 +230,8 @@ export default function CostCenterMasterPanel() {
     confirmDeleteMessage: t("confirm_delete_message"),
     confirmActivateMessage: t("confirm_activate_message"),
     confirmDeactivateMessage: t("confirm_deactivate_message"),
-    fieldName: t("field_name"),
-    fieldCode: t("field_code"),
+    fieldName: "Cost Center Name",
+    fieldCode: "Cost Center Code",
     fieldStatus: t("field_status"),
     fieldIsActive: t("field_is_active", "Is Active"),
     saving: t("saving", "Saving..."),
@@ -228,9 +274,9 @@ export default function CostCenterMasterPanel() {
   const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
-  const blnCanDelete = canDoAny("delete");
   const blnCanExport = canDoAny("export");
   const blnReadOnly = isReadOnly();
+  const blnSearchPanelFrozen = blnLoading || blnSubmitting || blnRightsLoading;
   const intDefaultLanguageID = authHelpers.getLanguageID() ?? objFormOptions.lstLanguages[0]?.intID ?? 1;
   const intSecondaryLanguageID = authHelpers.getSecondaryLanguageID();
 
@@ -326,6 +372,15 @@ export default function CostCenterMasterPanel() {
     }));
   }
 
+  const lstVisibleTranslationRows = dicForm.lstTexts.filter((dicText) => {
+    const dicLanguage = objFormOptions.lstLanguages.find((dicItem) => dicItem.intID === Number(dicText.intLanguageID));
+    const strCode = dicLanguage?.strCode?.trim().toLowerCase() ?? "";
+    const strName = (dicLanguage?.strLabel ?? dicText.strLanguageName).trim().toLowerCase();
+    return Number(dicText.intLanguageID) !== intDefaultLanguageID &&
+      !/^es(?:[-_]|$)/.test(strCode) && !["spa", "spanish", "espa?ol", "espanol"].includes(strCode) &&
+      !/spanish|espa?ol|espanol/.test(strName);
+  });
+
   async function translateTextRow(strRowID: string, intLanguageID: number) {
     const dicSelectedLanguage = objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === intLanguageID);
     const strSourceCostCenterName = dicForm.name.trim();
@@ -373,16 +428,11 @@ export default function CostCenterMasterPanel() {
   }
 
   async function handleTranslateClick() {
-    const dicSecondaryRow = dicForm.lstTexts[1];
+    const dicSecondaryRow = lstVisibleTranslationRows[0];
     if (!dicSecondaryRow) {
       return;
     }
-    const intTargetLanguageID =
-      Number(dicSecondaryRow.intLanguageID) || intSecondaryLanguageID;
-    if (!intTargetLanguageID || intTargetLanguageID === intDefaultLanguageID) {
-      return;
-    }
-    await translateTextRow(dicSecondaryRow.strRowID, intTargetLanguageID);
+    await translateTextRow(dicSecondaryRow.strRowID, Number(dicSecondaryRow.intLanguageID));
   }
 
   // Filter draft values are only committed on Search/Clear to keep the grid interactions predictable.
@@ -393,21 +443,45 @@ export default function CostCenterMasterPanel() {
     return blnCodeMatch && blnNameMatch && blnStatusMatch;
   }), [dicSearchApplied, lstCostCenters]);
 
-  const lstTableRows: CostCenterTableRow[] = lstFilteredCostCenters.map((dicCostCenter) => ({
-    id: dicCostCenter.id,
-    action: <CommonRowActions testIdPrefix="cost-center-master.list.row" rowKey={dicCostCenter.id} blnCanView={blnCanView} blnCanEdit={blnCanEdit} blnCanDelete={blnCanDelete} onView={() => openDialog("view", dicCostCenter)} onEdit={() => openDialog("edit", dicCostCenter)} onDelete={() => deleteCostCenter(dicCostCenter.id)} />,
-    name: dicCostCenter.name,
-    code: dicCostCenter.code,
-    status: <span className={`${styles.statusPill} ${dicCostCenter.status === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicCostCenter.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span>,
-    statusSortValue: dicCostCenter.status
-  }));
+  const lstTableRows = useMemo(
+    () =>
+      lstFilteredCostCenters.map((dicCostCenter) => ({
+        id: dicCostCenter.id,
+        nameText: dicCostCenter.name,
+        name: (
+          <Link
+            component="button"
+            underline="none"
+            className="app-master-first-column-link"
+            onClick={(objEvent) => {
+              objEvent.stopPropagation();
+              if (blnCanEdit || blnCanView) {
+                openDialog(blnCanEdit ? "edit" : "view", dicCostCenter);
+              }
+            }}
+          >
+            {dicCostCenter.name}
+          </Link>
+        ),
+        code: dicCostCenter.code,
+        statusText: dicCostCenter.status,
+        status: (
+          <span className={`app-master-status-pill ${dicCostCenter.status === "Active" ? "app-master-status-active" : "app-master-status-inactive"}`}>
+            {dicCostCenter.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}
+          </span>
+        ),
+      })),
+    [blnCanEdit, blnCanView, dicCommonLabels.statusActive, dicCommonLabels.statusInactive, lstFilteredCostCenters]
+  );
 
-  const lstTableColumns: DataGridColumn<CostCenterTableRow>[] = [
-    { field: "action", headerName: dicModuleLabels.tableActions, sortable: false, filterable: false, exportable: false, width: 140 },
-    { field: "name", headerName: dicModuleLabels.tableName, width: 260 },
-    { field: "code", headerName: dicModuleLabels.tableCode, width: 180 },
-    { field: "status", headerName: dicModuleLabels.tableStatus, width: 140, sortAccessor: (dicRow) => dicRow.statusSortValue }
-  ];
+  const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
+    () => [
+      { field: "name", headerName: dicModuleLabels.tableName },
+      { field: "code", headerName: dicModuleLabels.tableCode },
+      { field: "status", headerName: dicModuleLabels.tableStatus, sortable: false, filterable: false },
+    ],
+    [dicModuleLabels.tableCode, dicModuleLabels.tableName, dicModuleLabels.tableStatus]
+  );
 
   useEffect(() => {
     costCenterService.getCostCenterFormOptions()
@@ -425,72 +499,27 @@ export default function CostCenterMasterPanel() {
   }
 
   useEffect(() => {
-    let blnMounted = true;
-    const lstLanguageIDs = Array.from(
-      new Set(
-        dicForm.lstTexts
-          .map((dicText) => Number(dicText.intLanguageID))
-          .filter((intLanguageID) => Number.isFinite(intLanguageID) && intLanguageID > 0),
-      ),
-    );
-    const lstLanguageIDsToLoad = lstLanguageIDs.filter(
-      (intLanguageID) => !dicRowLabelsByLanguageID[intLanguageID],
-    );
-    if (lstLanguageIDsToLoad.length === 0) {
-      return () => {
-        blnMounted = false;
-      };
-    }
-
-    async function loadRowLabels() {
-      const lstResponses = await Promise.all(
-        lstLanguageIDsToLoad.map(async (intLanguageID) => {
-          const objResponse = await labelService.getModuleLabels(intLanguageID, "cost_center");
-          return {
-            intLanguageID,
-            dicLabels: objResponse.labels ?? {},
-          };
-        }),
-      );
-      if (!blnMounted) {
-        return;
-      }
-      setDicRowLabelsByLanguageID((dicPrevious) => {
-        const dicNext = { ...dicPrevious };
-        for (const { intLanguageID, dicLabels } of lstResponses) {
-          dicNext[intLanguageID] = dicLabels;
-        }
-        return dicNext;
-      });
-    }
-
-    loadRowLabels().catch(() => undefined);
-    return () => {
-      blnMounted = false;
-    };
-  }, [dicForm.lstTexts, dicRowLabelsByLanguageID]);
-
-  function getRowLabel(intLanguageID: number | "", strKey: string, strFallback: string) {
-    const intResolvedLanguageID = Number(intLanguageID);
-    if (Number.isFinite(intResolvedLanguageID) && intResolvedLanguageID > 0) {
-      const dicLabels = dicRowLabelsByLanguageID[intResolvedLanguageID];
-      if (dicLabels?.[strKey]) {
-        return dicLabels[strKey];
-      }
-    }
-    return strFallback;
-  }
-
-  useEffect(() => {
     if (objFormOptions.lstLanguages.length === 0) {
       return;
     }
     setDicForm((dicPrevious) => ensureTenantLanguageRows(dicPrevious));
   }, [intDefaultLanguageID, intSecondaryLanguageID, objFormOptions.lstLanguages.length]);
 
+  useEffect(() => {
+    if (!blnDialogOpen || strMode === "view") return;
+    const strField = strPendingErrorFocusRef.current;
+    strPendingErrorFocusRef.current = null;
+    if (strField === "name") {
+      objNameInputRef.current?.focus();
+    } else if (strField === "code") {
+      objCodeInputRef.current?.focus();
+    }
+  }, [blnDialogOpen, dicErrors, strMode]);
+
   function openDialog(strNextMode: CostCenterMode, dicCostCenter?: CostCenterRecord) {
     setStrMode(strNextMode);
     setStrEditingCostCenterId(dicCostCenter?.id ?? "");
+    strPendingErrorFocusRef.current = null;
     setDicErrors({});
     setDicTextTranslationLoading({});
     setDicLastTranslatedSourceByRow({});
@@ -516,6 +545,7 @@ export default function CostCenterMasterPanel() {
   }
 
   function closeDialog() {
+    strPendingErrorFocusRef.current = null;
     setBlnDialogOpen(false);
   }
 
@@ -581,6 +611,7 @@ export default function CostCenterMasterPanel() {
       dicNextErrors.name = dicModuleLabels.validationNameDuplicate;
     }
 
+    strPendingErrorFocusRef.current = dicNextErrors.name ? "name" : dicNextErrors.code ? "code" : null;
     setDicErrors(dicNextErrors);
     return Object.keys(dicNextErrors).length === 0;
   }
@@ -607,30 +638,28 @@ export default function CostCenterMasterPanel() {
         closeDialog();
         showToast(strMode === "add" ? dicModuleLabels.saveSuccess : dicModuleLabels.updateSuccess);
       })
-      .catch((objError) => showToast(objError instanceof Error ? objError.message : dicModuleLabels.requestFailed, "error"))
+      .catch((objError) => {
+        const strMessage = objError instanceof Error ? objError.message : dicModuleLabels.requestFailed;
+        const blnCodeError = /cost cent(?:er|re) code/i.test(strMessage) && !/cost cent(?:er|re) name/i.test(strMessage);
+        const blnNameError = /cost cent(?:er|re) name/i.test(strMessage) && !/cost cent(?:er|re) code/i.test(strMessage);
+        if (blnCodeError || blnNameError) {
+          strPendingErrorFocusRef.current = blnCodeError ? "code" : "name";
+          setDicErrors({ [blnCodeError ? "code" : "name"]: strMessage });
+        } else {
+          showToast(strMessage, "error");
+        }
+      })
       .finally(() => setBlnSubmitting(false));
   }
 
-  function deleteCostCenter(strCostCenterId: string) {
-    openConfirmDialog({
-      strTitle: dicModuleLabels.confirmDeleteTitle,
-      strMessage: dicModuleLabels.confirmDeleteMessage,
-      strConfirmLabel: dicCommonLabels.delete,
-      fnOnConfirm: async () => {
-        await masterApiService.bulkCostCenterDelete([Number(strCostCenterId)]);
-        await loadCostCenters();
-        showToast(dicModuleLabels.deleteSuccess);
-      }
-    });
-  }
-
   return (
-    <Box className={styles.page}>
+    <Box className={`${styles.page} ${styles.relativePage}`}>
+      <MasterBreadcrumbs strCurrent={dicModuleLabels.pageTitle} />
       <Box className={styles.topBar}>
         <Button controlId="cost-center-master.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicModuleLabels.backButton}</Button>
       </Box>
 
-      <Box className={styles.controlsCard}>
+      <Box className="app-master-search-panel">
         {strRightsError ? (
           <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography>
         ) : null}
@@ -639,71 +668,147 @@ export default function CostCenterMasterPanel() {
             {t("read_only_mode", "You have view-only access for Cost Center.")}
           </Typography>
         ) : null}
-        <Box className={styles.searchRow}>
-          <TextField controlId="cost-center-master.list.search-name.input" inputProps={{ "controlId": "cost-center-master.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicModuleLabels.searchNamePlaceholder} fullWidth />
-          <TextField controlId="cost-center-master.list.search-code.input" inputProps={{ "controlId": "cost-center-master.list.search-code.input" }} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicModuleLabels.searchCodePlaceholder} fullWidth />
-          <TextField controlId="cost-center-master.list.search-status.select" inputProps={{ "controlId": "cost-center-master.list.search-status.select" }} select label={dicModuleLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
+        <Box className={`${styles.searchRow} ${styles.searchRowCentered}`} aria-busy={blnSearchPanelFrozen}>
+          <TextField className="app-mui-text-field" id="cost-center-master-search-name" controlId="cost-center-master.list.search-name.input" inputProps={{ "controlId": "cost-center-master.list.search-name.input" }} label={dicModuleLabels.tableName} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicModuleLabels.searchNamePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon className="app-search-adornment-icon" /></InputAdornment> }} disabled={blnSearchPanelFrozen} fullWidth />
+          <TextField className="app-mui-text-field" id="cost-center-master-search-code" controlId="cost-center-master.list.search-code.input" inputProps={{ "controlId": "cost-center-master.list.search-code.input" }} label={dicModuleLabels.tableCode} value={dicSearchDraft.code} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))} placeholder={dicModuleLabels.searchCodePlaceholder} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon className="app-search-adornment-icon" /></InputAdornment> }} disabled={blnSearchPanelFrozen} fullWidth />
+          <TextField className="app-mui-text-field" id="cost-center-master-search-status" controlId="cost-center-master.list.search-status.select" inputProps={{ "controlId": "cost-center-master.list.search-status.select" }} select label={dicModuleLabels.tableStatus} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} size="small" disabled={blnSearchPanelFrozen} fullWidth>
             <MenuItem controlId="cost-center-master.list.search-status.all.option" value="All">All</MenuItem>
             <MenuItem controlId="cost-center-master.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
             <MenuItem controlId="cost-center-master.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions}><Button controlId="cost-center-master.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
-          <Box className={styles.searchActions}><Button controlId="cost-center-master.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
+          <Box className={styles.searchActions}><Button controlId="cost-center-master.list.search.button" className="app-btn app-btn-primary" startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)} disabled={blnSearchPanelFrozen}>{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button controlId="cost-center-master.list.clear.button" className="app-btn app-btn-outline" startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnSearchPanelFrozen}>{dicCommonLabels.clear}</Button></Box>
         </Box>
       </Box>
 
-      <Box className={styles.tableCard}>
-        {!blnCanView && !blnRightsLoading && !blnLoading ? (
+      <Box className="app-master-table-panel app-master-page-relative">
+        {(blnLoading || blnRightsLoading) && !blnDialogOpen ? (
+          <CostCenterGridSkeleton />
+        ) : !blnCanView ? (
           <Box className={styles.emptyState}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>Cost Center access is not available for your user group.</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>Contact your administrator if you need cost center visibility.</Typography>
           </Box>
         ) : (
-          <CommonDataGrid columns={lstTableColumns} rows={lstTableRows} rowIdField="id" defaultPageSize={20} pageSizeOptions={[10, 20, 50]} exportFileName={dicModuleLabels.exportFileName.replace(/\.(csv|pdf)$/i, "")} showExportOptions={blnCanExport} showPaginationSummary emptyMessage={dicModuleLabels.emptyMessage} testIdPrefix="cost-center-master.list" toolbarLeft={blnCanAdd ? <Button controlId="cost-center-master.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{dicModuleLabels.addButton}</Button> : null} sx={{ p: 0, boxShadow: "none", background: "transparent" }} />
+          <CommonTable
+            columns={lstTableColumns}
+            rows={lstTableRows}
+            rowIdField="id"
+            exportFileName={dicModuleLabels.exportFileName}
+            exportButtonClassName="app-btn app-btn-outline"
+            showExportOptions={blnCanExport}
+            testIdPrefix="cost-center-master.list"
+            showPaginationSummary
+            hideRowClickHint
+            onRowClick={(dicRow) => {
+              if (blnRightsLoading || blnLoading || blnSubmitting || (!blnCanEdit && !blnCanView)) return;
+              const dicCostCenter = lstCostCenters.find((dicItem) => dicItem.id === dicRow.id);
+              if (dicCostCenter) openDialog(blnCanEdit ? "edit" : "view", dicCostCenter);
+            }}
+            minTableWidth={800}
+            emptyMessage={dicModuleLabels.emptyMessage}
+            toolbarLeft={blnCanAdd ? (
+              <Button controlId="cost-center-master.list.add.button" className="app-btn app-btn-primary" startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+                {dicModuleLabels.addButton}
+              </Button>
+            ) : null}
+            getRowSx={() => ({
+              backgroundColor: "#fff",
+              "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
+              "&.MuiTableRow-hover:hover td:first-of-type .MuiLink-root": { textDecoration: "underline" },
+            })}
+            className="app-master-common-table-reset"
+          />
         )}
+        <BlockingLoader blnOpen={blnSubmitting} strLabel={dicCommonLabels.processing} intZIndex={1400} blnLocal />
       </Box>
 
       <CommonMasterDialog
         blnOpen={blnDialogOpen}
         onClose={closeDialog}
+        onDialogClose={(_, strReason) => {
+          if (strReason !== "backdropClick") {
+            closeDialog();
+          }
+        }}
         rootTestId="cost-center-master.dialog"
         cancelButtonTestId="cost-center-master.dialog.cancel.button"
         primaryButtonTestId="cost-center-master.dialog.save.button"
         strTitle={strMode === "add" ? dicModuleLabels.dialogAddTitle : strMode === "edit" ? dicModuleLabels.dialogEditTitle : dicModuleLabels.dialogViewTitle}
         strSecondaryLabel={strMode === "view" ? dicCommonLabels.close : dicCommonLabels.cancel}
         strPrimaryLabel={blnSubmitting ? dicModuleLabels.saving : dicCommonLabels.save}
+        strSecondaryButtonClassName="app-btn app-btn-outline"
+        strPrimaryButtonClassName="app-btn app-btn-primary"
         onPrimaryAction={saveCostCenter}
         blnPrimaryDisabled={blnSubmitting}
         blnHidePrimary={strMode === "view"}
-        paperClassName={styles.compactDialogPaper}
-        titleSx={{ px: 2.25, py: 1.25, fontSize: "1rem", maxHeight: 50 }}
-        paperSx={{
-          width: "min(800px, calc(100vw - 32px)) !important",
-          maxWidth: "800px !important",
-          overflow: "hidden",
-          m: 2,
-        }} 
+        paperClassName={styles.departmentDialogPaper}
+        maxWidth={false}
+        fullWidth={false}
         nodeTitleAction={
-          <Box className={styles.switchRow} sx={{ minHeight: "auto", gap: 1, flexWrap: "nowrap" }}>
-              <Typography className={styles.switchLabel}>{dicModuleLabels.fieldIsActive}</Typography>
-              <ActiveStatusSwitch testId="cost-center-master.dialog.active.switch" blnIsActive={dicForm.status === "Active"} disabled={strMode === "view"} onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))} />
+          <Box className={`${styles.switchRow} app-master-dialog-status-row`}>
+              <ActiveStatusSwitch
+                testId="cost-center-master.dialog.active.switch"
+                blnIsActive={dicForm.status === "Active"}
+                disabled={strMode === "view"}
+                sx={{
+                  width: 40,
+                  height: 22,
+                  p: 0,
+                  overflow: "visible",
+                  "& .MuiSwitch-switchBase": {
+                    p: "3px",
+                    color: "#fff",
+                    transitionDuration: "180ms",
+                    "&.Mui-checked": {
+                      transform: "translateX(18px)",
+                      color: "#fff",
+                      "& + .MuiSwitch-track": { backgroundColor: "#00b86b", opacity: 1 },
+                    },
+                    "&.Mui-disabled": { color: "#fff", opacity: 0.7 },
+                  },
+                  "& .MuiSwitch-thumb": {
+                    width: 16,
+                    height: 16,
+                    boxShadow: "0 1px 3px rgba(15, 23, 42, 0.2)",
+                  },
+                  "& .MuiSwitch-track": {
+                    borderRadius: "11px",
+                    backgroundColor: "#98a2b3",
+                    opacity: 1,
+                    transition: "background-color 180ms",
+                  },
+                }}
+                onChange={(blnChecked) => setDicForm((dicPrevious) => ({ ...dicPrevious, status: blnChecked ? "Active" : "Inactive" }))}
+              />
+              <Typography className={`${styles.switchLabel} app-master-dialog-status-text`}>{dicCommonLabels.statusActive}</Typography>
+              <IconButton aria-label={dicCommonLabels.close} onClick={closeDialog} size="small" sx={{ ml: 1, color: "#94a3b8" }}>
+                <CloseRoundedIcon fontSize="small" />
+              </IconButton>
           </Box>
         }
-        contentSx={{ overflowX: "hidden", overflowY: "visible" }}
+        nodeFooterStart={<Typography className="app-master-dialog-required-fields">{t("required_fields_hint", "Required fields are marked")} <Box component="span" className="app-master-dialog-required-asterisk">*</Box></Typography>}
+        contentClassName="app-master-dialog-content-compact"
         nodeContent={
-          <Box sx={{ display: "grid", gap: 2, pt: 0.5 }}>
+          <Box sx={{ display: "grid", gap: "12px" }}>
             <Box
               sx={{
                 display: "grid",
-                gap: 1.6,
-                gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                columnGap: 1.6,
+                rowGap: "12px",
+                gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
                 alignItems: "start",
               }}
             >
               <TextField
+                className="app-mui-text-field"
                 required
                 controlId="cost-center-master.dialog.name.input"
+                inputRef={objNameInputRef}
+                autoFocus={strMode !== "view"}
                 label={`${dicModuleLabels.fieldName}`}
+                placeholder={t("dialog_name_placeholder", "Enter cost center name")}
+                size="small"
                 value={dicForm.name}
                 inputProps={{ "controlId": "cost-center-master.dialog.name.input" }}
                 disabled={strMode === "view"}
@@ -718,9 +823,13 @@ export default function CostCenterMasterPanel() {
                 fullWidth
               />
               <TextField
+                className="app-mui-text-field"
                 required
                 controlId="cost-center-master.dialog.code.input"
+                inputRef={objCodeInputRef}
                 label={`${dicModuleLabels.fieldCode}`}
+                placeholder={t("dialog_code_placeholder", "Enter cost center code")}
+                size="small"
                 value={dicForm.code}
                 inputProps={{ "controlId": "cost-center-master.dialog.code.input" }}
                 disabled={strMode === "view"}
@@ -736,120 +845,58 @@ export default function CostCenterMasterPanel() {
               />
             </Box>
 
-            {intSecondaryLanguageID ? (
-            <>
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1.25, flexWrap: "wrap" }}>
-              <Box>
-                <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("multilingual_text", "Multilingual Text")}</Typography>
-                <Typography sx={{ color: "#64748b", fontSize: "0.86rem", mt: 0.25 }}>
-                  {t("multilingual_text_help", "Add translated cost center names for supported languages.")}
-                </Typography>
-              </Box>
-              <Box sx={{ display: "flex", gap: 1.1, alignItems: "center", ml: "auto" }}>
-                <Button controlId="cost-center-master.dialog.add-language.button" className={styles.secondaryButton} startIcon={<AddRoundedIcon />} disabled sx={{ minHeight: 34 }}>
-                  {t("add_language", "Add Language")}
-                </Button>
-                <Button
-                  controlId="cost-center-master.dialog.translate.button"
-                  className={styles.primaryButton}
-                  onClick={() => void handleTranslateClick()}
-                  disabled={strMode === "view" || blnSubmitting || dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""]}
-                  sx={{
-                    minWidth: 108,
-                    minHeight: 34,
-                    boxShadow: "none",
-                    "&:hover": { boxShadow: "none" },
-                  }}
-                >
-                  {dicTextTranslationLoading[dicForm.lstTexts[1]?.strRowID ?? ""] ? (
-                    <CircularProgress size={18} sx={{ color: "#ffffff" }} />
-                  ) : (
-                    t("translate", "AI Translate")
-                  )}
-                </Button>
-              </Box>
-            </Box>
-
-            <Box sx={{ display: "grid", gap: 1.2 }}>
-              {dicForm.lstTexts.map((dicText, intIndex) => (
-                <Box
-                  key={dicText.strRowID}
-                  sx={{
-                    display: "grid",
-                    gap: 1.2,
-                    gridTemplateColumns: {
-                      xs: "1fr",
-                      md: "minmax(0, 0.95fr) minmax(0, 1.35fr) minmax(0, 0.95fr)",
-                    },
-                    alignItems: "start",
-                    border: "1px solid rgba(203,213,225,0.8)",
-                    borderRadius: "16px",
-                    p: 1.2,
-                    background: "#f8fafc",
-                  }}
-                >
-                  <TextField
-                    controlId="cost-center-master.dialog.language.select"
-                    select
-                    label={getRowLabel(dicText.intLanguageID, "language", t("language", "Language"))}
-                    value={dicText.intLanguageID}
-                    inputProps={{ "controlId": "cost-center-master.dialog.language.select", "data-row-key": dicText.strRowID }}
-                    InputLabelProps={{ shrink: true }}
-                    SelectProps={{
-                      displayEmpty: true,
-                      renderValue: (objValue) => {
-                        const intSelectedLanguageID = Number(objValue);
-                        return (
-                          objFormOptions.lstLanguages.find(
-                            (dicLanguage) => dicLanguage.intID === intSelectedLanguageID,
-                          )?.strLabel ?? dicText.strLanguageName ?? ""
-                        );
-                      },
-                    }}
-                    disabled
-                    fullWidth
-                  >
-                    {objFormOptions.lstLanguages.map((dicLanguage) => (
-                      <MenuItem controlId="cost-center-master.dialog.language.option" data-option-key={dicLanguage.intID} key={dicLanguage.intID} value={dicLanguage.intID}>{dicLanguage.strLabel}</MenuItem>
-                    ))}
-                  </TextField>
-                  <TextField
-                    controlId="cost-center-master.dialog.translated-name.input"
-                    label={getRowLabel(dicText.intLanguageID, "field_name", dicModuleLabels.fieldName)}
-                    value={dicText.strCostCenterName}
-                    inputProps={{ "controlId": "cost-center-master.dialog.translated-name.input", "data-row-key": dicText.strRowID }}
-                    onChange={(objEvent) => {
-                      const strValue = objEvent.target.value;
-                      updateTextRow(dicText.strRowID, "strCostCenterName", strValue);
-                      if (intIndex === 0) {
-                        setDicErrors((dicPrevious) => ({ ...dicPrevious, name: undefined }));
-                        setDicForm((dicPrevious) => ({ ...dicPrevious, name: strValue }));
-                      }
-                    }}
-                    disabled={strMode === "view" || intIndex === 0}
-                    InputProps={{
-                      endAdornment: dicTextTranslationLoading[dicText.strRowID]
-                        ? (
-                            <InputAdornment position="end">
-                              <CircularProgress size={18} sx={{ color: "#2563eb" }} />
-                            </InputAdornment>
-                          )
-                        : undefined,
-                    }}
-                    fullWidth
-                  />
-                  <TextField
-                    controlId="cost-center-master.dialog.translated-code.input"
-                    label={getRowLabel(dicText.intLanguageID, "field_code", dicModuleLabels.fieldCode)}
-                    value={dicText.strCostCenterCode}
-                    inputProps={{ "controlId": "cost-center-master.dialog.translated-code.input", "data-row-key": dicText.strRowID }}
-                    disabled
-                    fullWidth
-                  />
+            {lstVisibleTranslationRows.length > 0 ? (
+              <Box sx={{ border: "1px solid #e3edfc", borderRadius: "6px", overflow: "hidden", background: "#f7faff" }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap", p: 1, borderBottom: "1px solid #e3edfc", background: "#eff6ff" }}>
+                  <LanguageRoundedIcon sx={{ color: "#1473cf" }} />
+                  <Box sx={{ flex: 1, minWidth: 180 }}>
+                    <Typography className="app-master-dialog-section-heading">{t("language_translations", "Language Translations")}</Typography>
+                    <Typography className="app-master-dialog-section-subheading app-master-dialog-section-subheading-spaced">
+                      {t("language_translations_help", "Provide translated cost center names for the application languages you want to support.")}
+                    </Typography>
+                  </Box>
+                  <Tooltip title={t("translate_help", "Generate suggested translations using AI. Review before saving.")} arrow>
+                    <span>
+                      <Button
+                        controlId="cost-center-master.dialog.translate.button"
+                        className="app-btn app-btn-outline"
+                        variant="outlined"
+                        startIcon={<AutoAwesomeRoundedIcon />}
+                        onClick={() => void handleTranslateClick()}
+                        disabled={strMode === "view" || blnSubmitting || !dicForm.name.trim() || Boolean(dicTextTranslationLoading[lstVisibleTranslationRows[0]?.strRowID ?? ""])}
+                        sx={{ minHeight: 34, whiteSpace: "nowrap", background: "#fff" }}
+                      >
+                        {t("translate", "AI Translate")}
+                      </Button>
+                    </span>
+                  </Tooltip>
                 </Box>
-              ))}
-            </Box>
-            </>
+                <Box sx={{ display: "grid", gap: 1.5, p: 1 }}>
+                  {lstVisibleTranslationRows.map((dicText) => (
+                    <Box key={dicText.strRowID} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "minmax(100px, 0.3fr) minmax(0, 1fr)" }, alignItems: "center", gap: 1.5 }}>
+                      <Typography component="label" htmlFor={`cost-center-translation-${dicText.strRowID}`} sx={{ fontSize: "12px", fontWeight: 600, color: "#0f172a" }}>
+                        {objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === Number(dicText.intLanguageID))?.strLabel ?? dicText.strLanguageName}
+                      </Typography>
+                      <TextField
+                        className="app-mui-text-field"
+                        id={`cost-center-translation-${dicText.strRowID}`}
+                        controlId="cost-center-master.dialog.translated-name.input"
+                        placeholder={t("dialog_translated_name_placeholder", "Enter cost center name in {language}").replace("{language}", objFormOptions.lstLanguages.find((dicLanguage) => dicLanguage.intID === Number(dicText.intLanguageID))?.strLabel ?? dicText.strLanguageName)}
+                        value={dicText.strCostCenterName}
+                        inputProps={{ "controlId": "cost-center-master.dialog.translated-name.input", "data-row-key": dicText.strRowID }}
+                        onChange={(objEvent) => updateTextRow(dicText.strRowID, "strCostCenterName", objEvent.target.value)}
+                        disabled={strMode === "view"}
+                        InputProps={{
+                          endAdornment: dicTextTranslationLoading[dicText.strRowID] ? (
+                            <InputAdornment position="end"><DottedLoader intSize={18} sx={{ color: "#2563eb" }} /></InputAdornment>
+                          ) : undefined,
+                        }}
+                        fullWidth
+                      />
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
             ) : null}
 
           </Box>
@@ -867,10 +914,8 @@ export default function CostCenterMasterPanel() {
         onConfirm={executeConfirmedAction}
       />
 
-      <BlockingLoader blnOpen={blnSubmitting || ((blnLoading || blnRightsLoading) && !blnDialogOpen)} strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
-
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
-        <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>
+        <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" className="app-master-toast-alert">
           {objToast.strMessage}
         </Alert>
       </Snackbar>

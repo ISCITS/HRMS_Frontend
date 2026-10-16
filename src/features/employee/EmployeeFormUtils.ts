@@ -34,6 +34,7 @@ export const dicEmptyEmployeeForm: EmployeeFormValues = {
   intPayrollGroupID: "",
   intManagerEmployeeID: "",
   intLineManagerEmployeeID: "",
+  intAllocationEntityID: "",
   strWorkEmail: "",
   strPersonalEmail: "",
   strMobileNumber: "",
@@ -101,6 +102,7 @@ export const dicEmptyEmployeeStatutoryForm: EmployeeStatutoryFormValues = {
   strEsiCode: "",
   strSsnNumber: "",
   strPranNumber: "",
+  strPtRegistrationNumber: "",
   blnPfApplicable: false,
   blnEsiApplicable: false,
   blnPtApplicable: false
@@ -162,6 +164,7 @@ export function toEmployeeFormValues(dicRecord: EmployeeDetailRecord): EmployeeF
     intPayrollGroupID: dicRecord.intPayrollGroupID ?? "",
     intManagerEmployeeID: dicRecord.intManagerEmployeeID ?? "",
     intLineManagerEmployeeID: dicRecord.intLineManagerEmployeeID ?? dicRecord.intManagerEmployeeID ?? "",
+    intAllocationEntityID: dicRecord.intAllocationEntityID ?? "",
     strWorkEmail: dicRecord.strWorkEmail ?? "",
     strPersonalEmail: dicRecord.strPersonalEmail ?? "",
     strMobileNumber: dicRecord.strMobileNumber ?? "",
@@ -252,6 +255,7 @@ export function toEmployeeStatutoryFormValues(dicRecord: EmployeeStatutoryRecord
     strEsiCode: dicRecord.strEsiCode ?? "",
     strSsnNumber: dicRecord.strSsnNumber ?? "",
     strPranNumber: dicRecord.strPranNumber ?? "",
+    strPtRegistrationNumber: dicRecord.strPtRegistrationNumber ?? "",
     blnPfApplicable: dicRecord.blnPfApplicable,
     blnEsiApplicable: dicRecord.blnEsiApplicable,
     blnPtApplicable: dicRecord.blnPtApplicable
@@ -319,6 +323,7 @@ export function validateEmployeeForm(
     locationRequired: dicConstant.employeeMaster.validation.locationRequired,
     reportingManagerRequired: dicConstant.employeeMaster.validation.reportingManagerRequired,
     lineManagerRequired: dicConstant.employeeMaster.validation.lineManagerRequired,
+    workEmailRequired: dicConstant.employeeMaster.validation.workEmailRequired,
     workEmailInvalid: dicConstant.employeeMaster.validation.workEmailInvalid,
     personalEmailInvalid: dicConstant.employeeMaster.validation.personalEmailInvalid,
     mobileNumberInvalid: dicConstant.employeeMaster.validation.mobileNumberInvalid,
@@ -369,7 +374,9 @@ export function validateEmployeeForm(
     dicNextErrors.intLineManagerEmployeeID = dicValidationLabels.lineManagerRequired;
   }
 
-  if (strWorkEmail && !isEmailValid(strWorkEmail)) {
+  if (!strWorkEmail) {
+    dicNextErrors.strWorkEmail = dicValidationLabels.workEmailRequired;
+  } else if (!isEmailValid(strWorkEmail)) {
     dicNextErrors.strWorkEmail = dicValidationLabels.workEmailInvalid;
   }
 

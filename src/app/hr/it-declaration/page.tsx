@@ -3,27 +3,28 @@
 import AddCircleOutlineRoundedIcon from "@mui/icons-material/AddCircleOutlineRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import {
   Alert,
   Autocomplete,
   Box,
   Button,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  InputAdornment,
+  Link,
   MenuItem,
   Stack,
-  TextField,
+  TextField
 } from "@mui/material";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import { MasterAddColumnsControl, MasterBreadcrumbs, MasterGridSkeleton, dicMasterRowSx, type MasterOptionalColumn } from "@/components/master/MasterListUi";
 import styles from "@/components/master/MasterScreen.module.css";
-import BlockingLoader from "@/components/shared/BlockingLoader";
 import ITDeclarationStatusBadge from "@/features/it-declaration/components/ITDeclarationStatusBadge";
 import {
   hrItDeclarationService,
@@ -36,6 +37,8 @@ import { useModuleActionAccess } from "@/features/security/hooks/useModuleAction
 
 const lstRegimeOptions: ItDeclarationRegime[] = ["Old Regime", "New Regime"];
 const strHrListFilterStorageKey = "hrms.hr-it-declaration.list-filters";
+
+type OptionalColumnKey = "proofPending" | "lastUpdated";
 
 function normalizeFinancialYearCode(strValue?: string | null) {
   const strCode = String(strValue || "").trim().toUpperCase().replace("/", "-");
@@ -104,6 +107,7 @@ export default function HrItDeclarationListPage() {
   const [blnHasSearched, setBlnHasSearched] = useState(false);
   const [strError, setStrError] = useState("");
   const [blnFiltersHydrated, setBlnFiltersHydrated] = useState(false);
+  const [lstVisibleOptionalColumns, setLstVisibleOptionalColumns] = useState<OptionalColumnKey[]>([]);
 
   const strQueryEmployeeId = (objSearchParams.get("employeeId") || "").trim();
   const strQueryEmployeeCode = (objSearchParams.get("employeeCode") || "").trim();
@@ -114,6 +118,11 @@ export default function HrItDeclarationListPage() {
 
   const blnCanView = canViewAny() || canDoAny("view");
   const blnCanAdd = canDoAny("add");
+  const blnBusy = blnListLoading || blnRightsLoading;
+  const lstOptionalColumns: MasterOptionalColumn<OptionalColumnKey>[] = [
+    { strKey: "proofPending", strLabel: t("IT_DECLARATION_PROOF_PENDING", "Proof Pending") },
+    { strKey: "lastUpdated", strLabel: t("IT_DECLARATION_LAST_UPDATED", "Last Updated") },
+  ];
 
   const lstFyOptions = useMemo(() => {
     return [
@@ -348,7 +357,24 @@ export default function HrItDeclarationListPage() {
     () =>
       lstRows.map((objRow) => ({
         id: objRow.intDeclarationID,
-        strDeclaration: objRow.strDeclarationCode,
+        strDeclaration: (
+          <Link
+            className="app-master-first-column-link"
+            component="button"
+            type="button"
+            underline="none"
+            disabled={!blnCanView}
+            controlId="hr-it-declaration.list.row.view.link"
+            data-row-key={objRow.intDeclarationID}
+            onClick={(objEvent) => {
+              objEvent.stopPropagation();
+              openDeclaration(objRow);
+            }}
+          >
+            {objRow.strDeclarationCode || "-"}
+          </Link>
+        ),
+        strDeclarationSort: objRow.strDeclarationCode || "",
         strEmployee: [objRow.strEmployeeCode, objRow.strFullName].filter(Boolean).join(" - ") || "-",
         strFinancialYearCode: objRow.strFinancialYearCode,
         strTaxRegime: objRow.strTaxRegime === "New Regime" ? getRegimeLabel("New Regime") : objRow.strTaxRegime === "Old Regime" ? getRegimeLabel("Old Regime") : "-",
@@ -359,56 +385,56 @@ export default function HrItDeclarationListPage() {
         strStatusSort: objRow.strStatus || "",
         strLastUpdated: formatDateLabel(objRow.strLastUpdated),
         strLastUpdatedSort: objRow.strLastUpdated || "",
-        action: (
-          <Button
-            size="small"
-            startIcon={<VisibilityRoundedIcon />}
-            disabled={!blnCanView}
-            onClick={() => openDeclaration(objRow)}
-            controlId="hr-it-declaration.list.row.view.button"
-            data-row-key={objRow.intDeclarationID}
-            sx={{ textTransform: "none", fontWeight: 800 }}
-          >
-            {t("IT_DECLARATION_VIEW", "View")}
-          </Button>
-        ),
       })),
     [lstRows, blnCanView, t, getRegimeLabel, getStatusLabel, openDeclaration]
   );
 
   const lstTableColumns: CommonTableColumn<(typeof lstTableRows)[number]>[] = [
-    { field: "strDeclaration", headerName: t("IT_DECLARATION_DECLARATION", "Declaration"), width: 150 },
+    { field: "strDeclaration", headerName: t("IT_DECLARATION_DECLARATION", "Declaration"), width: 150, sortAccessor: (objRow) => String(objRow.strDeclarationSort) },
     { field: "strEmployee", headerName: t("IT_DECLARATION_EMPLOYEE", "Employee"), width: 220 },
     { field: "strFinancialYearCode", headerName: t("IT_DECLARATION_FINANCIAL_YEAR", "Financial Year"), width: 140 },
     { field: "strTaxRegime", headerName: t("IT_DECLARATION_TAX_REGIME", "Tax Regime"), width: 140 },
     { field: "decDeclared", headerName: t("IT_DECLARATION_DECLARED", "Declared"), align: "right", width: 150 },
     { field: "decApproved", headerName: t("IT_DECLARATION_APPROVED", "Approved"), align: "right", width: 150 },
-    { field: "intProofPendingCount", headerName: t("IT_DECLARATION_PROOF_PENDING", "Proof Pending"), align: "right", width: 140 },
     { field: "strStatus", headerName: t("IT_DECLARATION_STATUS", "Status"), filterable: false, width: 150, sortAccessor: (objRow) => String(objRow.strStatusSort) },
-    { field: "strLastUpdated", headerName: t("IT_DECLARATION_LAST_UPDATED", "Last Updated"), width: 150, sortAccessor: (objRow) => String(objRow.strLastUpdatedSort) },
-    { field: "action", headerName: t("IT_DECLARATION_ACTION", "Action"), align: "center", sortable: false, filterable: false, exportable: false, width: 110 },
   ];
+  if (lstVisibleOptionalColumns.includes("proofPending")) {
+    lstTableColumns.push({ field: "intProofPendingCount", headerName: t("IT_DECLARATION_PROOF_PENDING", "Proof Pending"), align: "right", width: 140 });
+  }
+  if (lstVisibleOptionalColumns.includes("lastUpdated")) {
+    lstTableColumns.push({ field: "strLastUpdated", headerName: t("IT_DECLARATION_LAST_UPDATED", "Last Updated"), width: 150, sortAccessor: (objRow) => String(objRow.strLastUpdatedSort) });
+  }
 
   return (
-    <Box className={styles.page}>
-      {(blnListLoading || blnRightsLoading) ? <BlockingLoader blnOpen strLabel={t("IT_DECLARATION_LOADING_IT_DECLARATIONS", "Loading IT declarations...")} /> : null}
+    <Box className={styles.page} data-controlid="hr-it-declaration.list.page">
+      <MasterBreadcrumbs strSection={t("IT_DECLARATION_BREADCRUMB_SECTION", "Employee Services")} strTitle={t("IT_DECLARATION_BREADCRUMB_TITLE", "Employee IT Declaration")} />
       {!blnRightsLoading && !blnCanView ? <Alert severity="warning">{t("IT_DECLARATION_NO_PERMISSION", "You do not have permission to view this screen.")}</Alert> : null}
       {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
 
-      <Box className={styles.controlsCard}>
-        <Box className={styles.searchRow}>
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        <Box
+          className={styles.searchRow}
+          aria-busy={blnBusy}
+          sx={{
+            gridTemplateColumns: "minmax(260px, 1.4fr) minmax(160px, 0.8fr) minmax(160px, 0.8fr) auto auto",
+            alignItems: "center",
+            "& .MuiButton-root": { alignSelf: "center" },
+          }}
+        >
           <Autocomplete
             options={lstEmployees}
             value={objSearchEmployee}
             loading={blnEmployeeLoading}
             onInputChange={(_, strValue) => setStrEmployeeLookup(strValue)}
             onChange={(_, objValue) => setObjSearchEmployee(objValue)}
+            disabled={blnBusy}
             getOptionLabel={(objOption) => [objOption.strEmployeeCode, objOption.strFullName].filter(Boolean).join(" - ")}
             isOptionEqualToValue={(objOption, objValue) => objOption.intEmployeeID === objValue.intEmployeeID}
             renderInput={(objParams) => (
               <TextField
                 {...objParams}
                 data-controlid="salary.hr-it-declarations.search.employee.select"
+                className="app-mui-text-field"
                 size="small"
                 required
                 label={t("IT_DECLARATION_EMPLOYEE", "Employee")}
@@ -419,9 +445,15 @@ export default function HrItDeclarationListPage() {
                 }}
                 InputProps={{
                   ...objParams.InputProps,
+                  startAdornment: (
+                    <>
+                      <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment>
+                      {objParams.InputProps.startAdornment}
+                    </>
+                  ),
                   endAdornment: (
                     <>
-                      {blnEmployeeLoading ? <CircularProgress color="inherit" size={16} /> : null}
+                      {blnEmployeeLoading ? <DottedLoader color="inherit" intSize={16} /> : null}
                       {objParams.InputProps.endAdornment}
                     </>
                   ),
@@ -430,6 +462,8 @@ export default function HrItDeclarationListPage() {
             )}
           />
           <TextField
+            className="app-mui-text-field"
+            disabled={blnBusy}
             data-controlid="salary.hr-it-declarations.search.financial-year.select"
             select
             size="small"
@@ -444,6 +478,8 @@ export default function HrItDeclarationListPage() {
             ))}
           </TextField>
           <TextField
+            className="app-mui-text-field"
+            disabled={blnBusy}
             data-controlid="salary.hr-it-declarations.search.regime.select"
             select
             size="small"
@@ -457,17 +493,21 @@ export default function HrItDeclarationListPage() {
               <MenuItem key={strRegime} value={strRegime}>{getRegimeLabel(strRegime)}</MenuItem>
             ))}
           </TextField>
-          <Box className={styles.searchActions}>
-            {blnCanView ? (
+          {blnCanView ? (
+            <Box className={styles.searchActions}>
               <Button
                 className={styles.primaryButton}
                 variant="contained"
                 startIcon={<SearchRoundedIcon />}
                 onClick={() => void loadDeclarations()}
+                disabled={blnBusy}
+                controlId="hr-it-declaration.search.button"
               >
                 {t("IT_DECLARATION_SEARCH", "Search")}
               </Button>
-            ) : null}
+            </Box>
+          ) : null}
+          <Box className={styles.searchActions}>
             <Button
               className={styles.secondaryButton}
               variant="outlined"
@@ -480,6 +520,7 @@ export default function HrItDeclarationListPage() {
                 setBlnHasSearched(false);
                 setStrError("");
               }}
+              disabled={blnBusy}
               controlId="hr-it-declaration.clear.button"
             >
               {t("IT_DECLARATION_CLEAR", "Clear")}
@@ -488,13 +529,31 @@ export default function HrItDeclarationListPage() {
         </Box>
       </Box>
 
-      <Box className={styles.tableCard}>
+      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        {blnBusy ? (
+          <MasterGridSkeleton strControlId="hr-it-declaration.list.skeleton" intColumns={7} />
+        ) : (
         <CommonTable
           columns={lstTableColumns}
           rows={lstTableRows}
           rowIdField="id"
           showPaginationSummary
-          minTableWidth={1400}
+          minTableWidth={1100}
+          toolbarAfterExport={(
+            <MasterAddColumnsControl
+              strControlPrefix="hr-it-declaration.list"
+              strButtonLabel={t("IT_DECLARATION_ADD_COLUMNS", "Add columns")}
+              lstColumns={lstOptionalColumns}
+              lstVisibleKeys={lstVisibleOptionalColumns}
+              onChange={setLstVisibleOptionalColumns}
+            />
+          )}
+          onRowClick={(objRow) => {
+            const objSourceRow = lstRows.find((objCandidate) => objCandidate.intDeclarationID === objRow.id);
+            if (objSourceRow && blnCanView) openDeclaration(objSourceRow);
+          }}
+          hideRowClickHint
+          getRowSx={() => dicMasterRowSx}
           toolbarLeft={(
             <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
               {blnCanAdd ? (
@@ -516,7 +575,9 @@ export default function HrItDeclarationListPage() {
           }
           testIdPrefix="hr-it-declaration.list"
           withPaper={false}
+          sx={{ p: 0, boxShadow: "none", background: "transparent" }}
         />
+        )}
       </Box>
 
       <Dialog open={blnAddDialogOpen} onClose={() => setBlnAddDialogOpen(false)} maxWidth="xs" fullWidth>
@@ -541,7 +602,7 @@ export default function HrItDeclarationListPage() {
                     ...objParams.InputProps,
                     endAdornment: (
                       <>
-                        {blnEmployeeLoading ? <CircularProgress color="inherit" size={16} /> : null}
+                        {blnEmployeeLoading ? <DottedLoader color="inherit" intSize={16} /> : null}
                         {objParams.InputProps.endAdornment}
                       </>
                     ),

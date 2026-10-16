@@ -17,6 +17,7 @@ import {
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { DetailPageHeader } from "@/components/master/MasterListUi";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -185,56 +186,31 @@ export default function StatutoryRuleEditorPage({
         pb: 2,
       }}
     >
-      <Paper
-        sx={{
-          borderRadius: "var(--app-card-radius)",
-          p: "10px",
-          border: "1px solid rgba(148,163,184,0.18)",
-          background: "linear-gradient(135deg, #f8fbff 0%, #fef7ed 55%, #f8fafc 100%)",
-        }}
+      <DetailPageHeader
+        strSection={t("breadcrumb_section", "Payroll")}
+        strListTitle={t("breadcrumb_title", "Statutory Rules")}
+        strListHref="/payroll/statutory-rules"
+        strCurrent={strMode === "edit" ? t("breadcrumb_edit", "Edit") : t("breadcrumb_add", "Add")}
       >
-        <Stack spacing={1.25}>
-          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
-            <Box>
-              <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
-                {strMode === "edit"
-                  ? t("edit_title", "Edit Statutory Rule")
-                  : t("add_title", "Create Statutory Rule")}
-              </Typography>
-              <Typography sx={{ color: "#64748b", mt: 0.75 }}>
-                {t("subtitle", "Maintain statutory logic in a dedicated workspace instead of opening the form in a popup.")}
-              </Typography>
-            </Box>
-            <Stack
-              direction={{ xs: "column", sm: "row" }}
-              spacing={1.25}
-              sx={{
-                alignItems: { xs: "stretch", sm: "center" },
-                alignSelf: { md: "flex-start" },
-              }}
-            >
-              <Button
-                controlId="statutory-rules.editor.back.button"
-                className={styles.secondaryButton}
-                startIcon={<ArrowBackRoundedIcon />}
-                onClick={() => objRouter.push("/payroll/statutory-rules")}
-                disabled={blnSaving}
-              >
-                {t("back_to_list", "Back to List")}
-              </Button>
-              {blnCanSave ? <Button
-                controlId="statutory-rules.editor.save.button"
-                className={styles.primaryButton}
-                startIcon={<SaveRoundedIcon />}
-                onClick={saveRule}
-                disabled={blnSaving}
-              >
-                {blnSaving ? tCommon("processing", "Processing...") : tCommon("save", "Save")}
-              </Button> : null}
-            </Stack>
-          </Stack>
-        </Stack>
-      </Paper>
+        <Button
+          controlId="statutory-rules.editor.back.button"
+          className={styles.secondaryButton}
+          startIcon={<ArrowBackRoundedIcon />}
+          onClick={() => objRouter.push("/payroll/statutory-rules")}
+          disabled={blnSaving}
+        >
+          {t("back_to_list", "Back to List")}
+        </Button>
+        {blnCanSave ? <Button
+          controlId="statutory-rules.editor.save.button"
+          className={styles.primaryButton}
+          startIcon={<SaveRoundedIcon />}
+          onClick={saveRule}
+          disabled={blnSaving}
+        >
+          {blnSaving ? tCommon("processing", "Processing...") : tCommon("save", "Save")}
+        </Button> : null}
+      </DetailPageHeader>
 
       {strRightsError ? <Alert severity="warning">{strRightsError}</Alert> : null}
       {!blnCanSave ? <Alert severity="warning">{t("save_access_denied", "Statutory rule save access is not available for your user group.")}</Alert> : null}

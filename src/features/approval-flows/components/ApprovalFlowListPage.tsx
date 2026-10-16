@@ -5,11 +5,10 @@ import {
   Alert,
   Box,
   Chip,
-  CircularProgress,
   MenuItem,
   Snackbar,
   TextField,
-  Typography,
+  Typography
 } from "@mui/material";
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
@@ -17,7 +16,7 @@ import { useRouter } from "next/navigation";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import BlockingLoader, { DottedLoader } from "@/components/shared/BlockingLoader";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
 import { approvalFlowService } from "@/features/approval-flows/services/approvalFlowService";
 import { lstApprovalFlowModules, type ApprovalFlowRecord } from "@/features/approval-flows/types";
@@ -179,7 +178,7 @@ export default function ApprovalFlowListPage() {
 
         {blnBusy ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
-            <CircularProgress />
+            <DottedLoader />
           </Box>
         ) : (
           <CommonTable<RowRecord>

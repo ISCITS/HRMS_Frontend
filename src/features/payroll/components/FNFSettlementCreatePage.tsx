@@ -4,9 +4,11 @@ import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
-import { Alert, Autocomplete, Box, Button, MenuItem, Stack, Step, StepLabel, Stepper, TextField, Tooltip, Typography } from "@mui/material";
+import { Alert, Autocomplete, Box, Button, Stack, Step, StepLabel, Stepper, TextField, Tooltip } from "@mui/material";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { DetailPageHeader } from "@/components/master/MasterListUi";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payrollCycleService } from "@/features/payroll-cycles/services/payrollCycleService";
@@ -184,11 +186,9 @@ export default function FNFSettlementCreatePage() {
 
   return (
     <Box className={styles.page}>
-      <Box className={styles.controlsCard}>
-        <Box className={styles.controlsHeader}>
-          <Button className={styles.secondaryButton} variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={handleCancel} controlId="payroll.fnf-settlement-create.back-top.button">Back</Button>
-        </Box>
-      </Box>
+      <DetailPageHeader strSection="Employee Services" strListTitle="Full & Final Settlement" strListHref="/payroll/fnf-settlements" strCurrent="Add">
+        <Button className={styles.secondaryButton} variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={handleCancel} controlId="payroll.fnf-settlement-create.back-top.button">Back</Button>
+      </DetailPageHeader>
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       <Box className={`${styles.tableCard} ${styles.fnfCreateCard}`}>
         <Box className={styles.detailScrollCard}>
@@ -228,10 +228,18 @@ export default function FNFSettlementCreatePage() {
                 <TextField label="Notice Period Days" type="number" value={dicForm.decNoticePeriodDays} onChange={(e) => updateField("decNoticePeriodDays", e.target.value)} error={Boolean(dicErrors.decNoticePeriodDays)} helperText={dicErrors.decNoticePeriodDays} fullWidth controlId="payroll.fnf-settlement-create.notice-period-days.input" />
                 <TextField label="Notice Served Days" type="number" value={dicForm.decNoticeServedDays} onChange={(e) => updateField("decNoticeServedDays", e.target.value)} error={Boolean(dicErrors.decNoticeServedDays)} helperText={dicErrors.decNoticeServedDays} fullWidth controlId="payroll.fnf-settlement-create.notice-served-days.input" />
                 <TextField label="Notice Shortfall Days" type="number" value={dicForm.decNoticeShortfallDays} onChange={(e) => updateField("decNoticeShortfallDays", e.target.value)} error={Boolean(dicErrors.decNoticeShortfallDays)} helperText={dicErrors.decNoticeShortfallDays} fullWidth controlId="payroll.fnf-settlement-create.notice-shortfall-days.input" />
-                <TextField select label="Payroll run code" required value={dicForm.strPayrollCycleCode || ""} onChange={(e) => updateField("strPayrollCycleCode", e.target.value)} error={Boolean(dicErrors.strPayrollCycleCode)} helperText={dicErrors.strPayrollCycleCode || (blnPayrollRunLoading ? "Resolving employee payroll run..." : strPayrollRunHelper)} fullWidth controlId="payroll.fnf-settlement-create.payroll-cycle-code.select">
-                  <MenuItem value="">Select payroll run code</MenuItem>
-                  {lstPayrollCycles.map((dicCycle) => <MenuItem key={dicCycle.intID} value={dicCycle.strCycleCode}>{dicCycle.strCycleCode} - {dicCycle.strCycleName}</MenuItem>)}
-                </TextField>
+                <CommonSearchableSelect
+                  controlId="payroll.fnf-settlement-create.payroll-cycle-code.select"
+                  label="Payroll run code"
+                  required
+                  value={dicForm.strPayrollCycleCode || ""}
+                  options={lstPayrollCycles.map((dicCycle) => ({ intID: dicCycle.strCycleCode, strLabel: dicCycle.strCycleName, strCode: dicCycle.strCycleCode }))}
+                  onChange={(strValue) => updateField("strPayrollCycleCode", String(strValue))}
+                  error={Boolean(dicErrors.strPayrollCycleCode)}
+                  helperText={dicErrors.strPayrollCycleCode || (blnPayrollRunLoading ? "Resolving employee payroll run..." : strPayrollRunHelper)}
+                  fullWidth
+                  placeholder="Select payroll run code"
+                />
               </Box>
             ) : null}
 

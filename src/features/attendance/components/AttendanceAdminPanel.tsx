@@ -2,7 +2,6 @@
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
-import ManageAccountsRoundedIcon from "@mui/icons-material/ManageAccountsRounded";
 import {
   Alert,
   Box,
@@ -15,8 +14,7 @@ import {
   DialogTitle,
   FormControlLabel,
   Grid,
-  MenuItem,
-  Paper,
+  Link,
   Snackbar,
   Stack,
   Switch,
@@ -26,8 +24,10 @@ import {
 import { useCallback, useEffect, useState } from "react";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
-import CommonRowActions from "@/components/master/CommonRowActions";
+import styles from "@/components/master/MasterScreen.module.css";
+import { dicMasterNameLinkSx, dicMasterRowSx, MasterBreadcrumbs, MasterGridSkeleton, MasterStatusPill } from "@/components/master/MasterListUi";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { attendanceService } from "@/features/attendance/services/attendanceService";
 import { ATTENDANCE_STATUS_COLORS, type AttendanceDayDto, type ShiftDto, type ShiftRequest } from "@/features/attendance/dto";
@@ -153,45 +153,53 @@ export default function AttendanceAdminPanel() {
 
   const lstShiftRows = lstShifts.map((objShift) => ({
     id: objShift.intID,
-    action: (
-      <CommonRowActions
-        testIdPrefix={`attendance.shift.${objShift.intID}`}
-        rowKey={objShift.intID}
-        blnCanView
-        onView={() => setObjViewingShift(objShift)}
-      />
+    nameText: objShift.strShiftName,
+    name: (
+      <Link
+        component="button"
+        type="button"
+        underline="none"
+        className="app-master-first-column-link"
+        data-control-id={`attendance.shift.${objShift.intID}.name.button`}
+        onClick={(objEvent) => {
+          if (window.getSelection()?.toString()) { objEvent.stopPropagation(); return; }
+          setObjViewingShift(objShift);
+        }}
+        sx={dicMasterNameLinkSx}
+      >
+        {objShift.strShiftName}
+      </Link>
     ),
     code: objShift.strShiftCode,
-    name: objShift.strShiftName,
     start: objShift.strStartTime,
     end: objShift.strEndTime,
     fullDayHours: objShift.decFullDayHours,
     grace: `${objShift.intGraceInMinutes} min`,
-    status: (
-      <Chip size="small" label={objShift.blnIsActive ? "Active" : "Inactive"} sx={{ fontWeight: 700, bgcolor: objShift.blnIsActive ? "#dcfce7" : "#f1f5f9", color: objShift.blnIsActive ? "#166534" : "#475569" }} />
-    ),
+    statusText: objShift.blnIsActive ? "Active" : "Inactive",
+    status: <MasterStatusPill blnActive={objShift.blnIsActive} />,
   }));
   const lstShiftColumns: CommonTableColumn<(typeof lstShiftRows)[number]>[] = [
-    { field: "action", headerName: "Actions", sortable: false, filterable: false, exportable: false, width: 80 },
+    { field: "name", headerName: "Name", sortAccessor: (row) => row.nameText },
     { field: "code", headerName: "Code", width: 110 },
-    { field: "name", headerName: "Name", width: 160 },
     { field: "start", headerName: "Start", width: 100 },
     { field: "end", headerName: "End", width: 100 },
     { field: "fullDayHours", headerName: "Full-day h", width: 110 },
     { field: "grace", headerName: "Grace", width: 100 },
-    { field: "status", headerName: "Status", sortable: false, width: 110 },
+    { field: "status", headerName: "Status", filterable: false, width: 110, sortAccessor: (row) => row.statusText },
   ];
 
   const lstMusterRows = lstMuster.map((objDay) => {
     const objColor = ATTENDANCE_STATUS_COLORS[objDay.strStatus] ?? { bg: "#f1f5f9", fg: "#475569" };
     return {
       id: objDay.intID,
+      employeeText: objDay.strEmployeeName ?? `#${objDay.intEmployeeID}`,
       employee: (
         <Box>
-          <Typography sx={{ fontWeight: 700, fontSize: "0.85rem" }}>{objDay.strEmployeeName ?? `#${objDay.intEmployeeID}`}</Typography>
+          <Typography className="app-master-first-column-link" sx={{ fontSize: "inherit" }}>{objDay.strEmployeeName ?? `#${objDay.intEmployeeID}`}</Typography>
           <Typography sx={{ fontSize: "0.72rem", color: "#64748b" }}>{objDay.strEmployeeCode ?? ""}</Typography>
         </Box>
       ),
+      statusText: objDay.strStatus,
       status: <Chip size="small" label={objDay.strStatus.replace("_", " ")} sx={{ textTransform: "capitalize", fontWeight: 700, bgcolor: objColor.bg, color: objColor.fg }} />,
       firstIn: objDay.strFirstIn ?? "-",
       lastOut: objDay.strLastOut ?? "-",
@@ -201,8 +209,8 @@ export default function AttendanceAdminPanel() {
     };
   });
   const lstMusterColumns: CommonTableColumn<(typeof lstMusterRows)[number]>[] = [
-    { field: "employee", headerName: "Employee", width: 200 },
-    { field: "status", headerName: "Status", sortable: false, width: 130 },
+    { field: "employee", headerName: "Employee", width: 200, sortAccessor: (row) => row.employeeText },
+    { field: "status", headerName: "Status", width: 130, sortAccessor: (row) => row.statusText },
     { field: "firstIn", headerName: "In", width: 90 },
     { field: "lastOut", headerName: "Out", width: 90 },
     { field: "worked", headerName: "Worked", width: 100 },
@@ -211,74 +219,72 @@ export default function AttendanceAdminPanel() {
   ];
 
   return (
-    <Stack spacing={1.5}>
+    <Box className={styles.page} sx={{ position: "relative" }}>
       <BlockingLoader blnOpen={blnSaving || blnReconciling} strLabel="Please wait..." />
-      <Paper sx={{ p: { xs: 1.5, md: 2 }, borderRadius: "20px", background: "linear-gradient(135deg, #0b3f70 0%, #0a66a3 52%, #0e7490 100%)", color: "white", boxShadow: "0 14px 28px rgba(2, 6, 23, 0.18)" }}>
-        <Stack direction="row" spacing={1.2} alignItems="center">
-          <Box sx={{ width: 46, height: 46, borderRadius: "50%", backgroundColor: "rgba(255,255,255,0.2)", display: "grid", placeItems: "center" }}><ManageAccountsRoundedIcon /></Box>
-          <Box>
-            <Typography sx={{ fontWeight: 800, fontSize: "1rem" }}>Attendance Administration</Typography>
-            <Typography sx={{ fontSize: "0.82rem", color: "rgba(241,245,249,0.92)" }}>Manage shifts, rosters, and the daily muster.</Typography>
-          </Box>
-        </Stack>
-      </Paper>
+      <MasterBreadcrumbs strSection="Attendance" strTitle="Attendance Administration" />
 
       {blnLoading ? (
-        <BlockingLoader blnOpen strLabel="Loading..." />
+        <MasterGridSkeleton strControlId="attendance.admin.skeleton" intColumns={7} />
       ) : (
         <>
-          <Paper sx={{ p: 1.5, borderRadius: "18px", border: "1px solid #e2e8f0" }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-              <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>Shifts</Typography>
-              <Stack direction="row" spacing={1}>
-                <Button controlId="attendance.roster.assign.button" variant="outlined" size="small" startIcon={<GroupsRoundedIcon />} disabled={lstShifts.length === 0}
-                  onClick={() => { setObjRosterForm((objPrev) => ({ ...objPrev, intShiftID: lstShifts[0]?.intID ?? 0 })); setBlnRosterDialog(true); }}>Assign Roster</Button>
-                <Button controlId="attendance.shift.add.button" variant="contained" size="small" startIcon={<AddRoundedIcon />} onClick={() => setBlnShiftDialog(true)}>Add Shift</Button>
-              </Stack>
-            </Stack>
+          <Box className={styles.tableCard} sx={{ p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
             <CommonTable
               columns={lstShiftColumns}
               rows={lstShiftRows}
               rowIdField="id"
-              hideToolbar
+              showPaginationSummary
+              hideRowClickHint
               minTableWidth={860}
               emptyMessage="No shifts yet."
               testIdPrefix="attendance.shift.list"
-              onRowDoubleClick={(objRow) => {
+              onRowClick={(objRow) => {
                 const objShift = lstShifts.find((objItem) => objItem.intID === objRow.id);
                 if (objShift) setObjViewingShift(objShift);
               }}
+              toolbarLeft={
+                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+                  <Button controlId="attendance.shift.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => setBlnShiftDialog(true)}>Add Shift</Button>
+                  <Button controlId="attendance.roster.assign.button" className={styles.secondaryButton} startIcon={<GroupsRoundedIcon />} disabled={lstShifts.length === 0}
+                    onClick={() => { setObjRosterForm((objPrev) => ({ ...objPrev, intShiftID: lstShifts[0]?.intID ?? 0 })); setBlnRosterDialog(true); }}>Assign Roster</Button>
+                </Box>
+              }
+              getRowSx={() => dicMasterRowSx}
+              sx={{ p: 0, boxShadow: "none", background: "transparent" }}
             />
-          </Paper>
+          </Box>
 
-          <Paper sx={{ p: 1.5, borderRadius: "18px", border: "1px solid #e2e8f0" }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }} flexWrap="wrap" gap={1}>
-              <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>Daily Muster</Typography>
-              <TextField controlId="attendance.muster.date.input" label="Date" type="date" size="small" InputLabelProps={{ shrink: true }} value={strMusterDate}
-                onChange={(objEvent) => { setStrMusterDate(objEvent.target.value); void loadMuster(objEvent.target.value); }} />
-            </Stack>
+          <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+            <Box className={styles.searchRow} sx={{ alignItems: "center", "&&": { gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "220px 1fr" } } }}>
+              <TextField className="app-mui-text-field" controlId="attendance.muster.date.input" label="Muster Date" type="date" size="small" InputLabelProps={{ shrink: true }} value={strMusterDate}
+                onChange={(objEvent) => { setStrMusterDate(objEvent.target.value); void loadMuster(objEvent.target.value); }} fullWidth />
+            </Box>
+          </Box>
+          <Box className={styles.tableCard} sx={{ p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
             <CommonTable
               columns={lstMusterColumns}
               rows={lstMusterRows}
               rowIdField="id"
-              hideToolbar
+              showPaginationSummary
+              hideRowClickHint
               minTableWidth={790}
               emptyMessage="No attendance recorded for this date."
               testIdPrefix="attendance.muster.list"
+              getRowSx={() => dicMasterRowSx}
+              sx={{ p: 0, boxShadow: "none", background: "transparent" }}
             />
-          </Paper>
+          </Box>
 
-          <Paper sx={{ p: 1.5, borderRadius: "18px", border: "1px solid #e2e8f0" }}>
-            <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 0.5 }}>Reconcile Calendar</Typography>
-            <Typography sx={{ fontSize: "0.78rem", color: "#64748b", mb: 1 }}>
+          <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+            <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>Reconcile Calendar</Typography>
+            <Typography sx={{ fontSize: "11px", color: "#64748b", mt: 0.25, mb: 1.25 }}>
               Merge holidays, weekly-offs, approved leave and punches into one status per day.
             </Typography>
-            <Stack spacing={1.25} sx={{ maxWidth: 440 }}>
-              <TextField controlId="attendance.reconcile.employee.input" label="Employee ID" type="number" size="small" fullWidth value={objReconcile.intEmployeeID} onChange={(e) => setObjReconcile((p) => ({ ...p, intEmployeeID: e.target.value }))} />
-              <TextField controlId="attendance.reconcile.period.input" label="Month" type="month" size="small" fullWidth InputLabelProps={{ shrink: true }} value={objReconcile.strPeriod} onChange={(e) => setObjReconcile((p) => ({ ...p, strPeriod: e.target.value }))} />
-              <Button controlId="attendance.reconcile.run.button" variant="contained" color="secondary" onClick={doReconcile} disabled={blnReconciling}>{blnReconciling ? "Reconciling..." : "Run Reconcile"}</Button>
-            </Stack>
-          </Paper>
+            <Box className={styles.searchRow} sx={{ alignItems: "center", "&&": { gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "minmax(180px, 0.6fr) minmax(180px, 0.6fr) auto 1fr" } }, "& .MuiButton-root": { alignSelf: "center" } }}>
+              <TextField className="app-mui-text-field" controlId="attendance.reconcile.employee.input" label="Employee ID" type="number" size="small" fullWidth value={objReconcile.intEmployeeID} onChange={(e) => setObjReconcile((p) => ({ ...p, intEmployeeID: e.target.value }))} />
+              <TextField className="app-mui-text-field" controlId="attendance.reconcile.period.input" label="Month" type="month" size="small" fullWidth InputLabelProps={{ shrink: true }} value={objReconcile.strPeriod} onChange={(e) => setObjReconcile((p) => ({ ...p, strPeriod: e.target.value }))} />
+              <Button controlId="attendance.reconcile.run.button" className={styles.primaryButton} onClick={doReconcile} disabled={blnReconciling}>{blnReconciling ? "Reconciling..." : "Run Reconcile"}</Button>
+            </Box>
+          </Box>
         </>
       )}
 
@@ -330,9 +336,14 @@ export default function AttendanceAdminPanel() {
           <Grid container spacing={1.5} sx={{ mt: 0 }}>
             <Grid item xs={12} sm={6}><TextField controlId="attendance.roster.employee.input" label="Employee ID" type="number" fullWidth size="small" value={objRosterForm.intEmployeeID} onChange={(e) => setObjRosterForm((p) => ({ ...p, intEmployeeID: e.target.value }))} /></Grid>
             <Grid item xs={12} sm={6}>
-              <TextField controlId="attendance.roster.shift.select" label="Shift" select fullWidth size="small" value={objRosterForm.intShiftID || ""} onChange={(e) => setObjRosterForm((p) => ({ ...p, intShiftID: Number(e.target.value) }))}>
-                {lstShifts.map((objShift) => (<MenuItem key={objShift.intID} value={objShift.intID}>{objShift.strShiftName}</MenuItem>))}
-              </TextField>
+              <CommonSearchableSelect
+                controlId="attendance.roster.shift.select"
+                label="Shift"
+                fullWidth
+                value={objRosterForm.intShiftID || ""}
+                options={lstShifts.map((objShift) => ({ intID: objShift.intID, strLabel: objShift.strShiftName }))}
+                onChange={(intValue) => setObjRosterForm((p) => ({ ...p, intShiftID: intValue === "" ? 0 : intValue }))}
+              />
             </Grid>
             <Grid item xs={12} sm={6}><TextField controlId="attendance.roster.effective.input" label="Effective From" type="date" fullWidth size="small" InputLabelProps={{ shrink: true }} value={objRosterForm.dtEffectiveFrom} onChange={(e) => setObjRosterForm((p) => ({ ...p, dtEffectiveFrom: e.target.value }))} /></Grid>
             <Grid item xs={12}>
@@ -354,6 +365,6 @@ export default function AttendanceAdminPanel() {
       <Snackbar open={objToast.blnOpen} autoHideDuration={5000} onClose={() => setObjToast((objPrev) => ({ ...objPrev, blnOpen: false }))} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}>
         <Alert severity={objToast.strSeverity} variant="filled" onClose={() => setObjToast((objPrev) => ({ ...objPrev, blnOpen: false }))}>{objToast.strMessage}</Alert>
       </Snackbar>
-    </Stack>
+    </Box>
   );
 }

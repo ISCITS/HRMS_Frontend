@@ -57,6 +57,7 @@ type RequestEncryptedApiOptions = {
   objQueryParams?: Record<string, string | number | boolean | null | undefined>;
   strMenuAction: string;
   blnUseAuthHeader?: boolean;
+  blnSkipAuthHeader?: boolean;
 };
 
 type RunFrontendActionOptions<TResult> = {
@@ -194,6 +195,7 @@ export async function requestEncryptedApi<TData>(objOptions: RequestEncryptedApi
         data: objOptions.objBody,
         params: objOptions.objQueryParams,
         csrfMenuAction: objOptions.strMenuAction,
+        blnSkipAuthHeader: objOptions.blnSkipAuthHeader,
         headers: objHeaders,
       } as ApiRequestConfig
     );

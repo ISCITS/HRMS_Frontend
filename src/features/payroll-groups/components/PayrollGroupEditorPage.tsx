@@ -1,25 +1,26 @@
 "use client";
 
-import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
+import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   FormControlLabel,
   InputAdornment,
-  MenuItem,
-  Paper,
   Stack,
   TextField,
+  Tooltip,
   Typography
 } from "@mui/material";
-import { useEffect, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
+import { DetailPageHeader } from "@/components/master/MasterListUi";
 import styles from "@/components/master/MasterScreen.module.css";
 import { authHelpers } from "@/lib/auth";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -41,14 +42,28 @@ type PayrollGroupEditorPageProps = {
   strMode: "add" | "edit" | "view";
   /** Public identifier from the URL. */
   strPayrollGroupID?: string;
+  blnEmbedded?: boolean;
+  onClose?: () => void;
+  onSaved?: (dicRecord: PayrollGroupDetailRecord) => void;
+  /** Embedded mode: the parent dialog renders the Active switch in its title, like Department master. */
+  onActiveStateChange?: (dicState: { blnIsActive: boolean; blnDisabled: boolean }) => void;
 };
 
 const lstPayrollGroupModuleCodes = ["PAYROLL_GROUP", "PAYROLL_GROUPS", "MASTER_PAYROLL_GROUP"];
 
-export default function PayrollGroupEditorPage({
+export type PayrollGroupEditorHandle = {
+  save: () => void;
+  setActive: (blnIsActive: boolean) => void;
+};
+
+const PayrollGroupEditorPage = forwardRef<PayrollGroupEditorHandle, PayrollGroupEditorPageProps>(function PayrollGroupEditorPage({
   strMode,
-  strPayrollGroupID
-}: PayrollGroupEditorPageProps) {
+  strPayrollGroupID,
+  blnEmbedded = false,
+  onClose,
+  onSaved,
+  onActiveStateChange
+}, ref) {
   const objRouter = useRouter();
   const { t } = useModuleLabels("payroll-groups");
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstPayrollGroupModuleCodes);
@@ -59,6 +74,8 @@ export default function PayrollGroupEditorPage({
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
+  const [strNameError, setStrNameError] = useState("");
+  const objNameInputRef = useRef<HTMLInputElement>(null);
   const [dicTextTranslationLoading, setDicTextTranslationLoading] = useState<Record<number, boolean>>({});
   const [dicLastTranslatedSourceByLanguage, setDicLastTranslatedSourceByLanguage] = useState<Record<number, string>>({});
 
@@ -94,7 +111,7 @@ export default function PayrollGroupEditorPage({
           return;
         }
         setObjFormOptions(objOptions);
-        if (strMode === "edit" && strPayrollGroupID) {
+        if ((strMode === "edit" || strMode === "view") && strPayrollGroupID) {
           const dicDetail = await payrollGroupService.getPayrollGroupById(strPayrollGroupID);
           if (!blnMounted) {
             return;
@@ -244,7 +261,9 @@ export default function PayrollGroupEditorPage({
       return;
     }
     if (!dicForm.strPayrollGroupName.trim()) {
-      setStrError(t("group_validation_required_fields", "Payroll Group Name is required."));
+      setStrError("");
+      setStrNameError(t("group_validation_required_fields", "Payroll Group Name is required."));
+      objNameInputRef.current?.focus();
       return;
     }
     setBlnSaving(true);
@@ -261,6 +280,10 @@ export default function PayrollGroupEditorPage({
           ? t("group_update_success", "Payroll group updated successfully.")
           : t("group_create_success", "Payroll group created successfully.")
       );
+      onSaved?.(dicSavedRecord);
+      if (blnEmbedded) {
+        return;
+      }
       if (strMode === "add") {
         objRouter.push(`/masters/payroll-groups/edit/${dicSavedRecord.strRecordUUID}`);
       }
@@ -271,12 +294,31 @@ export default function PayrollGroupEditorPage({
     }
   }
 
+  useImperativeHandle(ref, () => ({
+    save: () => {
+      void handleSave();
+    },
+    setActive: (blnIsActive: boolean) => updateField("blnIsActive", blnIsActive)
+  }));
+
+  // Send the user straight to the first field that needs fixing.
+  useEffect(() => {
+    if (strNameError) {
+      objNameInputRef.current?.focus();
+    }
+  }, [strNameError]);
+
+  useEffect(() => {
+    onActiveStateChange?.({ blnIsActive: dicForm.blnIsActive, blnDisabled: blnFieldDisabled });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dicForm.blnIsActive, blnFieldDisabled]);
+
   if (blnLoading || blnRightsLoading) {
     return (
       <Box sx={{ minHeight: 360, display: "grid", placeItems: "center" }}>
         <Stack spacing={1.5} alignItems="center">
-          <CircularProgress />
-          <Typography sx={{ color: "#64748b" }}>{t("group_loading_workspace", "Loading payroll group...")}</Typography>
+          <DottedLoader />
+          <Typography className="app-master-empty-help">{t("group_loading_workspace", "Loading payroll group...")}</Typography>
         </Stack>
       </Box>
     );
@@ -285,251 +327,190 @@ export default function PayrollGroupEditorPage({
   if (!blnCanLoadWorkspace) {
     return (
       <Box className={styles.emptyState}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
+        <Typography className="app-master-empty-title">
           {strMode === "add"
             ? t("group_access_denied_add", "You do not have access to add Payroll Groups.")
             : t("group_access_denied", "You do not have access to Payroll Groups.")}
         </Typography>
-        <Typography sx={{ mt: 1, color: "#64748b" }}>
+        <Typography className="app-master-empty-help">
           {t("group_access_denied_help", "Contact your administrator if you believe this is a mistake.")}
         </Typography>
-        {strRightsError ? <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography> : null}
+        {strRightsError ? <Typography className="app-master-access-message app-master-access-warning">{strRightsError}</Typography> : null}
       </Box>
     );
   }
 
-  return (
-    <Stack spacing={1.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
-      <Paper
-        sx={{
-          borderRadius: "var(--app-card-radius)",
-          p: "10px",
-          border: "1px solid rgba(148,163,184,0.18)",
-          background: "linear-gradient(135deg, #f8fbff 0%, #eef7f4 48%, #f8fafc 100%)"
-        }}
-      >
-        <Stack spacing={1.25}>
-          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
-            <Box>
-              <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
-                {strMode === "add"
-                  ? t("group_add_title", "Add Payroll Group")
-                  : blnReadOnly
-                    ? t("group_view_title", "View Payroll Group")
-                    : t("group_edit_title", "Edit Payroll Group")}
-              </Typography>
-              <Typography sx={{ color: "#64748b", mt: 0.75 }}>
-                {t("group_subtitle", "Group employees for payroll processing and scheduling.")}
-              </Typography>
-            </Box>
-            <Stack spacing={1.25} alignItems={{ xs: "flex-start", md: "flex-end" }}>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
-                <Button
-                  controlId="payroll-groups.editor.back.button"
-                  className={styles.secondaryButton}
-                  startIcon={<ArrowBackRoundedIcon />}
-                  onClick={() => objRouter.push("/masters/payroll-groups")}
-                  sx={{ height: 38, minHeight: 38, py: 0, px: 1.5, fontSize: "0.9rem", whiteSpace: "nowrap" }}
-                >
-                  {t("group_back_to_list", "Back to List")}
-                </Button>
-                {blnCanSave ? (
-                  <Button
-                    controlId="payroll-groups.editor.save.button"
-                    className={styles.primaryButton}
-                    startIcon={<SaveRoundedIcon />}
-                    onClick={handleSave}
-                    disabled={blnSaving}
-                    sx={{ height: 38, minHeight: 38, py: 0, px: 1.75, fontSize: "0.9rem", whiteSpace: "nowrap" }}
-                  >
-                    {blnSaving ? t("group_saving", "Saving...") : t("group_save", "Save")}
-                  </Button>
-                ) : null}
-              </Stack>
-            </Stack>
-          </Stack>
-        </Stack>
-      </Paper>
-
+  const nodeFormContent = (
+    <>
       {strError ? <Alert severity="error">{strError}</Alert> : null}
-      {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
+      {strSuccess && !blnEmbedded ? <Alert severity="success">{strSuccess}</Alert> : null}
       <CommonEditModeBanner
         blnReadOnly={blnReadOnly}
         strReadOnlyMessage={t("group_read_only_mode", "You have view-only access to Payroll Groups.")}
       />
 
-      <Paper
-        sx={{
-          borderRadius: "var(--app-card-radius)",
-          p: "10px",
-          border: "1px solid rgba(187, 213, 232, 0.7)",
-          boxShadow: "var(--app-shadow-soft)"
-        }}
-      >
-        <Stack spacing={1.5}>
-          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "flex-start" }} spacing={1.5}>
-            <Box>
-              <Typography sx={{ color: "#0f172a", fontWeight: 800, fontSize: "1.05rem" }}>{t("basic_information", "Basic Information")}</Typography>
-              <Typography sx={{ color: "#64748b", mt: 0.5 }}>
+      <Box className="app-master-dialog-form-grid">
+        {!blnEmbedded ? (
+          <FormControlLabel
+            control={<ActiveStatusSwitch testId="payroll-groups.editor.active.switch" blnIsActive={dicForm.blnIsActive} onChange={(blnChecked) => updateField("blnIsActive", blnChecked)} disabled={blnFieldDisabled} />}
+            label={dicForm.blnIsActive ? t("active", "Active") : t("inactive", "Inactive")}
+            sx={{ m: 0, gap: 1, color: "#0f172a", "& .MuiFormControlLabel-label": { fontWeight: 700 } }}
+          />
+        ) : null}
+        <Box className="app-master-dialog-two-column-grid">
+          {strMode === "add" ? (
+            <Box className="app-master-dialog-full-row">
+              <Typography className="app-master-dialog-section-heading">{t("basic_information", "Basic Information")}</Typography>
+              <Typography className="app-master-dialog-section-subheading app-master-dialog-section-subheading-spaced">
                 {t("group_basic_information_help", "Give this payroll group a clear, business-friendly name.")}
               </Typography>
             </Box>
-
-            <Box sx={{ display: "flex", flexDirection: "column", alignItems: { xs: "flex-start", md: "flex-end" } }}>
-              <FormControlLabel
-                control={<ActiveStatusSwitch testId="payroll-groups.editor.active.switch" blnIsActive={dicForm.blnIsActive} onChange={(blnChecked) => updateField("blnIsActive", blnChecked)} disabled={blnFieldDisabled} />}
-                label={dicForm.blnIsActive ? t("active", "Active") : t("inactive", "Inactive")}
-                sx={{ m: 0, gap: 1, color: "#0f172a", "& .MuiFormControlLabel-label": { fontWeight: 700 } }}
-              />
-              <Typography sx={{ color: "#64748b", fontSize: "0.78rem", mt: 0.25, textAlign: { xs: "left", md: "right" } }}>
-                {t("active_help", "Inactive groups cannot be assigned to new payroll schedules or employees.")}
-              </Typography>
-            </Box>
-          </Stack>
-
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" }, gap: 1.25 }}>
-            <TextField
-              controlId="payroll-groups.editor.name.input"
-              label={t("payroll_group_name", "Payroll Group Name")}
-              required
-              value={dicForm.strPayrollGroupName}
-              onChange={(objEvent) => {
-                setStrError("");
-                syncPrimaryPayrollGroupName(objEvent.target.value);
-              }}
-              disabled={blnFieldDisabled}
-              fullWidth
-            />
-            <TextField
-              controlId="payroll-groups.editor.description.input"
-              label={t("description", "Description")}
-              placeholder={t("group_description_placeholder", "e.g. Staff, Worker, Consultant, Factory Payroll")}
-              value={dicForm.strDescription}
-              onChange={(objEvent) => updateField("strDescription", objEvent.target.value)}
-              disabled={blnFieldDisabled}
-              multiline
-              minRows={1}
-              maxRows={3}
-              fullWidth
-            />
-          </Box>
-
-          {objUsage ? (
-            <Box sx={{ border: "1px dashed rgba(148,163,184,0.5)", borderRadius: "12px", p: 1.1, background: "#f8fafc" }}>
-              <Typography sx={{ color: "#64748b", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700 }}>
-                {t("usage_information", "Usage Information")}
-              </Typography>
-              <Typography sx={{ mt: 0.5, color: "#0f172a", fontWeight: 700 }}>
-                {t(
-                  "group_usage_summary",
-                  `Used by ${objUsage.intPayrollCycleCount} payroll schedule(s) and ${objUsage.intEmployeeCount} employee(s).`
-                )}
-              </Typography>
-            </Box>
           ) : null}
-        </Stack>
-      </Paper>
+          <TextField
+            className="app-mui-text-field"
+            controlId="payroll-groups.editor.name.input"
+            label={t("payroll_group_name", "Payroll Group Name")}
+            placeholder={t("group_name_placeholder", "Enter payroll group name")}
+            size="small"
+            required
+            autoFocus={!blnFieldDisabled}
+            inputRef={objNameInputRef}
+            error={Boolean(strNameError)}
+            helperText={strNameError || undefined}
+            value={dicForm.strPayrollGroupName}
+            onChange={(objEvent) => {
+              setStrError("");
+              setStrNameError("");
+              syncPrimaryPayrollGroupName(objEvent.target.value);
+            }}
+            disabled={blnFieldDisabled}
+            fullWidth
+          />
+          <TextField
+            className="app-mui-text-field"
+            controlId="payroll-groups.editor.description.input"
+            label={t("description", "Description")}
+            placeholder={t("group_description_placeholder", "e.g. Staff, Worker, Consultant")}
+            size="small"
+            value={dicForm.strDescription}
+            onChange={(objEvent) => updateField("strDescription", objEvent.target.value)}
+            disabled={blnFieldDisabled}
+            fullWidth
+          />
+        </Box>
 
-      {intSecondaryLanguageID ? (
-      <Paper
-        sx={{
-          borderRadius: "var(--app-card-radius)",
-          p: "10px",
-          border: "1px solid rgba(187, 213, 232, 0.7)",
-          boxShadow: "var(--app-shadow-soft)"
-        }}
-      >
-        <Stack spacing={1.25}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1.25, flexWrap: "wrap" }}>
-            <Box>
-              <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("multilingual_text", "Multilingual Text")}</Typography>
-              <Typography sx={{ color: "#64748b", fontSize: "0.86rem", mt: 0.25 }}>
-                {t("group_multilingual_text_help", "Add translated payroll group names for other languages.")}
-              </Typography>
-            </Box>
-            <Box sx={{ display: "flex", gap: 1.1, alignItems: "center", ml: "auto" }}>
-              <Button
-                controlId="payroll-groups.editor.add-language.button"
-                className={styles.secondaryButton}
-                startIcon={<AddRoundedIcon />}
-                disabled
-                sx={{ minHeight: 34 }}
-              >
-                {t("add_language", "Add Language")}
-              </Button>
-              <Button
-                controlId="payroll-groups.editor.translate.button"
-                className={styles.primaryButton}
-                onClick={() => void translateSecondaryLanguageRow()}
-                disabled={blnFieldDisabled || dicTextTranslationLoading[intSecondaryLanguageID]}
-                sx={{ minWidth: 108, minHeight: 34, boxShadow: "none", "&:hover": { boxShadow: "none" } }}
-              >
-                {dicTextTranslationLoading[intSecondaryLanguageID] ? (
-                  <CircularProgress size={18} sx={{ color: "#ffffff" }} />
-                ) : (
-                  t("translate", "AI Translate")
-                )}
-              </Button>
-            </Box>
-          </Box>
+        {objUsage ? (
+          <Typography className="app-master-dialog-section-subheading">
+            {t(
+              "group_usage_summary",
+              `Used by ${objUsage.intPayrollCycleCount} payroll schedule(s) and ${objUsage.intEmployeeCount} employee(s).`
+            )}
+          </Typography>
+        ) : null}
 
-          <Box sx={{ display: "grid", gap: 1.2 }}>
-            {dicForm.lstTexts.map((dicText, intIndex) => (
-              <Box
-                key={dicText.intLanguageID || intIndex}
-                sx={{
-                  display: "grid",
-                  gap: 1.2,
-                  gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 0.95fr) minmax(0, 1.35fr)" },
-                  alignItems: "start",
-                  border: "1px solid rgba(203,213,225,0.8)",
-                  borderRadius: "16px",
-                  p: 1.2,
-                  background: "#f8fafc",
-                }}
-              >
-                <TextField
-                  select
-                  label={t("language", "Language")}
-                  value={dicText.intLanguageID}
-                  inputProps={{ "controlId": "payroll-groups.editor.language.select", "data-row-key": intIndex }}
-                  disabled
-                  fullWidth
-                >
-                  {(objFormOptions?.lstLanguages ?? []).map((dicLanguage) => (
-                    <MenuItem key={dicLanguage.intID} value={dicLanguage.intID}>{dicLanguage.strLabel}</MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  label={t("payroll_group_name", "Payroll Group Name")}
-                  value={dicText.strPayrollGroupName}
-                  inputProps={{ "controlId": "payroll-groups.editor.translated-name.input", "data-row-key": intIndex }}
-                  onChange={(objEvent) => {
-                    if (intIndex === 0) {
-                      setStrError("");
-                      syncPrimaryPayrollGroupName(objEvent.target.value);
-                    } else {
-                      updateTextRow(intIndex, objEvent.target.value);
-                    }
-                  }}
-                  disabled={blnFieldDisabled || intIndex === 0}
-                  InputProps={{
-                    endAdornment: dicTextTranslationLoading[Number(dicText.intLanguageID)]
-                      ? (
-                          <InputAdornment position="end">
-                            <CircularProgress size={18} sx={{ color: "#2563eb" }} />
-                          </InputAdornment>
-                        )
-                      : undefined,
-                  }}
-                  fullWidth
-                />
+        {intSecondaryLanguageID && dicForm.lstTexts.length > 1 ? (
+          <Box className="app-master-translation-panel">
+            <Box className="app-master-translation-header">
+              <LanguageRoundedIcon className="app-master-translation-icon" />
+              <Box className="app-master-translation-title">
+                <Typography className="app-master-dialog-section-heading">{t("language_translations", "Language Translations")}</Typography>
+                <Typography className="app-master-dialog-section-subheading">
+                  {t("group_multilingual_text_help", "Provide translated payroll group names for the application languages you want to support.")}
+                </Typography>
               </Box>
-            ))}
+              <Tooltip title={t("translate_help", "Generate suggested translations using AI. Review before saving.")} arrow>
+                <span>
+                  <Button
+                    controlId="payroll-groups.editor.translate.button"
+                    className="app-btn app-btn-outline app-btn-white app-master-translation-button"
+                    variant="outlined"
+                    startIcon={<AutoAwesomeRoundedIcon />}
+                    onClick={() => void translateSecondaryLanguageRow()}
+                    disabled={blnFieldDisabled || !dicForm.strPayrollGroupName.trim() || Boolean(dicTextTranslationLoading[intSecondaryLanguageID])}
+                  >
+                    {t("translate", "AI Translate")}
+                  </Button>
+                </span>
+              </Tooltip>
+            </Box>
+            <Box className="app-master-translation-rows">
+              {dicForm.lstTexts.slice(1).map((dicText, intOffset) => {
+                const intIndex = intOffset + 1;
+                const strLanguageLabel = (objFormOptions?.lstLanguages ?? []).find((dicLanguage) => dicLanguage.intID === Number(dicText.intLanguageID))?.strLabel ?? dicText.strLanguageName ?? "";
+                return (
+                  <Box key={dicText.intLanguageID || intIndex} className="app-master-translation-row">
+                    <Typography component="label" htmlFor={`payroll-group-translation-${intIndex}`} className="app-master-translation-label">
+                      {strLanguageLabel}
+                    </Typography>
+                    <TextField
+                      className="app-mui-text-field"
+                      id={`payroll-group-translation-${intIndex}`}
+                      placeholder={t("group_translated_name_placeholder", "Enter payroll group name in {language}").replace("{language}", strLanguageLabel)}
+                      value={dicText.strPayrollGroupName}
+                      inputProps={{ "controlId": "payroll-groups.editor.translated-name.input", "data-row-key": intIndex }}
+                      onChange={(objEvent) => updateTextRow(intIndex, objEvent.target.value)}
+                      disabled={blnFieldDisabled}
+                      InputProps={{
+                        endAdornment: dicTextTranslationLoading[Number(dicText.intLanguageID)]
+                          ? (
+                              <InputAdornment position="end">
+                                <DottedLoader intSize={18} className="app-master-translation-loader" />
+                              </InputAdornment>
+                            )
+                          : undefined,
+                      }}
+                      fullWidth
+                    />
+                  </Box>
+                );
+              })}
+            </Box>
           </Box>
-        </Stack>
-      </Paper>
-      ) : null}
+        ) : null}
+      </Box>
+    </>
+  );
+
+  if (blnEmbedded) {
+    return (
+      <Stack spacing={1.5} sx={{ pr: 0.5 }}>
+        {nodeFormContent}
+      </Stack>
+    );
+  }
+
+  return (
+    <Stack spacing={1.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
+      <DetailPageHeader
+        strSection={t("breadcrumb_masters", "Masters")}
+        strListTitle={t("breadcrumb_payroll_groups", "Payroll Groups")}
+        strListHref="/masters/payroll-groups"
+        strCurrent={strMode === "add" ? t("breadcrumb_add", "Add") : blnReadOnly ? t("breadcrumb_view", "View") : t("breadcrumb_edit", "Edit")}
+      >
+        <Button
+          controlId="payroll-groups.editor.back.button"
+          className="app-btn app-btn-outline app-btn-small"
+          startIcon={<ArrowBackRoundedIcon />}
+          onClick={() => onClose ? onClose() : objRouter.push("/masters/payroll-groups")}
+        >
+          {t("group_back_to_list", "Back to List")}
+        </Button>
+        {blnCanSave ? (
+          <Button
+            controlId="payroll-groups.editor.save.button"
+            className="app-btn app-btn-primary app-btn-small"
+            startIcon={<SaveRoundedIcon />}
+            onClick={handleSave}
+            disabled={blnSaving}
+          >
+            {blnSaving ? t("group_saving", "Saving...") : t("group_save", "Save")}
+          </Button>
+        ) : null}
+      </DetailPageHeader>
+
+      {nodeFormContent}
     </Stack>
   );
-}
+});
+
+export default PayrollGroupEditorPage;

@@ -32,8 +32,17 @@ export const payrollResultService = {
     strLocation?: string;
     strPayrollMonth?: string;
     blnGeneratedPayslipsOnly?: boolean;
+    strPayrollRunID?: string;
+    /** Skip the per-employee calculation snapshot/trace (~7 KB each); list screens never show them. */
+    blnExcludeCalculationDetails?: boolean;
   }): Promise<PayrollResultListRecord[]> {
     const objParams = new URLSearchParams();
+    if (objFilters?.blnExcludeCalculationDetails) {
+      objParams.set("blnExcludeCalculationDetails", "true");
+    }
+    if (objFilters?.strPayrollRunID?.trim()) {
+      objParams.set("strPayrollRunID", objFilters.strPayrollRunID.trim());
+    }
     if (objFilters?.strSearchEmployee?.trim()) {
       objParams.set("strSearchEmployee", objFilters.strSearchEmployee.trim());
     }

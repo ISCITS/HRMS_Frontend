@@ -6,7 +6,6 @@ import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   FormControlLabel,
   MenuItem,
   Paper,
@@ -16,8 +15,10 @@ import {
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
+import { DetailPageHeader } from "@/components/master/MasterListUi";
 import styles from "@/components/master/MasterScreen.module.css";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import {
@@ -31,6 +32,7 @@ import type {
 } from "@/features/payroll-cycles/types";
 import { setPayrollScheduleSelectedID } from "@/features/payroll-cycles/utils/payrollScheduleRouteState";
 import CommonEditModeBanner from "@/Common/components/CommonEditModeBanner";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 type PayrollCycleEditorPageProps = {
@@ -159,7 +161,7 @@ export default function PayrollCycleEditorPage({
     return (
       <Box sx={{ minHeight: 360, display: "grid", placeItems: "center" }}>
         <Stack spacing={1.5} alignItems="center">
-          <CircularProgress />
+          <DottedLoader />
           <Typography sx={{ color: "#64748b" }}>{t("schedule_loading_workspace")}</Typography>
         </Stack>
       </Box>
@@ -184,97 +186,49 @@ export default function PayrollCycleEditorPage({
 
   return (
     <Stack spacing={1.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
-      <Paper
-        sx={{
-          borderRadius: "var(--app-card-radius)",
-          p: "10px",
-          border: "1px solid rgba(148,163,184,0.18)",
-          background: "linear-gradient(135deg, #f8fbff 0%, #eef7f4 48%, #f8fafc 100%)"
-        }}
+      <DetailPageHeader
+        strSection={t("breadcrumb_section", "Payroll")}
+        strListTitle={t("breadcrumb_title", "Payroll Schedules")}
+        strListHref="/payroll/schedules"
+        strCurrent={strMode === "add" ? t("breadcrumb_add", "Add") : blnReadOnly ? t("breadcrumb_view", "View") : t("breadcrumb_edit", "Edit")}
       >
-        <Stack spacing={1.25}>
-          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
-            <Box>
-              <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
-                {strMode === "add"
-                  ? t("schedule_add_title")
-                  : blnReadOnly
-                    ? t("schedule_view_title")
-                    : t("schedule_edit_title")}
-              </Typography>
-              <Typography sx={{ color: "#64748b", mt: 0.75 }}>
-                {t("schedule_subtitle")}
-              </Typography>
-            </Box>
-            <Stack spacing={1.25} alignItems={{ xs: "flex-start", md: "flex-end" }}>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
-                <Button
-                  controlId="payroll-cycles.editor.back.button"
-                  className={styles.secondaryButton}
-                  startIcon={<ArrowBackRoundedIcon />}
-                  onClick={() => objRouter.push("/payroll/schedules")}
-                  sx={{
-                    height: 38,
-                    minHeight: 38,
-                    py: 0,
-                    px: 1.5,
-                    fontSize: "0.9rem",
-                    whiteSpace: "nowrap",
-                    "& .MuiButton-startIcon": {
-                      mr: 0.75,
-                      "& svg": {
-                        fontSize: "1rem"
-                      }
-                    }
-                  }}
-                >
-                  {t("schedule_back_to_list")}
-                </Button>
-                {blnCanSave ? (
-                  <Button
-                    controlId="payroll-cycles.editor.save.button"
-                    className={styles.primaryButton}
-                    startIcon={<SaveRoundedIcon />}
-                    onClick={handleSave}
-                    disabled={blnSaving}
-                    sx={{
-                      height: 38,
-                      minHeight: 38,
-                      py: 0,
-                      px: 1.75,
-                      fontSize: "0.9rem",
-                      whiteSpace: "nowrap",
-                      "& .MuiButton-startIcon": {
-                        mr: 0.75,
-                        "& svg": {
-                          fontSize: "1rem"
-                        }
-                      }
-                    }}
-                  >
-                    {blnSaving ? t("schedule_saving") : t("schedule_save")}
-                  </Button>
-                ) : null}
-              </Stack>
-            </Stack>
-          </Stack>
+        <Button
+          controlId="payroll-cycles.editor.back.button"
+          className={styles.secondaryButton}
+          startIcon={<ArrowBackRoundedIcon />}
+          onClick={() => objRouter.push("/payroll/schedules")}
+          sx={{ height: 32, minHeight: 32, py: 0, px: 1.5, fontSize: "0.8125rem", whiteSpace: "nowrap", "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }}
+        >
+          {t("schedule_back_to_list")}
+        </Button>
+        {blnCanSave ? (
+          <Button
+            controlId="payroll-cycles.editor.save.button"
+            className={styles.primaryButton}
+            startIcon={<SaveRoundedIcon />}
+            onClick={handleSave}
+            disabled={blnSaving}
+            sx={{ height: 32, minHeight: 32, py: 0, px: 1.75, fontSize: "0.8125rem", whiteSpace: "nowrap", "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }}
+          >
+            {blnSaving ? t("schedule_saving") : t("schedule_save")}
+          </Button>
+        ) : null}
+      </DetailPageHeader>
 
-          <Stack direction={{ xs: "column", md: "row" }} spacing={1.25}>
-            <Paper sx={{ p: "10px", borderRadius: "var(--app-card-radius)", flex: 1, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(148,163,184,0.14)" }}>
-              <Typography sx={{ color: "#64748b", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("summary_group")}</Typography>
-              <Typography sx={{ mt: 0.75, fontWeight: 800, color: "#0f172a" }}>
-                {dicPayrollGroupByID.get(Number(dicForm.intPayrollGroupID))?.strLabel ?? t("not_selected")}
-              </Typography>
-            </Paper>
-            <Paper sx={{ p: "10px", borderRadius: "var(--app-card-radius)", flex: 1, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(148,163,184,0.14)" }}>
-              <Typography sx={{ color: "#64748b", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("summary_period")}</Typography>
-              <Typography sx={{ mt: 0.75, fontWeight: 800, color: "#0f172a" }}>
-                {dicForm.strPeriodType || t("not_selected")}
-              </Typography>
-            </Paper>
-          </Stack>
-        </Stack>
-      </Paper>
+      <Stack direction={{ xs: "column", md: "row" }} spacing={1.25}>
+        <Paper sx={{ p: "10px", borderRadius: "var(--app-card-radius)", flex: 1, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(148,163,184,0.14)" }}>
+          <Typography sx={{ color: "#64748b", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("summary_group")}</Typography>
+          <Typography sx={{ mt: 0.75, fontWeight: 800, color: "#0f172a" }}>
+            {dicPayrollGroupByID.get(Number(dicForm.intPayrollGroupID))?.strLabel ?? t("not_selected")}
+          </Typography>
+        </Paper>
+        <Paper sx={{ p: "10px", borderRadius: "var(--app-card-radius)", flex: 1, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(148,163,184,0.14)" }}>
+          <Typography sx={{ color: "#64748b", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("summary_period")}</Typography>
+          <Typography sx={{ mt: 0.75, fontWeight: 800, color: "#0f172a" }}>
+            {dicForm.strPeriodType || t("not_selected")}
+          </Typography>
+        </Paper>
+      </Stack>
 
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
@@ -353,23 +307,18 @@ export default function PayrollCycleEditorPage({
               ))}
             </TextField>
 
-            <TextField
+            <CommonSearchableSelect
               label={t("payroll_group")}
-              inputProps={{ "controlId": "payroll-cycles.editor.payroll-group.select" }}
+              controlId="payroll-cycles.editor.payroll-group.select"
               required
-              select
               value={dicForm.intPayrollGroupID}
-              onChange={(objEvent) => updateField("intPayrollGroupID", objEvent.target.value ? Number(objEvent.target.value) : "")}
+              options={objFormOptions?.lstPayrollGroups ?? []}
+              getOptionLabel={(dicOption) => `${dicOption.strLabel}${dicOption.strCode ? ` (${dicOption.strCode})` : ""}`}
+              onChange={(intValue) => updateField("intPayrollGroupID", intValue)}
               disabled={blnFieldDisabled}
               helperText={t("payroll_group_help")}
               fullWidth
-            >
-              {(objFormOptions?.lstPayrollGroups ?? []).map((dicOption) => (
-                <MenuItem key={dicOption.intID} value={dicOption.intID}>
-                  {dicOption.strLabel}{dicOption.strCode ? ` (${dicOption.strCode})` : ""}
-                </MenuItem>
-              ))}
-            </TextField>
+            />
           </Box>
         </Stack>
       </Paper>

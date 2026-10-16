@@ -52,7 +52,7 @@ export type PayrollRunOption = PayrollSelectOption & {
   blnIsLocked: boolean;
 };
 
-export type PayrollRunScopeType = "All" | "SelectedEmployee";
+export type PayrollRunScopeType = "All" | "SelectedEmployee" | "EmployeeGroup";
 
 export type PayrollRunStatus =
   | "DRAFT"
@@ -135,6 +135,23 @@ export type PayrollProcessSummary = {
   }[];
 };
 
+/** Live state of a run's background process/reprocess job (GET /payroll/runs/{id}/job-status). */
+export type PayrollJobStatus = {
+  strJobID?: string;
+  strKind?: "process" | "reprocess" | "validate" | "payslips";
+  /** idle = no job on this run; completed/failed are kept for a few minutes after the job ends. */
+  strStatus: "idle" | "running" | "completed" | "failed";
+  blnActive: boolean;
+  strPhase?: "queued" | "syncing" | "validating" | "processing" | "generating" | "finalizing";
+  strPhaseLabel?: string;
+  intDone?: number;
+  intTotal?: number;
+  intPercent: number;
+  /** Process/reprocess give a process summary; validate gives a validation summary. */
+  dicSummary?: PayrollProcessSummary | PayrollValidationSummary | PayslipGenerateAllSummary | null;
+  strError?: string | null;
+};
+
 export type PayrollRunRecord = {
   intID: number;
   /** Public identifier the UI routes on; the internal id stays out of the address bar. */
@@ -148,6 +165,8 @@ export type PayrollRunRecord = {
   intScopedEmployeeID: number | null;
   strScopedEmployeeName?: string | null;
   strScopedEmployeeCode?: string | null;
+  lstScopedEmployeeGroup?: PayrollSelectOption[];
+  intScopedEmployeeCount?: number | null;
   dtPayrollMonth: string;
   strRunStatus: PayrollRunStatus;
   intRunTypeID: number | null;
@@ -190,6 +209,7 @@ export type PayrollRunFormValues = {
   strScopeType: PayrollRunScopeType;
   strProcessFor: "AllEmployees" | "SelectedEmployees" | "PayrollGroup";
   intScopedEmployeeID: number | "";
+  lstScopedEmployeeIDs: number[];
   dtPayrollMonth: string;
   strRunStatus: PayrollRunStatus;
   blnIsLocked: boolean;
@@ -757,6 +777,7 @@ export type PayrollResultLineRecord = {
   intSalaryComponentID: number;
   strComponentCode: string;
   strComponentName: string;
+  intDisplayOrder?: number | null;
   strComponentCategory: string;
   strLineType: string;
   decAmount: number;
@@ -903,6 +924,7 @@ export type PayrollResultRecord = {
   dtPeriodEndDate?: string | null;
   decCalendarDays?: number | null;
   decPaidDays: number | null;
+  decPayableDays?: number | null;
   decLwpDays?: number | null;
   decLopDays: number | null;
   intPayslipID: number | null;
@@ -952,6 +974,14 @@ export type TaxCessRuleRecord = {
   decCessAmount: number;
 };
 
+export type VariablePayProjectedIncomeBreakdownRow = {
+  strComponentCode: string | null;
+  strComponentName: string | null;
+  decMonthlyBaseAmount: number;
+  intRemainingMonths: number;
+  decProjectedAmount: number;
+};
+
 export type TaxCalculationDetailRecord = {
   intResultID: number;
   strEmployeeCode: string;
@@ -961,6 +991,11 @@ export type TaxCalculationDetailRecord = {
   strRegimeTypeCode: string | null;
   decGrossTaxableIncomeYtd: number;
   decProjectedTaxableIncome: number;
+  /** How much of decProjectedTaxableIncome comes from Separate-Payroll components (e.g. an
+   * Allocation-Based Incentive) configured to project their remaining CTC/base entitlement into
+   * annual tax ahead of actually being paid. 0 when no such component applies. */
+  decVariablePayProjectedIncome: number;
+  lstVariablePayProjectedIncomeBreakdown: VariablePayProjectedIncomeBreakdownRow[];
   dicExemptions: {
     decTotalAmount: number;
     lstItems: TaxDeclarationItemRecord[];
