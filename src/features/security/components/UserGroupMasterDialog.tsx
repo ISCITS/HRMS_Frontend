@@ -434,7 +434,7 @@ export default function UserGroupMasterDialog({
               onChange={(objEvent) => updateField("strGroupDescription", objEvent.target.value)}
               disabled={blnReadOnly}
               multiline
-              minRows={3}
+              minRows={2}
               sx={{
                 "& .MuiInputBase-root": {
                   alignItems: "flex-start",
