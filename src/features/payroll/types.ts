@@ -862,6 +862,7 @@ export type PayrollResultRecord = {
   strEmployeeName: string;
   strDepartmentName?: string | null;
   strLocationName?: string | null;
+  strAllocationEntityName?: string | null;
   strBankName?: string | null;
   strBankCode?: string | null;
   strBankAccountMasked?: string | null;
@@ -1047,6 +1048,7 @@ export type StatutoryReportRow = {
   strEmployeeName: string;
   strDepartmentName?: string | null;
   strLocationName?: string | null;
+  strAllocationEntityName?: string | null;
   strStatus: string;
   strStatutoryCode: string;
   strStatutoryName: string;
@@ -1073,6 +1075,7 @@ export type TdsReportRow = {
   strEmployeeName: string;
   strDepartmentName?: string | null;
   strLocationName?: string | null;
+  strAllocationEntityName?: string | null;
   strStatus: string;
   strFinancialYearCode: string | null;
   strRegimeUsed: string | null;
@@ -1093,6 +1096,7 @@ export type VariablePayRegisterRow = {
   intEmployeeID: number;
   strEmployeeCode: string;
   strEmployeeName: string;
+  strAllocationEntityName?: string | null;
   strVariablePayTypeName: string;
   strComponentName: string;
   decInputAmount: number;

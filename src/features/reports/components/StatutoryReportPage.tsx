@@ -23,6 +23,7 @@ type SearchForm = {
   strStatutoryCode: StatutoryReportCode;
   strDepartment: string;
   strLocation: string;
+  strAllocationEntity: string;
   strPayrollMonth: string;
 };
 
@@ -33,11 +34,12 @@ const dicEmptySearch: SearchForm = {
   strStatutoryCode: "ALL",
   strDepartment: "",
   strLocation: "",
+  strAllocationEntity: "",
   strPayrollMonth: "",
 };
 const lstRowsPerPageOptions = [10, 20, 50];
-type MoreFiltersForm = Pick<SearchForm, "strSearchRun" | "strDepartment" | "strLocation">;
-const dicEmptyMoreFilters: MoreFiltersForm = { strSearchRun: "", strDepartment: "", strLocation: "" };
+type MoreFiltersForm = Pick<SearchForm, "strSearchRun" | "strDepartment" | "strLocation" | "strAllocationEntity">;
+const dicEmptyMoreFilters: MoreFiltersForm = { strSearchRun: "", strDepartment: "", strLocation: "", strAllocationEntity: "" };
 const lstReportTypes: Array<{ strCode: StatutoryReportCode; strLabel: string; strFile: string }> = [
   { strCode: "ALL", strLabel: "Statutory Summary Report", strFile: "statutory-summary" },
   { strCode: "PF", strLabel: "PF Report / PF ECR Report", strFile: "pf-ecr-report" },
@@ -227,6 +229,7 @@ export default function StatutoryReportPage() {
     lstMonths: getUniqueOptions(lstRows.map((dicRow) => dicRow.dtPayrollMonth?.slice(0, 7))),
     lstDepartments: getUniqueOptions(lstRows.map((dicRow) => dicRow.strDepartmentName)),
     lstLocations: getUniqueOptions(lstRows.map((dicRow) => dicRow.strLocationName)),
+    lstAllocationEntities: getUniqueOptions(lstRows.map((dicRow) => dicRow.strAllocationEntityName)),
     lstStatuses: getUniqueOptions(lstRows.map((dicRow) => dicRow.strStatus)),
   }), [lstRows]);
   const dicTotals = useMemo(() => lstFilteredRows.reduce((dicAccumulator, dicRow) => ({
@@ -448,15 +451,16 @@ export default function StatutoryReportPage() {
           <Box className={styles.searchActions}>
             <ReportMoreFilters
               strControlPrefix="reports.statutory"
-              intActiveCount={(dicSearchDraft.strSearchRun ? 1 : 0) + (dicSearchDraft.strDepartment ? 1 : 0) + (dicSearchDraft.strLocation ? 1 : 0)}
+              intActiveCount={(dicSearchDraft.strSearchRun ? 1 : 0) + (dicSearchDraft.strDepartment ? 1 : 0) + (dicSearchDraft.strLocation ? 1 : 0) + (dicSearchDraft.strAllocationEntity ? 1 : 0)}
               blnDisabled={blnPageLoading}
-              onOpen={() => setDicMoreFiltersDraft({ strSearchRun: dicSearchDraft.strSearchRun, strDepartment: dicSearchDraft.strDepartment, strLocation: dicSearchDraft.strLocation })}
+              onOpen={() => setDicMoreFiltersDraft({ strSearchRun: dicSearchDraft.strSearchRun, strDepartment: dicSearchDraft.strDepartment, strLocation: dicSearchDraft.strLocation, strAllocationEntity: dicSearchDraft.strAllocationEntity })}
               onApply={applyMoreFilters}
               onClearAll={() => setDicMoreFiltersDraft(dicEmptyMoreFilters)}
             >
               <SingleSelectFilter strLabel="Payroll Period / Run" strValue={dicMoreFiltersDraft.strSearchRun} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: strValue }))} lstOptions={dicFilterOptions.lstRuns} strPlaceholder="Payroll period or run" strControlId="reports.statutory.run-search.input" blnDisabled={blnPageLoading} />
               <SingleSelectFilter strLabel="Department" strValue={dicMoreFiltersDraft.strDepartment} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: strValue }))} lstOptions={dicFilterOptions.lstDepartments} strPlaceholder="All" strControlId="reports.statutory.department.input" blnDisabled={blnPageLoading} />
               <SingleSelectFilter strLabel="Location" strValue={dicMoreFiltersDraft.strLocation} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strLocation: strValue }))} lstOptions={dicFilterOptions.lstLocations} strPlaceholder="All" strControlId="reports.statutory.location.input" blnDisabled={blnPageLoading} />
+              <SingleSelectFilter strLabel="Allocation Entity" strValue={dicMoreFiltersDraft.strAllocationEntity} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strAllocationEntity: strValue }))} lstOptions={dicFilterOptions.lstAllocationEntities} strPlaceholder="All" strControlId="reports.statutory.allocation-entity.input" blnDisabled={blnPageLoading} />
             </ReportMoreFilters>
             <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} disabled={blnPageLoading} controlId="reports.statutory.search.button">Search</Button>
             <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} disabled={blnPageLoading} controlId="reports.statutory.clear.button">Clear</Button>

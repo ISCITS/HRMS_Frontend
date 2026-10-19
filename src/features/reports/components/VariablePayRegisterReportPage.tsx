@@ -23,6 +23,7 @@ type SearchForm = {
   strStatus: string;
   strPayrollMonth: string;
   strVariablePayType: string;
+  strAllocationEntity: string;
 };
 
 const dicEmptySearch: SearchForm = {
@@ -31,10 +32,11 @@ const dicEmptySearch: SearchForm = {
   strStatus: "All",
   strPayrollMonth: "",
   strVariablePayType: "",
+  strAllocationEntity: "",
 };
 const lstRowsPerPageOptions = [10, 20, 50];
-type MoreFiltersForm = Pick<SearchForm, "strVariablePayType">;
-const dicEmptyMoreFilters: MoreFiltersForm = { strVariablePayType: "" };
+type MoreFiltersForm = Pick<SearchForm, "strVariablePayType" | "strAllocationEntity">;
+const dicEmptyMoreFilters: MoreFiltersForm = { strVariablePayType: "", strAllocationEntity: "" };
 
 type VariablePayRegisterLabels = {
   strEmployeeCode: string;
@@ -253,6 +255,7 @@ export default function VariablePayRegisterReportPage() {
     lstRuns: getUniqueOptions(lstRows.flatMap((dicRow) => [dicRow.strRunCode, dicRow.strRunName])),
     lstMonths: getUniqueOptions(lstRows.map((dicRow) => dicRow.dtPayrollMonth?.slice(0, 7))),
     lstVariablePayTypes: getUniqueOptions(lstRows.map((dicRow) => dicRow.strVariablePayTypeName)),
+    lstAllocationEntities: getUniqueOptions(lstRows.map((dicRow) => dicRow.strAllocationEntityName)),
     lstStatuses: getUniqueOptions(lstRows.map((dicRow) => dicRow.strPayrollRunStatus)),
   }), [lstRows]);
 
@@ -419,13 +422,14 @@ export default function VariablePayRegisterReportPage() {
           <Box className={styles.searchActions}>
             <ReportMoreFilters
               strControlPrefix="reports.variable-pay-register"
-              intActiveCount={dicSearchDraft.strVariablePayType ? 1 : 0}
+              intActiveCount={(dicSearchDraft.strVariablePayType ? 1 : 0) + (dicSearchDraft.strAllocationEntity ? 1 : 0)}
               blnDisabled={blnPageLoading}
-              onOpen={() => setDicMoreFiltersDraft({ strVariablePayType: dicSearchDraft.strVariablePayType })}
+              onOpen={() => setDicMoreFiltersDraft({ strVariablePayType: dicSearchDraft.strVariablePayType, strAllocationEntity: dicSearchDraft.strAllocationEntity })}
               onApply={applyMoreFilters}
               onClearAll={() => setDicMoreFiltersDraft(dicEmptyMoreFilters)}
             >
-              <SingleSelectFilter strLabel="Variable Pay Type" strValue={dicMoreFiltersDraft.strVariablePayType} fnOnChange={(strValue) => setDicMoreFiltersDraft({ strVariablePayType: strValue })} lstOptions={dicFilterOptions.lstVariablePayTypes} strPlaceholder="All" strControlId="reports.variable-pay-register.variable-pay-type.input" blnDisabled={blnPageLoading} />
+              <SingleSelectFilter strLabel="Variable Pay Type" strValue={dicMoreFiltersDraft.strVariablePayType} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strVariablePayType: strValue }))} lstOptions={dicFilterOptions.lstVariablePayTypes} strPlaceholder="All" strControlId="reports.variable-pay-register.variable-pay-type.input" blnDisabled={blnPageLoading} />
+              <SingleSelectFilter strLabel="Allocation Entity" strValue={dicMoreFiltersDraft.strAllocationEntity} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strAllocationEntity: strValue }))} lstOptions={dicFilterOptions.lstAllocationEntities} strPlaceholder="All" strControlId="reports.variable-pay-register.allocation-entity.input" blnDisabled={blnPageLoading} />
             </ReportMoreFilters>
             <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} disabled={blnPageLoading} data-controlid="reports.variable-pay-register.search.button">Search</Button>
             <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} disabled={blnPageLoading} data-controlid="reports.variable-pay-register.clear.button">Clear</Button>

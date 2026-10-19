@@ -22,6 +22,7 @@ type SearchForm = {
   strStatus: string;
   strDepartment: string;
   strLocation: string;
+  strAllocationEntity: string;
   strPayrollMonth: string;
 };
 
@@ -31,11 +32,12 @@ const dicEmptySearch: SearchForm = {
   strStatus: "All",
   strDepartment: "",
   strLocation: "",
+  strAllocationEntity: "",
   strPayrollMonth: "",
 };
 const lstRowsPerPageOptions = [10, 20, 50];
-type MoreFiltersForm = Pick<SearchForm, "strDepartment" | "strLocation">;
-const dicEmptyMoreFilters: MoreFiltersForm = { strDepartment: "", strLocation: "" };
+type MoreFiltersForm = Pick<SearchForm, "strDepartment" | "strLocation" | "strAllocationEntity">;
+const dicEmptyMoreFilters: MoreFiltersForm = { strDepartment: "", strLocation: "", strAllocationEntity: "" };
 
 function formatMonth(strDate: string | null) {
   if (!strDate) {
@@ -190,6 +192,7 @@ export default function BankFileReportPage() {
     lstMonths: getUniqueOptions(lstRows.map((dicRow) => dicRow.dtPayrollMonth?.slice(0, 7))),
     lstDepartments: getUniqueOptions(lstRows.map((dicRow) => dicRow.strDepartmentName)),
     lstLocations: getUniqueOptions(lstRows.map((dicRow) => dicRow.strLocationName)),
+    lstAllocationEntities: getUniqueOptions(lstRows.map((dicRow) => dicRow.strAllocationEntityName)),
     lstStatuses: getUniqueOptions(lstRows.map((dicRow) => dicRow.strStatus)),
   }), [lstRows]);
   const decNetTotal = lstFilteredRows.reduce((decTotal, dicRow) => decTotal + (dicRow.decNetPayAmount || 0), 0);
@@ -328,14 +331,15 @@ export default function BankFileReportPage() {
           <Box className={styles.searchActions}>
             <ReportMoreFilters
               strControlPrefix="reports.bank-file"
-              intActiveCount={(dicSearchDraft.strDepartment ? 1 : 0) + (dicSearchDraft.strLocation ? 1 : 0)}
+              intActiveCount={(dicSearchDraft.strDepartment ? 1 : 0) + (dicSearchDraft.strLocation ? 1 : 0) + (dicSearchDraft.strAllocationEntity ? 1 : 0)}
               blnDisabled={blnPageLoading}
-              onOpen={() => setDicMoreFiltersDraft({ strDepartment: dicSearchDraft.strDepartment, strLocation: dicSearchDraft.strLocation })}
+              onOpen={() => setDicMoreFiltersDraft({ strDepartment: dicSearchDraft.strDepartment, strLocation: dicSearchDraft.strLocation, strAllocationEntity: dicSearchDraft.strAllocationEntity })}
               onApply={applyMoreFilters}
               onClearAll={() => setDicMoreFiltersDraft(dicEmptyMoreFilters)}
             >
               <SingleSelectFilter strLabel="Department" strValue={dicMoreFiltersDraft.strDepartment} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: strValue }))} lstOptions={dicFilterOptions.lstDepartments} strPlaceholder="All" strControlId="reports.bank-file.department.input" blnDisabled={blnPageLoading} />
               <SingleSelectFilter strLabel="Location" strValue={dicMoreFiltersDraft.strLocation} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strLocation: strValue }))} lstOptions={dicFilterOptions.lstLocations} strPlaceholder="All" strControlId="reports.bank-file.location.input" blnDisabled={blnPageLoading} />
+              <SingleSelectFilter strLabel="Allocation Entity" strValue={dicMoreFiltersDraft.strAllocationEntity} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strAllocationEntity: strValue }))} lstOptions={dicFilterOptions.lstAllocationEntities} strPlaceholder="All" strControlId="reports.bank-file.allocation-entity.input" blnDisabled={blnPageLoading} />
             </ReportMoreFilters>
             <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} disabled={blnPageLoading} data-controlid="reports.bank-file.search.button">Search</Button>
             <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} disabled={blnPageLoading} data-controlid="reports.bank-file.clear.button">Clear</Button>

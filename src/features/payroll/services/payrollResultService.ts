@@ -30,6 +30,7 @@ export const payrollResultService = {
     strStatus?: string;
     strDepartment?: string;
     strLocation?: string;
+    strAllocationEntity?: string;
     strPayrollMonth?: string;
     blnGeneratedPayslipsOnly?: boolean;
     strPayrollRunID?: string;
@@ -57,6 +58,9 @@ export const payrollResultService = {
     }
     if (objFilters?.strLocation?.trim()) {
       objParams.set("strLocation", objFilters.strLocation.trim());
+    }
+    if (objFilters?.strAllocationEntity?.trim()) {
+      objParams.set("strAllocationEntity", objFilters.strAllocationEntity.trim());
     }
     if (objFilters?.strPayrollMonth?.trim()) {
       objParams.set("strPayrollMonth", objFilters.strPayrollMonth.trim());
@@ -90,6 +94,7 @@ export const payrollResultService = {
     strStatus?: string;
     strDepartment?: string;
     strLocation?: string;
+    strAllocationEntity?: string;
     strPayrollMonth?: string;
     strStatutoryCode?: StatutoryReportCode;
   }): Promise<StatutoryReportRow[]> {
@@ -108,6 +113,9 @@ export const payrollResultService = {
     }
     if (objFilters?.strLocation?.trim()) {
       objParams.set("strLocation", objFilters.strLocation.trim());
+    }
+    if (objFilters?.strAllocationEntity?.trim()) {
+      objParams.set("strAllocationEntity", objFilters.strAllocationEntity.trim());
     }
     if (objFilters?.strPayrollMonth?.trim()) {
       objParams.set("strPayrollMonth", objFilters.strPayrollMonth.trim());
@@ -130,6 +138,7 @@ export const payrollResultService = {
     strStatus?: string;
     strDepartment?: string;
     strLocation?: string;
+    strAllocationEntity?: string;
     strPayrollMonth?: string;
   }): Promise<TdsReportRow[]> {
     const objParams = new URLSearchParams();
@@ -147,6 +156,9 @@ export const payrollResultService = {
     }
     if (objFilters?.strLocation?.trim()) {
       objParams.set("strLocation", objFilters.strLocation.trim());
+    }
+    if (objFilters?.strAllocationEntity?.trim()) {
+      objParams.set("strAllocationEntity", objFilters.strAllocationEntity.trim());
     }
     if (objFilters?.strPayrollMonth?.trim()) {
       objParams.set("strPayrollMonth", objFilters.strPayrollMonth.trim());
@@ -166,6 +178,7 @@ export const payrollResultService = {
     strStatus?: string;
     strPayrollMonth?: string;
     strVariablePayType?: string;
+    strAllocationEntity?: string;
   }): Promise<VariablePayRegisterRow[]> {
     const objParams = new URLSearchParams();
     if (objFilters?.strSearchEmployee?.trim()) {
@@ -182,6 +195,9 @@ export const payrollResultService = {
     }
     if (objFilters?.strVariablePayType?.trim()) {
       objParams.set("strVariablePayType", objFilters.strVariablePayType.trim());
+    }
+    if (objFilters?.strAllocationEntity?.trim()) {
+      objParams.set("strAllocationEntity", objFilters.strAllocationEntity.trim());
     }
     const strQuery = objParams.toString();
     const objResult = await requestApi<VariablePayRegisterRow[]>({

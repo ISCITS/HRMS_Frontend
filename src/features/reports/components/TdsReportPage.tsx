@@ -23,6 +23,7 @@ type SearchForm = {
   strStatus: string;
   strDepartment: string;
   strLocation: string;
+  strAllocationEntity: string;
   strPayrollMonth: string;
 };
 
@@ -32,10 +33,12 @@ const dicEmptySearch: SearchForm = {
   strStatus: "All",
   strDepartment: "",
   strLocation: "",
+  strAllocationEntity: "",
   strPayrollMonth: "",
 };
 const lstRowsPerPageOptions = [10, 20, 50];
-type MoreFiltersForm = Pick<SearchForm, "strDepartment" | "strLocation">;
+type MoreFiltersForm = Pick<SearchForm, "strDepartment" | "strLocation" | "strAllocationEntity">;
+const dicEmptyMoreFilters: MoreFiltersForm = { strDepartment: "", strLocation: "", strAllocationEntity: "" };
 
 function formatMonth(strDate: string | null) {
   if (!strDate) {
@@ -150,7 +153,7 @@ export default function TdsReportPage() {
   const [lstRows, setLstRows] = useState<TdsReportRow[]>([]);
   const [blnLoading, setBlnLoading] = useState(false);
   const [objMoreFiltersAnchor, setObjMoreFiltersAnchor] = useState<HTMLElement | null>(null);
-  const [dicMoreFiltersDraft, setDicMoreFiltersDraft] = useState<MoreFiltersForm>({ strDepartment: "", strLocation: "" });
+  const [dicMoreFiltersDraft, setDicMoreFiltersDraft] = useState<MoreFiltersForm>(dicEmptyMoreFilters);
   const [strError, setStrError] = useState("");
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
@@ -179,6 +182,7 @@ export default function TdsReportPage() {
     lstMonths: getUniqueOptions(lstRows.map((dicRow) => dicRow.dtPayrollMonth?.slice(0, 7))),
     lstDepartments: getUniqueOptions(lstRows.map((dicRow) => dicRow.strDepartmentName)),
     lstLocations: getUniqueOptions(lstRows.map((dicRow) => dicRow.strLocationName)),
+    lstAllocationEntities: getUniqueOptions(lstRows.map((dicRow) => dicRow.strAllocationEntityName)),
     lstStatuses: getUniqueOptions(lstRows.map((dicRow) => dicRow.strStatus)),
   }), [lstRows]);
 
@@ -195,13 +199,13 @@ export default function TdsReportPage() {
 
   function clearFilters() {
     setDicSearchDraft(dicEmptySearch);
-    setDicMoreFiltersDraft({ strDepartment: "", strLocation: "" });
+    setDicMoreFiltersDraft(dicEmptyMoreFilters);
     setObjMoreFiltersAnchor(null);
     loadRows(dicEmptySearch).catch(() => undefined);
   }
 
   function clearMoreFilters() {
-    setDicMoreFiltersDraft({ strDepartment: "", strLocation: "" });
+    setDicMoreFiltersDraft(dicEmptyMoreFilters);
   }
 
   function applyMoreFilters() {
@@ -283,7 +287,7 @@ export default function TdsReportPage() {
               className={styles.secondaryButton}
               startIcon={<FilterListRoundedIcon />}
               onClick={(objEvent) => {
-                setDicMoreFiltersDraft({ strDepartment: dicSearchDraft.strDepartment, strLocation: dicSearchDraft.strLocation });
+                setDicMoreFiltersDraft({ strDepartment: dicSearchDraft.strDepartment, strLocation: dicSearchDraft.strLocation, strAllocationEntity: dicSearchDraft.strAllocationEntity });
                 setObjMoreFiltersAnchor(objEvent.currentTarget);
               }}
               aria-expanded={blnMoreFiltersOpen}
@@ -327,6 +331,7 @@ export default function TdsReportPage() {
             <Box sx={{ px: 2.5, pb: 2, display: "grid", gap: 1.5 }}>
               <SingleSelectFilter strLabel="Department" strValue={dicMoreFiltersDraft.strDepartment} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: strValue }))} lstOptions={dicFilterOptions.lstDepartments} strPlaceholder="All" strControlId="reports.tds.department.input" blnDisabled={blnPageLoading} />
               <SingleSelectFilter strLabel="Location" strValue={dicMoreFiltersDraft.strLocation} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strLocation: strValue }))} lstOptions={dicFilterOptions.lstLocations} strPlaceholder="All" strControlId="reports.tds.location.input" blnDisabled={blnPageLoading} />
+              <SingleSelectFilter strLabel="Allocation Entity" strValue={dicMoreFiltersDraft.strAllocationEntity} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strAllocationEntity: strValue }))} lstOptions={dicFilterOptions.lstAllocationEntities} strPlaceholder="All" strControlId="reports.tds.allocation-entity.input" blnDisabled={blnPageLoading} />
             </Box>
             <Divider />
             <Box sx={{ px: 2.5, py: 1.75, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1.25 }}>
