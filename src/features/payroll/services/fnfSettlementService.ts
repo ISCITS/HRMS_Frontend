@@ -2,10 +2,17 @@ import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { requestEncryptedApi, type ApiEnvelope } from "@/Common/utils/apiErrorHandler";
 import type {
   FNFAuditRecord,
-  FNFDefaultPayrollRunOption,
+  FNFBulkCreateItem,
+  FNFBulkCreateResponse,
   FNFEmployeeOption,
+  FNFEmployeePrefill,
+  FNFReportResponse,
   FNFLineFormValues,
   FNFPaymentAdviceResponse,
+  FNFPayslipDocument,
+  FNFPayslipEmployeeOption,
+  FNFPayslipRecord,
+  FNFRegularPayslipRecord,
   FNFPolicy,
   FNFPolicyResponse,
   FNFRegisterResponse,
@@ -35,7 +42,6 @@ export function createInitialFNFSettlementForm(): FNFSettlementFormValues {
   return {
     strEmployeeCode: "",
     strSettlementNumber: "",
-    intPayrollRunID: "",
     strExitType: "resignation",
     strExitReason: "",
     dtResignationDate: "",
@@ -65,7 +71,6 @@ function toSettlementPayload(dicValues: FNFSettlementFormValues) {
     intEmployeeID: dicValues.intEmployeeID ? Number(dicValues.intEmployeeID) : undefined,
     strEmployeeCode: dicValues.strEmployeeCode.trim(),
     strSettlementNumber: dicValues.strSettlementNumber.trim() || undefined,
-    intPayrollRunID: dicValues.intPayrollRunID ? Number(dicValues.intPayrollRunID) : undefined,
     strExitType: dicValues.strExitType.trim(),
     strExitReason: dicValues.strExitReason.trim() || undefined,
     dtResignationDate: dicValues.dtResignationDate || undefined,
@@ -97,19 +102,106 @@ function toLinePayload(dicValues: FNFLineFormValues) {
 }
 
 export const fnfSettlementService = {
-  async listEmployeeOptions(): Promise<FNFEmployeeOption[]> {
+  /** blnEligibleForNew: only employees with a date of exit in the employee master and no settlement yet. */
+  async listEmployeeOptions(blnEligibleForNew = false): Promise<FNFEmployeeOption[]> {
     const objResult = await requestApi<FNFEmployeeOption[]>({
-      strPath: "/payroll/fnf-settlements/employee-options",
+      strPath: `/payroll/fnf-settlements/employee-options${blnEligibleForNew ? "?eligible_for_new=true" : ""}`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_FNF_VIEW",
     });
     return objResult.Data;
   },
-  async getDefaultPayrollRunForEmployee(intEmployeeID: number): Promise<FNFDefaultPayrollRunOption | null> {
-    const objResult = await requestApi<FNFDefaultPayrollRunOption | null>({
-      strPath: `/payroll/fnf-settlements/employee-options/${intEmployeeID}/default-payroll-run`,
+  async getEmployeePrefill(intEmployeeID: number, strLastWorkingDate?: string): Promise<FNFEmployeePrefill> {
+    const objParams = new URLSearchParams({ employee_id: String(intEmployeeID) });
+    if (strLastWorkingDate) objParams.set("last_working_date", strLastWorkingDate);
+    const objResult = await requestApi<FNFEmployeePrefill>({
+      strPath: `/payroll/fnf-settlements/employee-prefill?${objParams.toString()}`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_FNF_CREATE",
+    });
+    return objResult.Data;
+  },
+  async bulkCreate(lstItems: FNFBulkCreateItem[], blnCalculate: boolean): Promise<FNFBulkCreateResponse> {
+    const objResult = await requestApi<FNFBulkCreateResponse>({
+      strPath: "/payroll/fnf-settlements/bulk",
+      strMethod: "POST",
+      objBody: { lstItems, blnCalculate },
+      strMenuAction: "PAYROLL_FNF_CREATE",
+    });
+    return objResult.Data;
+  },
+  async getReport(objFilters: { lwd_from?: string; lwd_to?: string; status?: string; employee_id?: number | ""; department?: string }): Promise<FNFReportResponse> {
+    const objParams = new URLSearchParams();
+    Object.entries(objFilters).forEach(([strKey, objValue]) => {
+      if (objValue !== undefined && objValue !== "" && objValue !== "All" && objValue !== 0) objParams.set(strKey, String(objValue));
+    });
+    const strQuery = objParams.toString();
+    const objResult = await requestApi<FNFReportResponse>({
+      strPath: `/payroll/fnf-settlements/report${strQuery ? `?${strQuery}` : ""}`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_FNF_VIEW",
+    });
+    return objResult.Data;
+  },
+  async generatePayslip(strRecordUUID: string): Promise<FNFPayslipDocument> {
+    const objResult = await requestApi<FNFPayslipDocument>({
+      strPath: `/payroll/fnf-settlements/${strRecordUUID}/payslip`,
+      strMethod: "POST",
+      strMenuAction: "PAYROLL_FNF_EDIT",
+    });
+    return objResult.Data;
+  },
+  async listPayslips(objFilters: { employee_id?: number | ""; latest_only?: boolean; generated_from?: string; generated_to?: string }): Promise<FNFPayslipRecord[]> {
+    const objParams = new URLSearchParams();
+    if (objFilters.employee_id) objParams.set("employee_id", String(objFilters.employee_id));
+    objParams.set("latest_only", String(objFilters.latest_only ?? true));
+    if (objFilters.generated_from) objParams.set("generated_from", objFilters.generated_from);
+    if (objFilters.generated_to) objParams.set("generated_to", objFilters.generated_to);
+    const objResult = await requestApi<FNFPayslipRecord[]>({
+      strPath: `/payroll/fnf-settlements/payslips?${objParams.toString()}`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_FNF_VIEW",
+    });
+    return objResult.Data;
+  },
+  async listPayslipEmployees(): Promise<FNFPayslipEmployeeOption[]> {
+    const objResult = await requestApi<FNFPayslipEmployeeOption[]>({
+      strPath: "/payroll/fnf-settlements/payslips/employees",
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_FNF_VIEW",
+    });
+    return objResult.Data;
+  },
+  async listRegularPayslips(intEmployeeID: number, strFromMonth: string, strToMonth: string): Promise<FNFRegularPayslipRecord[]> {
+    const objResult = await requestApi<FNFRegularPayslipRecord[]>({
+      strPath: `/payroll/fnf-settlements/payslips/regular?employee_id=${intEmployeeID}&from_month=${strFromMonth}&to_month=${strToMonth}`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_FNF_VIEW",
+    });
+    return objResult.Data;
+  },
+  async getPayslipDocument(strRecordUUID: string): Promise<FNFPayslipDocument> {
+    const objResult = await requestApi<FNFPayslipDocument>({
+      strPath: `/payroll/fnf-settlements/payslips/${strRecordUUID}/document`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_FNF_EXPORT",
+    });
+    return objResult.Data;
+  },
+  async getRegularPayslipDocument(strRecordUUID: string): Promise<FNFPayslipDocument> {
+    const objResult = await requestApi<FNFPayslipDocument>({
+      strPath: `/payroll/fnf-settlements/payslips/regular/${strRecordUUID}/document`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_FNF_EXPORT",
+    });
+    return objResult.Data;
+  },
+  async getPayslipBundle(lstFNFPayslipIDs: string[], lstRegularPayslipIDs: string[]): Promise<FNFPayslipDocument> {
+    const objResult = await requestApi<FNFPayslipDocument>({
+      strPath: "/payroll/fnf-settlements/payslips/bundle",
+      strMethod: "POST",
+      objBody: { lstFNFPayslipIDs, lstRegularPayslipIDs },
+      strMenuAction: "PAYROLL_FNF_EXPORT",
     });
     return objResult.Data;
   },

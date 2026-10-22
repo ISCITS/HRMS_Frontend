@@ -5,6 +5,7 @@ import CancelRoundedIcon from "@mui/icons-material/CancelRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
+import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import ReplyRoundedIcon from "@mui/icons-material/ReplyRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import TextSnippetRoundedIcon from "@mui/icons-material/TextSnippetRounded";
@@ -35,6 +36,7 @@ export default function FNFActionBar({ objSettlement, blnBusy, onAction }: { obj
       {strStatus === "approved" && can("lock") ? <Button controlId="payroll.fnf.action.lock.button" className={styles.fnfActionButton} variant="contained" sx={dicActionButtonSx.lock} startIcon={<LockRoundedIcon />} disabled={blnBusy} onClick={() => onAction("lock")}>Lock</Button> : null}
       {strStatus === "locked" && (objSettlement.decNetPayableAmount || 0) > 0 && can("mark_paid") ? <Button controlId="payroll.fnf.action.mark-paid.button" className={styles.fnfActionButton} variant="contained" sx={dicActionButtonSx.markPaid} startIcon={<PaymentsRoundedIcon />} disabled={blnBusy} onClick={() => onAction("mark-paid")}>Mark Paid</Button> : null}
       {strStatus === "locked" && (objSettlement.decNetRecoverableAmount || 0) > 0 && can("mark_paid") ? <Button controlId="payroll.fnf.action.mark-recovered.button" className={styles.fnfActionButton} variant="contained" sx={dicActionButtonSx.markPaid} startIcon={<PaymentsRoundedIcon />} disabled={blnBusy} onClick={() => onAction("mark-recovered")}>Mark Recovered</Button> : null}
+      {["calculated", "under_review", "released", "approved", "locked", "paid", "recovered"].includes(strStatus) && can("edit") ? <Button controlId="payroll.fnf.action.generate-payslip.button" className={styles.fnfActionButton} variant="contained" sx={dicActionButtonSx.statement} startIcon={<ReceiptLongRoundedIcon />} disabled={blnBusy} onClick={() => onAction("payslip")}>Generate Payslip</Button> : null}
       {["locked", "paid", "recovered"].includes(strStatus) && can("view") ? <Button controlId="payroll.fnf.action.statement.button" className={styles.fnfActionButton} variant="contained" sx={dicActionButtonSx.statement} startIcon={<TextSnippetRoundedIcon />} disabled={blnBusy} onClick={() => onAction("statement")}>Statement</Button> : null}
       {!["locked", "paid", "recovered", "cancelled"].includes(strStatus) && can("cancel") ? <Button controlId="payroll.fnf.action.cancel.button" className={styles.secondaryButton} variant="outlined" startIcon={<CancelRoundedIcon />} disabled={blnBusy} onClick={() => onAction("cancel")}>Cancel</Button> : null}
     </Stack>

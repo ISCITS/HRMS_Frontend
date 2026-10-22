@@ -26,13 +26,13 @@ import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { fnfSettlementService } from "@/features/payroll/services/fnfSettlementService";
 import type { FNFCalculationValidation, FNFLineFormValues, FNFSettlementFormValues, FNFSettlementLineRecord, FNFSettlementRecord, FNFStatementRecord } from "@/features/payroll/types";
 import { useFNFRights } from "@/features/payroll/hooks/useFNFRights";
+import { printPayslipHtml } from "@/features/payroll/utils/payslipDocument";
 
 function toSettlementFormValues(objSettlement: FNFSettlementRecord): FNFSettlementFormValues {
   return {
     intEmployeeID: objSettlement.intEmployeeID,
     strEmployeeCode: objSettlement.strEmployeeCode || "",
     strSettlementNumber: objSettlement.strSettlementNumber || "",
-    intPayrollRunID: objSettlement.intPayrollRunID || "",
     strExitType: objSettlement.strExitType || "resignation",
     strExitReason: objSettlement.strExitReason || "",
     dtResignationDate: objSettlement.dtResignationDate || "",
@@ -72,6 +72,7 @@ export default function FNFSettlementDetailPage({ strSettlementID }: { /** recor
   const lstValidations = useMemo(() => ((objSettlement?.objCalculationSnapshot?.validations as FNFCalculationValidation[] | undefined) || []), [objSettlement]);
   const blnHasBlockingValidation = lstValidations.some((dicValidation) => dicValidation.severity === "blocking");
   const blnShowValidations = Boolean(objSettlement && ["calculated", "released", "under_review"].includes(objSettlement.strSettlementStatus));
+  const lstSalaryMonths = ((objSettlement?.objCalculationSnapshot?.salary_months as { month: string }[] | undefined) || []).map((dicMonth) => dicMonth.month.slice(0, 7));
   const objClosure = objSettlement?.objCalculationSnapshot?.closure as
     | { tax_ledger?: { status: string; tds?: number }; leave_balances?: unknown[]; employee?: { after?: { status?: string; date_of_exit?: string } } }
     | undefined;
@@ -111,6 +112,11 @@ export default function FNFSettlementDetailPage({ strSettlementID }: { /** recor
       if (strAction === "statement") {
         setObjStatement(await fnfSettlementService.getStatement(strSettlementID));
         setStrSuccess("Statement generated.");
+      } else if (strAction === "payslip") {
+        const objPayslip = await fnfSettlementService.generatePayslip(strSettlementID);
+        printPayslipHtml(objPayslip.strHtml, objPayslip.strFileName);
+        setStrSuccess(`Payslip ${objPayslip.strPayslipNumber} generated. It is also available in the F&F Payslips tab.`);
+        await loadSettlement(false);
       } else {
         setObjSettlement(await fnfSettlementService.action(strSettlementID, strAction, objBody));
         setStrSuccess("Action completed.");
@@ -210,9 +216,9 @@ export default function FNFSettlementDetailPage({ strSettlementID }: { /** recor
                   <Typography className={styles.fnfWorkflowMeta}>Required {objSettlement.decNoticePeriodDays || 0} | Served {objSettlement.decNoticeServedDays || 0}</Typography>
                 </Box>
                 <Box className={styles.fnfWorkflowPanel}>
-                  <Typography className={styles.fnfWorkflowTitle}>Step 4: Work Days</Typography>
-                  <Typography className={styles.fnfWorkflowValue}>Payroll run {objSettlement.intPayrollRunID || "-"}</Typography>
-                  <Typography className={styles.fnfWorkflowMeta}>Settlement month {objSettlement.dtSettlementMonth || "-"}</Typography>
+                  <Typography className={styles.fnfWorkflowTitle}>Step 4: Salary Period</Typography>
+                  <Typography className={styles.fnfWorkflowValue}>Up to {objSettlement.dtLastWorkingDate}</Typography>
+                  <Typography className={styles.fnfWorkflowMeta}>{lstSalaryMonths.length ? `Months: ${lstSalaryMonths.join(", ")}` : "Paid days from attendance after Calculate"}</Typography>
                 </Box>
                 <Box className={styles.fnfWorkflowPanel}>
                   <Typography className={styles.fnfWorkflowTitle}>Step 5: Leave Encashment</Typography>
@@ -275,7 +281,6 @@ export default function FNFSettlementDetailPage({ strSettlementID }: { /** recor
           {dicEditingSettlement ? (
             <Box className={styles.fnfEditDetailsGrid} sx={{ pt: 1 }}>
               <TextField label="Settlement Number" value={dicEditingSettlement.strSettlementNumber} onChange={(e) => updateSettlementField("strSettlementNumber", e.target.value)} fullWidth />
-              <TextField label="Payroll Run ID" type="number" value={dicEditingSettlement.intPayrollRunID} disabled fullWidth />
               <TextField label="Exit Type" required value={dicEditingSettlement.strExitType} onChange={(e) => updateSettlementField("strExitType", e.target.value)} fullWidth />
               <TextField label="Resignation Date" type="date" InputLabelProps={{ shrink: true }} value={dicEditingSettlement.dtResignationDate} onChange={(e) => updateSettlementField("dtResignationDate", e.target.value)} fullWidth />
               <TextField label="Last Working Date" required type="date" InputLabelProps={{ shrink: true }} value={dicEditingSettlement.dtLastWorkingDate} onChange={(e) => updateSettlementField("dtLastWorkingDate", e.target.value)} fullWidth />

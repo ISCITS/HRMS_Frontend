@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { MasterBreadcrumbs } from "@/components/master/MasterListUi";
 import styles from "@/components/master/MasterScreen.module.css";
+import FNFModuleTabs from "@/features/payroll/components/FNFModuleTabs";
 import { formatCurrency } from "@/features/payroll/components/FNFSettlementPanels";
 import { fnfSettlementService } from "@/features/payroll/services/fnfSettlementService";
 import type { FNFPaymentAdviceRow, FNFRegisterResponse, FNFRegisterRow } from "@/features/payroll/types";
@@ -115,6 +116,7 @@ export default function FNFRegisterPage() {
   return (
     <Box className={styles.page} data-controlid="payroll.fnf-register.page">
       <MasterBreadcrumbs strSection="Employee Services" strTitle="F&F Register" />
+      <FNFModuleTabs strActive="register" />
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {strInfo ? <Alert severity="info">{strInfo}</Alert> : null}
       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, alignItems: "center", mb: 2 }}>
