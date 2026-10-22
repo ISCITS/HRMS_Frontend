@@ -610,6 +610,115 @@
   color: var(--app-primary-color);
 }
 
+.fnfSummaryCard {
+  border: 1px solid #d9e6ef;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.fnfSummaryHead {
+  align-items: center;
+  border-bottom: 1px solid #eef2f7;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+}
+
+.fnfSummaryName {
+  color: #0f172a;
+  font-size: 1rem !important;
+  font-weight: 800 !important;
+  line-height: 1.3 !important;
+}
+
+.fnfSummaryCode {
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-left: 6px;
+}
+
+.fnfSummaryGrid {
+  display: grid;
+  gap: 8px 16px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.fnfSummaryItem {
+  min-width: 0;
+}
+
+.fnfSummaryLabel {
+  color: #64748b;
+  font-size: 0.74rem !important;
+  font-weight: 600 !important;
+  line-height: 1.3 !important;
+}
+
+.fnfSummaryValue {
+  color: #0f172a;
+  font-size: 0.86rem !important;
+  font-weight: 700 !important;
+  line-height: 1.35 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fnfSummaryRemarks {
+  border-top: 1px solid #eef2f7;
+  color: #334155;
+  font-size: 0.82rem !important;
+  margin-top: 8px !important;
+  padding-top: 6px;
+}
+
+.fnfTotalsGrid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.fnfTotalTile {
+  background: #f8fafc;
+  border: 1px solid #d9e6ef;
+  border-radius: 8px;
+  min-width: 0;
+  padding: 8px 10px;
+}
+
+.fnfTotalValue {
+  font-size: 0.98rem !important;
+  font-weight: 900 !important;
+  line-height: 1.3 !important;
+  white-space: nowrap;
+}
+
+@media (max-width: 1200px) {
+  .fnfTotalsGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .fnfSummaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .fnfSummaryGrid,
+  .fnfTotalsGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .fnfSummaryHead {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 .fnfWorkflowGrid {
   display: grid;
   gap: 10px;
