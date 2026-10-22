@@ -310,6 +310,7 @@ export type FNFSettlementRecord = {
   strRecordUUID: string;
   intEmployeeID: number;
   strEmployeeCode?: string | null;
+  strEmployeeName?: string | null;
   strDepartmentName?: string | null;
   intCompanyID?: number;
   strSettlementNumber?: string | null;
@@ -379,9 +380,72 @@ export type FNFLineFormValues = {
   strLineName: string;
   decActualAmount: string;
   decAmount: string;
+  /** Part of an EARNING line that counts as taxable income for final TDS. */
+  decTaxableAmount: string;
   blnIsManualOverride: boolean;
   strOverrideReason: string;
   strRemarks: string;
+};
+
+/** Company F&F calculation rules (stored as JSON; any missing value uses the built-in default). */
+export type FNFPolicySection = Record<string, string | number | boolean | string[]>;
+export type FNFPolicy = {
+  salary: FNFPolicySection;
+  leave_encashment: FNFPolicySection;
+  notice: FNFPolicySection;
+  gratuity: FNFPolicySection;
+  death_exit_types: string[];
+  approval: FNFPolicySection;
+  closure: FNFPolicySection;
+};
+
+/** One row of the F&F register (kept separate from the payroll salary register). */
+export type FNFRegisterRow = {
+  strRecordUUID: string | null;
+  strSettlementNumber: string;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strExitType: string;
+  dtLastWorkingDate: string;
+  strSettlementStatus: FNFSettlementStatus;
+  dtPaidOn: string | null;
+  strPaymentReferenceNo: string | null;
+  decTotalEarnings: number;
+  decTotalDeductions: number;
+  decTotalRecoveries: number;
+  decPfEmployee: number;
+  decPfEmployer: number;
+  decEsiEmployee: number;
+  decEsiEmployer: number;
+  decPt: number;
+  decLwf: number;
+  decTds: number;
+  decNetPayable: number;
+  decNetRecoverable: number;
+};
+export type FNFRegisterResponse = { lstRows: FNFRegisterRow[]; dicTotals: Record<string, number> };
+
+/** Bank payment advice row for a locked, net-payable settlement. */
+export type FNFPaymentAdviceRow = {
+  strSettlementNumber: string;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strAccountHolderName: string | null;
+  strAccountNumber: string | null;
+  strIfscCode: string | null;
+  strBranchName: string | null;
+  decAmount: number;
+  strNarration: string;
+  strIssue: string | null;
+};
+export type FNFPaymentAdviceResponse = { lstRows: FNFPaymentAdviceRow[]; decTotal: number; intIssueCount: number };
+export type FNFPolicyResponse = { objPolicy: FNFPolicy; objDefaults: FNFPolicy; blnIsDefault: boolean };
+
+/** A problem found while calculating; "blocking" ones need an override reason before review. */
+export type FNFCalculationValidation = {
+  code: string;
+  severity: "blocking" | "warning" | "info";
+  message: string;
 };
 
 export type FNFAuditRecord = {

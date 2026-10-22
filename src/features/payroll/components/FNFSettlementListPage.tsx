@@ -3,6 +3,8 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import TableChartRoundedIcon from "@mui/icons-material/TableChartRounded";
+import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import { Alert, Autocomplete, Box, Button, InputAdornment, Link, MenuItem, TextField, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { ReactNode, useEffect, useMemo, useState } from "react";
@@ -11,13 +13,13 @@ import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { MasterAddColumnsControl, MasterBreadcrumbs, MasterGridSkeleton, MasterMoreFilters, dicMasterRowSx, onSearchEnter, type MasterOptionalColumn } from "@/components/master/MasterListUi";
 import styles from "@/components/master/MasterScreen.module.css";
+import FNFPolicyDialog from "@/features/payroll/components/FNFPolicyDialog";
 import FNFStatusBadge from "@/features/payroll/components/FNFStatusBadge";
 import { fnfSettlementService } from "@/features/payroll/services/fnfSettlementService";
 import type { FNFEmployeeOption, FNFSettlementRecord, FNFSettlementStatus } from "@/features/payroll/types";
-import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
+import { useFNFRights } from "@/features/payroll/hooks/useFNFRights";
 import { formatCurrency } from "@/features/payroll/components/FNFSettlementPanels";
 
-const lstModuleCodes = ["PAYROLL_FNF_SETTLEMENTS", "PAYROLL_FNF", "FNF_SETTLEMENTS"];
 const lstStatuses: Array<"All" | FNFSettlementStatus> = ["All", "draft", "calculated", "under_review", "released", "approved", "locked", "paid", "recovered", "cancelled"];
 const dicEmptyFilters = { employee_code: "", department: "", settlement_month: "", status: "All", exit_type: "", lwd_from: "", lwd_to: "", payable_type: "All" };
 type FNFFilters = typeof dicEmptyFilters;
@@ -59,7 +61,7 @@ type FNFSettlementGridRow = {
 
 export default function FNFSettlementListPage() {
   const objRouter = useRouter();
-  const { blnLoading: blnRightsLoading, canDoAny, canViewAny } = useModuleActionAccess(lstModuleCodes);
+  const { blnLoading: blnRightsLoading, can, canView } = useFNFRights();
   const [lstRows, setLstRows] = useState<FNFSettlementRecord[]>([]);
   const [lstEmployeeOptions, setLstEmployeeOptions] = useState<FNFEmployeeOption[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
@@ -68,10 +70,10 @@ export default function FNFSettlementListPage() {
   const [dicFilters, setDicFilters] = useState(dicEmptyFilters);
   const [lstVisibleOptionalColumns, setLstVisibleOptionalColumns] = useState<OptionalColumnKey[]>([]);
   const [dicMoreFiltersSnapshot, setDicMoreFiltersSnapshot] = useState<FNFFilters | null>(null);
-  const blnHasViewRight = canViewAny() || canDoAny("view");
-  const blnCanView = blnHasViewRight || canDoAny("edit");
-  const blnCanCreate = canDoAny("create") || canDoAny("add");
-  const blnCanExport = canDoAny("export");
+  const [blnPolicyOpen, setBlnPolicyOpen] = useState(false);
+  const blnCanView = canView() || can("edit");
+  const blnCanCreate = can("add");
+  const blnCanExport = can("export");
   const blnBusy = blnLoading || blnRightsLoading;
   const objSelectedEmployee = useMemo(() => lstEmployeeOptions.find((objEmployee) => objEmployee.strEmployeeCode === dicFilters.employee_code) || null, [lstEmployeeOptions, dicFilters.employee_code]);
 
@@ -233,7 +235,13 @@ export default function FNFSettlementListPage() {
           <CommonTable
             columns={lstTableColumns}
             rows={lstTableRows}
-            toolbarLeft={blnCanCreate ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/payroll/fnf-settlements/new")} controlId="payroll.fnf-settlements.new.button">New Settlement</Button> : null}
+            toolbarLeft={(
+              <Box sx={{ display: "flex", gap: 1 }}>
+                {blnCanCreate ? <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/payroll/fnf-settlements/new")} controlId="payroll.fnf-settlements.new.button">New Settlement</Button> : null}
+                <Button variant="outlined" startIcon={<TuneRoundedIcon />} onClick={() => setBlnPolicyOpen(true)} controlId="payroll.fnf-settlements.rules.button">F&amp;F Rules</Button>
+                <Button variant="outlined" startIcon={<TableChartRoundedIcon />} onClick={() => objRouter.push("/payroll/fnf-settlements/register")} controlId="payroll.fnf-settlements.register.button">F&amp;F Register</Button>
+              </Box>
+            )}
             toolbarAfterExport={(
               <MasterAddColumnsControl strControlPrefix="payroll.fnf-settlements.list" lstColumns={lstOptionalColumns} lstVisibleKeys={lstVisibleOptionalColumns} onChange={setLstVisibleOptionalColumns} />
             )}
@@ -251,6 +259,7 @@ export default function FNFSettlementListPage() {
           />
         )}
       </Box>
+      <FNFPolicyDialog blnOpen={blnPolicyOpen} blnCanEdit={can("approve")} onClose={() => setBlnPolicyOpen(false)} />
     </Box>
   );
 }

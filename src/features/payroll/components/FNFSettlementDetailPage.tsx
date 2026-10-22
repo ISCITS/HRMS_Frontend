@@ -24,10 +24,8 @@ import {
 import FNFStatusBadge from "@/features/payroll/components/FNFStatusBadge";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { fnfSettlementService } from "@/features/payroll/services/fnfSettlementService";
-import type { FNFLineFormValues, FNFSettlementFormValues, FNFSettlementLineRecord, FNFSettlementRecord, FNFStatementRecord } from "@/features/payroll/types";
-import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
-
-const lstModuleCodes = ["PAYROLL_FNF_SETTLEMENTS", "PAYROLL_FNF", "FNF_SETTLEMENTS"];
+import type { FNFCalculationValidation, FNFLineFormValues, FNFSettlementFormValues, FNFSettlementLineRecord, FNFSettlementRecord, FNFStatementRecord } from "@/features/payroll/types";
+import { useFNFRights } from "@/features/payroll/hooks/useFNFRights";
 
 function toSettlementFormValues(objSettlement: FNFSettlementRecord): FNFSettlementFormValues {
   return {
@@ -51,7 +49,7 @@ function toSettlementFormValues(objSettlement: FNFSettlementRecord): FNFSettleme
 
 export default function FNFSettlementDetailPage({ strSettlementID }: { /** record_uuid from the URL; the internal id is never routed on. */ strSettlementID: string }) {
   const objRouter = useRouter();
-  const { canDoAny } = useModuleActionAccess(lstModuleCodes);
+  const { can } = useFNFRights();
   const [objSettlement, setObjSettlement] = useState<FNFSettlementRecord | null>(null);
   const [objStatement, setObjStatement] = useState<FNFStatementRecord | null>(null);
   const [objEditingLine, setObjEditingLine] = useState<FNFSettlementLineRecord | null>(null);
@@ -68,7 +66,15 @@ export default function FNFSettlementDetailPage({ strSettlementID }: { /** recor
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSaving, setBlnSaving] = useState(false);
   const blnReadOnly = useMemo(() => objSettlement ? ["approved", "locked", "paid", "recovered", "cancelled"].includes(objSettlement.strSettlementStatus) : true, [objSettlement]);
-  const blnCanEditDetails = canDoAny("edit");
+  const blnCanEditDetails = can("edit");
+  // Lines can be added/changed only by users with the Edit right, and only while editable.
+  const blnLinesReadOnly = blnReadOnly || !blnCanEditDetails;
+  const lstValidations = useMemo(() => ((objSettlement?.objCalculationSnapshot?.validations as FNFCalculationValidation[] | undefined) || []), [objSettlement]);
+  const blnHasBlockingValidation = lstValidations.some((dicValidation) => dicValidation.severity === "blocking");
+  const blnShowValidations = Boolean(objSettlement && ["calculated", "released", "under_review"].includes(objSettlement.strSettlementStatus));
+  const objClosure = objSettlement?.objCalculationSnapshot?.closure as
+    | { tax_ledger?: { status: string; tds?: number }; leave_balances?: unknown[]; employee?: { after?: { status?: string; date_of_exit?: string } } }
+    | undefined;
 
   async function loadSettlement(blnShowLoader = true) {
     if (blnShowLoader) setBlnLoading(true);
@@ -85,7 +91,8 @@ export default function FNFSettlementDetailPage({ strSettlementID }: { /** recor
   useEffect(() => { loadSettlement().catch(() => undefined); }, [strSettlementID]);
 
   function openAction(strAction: string) {
-    if (["release", "cancel", "mark-paid", "mark-recovered"].includes(strAction)) {
+    const blnNeedsOverrideReason = strAction === "submit-review" && blnHasBlockingValidation;
+    if (["release", "cancel", "mark-paid", "mark-recovered"].includes(strAction) || blnNeedsOverrideReason) {
       setStrPendingAction(strAction);
       setStrReason("");
       setStrPaymentReference("");
@@ -180,7 +187,7 @@ export default function FNFSettlementDetailPage({ strSettlementID }: { /** recor
           <Box className={styles.detailScrollCard}>
             <Stack spacing={2}>
               <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ borderBottom: "1px solid #d9e6ef", pb: 2 }}>
-                <Box sx={{ flex: 1 }}><Typography sx={{ color: "#64748b" }}>Employee</Typography><Typography sx={{ fontWeight: 800 }}>{objSettlement.intEmployeeID}</Typography></Box>
+                <Box sx={{ flex: 1 }}><Typography sx={{ color: "#64748b" }}>Employee</Typography><Typography sx={{ fontWeight: 800 }}>{[objSettlement.strEmployeeCode, objSettlement.strEmployeeName].filter(Boolean).join(" - ") || objSettlement.intEmployeeID}</Typography></Box>
                 <Box sx={{ flex: 1 }}><Typography sx={{ color: "#64748b" }}>Exit Type</Typography><Typography sx={{ fontWeight: 800 }}>{objSettlement.strExitType}</Typography></Box>
                 <Box sx={{ flex: 1 }}><Typography sx={{ color: "#64748b" }}>Last Working Date</Typography><Typography sx={{ fontWeight: 800 }}>{objSettlement.dtLastWorkingDate}</Typography></Box>
                 <Box sx={{ flex: 1 }}><Typography sx={{ color: "#64748b" }}>Status</Typography><Stack direction="row" spacing={1} alignItems="center"><FNFStatusBadge strStatus={objSettlement.strSettlementStatus} />{["locked", "paid", "recovered"].includes(objSettlement.strSettlementStatus) ? <Chip size="small" color="success" label="Visible in ESS" /> : null}</Stack></Box>
@@ -218,6 +225,25 @@ export default function FNFSettlementDetailPage({ strSettlementID }: { /** recor
                   <Typography className={styles.fnfWorkflowMeta}>Final notes and statutory review</Typography>
                 </Box>
               </Box>
+              {blnShowValidations && lstValidations.length ? (
+                <Stack spacing={1}>
+                  {lstValidations.map((dicValidation) => (
+                    <Alert key={dicValidation.code} severity={dicValidation.severity === "blocking" ? "error" : dicValidation.severity === "warning" ? "warning" : "info"}>
+                      {dicValidation.message}{dicValidation.severity === "blocking" ? " Submitting for review will ask for an override reason." : ""}
+                    </Alert>
+                  ))}
+                </Stack>
+              ) : null}
+              {objClosure ? (
+                <Alert severity="success">
+                  Settlement closed in the F&amp;F module:{" "}
+                  {[
+                    objClosure.tax_ledger ? `tax ledger ${objClosure.tax_ledger.status === "posted" ? `posted (TDS ${formatCurrency(objClosure.tax_ledger.tds)})` : String(objClosure.tax_ledger.status).replace(/_/g, " ")}` : null,
+                    objClosure.leave_balances ? `${objClosure.leave_balances.length} leave balance(s) closed` : null,
+                    objClosure.employee ? `employee set ${objClosure.employee.after?.status} from ${objClosure.employee.after?.date_of_exit}` : null,
+                  ].filter(Boolean).join("; ")}.
+                </Alert>
+              ) : null}
               <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                 <Box sx={{ flex: 1 }}><Typography sx={{ color: "#64748b" }}>Total Earnings</Typography><Typography sx={{ color: "#16a34a", fontWeight: 900 }}>{formatCurrency(objSettlement.decTotalEarnings)}</Typography></Box>
                 <Box sx={{ flex: 1 }}><Typography sx={{ color: "#64748b" }}>Deductions/Recoveries</Typography><Typography sx={{ color: "#dc2626", fontWeight: 900 }}>{formatCurrency((objSettlement.decTotalDeductions || 0) + (objSettlement.decTotalRecoveries || 0))}</Typography></Box>
@@ -230,8 +256,8 @@ export default function FNFSettlementDetailPage({ strSettlementID }: { /** recor
                   </Stack>
                 </Box>
               </Stack>
-              <FNFSettlementCalculationPanel objSettlement={objSettlement} blnReadOnly={blnReadOnly} onAdd={() => { setObjEditingLine(null); setBlnLineDialogOpen(true); }} onEdit={(line) => { setObjEditingLine(line); setBlnLineDialogOpen(true); }} onDelete={setObjLineToDelete} />
-              <FNFLeaveEncashmentPanel objSettlement={objSettlement} blnReadOnly={blnReadOnly} onAdd={() => { setObjEditingLine(null); setBlnLineDialogOpen(true); }} onEdit={(line) => { setObjEditingLine(line); setBlnLineDialogOpen(true); }} onDelete={setObjLineToDelete} />
+              <FNFSettlementCalculationPanel objSettlement={objSettlement} blnReadOnly={blnLinesReadOnly} onAdd={() => { setObjEditingLine(null); setBlnLineDialogOpen(true); }} onEdit={(line) => { setObjEditingLine(line); setBlnLineDialogOpen(true); }} onDelete={setObjLineToDelete} />
+              <FNFLeaveEncashmentPanel objSettlement={objSettlement} blnReadOnly={blnLinesReadOnly} onAdd={() => { setObjEditingLine(null); setBlnLineDialogOpen(true); }} onEdit={(line) => { setObjEditingLine(line); setBlnLineDialogOpen(true); }} onDelete={setObjLineToDelete} />
               <FNFNoticePayPanel objSettlement={objSettlement} />
               <FNFGratuityPanel objSettlement={objSettlement} />
               <FNFRecoveryPanel objSettlement={objSettlement} />
@@ -281,9 +307,9 @@ export default function FNFSettlementDetailPage({ strSettlementID }: { /** recor
         </DialogActions>
       </Dialog>
       <Dialog open={Boolean(strPendingAction)} onClose={() => setStrPendingAction("")} fullWidth maxWidth="sm">
-        <DialogTitle>{["mark-paid", "mark-recovered"].includes(strPendingAction) ? "Payment / Recovery Details" : "Reason Required"}</DialogTitle>
+        <DialogTitle>{["mark-paid", "mark-recovered"].includes(strPendingAction) ? "Payment / Recovery Details" : strPendingAction === "submit-review" ? "Override Reason Required" : "Reason Required"}</DialogTitle>
         <DialogContent><Stack spacing={2} sx={{ pt: 1 }}>{["mark-paid", "mark-recovered"].includes(strPendingAction) ? <><TextField label="Date" type="date" InputLabelProps={{ shrink: true }} value={strPaymentDate} onChange={(e) => setStrPaymentDate(e.target.value)} fullWidth controlId="payroll.fnf-settlement-detail.payment-date.input" /><TextField select label="Mode" value={strPaymentMode} onChange={(e) => setStrPaymentMode(e.target.value)} fullWidth controlId="payroll.fnf-settlement-detail.payment-mode.select"><MenuItem value="bank_transfer">Bank Transfer</MenuItem><MenuItem value="cheque">Cheque</MenuItem><MenuItem value="cash">Cash</MenuItem><MenuItem value="adjustment">Adjustment</MenuItem><MenuItem value="other">Other</MenuItem></TextField><TextField label="Reference Number" value={strPaymentReference} onChange={(e) => setStrPaymentReference(e.target.value)} fullWidth controlId="payroll.fnf-settlement-detail.payment-reference.input" /></> : null}<TextField label="Reason / Remarks" value={strReason} onChange={(e) => setStrReason(e.target.value)} fullWidth multiline minRows={3} controlId="payroll.fnf-settlement-detail.reason-remarks.input" /></Stack></DialogContent>
-        <DialogActions><Button onClick={() => setStrPendingAction("")} controlId="payroll.fnf-settlement-detail.action-dialog.close.button">Close</Button><Button variant="contained" onClick={() => { if (["mark-paid", "mark-recovered"].includes(strPendingAction) && !strPaymentReference.trim()) { setStrError("Reference number is required."); return; } if (["release", "cancel"].includes(strPendingAction) && !strReason.trim()) { setStrError("Reason is required."); return; } handleAction(strPendingAction, { strRemarks: strReason, strPaymentReferenceNo: strPaymentReference, strPaymentMode, dtPaymentDate: strPaymentDate }).catch(() => undefined); }} controlId="payroll.fnf-settlement-detail.action-dialog.confirm.button">Confirm</Button></DialogActions>
+        <DialogActions><Button onClick={() => setStrPendingAction("")} controlId="payroll.fnf-settlement-detail.action-dialog.close.button">Close</Button><Button variant="contained" onClick={() => { if (["mark-paid", "mark-recovered"].includes(strPendingAction) && !strPaymentReference.trim()) { setStrError("Reference number is required."); return; } if (["release", "cancel", "submit-review"].includes(strPendingAction) && !strReason.trim()) { setStrError("Reason is required."); return; } handleAction(strPendingAction, { strRemarks: strReason, strPaymentReferenceNo: strPaymentReference, strPaymentMode, dtPaymentDate: strPaymentDate }).catch(() => undefined); }} controlId="payroll.fnf-settlement-detail.action-dialog.confirm.button">Confirm</Button></DialogActions>
       </Dialog>
       <BlockingLoader blnOpen={blnLoading || blnSaving} strLabel={blnLoading ? "Loading settlement..." : "Saving..."} />
     </Box>

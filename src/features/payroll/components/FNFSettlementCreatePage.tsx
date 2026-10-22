@@ -13,10 +13,13 @@ import BlockingLoader from "@/components/shared/BlockingLoader";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payrollCycleService } from "@/features/payroll-cycles/services/payrollCycleService";
 import type { PayrollCycleListRecord } from "@/features/payroll-cycles/types";
+import { useFNFRights } from "@/features/payroll/hooks/useFNFRights";
 import { createInitialFNFSettlementForm, fnfSettlementService } from "@/features/payroll/services/fnfSettlementService";
 import type { FNFEmployeeOption, FNFSettlementFormValues } from "@/features/payroll/types";
 
-const lstWizardSteps = ["Employee", "Resignation Details", "Notice Pay", "Work Days", "Leave Encashment", "Remarks"];
+// Salary days come from attendance and leave balances from leave records when the settlement is
+// calculated, so the wizard only asks for what the system cannot know.
+const lstWizardSteps = ["Employee", "Resignation Details", "Notice Pay", "Leave Encashment", "Remarks"];
 const lstLeaveFields = [
   { strCode: "COMPOFF", strName: "COMPOFF", strTooltip: "Compensatory off leave" },
   { strCode: "RH", strName: "RH", strTooltip: "Restricted Holiday" },
@@ -60,6 +63,7 @@ export default function FNFSettlementCreatePage() {
   const [strPayrollRunHelper, setStrPayrollRunHelper] = useState("Select an employee to auto-select payroll run.");
   const intPayrollRunRequestRef = useRef(0);
   const objSelectedEmployee = useMemo(() => lstEmployeeOptions.find((objEmployee) => objEmployee.strEmployeeCode === dicForm.strEmployeeCode) || null, [lstEmployeeOptions, dicForm.strEmployeeCode]);
+  const { blnLoading: blnRightsLoading, can } = useFNFRights();
   const decLeaveTotal = useMemo(() => (dicForm.lstLeaveEncashments || []).reduce((decTotal, dicLeave) => decTotal + Number(dicLeave.decEncashableDays || 0), 0), [dicForm.lstLeaveEncashments]);
 
   useEffect(() => {
@@ -131,11 +135,7 @@ export default function FNFSettlementCreatePage() {
       if (!isNonNegativeNumber(dicForm.decNoticeShortfallDays)) dicNextErrors.decNoticeShortfallDays = "Enter a valid non-negative number.";
       if (!dicForm.strPayrollCycleCode) dicNextErrors.strPayrollCycleCode = "Payroll run code is required.";
     }
-    if (intStep === 3) {
-      if (!isNonNegativeNumber(dicForm.decWorkDays)) dicNextErrors.decWorkDays = "Enter a valid non-negative number.";
-      if (!isNonNegativeNumber(dicForm.decDaysWorked)) dicNextErrors.decDaysWorked = "Enter a valid non-negative number.";
-    }
-    if (intStep === 4 && (dicForm.lstLeaveEncashments || []).some((dicLeave) => !isNonNegativeNumber(dicLeave.decEncashableDays))) {
+    if (intStep === 3 && (dicForm.lstLeaveEncashments || []).some((dicLeave) => !isNonNegativeNumber(dicLeave.decEncashableDays))) {
       setStrError("Leave encashment values must be valid non-negative numbers.");
       return false;
     }
@@ -164,16 +164,14 @@ export default function FNFSettlementCreatePage() {
   }
 
   async function handleSubmit() {
-    if (!validateStep(5)) return;
+    if (!validateStep(4)) return;
     setBlnSaving(true);
     setStrError("");
     try {
       const strWizardSummary = [
         dicForm.strRemarks.trim(),
-        `Work Days: ${dicForm.decWorkDays || 0}`,
-        `No. of Days worked: ${dicForm.decDaysWorked || 0}`,
         `Payroll run code: ${dicForm.strPayrollCycleCode || "-"}`,
-        `Leave Encashment Total: ${decLeaveTotal}`,
+        decLeaveTotal ? `Leave days entered by HR: ${decLeaveTotal}` : "",
       ].filter(Boolean).join("\n");
       const objCreated = await fnfSettlementService.createSettlement({ ...dicForm, strRemarks: strWizardSummary });
       objRouter.push(`/payroll/fnf-settlements/${objCreated.strRecordUUID}`);
@@ -182,6 +180,10 @@ export default function FNFSettlementCreatePage() {
     } finally {
       setBlnSaving(false);
     }
+  }
+
+  if (!blnRightsLoading && !can("add")) {
+    return <Alert severity="error">You do not have the right to create Full &amp; Final settlements.</Alert>;
   }
 
   return (
@@ -225,6 +227,7 @@ export default function FNFSettlementCreatePage() {
 
             {intActiveStep === 2 ? (
               <Box className={styles.fnfWizardGrid}>
+                <Alert severity="info" sx={{ gridColumn: "1 / -1" }}>Notice pay or recovery is calculated automatically from these days, the exit type and the F&amp;F rules.</Alert>
                 <TextField label="Notice Period Days" type="number" value={dicForm.decNoticePeriodDays} onChange={(e) => updateField("decNoticePeriodDays", e.target.value)} error={Boolean(dicErrors.decNoticePeriodDays)} helperText={dicErrors.decNoticePeriodDays} fullWidth controlId="payroll.fnf-settlement-create.notice-period-days.input" />
                 <TextField label="Notice Served Days" type="number" value={dicForm.decNoticeServedDays} onChange={(e) => updateField("decNoticeServedDays", e.target.value)} error={Boolean(dicErrors.decNoticeServedDays)} helperText={dicErrors.decNoticeServedDays} fullWidth controlId="payroll.fnf-settlement-create.notice-served-days.input" />
                 <TextField label="Notice Shortfall Days" type="number" value={dicForm.decNoticeShortfallDays} onChange={(e) => updateField("decNoticeShortfallDays", e.target.value)} error={Boolean(dicErrors.decNoticeShortfallDays)} helperText={dicErrors.decNoticeShortfallDays} fullWidth controlId="payroll.fnf-settlement-create.notice-shortfall-days.input" />
@@ -245,13 +248,7 @@ export default function FNFSettlementCreatePage() {
 
             {intActiveStep === 3 ? (
               <Box className={styles.fnfWizardGrid}>
-                <TextField label="Work Days" type="number" value={dicForm.decWorkDays || "0"} onChange={(e) => updateField("decWorkDays", e.target.value)} error={Boolean(dicErrors.decWorkDays)} helperText={dicErrors.decWorkDays} fullWidth controlId="payroll.fnf-settlement-create.work-days.input" />
-                <TextField label="No. of Days worked" type="number" value={dicForm.decDaysWorked || "0"} onChange={(e) => updateField("decDaysWorked", e.target.value)} error={Boolean(dicErrors.decDaysWorked)} helperText={dicErrors.decDaysWorked} fullWidth controlId="payroll.fnf-settlement-create.days-worked.input" />
-              </Box>
-            ) : null}
-
-            {intActiveStep === 4 ? (
-              <Box className={styles.fnfWizardGrid}>
+                <Alert severity="info" sx={{ gridColumn: "1 / -1" }}>Leave balances up to the last working date are read from leave records automatically. Enter days only to override the system balance for a leave type.</Alert>
                 {lstLeaveFields.map((dicLeave) => {
                   const dicLeaveValue = (dicForm.lstLeaveEncashments || []).find((dicCurrent) => dicCurrent.strLeaveTypeCode === dicLeave.strCode);
                   return (
@@ -264,7 +261,7 @@ export default function FNFSettlementCreatePage() {
               </Box>
             ) : null}
 
-            {intActiveStep === 5 ? (
+            {intActiveStep === 4 ? (
               <TextField label="Remarks" value={dicForm.strRemarks} onChange={(e) => updateField("strRemarks", e.target.value)} fullWidth multiline minRows={5} controlId="payroll.fnf-settlement-create.remarks.input" />
             ) : null}
           </Stack>

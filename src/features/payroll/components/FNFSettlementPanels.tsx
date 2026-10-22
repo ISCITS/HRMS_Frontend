@@ -82,7 +82,8 @@ export function FNFLeaveEncashmentPanel({ objSettlement, blnReadOnly = true, onA
 }
 
 export function FNFNoticePayPanel({ objSettlement }: { objSettlement: FNFSettlementRecord }) {
-  return <Section strTitle="Notice Pay / Recovery"><Stack direction={{ xs: "column", sm: "row" }} spacing={3}><Typography>Notice period: {objSettlement.decNoticePeriodDays || 0} days</Typography><Typography>Served: {objSettlement.decNoticeServedDays || 0} days</Typography><Typography>Shortfall: {objSettlement.decNoticeShortfallDays || 0} days</Typography></Stack></Section>;
+  const lstLines = (objSettlement.lstLines || []).filter((line) => line.strLineCode.startsWith("NOTICE_"));
+  return <Section strTitle="Notice Pay / Recovery"><Stack direction={{ xs: "column", sm: "row" }} spacing={3} sx={{ mb: 1 }}><Typography>Notice period: {objSettlement.decNoticePeriodDays || 0} days</Typography><Typography>Served: {objSettlement.decNoticeServedDays || 0} days</Typography><Typography>Shortfall: {objSettlement.decNoticeShortfallDays || 0} days</Typography></Stack><LineTable lstLines={lstLines} blnReadOnly /></Section>;
 }
 
 export function FNFGratuityPanel({ objSettlement }: { objSettlement: FNFSettlementRecord }) {

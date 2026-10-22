@@ -7,7 +7,7 @@ import { useEffect, useState, type InputHTMLAttributes } from "react";
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import type { FNFLineFormValues, FNFRecoveryType, FNFSettlementLineRecord } from "@/features/payroll/types";
 
-const dicEmptyLine: FNFLineFormValues = { strLineType: "EARNING", strRecoveryType: "", strLineCode: "", strLineName: "", decActualAmount: "0", decAmount: "0", blnIsManualOverride: true, strOverrideReason: "", strRemarks: "" };
+const dicEmptyLine: FNFLineFormValues = { strLineType: "EARNING", strRecoveryType: "", strLineCode: "", strLineName: "", decActualAmount: "0", decAmount: "0", decTaxableAmount: "0", blnIsManualOverride: true, strOverrideReason: "", strRemarks: "" };
 
 const lstRecoveryTypeOptions = ["NOTICE", "LOAN", "ADVANCE", "ASSET", "EXCESS_SALARY", "OTHER"].map((strType) => ({ intID: strType, strLabel: strType }));
 
@@ -17,7 +17,7 @@ export default function FNFSettlementLineEditor({ blnOpen, objLine, onClose, onS
   const [blnSaving, setBlnSaving] = useState(false);
 
   useEffect(() => {
-    setDicForm(objLine ? { intID: objLine.intID, strLineType: objLine.strLineType, strRecoveryType: objLine.strRecoveryType || "", strLineCode: objLine.strLineCode, strLineName: objLine.strLineName, decActualAmount: String(objLine.decActualAmount ?? objLine.decAmount ?? 0), decAmount: String(objLine.decAmount ?? 0), blnIsManualOverride: true, strOverrideReason: objLine.strOverrideReason || "", strRemarks: objLine.strRemarks || "" } : dicEmptyLine);
+    setDicForm(objLine ? { intID: objLine.intID, strLineType: objLine.strLineType, strRecoveryType: objLine.strRecoveryType || "", strLineCode: objLine.strLineCode, strLineName: objLine.strLineName, decActualAmount: String(objLine.decActualAmount ?? objLine.decAmount ?? 0), decAmount: String(objLine.decAmount ?? 0), decTaxableAmount: String(objLine.decTaxableAmount ?? 0), blnIsManualOverride: true, strOverrideReason: objLine.strOverrideReason || "", strRemarks: objLine.strRemarks || "" } : dicEmptyLine);
     setStrError("");
   }, [objLine, blnOpen]);
 
@@ -32,6 +32,10 @@ export default function FNFSettlementLineEditor({ blnOpen, objLine, onClose, onS
     }
     if (Number.isNaN(Number(dicForm.decAmount)) || Number(dicForm.decAmount) < 0 || Number.isNaN(Number(dicForm.decActualAmount)) || Number(dicForm.decActualAmount) < 0) {
       setStrError("Actual and final amounts must be valid non-negative numbers.");
+      return;
+    }
+    if (dicForm.strLineType === "EARNING" && (Number.isNaN(Number(dicForm.decTaxableAmount)) || Number(dicForm.decTaxableAmount) < 0 || Number(dicForm.decTaxableAmount) > Number(dicForm.decAmount || 0))) {
+      setStrError("Taxable amount must be between 0 and the final amount.");
       return;
     }
     if (Number(dicForm.decActualAmount || 0) !== Number(dicForm.decAmount || 0) && !dicForm.strRemarks.trim() && !dicForm.strOverrideReason.trim()) {
@@ -79,6 +83,9 @@ export default function FNFSettlementLineEditor({ blnOpen, objLine, onClose, onS
             <TextField required label="Final Amount" type="number" value={dicForm.decAmount} onChange={(e) => setDicForm((d) => ({ ...d, decAmount: e.target.value }))} fullWidth />
           </Stack>
           <TextField required label="Line Name" value={dicForm.strLineName} onChange={(e) => setDicForm((d) => ({ ...d, strLineName: e.target.value }))} fullWidth />
+          {dicForm.strLineType === "EARNING" ? (
+            <TextField controlId="payroll.fnf.line-editor.taxable-amount.input" label="Taxable Amount" type="number" value={dicForm.decTaxableAmount} onChange={(e) => setDicForm((d) => ({ ...d, decTaxableAmount: e.target.value }))} helperText="Part of this earning that is taxable income for final TDS (0 if fully exempt)." fullWidth />
+          ) : null}
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <Typography sx={{ fontWeight: 700 }}>Manual Override</Typography>
             <Switch inputProps={{ "controlId": "payroll.fnf.line-editor.manual-override.switch" } as InputHTMLAttributes<HTMLInputElement>} checked={dicForm.blnIsManualOverride} onChange={(_, checked) => setDicForm((d) => ({ ...d, blnIsManualOverride: checked }))} />

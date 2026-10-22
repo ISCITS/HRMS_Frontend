@@ -5,6 +5,10 @@ import type {
   FNFDefaultPayrollRunOption,
   FNFEmployeeOption,
   FNFLineFormValues,
+  FNFPaymentAdviceResponse,
+  FNFPolicy,
+  FNFPolicyResponse,
+  FNFRegisterResponse,
   FNFSettlementFormValues,
   FNFSettlementLineRecord,
   FNFSettlementRecord,
@@ -47,8 +51,10 @@ export function createInitialFNFSettlementForm(): FNFSettlementFormValues {
 }
 
 function toSettlementPayload(dicValues: FNFSettlementFormValues) {
-  const lstLeaveEncashments = (dicValues.lstLeaveEncashments || [])
-    .filter((dicLeave) => Number(dicLeave.decEncashableDays || dicLeave.decBalanceDays || 0) > 0)
+  // Leave rows are sent only by forms that edit them (the create wizard); the Edit Details dialog
+  // leaves them out so saving the header never replaces the settlement's leave rows.
+  const lstLeaveEncashments = dicValues.lstLeaveEncashments
+    ?.filter((dicLeave) => Number(dicLeave.decEncashableDays || dicLeave.decBalanceDays || 0) > 0)
     .map((dicLeave) => ({
       strLeaveTypeCode: dicLeave.strLeaveTypeCode,
       strLeaveTypeName: dicLeave.strLeaveTypeName,
@@ -71,7 +77,7 @@ function toSettlementPayload(dicValues: FNFSettlementFormValues) {
     decNoticeShortfallDays: Number(dicValues.decNoticeShortfallDays || 0),
     strCurrencyCode: dicValues.strCurrencyCode.trim() || "INR",
     strRemarks: dicValues.strRemarks.trim() || undefined,
-    lstLeaveEncashments,
+    ...(lstLeaveEncashments ? { lstLeaveEncashments } : {}),
   };
 }
 
@@ -83,6 +89,7 @@ function toLinePayload(dicValues: FNFLineFormValues) {
     strLineName: dicValues.strLineName.trim(),
     decActualAmount: Number(dicValues.decActualAmount || dicValues.decAmount || 0),
     decAmount: Number(dicValues.decAmount || 0),
+    decTaxableAmount: dicValues.strLineType === "EARNING" ? Number(dicValues.decTaxableAmount || 0) : 0,
     blnIsManualOverride: dicValues.blnIsManualOverride,
     strOverrideReason: dicValues.strOverrideReason.trim() || undefined,
     strRemarks: dicValues.strRemarks.trim() || undefined,
@@ -103,6 +110,44 @@ export const fnfSettlementService = {
       strPath: `/payroll/fnf-settlements/employee-options/${intEmployeeID}/default-payroll-run`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_FNF_VIEW",
+    });
+    return objResult.Data;
+  },
+  async getPolicy(): Promise<FNFPolicyResponse> {
+    const objResult = await requestApi<FNFPolicyResponse>({
+      strPath: "/payroll/fnf-settlements/policy",
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_FNF_VIEW",
+    });
+    return objResult.Data;
+  },
+  async savePolicy(objPolicy: FNFPolicy): Promise<FNFPolicyResponse> {
+    const objResult = await requestApi<FNFPolicyResponse>({
+      strPath: "/payroll/fnf-settlements/policy",
+      strMethod: "PUT",
+      objBody: objPolicy,
+      strMenuAction: "PAYROLL_FNF_APPROVE",
+    });
+    return objResult.Data;
+  },
+  async getRegister(objFilters: { lwd_from?: string; lwd_to?: string; status?: string }): Promise<FNFRegisterResponse> {
+    const objParams = new URLSearchParams();
+    Object.entries(objFilters).forEach(([strKey, strValue]) => {
+      if (strValue && strValue !== "All") objParams.set(strKey, strValue);
+    });
+    const strQuery = objParams.toString();
+    const objResult = await requestApi<FNFRegisterResponse>({
+      strPath: `/payroll/fnf-settlements/register${strQuery ? `?${strQuery}` : ""}`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_FNF_VIEW",
+    });
+    return objResult.Data;
+  },
+  async getPaymentAdvice(): Promise<FNFPaymentAdviceResponse> {
+    const objResult = await requestApi<FNFPaymentAdviceResponse>({
+      strPath: "/payroll/fnf-settlements/payment-advice",
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_FNF_MARK_PAID",
     });
     return objResult.Data;
   },
