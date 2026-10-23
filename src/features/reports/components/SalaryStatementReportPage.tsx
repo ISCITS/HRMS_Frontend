@@ -2,15 +2,17 @@
 
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Autocomplete, Box, Button, CircularProgress, MenuItem, TextField, Typography } from "@mui/material";
+import { Alert, Autocomplete, Box, Breadcrumbs, Button, MenuItem, TextField, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import BlockingLoader, { DottedLoader } from "@/components/shared/BlockingLoader";
 import { employeeService } from "@/features/employee/services/employeeService";
 import type { EmployeeListRecord } from "@/features/employee/types";
 import { payrollResultService } from "@/features/payroll/services/payrollResultService";
+import screen from "@/components/master/MasterScreen.module.css";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payrollReportService } from "@/features/reports/services/payrollReportService";
 import { getUniqueOptions } from "@/features/reports/components/ReportMultiSelectField";
@@ -107,11 +109,14 @@ function buildSalaryStatementLines(lstDetails: PayrollResultDetailRecord[], lstM
       if (!dicLine.blnIncludeInPayslip && !dicLine.blnIncludeInGross && !dicLine.blnIncludeInNetPay && !dicLine.blnIsEmployerContribution) return;
       const strSection = getLineSection(dicLine);
       const strKey = `${strSection}:${dicLine.strComponentCode || dicLine.intSalaryComponentID}:${dicLine.strComponentName}`;
+      // Sections keep their fixed block (earnings, deductions, employer); within a block the
+      // rows follow the display order set on the Salary Component screen.
+      const intSectionBase = strSection === "earnings" ? 1_000_000 : strSection === "deductions" ? 3_000_000 : 5_000_000;
       const dicExisting = mapLines.get(strKey) ?? {
         strKey,
         strComponent: dicLine.strComponentName || dicLine.strComponentCode || "Salary Component",
         strSection,
-        intOrder: strSection === "earnings" ? 10 : strSection === "deductions" ? 30 : 50,
+        intOrder: intSectionBase + Number(dicLine.intDisplayOrder ?? 999_999),
         dicAmounts: {},
       };
       addAmount(dicExisting.dicAmounts, strMonthKey, getNumber(dicLine.decAmount));
@@ -322,10 +327,13 @@ export default function SalaryStatementReportPage() {
   }
 
   return (
-    <Box className={styles.page}>
-      <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>Salary Statement</Typography>
+    <Box className={screen.page}>
+      <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />}>
+        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>Reports</Typography>
+        <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">Salary Statement</Typography>
+      </Breadcrumbs>
 
-      <Box className={styles.controlsCard}>
+      <Box className={screen.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <Box className={styles.reportSearchPanelRow}>
           <Box className={styles.reportSearchField} sx={{ flex: "1 1 320px", minWidth: 260 }}>
             <Autocomplete
@@ -333,7 +341,7 @@ export default function SalaryStatementReportPage() {
               value={dicSelectedEmployee ?? null}
               getOptionLabel={(dicEmployee) => `${dicEmployee.strEmployeeCode} - ${dicEmployee.strFullName}`}
               onChange={(_, dicEmployee) => setDicSearch((dicPrevious) => ({ ...dicPrevious, intEmployeeID: dicEmployee?.intID ?? "" }))}
-              renderInput={(objParams) => <TextField {...objParams} label="Employee Name" placeholder="Search employee..."
+              renderInput={(objParams) => <TextField {...objParams} InputLabelProps={{ shrink: true }} label="Employee Name" placeholder="Search employee..."
                 InputProps={{ ...objParams.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{objParams.InputProps.startAdornment}</>) }} />}
             />
           </Box>
@@ -348,8 +356,8 @@ export default function SalaryStatementReportPage() {
             </TextField>
           </Box>
           <Box className={styles.searchActions} sx={{ flex: "0 0 auto", ml: "auto" }}>
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={loadReport} disabled={blnLoadingReport} sx={{ whiteSpace: "nowrap" }}>Search</Button>
-            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} disabled={blnLoadingReport} sx={{ whiteSpace: "nowrap" }}>Clear</Button>
+            <Button className={screen.primaryButton} startIcon={<SearchRoundedIcon />} onClick={loadReport} disabled={blnLoadingReport} sx={{ minHeight: "30px !important", px: "8px !important", whiteSpace: "nowrap" }}>Search</Button>
+            <Button className={screen.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} disabled={blnLoadingReport} sx={{ minHeight: "30px !important", px: "8px !important", whiteSpace: "nowrap" }}>Clear</Button>
           </Box>
         </Box>
       </Box>
@@ -357,19 +365,19 @@ export default function SalaryStatementReportPage() {
       {!blnCanView && !strError ? <Alert severity="warning">Salary statement view access is not available for your user group.</Alert> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
 
-      <Box className={styles.tableCard}>
+      <Box className={screen.tableCard} sx={{ position: "relative", p: "10px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <Box sx={{ alignItems: "center", display: "flex", flex: "0 0 auto", justifyContent: "space-between", gap: 2, mb: 1 }}>
           <Typography sx={{ fontWeight: 700 }}>Salary Statement</Typography>
           <Box sx={{ display: "flex", flexWrap: "nowrap", gap: 1 }}>
-            {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadExcel(`salary-statement-${strFinancialYearLabel}.xls`, strReportMarkup)} disabled={!lstStatementLines.length} sx={{ whiteSpace: "nowrap" }}>Export Excel</Button> : null}
-            {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<PrintRoundedIcon />} onClick={() => printReport(strReportMarkup)} disabled={!lstStatementLines.length} sx={{ whiteSpace: "nowrap" }}>Download PDF</Button> : null}
+            {canDoAny("export") ? <Button className={screen.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadExcel(`salary-statement-${strFinancialYearLabel}.xls`, strReportMarkup)} disabled={!lstStatementLines.length} sx={{ whiteSpace: "nowrap" }}>Export Excel</Button> : null}
+            {canDoAny("export") ? <Button className={screen.secondaryButton} startIcon={<PrintRoundedIcon />} onClick={() => printReport(strReportMarkup)} disabled={!lstStatementLines.length} sx={{ whiteSpace: "nowrap" }}>Download PDF</Button> : null}
           </Box>
         </Box>
 
         <Box sx={{ flex: "1 1 auto", minHeight: 0, overflow: "auto", pr: 0.5, scrollbarGutter: "stable" }}>
           {blnLoadingReport ? (
-            <Box sx={{ alignItems: "center", display: "flex", gap: 1.5, justifyContent: "center", minHeight: 220 }}>
-              <CircularProgress size={24} />
+            <Box sx={{ alignItems: "center", display: "flex", flexDirection: "column", gap: 1, justifyContent: "center", minHeight: 220 }}>
+              <DottedLoader />
               <Typography>Building salary statement...</Typography>
             </Box>
           ) : (

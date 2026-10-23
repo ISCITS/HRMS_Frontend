@@ -1801,27 +1801,43 @@ function QuickActionsPanel({ objWidget, t }: { objWidget?: DashboardWidget; t: R
       {lstActions.length ? (
         <Box
           sx={{
-            height: "100%",
             display: "grid",
-            gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
-            gridAutoRows: "1fr",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))",
+            gridAutoRows: "minmax(84px, auto)",
             gap: 1.25,
           }}
         >
           {lstActions.map((objAction) => (
-            <Link key={objAction.strActionCode} href={objAction.strRoutePath || "/dashboard"} style={{ display: "block", width: "100%", height: "100%", textDecoration: "none" }}>
-              <Paper sx={{ p: 1.4, height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", borderRadius: "16px", border: `1px solid ${DASHBOARD_COLORS.border}`, boxShadow: "none", backgroundColor: "#f8fafc" }}>
+            <Box
+              component={Link}
+              key={objAction.strActionCode}
+              href={objAction.strRoutePath || "/dashboard"}
+              data-control-id={`dashboard-quick-action-${objAction.strActionCode}`}
+              sx={{
+                display: "flex",
+                minWidth: 0,
+                textDecoration: "none",
+                borderRadius: "10px",
+                "&:hover > .MuiPaper-root": {
+                  borderColor: DASHBOARD_COLORS.blue,
+                  backgroundColor: "#EFF6FF",
+                  boxShadow: "0 4px 12px rgba(37,99,235,0.08)",
+                },
+                "&:focus-visible": { outline: `3px solid ${DASHBOARD_COLORS.blue}`, outlineOffset: 3 },
+              }}
+            >
+              <Paper sx={{ p: 1.5, width: "100%", minWidth: 0, boxSizing: "border-box", display: "flex", flexDirection: "column", justifyContent: "center", borderRadius: "10px", border: `1px solid ${DASHBOARD_COLORS.border}`, boxShadow: "none", backgroundColor: "#F8FAFC", transition: "border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease" }}>
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
                   <Box sx={{ width: 36, height: 36, borderRadius: "12px", backgroundColor: quickActionColor(objAction.strActionCode), display: "grid", placeItems: "center", flexShrink: 0 }}>
                     {renderQuickActionIcon(objAction.strActionCode)}
                   </Box>
-                  <Box sx={{ minWidth: 0 }}>
+                  <Box sx={{ minWidth: 0, overflowWrap: "anywhere" }}>
                     <Typography sx={{ fontWeight: 700, color: DASHBOARD_COLORS.text, fontSize: "0.82rem", lineHeight: 1.3 }}>{objAction.strActionName}</Typography>
                     <Typography sx={{ mt: 0.2, color: DASHBOARD_COLORS.muted, fontSize: "0.72rem", lineHeight: 1.35 }}>{quickActionSubtitle(objAction.strActionCode, t)}</Typography>
                   </Box>
                 </Stack>
               </Paper>
-            </Link>
+            </Box>
           ))}
         </Box>
       ) : (
@@ -3001,20 +3017,22 @@ function PanelShell({
   return (
     <Paper
       sx={{
-        p: blnCompactPanel ? 1.05 : 1.7,
+        p: blnCompactPanel ? 1.05 : { xs: 1.75, sm: 2 },
         width: "100%",
+        minWidth: 0,
+        boxSizing: "border-box",
         height: blnAutoHeight ? "auto" : "100%",
-        borderRadius: "18px",
+        borderRadius: "12px",
         border: `1px solid ${DASHBOARD_COLORS.border}`,
         backgroundColor: DASHBOARD_COLORS.surface,
-        boxShadow: "0 8px 24px rgba(15,23,42,0.08)",
+        boxShadow: "0 4px 18px rgba(15,23,42,0.05)",
         position: "relative",
         overflow: "hidden",
       }}
     >
-      <Box sx={{ position: "absolute", inset: 0, borderTop: `3px solid ${strAccent}`, pointerEvents: "none", opacity: 0.9 }} />
+      <Box sx={{ position: "absolute", top: 0, left: 12, right: 12, borderTop: `3px solid ${strAccent}`, pointerEvents: "none", opacity: 0.9 }} />
       <Box sx={{ mb: blnCompactPanel ? 0.55 : 1.2, textAlign: blnCenterHeader ? "center" : "left" }}>
-        <Typography variant="h6" sx={{ color: DASHBOARD_COLORS.text, fontWeight: 800, fontSize: blnCompactPanel ? "0.86rem" : "0.96rem", lineHeight: 1.15 }}>
+        <Typography variant="h6" sx={{ color: DASHBOARD_COLORS.text, fontWeight: 800, fontSize: blnCompactPanel ? "0.86rem" : "0.96rem", lineHeight: 1.35, overflowWrap: "anywhere" }}>
           {strTitle}
         </Typography>
         {strSubtitle ? (

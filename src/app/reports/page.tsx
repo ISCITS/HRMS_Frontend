@@ -3,14 +3,19 @@ import { Box, Paper, Typography } from "@mui/material";
 
 const lstReports = [
   {
-    strTitle: "Payroll Register",
-    strDescription: "Employee-wise earnings, deductions, tax, gross pay, and net pay.",
-    strHref: "/reports/payroll-register",
-  },
-  {
     strTitle: "Salary Register",
     strDescription: "Employee-wise, component-wise monthly salary register from the CTC/salary structure, with filters and a grand total per employee.",
     strHref: "/reports/salary-register",
+  },
+  {
+    strTitle: "Payslips",
+    strDescription: "View, generate, download, and print employee payslips.",
+    strHref: "/reports/payslips",
+  },
+  {
+    strTitle: "Payroll Register",
+    strDescription: "Employee-wise earnings, deductions, tax, gross pay, and net pay.",
+    strHref: "/reports/payroll-register",
   },
   {
     strTitle: "Salary Statement",
@@ -21,11 +26,6 @@ const lstReports = [
     strTitle: "Bank File",
     strDescription: "Payment-ready net salary report for approved, published, or paid payroll.",
     strHref: "/reports/bank-file",
-  },
-  {
-    strTitle: "Payslips",
-    strDescription: "View, generate, download, and print employee payslips.",
-    strHref: "/reports/payslips",
   },
   {
     strTitle: "Statutory Reports",

@@ -199,6 +199,19 @@ function mapApiRecord(dicRecord: SalaryComponentApiRecord): SalaryComponentDetai
     intUsedInSalaryStructures: Number(dicRecord.intUsedInSalaryStructures ?? 0),
     intAssignedEmployees: Number(dicRecord.intAssignedEmployees ?? 0),
     intFormulaReferences: Number(dicRecord.intFormulaReferences ?? 0),
+    blnVariablePayCalculationEnabled: Boolean(dicRecord.blnVariablePayCalculationEnabled),
+    strVariablePayCalculationMethodCode: dicRecord.strVariablePayCalculationMethodCode ?? "DIRECT_AMOUNT",
+    intAllocationEntityTypeID: dicRecord.intAllocationEntityTypeID ?? null,
+    strVariablePayBaseSourceCode: dicRecord.strVariablePayBaseSourceCode ?? "EMPLOYEE_COMPONENT",
+    blnMonthlyAdjustmentApplicable: Boolean(dicRecord.blnMonthlyAdjustmentApplicable),
+    decMonthlyAdjustmentMinPercent: dicRecord.decMonthlyAdjustmentMinPercent ?? null,
+    decMonthlyAdjustmentMaxPercent: dicRecord.decMonthlyAdjustmentMaxPercent ?? null,
+    blnAttendanceEligibilityApplicable: Boolean(dicRecord.blnAttendanceEligibilityApplicable),
+    decAttendanceEligibilityPercent: dicRecord.decAttendanceEligibilityPercent ?? null,
+    blnAttendanceProrationApplicable: Boolean(dicRecord.blnAttendanceProrationApplicable),
+    blnEligibilityOverrideAllowed: Boolean(dicRecord.blnEligibilityOverrideAllowed),
+    strTdsRecoveryModeCode: dicRecord.strTdsRecoveryModeCode ?? "SAME_RUN",
+    strTaxProjectionBehavior: dicRecord.strTaxProjectionBehavior ?? null,
     blnIsEmployerContribution: Boolean(dicRecord.blnIsEmployerContribution),
     blnIsEmployeeDeduction: Boolean(dicRecord.blnIsEmployeeDeduction),
     blnDeclarationRequired: Boolean(dicRecord.blnDeclarationRequired),
@@ -349,7 +362,20 @@ export function createInitialSalaryComponentForm(): SalaryComponentFormValues {
     blnIsActive: true,
     lstDependencyComponentIDs: [],
     lstFlexiEligibilityRules: [],
-    lstTexts: [createEmptySalaryComponentTextRow()]
+    lstTexts: [createEmptySalaryComponentTextRow()],
+    blnVariablePayCalculationEnabled: false,
+    strVariablePayCalculationMethodCode: "DIRECT_AMOUNT",
+    intAllocationEntityTypeID: "",
+    strVariablePayBaseSourceCode: "EMPLOYEE_COMPONENT",
+    blnMonthlyAdjustmentApplicable: false,
+    strMonthlyAdjustmentMinPercent: "",
+    strMonthlyAdjustmentMaxPercent: "",
+    blnAttendanceEligibilityApplicable: false,
+    strAttendanceEligibilityPercent: "",
+    blnAttendanceProrationApplicable: false,
+    blnEligibilityOverrideAllowed: false,
+    strTdsRecoveryModeCode: "SAME_RUN",
+    strTaxProjectionBehavior: "",
   };
 }
 
@@ -420,6 +446,21 @@ export function toSalaryComponentFormValues(dicRecord: SalaryComponentDetailReco
     blnProofRequired: Boolean(dicRecord.blnProofRequired),
     blnAllowManualOverride: Boolean(dicRecord.blnAllowManualOverride),
     blnIsActive: Boolean(dicRecord.blnIsActive),
+    blnVariablePayCalculationEnabled: Boolean(dicRecord.blnVariablePayCalculationEnabled),
+    strVariablePayCalculationMethodCode:
+      (dicRecord.strVariablePayCalculationMethodCode as SalaryComponentFormValues["strVariablePayCalculationMethodCode"]) ?? "DIRECT_AMOUNT",
+    intAllocationEntityTypeID: dicRecord.intAllocationEntityTypeID ?? "",
+    strVariablePayBaseSourceCode:
+      (dicRecord.strVariablePayBaseSourceCode as SalaryComponentFormValues["strVariablePayBaseSourceCode"]) ?? "EMPLOYEE_COMPONENT",
+    blnMonthlyAdjustmentApplicable: Boolean(dicRecord.blnMonthlyAdjustmentApplicable),
+    strMonthlyAdjustmentMinPercent: dicRecord.decMonthlyAdjustmentMinPercent != null ? String(dicRecord.decMonthlyAdjustmentMinPercent) : "",
+    strMonthlyAdjustmentMaxPercent: dicRecord.decMonthlyAdjustmentMaxPercent != null ? String(dicRecord.decMonthlyAdjustmentMaxPercent) : "",
+    blnAttendanceEligibilityApplicable: Boolean(dicRecord.blnAttendanceEligibilityApplicable),
+    strAttendanceEligibilityPercent: dicRecord.decAttendanceEligibilityPercent != null ? String(dicRecord.decAttendanceEligibilityPercent) : "",
+    blnAttendanceProrationApplicable: Boolean(dicRecord.blnAttendanceProrationApplicable),
+    blnEligibilityOverrideAllowed: Boolean(dicRecord.blnEligibilityOverrideAllowed),
+    strTdsRecoveryModeCode: (dicRecord.strTdsRecoveryModeCode as SalaryComponentFormValues["strTdsRecoveryModeCode"]) ?? "SAME_RUN",
+    strTaxProjectionBehavior: (dicRecord.strTaxProjectionBehavior as SalaryComponentFormValues["strTaxProjectionBehavior"]) ?? "",
     lstDependencyComponentIDs: dicRecord.lstDependencyComponentIDs,
     lstFlexiEligibilityRules: dicRecord.lstFlexiEligibilityRules.map((dicRule, intIndex) => ({
       strRowID: createRuleRowID(),
@@ -560,6 +601,33 @@ function toPayload(dicValues: SalaryComponentFormValues, intSalaryComponentID?: 
     blnAllowManualOverride: dicValues.blnAllowManualOverride,
     blnIsActive: dicValues.blnIsActive,
     intLanguageID: Number(dicValues.lstTexts[0]?.intLanguageID || 1),
+    blnVariablePayCalculationEnabled: dicValues.blnVariablePayCalculationEnabled,
+    strVariablePayCalculationMethodCode: dicValues.blnVariablePayCalculationEnabled
+      ? dicValues.strVariablePayCalculationMethodCode
+      : "DIRECT_AMOUNT",
+    intAllocationEntityTypeID:
+      dicValues.blnVariablePayCalculationEnabled && dicValues.strVariablePayCalculationMethodCode === "ALLOCATION_BASED" && dicValues.intAllocationEntityTypeID !== ""
+        ? Number(dicValues.intAllocationEntityTypeID)
+        : null,
+    strVariablePayBaseSourceCode: dicValues.strVariablePayBaseSourceCode,
+    blnMonthlyAdjustmentApplicable: dicValues.blnMonthlyAdjustmentApplicable,
+    decMonthlyAdjustmentMinPercent:
+      dicValues.blnMonthlyAdjustmentApplicable && dicValues.strMonthlyAdjustmentMinPercent.trim()
+        ? Number(dicValues.strMonthlyAdjustmentMinPercent)
+        : null,
+    decMonthlyAdjustmentMaxPercent:
+      dicValues.blnMonthlyAdjustmentApplicable && dicValues.strMonthlyAdjustmentMaxPercent.trim()
+        ? Number(dicValues.strMonthlyAdjustmentMaxPercent)
+        : null,
+    blnAttendanceEligibilityApplicable: dicValues.blnAttendanceEligibilityApplicable,
+    decAttendanceEligibilityPercent:
+      dicValues.blnAttendanceEligibilityApplicable && dicValues.strAttendanceEligibilityPercent.trim()
+        ? Number(dicValues.strAttendanceEligibilityPercent)
+        : null,
+    blnAttendanceProrationApplicable: dicValues.blnAttendanceEligibilityApplicable && dicValues.blnAttendanceProrationApplicable,
+    blnEligibilityOverrideAllowed: dicValues.blnAttendanceEligibilityApplicable && dicValues.blnEligibilityOverrideAllowed,
+    strTdsRecoveryModeCode: dicValues.strTdsRecoveryModeCode,
+    strTaxProjectionBehavior: formatOptionalText(dicValues.strTaxProjectionBehavior),
     lstDependencyComponentIDs,
     lstFlexiEligibilityRules: blnPersistFlexiEligibilityRules
       ? dicValues.lstFlexiEligibilityRules.map((dicRule) => ({

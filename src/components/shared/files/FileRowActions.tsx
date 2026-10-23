@@ -2,7 +2,8 @@
 
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
-import { CircularProgress, IconButton, Stack, Tooltip } from "@mui/material";
+import { IconButton, Stack, Tooltip } from "@mui/material";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import FileUploadButton from "@/components/shared/files/FileUploadButton";
 
@@ -67,7 +68,7 @@ export default function FileRowActions({
               onClick={onPreview}
               aria-label={`${previewLabel} ${strFileName}`}
             >
-              {busy ? <CircularProgress size={16} /> : <VisibilityRoundedIcon fontSize="small" />}
+              {busy ? <DottedLoader intSize={16} /> : <VisibilityRoundedIcon fontSize="small" />}
             </IconButton>
           </span>
         </Tooltip>

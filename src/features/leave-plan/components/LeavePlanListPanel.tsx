@@ -4,14 +4,14 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, Checkbox, CircularProgress, MenuItem, Snackbar, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Checkbox, InputAdornment, Link, MenuItem, Snackbar, Stack, TextField, Typography } from "@mui/material";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, type InputHTMLAttributes } from "react";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
-import CommonRowActions from "@/components/master/CommonRowActions";
+import { dicMasterNameLinkSx, dicMasterRowSxAnyColumn, MasterBreadcrumbs, MasterGridSkeleton } from "@/components/master/MasterListUi";
 import styles from "@/components/master/MasterScreen.module.css";
 import { useLeavePlans } from "@/features/leave-plan/hooks/useLeavePlans";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -32,7 +32,7 @@ function formatDate(strValue: string | null): string {
 
 function StatusPill({ blnActive, strActive, strInactive }: { blnActive: boolean; strActive: string; strInactive: string }) {
   return (
-    <span className={`${styles.statusPill} ${blnActive ? styles.statusActive : styles.statusInactive}`}>
+    <span className={`app-master-status-pill ${blnActive ? "app-master-status-active" : "app-master-status-inactive"}`}>
       {blnActive ? strActive : strInactive}
     </span>
   );
@@ -169,18 +169,25 @@ export default function LeavePlanListPanel() {
             inputProps={{ "data-control-id": "leave-plan.list.row.select.checkbox", "data-row-key": String(objPlan.intID) } as InputHTMLAttributes<HTMLInputElement>}
           />
         ),
-        action: (
-          <CommonRowActions
-            testIdPrefix={`leave-plan.list.row.${objPlan.intID}`}
-            rowKey={objPlan.intID}
-            blnCanView
-            blnCanEdit={blnCanManage}
-            onView={() => openEditor(objPlan, true)}
-            onEdit={() => openEditor(objPlan)}
-          />
+        strPlanNameText: objPlan.strDisplayName || objPlan.strPlanName,
+        strPlanName: (
+          <Link
+            component="button"
+            type="button"
+            underline="none"
+            className="app-master-first-column-link"
+            data-control-id="leave-plan.list.row.name.button"
+            onClick={(objEvent) => {
+              if (window.getSelection()?.toString()) { objEvent.stopPropagation(); return; }
+              openEditor(objPlan, !blnCanManage);
+            }}
+            sx={dicMasterNameLinkSx}
+          >
+            {objPlan.strDisplayName || objPlan.strPlanName}
+          </Link>
         ),
         strPlanCode: objPlan.strPlanCode,
-        strPlanName: objPlan.strDisplayName || objPlan.strPlanName,
+        strStatusText: objPlan.blnIsActive ? "Active" : "Inactive",
         strEffectiveFrom: formatDate(objPlan.dtEffectiveFrom),
         strEffectiveTo: formatDate(objPlan.dtEffectiveTo),
         intAssigned: objPlan.intAssignedEmployeeCount ?? 0,
@@ -208,13 +215,12 @@ export default function LeavePlanListPanel() {
         exportable: false,
         width: 56,
       },
-      { field: "action", headerName: t("table_actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 130 },
+      { field: "strPlanName", headerName: t("table_plan_name", "Plan Name"), width: 220, sortAccessor: (dicRow) => String(dicRow.strPlanNameText) },
       { field: "strPlanCode", headerName: t("table_plan_code", "Plan Code"), width: 150 },
-      { field: "strPlanName", headerName: t("table_plan_name", "Plan Name"), width: 220 },
       { field: "strEffectiveFrom", headerName: t("table_effective_from", "Effective From"), width: 140 },
       { field: "strEffectiveTo", headerName: t("table_effective_to", "Effective To"), width: 140 },
       { field: "intAssigned", headerName: t("table_assigned_employees", "Current Assigned Employees"), width: 190 },
-      { field: "blnStatus", headerName: t("table_status", "Status"), sortable: false, width: 120 },
+      { field: "blnStatus", headerName: t("table_status", "Status"), filterable: false, width: 120, sortAccessor: (dicRow) => String(dicRow.strStatusText) },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [t, blnAllSelected, blnSomeSelected, lstFilteredPlans.length],
@@ -223,59 +229,64 @@ export default function LeavePlanListPanel() {
   const objTransparentTableSx = { p: 0, boxShadow: "none", background: "transparent" } as const;
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 1, pb: 2 }}>
+    <Box className={styles.page} sx={{ position: "relative" }}>
+      <MasterBreadcrumbs strSection={t("breadcrumb_leave", "Leave Management")} strTitle={t("breadcrumb_leave_plans", "Leave Plans")} />
       {/* Search / filter card */}
-      <Box className={styles.controlsCard}>
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <Box
+          className={styles.searchRow}
+          aria-busy={blnLoading || blnRightsLoading}
           sx={{
-            display: "grid",
-            gap: 1.25,
-            // Keep filters and actions on one row on desktop while preserving responsive wrapping.
-            gridTemplateColumns: {
-              xs: "1fr",
-              sm: "repeat(2, minmax(0, 1fr))",
-              // Plan code and plan name each take half the width the single search box used to have.
-              lg: "minmax(130px, 0.6fr) minmax(130px, 0.6fr) minmax(160px, 0.7fr) auto",
-            },
             alignItems: "center",
-            mt: 1,
+            "&&": { gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "minmax(200px, 1.2fr) minmax(180px, 1fr) minmax(150px, 0.7fr) auto auto 1fr" } },
+            "& .MuiButton-root": { alignSelf: "center" },
           }}
         >
           <TextField
+            className="app-mui-text-field"
             size="small"
-            value={dicSearchDraft.code}
-            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, code: objEvent.target.value }))}
-            onKeyDown={(objEvent) => objEvent.key === "Enter" && applySearch(dicSearchDraft)}
-            placeholder={t("search_code_placeholder", "Search plan code")}
-            inputProps={{ "data-control-id": "leave-plan.list.search-code.input" }}
-            fullWidth
-          />
-          <TextField
-            size="small"
+            label={t("table_plan_name", "Plan Name")}
             value={dicSearchDraft.name}
             onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, name: objEvent.target.value }))}
-            onKeyDown={(objEvent) => objEvent.key === "Enter" && applySearch(dicSearchDraft)}
             placeholder={t("search_name_placeholder", "Search plan name")}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }}
             inputProps={{ "data-control-id": "leave-plan.list.search-name.input" }}
+            disabled={blnLoading || blnRightsLoading}
             fullWidth
           />
           <TextField
+            className="app-mui-text-field"
+            size="small"
+            label={t("table_plan_code", "Plan Code")}
+            value={dicSearchDraft.code}
+            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, code: objEvent.target.value }))}
+            placeholder={t("search_code_placeholder", "Search plan code")}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }}
+            inputProps={{ "data-control-id": "leave-plan.list.search-code.input" }}
+            disabled={blnLoading || blnRightsLoading}
+            fullWidth
+          />
+          <TextField
+            className="app-mui-text-field"
             select
             size="small"
             label={t("filter_status", "Status")}
             value={dicSearchDraft.status}
             onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, status: objEvent.target.value as SearchForm["status"] }))}
             inputProps={{ "data-control-id": "leave-plan.list.status.select" }}
+            disabled={blnLoading || blnRightsLoading}
             fullWidth
           >
             <MenuItem value="all">{t("filter_all", "All")}</MenuItem>
             <MenuItem value="active">{t("status_active", "Active")}</MenuItem>
             <MenuItem value="inactive">{t("status_inactive", "Inactive")}</MenuItem>
           </TextField>
-          <Box sx={{ display: "flex", gap: 1, justifyContent: { sm: "flex-end" }, whiteSpace: "nowrap" }}>
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applySearch(dicSearchDraft)} disabled={blnLoading} data-control-id="leave-plan.list.search.button">
+          <Box className={styles.searchActions}>
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applySearch(dicSearchDraft)} disabled={blnLoading || blnRightsLoading} data-control-id="leave-plan.list.search.button">
               {t("search", "Search")}
             </Button>
+          </Box>
+          <Box className={styles.searchActions}>
             <Button
               className={styles.secondaryButton}
               startIcon={<ClearRoundedIcon />}
@@ -283,7 +294,7 @@ export default function LeavePlanListPanel() {
                 setDicSearchDraft(dicEmptySearch);
                 setDicSearchApplied(dicEmptySearch);
               }}
-              disabled={blnLoading}
+              disabled={blnLoading || blnRightsLoading}
               data-control-id="leave-plan.list.clear.button"
             >
               {t("clear", "Clear")}
@@ -303,13 +314,11 @@ export default function LeavePlanListPanel() {
       {strError ? <Alert severity="error">{strError}</Alert> : null}
 
       {blnLoading || blnRightsLoading ? (
-        <Box sx={{ display: "grid", placeItems: "center", py: 6 }}>
-          <CircularProgress />
-        </Box>
+        <MasterGridSkeleton strControlId="leave-plan.list.skeleton" intColumns={7} />
       ) : !blnCanView ? (
         <Alert severity="warning">{t("access_denied", "Leave Plan access is not available for your user group.")}</Alert>
       ) : (
-        <Box className={styles.tableCard} sx={{ flex: "0 0 auto" }}>
+        <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
           <CommonTable
             columns={lstPlanColumns}
             rows={lstPlanRows}
@@ -317,7 +326,13 @@ export default function LeavePlanListPanel() {
             exportFileName="leave_plans"
             showPaginationSummary
             minTableWidth={1196}
-            getRowSx={(dicRow) => (lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : {})}
+            hideRowClickHint
+            onRowClick={(dicRow) => {
+              if (!blnCanView) return;
+              const objPlan = lstPlans.find((objItem) => objItem.intID === dicRow.id);
+              if (objPlan) openEditor(objPlan, !blnCanManage);
+            }}
+            getRowSx={(dicRow) => ({ ...dicMasterRowSxAnyColumn, ...(lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : {}) })}
             emptyMessage={t("empty_message", "No Leave Plans found.")}
             toolbarLeft={
               <Stack direction="row" spacing={1}>

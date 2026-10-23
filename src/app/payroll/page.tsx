@@ -2,6 +2,7 @@ import AccountBalanceWalletOutlinedIcon from "@mui/icons-material/AccountBalance
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import ScheduleSendOutlinedIcon from "@mui/icons-material/ScheduleSendOutlined";
 import { Box, Button, Grid, Stack, Typography } from "@mui/material";
+import Link from "next/link";
 import PremiumCard from "@/components/ui/PremiumCard";
 import PayrollKpiCard from "@/features/payroll/components/PayrollKpiCard";
 
@@ -31,6 +32,7 @@ export default function PayrollPage() {
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
             <Button
               controlId="payroll.page.runs.button"
+              component={Link}
               href="/payroll/runs"
               variant="contained"
               sx={{
@@ -54,6 +56,7 @@ export default function PayrollPage() {
             </Button>
             <Button
               controlId="payroll.page.statutory-rules.button"
+              component={Link}
               href="/payroll/statutory-rules"
               variant="outlined"
               sx={{
@@ -74,6 +77,7 @@ export default function PayrollPage() {
             </Button>
             <Button
               controlId="payroll.page.employee-inputs.button"
+              component={Link}
               href="/payroll/employee-payroll-inputs"
               variant="outlined"
               sx={{

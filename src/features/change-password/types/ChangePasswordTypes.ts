@@ -8,5 +8,6 @@ export type PasswordResetEmployeeOption = {
   intEmployeeID: number;
   strEmployeeCode: string;
   strEmployeeName: string;
+  strEmailAddress?: string | null;
   blnIsCurrentUser?: boolean;
 };

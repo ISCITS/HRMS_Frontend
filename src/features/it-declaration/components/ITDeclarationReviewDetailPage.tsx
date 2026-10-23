@@ -5,6 +5,7 @@ import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { DetailPageHeader } from "@/components/master/MasterListUi";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import ITDeclarationActionBar from "@/features/it-declaration/components/ITDeclarationActionBar";
 import ITDeclarationItemReviewPanel from "@/features/it-declaration/components/ITDeclarationItemReviewPanel";
@@ -449,31 +450,29 @@ export default function ITDeclarationReviewDetailPage({ strDeclarationRecordUUID
 
   return (
     <Stack sx={{ height: "calc(100vh - 124px)", overflow: "hidden" }}>
-      <Paper sx={{ p: 0.9, borderRadius: "var(--app-card-radius)", border: "1px solid var(--app-border-color)", backgroundColor: "var(--app-surface-color)", boxShadow: "var(--app-shadow-soft)", flex: "0 0 auto", position: "sticky", top: 0, zIndex: 2 }}>
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }} spacing={1}>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Button variant="text" startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/it-declaration-review")} controlId="it-declaration.review-detail.back.button" sx={objHeaderControlSx}>Back</Button>
-            <Stack spacing={0.2}>
-              <Typography sx={{ fontWeight: 900, color: "var(--app-header-color)", fontSize: "0.98rem" }}>{objDetail.strEmployeeName} ({objDetail.strEmployeeCode})</Typography>
-              <Typography sx={{ color: "var(--app-muted-color)", fontSize: "0.76rem" }}>
-                FY: {objDetail.strFinancialYearCode} | Regime: {objDetail.strTaxRegime} | Declaration Ref: {objDetail.strDeclarationCode || "-"}
-              </Typography>
-            </Stack>
+      <DetailPageHeader strSection="Employee Services" strListTitle="IT Declaration Review" strListHref="/payroll/it-declaration-review" strCurrent="View">
+        <Button variant="text" startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/it-declaration-review")} controlId="it-declaration.review-detail.back.button" sx={objHeaderControlSx}>Back</Button>
+        <ITDeclarationActionBar
+          blnLocked={blnLocked}
+          blnCanRelease={blnCanReleaseHeader}
+          blnCanLock={blnCanLockHeader}
+          blnCanApprove={blnCanApproveHeader}
+          blnCanReject={blnCanRejectHeader}
+          fnApproveAll={() => setStrConfirm("approve_all")}
+          fnRejectHeader={() => setStrConfirm("reject")}
+          fnRelease={() => setStrConfirm("release")}
+          fnLock={() => setStrConfirm("lock")}
+        />
+      </DetailPageHeader>
+      <Paper sx={{ p: 0.9, borderRadius: "var(--app-card-radius)", border: "1px solid var(--app-border-color)", backgroundColor: "var(--app-surface-color)", boxShadow: "var(--app-shadow-soft)", flex: "0 0 auto" }}>
+        <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between" flexWrap="wrap" useFlexGap>
+          <Stack spacing={0.2}>
+            <Typography sx={{ fontWeight: 900, color: "var(--app-header-color)", fontSize: "0.98rem" }}>{objDetail.strEmployeeName} ({objDetail.strEmployeeCode})</Typography>
+            <Typography sx={{ color: "var(--app-muted-color)", fontSize: "0.76rem" }}>
+              FY: {objDetail.strFinancialYearCode} | Regime: {objDetail.strTaxRegime} | Declaration Ref: {objDetail.strDeclarationCode || "-"}
+            </Typography>
           </Stack>
-          <Stack direction="row" spacing={1} alignItems="center" justifyContent={{ xs: "flex-start", md: "flex-end" }} flexWrap="wrap" useFlexGap>
-            <ITDeclarationStatusBadge strStatus={objDetail.strStatus} />
-            <ITDeclarationActionBar
-              blnLocked={blnLocked}
-              blnCanRelease={blnCanReleaseHeader}
-              blnCanLock={blnCanLockHeader}
-              blnCanApprove={blnCanApproveHeader}
-              blnCanReject={blnCanRejectHeader}
-              fnApproveAll={() => setStrConfirm("approve_all")}
-              fnRejectHeader={() => setStrConfirm("reject")}
-              fnRelease={() => setStrConfirm("release")}
-              fnLock={() => setStrConfirm("lock")}
-            />
-          </Stack>
+          <ITDeclarationStatusBadge strStatus={objDetail.strStatus} />
         </Stack>
       </Paper>
 

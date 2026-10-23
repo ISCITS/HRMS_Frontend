@@ -10,7 +10,7 @@ export default function RegisterPage() {
       <TextField controlId="auth.register.email.input" inputProps={{ "controlId": "auth.register.email.input" }} label="Email" type="email" fullWidth required />
       <TextField controlId="auth.register.password.input" inputProps={{ "controlId": "auth.register.password.input" }} label="Password" type="password" fullWidth required />
       <TextField controlId="auth.register.confirm-password.input" inputProps={{ "controlId": "auth.register.confirm-password.input" }} label="Confirm Password" type="password" fullWidth required />
-      <Button controlId="auth.register.submit.button" variant="contained" size="large" href="/dashboard">
+      <Button controlId="auth.register.submit.button" component={Link} variant="contained" size="large" href="/dashboard">
         Register
       </Button>
       <Box sx={{ textAlign: "center" }}>

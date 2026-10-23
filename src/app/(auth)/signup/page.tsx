@@ -10,7 +10,7 @@ export default function SignupPage() {
       <TextField controlId="auth.signup.email.input" inputProps={{ "controlId": "auth.signup.email.input" }} label="Email" type="email" fullWidth required />
       <TextField controlId="auth.signup.password.input" inputProps={{ "controlId": "auth.signup.password.input" }} label="Password" type="password" fullWidth required />
       <TextField controlId="auth.signup.confirm-password.input" inputProps={{ "controlId": "auth.signup.confirm-password.input" }} label="Confirm Password" type="password" fullWidth required />
-      <Button controlId="auth.signup.submit.button" variant="contained" size="large" href="/dashboard">
+      <Button controlId="auth.signup.submit.button" component={Link} variant="contained" size="large" href="/dashboard">
         Signup
       </Button>
       <Box sx={{ textAlign: "center" }}>

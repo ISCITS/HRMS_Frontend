@@ -1,13 +1,16 @@
 "use client";
 
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import {
   Box,
   Button,
+  Menu,
   MenuItem,
   Pagination,
   Paper,
+  Skeleton,
   SxProps,
   Stack,
   Table,
@@ -53,23 +56,32 @@ export type CommonDataGridProps<T extends Record<string, ReactNode>> = {
   columns: DataGridColumn<T>[];
   rows: T[];
   toolbarLeft?: ReactNode;
+  toolbarAfterExport?: ReactNode;
+  /** Optional content rendered immediately before the rows-per-page/pagination controls. */
+  paginationLeftSlot?: ReactNode;
   footerContent?: ReactNode;
   hideToolbar?: boolean;
   minTableWidth?: number;
   getRowSx?: (row: T) => SxProps<Theme> | undefined;
+  onRowClick?: (row: T, event: MouseEvent<HTMLTableRowElement>) => void;
   onRowDoubleClick?: (row: T, event: MouseEvent<HTMLTableRowElement>) => void;
   rowIdField?: keyof T;
   defaultPageSize?: number;
   pageSizeOptions?: number[];
   exportFileName?: string;
+  exportButtonClassName?: string;
   showExportOptions?: boolean;
   showPaginationSummary?: boolean;
   emptyMessage?: string;
   withPaper?: boolean;
+  className?: string;
   sx?: SxProps<Theme>;
   testIdPrefix?: string;
   hideRowClickHint?: boolean;
   wrapColumnHeaders?: boolean;
+  loading?: boolean;
+  loadingHeaderSkeleton?: boolean;
+  skeletonRowCount?: number;
 };
 
 // Renders a generic client-side data grid with filter, sort, pagination, and optional export.
@@ -77,23 +89,31 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   columns,
   rows,
   toolbarLeft,
+  toolbarAfterExport,
+  paginationLeftSlot,
   footerContent,
   hideToolbar = false,
   minTableWidth = 980,
   getRowSx,
+  onRowClick,
   onRowDoubleClick,
   rowIdField,
   defaultPageSize = 20,
   pageSizeOptions = [10, 20, 50],
   exportFileName = dicConstant.commonDataGrid.defaultExportFileName,
+  exportButtonClassName,
   showExportOptions = false,
   showPaginationSummary = false,
   emptyMessage = dicConstant.commonDataGrid.emptyMessage,
   withPaper = true,
+  className,
   sx,
   testIdPrefix = "common-data-grid",
   hideRowClickHint = false,
-  wrapColumnHeaders = true
+  wrapColumnHeaders = true,
+  loading = false,
+  loadingHeaderSkeleton = false,
+  skeletonRowCount
 }: CommonDataGridProps<T>) {
   const { t } = useModuleLabels("common_data_grid");
   /*
@@ -112,15 +132,19 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   - If data is empty after filtering, renders emptyMessage row (no exception thrown).
   - If PDF popup is blocked, export handler safely returns without crashing.
   */
+  const [exportAnchor, setExportAnchor] = useState<HTMLElement | null>(null);
   const [sortBy, setSortBy] = useState<keyof T | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(defaultPageSize);
   const strExportExcelLabel = t("export_excel", dicConstant.common.exportExcel);
   const strExportPdfLabel = t("export_pdf", dicConstant.common.exportPdf);
+  const strRowsPerPageLabel = t("rows_per_page", dicConstant.common.rowsPerPage);
+  const strPerPageLabel = t("per_page", "per Page");
   const strPaginationSeparator = t("pagination_separator", dicConstant.common.paginationSeparator);
   const strRowDoubleClickHint = t("row_double_click_tooltip", "Double-click on a row to open details");
   const strResolvedEmptyMessage = emptyMessage || t("empty_message", dicConstant.commonDataGrid.emptyMessage);
+  const intSkeletonRowCount = skeletonRowCount ?? Math.min(Math.max(rowsPerPage, 1), 10);
   const orderedColumns = useMemo(() => {
     const getColumnPriority = (column: DataGridColumn<T>) => {
       const strField = String(column.field);
@@ -200,9 +224,28 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
     });
   };
 
-  const handleRowDoubleClick = (row: T, objEvent: MouseEvent<HTMLTableRowElement>) => {
+  const isInteractiveTarget = (objEvent: MouseEvent<HTMLTableRowElement>) => {
     const objTarget = objEvent.target as HTMLElement;
-    if (objTarget.closest("button, input, a, [role='button']")) {
+    return Boolean(objTarget.closest("button, input, a, label, select, textarea, [role='button'], [role='checkbox'], .MuiCheckbox-root, .MuiSwitch-root"));
+  };
+
+  const hasActiveTextSelection = () => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+
+    const objSelection = window.getSelection();
+    return Boolean(objSelection && !objSelection.isCollapsed && objSelection.toString().trim().length > 0);
+  };
+
+  const handleRowClick = (row: T, objEvent: MouseEvent<HTMLTableRowElement>) => {
+    if (!isInteractiveTarget(objEvent) && !hasActiveTextSelection()) {
+      onRowClick?.(row, objEvent);
+    }
+  };
+
+  const handleRowDoubleClick = (row: T, objEvent: MouseEvent<HTMLTableRowElement>) => {
+    if (isInteractiveTarget(objEvent) || hasActiveTextSelection()) {
       return;
     }
 
@@ -318,7 +361,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
 
   const table = (
     <Stack
-      spacing={2.5}
+      spacing={0}
       sx={{
         minHeight: 0,
         height: "100%",
@@ -331,20 +374,26 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
           spacing={1.5}
           alignItems={{ lg: "center" }}
           justifyContent="space-between"
-          sx={{ px: 1.5, pt: 1.25 }}
+          sx={{ px: 1.75, py: 1.25 }}
         >
           <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ md: "center" }} sx={{ width: { xs: "100%", lg: "auto" } }}>
             {toolbarLeft ? <Box sx={{ display: "flex", alignItems: "center", minHeight: 40 }}>{toolbarLeft}</Box> : null}
             {!hideToolbar && showExportOptions ? (
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                <Button data-controlid={`${testIdPrefix}.export-excel.button`} className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportExcel}>
-                  {strExportExcelLabel}
+              <>
+                <Button data-controlid={`${testIdPrefix}.export.button`} className={exportButtonClassName ?? styles.secondaryButton}
+                  startIcon={<DownloadRoundedIcon />} endIcon={<ExpandMoreRoundedIcon />}
+                  aria-haspopup="menu" aria-expanded={Boolean(exportAnchor)}
+                  aria-controls={exportAnchor ? `${testIdPrefix}-export-menu` : undefined}
+                  onClick={(event) => setExportAnchor(event.currentTarget)}>
+                  {t("export", "Export")}
                 </Button>
-                <Button data-controlid={`${testIdPrefix}.export-pdf.button`} className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={handleExportPdf}>
-                  {strExportPdfLabel}
-                </Button>
-              </Stack>
+                <Menu id={`${testIdPrefix}-export-menu`} anchorEl={exportAnchor} open={Boolean(exportAnchor)} onClose={() => setExportAnchor(null)}>
+                  <MenuItem data-controlid={`${testIdPrefix}.export-excel.button`} onClick={() => { setExportAnchor(null); handleExportExcel(); }}>{strExportExcelLabel}</MenuItem>
+                  <MenuItem data-controlid={`${testIdPrefix}.export-pdf.button`} onClick={() => { setExportAnchor(null); handleExportPdf(); }}>{strExportPdfLabel}</MenuItem>
+                </Menu>
+              </>
             ) : null}
+            {toolbarAfterExport ? <Box sx={{ display: "flex", alignItems: "center", minHeight: 40 }}>{toolbarAfterExport}</Box> : null}
             {!hideToolbar && !hideRowClickHint ? (
               <Stack
                 direction="row"
@@ -370,18 +419,24 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
               justifyContent={{ xs: "flex-start", lg: "flex-end" }}
               sx={{ width: { xs: "100%", lg: "auto" }, flexWrap: "wrap" }}
             >
+              {paginationLeftSlot ? (
+                <Box sx={{ display: "flex", alignItems: "center", minHeight: 40 }}>{paginationLeftSlot}</Box>
+              ) : null}
               <Box className={styles.paginationInfo} sx={{ flexWrap: "nowrap" }}>
                 <TextField
                   data-controlid={`${testIdPrefix}.rows-per-page.select`}
                   className={styles.rowsPerPageSelect}
                   select
                   size="small"
+                  label={strPerPageLabel}
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{ "aria-label": strRowsPerPageLabel }}
                   value={String(rowsPerPage)}
                   onChange={(event) => {
                     setRowsPerPage(parseInt(event.target.value, 10));
                     setPage(0);
                   }}
-                  sx={{ width: 86, flexShrink: 0 }}
+                  sx={{ width: 80, flexShrink: 0 }}
                 >
                   {pageSizeOptions.map((intOption) => (
                     <MenuItem key={intOption} value={String(intOption)} data-controlid={`${testIdPrefix}.rows-per-page.${intOption}.option`}>
@@ -403,8 +458,8 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                 onChange={(_, intNextPage) => setPage(intNextPage - 1)}
                 size="small"
                 color="primary"
-                showFirstButton
-                showLastButton
+                shape="rounded"
+                sx={{ "& .MuiPaginationItem-root": { border: "1px solid #e2e8f0", borderRadius: "5px" }, "& .Mui-selected": {  color: "#fff" } }}
               />
             </Stack>
           ) : null}
@@ -417,7 +472,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
           minHeight: 0,
           overflowX: "auto",
           overflowY: "auto",
-          scrollbarGutter: "stable",
+
         }}
       >
         <Table
@@ -441,7 +496,9 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
             <TableRow data-controlid={`${testIdPrefix}.table.header-row`}>
               {orderedColumns.map((column) => {
                 const strField = String(column.field);
-                const strAlign = column.align ?? (strField === "select" || strField === "action" || strField === "rowActions" ? "center" : "left");
+                const strAlign = column.align ?? "left";
+                const blnShowHeaderSkeleton = loading && loadingHeaderSkeleton;
+                const strHeaderSkeletonWidth = column.width ? `${Math.min(Math.max(column.width * 0.58, 64), column.width - 24)}px` : "64%";
                 return (
                   <TableCell
                     key={String(column.field)}
@@ -449,16 +506,17 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                     data-controlid={`${testIdPrefix}.header.${strField}.cell`}
                     sx={{
                       width: column.width,
-                      bgcolor: "background.paper",
-                      color: "text.secondary",
+                      bgcolor: "#edf3f9",
+                      color: "#334155",
+                      fontSize: 12,
                       fontWeight: 700,
                       borderBottom: "1px solid",
                       borderColor: "divider",
                       whiteSpace: wrapColumnHeaders ? "normal" : "nowrap",
                       overflowWrap: wrapColumnHeaders ? "anywhere" : "normal",
                       verticalAlign: "middle",
-                      px: 1,
-                      py: 0.5,
+                      px: 2,
+                      py: 1,
                       "& .MuiTableSortLabel-root": {
                         fontWeight: 700,
                         maxWidth: "100%",
@@ -469,7 +527,16 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                       }
                     }}
                   >
-                    {column.sortable === false ? (
+                    {blnShowHeaderSkeleton ? (
+                      <Box sx={{ display: "flex", justifyContent: strAlign === "right" ? "flex-end" : strAlign === "center" ? "center" : "flex-start", width: "100%" }}>
+                        <Skeleton
+                          variant="text"
+                          width={strHeaderSkeletonWidth}
+                          height={18}
+                          data-controlid={`${testIdPrefix}.header.${strField}.skeleton`}
+                        />
+                      </Box>
+                    ) : column.sortable === false ? (
                       <Box sx={{ display: "inline-flex", alignItems: "center", justifyContent: strAlign === "center" ? "center" : "flex-start", width: "100%" }}>
                         {column.headerName}
                       </Box>
@@ -479,7 +546,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                         active={sortBy === column.field}
                         direction={sortBy === column.field ? sortDirection : "asc"}
                         onClick={() => handleSort(column.field, column.sortable)}
-                        hideSortIcon={false}
+                        hideSortIcon
                       >
                         {column.headerName}
                       </TableSortLabel>
@@ -489,10 +556,49 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
               })}
             </TableRow>
           </TableHead>
-          <TableBody data-controlid={`${testIdPrefix}.table.body`}>
-            {filteredAndSortedRows.length === 0 ? (
+          <TableBody data-controlid={`${testIdPrefix}.table.body`} aria-busy={loading || undefined}>
+            {loading ? (
+              Array.from({ length: intSkeletonRowCount }).map((_, intRow) => (
+                <TableRow
+                  key={`skeleton-${intRow}`}
+                  data-controlid={`${testIdPrefix}.table.skeleton-row`}
+                  sx={{
+                    height: 40,
+                    "& td": {
+                      borderBottom: "1px solid",
+                      borderColor: "#edf1f6",
+                      verticalAlign: "middle"
+                    }
+                  }}
+                >
+                  {orderedColumns.map((column, intColumn) => {
+                    const strField = String(column.field);
+                    const blnIsActionColumn = strField === "action" || strField === "rowActions";
+                    const strAlign = column.align ?? "left";
+                    const strSkeletonWidth = blnIsActionColumn ? "68px" : `${46 + ((intRow + intColumn) % 3) * 14}%`;
+                    return (
+                      <TableCell
+                        key={`skeleton-${intRow}-${strField}`}
+                        align={strAlign}
+                        data-controlid={`${testIdPrefix}.table.skeleton.${strField}.cell`}
+                        sx={{ px: 2, py: 0.75 }}
+                      >
+                        <Box sx={{ display: "flex", justifyContent: strAlign === "right" ? "flex-end" : strAlign === "center" ? "center" : "flex-start" }}>
+                          <Skeleton variant={blnIsActionColumn ? "rounded" : "text"} width={strSkeletonWidth} height={blnIsActionColumn ? 24 : 20} />
+                        </Box>
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              ))
+            ) : filteredAndSortedRows.length === 0 ? (
               <TableRow data-controlid={`${testIdPrefix}.table.empty-row`}>
-                <TableCell data-controlid={`${testIdPrefix}.table.empty-state`} colSpan={orderedColumns.length} align="center" sx={{ py: 4, color: "text.secondary" }}>
+                <TableCell
+                  data-controlid={`${testIdPrefix}.table.empty-state`}
+                  colSpan={orderedColumns.length}
+                  align="center"
+                  sx={{ py: 4, color: "#697586", textDecoration: "none !important" }}
+                >
                   {strResolvedEmptyMessage}
                 </TableCell>
               </TableRow>
@@ -505,17 +611,26 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                     data-controlid={`${testIdPrefix}.row`}
                     data-row-key={strRowKey}
                     hover
-                    onDoubleClick={(objEvent) => handleRowDoubleClick(row, objEvent)}
+                    onClick={onRowClick ? (objEvent) => handleRowClick(row, objEvent) : undefined}
+                    onDoubleClick={onRowClick ? undefined : (objEvent) => handleRowDoubleClick(row, objEvent)}
                     sx={[
                       {
-                        height: 50,
+                        height: 40,
                         "&:hover": {
                           cursor: "pointer"
                         },
                         "& td": {
                           borderBottom: "1px solid",
-                          borderColor: "divider",
+                          borderColor: "#edf1f6",
                           verticalAlign: "middle"
+                        },
+                        "& td:first-of-type .MuiLink-root": {
+                          color: "inherit",
+                          textDecoration: "none"
+                        },
+                        "&:hover td:first-of-type .MuiLink-root": {
+                          color: "#0066df",
+                          textDecoration: "none"
                         }
                       },
                       getRowSx?.(row) ?? {}
@@ -524,7 +639,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                     {orderedColumns.map((column) => {
                       const strField = String(column.field);
                       const blnIsActionColumn = strField === "action" || strField === "rowActions";
-                      const strAlign = column.align ?? (strField === "select" || blnIsActionColumn ? "center" : "left");
+                      const strAlign = column.align ?? "left";
                       return (
                         <TableCell
                           key={`${String(column.field)}-${index}`}
@@ -534,8 +649,10 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                           sx={{
                             whiteSpace: "normal",
                             overflowWrap: "anywhere",
-                            px: 1,
-                            py: 0.5,
+                            px: 2,
+                            py: 0.75,
+                            fontSize: 13,
+                            color: "#334155",
                             ...(blnIsActionColumn ? {
                               overflowWrap: "normal",
                               whiteSpace: "nowrap",
@@ -578,7 +695,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   }
 
   return (
-    <Paper sx={{ p: 3, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden", ...sx }}>
+    <Paper className={className} sx={{ p: 0, border: "1px solid #e8eef5", borderRadius: "8px", boxShadow: "none", display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden", ...sx }}>
       {table}
     </Paper>
   );

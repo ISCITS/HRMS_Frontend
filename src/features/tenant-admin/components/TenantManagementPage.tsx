@@ -1,11 +1,15 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import {
+  Suspense,
+  useEffect,
+  useMemo,
+  useState } from "react";
+import { useRouter,
+  useSearchParams } from "next/navigation";
 import {
   Alert,
   Box,
-  CircularProgress,
   MenuItem,
   Paper,
   Stack,
@@ -16,13 +20,14 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Typography,
+  Typography
 } from "@mui/material";
 
 import TenantAdminShell from "@/features/tenant-admin/components/TenantAdminShell";
 import type { TenantManagementListItem } from "@/models/TenantAdministrationModels";
 import { authHelpers } from "@/lib/auth";
 import { tenantAdministrationService } from "@/services";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 const lstSortOptions = [
   { strValue: "updated_on:desc", strLabel: "Recently Updated" },
@@ -144,7 +149,7 @@ function TenantManagementPageContent() {
         >
           {blnLoading ? (
             <Box sx={{ minHeight: 240, display: "grid", placeItems: "center" }}>
-              <CircularProgress />
+              <DottedLoader />
             </Box>
           ) : (
             <TableContainer>
