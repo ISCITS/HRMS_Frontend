@@ -26,13 +26,28 @@ import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { fnfSettlementService } from "@/features/payroll/services/fnfSettlementService";
 import type { FNFCalculationValidation, FNFLineFormValues, FNFSettlementFormValues, FNFSettlementLineRecord, FNFSettlementRecord, FNFStatementRecord } from "@/features/payroll/types";
 import { useFNFRights } from "@/features/payroll/hooks/useFNFRights";
+import { printPayslipHtml } from "@/features/payroll/utils/payslipDocument";
+
+function formatDate(strValue?: string | null) {
+  if (!strValue) return "-";
+  const objDate = new Date(`${strValue.slice(0, 10)}T00:00:00`);
+  return Number.isNaN(objDate.getTime()) ? strValue : objDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function formatMonth(strValue: string) {
+  const objDate = new Date(`${strValue.slice(0, 7)}-01T00:00:00`);
+  return Number.isNaN(objDate.getTime()) ? strValue : objDate.toLocaleDateString("en-IN", { month: "short", year: "numeric" });
+}
+
+function formatLabel(strValue?: string | null) {
+  return strValue ? strValue.replace(/_/g, " ").replace(/\b\w/g, (strChar) => strChar.toUpperCase()) : "-";
+}
 
 function toSettlementFormValues(objSettlement: FNFSettlementRecord): FNFSettlementFormValues {
   return {
     intEmployeeID: objSettlement.intEmployeeID,
     strEmployeeCode: objSettlement.strEmployeeCode || "",
     strSettlementNumber: objSettlement.strSettlementNumber || "",
-    intPayrollRunID: objSettlement.intPayrollRunID || "",
     strExitType: objSettlement.strExitType || "resignation",
     strExitReason: objSettlement.strExitReason || "",
     dtResignationDate: objSettlement.dtResignationDate || "",
@@ -72,6 +87,7 @@ export default function FNFSettlementDetailPage({ strSettlementID }: { /** recor
   const lstValidations = useMemo(() => ((objSettlement?.objCalculationSnapshot?.validations as FNFCalculationValidation[] | undefined) || []), [objSettlement]);
   const blnHasBlockingValidation = lstValidations.some((dicValidation) => dicValidation.severity === "blocking");
   const blnShowValidations = Boolean(objSettlement && ["calculated", "released", "under_review"].includes(objSettlement.strSettlementStatus));
+  const lstSalaryMonths = ((objSettlement?.objCalculationSnapshot?.salary_months as { month: string }[] | undefined) || []).map((dicMonth) => dicMonth.month.slice(0, 7));
   const objClosure = objSettlement?.objCalculationSnapshot?.closure as
     | { tax_ledger?: { status: string; tds?: number }; leave_balances?: unknown[]; employee?: { after?: { status?: string; date_of_exit?: string } } }
     | undefined;
@@ -111,6 +127,11 @@ export default function FNFSettlementDetailPage({ strSettlementID }: { /** recor
       if (strAction === "statement") {
         setObjStatement(await fnfSettlementService.getStatement(strSettlementID));
         setStrSuccess("Statement generated.");
+      } else if (strAction === "payslip") {
+        const objPayslip = await fnfSettlementService.generatePayslip(strSettlementID);
+        printPayslipHtml(objPayslip.strHtml, objPayslip.strFileName);
+        setStrSuccess(`Payslip ${objPayslip.strPayslipNumber} generated. It is also available in the F&F Payslips tab.`);
+        await loadSettlement(false);
       } else {
         setObjSettlement(await fnfSettlementService.action(strSettlementID, strAction, objBody));
         setStrSuccess("Action completed.");
@@ -175,94 +196,97 @@ export default function FNFSettlementDetailPage({ strSettlementID }: { /** recor
 
   return (
     <Box className={styles.page}>
-      <DetailPageHeader strSection="Employee Services" strListTitle="Full & Final Settlement" strListHref="/payroll/fnf-settlements" strCurrent="View">
+      <DetailPageHeader
+        strSection="Employee Services"
+        strListTitle="Full & Final Settlement"
+        strListHref="/payroll/fnf-settlements"
+        strCurrent={objSettlement?.strSettlementNumber || "View"}
+        objCurrentAdornment={objSettlement ? <FNFStatusBadge strStatus={objSettlement.strSettlementStatus} /> : undefined}
+      >
         <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/fnf-settlements")} controlId="payroll.fnf-settlement-detail.back.button">Back</Button>
         {objSettlement ? <FNFActionBar objSettlement={objSettlement} blnBusy={blnSaving} onAction={openAction} /> : null}
       </DetailPageHeader>
-      <Box sx={{ px: 0.5 }}><Typography className={styles.title} sx={{ fontSize: "1.2rem" }}>Full and Final Settlement #{objSettlement?.strSettlementNumber || objSettlement?.intID}</Typography></Box>
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
       {objSettlement ? (
         <Box className={styles.tableCard}>
           <Box className={styles.detailScrollCard}>
-            <Stack spacing={2}>
-              <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ borderBottom: "1px solid #d9e6ef", pb: 2 }}>
-                <Box sx={{ flex: 1 }}><Typography sx={{ color: "#64748b" }}>Employee</Typography><Typography sx={{ fontWeight: 800 }}>{[objSettlement.strEmployeeCode, objSettlement.strEmployeeName].filter(Boolean).join(" - ") || objSettlement.intEmployeeID}</Typography></Box>
-                <Box sx={{ flex: 1 }}><Typography sx={{ color: "#64748b" }}>Exit Type</Typography><Typography sx={{ fontWeight: 800 }}>{objSettlement.strExitType}</Typography></Box>
-                <Box sx={{ flex: 1 }}><Typography sx={{ color: "#64748b" }}>Last Working Date</Typography><Typography sx={{ fontWeight: 800 }}>{objSettlement.dtLastWorkingDate}</Typography></Box>
-                <Box sx={{ flex: 1 }}><Typography sx={{ color: "#64748b" }}>Status</Typography><Stack direction="row" spacing={1} alignItems="center"><FNFStatusBadge strStatus={objSettlement.strSettlementStatus} />{["locked", "paid", "recovered"].includes(objSettlement.strSettlementStatus) ? <Chip size="small" color="success" label="Visible in ESS" /> : null}</Stack></Box>
-                {!blnReadOnly && blnCanEditDetails ? <Box sx={{ alignSelf: "flex-end" }}><Button className={styles.secondaryButton} startIcon={<EditRoundedIcon />} onClick={() => setDicEditingSettlement(toSettlementFormValues(objSettlement))} controlId="payroll.fnf-settlement-detail.edit-details.button">Edit Details</Button></Box> : null}
-              </Stack>
-              <Box className={styles.fnfWorkflowGrid}>
-                <Box className={styles.fnfWorkflowPanel}>
-                  <Typography className={styles.fnfWorkflowTitle}>Step 1: Employee</Typography>
-                  <Typography className={styles.fnfWorkflowValue}>{objSettlement.strEmployeeCode || objSettlement.intEmployeeID}</Typography>
-                  <Typography className={styles.fnfWorkflowMeta}>{objSettlement.strDepartmentName || "Department not set"}</Typography>
+            <Stack spacing={1.5}>
+              {/* Settlement summary: everything known about the exit in one compact grid. */}
+              <Box className={styles.fnfSummaryCard}>
+                <Box className={styles.fnfSummaryHead}>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography className={styles.fnfSummaryName}>{objSettlement.strEmployeeName || "-"} <Box component="span" className={styles.fnfSummaryCode}>{objSettlement.strEmployeeCode || objSettlement.intEmployeeID}</Box></Typography>
+                    <Typography className={styles.fnfSummaryLabel}>{objSettlement.strDepartmentName || "Department not set"}</Typography>
+                  </Box>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    {["locked", "paid", "recovered"].includes(objSettlement.strSettlementStatus) ? <Chip size="small" color="success" label="Visible in ESS" /> : null}
+                    {!blnReadOnly && blnCanEditDetails ? <Button className={styles.secondaryButton} size="small" startIcon={<EditRoundedIcon />} onClick={() => setDicEditingSettlement(toSettlementFormValues(objSettlement))} controlId="payroll.fnf-settlement-detail.edit-details.button">Edit Details</Button> : null}
+                  </Stack>
                 </Box>
-                <Box className={styles.fnfWorkflowPanel}>
-                  <Typography className={styles.fnfWorkflowTitle}>Step 2: Resignation Details</Typography>
-                  <Typography className={styles.fnfWorkflowValue}>LWD {objSettlement.dtLastWorkingDate}</Typography>
-                  <Typography className={styles.fnfWorkflowMeta}>Resigned {objSettlement.dtResignationDate || "-"} | Settles {objSettlement.dtSettlementDate || "-"}</Typography>
+                <Box className={styles.fnfSummaryGrid}>
+                  {[
+                    ["Exit Type", formatLabel(objSettlement.strExitType)],
+                    ["Resignation Date", formatDate(objSettlement.dtResignationDate)],
+                    ["Last Working Date", formatDate(objSettlement.dtLastWorkingDate)],
+                    ["Settlement Date", formatDate(objSettlement.dtSettlementDate)],
+                    ["Notice (Required / Served)", `${objSettlement.decNoticePeriodDays || 0} / ${objSettlement.decNoticeServedDays || 0} days`],
+                    ["Notice Shortfall", `${objSettlement.decNoticeShortfallDays || 0} days`],
+                    ["Salary Period", lstSalaryMonths.length ? lstSalaryMonths.map(formatMonth).join(", ") : "After Calculate"],
+                    ["Exit Reason", objSettlement.strExitReason || "-"],
+                  ].map(([strLabel, strValue]) => (
+                    <Box key={strLabel} className={styles.fnfSummaryItem}>
+                      <Typography className={styles.fnfSummaryLabel}>{strLabel}</Typography>
+                      <Typography className={styles.fnfSummaryValue} title={strValue}>{strValue}</Typography>
+                    </Box>
+                  ))}
                 </Box>
-                <Box className={styles.fnfWorkflowPanel}>
-                  <Typography className={styles.fnfWorkflowTitle}>Step 3: Notice Pay</Typography>
-                  <Typography className={styles.fnfWorkflowValue}>{objSettlement.decNoticeShortfallDays || 0} days shortfall</Typography>
-                  <Typography className={styles.fnfWorkflowMeta}>Required {objSettlement.decNoticePeriodDays || 0} | Served {objSettlement.decNoticeServedDays || 0}</Typography>
-                </Box>
-                <Box className={styles.fnfWorkflowPanel}>
-                  <Typography className={styles.fnfWorkflowTitle}>Step 4: Work Days</Typography>
-                  <Typography className={styles.fnfWorkflowValue}>Payroll run {objSettlement.intPayrollRunID || "-"}</Typography>
-                  <Typography className={styles.fnfWorkflowMeta}>Settlement month {objSettlement.dtSettlementMonth || "-"}</Typography>
-                </Box>
-                <Box className={styles.fnfWorkflowPanel}>
-                  <Typography className={styles.fnfWorkflowTitle}>Step 5: Leave Encashment</Typography>
-                  <Typography className={styles.fnfWorkflowValue}>{formatCurrency((objSettlement.lstLines || []).filter((line) => line.strCalculationBasis?.includes("leave") || line.strLineCode.includes("LEAVE")).reduce((decTotal, line) => decTotal + (line.decAmount || 0), 0))}</Typography>
-                  <Typography className={styles.fnfWorkflowMeta}>Editable below before approval or lock</Typography>
-                </Box>
-                <Box className={styles.fnfWorkflowPanel}>
-                  <Typography className={styles.fnfWorkflowTitle}>Step 6: Remarks</Typography>
-                  <Typography className={styles.fnfWorkflowValue}>{objSettlement.strRemarks || "-"}</Typography>
-                  <Typography className={styles.fnfWorkflowMeta}>Final notes and statutory review</Typography>
-                </Box>
+                {objSettlement.strRemarks ? <Typography className={styles.fnfSummaryRemarks}><strong>Remarks:</strong> {objSettlement.strRemarks}</Typography> : null}
               </Box>
+
+              {/* Amount tiles */}
+              <Box className={styles.fnfTotalsGrid}>
+                {[
+                  ["Total Earnings", objSettlement.decTotalEarnings, "#16a34a"],
+                  ["Deductions / Recoveries", (objSettlement.decTotalDeductions || 0) + (objSettlement.decTotalRecoveries || 0), "#dc2626"],
+                  ["TDS", objSettlement.decFinalTdsAmount ?? objSettlement.decTotalTaxDeducted, "#ea580c"],
+                  ["Statutory (PF / ESI / PT / LWF)", objSettlement.decTotalStatutoryDeduction, "#ea580c"],
+                  ["Net Payable", objSettlement.decNetPayableAmount, "#2563eb"],
+                  ["Net Recoverable", objSettlement.decNetRecoverableAmount, "#dc2626"],
+                ].map(([strLabel, decValue, strColor]) => (
+                  <Box key={String(strLabel)} className={styles.fnfTotalTile}>
+                    <Typography className={styles.fnfSummaryLabel}>{strLabel}</Typography>
+                    <Typography className={styles.fnfTotalValue} sx={{ color: String(strColor) }}>{formatCurrency(Number(decValue || 0))}</Typography>
+                  </Box>
+                ))}
+              </Box>
+
               {blnShowValidations && lstValidations.length ? (
-                <Stack spacing={1}>
+                <Stack spacing={0.75}>
                   {lstValidations.map((dicValidation) => (
-                    <Alert key={dicValidation.code} severity={dicValidation.severity === "blocking" ? "error" : dicValidation.severity === "warning" ? "warning" : "info"}>
+                    <Alert key={dicValidation.code} sx={{ py: 0 }} severity={dicValidation.severity === "blocking" ? "error" : dicValidation.severity === "warning" ? "warning" : "info"}>
                       {dicValidation.message}{dicValidation.severity === "blocking" ? " Submitting for review will ask for an override reason." : ""}
                     </Alert>
                   ))}
                 </Stack>
               ) : null}
               {objClosure ? (
-                <Alert severity="success">
+                <Alert severity="success" sx={{ py: 0 }}>
                   Settlement closed in the F&amp;F module:{" "}
                   {[
                     objClosure.tax_ledger ? `tax ledger ${objClosure.tax_ledger.status === "posted" ? `posted (TDS ${formatCurrency(objClosure.tax_ledger.tds)})` : String(objClosure.tax_ledger.status).replace(/_/g, " ")}` : null,
                     objClosure.leave_balances ? `${objClosure.leave_balances.length} leave balance(s) closed` : null,
-                    objClosure.employee ? `employee set ${objClosure.employee.after?.status} from ${objClosure.employee.after?.date_of_exit}` : null,
+                    objClosure.employee ? `employee set ${objClosure.employee.after?.status} from ${formatDate(objClosure.employee.after?.date_of_exit)}` : null,
                   ].filter(Boolean).join("; ")}.
                 </Alert>
               ) : null}
-              <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                <Box sx={{ flex: 1 }}><Typography sx={{ color: "#64748b" }}>Total Earnings</Typography><Typography sx={{ color: "#16a34a", fontWeight: 900 }}>{formatCurrency(objSettlement.decTotalEarnings)}</Typography></Box>
-                <Box sx={{ flex: 1 }}><Typography sx={{ color: "#64748b" }}>Deductions/Recoveries</Typography><Typography sx={{ color: "#dc2626", fontWeight: 900 }}>{formatCurrency((objSettlement.decTotalDeductions || 0) + (objSettlement.decTotalRecoveries || 0))}</Typography></Box>
-                <Box sx={{ flex: 1 }}><Typography sx={{ color: "#64748b" }}>Tax/Statutory</Typography><Typography sx={{ color: "#ea580c", fontWeight: 900 }}>{formatCurrency((objSettlement.decTotalTaxDeducted || 0) + (objSettlement.decTotalStatutoryDeduction || 0))}</Typography></Box>
-                <Box sx={{ flex: 1 }}>
-                  <Typography sx={{ color: "#64748b" }}>Net Settlement</Typography>
-                  <Stack direction="row" spacing={2} flexWrap="wrap">
-                    <Box><Typography sx={{ color: "#64748b", fontSize: "0.78rem" }}>Net Payable</Typography><Typography sx={{ color: "#2563eb", fontWeight: 900 }}>{formatCurrency(objSettlement.decNetPayableAmount)}</Typography></Box>
-                    <Box><Typography sx={{ color: "#64748b", fontSize: "0.78rem" }}>Net Recoverable</Typography><Typography sx={{ color: "#dc2626", fontWeight: 900 }}>{formatCurrency(objSettlement.decNetRecoverableAmount)}</Typography></Box>
-                  </Stack>
-                </Box>
-              </Stack>
+
               <FNFSettlementCalculationPanel objSettlement={objSettlement} blnReadOnly={blnLinesReadOnly} onAdd={() => { setObjEditingLine(null); setBlnLineDialogOpen(true); }} onEdit={(line) => { setObjEditingLine(line); setBlnLineDialogOpen(true); }} onDelete={setObjLineToDelete} />
               <FNFLeaveEncashmentPanel objSettlement={objSettlement} blnReadOnly={blnLinesReadOnly} onAdd={() => { setObjEditingLine(null); setBlnLineDialogOpen(true); }} onEdit={(line) => { setObjEditingLine(line); setBlnLineDialogOpen(true); }} onDelete={setObjLineToDelete} />
               <FNFNoticePayPanel objSettlement={objSettlement} />
               <FNFGratuityPanel objSettlement={objSettlement} />
               <FNFRecoveryPanel objSettlement={objSettlement} />
               <FNFReimbursementPanel objSettlement={objSettlement} />
-              <Box sx={{ borderTop: "1px solid #d9e6ef", pt: 2 }}><Typography sx={{ fontWeight: 800 }}>Tax / Statutory Summary</Typography><Typography sx={{ color: "#64748b" }}>Final TDS {formatCurrency(objSettlement.decFinalTdsAmount)} | Statutory {formatCurrency(objSettlement.decTotalStatutoryDeduction)}</Typography></Box>
               <FNFStatementPreview objStatement={objStatement} />
               <FNFAuditTimeline lstAudit={objSettlement.lstAudit || []} />
             </Stack>
@@ -275,7 +299,6 @@ export default function FNFSettlementDetailPage({ strSettlementID }: { /** recor
           {dicEditingSettlement ? (
             <Box className={styles.fnfEditDetailsGrid} sx={{ pt: 1 }}>
               <TextField label="Settlement Number" value={dicEditingSettlement.strSettlementNumber} onChange={(e) => updateSettlementField("strSettlementNumber", e.target.value)} fullWidth />
-              <TextField label="Payroll Run ID" type="number" value={dicEditingSettlement.intPayrollRunID} disabled fullWidth />
               <TextField label="Exit Type" required value={dicEditingSettlement.strExitType} onChange={(e) => updateSettlementField("strExitType", e.target.value)} fullWidth />
               <TextField label="Resignation Date" type="date" InputLabelProps={{ shrink: true }} value={dicEditingSettlement.dtResignationDate} onChange={(e) => updateSettlementField("dtResignationDate", e.target.value)} fullWidth />
               <TextField label="Last Working Date" required type="date" InputLabelProps={{ shrink: true }} value={dicEditingSettlement.dtLastWorkingDate} onChange={(e) => updateSettlementField("dtLastWorkingDate", e.target.value)} fullWidth />

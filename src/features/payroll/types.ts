@@ -266,7 +266,92 @@ export type FNFEmployeeOption = {
   strEmployeeCode: string;
   strEmployeeName: string;
   strLabel: string;
+  /** Date of exit from the employee master; used as the settlement's last working date. */
+  dtDateOfExit?: string | null;
+  /** Notice period from the employee master (bulk creation default). */
+  intNoticePeriodDays?: number | null;
 };
+
+/** One employee in a bulk F&F creation. */
+export type FNFBulkCreateItem = {
+  intEmployeeID: number;
+  /** Blank: taken from existing records (earlier settlement, retirement/contract end), else resignation. */
+  strExitType?: string;
+  dtResignationDate?: string;
+  decNoticePeriodDays?: number;
+};
+export type FNFBulkCreateResult = {
+  intEmployeeID: number;
+  strEmployeeCode: string | null;
+  strEmployeeName: string | null;
+  strStatus: "created" | "calculated" | "failed";
+  strMessage: string | null;
+  strSettlementRecordUUID: string | null;
+  decNetPayable: number | null;
+  decNetRecoverable: number | null;
+  intBlockingIssues: number;
+};
+export type FNFBulkCreateResponse = { lstResults: FNFBulkCreateResult[]; intCreated: number; intCalculated: number; intFailed: number };
+
+/** One row of the full F&F report (all data for a settlement). */
+export type FNFReportRow = {
+  strRecordUUID: string;
+  strSettlementNumber: string;
+  intEmployeeID: number;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strDepartmentName: string | null;
+  strDesignationName: string | null;
+  dtDateOfJoining: string | null;
+  strEmploymentStatus: string | null;
+  strExitType: string;
+  strExitReason: string | null;
+  dtResignationDate: string | null;
+  dtLastWorkingDate: string;
+  dtSettlementDate: string | null;
+  strServicePeriod: string | null;
+  intGratuityYears: number | null;
+  decNoticePeriodDays: number;
+  decNoticeServedDays: number;
+  decNoticeShortfallDays: number;
+  decLeaveEncashedDays: number;
+  decSalaryEarned: number;
+  decLeaveEncashment: number;
+  decNoticePay: number;
+  decGratuity: number;
+  decReimbursement: number;
+  decOtherEarnings: number;
+  decNoticeRecovery: number;
+  decLoanRecovery: number;
+  decExcessSalaryRecovery: number;
+  decExcessLeaveRecovery: number;
+  decOtherRecoveries: number;
+  decOtherDeductions: number;
+  decPf: number;
+  decEsi: number;
+  decPt: number;
+  decLwf: number;
+  decOtherStatutory: number;
+  decTds: number;
+  decTotalEarnings: number;
+  decTotalRecoveries: number;
+  decTotalDeductions: number;
+  decTotalStatutory: number;
+  decTaxableIncome: number;
+  decNetPayable: number;
+  decNetRecoverable: number;
+  strSettlementStatus: FNFSettlementStatus;
+  intBlockingIssues: number;
+  dtSubmittedOn: string | null;
+  dtApprovedOn: string | null;
+  dtLockedOn: string | null;
+  dtPaidOn: string | null;
+  strPaymentReferenceNo: string | null;
+  strPayslipNumber: string | null;
+  strPayslipStatus: string | null;
+  dtAddedOn: string | null;
+};
+export type FNFReportResponse = { lstRows: FNFReportRow[]; dicTotals: Record<string, number> };
 
 export type FNFDefaultPayrollRunOption = {
   intID: number;
@@ -347,8 +432,6 @@ export type FNFSettlementFormValues = {
   intEmployeeID?: number | "";
   strEmployeeCode: string;
   strSettlementNumber: string;
-  intPayrollRunID: number | "";
-  strPayrollCycleCode?: string;
   strExitType: string;
   strExitReason: string;
   dtResignationDate: string;
@@ -358,11 +441,37 @@ export type FNFSettlementFormValues = {
   decNoticePeriodDays: string;
   decNoticeServedDays: string;
   decNoticeShortfallDays: string;
-  decWorkDays?: string;
-  decDaysWorked?: string;
   strCurrencyCode: string;
   strRemarks: string;
   lstLeaveEncashments?: FNFLeaveEncashmentFormValue[];
+};
+
+/** Leave balance on the last working date, read from leave records for a new settlement. */
+export type FNFLeaveBalancePreview = {
+  strLeaveTypeCode: string;
+  strLeaveTypeName: string;
+  decBalanceDays: number;
+  decEncashableDays: number;
+  blnEncashable: boolean;
+};
+
+/** Values the system already holds for an employee, used to prefill a new settlement. */
+export type FNFEmployeePrefill = {
+  intEmployeeID: number;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strExitType: string | null;
+  strExitReason: string | null;
+  dtResignationDate: string | null;
+  dtLastWorkingDate: string | null;
+  dtSettlementDate: string | null;
+  decNoticePeriodDays: number | null;
+  decNoticeServedDays: number | null;
+  decNoticeShortfallDays: number | null;
+  lstLeaveBalances: FNFLeaveBalancePreview[];
+  strLeaveMessage: string | null;
+  /** Field name -> where the prefilled value came from. */
+  dicSources: Record<string, string>;
 };
 
 export type FNFLeaveEncashmentFormValue = {
@@ -424,6 +533,54 @@ export type FNFRegisterRow = {
   decNetRecoverable: number;
 };
 export type FNFRegisterResponse = { lstRows: FNFRegisterRow[]; dicTotals: Record<string, number> };
+
+/** Generated F&F payslip (one row per version). */
+export type FNFPayslipStatus = "Generated" | "Outdated" | "Superseded";
+export type FNFPayslipRecord = {
+  strRecordUUID: string;
+  strPayslipNumber: string;
+  intVersion: number;
+  strPayslipStatus: FNFPayslipStatus;
+  intEmployeeID: number;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strDepartmentName: string | null;
+  strSettlementRecordUUID: string;
+  strSettlementNumber: string;
+  strSettlementStatus: FNFSettlementStatus;
+  dtLastWorkingDate: string;
+  decNetPayAmount: number;
+  decNetRecoverableAmount: number;
+  dtGeneratedOn: string;
+};
+
+/** Employee with an F&F settlement, for the F&F Payslips filters. */
+export type FNFPayslipEmployeeOption = {
+  intEmployeeID: number;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strLabel: string;
+  strSettlementRecordUUID: string;
+  strSettlementStatus: FNFSettlementStatus;
+  dtResignationDate: string | null;
+  dtLastWorkingDate: string;
+};
+
+/** A regular (payroll run) payslip of the exiting employee. */
+export type FNFRegularPayslipRecord = {
+  intPayslipID: number;
+  strRecordUUID: string;
+  strPayslipNumber: string;
+  strPayslipStatus: string;
+  dtPayrollMonth: string;
+  strRunCode: string;
+  decGrossAmount: number;
+  decNetPayAmount: number;
+  dtGeneratedOn: string | null;
+};
+
+/** A payslip document ready to view/print/download. */
+export type FNFPayslipDocument = { strHtml: string; strFileName: string; strRecordUUID?: string; strPayslipNumber?: string };
 
 /** Bank payment advice row for a locked, net-payable settlement. */
 export type FNFPaymentAdviceRow = {

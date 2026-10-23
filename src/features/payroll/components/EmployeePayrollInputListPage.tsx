@@ -14,8 +14,8 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { MasterBreadcrumbs, MasterGridSkeleton, MasterStatusPill, dicMasterRowSx, onSearchEnter } from "@/components/master/MasterListUi";
@@ -25,12 +25,13 @@ import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { employeePayrollInputService } from "@/features/payroll/services/employeePayrollInputService";
 import type {
   EmployeePayrollInputListRecord,
+  PayrollRunOption,
 } from "@/features/payroll/types";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 type SearchForm = {
   strSearchEmployee: string;
-  strSearchRun: string;
+  intPayrollRunID: number | null;
   strStatus: "All" | "Draft" | "Submitted" | "Locked";
 };
 
@@ -42,7 +43,7 @@ type ToastState = {
 
 const dicEmptySearch: SearchForm = {
   strSearchEmployee: "",
-  strSearchRun: "",
+  intPayrollRunID: null,
   strStatus: "All",
 };
 const lstEmployeePayrollInputModuleCodes = ["EMPLOYEE_PAYROLL_INPUT", "EMPLOYEE_PAYROLL_INPUTS", "PAYROLL_INPUT", "PAYROLL_INPUTS"];
@@ -68,15 +69,35 @@ function formatNumber(decValue: number | null) {
 }
 
 export default function EmployeePayrollInputListPage() {
-  const objRouter = useRouter();
+  return (
+    <Suspense fallback={<MasterGridSkeleton strControlId="employee-payroll-input.list.skeleton" intColumns={11} />}>
+      <EmployeePayrollInputSearchPage />
+    </Suspense>
+  );
+}
+
+function EmployeePayrollInputSearchPage() {
+  const objSearchParams = useSearchParams();
+  const strRunID = objSearchParams.get("runId") ?? objSearchParams.get("intPayrollRunID");
+  const intQueryRunID = strRunID && Number.isSafeInteger(Number(strRunID)) && Number(strRunID) > 0
+    ? Number(strRunID)
+    : null;
+  return <EmployeePayrollInputList key={intQueryRunID ?? "all"} intInitialRunID={intQueryRunID} />;
+}
+
+function EmployeePayrollInputList({ intInitialRunID }: { intInitialRunID: number | null }) {
+  const dicInitialSearch = useMemo(() => ({ ...dicEmptySearch, intPayrollRunID: intInitialRunID }), [intInitialRunID]);
   const { t } = useModuleLabels("employee-payroll-input");
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstEmployeePayrollInputModuleCodes);
   const [lstInputs, setLstInputs] = useState<EmployeePayrollInputListRecord[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
+  const [lstPayrollRuns, setLstPayrollRuns] = useState<PayrollRunOption[]>([]);
+  const [blnRunsLoading, setBlnRunsLoading] = useState(true);
+  const [strRunOptionsError, setStrRunOptionsError] = useState("");
   const [dicSearchDraft, setDicSearchDraft] =
-    useState<SearchForm>(dicEmptySearch);
-  const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
+    useState<SearchForm>(dicInitialSearch);
+  const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicInitialSearch);
   const [objToast, setObjToast] = useState<ToastState>({
     blnOpen: false,
     strMessage: "",
@@ -87,7 +108,7 @@ export default function EmployeePayrollInputListPage() {
   const blnCanEdit = canDoAny("edit");
   const blnCanExport = canDoAny("export");
 
-  async function loadInputs(objFilters: SearchForm = dicSearchApplied) {
+  const loadInputs = useCallback(async (objFilters: SearchForm) => {
     if (!blnCanView) {
       setLstInputs([]);
       setBlnLoading(false);
@@ -109,31 +130,48 @@ export default function EmployeePayrollInputListPage() {
     } finally {
       setBlnLoading(false);
     }
-  }
+  }, [blnCanView]);
 
   useEffect(() => {
     if (blnRightsLoading) {
       return;
     }
 
-    loadInputs().catch(() => undefined);
+    loadInputs(dicInitialSearch).catch(() => undefined);
+  }, [blnRightsLoading, dicInitialSearch, loadInputs]);
+
+  useEffect(() => {
+    if (blnRightsLoading || !blnCanView) return;
+    let blnCancelled = false;
+    employeePayrollInputService.getFormOptions()
+      .then((dicOptions) => {
+        if (!blnCancelled) {
+          setLstPayrollRuns(dicOptions.lstPayrollRuns);
+          setStrRunOptionsError("");
+        }
+      })
+      .catch((objError: unknown) => {
+        if (!blnCancelled) setStrRunOptionsError(objError instanceof Error ? objError.message : "Unable to load payroll runs.");
+      })
+      .finally(() => {
+        if (!blnCancelled) setBlnRunsLoading(false);
+      });
+    return () => { blnCancelled = true; };
   }, [blnRightsLoading, blnCanView]);
 
   const lstFilteredRows = useMemo(() => {
     return lstInputs.filter((dicRow) => {
-      const strEmployeeSearch = dicSearchApplied.strSearchEmployee.toLowerCase();
-      const strRunSearch = dicSearchApplied.strSearchRun.toLowerCase();
+      const strEmployeeSearch = dicSearchApplied.strSearchEmployee.trim().toLowerCase();
       const blnEmployeeMatch =
         !strEmployeeSearch ||
         dicRow.strEmployeeCode.toLowerCase().includes(strEmployeeSearch) ||
         dicRow.strEmployeeName.toLowerCase().includes(strEmployeeSearch);
       const blnRunMatch =
-        !strRunSearch ||
-        dicRow.strRunCode.toLowerCase().includes(strRunSearch) ||
-        dicRow.strRunName.toLowerCase().includes(strRunSearch);
+        !dicSearchApplied.intPayrollRunID ||
+        dicRow.intPayrollRunID === dicSearchApplied.intPayrollRunID;
       const blnStatusMatch =
         dicSearchApplied.strStatus === "All" ||
-        dicRow.strStatus === dicSearchApplied.strStatus;
+        dicRow.strStatus.toLowerCase() === dicSearchApplied.strStatus.toLowerCase();
       return blnEmployeeMatch && blnRunMatch && blnStatusMatch;
     });
   }, [dicSearchApplied, lstInputs]);
@@ -149,9 +187,9 @@ export default function EmployeePayrollInputListPage() {
     window.location.assign(withBasePath(strPath));
   }
 
-  function openInput(strRecordUUID: string) {
-    navigateToFullScreen(`/payroll/employee-payroll-inputs/${strRecordUUID}/edit`);
-  }
+  const openInput = useCallback((strRecordUUID: string) => {
+    window.location.assign(withBasePath(`/payroll/employee-payroll-inputs/${strRecordUUID}/edit`));
+  }, []);
 
   const lstTableRows = useMemo(
     () =>
@@ -177,11 +215,17 @@ export default function EmployeePayrollInputListPage() {
         dtPayrollMonth: formatDate(dicRow.dtPayrollMonth),
         dtPayrollMonthSortValue: dicRow.dtPayrollMonth ? new Date(dicRow.dtPayrollMonth).getTime() : 0,
         strAttendanceSource:
-          dicRow.strManualLwpSource === "SYSTEM_ATTENDANCE"
+          dicRow.strManualLwpSource === "CLIENT_PAYABLE_DAYS_IMPORT"
+            ? t("source_client_import", "Client Payable Days Import")
+            : dicRow.strManualLwpSource === "SYSTEM_ATTENDANCE"
             ? t("source_attendance", "Attendance & Leave Inputs")
             : dicRow.strManualLwpSource
               ? t("source_manual", "Manual")
               : t("source_not_set", "Not Set"),
+        decPayableDays: formatNumber(dicRow.decPayableDays),
+        decPayableDaysSortValue: Number(dicRow.decPayableDays ?? 0),
+        decPaidDays: formatNumber(dicRow.decPaidDays),
+        decPaidDaysSortValue: Number(dicRow.decPaidDays ?? 0),
         decLwpDays: formatNumber(dicRow.decLwpDays),
         decLwpDaysSortValue: Number(dicRow.decLwpDays ?? 0),
         decLopDays: formatNumber(dicRow.decLopDays),
@@ -189,7 +233,7 @@ export default function EmployeePayrollInputListPage() {
         intAdjustmentLineCount: dicRow.intAdjustmentLineCount ?? 0,
         strStatus: <MasterStatusPill blnActive={dicRow.strStatus !== "Locked"} strActiveLabel={dicRow.strStatus} strInactiveLabel={dicRow.strStatus} />,
       })),
-    [lstFilteredRows, t]
+    [lstFilteredRows, t, openInput]
   );
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
@@ -199,6 +243,8 @@ export default function EmployeePayrollInputListPage() {
       { field: "strRunName", headerName: t("payroll_run", "Payroll Run") },
       { field: "dtPayrollMonth", headerName: t("payroll_month", "Payroll Period"), sortAccessor: (dicRow) => dicRow.dtPayrollMonthSortValue },
       { field: "strAttendanceSource", headerName: t("attendance_source", "Attendance Source") },
+      { field: "decPayableDays", headerName: t("payable_days", "Payable Days"), align: "right", sortAccessor: (dicRow) => dicRow.decPayableDaysSortValue },
+      { field: "decPaidDays", headerName: t("paid_days", "Paid Days"), align: "right", sortAccessor: (dicRow) => dicRow.decPaidDaysSortValue },
       { field: "decLwpDays", headerName: t("lwp_days", "LWP"), align: "right", sortAccessor: (dicRow) => dicRow.decLwpDaysSortValue },
       { field: "decLopDays", headerName: t("lop_days", "LOP"), align: "right", sortAccessor: (dicRow) => dicRow.decLopDaysSortValue },
       { field: "intAdjustmentLineCount", headerName: t("adjustments", "Adjustments"), align: "right" },
@@ -226,7 +272,7 @@ export default function EmployeePayrollInputListPage() {
           onKeyDown={onSearchEnter(applySearch)}
           sx={{
             alignItems: "center",
-            "&&": { gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "minmax(220px, 1.3fr) minmax(180px, 1fr) minmax(150px, 0.8fr) max-content max-content" } },
+            "&&": { gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "minmax(220px, 1fr) minmax(280px, 1.5fr) minmax(150px, 0.8fr) max-content max-content" } },
             "& .MuiButton-root": { alignSelf: "center", whiteSpace: "nowrap" },
           }}
         >
@@ -253,19 +299,31 @@ export default function EmployeePayrollInputListPage() {
           <TextField
             className="app-mui-text-field"
             size="small"
+            select
+            controlId="employee-payroll-input.list.payroll-run.select"
             label={t("payroll_run", "Payroll Run")}
-            value={dicSearchDraft.strSearchRun}
+            value={dicSearchDraft.intPayrollRunID ?? ""}
             onChange={(objEvent) =>
               setDicSearchDraft((dicPrevious) => ({
                 ...dicPrevious,
-                strSearchRun: objEvent.target.value,
+                intPayrollRunID: objEvent.target.value ? Number(objEvent.target.value) : null,
               }))
             }
-            placeholder={t("run_search_placeholder", "Search by payroll run")}
-            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }}
-            disabled={blnBusy}
+            disabled={blnBusy || blnRunsLoading}
             fullWidth
-          />
+          >
+            <MenuItem value="">{t("all_payroll_runs", "All payroll runs")}</MenuItem>
+            {dicSearchDraft.intPayrollRunID && !lstPayrollRuns.some((dicRun) => dicRun.intID === dicSearchDraft.intPayrollRunID) ? (
+              <MenuItem value={dicSearchDraft.intPayrollRunID}>
+                {t("payroll_run", "Payroll Run")} #{dicSearchDraft.intPayrollRunID}
+              </MenuItem>
+            ) : null}
+            {lstPayrollRuns.map((dicRun) => (
+              <MenuItem key={dicRun.intID} value={dicRun.intID}>
+                {dicRun.strLabel} ({dicRun.strCode})
+              </MenuItem>
+            ))}
+          </TextField>
           <TextField
             className="app-mui-text-field"
             size="small"
@@ -317,10 +375,11 @@ export default function EmployeePayrollInputListPage() {
 
       {strRightsError ? <Alert severity="warning">{strRightsError}</Alert> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
+      {strRunOptionsError ? <Alert severity="error">{strRunOptionsError}</Alert> : null}
 
       <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {blnBusy ? (
-          <MasterGridSkeleton strControlId="employee-payroll-input.list.skeleton" intColumns={9} />
+          <MasterGridSkeleton strControlId="employee-payroll-input.list.skeleton" intColumns={11} />
         ) : !blnCanView ? (
           <Box className={styles.emptyState}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", "Payroll input access is not available for your user group.")}</Typography>
