@@ -3,7 +3,6 @@
 import AttachFileRoundedIcon from "@mui/icons-material/AttachFileRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
-import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import {
@@ -289,7 +288,9 @@ export default function AttendanceRegularizationPage() {
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
-  const [objConfirm, setObjConfirm] = useState<{ strAction: "submit" | "withdraw"; objRequest: RegularizationRequest } | null>(null);
+  const [objConfirm, setObjConfirm] = useState<
+    { strAction: "submit"; objValues: RegularizationFormValues } | { strAction: "withdraw"; objRequest: RegularizationRequest } | null
+  >(null);
   const [intDetailAttachmentBusyID, setIntDetailAttachmentBusyID] = useState<number | null>(null);
   const [objToast, setObjToast] = useState({ blnOpen: false, strMessage: "", strSeverity: "success" as "success" | "error" });
   const objActionRowRef = useRef<HTMLDivElement | null>(null);
@@ -353,7 +354,6 @@ export default function AttendanceRegularizationPage() {
     actions: (
       <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap" useFlexGap>
         {["DRAFT", "SENT_BACK"].includes(objRequest.strRequestStatus) ? <Button data-control-id={`attendance-regularization.request.${objRequest.intID}.edit.button`} size="small" onClick={() => editRequest(objRequest)}>{t("edit", "Edit")}</Button> : null}
-        {objRequest.strRequestStatus === "DRAFT" ? <Button data-control-id={`attendance-regularization.request.${objRequest.intID}.submit.button`} size="small" onClick={() => setObjConfirm({ strAction: "submit", objRequest })}>{t("submit", "Submit")}</Button> : null}
         {objRequest.strRequestStatus === "PENDING_APPROVAL" ? <Button data-control-id={`attendance-regularization.request.${objRequest.intID}.withdraw.button`} size="small" color="error" onClick={() => setObjConfirm({ strAction: "withdraw", objRequest })}>{t("withdraw", "Withdraw")}</Button> : null}
       </Stack>
     ),
@@ -457,21 +457,29 @@ export default function AttendanceRegularizationPage() {
     }
   }
 
-  async function saveDraft(objValues: RegularizationFormValues) {
+  // There is no draft stage on this screen: Submit validates the proposal first and only asks for
+  // confirmation when it is valid, so a blocked request never gets persisted.
+  async function requestSubmit(objValues: RegularizationFormValues) {
     setBlnSaving(true); setStrError("");
     try {
-      // A draft remains editable, so preview warnings are shown without blocking draft persistence.
-      await previewForm(objValues);
-      const objSaved = objEditing
-        ? await attendanceRegularizationService.updateDraft(objEditing.intID, objEditing.intRowVersion, objValues)
-        : await attendanceRegularizationService.createDraft(objValues);
-      for (const objFile of lstFiles) await attendanceRegularizationService.uploadAttachment(objSaved.intID, objFile);
-      setObjEditing(objSaved); setLstFiles([]); await loadRequests();
-      if (lstFiles.length > 0) await refreshEditingAttachments(objSaved.intID);
-      setObjToast({ blnOpen: true, strMessage: t("draft_saved", "Draft saved."), strSeverity: "success" });
+      const objResult = await previewForm(objValues);
+      if (objResult.blnValid) setObjConfirm({ strAction: "submit", objValues });
     } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : t("save_failed", "Unable to save draft."));
+      setStrError(objError instanceof Error ? objError.message : t("submit_failed", "Unable to submit request."));
     } finally { setBlnSaving(false); }
+  }
+
+  async function saveAndSubmit(objValues: RegularizationFormValues) {
+    const objSaved = objEditing
+      ? await attendanceRegularizationService.updateDraft(objEditing.intID, objEditing.intRowVersion, objValues)
+      : await attendanceRegularizationService.createDraft(objValues);
+    // Track the saved row before the remaining calls so a failed upload/submit is retried as an
+    // update of this request instead of colliding with it as a second request for the same date.
+    setObjEditing(objSaved);
+    for (const objFile of lstFiles) await attendanceRegularizationService.uploadAttachment(objSaved.intID, objFile);
+    setLstFiles([]);
+    if (lstFiles.length > 0) void refreshEditingAttachments(objSaved.intID);
+    await attendanceRegularizationService.submit(objSaved.intID, objSaved.intRowVersion);
   }
 
   async function previewAttachment(intAttachmentID: number) {
@@ -543,7 +551,7 @@ export default function AttendanceRegularizationPage() {
     const blnWasSubmit = objConfirm.strAction === "submit";
     setBlnSaving(true);
     try {
-      if (blnWasSubmit) await attendanceRegularizationService.submit(objConfirm.objRequest.intID, objConfirm.objRequest.intRowVersion);
+      if (objConfirm.strAction === "submit") await saveAndSubmit(objConfirm.objValues);
       else await attendanceRegularizationService.withdraw(objConfirm.objRequest.intID, objConfirm.objRequest.intRowVersion, t("withdrawal_reason_default", "Withdrawn by employee."));
       setObjConfirm(null); await loadRequests();
       if (blnWasSubmit) {
@@ -552,16 +560,21 @@ export default function AttendanceRegularizationPage() {
         setObjPreview(null);
         setLstFiles([]);
         setObjEditing(null);
+        setLstEditingAttachments([]);
         setIntTab(1);
       }
-      setObjToast({ blnOpen: true, strMessage: t("action_completed", "Action completed."), strSeverity: "success" });
-    } catch (objError) { setStrError(objError instanceof Error ? objError.message : t("action_failed", "Unable to complete action.")); }
+      setObjToast({ blnOpen: true, strMessage: blnWasSubmit ? t("submitted_success", "Request submitted successfully.") : t("action_completed", "Action completed."), strSeverity: "success" });
+    } catch (objError) {
+      setObjConfirm(null);
+      if (blnWasSubmit) void loadRequests().catch(() => undefined);
+      setStrError(objError instanceof Error ? objError.message : t("action_failed", "Unable to complete action."));
+    }
     finally { setBlnSaving(false); }
   }
 
   const strConfirmMessage = objConfirm
     ? objConfirm.strAction === "submit"
-      ? t("confirm_submit_message", `Submit attendance correction for ${formatDdMmmYyyy(objConfirm.objRequest.dtWorkDate)}? It will be sent to your current approver for review.`)
+      ? t("confirm_submit_message", `Submit attendance correction for ${formatDdMmmYyyy(objConfirm.objValues.dtWorkDate)}? It will be sent to your current approver for review.`)
       : t("confirm_withdraw_message", `Withdraw the attendance correction request for ${formatDdMmmYyyy(objConfirm.objRequest.dtWorkDate)}? This will remove it from the approval queue.`)
     : "";
 
@@ -610,7 +623,7 @@ export default function AttendanceRegularizationPage() {
             </Stack>
           </Grid>
           <Grid item xs={12}>
-            <Paper component="form" onSubmit={handleSubmit(saveDraft)} className={styles.controlsCard}>
+            <Paper component="form" onSubmit={handleSubmit(requestSubmit)} className={styles.controlsCard}>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6} md={3}><Controller name="dtWorkDate" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.work-date.input" fullWidth size="small" type="date" label={t("work_date", "Work Date")} InputLabelProps={{ shrink: true }} inputProps={{ max: todayIso() }} error={Boolean(objErrors.dtWorkDate)} helperText={objErrors.dtWorkDate?.message} disabled={Boolean(objEditing)} />} /></Grid>
                 <Grid item xs={12} sm={6} md={3}><Controller name="strRequestTypeCode" control={control} render={({ field }) => <CommonSearchableSelect controlId="attendance-regularization.request-type.select" fullWidth label={t("request_type", "Request Type")} value={field.value} onChange={field.onChange} options={lstTypes.map((objOption) => ({ intID: objOption.strValueCode, strLabel: objOption.strDisplayName }))} error={Boolean(objErrors.strRequestTypeCode)} helperText={objErrors.strRequestTypeCode?.message} />} /></Grid>
@@ -708,9 +721,7 @@ export default function AttendanceRegularizationPage() {
               </Grid>
               <Stack ref={objActionRowRef} direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="flex-end" sx={{ mt: 2, scrollMarginBottom: 16 }}>
                 <Button data-control-id="attendance-regularization.clear.button" className={styles.secondaryButton} disabled={blnSaving} startIcon={<ClearRoundedIcon />} onClick={clearRequestForm}>{t("clear", "Clear")}</Button>
-                <Button data-control-id="attendance-regularization.preview.button" variant="outlined" disabled={blnSaving} onClick={handleSubmit((objValues) => void previewForm(objValues))}>{t("preview", "Preview")}</Button>
-                <Button data-control-id="attendance-regularization.save-draft.button" type="submit" variant="contained" disabled={blnSaving} startIcon={blnSaving ? <DottedLoader intSize={18} /> : <SaveRoundedIcon />}>{t("save_draft", "Save Draft")}</Button>
-                {objEditing ? <Button data-control-id="attendance-regularization.submit.button" variant="contained" color="success" disabled={blnSaving} startIcon={<SendRoundedIcon />} onClick={() => setObjConfirm({ strAction: "submit", objRequest: objEditing })}>{t("submit", "Submit")}</Button> : null}
+                <Button data-control-id="attendance-regularization.submit.button" type="submit" variant="contained" disabled={blnSaving} startIcon={blnSaving ? <DottedLoader intSize={18} /> : <SendRoundedIcon />}>{t("submit", "Submit")}</Button>
               </Stack>
               {objPreview && !objPreview.blnValid ? <Alert severity="warning" sx={{ mt: 2 }}>{objPreview.lstErrors.map((objItem) => t(`validation_${objItem.strCode.toLowerCase()}`, objItem.strCode)).join(" · ")}{objPreview.objPayrollConflict ? ` · ${t("payroll_conflict", "Payroll is locked or processed.")}` : ""}</Alert> : null}
             </Paper>

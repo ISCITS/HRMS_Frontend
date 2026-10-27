@@ -395,7 +395,7 @@ export default function RegularizationRequestsPage({ blnEssManagerMode = false }
         <DialogActions>
           <Button data-control-id="regularization-requests.on-behalf.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} disabled={blnWorking} onClick={() => setObjOnBehalf(emptyOnBehalfForm())}>{t("clear", "Clear")}</Button>
           <Button data-control-id="regularization-requests.on-behalf.cancel.button" onClick={() => setBlnOnBehalfOpen(false)}>{t("cancel", "Cancel")}</Button>
-          <Button data-control-id="regularization-requests.on-behalf.create.button" variant="contained" disabled={blnWorking} onClick={() => void createOnBehalf()}>{t("create_draft", "Create Draft")}</Button>
+          <Button data-control-id="regularization-requests.on-behalf.create.button" variant="contained" disabled={blnWorking} onClick={() => void createOnBehalf()}>{t("submit", "Submit")}</Button>
         </DialogActions>
       </Dialog>
     </Box>
