@@ -7,8 +7,8 @@ import FilterListRoundedIcon from "@mui/icons-material/FilterListRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Autocomplete, Box, Breadcrumbs, Button, Divider, IconButton, Popover, TextField, Typography } from "@mui/material";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { Alert, Autocomplete, Box, Breadcrumbs, Button, Checkbox, Divider, FormControlLabel, IconButton, Popover, TextField, Typography } from "@mui/material";
+import { type InputHTMLAttributes, type ReactNode, useEffect, useMemo, useState } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
@@ -56,7 +56,7 @@ function toCsvValue(objValue: unknown) {
 }
 
 function downloadCsv(strFileName: string, lstRows: TdsReportRow[]) {
-  const lstHeaders = ["Payroll Period", "Employee Code", "Employee Name", "Financial Year", "Regime", "Net Taxable Income", "Total Tax Liability", "TDS This Month", "TDS Deducted YTD", "Status"];
+  const lstHeaders = ["Payroll Period", "Employee Code", "Employee Name", "Financial Year", "Regime", "Net Taxable Income", "Total Tax Liability", "TDS This Month", "System TDS", "Difference", "TDS Source", "TDS Deducted YTD", "Status"];
   const lstLines = [
     lstHeaders.join(","),
     ...lstRows.map((dicRow) => [
@@ -68,6 +68,9 @@ function downloadCsv(strFileName: string, lstRows: TdsReportRow[]) {
       dicRow.decNetTaxableIncome,
       dicRow.decTotalTaxLiability,
       dicRow.decMonthlyTds,
+      dicRow.decSystemTds ?? dicRow.decMonthlyTds,
+      dicRow.decTdsDifference ?? 0,
+      dicRow.strTdsSourceLabel ?? "System calculated",
       dicRow.decTaxDeductedYtd,
       dicRow.strStatus,
     ].map(toCsvValue).join(",")),
@@ -91,9 +94,11 @@ function exportPdf(strTitle: string, lstRows: TdsReportRow[]) {
       <td>${formatMonth(dicRow.dtPayrollMonth)}</td><td>${dicRow.strEmployeeCode}</td><td>${dicRow.strEmployeeName}</td>
       <td>${dicRow.strFinancialYearCode ?? "-"}</td><td>${dicRow.strRegimeUsed ?? "-"}</td>
       <td>${formatCurrency(dicRow.decNetTaxableIncome)}</td><td>${formatCurrency(dicRow.decTotalTaxLiability)}</td>
-      <td>${formatCurrency(dicRow.decMonthlyTds)}</td><td>${formatCurrency(dicRow.decTaxDeductedYtd)}</td><td>${dicRow.strStatus}</td>
+      <td>${formatCurrency(dicRow.decMonthlyTds)}</td><td>${formatCurrency(dicRow.decSystemTds ?? dicRow.decMonthlyTds)}</td>
+      <td>${formatCurrency(dicRow.decTdsDifference ?? 0)}</td><td>${dicRow.strTdsSourceLabel ?? "System calculated"}</td>
+      <td>${formatCurrency(dicRow.decTaxDeductedYtd)}</td><td>${dicRow.strStatus}</td>
     </tr>`).join("");
-  objWindow.document.write(`<html><head><title>${strTitle}</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#0f172a}h1{margin:0 0 16px;font-size:22px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #cbd5e1;padding:8px;text-align:left}th{background:#e2e8f0}</style></head><body><h1>${strTitle}</h1><table><thead><tr><th>Payroll Period</th><th>Employee Code</th><th>Employee Name</th><th>Financial Year</th><th>Regime</th><th>Net Taxable Income</th><th>Total Tax Liability</th><th>TDS This Month</th><th>TDS Deducted YTD</th><th>Status</th></tr></thead><tbody>${strRows}</tbody></table></body></html>`);
+  objWindow.document.write(`<html><head><title>${strTitle}</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#0f172a}h1{margin:0 0 16px;font-size:22px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #cbd5e1;padding:8px;text-align:left}th{background:#e2e8f0}</style></head><body><h1>${strTitle}</h1><table><thead><tr><th>Payroll Period</th><th>Employee Code</th><th>Employee Name</th><th>Financial Year</th><th>Regime</th><th>Net Taxable Income</th><th>Total Tax Liability</th><th>TDS This Month</th><th>System TDS</th><th>Difference</th><th>TDS Source</th><th>TDS Deducted YTD</th><th>Status</th></tr></thead><tbody>${strRows}</tbody></table></body></html>`);
   objWindow.document.close();
   objWindow.focus();
   objWindow.print();
@@ -156,6 +161,8 @@ export default function TdsReportPage() {
   const [dicMoreFiltersDraft, setDicMoreFiltersDraft] = useState<MoreFiltersForm>(dicEmptyMoreFilters);
   const [strError, setStrError] = useState("");
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
+  // Variance view: only rows where the TDS deducted differs from the system-calculated TDS.
+  const [blnOnlyDifferences, setBlnOnlyDifferences] = useState(false);
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
   const blnMoreFiltersOpen = Boolean(objMoreFiltersAnchor);
   const blnPageLoading = blnRightsLoading || blnLoading;
@@ -186,11 +193,19 @@ export default function TdsReportPage() {
     lstStatuses: getUniqueOptions(lstRows.map((dicRow) => dicRow.strStatus)),
   }), [lstRows]);
 
-  const dicTotals = useMemo(() => lstRows.reduce((dicAccumulator, dicRow) => ({
+  const lstVisibleRows = useMemo(
+    () => (blnOnlyDifferences ? lstRows.filter((dicRow) => Math.abs(dicRow.decTdsDifference ?? 0) >= 0.005) : lstRows),
+    [lstRows, blnOnlyDifferences],
+  );
+  const intDifferenceCount = useMemo(() => lstRows.filter((dicRow) => Math.abs(dicRow.decTdsDifference ?? 0) >= 0.005).length, [lstRows]);
+
+  const dicTotals = useMemo(() => lstVisibleRows.reduce((dicAccumulator, dicRow) => ({
     decTotalTaxLiability: dicAccumulator.decTotalTaxLiability + (dicRow.decTotalTaxLiability || 0),
     decMonthlyTds: dicAccumulator.decMonthlyTds + (dicRow.decMonthlyTds || 0),
+    decSystemTds: dicAccumulator.decSystemTds + (dicRow.decSystemTds ?? dicRow.decMonthlyTds ?? 0),
+    decTdsDifference: dicAccumulator.decTdsDifference + (dicRow.decTdsDifference ?? 0),
     decTaxDeductedYtd: dicAccumulator.decTaxDeductedYtd + (dicRow.decTaxDeductedYtd || 0),
-  }), { decTotalTaxLiability: 0, decMonthlyTds: 0, decTaxDeductedYtd: 0 }), [lstRows]);
+  }), { decTotalTaxLiability: 0, decMonthlyTds: 0, decSystemTds: 0, decTdsDifference: 0, decTaxDeductedYtd: 0 }), [lstVisibleRows]);
 
   function applyFilters(dicFilters: SearchForm) {
     setDicSearchDraft(dicFilters);
@@ -225,7 +240,7 @@ export default function TdsReportPage() {
 
   const lstTableRows = useMemo(
     () =>
-      lstRows.map((dicRow) => ({
+      lstVisibleRows.map((dicRow) => ({
         intID: dicRow.intID,
         strPayrollPeriod: formatMonth(dicRow.dtPayrollMonth),
         strPayrollPeriodSortValue: dicRow.dtPayrollMonth ? new Date(dicRow.dtPayrollMonth).getTime() : 0,
@@ -239,11 +254,16 @@ export default function TdsReportPage() {
         decTotalTaxLiabilitySortValue: Number(dicRow.decTotalTaxLiability ?? 0),
         decMonthlyTds: formatCurrency(dicRow.decMonthlyTds),
         decMonthlyTdsSortValue: Number(dicRow.decMonthlyTds ?? 0),
+        decSystemTds: formatCurrency(dicRow.decSystemTds ?? dicRow.decMonthlyTds),
+        decSystemTdsSortValue: Number(dicRow.decSystemTds ?? dicRow.decMonthlyTds ?? 0),
+        decTdsDifference: formatCurrency(dicRow.decTdsDifference ?? 0),
+        decTdsDifferenceSortValue: Number(dicRow.decTdsDifference ?? 0),
+        strTdsSource: dicRow.strTdsSourceLabel ?? "System calculated",
         decTaxDeductedYtd: formatCurrency(dicRow.decTaxDeductedYtd),
         decTaxDeductedYtdSortValue: Number(dicRow.decTaxDeductedYtd ?? 0),
         strStatus: dicRow.strStatus,
       })),
-    [lstRows],
+    [lstVisibleRows],
   );
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
@@ -256,6 +276,9 @@ export default function TdsReportPage() {
       { field: "decNetTaxableIncome", headerName: "Net Taxable Income", width: 170, align: "right", sortAccessor: (dicRow) => dicRow.decNetTaxableIncomeSortValue },
       { field: "decTotalTaxLiability", headerName: "Total Tax Liability", width: 170, align: "right", sortAccessor: (dicRow) => dicRow.decTotalTaxLiabilitySortValue },
       { field: "decMonthlyTds", headerName: "TDS This Month", width: 150, align: "right", sortAccessor: (dicRow) => dicRow.decMonthlyTdsSortValue },
+      { field: "decSystemTds", headerName: "System TDS", width: 140, align: "right", sortAccessor: (dicRow) => dicRow.decSystemTdsSortValue },
+      { field: "decTdsDifference", headerName: "Difference", width: 130, align: "right", sortAccessor: (dicRow) => dicRow.decTdsDifferenceSortValue },
+      { field: "strTdsSource", headerName: "TDS Source", width: 170 },
       { field: "decTaxDeductedYtd", headerName: "TDS Deducted YTD", width: 160, align: "right", sortAccessor: (dicRow) => dicRow.decTaxDeductedYtdSortValue },
       { field: "strStatus", headerName: "Status", width: 120 },
     ],
@@ -362,6 +385,7 @@ export default function TdsReportPage() {
         <InfoOutlinedIcon sx={{ color: "#2b6cb0", fontSize: 20 }} />
         <Typography sx={{ color: "inherit", lineHeight: 1.5 }}>
           Employee-wise monthly TDS deducted from salary, year-to-date TDS, and total tax liability for the selected financial year.
+          System TDS is what the system calculated; it differs from TDS This Month when client TDS (Client provided months) or a manual override was used.
         </Typography>
       </Box>
       <Box className={styles.tableCard} sx={{ p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
@@ -384,18 +408,33 @@ export default function TdsReportPage() {
           onRowClick={() => undefined}
           toolbarLeft={(
             <Box className={styles.listUtilityActions}>
-              {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("tds-deduction-summary.csv", lstRows)} controlId="reports.tds.export-excel.button">Export Excel</Button> : null}
-              {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf("TDS / Income Tax Deduction Summary", lstRows)} controlId="reports.tds.download-pdf.button">Download PDF</Button> : null}
+              {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("tds-deduction-summary.csv", lstVisibleRows)} controlId="reports.tds.export-excel.button">Export Excel</Button> : null}
+              {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => exportPdf("TDS / Income Tax Deduction Summary", lstVisibleRows)} controlId="reports.tds.download-pdf.button">Download PDF</Button> : null}
+              <FormControlLabel
+                sx={{ ml: 1 }}
+                control={(
+                  <Checkbox
+                    size="small"
+                    checked={blnOnlyDifferences}
+                    onChange={(objEvent) => setBlnOnlyDifferences(objEvent.target.checked)}
+                    inputProps={{ "data-controlid": "reports.tds.only-differences.checkbox" } as InputHTMLAttributes<HTMLInputElement>}
+                  />
+                )}
+                label={`Only TDS different from system (${intDifferenceCount})`}
+              />
             </Box>
           )}
           footerContent={
-            lstRows.length > 0 ? (
+            lstVisibleRows.length > 0 ? (
               <Box sx={{ px: 1.5, py: 1.25, borderTop: "1px solid #e2e8f0" }}>
-                <Box sx={{ minWidth: 1400, display: "grid", gridTemplateColumns: "140px 140px 220px 130px 110px 170px 170px 150px 160px 120px", alignItems: "center" }}>
+                <Box sx={{ minWidth: 1840, display: "grid", gridTemplateColumns: "140px 140px 220px 130px 110px 170px 170px 150px 140px 130px 170px 160px 120px", alignItems: "center" }}>
                   <Typography sx={{ fontWeight: 700, gridColumn: "1 / span 5" }}>Total</Typography>
                   <Box />
                   <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicTotals.decTotalTaxLiability)}</Typography>
                   <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicTotals.decMonthlyTds)}</Typography>
+                  <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicTotals.decSystemTds)}</Typography>
+                  <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicTotals.decTdsDifference)}</Typography>
+                  <Box />
                   <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicTotals.decTaxDeductedYtd)}</Typography>
                   <Box />
                 </Box>

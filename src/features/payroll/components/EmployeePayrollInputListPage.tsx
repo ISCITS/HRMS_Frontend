@@ -3,15 +3,18 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
 import {
   Alert,
   Box,
   Button,
+  Chip,
   InputAdornment,
   Link,
   MenuItem,
   Snackbar,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
@@ -22,7 +25,9 @@ import { MasterBreadcrumbs, MasterGridSkeleton, MasterStatusPill, dicMasterRowSx
 import styles from "@/components/master/MasterScreen.module.css";
 import { withBasePath } from "@/lib/basePath";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import PayrollInputTdsImportDialog from "@/features/payroll/components/PayrollInputTdsImportDialog";
 import { employeePayrollInputService } from "@/features/payroll/services/employeePayrollInputService";
+import { tdsService, type TdsImportStatus } from "@/features/payroll/services/tdsService";
 import type {
   EmployeePayrollInputListRecord,
   PayrollRunOption,
@@ -107,6 +112,32 @@ function EmployeePayrollInputList({ intInitialRunID }: { intInitialRunID: number
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
   const blnCanExport = canDoAny("export");
+  const blnCanImportTds = blnCanAdd || blnCanEdit;
+  const intSelectedRunID = dicSearchApplied.intPayrollRunID;
+  const [objTdsStatus, setObjTdsStatus] = useState<TdsImportStatus | null>(null);
+  const [blnTdsDialogOpen, setBlnTdsDialogOpen] = useState(false);
+
+  const loadTdsStatus = useCallback(async (intRunID: number | null) => {
+    if (!intRunID || !blnCanView) {
+      setObjTdsStatus(null);
+      return;
+    }
+    try {
+      setObjTdsStatus(await tdsService.getImportStatus(intRunID));
+    } catch {
+      setObjTdsStatus(null);
+    }
+  }, [blnCanView]);
+
+  useEffect(() => {
+    if (blnRightsLoading) return;
+    loadTdsStatus(intSelectedRunID).catch(() => undefined);
+  }, [blnRightsLoading, intSelectedRunID, loadTdsStatus]);
+
+  const strSelectedRunLabel = useMemo(() => {
+    const objRun = lstPayrollRuns.find((dicRun) => dicRun.intID === intSelectedRunID);
+    return objRun ? `${objRun.strLabel} (${objRun.strCode})` : `#${intSelectedRunID ?? ""}`;
+  }, [lstPayrollRuns, intSelectedRunID]);
 
   const loadInputs = useCallback(async (objFilters: SearchForm) => {
     if (!blnCanView) {
@@ -395,15 +426,46 @@ function EmployeePayrollInputList({ intInitialRunID }: { intInitialRunID: number
             showPaginationSummary
             emptyMessage={t("empty_message", "No payroll inputs found for the current filters.")}
             testIdPrefix="employee-payroll-input.list"
-            toolbarLeft={blnCanAdd ? (
-              <Button
-                controlId="employee-payroll-input.list.add.button"
-                className={styles.primaryButton}
-                startIcon={<AddRoundedIcon />}
-                onClick={() => navigateToFullScreen("/payroll/employee-payroll-inputs/new")}
-              >
-                {t("employee_payroll_input_add_button", "Add Payroll Input")}
-              </Button>
+            toolbarLeft={blnCanAdd || (blnCanImportTds && intSelectedRunID) ? (
+              <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap" }}>
+                {blnCanAdd ? (
+                  <Button
+                    controlId="employee-payroll-input.list.add.button"
+                    className={styles.primaryButton}
+                    startIcon={<AddRoundedIcon />}
+                    onClick={() => navigateToFullScreen("/payroll/employee-payroll-inputs/new")}
+                  >
+                    {t("employee_payroll_input_add_button", "Add Payroll Input")}
+                  </Button>
+                ) : null}
+                {blnCanImportTds && intSelectedRunID && objTdsStatus ? (
+                  <>
+                    <Tooltip title={objTdsStatus.blnImportEnabled ? "" : objTdsStatus.strImportDisabledReason ?? ""}>
+                      <span>
+                        <Button
+                          controlId="employee-payroll-input.list.tds-import.button"
+                          className={styles.secondaryButton}
+                          startIcon={<UploadFileIcon />}
+                          disabled={!objTdsStatus.blnImportEnabled}
+                          onClick={() => setBlnTdsDialogOpen(true)}
+                        >
+                          {t("tds_import_button", "Import TDS")}
+                        </Button>
+                      </span>
+                    </Tooltip>
+                    <Chip
+                      size="small"
+                      data-controlid="employee-payroll-input.list.tds-mode.chip"
+                      color={objTdsStatus.strTdsMode === "CLIENT_PROVIDED" ? "warning" : "default"}
+                      label={`${t("tds_mode", "TDS mode")}: ${objTdsStatus.strTdsModeLabel}${
+                        objTdsStatus.strTdsMode === "CLIENT_PROVIDED"
+                          ? ` · ${objTdsStatus.intEmployeesWithClientTds} ${t("tds_with_client_tds", "with client TDS")}`
+                          : ""
+                      }`}
+                    />
+                  </>
+                ) : null}
+              </Box>
             ) : undefined}
             onRowClick={(dicRow) => openInput(dicRow.strRecordUUID)}
             minTableWidth={1300}
@@ -413,6 +475,23 @@ function EmployeePayrollInputList({ intInitialRunID }: { intInitialRunID: number
           />
         )}
       </Box>
+
+      {intSelectedRunID ? (
+        <PayrollInputTdsImportDialog
+          blnOpen={blnTdsDialogOpen}
+          intPayrollRunID={intSelectedRunID}
+          strRunLabel={strSelectedRunLabel}
+          objStatus={objTdsStatus}
+          t={t}
+          onClose={() => setBlnTdsDialogOpen(false)}
+          onImported={(strMessage) => {
+            setBlnTdsDialogOpen(false);
+            showToast(strMessage);
+            loadInputs(dicSearchApplied).catch(() => undefined);
+            loadTdsStatus(intSelectedRunID).catch(() => undefined);
+          }}
+        />
+      ) : null}
 
       <Snackbar
         open={objToast.blnOpen}

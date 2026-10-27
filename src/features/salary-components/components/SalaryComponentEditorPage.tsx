@@ -38,6 +38,7 @@ import styles from "@/components/master/MasterScreen.module.css";
 import { DottedLoader } from "@/components/shared/BlockingLoader";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useSalaryComponentLabels } from "@/features/salary-components/hooks/useSalaryComponentLabels";
+import TdsModeSection from "@/features/salary-components/components/TdsModeSection";
 import { allocationMasterService } from "@/features/allocation-masters/services/allocationMasterService";
 import {
   createEmptySalaryComponentFlexiEligibilityRuleRow,
@@ -471,6 +472,12 @@ function deriveCtcTreatment(dicValues: SalaryComponentFormValues) {
     return dicValues.blnIsFlexiBenefit || dicValues.strReimbursementType === "ctc_based";
   }
   return Boolean(dicValues.blnIncludedInCtc);
+}
+
+// Same codes the payroll engine treats as the TDS component (TdsModeService.TDS_COMPONENT_CODES).
+function isTdsComponentCode(strCode: string | null | undefined) {
+  const strNormalized = String(strCode ?? "").trim().toUpperCase().replace(/[-\s]/g, "_");
+  return strNormalized === "TDS" || strNormalized === "INCOME_TAX" || strNormalized === "INCOMETAX";
 }
 
 export default function SalaryComponentEditorPage({
@@ -2201,6 +2208,10 @@ export default function SalaryComponentEditorPage({
           {!blnIsReimbursementCategory ? <FormControlLabel control={<Switch checked={dicForm.blnProofRequired} onChange={(objEvent) => updateRootField("blnProofRequired", objEvent.target.checked)} disabled={blnFieldDisabled} inputProps={buildInputTestIdProps("salary-components.editor.proof-required.switch")} />} label={t("proof_required_tax_exemption", "Proof Required for Tax Exemption")} /> : null}
         </Stack>
       </Paper>
+
+      {strMode !== "add" && isTdsComponentCode(objDetail?.strComponentCode ?? dicForm.strComponentCode) ? (
+        <TdsModeSection t={t} />
+      ) : null}
 
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>
         <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("variable_pay_calculation", "Variable Pay Calculation")}</Typography>

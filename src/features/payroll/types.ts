@@ -1306,6 +1306,13 @@ export type TdsReportRow = {
   decTaxDeductedYtd: number;
   decMonthlyTds: number;
   strSlabProfileCode: string | null;
+  // decMonthlyTds is the TDS actually deducted; these show the system figure and its source.
+  decSystemTds?: number;
+  decTdsDifference?: number;
+  strTdsSource?: string;
+  strTdsSourceLabel?: string;
+  strTdsMode?: string;
+  strTdsModeLabel?: string;
 };
 
 export type VariablePayRegisterRow = {

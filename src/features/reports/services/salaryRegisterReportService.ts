@@ -33,6 +33,9 @@ export type SalaryRegisterRow = {
   decGrossDeduction: number;
   decNetEarning: number;
   blnStatutoryPending: boolean;
+  // System-calculated TDS and the source of the deducted TDS (processed rows only).
+  decSystemTds?: number | null;
+  strTdsSource?: string | null;
 };
 
 export type SalaryRegisterEnvelope = {

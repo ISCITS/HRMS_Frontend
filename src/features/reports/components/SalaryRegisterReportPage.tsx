@@ -428,6 +428,8 @@ export default function SalaryRegisterReportPage() {
     ...lstRecoveryColumns.map((strColumn): CommonTableColumn<Record<string, ReactNode>> => ({ field: strColumn, headerName: strColumn, width: 150, align: "right" })),
     { field: "decGrossDeduction", headerName: "Gross Deduction", width: 140, align: "right" },
     { field: "decNetEarning", headerName: "Net Earning", width: 140, align: "right" },
+    { field: "decSystemTds", headerName: "System TDS", width: 130, align: "right" },
+    { field: "strTdsSource", headerName: "TDS Source", width: 170 },
   ], [lstPaymentColumns, lstRecoveryColumns]);
 
   const lstDisplayRows = useMemo(() => lstRows.map((dicRow, intIndex) => {
@@ -442,6 +444,8 @@ export default function SalaryRegisterReportPage() {
       decGrossEarning: formatBodyAmount(dicRow.decGrossEarning),
       decGrossDeduction: dicRow.blnStatutoryPending ? "Not yet computed" : formatBodyAmount(dicRow.decGrossDeduction),
       decNetEarning: dicRow.blnStatutoryPending ? "Not yet computed" : formatBodyAmount(dicRow.decNetEarning),
+      decSystemTds: dicRow.decSystemTds === null || dicRow.decSystemTds === undefined ? "-" : formatBodyAmount(dicRow.decSystemTds),
+      strTdsSource: dicRow.strTdsSource ?? "-",
     };
     lstPaymentColumns.forEach((strColumn) => { dicMapped[strColumn] = formatBodyAmount(dicRow.dicPayments[strColumn]); });
     lstRecoveryColumns.forEach((strColumn) => { dicMapped[strColumn] = formatBodyAmount(dicRow.dicRecoveries[strColumn]); });
