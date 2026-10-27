@@ -24,6 +24,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import LookupChip, {
+  actionLabel,
   lookupLabel,
 } from "@/features/attendance-regularization/components/LookupChip";
 import CommonDataGrid, { type DataGridColumn } from "@/components/ui/CommonDataGrid";
@@ -718,10 +719,10 @@ export default function AttendanceExceptionsPage() {
                       my: 1,
                     }}
                   >
-                    {lookupLabel(
+                    {actionLabel(
                       lstActions,
                       String(objItem.strActionCode ?? ""),
-                      t("action", "Action"),
+                      t,
                     )}{" "}
                     Â·{" "}
                     {new Date(

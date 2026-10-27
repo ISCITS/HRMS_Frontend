@@ -5,7 +5,6 @@ import AttachFileRoundedIcon from "@mui/icons-material/AttachFileRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import {
   yupResolver } from "@hookform/resolvers/yup";
@@ -37,7 +36,6 @@ import type { Resolver } from "react-hook-form";
 import * as yup from "yup";
 import { DottedLoader } from "@/components/shared/BlockingLoader";
 
-import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import { MasterAddColumnsControl, MasterBreadcrumbs, MasterGridSkeleton, dicMasterRowSx, type MasterOptionalColumn } from "@/components/master/MasterListUi";
 import styles from "@/components/master/MasterScreen.module.css";
 import CommonDataGrid, { type DataGridColumn } from "@/components/ui/CommonDataGrid";
@@ -111,14 +109,12 @@ export default function EssWorkHolidayPage() {
   const blnCanView = fnCan("WORK_ON_HOLIDAY_VIEW");
   const blnCanCreate = fnCan("WORK_ON_HOLIDAY_CREATE");
   const blnCanWithdraw = fnCan("WORK_ON_HOLIDAY_WITHDRAW");
-  const blnCanSubmit = fnCan("WORK_ON_HOLIDAY_SUBMIT");
   const [intTab, setIntTab] = useState(() => typeof window === "undefined" ? 0 : Number(sessionStorage.getItem(strTabStorageKey) ?? 0));
   const [strNotice, setStrNotice] = useState("");
   const [strError, setStrError] = useState("");
   const [blnSaving, setBlnSaving] = useState(false);
   const [objWithdrawRequest, setObjWithdrawRequest] = useState<WorkHolidayRequest | null>(null);
   const [strWithdrawReason, setStrWithdrawReason] = useState("");
-  const [objSubmitRequest, setObjSubmitRequest] = useState<WorkHolidayRequest | null>(null);
   const [lstEarned, setLstEarned] = useState<WorkHolidayEarnedCompOff[]>([]);
   const [objEditingRequest, setObjEditingRequest] = useState<WorkHolidayRequest | null>(null);
   const [lstVisibleOptionalColumns, setLstVisibleOptionalColumns] = useState<OptionalColumnKey[]>([]);
@@ -226,7 +222,8 @@ export default function EssWorkHolidayPage() {
     if (intValue === 2) void workHolidayService.listCompOffEarned().then((objPage) => setLstEarned(objPage.lstItems)).catch((objError: unknown) => setStrError(objError instanceof Error ? objError.message : t("error_load", "Unable to load data.")));
   }
 
-  async function saveAndSubmit(objValues: WorkHolidayFormValues, blnSubmit: boolean) {
+  // There is no draft stage on this screen: every save is immediately submitted for approval.
+  async function saveAndSubmit(objValues: WorkHolidayFormValues) {
     setBlnSaving(true);
     setStrError("");
     setStrNotice("");
@@ -251,26 +248,25 @@ export default function EssWorkHolidayPage() {
             ...objPayload, intRowVersion: objEditingRequest.intRowVersion,
           })
         : await workHolidayService.createDraft(objPayload);
+      // Track the saved row before the remaining calls so a failed upload/submit is retried as an
+      // update of this request instead of colliding with it as a second request for the same date.
+      setObjEditingRequest(objSaved);
       if (objValues.objAttachment) {
         await workHolidayService.uploadAttachment(objSaved.intID, objValues.objAttachment);
+        setValue("objAttachment", null);
       }
-      if (blnSubmit) {
-        await workHolidayService.submit(objSaved.intID, {
-          intRowVersion: objSaved.intRowVersion, strIdempotencyKey: crypto.randomUUID(),
-        });
-      }
+      await workHolidayService.submit(objSaved.intID, {
+        intRowVersion: objSaved.intRowVersion, strIdempotencyKey: crypto.randomUUID(),
+      });
       reset();
       setObjEditingRequest(null);
       await reload();
-      setStrNotice(
-        blnSubmit
-          ? (blnResubmit ? t("resubmitted_success", "Request resubmitted successfully.") : t("submitted_success", "Request submitted successfully."))
-          : t("draft_saved", "Draft saved successfully."),
-      );
+      setStrNotice(blnResubmit ? t("resubmitted_success", "Request resubmitted successfully.") : t("submitted_success", "Request submitted successfully."));
       setIntTab(1);
       sessionStorage.setItem(strTabStorageKey, "1");
     } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : t("error_save", "Unable to save request."));
+      void reload();
+      setStrError(objError instanceof Error ? objError.message : t("error_save", "Unable to submit request."));
     } finally {
       setBlnSaving(false);
     }
@@ -301,25 +297,6 @@ export default function EssWorkHolidayPage() {
     }
   }
 
-  async function submitDraftRequest() {
-    if (!objSubmitRequest) return;
-    setBlnSaving(true);
-    setStrError("");
-    setStrNotice("");
-    try {
-      await workHolidayService.submit(objSubmitRequest.intID, {
-        intRowVersion: objSubmitRequest.intRowVersion, strIdempotencyKey: crypto.randomUUID(),
-      });
-      setObjSubmitRequest(null);
-      await reload();
-      setStrNotice(t("submitted_success", "Request submitted successfully."));
-    } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : t("error_submit", "Unable to submit this request."));
-    } finally {
-      setBlnSaving(false);
-    }
-  }
-
   const lstOptionalColumns: MasterOptionalColumn<OptionalColumnKey>[] = [
     { strKey: "dayType", strLabel: t("day_type", "Day Type") },
     { strKey: "currentApprover", strLabel: t("current_approver", "Current Approver") },
@@ -338,10 +315,6 @@ export default function EssWorkHolidayPage() {
     const objSecondaryAction = blnCanCreate && blnEditable ? (
       <IconButton data-control-id={`work-on-holiday.my.${objRequest.intID}.edit.button`} aria-label={t("edit", "Edit")} color="primary" size="small" onClick={() => startEdit(objRequest)} sx={{ p: 0.25 }}>
         <EditRoundedIcon fontSize="small" />
-      </IconButton>
-    ) : (blnCanSubmit || blnCanCreate) && objRequest.strRequestStatus === "DRAFT" ? (
-      <IconButton data-control-id={`work-on-holiday.my.${objRequest.intID}.submit.button`} color="primary" size="small" aria-label={t("submit", "Submit")} onClick={() => setObjSubmitRequest(objRequest)} sx={{ p: 0.25 }}>
-        <SendRoundedIcon fontSize="small" />
       </IconButton>
     ) : blnCanWithdraw && objRequest.strRequestStatus === "PENDING_APPROVAL" ? (
       <IconButton data-control-id={`work-on-holiday.my.${objRequest.intID}.withdraw.button`} color="error" size="small" aria-label={t("withdraw", "Withdraw")} onClick={() => { setStrWithdrawReason(""); setObjWithdrawRequest(objRequest); }} sx={{ p: 0.25 }}>
@@ -416,7 +389,7 @@ export default function EssWorkHolidayPage() {
             >
               {objEditingRequest.strRequestStatus === "SENT_BACK"
                 ? t("editing_sent_back", "Editing a sent-back request. Submitting will resubmit it for approval.")
-                : t("editing_draft", "Editing a draft request.")}
+                : t("editing_request", "Editing request. Submitting will send it for approval.")}
               {" "}{objEditingRequest.strRequestNumber ?? ""}
             </Alert>
           ) : null}
@@ -431,7 +404,7 @@ export default function EssWorkHolidayPage() {
               <Typography variant="caption" color="text.secondary">{t("retrospective_evidence_note", "This is read-only evidence from existing punches; it cannot be edited here.")}</Typography>
             </Alert>
           ) : null}
-          <Box component="form" onSubmit={handleSubmit((objValues) => saveAndSubmit(objValues, true))}>
+          <Box component="form" onSubmit={handleSubmit(saveAndSubmit)}>
             <Box sx={{ width: "100%" }}>
               <Grid container spacing={2}>
                 <Grid item xs={12}><Stack direction="row" flexWrap="wrap" useFlexGap gap={2}>
@@ -470,7 +443,7 @@ export default function EssWorkHolidayPage() {
                 <Grid item xs={12}><Controller name="strWorkReason" control={control} render={({ field }) => <TextField {...field} className="app-mui-text-field" data-control-id="work-on-holiday.ess.reason.input" fullWidth size="small" multiline minRows={2} label={t("reason", "Reason")} error={Boolean(errors.strWorkReason)} helperText={errors.strWorkReason?.message} />} /></Grid>
                 <Grid item xs={12}><Controller name="strWorkDescription" control={control} render={({ field }) => <TextField {...field} className="app-mui-text-field" data-control-id="work-on-holiday.ess.description.input" fullWidth size="small" multiline minRows={3} label={t("work_description", "Work Description")} />} /></Grid>
               </Grid>
-              <Divider sx={{ my: 2 }} /><Stack direction={{ xs: "column", sm: "row" }} justifyContent="flex-end" gap={1}><Button data-control-id="work-on-holiday.ess.clear.button" type="button" variant="outlined" startIcon={<ClearRoundedIcon />} disabled={blnSaving} onClick={clearRequestForm} sx={objSecondaryActionSx}>{t("clear", "Clear")}</Button><Button data-control-id="work-on-holiday.ess.save-draft.button" variant="outlined" disabled={blnSaving} onClick={handleSubmit((objValues) => saveAndSubmit(objValues, false))} sx={objSecondaryActionSx}>{objEditingRequest ? t("update_draft", "Update Draft") : t("save_draft", "Save Draft")}</Button><Button data-control-id="work-on-holiday.ess.submit.button" type="submit" variant="contained" disabled={blnSaving} sx={{ backgroundColor: "var(--app-primary-color)", "&:hover": { backgroundColor: "var(--app-primary-hover-color, #164d7c)" } }}>{blnSaving ? <DottedLoader intSize={20} color="inherit" /> : (objEditingRequest?.strRequestStatus === "SENT_BACK" ? t("resubmit", "Resubmit") : t("submit", "Submit"))}</Button></Stack>
+              <Divider sx={{ my: 2 }} /><Stack direction={{ xs: "column", sm: "row" }} justifyContent="flex-end" gap={1}><Button data-control-id="work-on-holiday.ess.clear.button" type="button" variant="outlined" startIcon={<ClearRoundedIcon />} disabled={blnSaving} onClick={clearRequestForm} sx={objSecondaryActionSx}>{t("clear", "Clear")}</Button><Button data-control-id="work-on-holiday.ess.submit.button" type="submit" variant="contained" disabled={blnSaving} sx={{ backgroundColor: "var(--app-primary-color)", "&:hover": { backgroundColor: "var(--app-primary-hover-color, #164d7c)" } }}>{blnSaving ? <DottedLoader intSize={20} color="inherit" /> : (objEditingRequest?.strRequestStatus === "SENT_BACK" ? t("resubmit", "Resubmit") : t("submit", "Submit"))}</Button></Stack>
             </Box>
           </Box>
         </Paper>
@@ -526,20 +499,6 @@ export default function EssWorkHolidayPage() {
         strStatus: t(`earned_status_${objEarned.strStatus.toLowerCase()}`, objEarned.strStatus === "REVERSED" ? "Reversed" : "Available"),
       }))} rowIdField="intID" showExportOptions exportFileName="earned_comp_off" testIdPrefix="work-on-holiday-earned" emptyMessage={t("empty_earned", "No earned Comp-Off entries found.")} getRowSx={() => dicMasterRowSx} sx={{ p: 0, boxShadow: "none", background: "transparent" }} /></Box> : null}
       <WorkHolidayDetailDrawer objDetail={objDetail} blnOpen={Boolean(objDetail)} blnLoading={blnDetailLoading} blnBusinessStatus fnOnClose={() => setObjDetail(null)} fnOnRefresh={async () => { if (objDetail) await loadDetail(objDetail.intID); await reload(); }} fnOnConflict={(strMessage) => setStrError(`${t("concurrency_conflict", "This request changed. The latest record has been loaded.")} ${strMessage}`)} />
-      <CommonConfirmDialog
-        rootControlId="work-on-holiday.submit.dialog"
-        blnOpen={Boolean(objSubmitRequest)}
-        strTitle={t("confirm_submit_title", "Submit Work on Holiday Request?")}
-        strMessage={t("confirm_submit_message", "Once submitted, this request will move to Pending Approval and cannot be edited.")}
-        strCancelLabel={t("cancel", "Cancel")}
-        strConfirmLabel={t("submit", "Submit")}
-        blnConfirmDisabled={blnSaving}
-        blnCancelDisabled={blnSaving}
-        onClose={() => !blnSaving && setObjSubmitRequest(null)}
-        onConfirm={() => void submitDraftRequest()}
-        cancelButtonControlId="work-on-holiday.submit.cancel.button"
-        confirmButtonControlId="work-on-holiday.submit.confirm.button"
-      />
       <Dialog data-control-id="work-on-holiday.withdraw.dialog" open={Boolean(objWithdrawRequest)} onClose={() => !blnSaving && setObjWithdrawRequest(null)} fullWidth maxWidth="sm">
         <DialogTitle sx={{ fontWeight: 850 }}>
           {objWithdrawRequest?.strRequestStatus === "DRAFT"

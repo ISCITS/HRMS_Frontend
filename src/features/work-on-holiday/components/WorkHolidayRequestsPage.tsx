@@ -159,7 +159,7 @@ export default function WorkHolidayRequestsPage({ blnEssManagerMode = false }: {
         tmActualStartTime: "", tmActualEndTime: "", strWorkReason: "",
         strWorkDescription: "", strOnBehalfReason: "",
       });
-      setStrNotice(t("on_behalf_created", "On-behalf draft created successfully."));
+      setStrNotice(t("on_behalf_submitted", "On-behalf request submitted successfully."));
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : t("error_save", "Unable to save request."));
     }
@@ -290,7 +290,7 @@ export default function WorkHolidayRequestsPage({ blnEssManagerMode = false }: {
         <DialogTitle sx={{ fontWeight: 800 }}>{t("create_on_behalf", "Create On Behalf")}</DialogTitle>
         <DialogContent dividers>
           <Alert severity="info" sx={{ mb: 2 }}>
-            {t("work_on_holiday_on_behalf_hint", "Create a Work on Holiday draft for an employee. Eligibility is validated during approval.")}
+            {t("work_on_holiday_on_behalf_hint", "Submit a Work on Holiday request for an employee. Eligibility is validated during approval.")}
           </Alert>
           <Grid container spacing={2}>
             <Grid item xs={12} md={4}>
@@ -458,7 +458,7 @@ export default function WorkHolidayRequestsPage({ blnEssManagerMode = false }: {
             {t("clear", "Clear")}
           </Button>
           <Button data-control-id="work-on-holiday.on-behalf.cancel.button" onClick={() => setBlnOnBehalfOpen(false)}>{t("cancel", "Cancel")}</Button>
-          <Button data-control-id="work-on-holiday.on-behalf.create.button" variant="contained" onClick={() => void createOnBehalf()}>{t("create_draft", "Create Draft")}</Button>
+          <Button data-control-id="work-on-holiday.on-behalf.create.button" variant="contained" onClick={() => void createOnBehalf()}>{t("submit", "Submit")}</Button>
         </DialogActions>
       </Dialog>
     </Stack>
