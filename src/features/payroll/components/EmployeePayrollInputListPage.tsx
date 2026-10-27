@@ -459,7 +459,7 @@ function EmployeePayrollInputList({ intInitialRunID }: { intInitialRunID: number
                       color={objTdsStatus.strTdsMode === "CLIENT_PROVIDED" ? "warning" : "default"}
                       label={`${t("tds_mode", "TDS mode")}: ${objTdsStatus.strTdsModeLabel}${
                         objTdsStatus.strTdsMode === "CLIENT_PROVIDED"
-                          ? ` · ${objTdsStatus.intEmployeesWithClientTds} ${t("tds_with_client_tds", "with client TDS")}`
+                          ? ` · ${objTdsStatus.intEmployeesWithClientTds} ${t("tds_with_client_tds", "with manual TDS")}`
                           : ""
                       }`}
                     />

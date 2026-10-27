@@ -385,7 +385,7 @@ export default function TdsReportPage() {
         <InfoOutlinedIcon sx={{ color: "#2b6cb0", fontSize: 20 }} />
         <Typography sx={{ color: "inherit", lineHeight: 1.5 }}>
           Employee-wise monthly TDS deducted from salary, year-to-date TDS, and total tax liability for the selected financial year.
-          System TDS is what the system calculated; it differs from TDS This Month when client TDS (Client provided months) or a manual override was used.
+          System TDS is what the system calculated; it differs from TDS This Month when imported TDS (Manual months) or a single-employee override was used.
         </Typography>
       </Box>
       <Box className={styles.tableCard} sx={{ p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>

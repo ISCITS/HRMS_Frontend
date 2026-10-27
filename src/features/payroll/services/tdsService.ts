@@ -8,7 +8,8 @@ export type TdsMode = "AUTOMATIC" | "CLIENT_PROVIDED";
 
 export const TDS_MODE_LABELS: Record<TdsMode, string> = {
   AUTOMATIC: "Automatic",
-  CLIENT_PROVIDED: "Client provided",
+  // Stored value stays CLIENT_PROVIDED; shown as "Manual" (TDS imported in Payroll Input).
+  CLIENT_PROVIDED: "Manual",
 };
 
 export type TdsModeHistoryRow = {

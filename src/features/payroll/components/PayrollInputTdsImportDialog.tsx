@@ -172,7 +172,7 @@ export default function PayrollInputTdsImportDialog({
         <Alert severity="info" sx={{ mb: 2 }}>
           {t(
             "tds_import_help",
-            "This month's TDS mode is Client provided. The sheet is the complete client TDS list for this run: the TDS Amount is deducted exactly as given, employees not in the sheet get 0 TDS, and importing again replaces the previous import. The system still calculates its own TDS for comparison."
+            "This month's TDS mode is Manual. The sheet is the complete TDS list for this run: the TDS Amount is deducted exactly as given, employees not in the sheet get 0 TDS, and importing again replaces the previous import. The system still calculates its own TDS for comparison."
           )}
         </Alert>
         {objStatus?.objLastImport ? (
@@ -230,7 +230,7 @@ export default function PayrollInputTdsImportDialog({
                     <TableCell>{t("row", "Row")}</TableCell>
                     <TableCell>{t("employee_code", "Employee Code")}</TableCell>
                     <TableCell>{t("employee_name", "Employee Name")}</TableCell>
-                    <TableCell align="right">{t("tds_import_client_tds", "Client TDS")}</TableCell>
+                    <TableCell align="right">{t("tds_import_client_tds", "Manual TDS")}</TableCell>
                     <TableCell align="right">{t("tds_import_system_tds", "System TDS")}</TableCell>
                     <TableCell align="right">{t("tds_import_difference", "Difference")}</TableCell>
                     <TableCell align="right">{t("tds_import_current", "Current Input")}</TableCell>

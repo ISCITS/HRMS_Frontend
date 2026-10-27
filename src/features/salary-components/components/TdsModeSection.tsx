@@ -140,7 +140,7 @@ export default function TdsModeSection({ t }: { t: Translate }) {
       <Typography sx={{ color: "#64748b", fontSize: "0.86rem", mt: 0.4, mb: 1.5 }}>
         {t(
           "tds_mode_help",
-          "Automatic: the system's TDS is deducted. Client provided: the TDS imported from the client sheet in Payroll Input > Import TDS is deducted (employees not in the sheet get 0). The system always calculates and records its own TDS, and year-to-date tax always uses the TDS actually deducted, so switching is safe. The mode applies to every payroll run of the month."
+          "Automatic: the system calculates and deducts TDS. Manual: the TDS imported in bulk in Payroll Input > Import TDS is deducted (employees not in the sheet get 0). The system always calculates and records its own TDS, and year-to-date tax always uses the TDS actually deducted, so switching between Manual and Automatic is safe. The mode applies to every payroll run of the month."
         )}
       </Typography>
 
