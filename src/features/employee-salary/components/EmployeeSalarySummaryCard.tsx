@@ -3,6 +3,10 @@
 import {
   isCtcProvisionCategory } from "@/lib/salaryCategories";
 
+import CurrencyRupeeRoundedIcon from "@mui/icons-material/CurrencyRupeeRounded";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import AccountBalanceWalletRoundedIcon from "@mui/icons-material/AccountBalanceWalletRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
@@ -10,6 +14,7 @@ import MonetizationOnRoundedIcon from "@mui/icons-material/MonetizationOnRounded
 import SavingsRoundedIcon from "@mui/icons-material/SavingsRounded";
 import { Box,
   Button,
+  IconButton,
   Paper,
   Stack,
   Typography
@@ -53,10 +58,12 @@ type EmployeeSalarySummaryCardProps = {
   blnHideOpenPageButton?: boolean;
   blnCompact?: boolean;
   blnSidebar?: boolean;
+  blnProfileBanner?: boolean;
 };
 
-export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPageButton = false, blnCompact = false, blnSidebar = false }: EmployeeSalarySummaryCardProps) {
+export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPageButton = false, blnCompact = false, blnSidebar = false, blnProfileBanner = false }: EmployeeSalarySummaryCardProps) {
   const objRouter = useRouter();
+  const [blnSalaryVisible, setBlnSalaryVisible] = useState(false);
   const { t } = useEmployeeLabels();
   const [objSummary, setObjSummary] = useState<EmployeeSalarySummaryRecord | null>(null);
   const [objSalaryDetail, setObjSalaryDetail] = useState<EmployeeSalaryDetailRecord | null>(null);
@@ -128,6 +135,37 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
       blnMounted = false;
     };
   }, [intEmployeeID]);
+
+  if (blnProfileBanner) {
+    const strVisibilityLabel = blnSalaryVisible
+      ? t("salary_summary_hide", "Hide salary amounts")
+      : t("salary_summary_show", "Show salary amounts");
+    return (
+      <section className="my-profile-salary-card" aria-label={t("salary_summary_card_title", "Salary Summary")}>
+        <div className="my-profile-salary-heading">
+          <span className="my-profile-salary-icon" aria-hidden="true"><CurrencyRupeeRoundedIcon /></span>
+          <Typography component="h3">{t("salary_summary_card_title", "Salary Summary")}</Typography>
+          <IconButton size="small" aria-label={strVisibilityLabel} title={strVisibilityLabel} aria-pressed={blnSalaryVisible} onClick={() => setBlnSalaryVisible((blnVisible) => !blnVisible)}>
+            {blnSalaryVisible ? <VisibilityOutlinedIcon /> : <VisibilityOffOutlinedIcon />}
+          </IconButton>
+        </div>
+        {blnLoading ? (
+          <div className="my-profile-salary-message"><DottedLoader intSize={16} /><Typography>{t("salary_summary_card_loading", "Loading salary summary...")}</Typography></div>
+        ) : !objSalaryDetail ? (
+          <Typography className="my-profile-salary-message">{t("salary_summary_card_unavailable", "Salary details are not available.")}</Typography>
+        ) : (
+          <dl className="my-profile-salary-rows">
+            {lstSummaryRows.map(({ strLabel, decValue }) => (
+              <div key={strLabel} className="my-profile-salary-row">
+                <dt>{strLabel}<InfoOutlinedIcon aria-hidden="true" /></dt>
+                <dd>{blnSalaryVisible ? formatCurrency(decValue) : <span aria-label={t("salary_summary_amount_hidden", "Amount hidden")}>₹••••••</span>}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </section>
+    );
+  }
 
   if (blnSidebar) {
     return (
