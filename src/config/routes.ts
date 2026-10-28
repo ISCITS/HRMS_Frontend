@@ -25,6 +25,7 @@ export const appRoutes = {
   essMyLoansAdvances: "/ess/loans-advances",
   payrollReimbursementReview: "/payroll/reimbursements",
   statutoryReport: "/reports/statutory",
+  pfEcrReport: "/reports/pf-ecr",
   tenantAdminBase: "/HRMS/Administrator",
   tenantAdminLogin: "/HRMS/Administrator/login",
   tenantAdminDashboard: "/HRMS/Administrator/dashboard",

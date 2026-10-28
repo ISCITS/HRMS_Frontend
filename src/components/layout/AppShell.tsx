@@ -1167,6 +1167,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     "/reports/variable-pay-register",
     "/reports/bank-file",
     "/reports/statutory",
+    "/reports/pf-ecr",
     "/reports/leave/balance",
     "/reports/leave/applications",
     "/ess/reimbursements",

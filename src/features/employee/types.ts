@@ -333,6 +333,7 @@ export type EmployeeStatutoryRecord = {
   blnPfApplicable: boolean;
   blnEsiApplicable: boolean;
   blnPtApplicable: boolean;
+  blnEpsEligible?: boolean | null;
 };
 
 export type EmployeeStatutoryFormValues = {
@@ -349,6 +350,8 @@ export type EmployeeStatutoryFormValues = {
   blnPfApplicable: boolean;
   blnEsiApplicable: boolean;
   blnPtApplicable: boolean;
+  // EPS (pension) membership: "" = not recorded, "yes" / "no" = set by HR.
+  strEpsEligible: "" | "yes" | "no";
 };
 
 export type EmployeeExperienceRecord = {

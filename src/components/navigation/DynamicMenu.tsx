@@ -1064,6 +1064,16 @@ const objGeneratedStatutoryReportMenu: MenuItem = {
   lstChildren: [],
 };
 
+const objGeneratedPfEcrReportMenu: MenuItem = {
+  strModuleCode: "PF_ECR_REPORT",
+  strModuleName: "PF ECR Report",
+  strRoute: "/reports/pf-ecr",
+  strIconName: "Source",
+  lstPermissionCodes: ["PF_ECR_REPORT_VIEW", "PF_ECR_REPORT_EXPORT"],
+  blnIsHome: false,
+  lstChildren: [],
+};
+
 const objGeneratedSalaryRegisterMenu: MenuItem = {
   strModuleCode: "SALARY_REGISTER",
   strModuleName: "Salary Register",
@@ -1098,7 +1108,7 @@ function isReportsMenuBranch(objItem: MenuItem): boolean {
 }
 
 function appendGeneratedReportsMenu(lstItems: MenuItem[]): MenuItem[] {
-  if (hasRoute(lstItems, "/reports/statutory") && hasRoute(lstItems, "/reports/salary-register") && hasRoute(lstItems, "/reports/salary-statement")) {
+  if (hasRoute(lstItems, "/reports/statutory") && hasRoute(lstItems, "/reports/pf-ecr") && hasRoute(lstItems, "/reports/salary-register") && hasRoute(lstItems, "/reports/salary-statement")) {
     return lstItems;
   }
 
@@ -1114,7 +1124,7 @@ function appendGeneratedReportsMenu(lstItems: MenuItem[]): MenuItem[] {
       objItem.lstChildren.length > 0 &&
       isReportsMenuBranch(objItem) &&
       (hasRoute(lstChildren, "/reports/payroll-register") || hasRoute(lstChildren, "/reports/bank-file")) &&
-      (!hasRoute(lstChildren, "/reports/statutory") || !hasRoute(lstChildren, "/reports/salary-register") || !hasRoute(lstChildren, "/reports/salary-statement"));
+      (!hasRoute(lstChildren, "/reports/statutory") || !hasRoute(lstChildren, "/reports/pf-ecr") || !hasRoute(lstChildren, "/reports/salary-register") || !hasRoute(lstChildren, "/reports/salary-statement"));
 
     if (!blnShouldAppendHere) {
       return lstChildren === objItem.lstChildren ? objItem : { ...objItem, lstChildren };
@@ -1130,6 +1140,9 @@ function appendGeneratedReportsMenu(lstItems: MenuItem[]): MenuItem[] {
     }
     if (!hasRoute(lstGeneratedChildren, "/reports/statutory")) {
       lstGeneratedChildren.push(objGeneratedStatutoryReportMenu);
+    }
+    if (!hasRoute(lstGeneratedChildren, "/reports/pf-ecr")) {
+      lstGeneratedChildren.push(objGeneratedPfEcrReportMenu);
     }
     return {
       ...objItem,

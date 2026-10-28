@@ -33,6 +33,11 @@ const lstReports = [
     strHref: "/reports/statutory",
   },
   {
+    strTitle: "PF ECR Report",
+    strDescription: "Employee-wise EPFO ECR values per unit and payroll run, with Excel export and validation.",
+    strHref: "/reports/pf-ecr",
+  },
+  {
     strTitle: "TDS Register",
     strDescription: "Employee-wise monthly TDS deducted, year-to-date TDS, and total tax liability.",
     strHref: "/reports/tds-register",

@@ -289,7 +289,8 @@ export const employeeService = {
       strPtRegistrationNumber: dicValues.strPtRegistrationNumber.trim() || null,
       blnPfApplicable: dicValues.blnPfApplicable,
       blnEsiApplicable: dicValues.blnEsiApplicable,
-      blnPtApplicable: dicValues.blnPtApplicable
+      blnPtApplicable: dicValues.blnPtApplicable,
+      blnEpsEligible: dicValues.strEpsEligible === "yes" ? true : dicValues.strEpsEligible === "no" ? false : null
     }, objOptions?.strMenuAction);
     return objResult.Data;
   },

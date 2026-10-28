@@ -105,7 +105,8 @@ export const dicEmptyEmployeeStatutoryForm: EmployeeStatutoryFormValues = {
   strPtRegistrationNumber: "",
   blnPfApplicable: false,
   blnEsiApplicable: false,
-  blnPtApplicable: false
+  blnPtApplicable: false,
+  strEpsEligible: ""
 };
 
 export const dicEmptyEmployeeExperienceForm: EmployeeExperienceFormValues = {
@@ -258,7 +259,8 @@ export function toEmployeeStatutoryFormValues(dicRecord: EmployeeStatutoryRecord
     strPtRegistrationNumber: dicRecord.strPtRegistrationNumber ?? "",
     blnPfApplicable: dicRecord.blnPfApplicable,
     blnEsiApplicable: dicRecord.blnEsiApplicable,
-    blnPtApplicable: dicRecord.blnPtApplicable
+    blnPtApplicable: dicRecord.blnPtApplicable,
+    strEpsEligible: dicRecord.blnEpsEligible === true ? "yes" : dicRecord.blnEpsEligible === false ? "no" : ""
   };
 }
 

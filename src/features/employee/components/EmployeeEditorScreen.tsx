@@ -2570,6 +2570,25 @@ export default function EmployeeEditorScreen({
                   </Stack>
                   <Typography sx={{ pb: 1.5, fontSize: 11, color: "#64748b" }}>{t("statutory_pf_description", "Employee is covered under EPF.")}</Typography>
                   {dicStatutoryForm.blnPfApplicable ? <TextField size="small" data-control-id="employee.editor.pf-number.input" inputProps={{ "data-control-id": "employee.editor.pf-number.input" }} label={renderRequiredLabel(t("field_pf_account_number", "PF account number"))} value={dicStatutoryForm.strPfNumber} onChange={(objEvent) => updateStatutoryField("strPfNumber", objEvent.target.value.toUpperCase())} error={Boolean(dicStatutoryErrors.strPfNumber)} helperText={dicStatutoryErrors.strPfNumber} disabled={blnViewOnly} fullWidth /> : null}
+                  {dicStatutoryForm.blnPfApplicable ? (
+                    <TextField
+                      select
+                      size="small"
+                      data-control-id="employee.editor.eps-eligible.select"
+                      label={t("field_eps_eligible", "EPS (pension) eligible")}
+                      value={dicStatutoryForm.strEpsEligible}
+                      onChange={(objEvent) => updateStatutoryField("strEpsEligible", objEvent.target.value as EmployeeStatutoryFormValues["strEpsEligible"])}
+                      helperText={dicStatutoryForm.strEpsEligible ? undefined : t("field_eps_eligible_help", "Not recorded: PF ECR treats the member as eligible and flags it.")}
+                      disabled={blnViewOnly}
+                      fullWidth
+                      SelectProps={{ displayEmpty: true }}
+                      InputLabelProps={{ shrink: true }}
+                    >
+                      <MenuItem value="">{t("not_recorded", "Not recorded")}</MenuItem>
+                      <MenuItem value="yes">{t("yes", "Yes")}</MenuItem>
+                      <MenuItem value="no">{t("no", "No")}</MenuItem>
+                    </TextField>
+                  ) : null}
                 </Stack>
                 <Stack spacing={1.25} sx={{ minWidth: 0, minHeight: 154, p: 2, border: "1px solid #dce4ef", borderRadius: "6px", bgcolor: "#fff", boxShadow: "0 3px 14px rgba(30, 58, 90, 0.04)", ...dicEmployeeFieldGridSx }}>
                   <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
