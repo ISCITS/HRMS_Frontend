@@ -73,6 +73,7 @@ export default function TdsModeSection({ t }: { t: Translate }) {
   const [strReason, setStrReason] = useState("");
   const [objPreview, setObjPreview] = useState<TdsModeSwitchPreview | null>(null);
   const [blnWorking, setBlnWorking] = useState(false);
+  const [blnHistoryOpen, setBlnHistoryOpen] = useState(false);
 
   const loadOverview = useCallback(async () => {
     setBlnLoading(true);
@@ -160,6 +161,16 @@ export default function TdsModeSection({ t }: { t: Translate }) {
               label={objOverview.strCurrentModeLabel}
               data-controlid="salary-components.editor.tds-mode.current.chip"
             />
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => setBlnHistoryOpen(true)}
+              sx={{ ml: "auto" }}
+              data-controlid="salary-components.editor.tds-mode.history.button"
+            >
+              {t("tds_mode_history", "History")}
+              {objOverview.lstHistory.length > 0 ? ` (${objOverview.lstHistory.length})` : ""}
+            </Button>
           </Box>
 
           {blnCanChange ? (
@@ -203,15 +214,19 @@ export default function TdsModeSection({ t }: { t: Translate }) {
               </Button>
             </Stack>
           ) : null}
+        </>
+      ) : null}
 
-          <Typography sx={{ fontWeight: 700, mb: 0.5 }}>{t("tds_mode_history", "History")}</Typography>
-          {objOverview.lstHistory.length === 0 ? (
+      <Dialog open={blnHistoryOpen} onClose={() => setBlnHistoryOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ fontWeight: 800 }}>{t("tds_mode_history_title", "TDS Mode History")}</DialogTitle>
+        <DialogContent dividers>
+          {!objOverview || objOverview.lstHistory.length === 0 ? (
             <Typography variant="body2" color="text.secondary">
               {t("tds_mode_history_empty", "No changes yet - TDS has always been Automatic.")}
             </Typography>
           ) : (
-            <TableContainer>
-              <Table size="small">
+            <TableContainer sx={{ maxHeight: 420 }}>
+              <Table size="small" stickyHeader>
                 <TableHead>
                   <TableRow>
                     <TableCell>{t("tds_mode_from", "From")}</TableCell>
@@ -235,8 +250,13 @@ export default function TdsModeSection({ t }: { t: Translate }) {
               </Table>
             </TableContainer>
           )}
-        </>
-      ) : null}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBlnHistoryOpen(false)} data-controlid="salary-components.editor.tds-mode.history.close.button">
+            {t("close", "Close")}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={Boolean(objPreview)} onClose={() => !blnWorking && setObjPreview(null)} maxWidth="md" fullWidth>
         <DialogTitle sx={{ fontWeight: 800 }}>
