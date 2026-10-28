@@ -30,7 +30,7 @@ import {
   Typography
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
-import type { ReactNode, SyntheticEvent } from "react";
+import type { DragEvent, ReactNode, SyntheticEvent } from "react";
 import { Controller, useForm } from "react-hook-form";
 import type { Resolver } from "react-hook-form";
 import * as yup from "yup";
@@ -39,6 +39,7 @@ import { DottedLoader } from "@/components/shared/BlockingLoader";
 import { MasterAddColumnsControl, MasterBreadcrumbs, MasterGridSkeleton, dicMasterRowSx, type MasterOptionalColumn } from "@/components/master/MasterListUi";
 import styles from "@/components/master/MasterScreen.module.css";
 import CommonDataGrid, { type DataGridColumn } from "@/components/ui/CommonDataGrid";
+import { MAX_UPLOAD_SIZE_LABEL } from "@/lib/fileUploadConstants";
 import FileRowActions from "@/components/shared/files/FileRowActions";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
@@ -54,6 +55,15 @@ import { WORK_HOLIDAY_MODULE_CODES as lstModuleCodes } from "@/features/work-on-
 
 type WorkHolidayGridRow = Record<string, ReactNode> & { intID: number };
 type OptionalColumnKey = "dayType" | "currentApprover";
+const dicFormSectionSx = { px: 1.5, py: 0.75, borderRadius: "8px", bgcolor: "#eef3fa", fontWeight: 800, fontSize: "0.9rem", color: "#0f2f55" } as const;
+function statusChipSx(strRequestStatus: string, strPostingStatus?: string | null) {
+  if (["POSTED", "REVERSED"].includes(strRequestStatus)) return { bgcolor: "#dcfce7", color: "#166534" };
+  if (["REJECTED", "POSTING_FAILED"].includes(strRequestStatus)) return strRequestStatus === "REJECTED" ? { bgcolor: "#fee2e2", color: "#991b1b" } : { bgcolor: "#fef3c7", color: "#92400e" };
+  if (["WITHDRAWN", "DRAFT"].includes(strRequestStatus)) return { bgcolor: "#e5e7eb", color: "#374151" };
+  if (strRequestStatus === "VERIFIED" && strPostingStatus !== "PROCESSING") return { bgcolor: "#dcfce7", color: "#166534" };
+  return { bgcolor: "#fef3c7", color: "#92400e" };
+}
+
 const dicTableCardSx = { position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" } as const;
 
 const strTabStorageKey = "hrms:work-on-holiday:ess-tab";
@@ -150,6 +160,10 @@ export default function EssWorkHolidayPage() {
   const strWorkDate = watch("dtWorkDate");
   const objAttachment = watch("objAttachment");
   const strMinimumEndTime = useMemo(() => addOneMinuteToTime(strStart), [strStart]);
+  const [strFilterNumber, setStrFilterNumber] = useState("");
+  const [strFilterDate, setStrFilterDate] = useState("");
+  const [strFilterBenefit, setStrFilterBenefit] = useState("");
+  const [strFilterStatus, setStrFilterStatus] = useState("");
   const [objEligibilityPreview, setObjEligibilityPreview] = useState<WorkHolidayEligibilityPreview | null>(null);
   useEffect(() => {
     const decHours = calculateHours(strStart, strEnd);
@@ -310,7 +324,14 @@ export default function EssWorkHolidayPage() {
     ...(lstVisibleOptionalColumns.includes("currentApprover") ? [{ field: "strCurrentApproverName", headerName: t("current_approver", "Current Approver"), width: 180 } as DataGridColumn<WorkHolidayGridRow>] : []),
     { field: "action", headerName: t("actions", "Actions"), width: 90, sortable: false, filterable: false, exportable: false },
   ];
-  const lstRows: WorkHolidayGridRow[] = objList.lstItems.map((objRequest) => {
+  const lstFilteredItems = objList.lstItems.filter((objRequest) => (
+    (!strFilterNumber.trim() || (objRequest.strRequestNumber ?? "").toLowerCase().includes(strFilterNumber.trim().toLowerCase()))
+    && (!strFilterDate || objRequest.dtWorkDate.slice(0, 10) === strFilterDate)
+    && (!strFilterBenefit || objRequest.strRequestedOutcomeCode === strFilterBenefit)
+    && (!strFilterStatus || getWorkHolidayBusinessStatus(objRequest, t) === strFilterStatus)
+  ));
+  const lstStatusFilterOptions = Array.from(new Set(objList.lstItems.map((objRequest) => getWorkHolidayBusinessStatus(objRequest, t))));
+  const lstRows: WorkHolidayGridRow[] = lstFilteredItems.map((objRequest) => {
     const blnEditable = ["DRAFT", "SENT_BACK"].includes(objRequest.strRequestStatus);
     const objSecondaryAction = blnCanCreate && blnEditable ? (
       <IconButton data-control-id={`work-on-holiday.my.${objRequest.intID}.edit.button`} aria-label={t("edit", "Edit")} color="primary" size="small" onClick={() => startEdit(objRequest)} sx={{ p: 0.25 }}>
@@ -348,16 +369,16 @@ export default function EssWorkHolidayPage() {
       </Link>
     ),
     strRequestNumberSort: objRequest.strRequestNumber ?? "",
-    dtWorkDate: objRequest.dtWorkDate,
+    dtWorkDate: formatDisplayDate(objRequest.dtWorkDate),
     strDayTypeCode: t(`day_type_${objRequest.strDayTypeCode.toLowerCase()}`, objRequest.strDayTypeCode),
     strRequestedOutcomeCode: t(`outcome_${objRequest.strRequestedOutcomeCode.toLowerCase()}`, objRequest.strRequestedOutcomeCode),
-    strBusinessStatus: <Chip size="small" label={getWorkHolidayBusinessStatus(objRequest, t)} />,
+    strBusinessStatus: <Chip size="small" label={getWorkHolidayBusinessStatus(objRequest, t)} sx={{ fontWeight: 700, ...statusChipSx(objRequest.strRequestStatus, objRequest.strPostingStatus) }} />,
     strBusinessStatusSort: getWorkHolidayBusinessStatus(objRequest, t),
     strCurrentApproverName: objRequest.strCurrentApproverName ?? (objRequest.intCurrentApproverUserID ? t("assigned_approver", "Assigned Approver") : "—"),
     };
   });
 
-  const nodeBreadcrumbs = <MasterBreadcrumbs strSection={t("breadcrumb_leave", "Leave")} strTitle={t("breadcrumb_work_on_holiday", "Work on Holiday")} />;
+  const nodeBreadcrumbs = <MasterBreadcrumbs strSection={t("breadcrumb_attendance", "Attendance")} strTitle={t("breadcrumb_work_on_holiday", "Work on Holiday")} />;
   if (blnRightsLoading) return <Stack spacing={1.5} data-control-id="work-on-holiday.ess.rights-loading.container">{nodeBreadcrumbs}<MasterGridSkeleton strControlId="work-on-holiday.ess.skeleton" intColumns={6} /></Stack>;
   if (!blnCanView && !blnCanCreate) return <Alert data-control-id="work-on-holiday.ess.unauthorized.alert" severity="warning">{strRightsError || t("unauthorized", "Work on Holiday access is not available. Ask your administrator to assign the ESS Work on Holiday rights.")}</Alert>;
   return (
@@ -407,45 +428,83 @@ export default function EssWorkHolidayPage() {
           <Box component="form" onSubmit={handleSubmit(saveAndSubmit)}>
             <Box sx={{ width: "100%" }}>
               <Grid container spacing={2}>
-                <Grid item xs={12}><Stack direction="row" flexWrap="wrap" useFlexGap gap={2}>
-                  <Box sx={{ width: { xs: "100%", sm: 230 } }}><Controller name="dtWorkDate" control={control} render={({ field }) => <TextField {...field} className="app-mui-text-field" data-control-id="work-on-holiday.ess.date.input" fullWidth size="small" type="date" label={t("eligible_date", "Eligible Date")} InputLabelProps={{ shrink: true }} error={Boolean(errors.dtWorkDate)} helperText={errors.dtWorkDate?.message} />} /></Box>
-                  <Box sx={{ width: { xs: "100%", sm: 280 } }}><Controller name="strRequestedOutcomeCode" control={control} render={({ field }) => <TextField {...field} className="app-mui-text-field" data-control-id="work-on-holiday.ess.outcome.select" select fullWidth size="small" label={t("requested_benefit", "Requested Benefit")}>{["ATTENDANCE_CREDIT", "COMPOFF", "BOTH"].map((strCode) => <MenuItem data-control-id={`work-on-holiday.ess.outcome.${strCode.toLowerCase()}.option`} key={strCode} value={strCode}>{t(`outcome_${strCode.toLowerCase()}`, strCode)}</MenuItem>)}</TextField>} /></Box>
-                  {["COMPOFF", "BOTH"].includes(strOutcome) ? (
-                    <Box sx={{ width: { xs: "100%", sm: 180 } }}><Controller name="decRequestedCreditDays" control={control} render={({ field }) => <TextField {...field} className="app-mui-text-field" data-control-id="work-on-holiday.ess.credit-days.input" fullWidth size="small" label={t("expected_credit", "Expected Credit")} InputProps={{ readOnly: true }} />} /></Box>
-                  ) : null}
-                  <Box sx={{ width: { xs: "calc(50% - 8px)", sm: 190 } }}><Controller name="tmPlannedStartTime" control={control} render={({ field }) => <TextField {...field} className="app-mui-text-field" data-control-id="work-on-holiday.ess.planned-start.input" fullWidth size="small" type="time" label="Start Time" InputLabelProps={{ shrink: true }} error={Boolean(errors.tmPlannedStartTime)} helperText={errors.tmPlannedStartTime?.message} />} /></Box>
-                  <Box sx={{ width: { xs: "calc(50% - 8px)", sm: 190 } }}><Controller name="tmPlannedEndTime" control={control} render={({ field }) => <TextField {...field} className="app-mui-text-field" data-control-id="work-on-holiday.ess.planned-end.input" fullWidth size="small" type="time" label="End Time" InputLabelProps={{ shrink: true }} error={Boolean(errors.tmPlannedEndTime)} inputProps={{ min: strMinimumEndTime }} helperText={strMinimumEndTime ? t("end_after_start_hint", `Must be after ${strStart}`) : errors.tmPlannedEndTime?.message} />} /></Box>
-                  <Box sx={{ width: { xs: "calc(50% - 8px)", sm: 220 } }}><Controller name="decRequestedHours" control={control} render={({ field }) => <TextField {...field} className="app-mui-text-field" data-control-id="work-on-holiday.ess.requested-hours.input" fullWidth size="small" type="number" label={t("calculated_hours", "Calculated Requested Hours")} InputProps={{ readOnly: true }} />} /></Box>
-                  <Box sx={{ width: { xs: "100%", sm: objAttachment ? 320 : 180 } }}>
-                    {objAttachment ? (
-                      <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={0.8} sx={{ border: "1px solid #dbe3ef", borderRadius: "8px", px: 1, height: 40, minWidth: 0 }}>
-                        <Typography title={objAttachment.name} sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{objAttachment.name}</Typography>
-                        <FileRowActions
-                          strFileName={objAttachment.name}
-                          controlIdPrefix="work-on-holiday.ess.attachment"
-                          onPreview={() => {
-                            const strUrl = URL.createObjectURL(objAttachment);
-                            window.open(strUrl, "_blank", "noopener,noreferrer");
-                            window.setTimeout(() => URL.revokeObjectURL(strUrl), 30000);
-                          }}
-                          onReplace={(objNewFile) => setValue("objAttachment", objNewFile)}
-                          onDelete={() => setValue("objAttachment", null)}
-                        />
+                <Grid item xs={12}><Typography sx={dicFormSectionSx}>{t("section_holiday_details", "Holiday Details")}</Typography></Grid>
+                <Grid item xs={12} sm={4}><Controller name="dtWorkDate" control={control} render={({ field }) => <TextField {...field} className="app-mui-text-field" data-control-id="work-on-holiday.ess.date.input" fullWidth size="small" type="date" label={`${t("holiday_date", "Holiday Date")} *`} InputLabelProps={{ shrink: true }} error={Boolean(errors.dtWorkDate)} helperText={errors.dtWorkDate?.message} />} /></Grid>
+                <Grid item xs={12} sm={4}><TextField className="app-mui-text-field" data-control-id="work-on-holiday.ess.holiday-name.input" fullWidth size="small" disabled label={t("holiday_name", "Holiday Name")} InputLabelProps={{ shrink: true }} value={objEligibilityPreview?.strHolidayName ?? (objEligibilityPreview?.strDayTypeCode === "WEEKLY_OFF" ? t("weekly_off", "Weekly Off") : "")} /></Grid>
+                <Grid item xs={12} sm={4}><TextField className="app-mui-text-field" data-control-id="work-on-holiday.ess.day.input" fullWidth size="small" disabled label={t("day", "Day")} InputLabelProps={{ shrink: true }} value={strWorkDate ? new Date(`${strWorkDate}T00:00:00`).toLocaleDateString(undefined, { weekday: "long" }) : ""} /></Grid>
+                <Grid item xs={12}><Typography sx={dicFormSectionSx}>{t("section_work_timing", "Work Timing & Hours")}</Typography></Grid>
+                <Grid item xs={12} sm={6} md={3}><Controller name="tmPlannedStartTime" control={control} render={({ field }) => <TextField {...field} className="app-mui-text-field" data-control-id="work-on-holiday.ess.planned-start.input" fullWidth size="small" type="time" label={`${t("start_time", "Start Time")} *`} InputLabelProps={{ shrink: true }} error={Boolean(errors.tmPlannedStartTime)} helperText={errors.tmPlannedStartTime?.message} />} /></Grid>
+                <Grid item xs={12} sm={6} md={3}><Controller name="tmPlannedEndTime" control={control} render={({ field }) => <TextField {...field} className="app-mui-text-field" data-control-id="work-on-holiday.ess.planned-end.input" fullWidth size="small" type="time" label={`${t("end_time", "End Time")} *`} InputLabelProps={{ shrink: true }} error={Boolean(errors.tmPlannedEndTime)} inputProps={{ min: strMinimumEndTime }} helperText={strMinimumEndTime ? t("end_after_start_hint", `Must be after ${strStart}`) : errors.tmPlannedEndTime?.message} />} /></Grid>
+                <Grid item xs={12} sm={6} md={3}><Controller name="decRequestedHours" control={control} render={({ field }) => <TextField {...field} className="app-mui-text-field" data-control-id="work-on-holiday.ess.requested-hours.input" fullWidth size="small" disabled label={t("total_hours", "Total Hours")} InputLabelProps={{ shrink: true }} value={Number(field.value ?? 0).toFixed(2)} />} /></Grid>
+                <Grid item xs={12} sm={6} md={3}><Controller name="strRequestedOutcomeCode" control={control} render={({ field }) => <TextField {...field} className="app-mui-text-field" data-control-id="work-on-holiday.ess.outcome.select" select fullWidth size="small" label={`${t("requested_benefit", "Requested Benefit")} *`}>{["ATTENDANCE_CREDIT", "COMPOFF", "BOTH"].map((strCode) => <MenuItem data-control-id={`work-on-holiday.ess.outcome.${strCode.toLowerCase()}.option`} key={strCode} value={strCode}>{t(`outcome_${strCode.toLowerCase()}`, strCode)}</MenuItem>)}</TextField>} /></Grid>
+                {["COMPOFF", "BOTH"].includes(strOutcome) ? (
+                  <Grid item xs={12} sm={6} md={3}><Controller name="decRequestedCreditDays" control={control} render={({ field }) => <TextField {...field} className="app-mui-text-field" data-control-id="work-on-holiday.ess.credit-days.input" fullWidth size="small" disabled label={t("expected_credit", "Expected Credit")} InputLabelProps={{ shrink: true }} />} /></Grid>
+                ) : null}
+                <Grid item xs={12}><Typography sx={dicFormSectionSx}>{t("section_details", "Details")}</Typography></Grid>
+                <Grid item xs={12}><Controller name="strWorkReason" control={control} render={({ field }) => <TextField {...field} className="app-mui-text-field" data-control-id="work-on-holiday.ess.reason.input" fullWidth size="small" multiline minRows={2} label={`${t("reason", "Reason")} *`} placeholder={t("reason_placeholder", "Enter reason for working on holiday...")} InputLabelProps={{ shrink: true }} error={Boolean(errors.strWorkReason)} helperText={errors.strWorkReason?.message} />} /></Grid>
+                <Grid item xs={12}><Controller name="strWorkDescription" control={control} render={({ field }) => <TextField {...field} className="app-mui-text-field" data-control-id="work-on-holiday.ess.description.input" fullWidth size="small" multiline minRows={2} label={t("work_description", "Work Description")} placeholder={t("work_description_placeholder", "Enter work description...")} InputLabelProps={{ shrink: true }} />} /></Grid>
+                <Grid item xs={12}><Typography sx={dicFormSectionSx}>{t("attachment", "Attachment")}</Typography></Grid>
+                <Grid item xs={12}>
+                  {objAttachment ? (
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={0.8} sx={{ border: "1px solid #dbe3ef", borderRadius: "8px", px: 1, height: 40, minWidth: 0, maxWidth: 420 }}>
+                      <Typography title={objAttachment.name} sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{objAttachment.name}</Typography>
+                      <FileRowActions
+                        strFileName={objAttachment.name}
+                        controlIdPrefix="work-on-holiday.ess.attachment"
+                        onPreview={() => {
+                          const strUrl = URL.createObjectURL(objAttachment);
+                          window.open(strUrl, "_blank", "noopener,noreferrer");
+                          window.setTimeout(() => URL.revokeObjectURL(strUrl), 30000);
+                        }}
+                        onReplace={(objNewFile) => setValue("objAttachment", objNewFile)}
+                        onDelete={() => setValue("objAttachment", null)}
+                      />
+                    </Stack>
+                  ) : (
+                    <Box
+                      component="label"
+                      data-control-id="work-on-holiday.ess.attachment.dropzone"
+                      onDragOver={(objEvent: DragEvent) => objEvent.preventDefault()}
+                      onDrop={(objEvent: DragEvent) => { objEvent.preventDefault(); setValue("objAttachment", objEvent.dataTransfer.files?.[0] ?? null); }}
+                      sx={{ display: "block", cursor: "pointer", border: "1px dashed #b7c4d6", borderRadius: "10px", p: 1.5, bgcolor: "#fafcff" }}
+                    >
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <AttachFileRoundedIcon fontSize="small" sx={{ color: "text.secondary" }} />
+                        <Typography component="span" sx={{ color: "primary.main", fontWeight: 700, textDecoration: "underline" }}>{t("attach_files", "Attach files")}</Typography>
+                        <Typography component="span" variant="body2" color="text.secondary">{t("or_drag_drop", "or drag and drop")}</Typography>
                       </Stack>
-                    ) : (
-                      <Button data-control-id="work-on-holiday.ess.attachment.button" component="label" fullWidth variant="outlined" startIcon={<AttachFileRoundedIcon />} sx={{ height: 40 }}>
-                        {t("attachment", "Attachment")}
-                        <input data-control-id="work-on-holiday.ess.attachment.input" hidden type="file" onChange={(objEvent) => setValue("objAttachment", objEvent.target.files?.[0] ?? null)} />
-                      </Button>
-                    )}
-                  </Box>
-                </Stack></Grid>
-                <Grid item xs={12}><Controller name="strWorkReason" control={control} render={({ field }) => <TextField {...field} className="app-mui-text-field" data-control-id="work-on-holiday.ess.reason.input" fullWidth size="small" multiline minRows={2} label={t("reason", "Reason")} error={Boolean(errors.strWorkReason)} helperText={errors.strWorkReason?.message} />} /></Grid>
-                <Grid item xs={12}><Controller name="strWorkDescription" control={control} render={({ field }) => <TextField {...field} className="app-mui-text-field" data-control-id="work-on-holiday.ess.description.input" fullWidth size="small" multiline minRows={3} label={t("work_description", "Work Description")} />} /></Grid>
+                      <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>{t("attachment_hint", `Supported formats: PDF, JPG, PNG (Max ${MAX_UPLOAD_SIZE_LABEL} per file)`)}</Typography>
+                      <input data-control-id="work-on-holiday.ess.attachment.input" hidden type="file" onChange={(objEvent) => setValue("objAttachment", objEvent.target.files?.[0] ?? null)} />
+                    </Box>
+                  )}
+                </Grid>
               </Grid>
               <Divider sx={{ my: 2 }} /><Stack direction={{ xs: "column", sm: "row" }} justifyContent="flex-end" gap={1}><Button data-control-id="work-on-holiday.ess.clear.button" type="button" variant="outlined" startIcon={<ClearRoundedIcon />} disabled={blnSaving} onClick={clearRequestForm} sx={objSecondaryActionSx}>{t("clear", "Clear")}</Button><Button data-control-id="work-on-holiday.ess.submit.button" type="submit" variant="contained" disabled={blnSaving} sx={{ backgroundColor: "var(--app-primary-color)", "&:hover": { backgroundColor: "var(--app-primary-hover-color, #164d7c)" } }}>{blnSaving ? <DottedLoader intSize={20} color="inherit" /> : (objEditingRequest?.strRequestStatus === "SENT_BACK" ? t("resubmit", "Resubmit") : t("submit", "Submit"))}</Button></Stack>
             </Box>
           </Box>
+        </Paper>
+      ) : null}
+      {intTab === 1 ? (
+        <Paper data-control-id="work-on-holiday.my.filters.card" sx={{ p: 1.5, borderRadius: "10px", boxShadow: "none", border: "1px solid #e8eef5" }}>
+          <Grid container spacing={1.5} alignItems="flex-end">
+            <Grid item xs={12} sm={6} md={3}><TextField className="app-mui-text-field" data-control-id="work-on-holiday.my.filter.number.input" fullWidth size="small" label={t("request_number", "Request Number")} placeholder={t("enter_request_number", "Enter request number")} InputLabelProps={{ shrink: true }} value={strFilterNumber} onChange={(objEvent) => setStrFilterNumber(objEvent.target.value)} /></Grid>
+            <Grid item xs={12} sm={6} md={2}><TextField className="app-mui-text-field" data-control-id="work-on-holiday.my.filter.date.input" fullWidth size="small" type="date" label={t("work_date", "Work Date")} InputLabelProps={{ shrink: true }} value={strFilterDate} onChange={(objEvent) => setStrFilterDate(objEvent.target.value)} /></Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField className="app-mui-text-field" data-control-id="work-on-holiday.my.filter.benefit.select" select fullWidth size="small" label={t("requested_benefit", "Requested Benefit")} InputLabelProps={{ shrink: true }} SelectProps={{ displayEmpty: true }} value={strFilterBenefit} onChange={(objEvent) => setStrFilterBenefit(objEvent.target.value)}>
+                <MenuItem value="">{t("all", "All")}</MenuItem>
+                {["ATTENDANCE_CREDIT", "COMPOFF", "BOTH"].map((strCode) => <MenuItem key={strCode} value={strCode}>{t(`outcome_${strCode.toLowerCase()}`, strCode)}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={6} md={2}>
+              <TextField className="app-mui-text-field" data-control-id="work-on-holiday.my.filter.status.select" select fullWidth size="small" label={t("status", "Status")} InputLabelProps={{ shrink: true }} SelectProps={{ displayEmpty: true }} value={strFilterStatus} onChange={(objEvent) => setStrFilterStatus(objEvent.target.value)}>
+                <MenuItem value="">{t("all", "All")}</MenuItem>
+                {lstStatusFilterOptions.map((strLabel) => <MenuItem key={strLabel} value={strLabel}>{strLabel}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} md={2}>
+              <Button data-control-id="work-on-holiday.my.filter.clear.button" fullWidth variant="outlined" startIcon={<ClearRoundedIcon />} onClick={() => { setStrFilterNumber(""); setStrFilterDate(""); setStrFilterBenefit(""); setStrFilterStatus(""); }} sx={objSecondaryActionSx}>{t("clear", "Clear")}</Button>
+            </Grid>
+          </Grid>
         </Paper>
       ) : null}
       {intTab === 1 ? (

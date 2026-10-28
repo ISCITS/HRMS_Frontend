@@ -744,24 +744,24 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
       ) : null}
 
       <Grid container spacing={1} alignItems="stretch">
-        <Grid item xs={12} sm={5} md={3} lg={2}>
+        <Grid item xs={12} sm={5} md={3} lg={3}>
           <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", minHeight: 120, boxShadow: 0, overflow: "hidden", position: "relative" }}>
             <Box sx={{ position: "absolute", top: 8, right: 12, zIndex: 1 }}>
               {renderStatusChip(objSelectedDay)}
             </Box>
             <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" flexWrap="wrap" rowGap={1} useFlexGap sx={{ minHeight: "100%" }}>
-              <Box sx={{ minWidth: 0, flex: "1 1 140px", pr: 0 }}>
+              <Box sx={{ minWidth: 120, flex: "1 1 120px", pr: 0 }}>
                 <Typography fontWeight={900} noWrap>
                   {strSelectedDate === strToday
                     ? t("today", "Today")
                     : t("selected_date", "Selected Date")}
                 </Typography>
-                <Typography variant="h6" fontWeight={900} noWrap sx={{ mt: 0.25, fontSize: { md: "1.08rem", xl: "1.25rem" } }}>
+                <Typography variant="h6" fontWeight={900} sx={{ mt: 0.25, fontSize: { md: "1.08rem", xl: "1.25rem" }, whiteSpace: "nowrap" }}>
                   {new Date(`${strSelectedDate}T00:00:00`).toLocaleDateString([], { day: "2-digit", month: "short", year: "numeric" })}
                 </Typography>
                 <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mt: 0.75 }} flexWrap="wrap" useFlexGap>
                   {strSelectedDate === strToday ? (
-                    <Typography variant="body2" color="text.secondary" noWrap sx={{ textTransform: "capitalize" }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ textTransform: "capitalize" }}>
                       {t(`state_${objOverview?.strCurrentState ?? "not_punched"}`, toTitleCase(objOverview?.strCurrentState ?? "not_punched"))}
                     </Typography>
                   ) : null}
@@ -802,7 +802,7 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
           </Paper>
         </Grid>
 
-        <Grid item xs={12} sm={7} md={4} lg={5}>
+        <Grid item xs={12} sm={7} md={4} lg={4}>
           <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", minHeight: 120, boxShadow: 0, overflow: "hidden" }}>
             <Typography fontWeight={900} sx={{ mb: 0.75 }}>{t("selected_day_summary", "Selected Day Summary")}</Typography>
             <Box
@@ -919,8 +919,7 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
                     variant="caption"
                     color="text.secondary"
                     title={String(strLabel)}
-                    noWrap
-                    sx={{ display: "block", mt: 0.3, overflow: "hidden", textOverflow: "ellipsis", fontSize: "0.68rem" }}
+                    sx={{ display: "block", mt: 0.3, fontSize: "0.68rem", lineHeight: 1.2, overflowWrap: "anywhere" }}
                   >
                     {strLabel}
                   </Typography>

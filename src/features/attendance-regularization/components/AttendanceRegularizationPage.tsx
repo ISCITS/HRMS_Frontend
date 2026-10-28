@@ -49,6 +49,7 @@ import type {
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { authHelpers } from "@/lib/auth";
+import { MAX_UPLOAD_SIZE_LABEL } from "@/lib/fileUploadConstants";
 
 const strTypeDomain = "ATTENDANCE_REGULARIZATION_REQUEST_TYPE";
 const strStatusDomain = "ATTENDANCE_REGULARIZATION_STATUS";
@@ -65,6 +66,7 @@ type RequestGridRow = Record<string, ReactNode> & {
   requestNumber: ReactNode;
   workDate: ReactNode;
   requestType: ReactNode;
+  proposedStatus: ReactNode;
   status: ReactNode;
 };
 
@@ -260,6 +262,21 @@ function SummaryCard({ strLabel, strValue, strTone = "info" }: { strLabel: strin
   );
 }
 
+function DetailCard({ strTitle, lstRows, children }: { strTitle: string; lstRows?: Array<[string, string]>; children?: ReactNode }) {
+  return (
+    <Box sx={{ height: "100%", border: "1px solid #dbe7f5", borderRadius: "10px", p: 1.75, bgcolor: "#ffffff" }}>
+      <Typography sx={{ fontWeight: 900, color: "#0f2f55", mb: 1 }}>{strTitle}</Typography>
+      {lstRows?.map(([strLabel, strValue]) => (
+        <Box key={strLabel} sx={{ display: "grid", gridTemplateColumns: "140px 1fr", columnGap: 1, py: 0.35 }}>
+          <Typography variant="body2" color="text.secondary">{strLabel}</Typography>
+          <Typography variant="body2" sx={{ color: "#0f172a", overflowWrap: "anywhere" }}>{strValue}</Typography>
+        </Box>
+      ))}
+      {children}
+    </Box>
+  );
+}
+
 export default function AttendanceRegularizationPage() {
   const { t, intLanguageID } = useModuleLabels("attendance_regularization", "Unable to load attendance regularization labels.");
   const { blnLoading: blnRightsLoading, canViewAny } = useModuleActionAccess(["ESS_ATTENDANCE_REGULARIZATION"]);
@@ -274,6 +291,10 @@ export default function AttendanceRegularizationPage() {
   const [strRequestStatusFilter, setStrRequestStatusFilter] = useState("");
   const [strAppliedRequestSearch, setStrAppliedRequestSearch] = useState("");
   const [strAppliedRequestStatus, setStrAppliedRequestStatus] = useState("");
+  const [strRequestFromDate, setStrRequestFromDate] = useState("");
+  const [strRequestToDate, setStrRequestToDate] = useState("");
+  const [strAppliedFromDate, setStrAppliedFromDate] = useState("");
+  const [strAppliedToDate, setStrAppliedToDate] = useState("");
   const [objEditing, setObjEditing] = useState<RegularizationRequest | null>(null);
   const [objDetail, setObjDetail] = useState<RegularizationDetail | null>(null);
   const [blnPunchLogOpen, setBlnPunchLogOpen] = useState(false);
@@ -345,9 +366,12 @@ export default function AttendanceRegularizationPage() {
           lookupLabel(lstAllTypes, objRequest.strRequestTypeCode, ""),
           lookupLabel(lstRequestStatuses, objRequest.strRequestStatus, ""),
         ].some((strValue) => String(strValue ?? "").toLowerCase().includes(strSearch));
-      return blnMatchesStatus && blnMatchesSearch;
+      const blnMatchesDates =
+        (!strAppliedFromDate || objRequest.dtWorkDate >= strAppliedFromDate) &&
+        (!strAppliedToDate || objRequest.dtWorkDate <= strAppliedToDate);
+      return blnMatchesStatus && blnMatchesSearch && blnMatchesDates;
     });
-  }, [lstAllTypes, lstRequests, lstRequestStatuses, strAppliedRequestSearch, strAppliedRequestStatus]);
+  }, [lstAllTypes, lstRequests, lstRequestStatuses, strAppliedRequestSearch, strAppliedRequestStatus, strAppliedFromDate, strAppliedToDate]);
   const lstRequestGridRows: RequestGridRow[] = lstFilteredRequests.map((objRequest) => ({
     intID: objRequest.intID,
     requestNumberText: objRequest.strRequestNumber ?? objRequest.dtWorkDate,
@@ -376,12 +400,14 @@ export default function AttendanceRegularizationPage() {
     statusText: lookupLabel(lstRequestStatuses, objRequest.strRequestStatus, objRequest.strRequestStatus),
     workDate: formatDdMmmYyyy(objRequest.dtWorkDate),
     requestType: lookupLabel(lstAllTypes, objRequest.strRequestTypeCode, t("request", "Request")),
+    proposedStatus: lookupLabel(lstAttendanceStatuses, objRequest.objProposalSnapshot.strProposedStatus, "—"),
     status: <LookupChip lstOptions={lstRequestStatuses} strCode={objRequest.strRequestStatus} strFallback={t("status_unavailable", "Status unavailable")} />,
   }));
   const lstRequestGridColumns: DataGridColumn<RequestGridRow>[] = useMemo(() => [
     { field: "requestNumber", headerName: t("request_number", "Request Number"), sortAccessor: (objRow) => objRow.requestNumberText, width: 190 },
     { field: "workDate", headerName: t("work_date", "Work Date"), width: 130 },
     { field: "requestType", headerName: t("request_type", "Request Type"), width: 220 },
+    { field: "proposedStatus", headerName: t("proposed_status", "Proposed Status"), width: 150 },
     { field: "status", headerName: t("status", "Status"), filterable: false, width: 170, sortAccessor: (objRow) => objRow.statusText },
     { field: "actions", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 200 },
   ], [t]);
@@ -625,12 +651,19 @@ export default function AttendanceRegularizationPage() {
           <Grid item xs={12}>
             <Paper component="form" onSubmit={handleSubmit(requestSubmit)} className={styles.controlsCard}>
               <Grid container spacing={2}>
-                <Grid item xs={12} sm={6} md={3}><Controller name="dtWorkDate" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.work-date.input" fullWidth size="small" type="date" label={t("work_date", "Work Date")} InputLabelProps={{ shrink: true }} inputProps={{ max: todayIso() }} error={Boolean(objErrors.dtWorkDate)} helperText={objErrors.dtWorkDate?.message} disabled={Boolean(objEditing)} />} /></Grid>
-                <Grid item xs={12} sm={6} md={3}><Controller name="strRequestTypeCode" control={control} render={({ field }) => <CommonSearchableSelect controlId="attendance-regularization.request-type.select" fullWidth label={t("request_type", "Request Type")} value={field.value} onChange={field.onChange} options={lstTypes.map((objOption) => ({ intID: objOption.strValueCode, strLabel: objOption.strDisplayName }))} error={Boolean(objErrors.strRequestTypeCode)} helperText={objErrors.strRequestTypeCode?.message} />} /></Grid>
-                {blnNeedsTimes ? <><Grid item xs={12} sm={6} md={3}><Controller name="tmProposedFirstIn" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.first-in.input" fullWidth size="small" type="time" label={t("proposed_first_in", "Proposed IN")} InputLabelProps={{ shrink: true }} disabled={blnMissingOutOnly} helperText={blnMissingOutOnly ? t("first_in_from_logs", "Fetched from punch log") : undefined} />} /></Grid><Grid item xs={12} sm={6} md={3}><Controller name="tmProposedLastOut" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.last-out.input" fullWidth size="small" type="time" label={t("proposed_last_out", "Proposed OUT")} InputLabelProps={{ shrink: true }} inputProps={{ min: strMinimumProposedOutTime }} helperText={strMinimumProposedOutTime ? t("out_after_in_hint", `Must be after ${strProposedFirstInTime}`) : undefined} />} /></Grid></> : null}
-                <Grid item xs={12} sm={6} md={3}><Controller name="strProposedStatus" control={control} render={({ field }) => <CommonSearchableSelect controlId="attendance-regularization.proposed-status.select" fullWidth label={t("proposed_status", "Proposed Status")} value={field.value} onChange={field.onChange} disabled={blnAutoCalculatedRequest} options={lstAttendanceStatuses.map((objOption) => ({ intID: objOption.strValueCode, strLabel: objOption.strDisplayName }))} error={Boolean(objErrors.strProposedStatus)} helperText={objErrors.strProposedStatus?.message ?? (blnAutoCalculatedRequest ? t("status_auto_from_time", "Calculated from proposed timings") : undefined)} />} /></Grid>
-                <Grid item xs={12} sm={6} md={3}><Controller name="decProposedWorkedHours" control={control} render={({ field }) => <TextField {...field} value={field.value ?? ""} onChange={(objEvent) => field.onChange(objEvent.target.value === "" ? null : Number(objEvent.target.value))} data-control-id="attendance-regularization.worked-hours.input" fullWidth size="small" type="number" disabled={blnAutoCalculatedRequest} inputProps={{ step: 0.25, min: 0, max: 24 }} label={t("proposed_worked_hours", "Proposed Worked Hours")} error={Boolean(objErrors.decProposedWorkedHours)} helperText={objErrors.decProposedWorkedHours?.message ?? (blnAutoCalculatedRequest ? t("worked_hours_auto_from_time", "Calculated from proposed timings") : undefined)} />} /></Grid>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid item xs={12} sm={6} md={4}><Controller name="dtWorkDate" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.work-date.input" fullWidth size="small" type="date" label={`${t("work_date", "Work Date")} *`} InputLabelProps={{ shrink: true }} inputProps={{ max: todayIso() }} error={Boolean(objErrors.dtWorkDate)} helperText={objErrors.dtWorkDate?.message} disabled={Boolean(objEditing)} />} /></Grid>
+                <Grid item xs={12} sm={6} md={4}><Controller name="strRequestTypeCode" control={control} render={({ field }) => <CommonSearchableSelect controlId="attendance-regularization.request-type.select" fullWidth label={`${t("request_type", "Request Type")} *`} value={field.value} onChange={field.onChange} options={lstTypes.map((objOption) => ({ intID: objOption.strValueCode, strLabel: objOption.strDisplayName }))} error={Boolean(objErrors.strRequestTypeCode)} helperText={objErrors.strRequestTypeCode?.message} />} /></Grid>
+                <Grid item xs={12} sm={6} md={4}><Controller name="strProposedStatus" control={control} render={({ field }) => <CommonSearchableSelect controlId="attendance-regularization.proposed-status.select" fullWidth label={`${t("proposed_status", "Proposed Status")} *`} value={field.value} onChange={field.onChange} disabled={blnAutoCalculatedRequest} options={lstAttendanceStatuses.map((objOption) => ({ intID: objOption.strValueCode, strLabel: objOption.strDisplayName }))} error={Boolean(objErrors.strProposedStatus)} helperText={objErrors.strProposedStatus?.message ?? (blnAutoCalculatedRequest ? t("status_auto_from_time", "Calculated from proposed timings") : undefined)} />} /></Grid>
+                <Grid item xs={12}>
+                  <Box sx={{ p: 1.5, borderRadius: "10px", bgcolor: "#f3f6fb", border: "1px solid #e2e8f0" }}>
+                    <Typography sx={{ fontWeight: 800, fontSize: "0.9rem", mb: 1.25 }}>{t("proposed_attendance", "Proposed Attendance")}</Typography>
+                    <Grid container spacing={2}>
+                      {blnNeedsTimes ? <><Grid item xs={12} sm={6} md={4}><Controller name="tmProposedFirstIn" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.first-in.input" fullWidth size="small" type="time" label={`${t("proposed_first_in", "First IN")} *`} InputLabelProps={{ shrink: true }} disabled={blnMissingOutOnly} helperText={blnMissingOutOnly ? t("first_in_from_logs", "Fetched from punch log") : undefined} />} /></Grid><Grid item xs={12} sm={6} md={4}><Controller name="tmProposedLastOut" control={control} render={({ field }) => <TextField {...field} data-control-id="attendance-regularization.last-out.input" fullWidth size="small" type="time" label={`${t("proposed_last_out", "Last OUT")} *`} InputLabelProps={{ shrink: true }} inputProps={{ min: strMinimumProposedOutTime }} helperText={strMinimumProposedOutTime ? t("out_after_in_hint", `Must be after ${strProposedFirstInTime}`) : undefined} />} /></Grid></> : null}
+                      <Grid item xs={12} sm={6} md={4}><Controller name="decProposedWorkedHours" control={control} render={({ field }) => <TextField {...field} value={field.value ?? ""} onChange={(objEvent) => field.onChange(objEvent.target.value === "" ? null : Number(objEvent.target.value))} data-control-id="attendance-regularization.worked-hours.input" fullWidth size="small" type="number" disabled={blnAutoCalculatedRequest} inputProps={{ step: 0.25, min: 0, max: 24 }} label={t("proposed_worked_hours", "Proposed Worked Hours")} InputLabelProps={{ shrink: true }} error={Boolean(objErrors.decProposedWorkedHours)} helperText={objErrors.decProposedWorkedHours?.message} />} /></Grid>
+                    </Grid>
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={6} md={4}>
                   <Controller
                     name="strEmployeeReason"
                     control={control}
@@ -641,7 +674,9 @@ export default function AttendanceRegularizationPage() {
                         select
                         fullWidth
                         size="small"
-                        label={t("reason", "Correction Reason")}
+                        label={`${t("reason", "Correction Reason")} *`}
+                        SelectProps={{ displayEmpty: true, renderValue: (objValue) => (objValue ? (lstReasonOptions.find((objOption) => objOption.strValueCode === objValue) ? t(lstReasonOptions.find((objOption) => objOption.strValueCode === objValue)!.strLabelKey, lstReasonOptions.find((objOption) => objOption.strValueCode === objValue)!.strFallback) : String(objValue)) : <Typography component="span" sx={{ color: "text.disabled" }}>{t("select_reason", "Select reason")}</Typography>) }}
+                        InputLabelProps={{ shrink: true }}
                         error={Boolean(objErrors.strEmployeeReason)}
                         helperText={objErrors.strEmployeeReason?.message}
                       >
@@ -652,7 +687,7 @@ export default function AttendanceRegularizationPage() {
                     )}
                   />
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid item xs={12} sm={6} md={8}>
                   <Controller
                     name="strProposedRemark"
                     control={control}
@@ -661,10 +696,20 @@ export default function AttendanceRegularizationPage() {
                         {...field}
                         data-control-id="attendance-regularization.remark.input"
                         fullWidth
+                        multiline
+                        minRows={3}
                         size="small"
                         label={blnRemarkRequired ? `${t("remark", "Additional Remarks")} *` : t("remark", "Additional Remarks")}
+                        placeholder={t("remark_placeholder", "Enter remarks (optional)")}
+                        InputLabelProps={{ shrink: true }}
+                        inputProps={{ maxLength: 500 }}
                         error={Boolean(objErrors.strProposedRemark)}
-                        helperText={objErrors.strProposedRemark?.message}
+                        helperText={(
+                          <Box component="span" sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
+                            <span>{objErrors.strProposedRemark?.message ?? ""}</span>
+                            <span>{(field.value ?? "").length} / 500</span>
+                          </Box>
+                        )}
                       />
                     )}
                   />
@@ -679,7 +724,7 @@ export default function AttendanceRegularizationPage() {
                       </Button>
                     </Stack>
                     {lstEditingAttachments.length === 0 && lstFiles.length === 0 ? (
-                      <Typography sx={{ fontSize: "0.78rem", color: "#64748b" }}>{t("no_attachments", "No attachments.")}</Typography>
+                      <Typography sx={{ fontSize: "0.78rem", color: "#64748b" }}>{t("attachment_hint", `You can upload images or documents (PDF, JPG, PNG). Max file size ${MAX_UPLOAD_SIZE_LABEL} each.`)}</Typography>
                     ) : (
                       <Box sx={{ display: "grid", gap: 0.75, gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" } }}>
                         {lstEditingAttachments.map((objAttachment) => (
@@ -730,17 +775,23 @@ export default function AttendanceRegularizationPage() {
       ) : (
         <Stack spacing={1.25}>
           <Paper className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
-            <Grid container spacing={1} alignItems="center" onKeyDown={onSearchEnter(() => { setStrAppliedRequestSearch(strRequestSearch); setStrAppliedRequestStatus(strRequestStatusFilter); })}>
-              <Grid item xs={12} md={5}>
+            <Grid container spacing={1} alignItems="center" onKeyDown={onSearchEnter(() => { setStrAppliedRequestSearch(strRequestSearch); setStrAppliedRequestStatus(strRequestStatusFilter); setStrAppliedFromDate(strRequestFromDate); setStrAppliedToDate(strRequestToDate); })}>
+              <Grid item xs={12} md={3}>
                 <TextField className="app-mui-text-field" size="small" data-control-id="attendance-regularization.requests.search.input" fullWidth label={t("search_requests_label", "Request")} value={strRequestSearch} onChange={(objEvent) => setStrRequestSearch(objEvent.target.value)} placeholder={t("search_requests", "Search request number, date or type")} InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} />
               </Grid>
-              <Grid item xs={12} sm={6} md={4}>
+              <Grid item xs={12} sm={6} md={2}>
                 <TextField className="app-mui-text-field" size="small" data-control-id="attendance-regularization.requests.status.select" select fullWidth label={t("status", "Status")} value={strRequestStatusFilter} onChange={(objEvent) => setStrRequestStatusFilter(objEvent.target.value)} SelectProps={{ displayEmpty: true }} InputLabelProps={{ shrink: true }}><MenuItem value="">{t("all", "All")}</MenuItem>{lstRequestStatuses.map((objOption) => <MenuItem key={objOption.strValueCode} value={objOption.strValueCode}>{objOption.strDisplayName}</MenuItem>)}</TextField>
               </Grid>
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid item xs={12} sm={6} md={2}>
+                <TextField className="app-mui-text-field" size="small" data-control-id="attendance-regularization.requests.from-date.input" type="date" fullWidth label={t("from_date", "From Date")} value={strRequestFromDate} onChange={(objEvent) => setStrRequestFromDate(objEvent.target.value)} InputLabelProps={{ shrink: true }} />
+              </Grid>
+              <Grid item xs={12} sm={6} md={2}>
+                <TextField className="app-mui-text-field" size="small" data-control-id="attendance-regularization.requests.to-date.input" type="date" fullWidth label={t("to_date", "To Date")} value={strRequestToDate} onChange={(objEvent) => setStrRequestToDate(objEvent.target.value)} InputLabelProps={{ shrink: true }} inputProps={{ min: strRequestFromDate || undefined }} />
+              </Grid>
+              <Grid item xs={12} md={3}>
                 <Stack direction="row" spacing={1} className={styles.filterActions}>
-                  <Button fullWidth data-control-id="attendance-regularization.requests.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setStrAppliedRequestSearch(strRequestSearch); setStrAppliedRequestStatus(strRequestStatusFilter); }}>{t("search", "Search")}</Button>
-                  <Button fullWidth data-control-id="attendance-regularization.requests.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setStrRequestSearch(""); setStrRequestStatusFilter(""); setStrAppliedRequestSearch(""); setStrAppliedRequestStatus(""); }}>{t("clear", "Clear")}</Button>
+                  <Button fullWidth data-control-id="attendance-regularization.requests.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setStrAppliedRequestSearch(strRequestSearch); setStrAppliedRequestStatus(strRequestStatusFilter); setStrAppliedFromDate(strRequestFromDate); setStrAppliedToDate(strRequestToDate); }}>{t("search", "Search")}</Button>
+                  <Button fullWidth data-control-id="attendance-regularization.requests.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setStrRequestSearch(""); setStrRequestStatusFilter(""); setStrAppliedRequestSearch(""); setStrAppliedRequestStatus(""); setStrRequestFromDate(""); setStrRequestToDate(""); setStrAppliedFromDate(""); setStrAppliedToDate(""); }}>{t("clear", "Clear")}</Button>
                 </Stack>
               </Grid>
             </Grid>
@@ -768,12 +819,65 @@ export default function AttendanceRegularizationPage() {
         onClose={() => setObjDetail(null)}
         fullWidth
         maxWidth="md"
-        PaperProps={{ sx: { borderRadius: "14px", overflow: "hidden", "& .MuiDialogContent-root": { p: 2.5, bgcolor: "#f8fafc" }, "& .MuiDialogContent-root > .MuiGrid-root > .MuiGrid-item": { border: "1px solid #dbe7f5", borderRadius: "10px", p: "14px !important", bgcolor: "#ffffff" }, "& .MuiDialogContent-root > .MuiGrid-root > .MuiGrid-item > .MuiTypography-root:first-of-type": { mb: 1, color: "#0f2f55", fontWeight: 900 }, "& .MuiDialogContent-root > .MuiGrid-root > .MuiGrid-item > .MuiTypography-root:not(:first-of-type)": { py: 0.35, color: "#0f172a" }, "& .MuiDivider-root": { my: 1.5 } } }}
+        PaperProps={{ sx: { borderRadius: "14px", overflow: "hidden", "& .MuiDialogContent-root": { p: 2.5, bgcolor: "#f8fafc" }, "& .MuiDivider-root": { my: 1.5 } } }}
       >
         <DialogTitle sx={{ px: 2.5, py: 1.8, fontWeight: 900, borderBottom: "1px solid #e2e8f0", bgcolor: "#f8fbff" }}>
           {t("request_detail", "Request Detail")}
         </DialogTitle>
-        <DialogContent dividers><Grid container spacing={2}><Grid item xs={12} md={6}><Typography fontWeight={850}>{t("original", "Original")}</Typography><Typography>{t("status", "Status")}: {lookupLabel(lstAttendanceStatuses, objDetail?.objOriginalSnapshot.strStatus, t("not_recorded", "No attendance record"))}</Typography><Typography>{t("first_in", "First IN")}: {formatInputTime(objDetail?.objOriginalSnapshot.tmFirstIn) || "—"}</Typography><Typography>{t("last_out", "Last OUT")}: {formatInputTime(objDetail?.objOriginalSnapshot.tmLastOut) || "—"}</Typography><Typography>{t("worked_hours", "Worked Hours")}: {objDetail?.objOriginalSnapshot.decWorkedHours ?? "—"}</Typography></Grid><Grid item xs={12} md={6}><Typography fontWeight={850}>{t("proposed", "Proposed")}</Typography><Typography>{t("status", "Status")}: {lookupLabel(lstAttendanceStatuses, objDetail?.objProposalSnapshot.strProposedStatus, t("unavailable", "Unavailable"))}</Typography><Typography>{t("first_in", "First IN")}: {formatInputTime(objDetail?.objProposalSnapshot.tmProposedFirstIn) || "—"}</Typography><Typography>{t("last_out", "Last OUT")}: {formatInputTime(objDetail?.objProposalSnapshot.tmProposedLastOut) || "—"}</Typography><Typography>{t("worked_hours", "Worked Hours")}: {objDetail?.objProposalSnapshot.decProposedWorkedHours ?? "—"}</Typography></Grid><Grid item xs={12}><Typography fontWeight={850}>{t("attachments", "Attachments")}</Typography><Box sx={objDetail?.lstAttachments.length ? { display: "grid", gap: 0.5, gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" } } : undefined}>{objDetail?.lstAttachments.length ? objDetail.lstAttachments.map((objAttachment) => <Stack key={objAttachment.intID} direction="row" alignItems="center" justifyContent="space-between" spacing={0.8} sx={{ border: "1px solid #dbe3ef", borderRadius: "8px", px: 1, py: 0.75, minWidth: 0 }}><Typography sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{objAttachment.strFileName}</Typography><FileRowActions strFileName={objAttachment.strFileName} controlIdPrefix={`attendance-regularization.attachment.${objAttachment.intID}`} busy={intDetailAttachmentBusyID === objAttachment.intID} onPreview={() => { setIntDetailAttachmentBusyID(objAttachment.intID); void attendanceRegularizationService.previewAttachment(objDetail.intID, objAttachment.intID).finally(() => setIntDetailAttachmentBusyID(null)); }} onDelete={["DRAFT", "SENT_BACK"].includes(objDetail.strRequestStatus) ? () => { setIntDetailAttachmentBusyID(objAttachment.intID); void attendanceRegularizationService.deleteAttachment(objDetail.intID, objAttachment.intID).then(() => attendanceRegularizationService.getMyDetail(objDetail.intID)).then(setObjDetail).finally(() => setIntDetailAttachmentBusyID(null)); } : undefined} /></Stack>) : <Typography color="text.secondary">{t("no_attachments", "No attachments.")}</Typography>}</Box><Divider /><Typography fontWeight={850} sx={{ mt: 2 }}>{t("timeline", "Timeline")}</Typography>{objDetail?.lstActions.map((objAction) => <Box key={objAction.intID} sx={{ borderLeft: "3px solid", borderColor: "primary.main", pl: 1.5, my: 1 }}><Typography fontWeight={750}>{actionLabel(lstActions, objAction.strActionCode, t)}</Typography><Typography variant="caption">{formatDateTime(objAction.dtActionOn)}{objAction.strRemarks ? ` · ${objAction.strRemarks}` : ""}</Typography></Box>)}</Grid></Grid></DialogContent>
+        <DialogContent dividers>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={6}>
+              <DetailCard strTitle={t("original_attendance", "Original Attendance")} lstRows={[
+                [t("status", "Status"), lookupLabel(lstAttendanceStatuses, objDetail?.objOriginalSnapshot.strStatus, t("not_recorded", "No attendance record"))],
+                [t("first_in", "First IN"), formatInputTime(objDetail?.objOriginalSnapshot.tmFirstIn) || "—"],
+                [t("last_out", "Last OUT"), formatInputTime(objDetail?.objOriginalSnapshot.tmLastOut) || "—"],
+                [t("worked_hours", "Worked Hours"), objDetail?.objOriginalSnapshot.decWorkedHours != null ? formatDuration(objDetail.objOriginalSnapshot.decWorkedHours) : "—"],
+              ]} />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <DetailCard strTitle={t("proposed_attendance", "Proposed Attendance")} lstRows={[
+                [t("status", "Status"), lookupLabel(lstAttendanceStatuses, objDetail?.objProposalSnapshot.strProposedStatus, t("unavailable", "Unavailable"))],
+                [t("first_in", "First IN"), formatInputTime(objDetail?.objProposalSnapshot.tmProposedFirstIn) || "—"],
+                [t("last_out", "Last OUT"), formatInputTime(objDetail?.objProposalSnapshot.tmProposedLastOut) || "—"],
+                [t("worked_hours", "Worked Hours"), objDetail?.objProposalSnapshot.decProposedWorkedHours != null ? formatDuration(objDetail.objProposalSnapshot.decProposedWorkedHours) : "—"],
+              ]} />
+            </Grid>
+            <Grid item xs={12} md={7}>
+              <DetailCard strTitle={t("request_information", "Request Information")} lstRows={[
+                [t("request_number", "Request Number"), objDetail?.strRequestNumber ?? "—"],
+                [t("work_date", "Work Date"), objDetail ? formatDdMmmYyyy(objDetail.dtWorkDate) : "—"],
+                [t("request_type", "Request Type"), lookupLabel(lstTypes, objDetail?.strRequestTypeCode, "—")],
+                [t("proposed_status", "Proposed Status"), lookupLabel(lstAttendanceStatuses, objDetail?.objProposalSnapshot.strProposedStatus, "—")],
+                [t("reason", "Correction Reason"), (() => { const objReason = lstReasonOptions.find((objOption) => objOption.strValueCode === objDetail?.strEmployeeReason); return objReason ? t(objReason.strLabelKey, objReason.strFallback) : objDetail?.strEmployeeReason ?? "—"; })()],
+                [t("remark", "Additional Remarks"), objDetail?.objProposalSnapshot.strProposedRemark || "—"],
+              ]}>
+                <Divider />
+                <Typography sx={{ fontWeight: 800, color: "#0f2f55", mb: 0.75 }}>{t("attachments", "Attachments")}</Typography>
+                {objDetail?.lstAttachments.length ? (
+                  <Box sx={{ display: "grid", gap: 0.5, gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" } }}>
+                    {objDetail.lstAttachments.map((objAttachment) => (
+                      <Stack key={objAttachment.intID} direction="row" alignItems="center" justifyContent="space-between" spacing={0.8} sx={{ border: "1px solid #dbe3ef", borderRadius: "8px", px: 1, py: 0.75, minWidth: 0 }}>
+                        <Typography sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{objAttachment.strFileName}</Typography>
+                        <FileRowActions strFileName={objAttachment.strFileName} controlIdPrefix={`attendance-regularization.attachment.${objAttachment.intID}`} busy={intDetailAttachmentBusyID === objAttachment.intID} onPreview={() => { setIntDetailAttachmentBusyID(objAttachment.intID); void attendanceRegularizationService.previewAttachment(objDetail.intID, objAttachment.intID).finally(() => setIntDetailAttachmentBusyID(null)); }} onDelete={["DRAFT", "SENT_BACK"].includes(objDetail.strRequestStatus) ? () => { setIntDetailAttachmentBusyID(objAttachment.intID); void attendanceRegularizationService.deleteAttachment(objDetail.intID, objAttachment.intID).then(() => attendanceRegularizationService.getMyDetail(objDetail.intID)).then(setObjDetail).finally(() => setIntDetailAttachmentBusyID(null)); } : undefined} />
+                      </Stack>
+                    ))}
+                  </Box>
+                ) : <Typography color="text.secondary">{t("no_attachments", "No attachments.")}</Typography>}
+              </DetailCard>
+            </Grid>
+            <Grid item xs={12} md={5}>
+              <DetailCard strTitle={t("request_timeline", "Request Timeline")}>
+                {objDetail?.lstActions.map((objAction, intIndex, lstAll) => (
+                  <Box key={objAction.intID} sx={{ position: "relative", pl: 2.5, pb: intIndex === lstAll.length - 1 ? 0 : 1.75, "&::before": { content: '""', position: "absolute", left: 0, top: 5, width: 9, height: 9, borderRadius: "50%", bgcolor: intIndex === 0 ? "primary.main" : "success.main" }, ...(intIndex === lstAll.length - 1 ? {} : { "&::after": { content: '""', position: "absolute", left: 4, top: 16, bottom: 0, width: 1, bgcolor: "#cbd5e1" } }) }}>
+                    <Typography fontWeight={800}>{actionLabel(lstActions, objAction.strActionCode, t)}</Typography>
+                    <Typography variant="caption" color="text.secondary" display="block">{formatDateTime(objAction.dtActionOn)}</Typography>
+                    {objAction.strRemarks ? <Typography variant="caption" color="text.secondary" display="block">{objAction.strRemarks}</Typography> : null}
+                  </Box>
+                ))}
+              </DetailCard>
+            </Grid>
+          </Grid>
+        </DialogContent>
         <DialogActions sx={{ px: 2.5, py: 1.5, borderTop: "1px solid #e2e8f0", bgcolor: "#ffffff" }}>
           <Button data-control-id="attendance-regularization.detail.close.button" variant="outlined" onClick={() => setObjDetail(null)}>{t("close", "Close")}</Button>
         </DialogActions>
