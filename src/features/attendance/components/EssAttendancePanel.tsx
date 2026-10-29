@@ -744,8 +744,8 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
       ) : null}
 
       <Grid container spacing={1} alignItems="stretch">
-        <Grid item xs={12} sm={5} md={3} lg={3}>
-          <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", minHeight: 120, boxShadow: 0, overflow: "hidden", position: "relative" }}>
+        <Grid item xs={12} sm={5} md={3} lg={3} sx={{ display: "flex" }}>
+          <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", flex: 1, minWidth: 0, minHeight: 168, boxShadow: 0, overflow: "hidden", position: "relative" }}>
             <Box sx={{ position: "absolute", top: 8, right: 12, zIndex: 1 }}>
               {renderStatusChip(objSelectedDay)}
             </Box>
@@ -802,8 +802,8 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
           </Paper>
         </Grid>
 
-        <Grid item xs={12} sm={7} md={4} lg={4}>
-          <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", minHeight: 120, boxShadow: 0, overflow: "hidden" }}>
+        <Grid item xs={12} sm={7} md={4} lg={4} sx={{ display: "flex" }}>
+          <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", flex: 1, minWidth: 0, minHeight: 168, boxShadow: 0, overflow: "hidden" }}>
             <Typography fontWeight={900} sx={{ mb: 0.75 }}>{t("selected_day_summary", "Selected Day Summary")}</Typography>
             <Box
               sx={{
@@ -867,8 +867,8 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
           </Paper>
         </Grid>
 
-        <Grid item xs={12} md={5} lg={5}>
-          <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", minHeight: 120, boxShadow: 0, overflow: "hidden" }}>
+        <Grid item xs={12} md={5} lg={5} sx={{ display: "flex" }}>
+          <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", flex: 1, minWidth: 0, minHeight: 168, boxShadow: 0, overflow: "hidden" }}>
             <Typography fontWeight={900} sx={{ mb: 0.25 }}>{t("monthly_summary", "Monthly Summary")}</Typography>
             <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "baseline", columnGap: 1 }}>
               <Typography variant="caption" color="text.secondary">
@@ -1105,12 +1105,13 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
         onClose={() => setBlnPolicyDialogOpen(false)}
         fullWidth
         maxWidth="sm"
+        PaperProps={{ sx: { borderRadius: "20px", px: 1, pt: 0.5 } }}
       >
-        <DialogTitle sx={{ pb: 1 }}>{t("my_attendance_policy", "My Attendance Policy")}</DialogTitle>
+        <DialogTitle sx={{ pb: 1.5, fontWeight: 800, fontSize: "1.25rem", color: "#0f2f55" }}>{t("my_attendance_policy", "My Attendance Policy")}</DialogTitle>
         <DialogContent sx={{ pt: "0 !important" }}>
           {objOverview?.objPolicy ? (
-            <Stack spacing={1.75}>
-              <Box sx={{ p: 1.5, borderRadius: "12px", bgcolor: (objThemeArg) => alpha(objThemeArg.palette.primary.main, 0.08), border: "1px solid", borderColor: (objThemeArg) => alpha(objThemeArg.palette.primary.main, 0.18) }}>
+            <Stack spacing={2.25}>
+              <Box sx={{ p: 1.75, borderRadius: "14px", bgcolor: (objThemeArg) => alpha(objThemeArg.palette.primary.main, 0.07), border: "1px solid", borderColor: (objThemeArg) => alpha(objThemeArg.palette.primary.main, 0.2) }}>
                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mb: 0.5 }}>
                   <Typography fontWeight={900} fontSize="1.05rem">{objOverview.objPolicy.strPolicyName}</Typography>
                   <Chip
@@ -1119,7 +1120,7 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
                     label={objOverview.objPolicy.strPolicySource === "EMPLOYEE_ASSIGNMENT"
                       ? t("policy_source_employee_assignment", "Employee Assignment")
                       : t("policy_source_company_default", "Company Default")}
-                    sx={{ fontWeight: 700 }}
+                    sx={{ fontWeight: 700, borderRadius: "999px" }}
                   />
                 </Stack>
                 <Typography variant="caption" color="text.secondary">
@@ -1128,8 +1129,8 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
               </Box>
 
               <Box>
-                <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 0.5, fontWeight: 700 }}>{t("working_hour_rules", "Working Hour Rules")}</Typography>
-                <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr 1fr", sm: "repeat(3, 1fr)" }, gap: 1, mt: 0.5 }}>
+                <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 0.6, fontWeight: 700, fontSize: "0.7rem" }}>{t("working_hour_rules", "Working Hour Rules")}</Typography>
+                <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr 1fr", sm: "repeat(3, 1fr)" }, gap: 1.25, mt: 0.75 }}>
                   {[
                     [t("full_day_threshold_short", "Full Day"), `${objOverview.objPolicy.decFullDayThresholdHours} h`],
                     [t("half_day_threshold_short", "Half Day"), `${objOverview.objPolicy.decHalfDayThresholdHours} h`],
@@ -1140,7 +1141,7 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
                     [t("early_grace", "Early Departure Grace"), `${objOverview.objPolicy.intEarlyDepartureGraceMinutes} min`],
                     [t("overtime_enabled", "Overtime"), objOverview.objPolicy.blnOtEnabled ? t("yes", "Yes") : t("no", "No")],
                   ].map(([strLabel, strValue]) => (
-                    <Box key={strLabel} sx={{ px: 1.25, py: 0.85, borderRadius: "10px", bgcolor: "action.hover", border: "1px solid", borderColor: "divider" }}>
+                    <Box key={strLabel} sx={{ px: 1.5, py: 1.1, borderRadius: "12px", bgcolor: "#f5f6f8", border: "1px solid #ebedf1" }}>
                       <Typography variant="caption" color="text.secondary" noWrap display="block">{strLabel}</Typography>
                       <Typography variant="body2" fontWeight={800} sx={{ mt: 0.25 }}>{strValue}</Typography>
                     </Box>
@@ -1149,8 +1150,8 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
               </Box>
 
               <Box>
-                <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 0.5, fontWeight: 700 }}>{t("standard_weekly_off_days", "Standard Weekly Off Days")}</Typography>
-                <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
+                <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 0.6, fontWeight: 700, fontSize: "0.7rem" }}>{t("standard_weekly_off_days", "Standard Weekly Off Days")}</Typography>
+                <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mt: 0.75 }}>
                   {(() => {
                     const lstOffDays = lstWeekdays.filter((_strDay, intJsIndex) => {
                       const intPatternIndex = (intJsIndex + 6) % 7;
@@ -1158,14 +1159,14 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
                     });
                     return lstOffDays.length > 0
                       ? lstOffDays.map((strDay) => (
-                        <Chip key={strDay} size="small" color="primary" label={t(`weekday_${strDay}`, strDay)} sx={{ fontWeight: 700 }} />
+                        <Chip key={strDay} size="small" color="primary" label={t(`weekday_${strDay}`, strDay)} sx={{ fontWeight: 700, borderRadius: "999px", px: 0.5 }} />
                       ))
                       : <Typography variant="body2" color="text.secondary">{t("none", "None")}</Typography>;
                   })()}
                 </Stack>
               </Box>
 
-              <Alert severity="info" icon={<InfoOutlinedIcon fontSize="small" />} sx={{ borderRadius: "10px", "& .MuiAlert-message": { py: 0.25 } }}>
+              <Alert severity="info" icon={<InfoOutlinedIcon fontSize="small" />} sx={{ borderRadius: "12px", bgcolor: "#e8f4fb", color: "#0f2f55", "& .MuiAlert-icon": { color: "#2563eb" }, "& .MuiAlert-message": { py: 0.25 } }}>
                 {t("missing_punch_treatment", "Missing Punch")}: {
                   objOverview.objPolicy.strMissingPunchTreatmentCode === "EXCEPTION"
                     ? t("missing_punch_treatment_exception", "Missing punch creates an attendance exception")
@@ -1178,7 +1179,7 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
             </Stack>
           ) : <Alert severity="info">{t("no_policy", "No attendance policy applies to the selected date. Punching is disabled until a policy is configured.")}</Alert>}
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button data-control-id="ess.my-attendance.policy-info.close.button" onClick={() => setBlnPolicyDialogOpen(false)}>{t("close", "Close")}</Button>
         </DialogActions>
       </Dialog>

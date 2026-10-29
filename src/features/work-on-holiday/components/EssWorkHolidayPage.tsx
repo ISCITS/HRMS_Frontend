@@ -15,7 +15,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   Grid,
   Link,
   MenuItem,
@@ -375,7 +374,16 @@ export default function EssWorkHolidayPage() {
   if (!blnCanView && !blnCanCreate) return <Alert data-control-id="work-on-holiday.ess.unauthorized.alert" severity="warning">{strRightsError || t("unauthorized", "Work on Holiday access is not available. Ask your administrator to assign the ESS Work on Holiday rights.")}</Alert>;
   return (
     <Stack spacing={2}>
-      {nodeBreadcrumbs}
+      <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2} flexWrap="wrap">
+        {nodeBreadcrumbs}
+        {intTab === 0 ? (
+          <Stack direction="row" alignItems="center" spacing={1.5}>
+            <Typography variant="caption" color="text.secondary"><Box component="span" sx={{ color: "error.main" }}>*</Box> {t("required_fields_note", "Indicates required fields")}</Typography>
+            <Button data-control-id="work-on-holiday.ess.clear.button" type="button" variant="outlined" disabled={blnSaving} onClick={clearRequestForm} sx={{ ...objSecondaryActionSx, minWidth: 96 }}>{t("cancel", "Cancel")}</Button>
+            <Button data-control-id="work-on-holiday.ess.submit.button" type="submit" form="work-on-holiday-request-form" variant="contained" disabled={blnSaving} sx={{ minWidth: 96, backgroundColor: "var(--app-primary-color)", "&:hover": { backgroundColor: "var(--app-primary-hover-color, #164d7c)" } }}>{blnSaving ? <DottedLoader intSize={20} color="inherit" /> : (objEditingRequest?.strRequestStatus === "SENT_BACK" ? t("resubmit", "Resubmit") : t("save", "Save"))}</Button>
+          </Stack>
+        ) : null}
+      </Stack>
       {strNotice ? <Alert data-control-id="work-on-holiday.ess.success.alert" severity="success" onClose={() => setStrNotice("")}>{strNotice}</Alert> : null}
       {strError || strListError ? <Alert data-control-id="work-on-holiday.ess.error.alert" severity="error">{strError || strListError}</Alert> : null}
       <Paper sx={{ borderRadius: "10px", boxShadow: "none", border: "1px solid #e8eef5" }}><Tabs value={intTab} onChange={changeTab} variant="scrollable" aria-label={t("ess_tabs", "Work on Holiday sections")}><Tab data-control-id="work-on-holiday.ess.new.tab" label={t("tab_new_request", "New Request")} disabled={!blnCanCreate} /><Tab data-control-id="work-on-holiday.ess.my.tab" label={t("tab_my_requests", "My Requests")} /><Tab data-control-id="work-on-holiday.ess.earned.tab" label={t("tab_earned_comp_off", "Earned Comp-Off")} /></Tabs></Paper>
@@ -417,7 +425,7 @@ export default function EssWorkHolidayPage() {
               <Typography variant="caption" color="text.secondary">{t("retrospective_evidence_note", "This is read-only evidence from existing punches; it cannot be edited here.")}</Typography>
             </Alert>
           ) : null}
-          <Box component="form" onSubmit={handleSubmit(saveAndSubmit)}>
+          <Box component="form" id="work-on-holiday-request-form" onSubmit={handleSubmit(saveAndSubmit)}>
             <Box sx={{ width: "100%" }}>
               <Grid container spacing={2}>
                 <Grid item xs={12}><Typography sx={dicFormSectionSx}>{t("section_holiday_details", "Holiday Details")}</Typography></Grid>
@@ -458,7 +466,7 @@ export default function EssWorkHolidayPage() {
                       data-control-id="work-on-holiday.ess.attachment.dropzone"
                       onDragOver={(objEvent: DragEvent) => objEvent.preventDefault()}
                       onDrop={(objEvent: DragEvent) => { objEvent.preventDefault(); setValue("objAttachment", objEvent.dataTransfer.files?.[0] ?? null); }}
-                      sx={{ display: "block", cursor: "pointer", border: "1px dashed #b7c4d6", borderRadius: "10px", p: 1.5, bgcolor: "#fafcff" }}
+                      sx={{ display: "block", cursor: "pointer", border: "1px dashed #b7c4d6", borderRadius: "10px", p: 1.5, bgcolor: "#fafcff", maxWidth: 420 }}
                     >
                       <Stack direction="row" spacing={1} alignItems="center">
                         <AttachFileRoundedIcon fontSize="small" sx={{ color: "text.secondary" }} />
@@ -471,7 +479,6 @@ export default function EssWorkHolidayPage() {
                   )}
                 </Grid>
               </Grid>
-              <Divider sx={{ my: 2 }} /><Stack direction={{ xs: "column", sm: "row" }} justifyContent="flex-end" gap={1}><Button data-control-id="work-on-holiday.ess.clear.button" type="button" variant="outlined" startIcon={<ClearRoundedIcon />} disabled={blnSaving} onClick={clearRequestForm} sx={objSecondaryActionSx}>{t("clear", "Clear")}</Button><Button data-control-id="work-on-holiday.ess.submit.button" type="submit" variant="contained" disabled={blnSaving} sx={{ backgroundColor: "var(--app-primary-color)", "&:hover": { backgroundColor: "var(--app-primary-hover-color, #164d7c)" } }}>{blnSaving ? <DottedLoader intSize={20} color="inherit" /> : (objEditingRequest?.strRequestStatus === "SENT_BACK" ? t("resubmit", "Resubmit") : t("submit", "Submit"))}</Button></Stack>
             </Box>
           </Box>
         </Paper>
