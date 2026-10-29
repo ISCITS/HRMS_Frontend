@@ -3,9 +3,7 @@
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import AttachFileRoundedIcon from "@mui/icons-material/AttachFileRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
-import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   yupResolver } from "@hookform/resolvers/yup";
 import {
@@ -22,7 +20,6 @@ import {
   Link,
   MenuItem,
   Paper,
-  IconButton,
   Stack,
   Tab,
   Tabs,
@@ -164,6 +161,21 @@ export default function EssWorkHolidayPage() {
   const [strFilterDate, setStrFilterDate] = useState("");
   const [strFilterBenefit, setStrFilterBenefit] = useState("");
   const [strFilterStatus, setStrFilterStatus] = useState("");
+  // Inputs edit the draft values; the list only filters once Search applies them.
+  const [strDraftNumber, setStrDraftNumber] = useState("");
+  const [strDraftDate, setStrDraftDate] = useState("");
+  const [strDraftBenefit, setStrDraftBenefit] = useState("");
+  const [strDraftStatus, setStrDraftStatus] = useState("");
+  function applyFilters() {
+    setStrFilterNumber(strDraftNumber);
+    setStrFilterDate(strDraftDate);
+    setStrFilterBenefit(strDraftBenefit);
+    setStrFilterStatus(strDraftStatus);
+  }
+  function clearFilters() {
+    setStrDraftNumber(""); setStrDraftDate(""); setStrDraftBenefit(""); setStrDraftStatus("");
+    setStrFilterNumber(""); setStrFilterDate(""); setStrFilterBenefit(""); setStrFilterStatus("");
+  }
   const [objEligibilityPreview, setObjEligibilityPreview] = useState<WorkHolidayEligibilityPreview | null>(null);
   useEffect(() => {
     const decHours = calculateHours(strStart, strEnd);
@@ -322,7 +334,6 @@ export default function EssWorkHolidayPage() {
     { field: "strRequestedOutcomeCode", headerName: t("requested_benefit", "Requested Benefit"), width: 170 },
     { field: "strBusinessStatus", headerName: t("status", "Status"), width: 200, filterable: false, sortAccessor: (objRow) => String(objRow.strBusinessStatusSort) },
     ...(lstVisibleOptionalColumns.includes("currentApprover") ? [{ field: "strCurrentApproverName", headerName: t("current_approver", "Current Approver"), width: 180 } as DataGridColumn<WorkHolidayGridRow>] : []),
-    { field: "action", headerName: t("actions", "Actions"), width: 90, sortable: false, filterable: false, exportable: false },
   ];
   const lstFilteredItems = objList.lstItems.filter((objRequest) => (
     (!strFilterNumber.trim() || (objRequest.strRequestNumber ?? "").toLowerCase().includes(strFilterNumber.trim().toLowerCase()))
@@ -332,27 +343,8 @@ export default function EssWorkHolidayPage() {
   ));
   const lstStatusFilterOptions = Array.from(new Set(objList.lstItems.map((objRequest) => getWorkHolidayBusinessStatus(objRequest, t))));
   const lstRows: WorkHolidayGridRow[] = lstFilteredItems.map((objRequest) => {
-    const blnEditable = ["DRAFT", "SENT_BACK"].includes(objRequest.strRequestStatus);
-    const objSecondaryAction = blnCanCreate && blnEditable ? (
-      <IconButton data-control-id={`work-on-holiday.my.${objRequest.intID}.edit.button`} aria-label={t("edit", "Edit")} color="primary" size="small" onClick={() => startEdit(objRequest)} sx={{ p: 0.25 }}>
-        <EditRoundedIcon fontSize="small" />
-      </IconButton>
-    ) : blnCanWithdraw && objRequest.strRequestStatus === "PENDING_APPROVAL" ? (
-      <IconButton data-control-id={`work-on-holiday.my.${objRequest.intID}.withdraw.button`} color="error" size="small" aria-label={t("withdraw", "Withdraw")} onClick={() => { setStrWithdrawReason(""); setObjWithdrawRequest(objRequest); }} sx={{ p: 0.25 }}>
-        <WarningAmberRoundedIcon fontSize="small" />
-      </IconButton>
-    ) : blnCanWithdraw && objRequest.strRequestStatus === "DRAFT" ? (
-      <IconButton data-control-id={`work-on-holiday.my.${objRequest.intID}.discard.button`} color="error" size="small" aria-label={t("discard", "Discard")} onClick={() => { setStrWithdrawReason(""); setObjWithdrawRequest(objRequest); }} sx={{ p: 0.25 }}>
-        <DeleteOutlineRoundedIcon fontSize="small" />
-      </IconButton>
-    ) : null;
     return {
     intID: objRequest.intID,
-    action: (
-      <span onClick={(objEvent) => objEvent.stopPropagation()} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 28, height: 28 }}>
-        {objSecondaryAction}
-      </span>
-    ),
     strRequestNumber: (
       <Link
         className="app-master-first-column-link"
@@ -487,22 +479,25 @@ export default function EssWorkHolidayPage() {
       {intTab === 1 ? (
         <Paper data-control-id="work-on-holiday.my.filters.card" sx={{ p: 1.5, borderRadius: "10px", boxShadow: "none", border: "1px solid #e8eef5" }}>
           <Grid container spacing={1.5} alignItems="flex-end">
-            <Grid item xs={12} sm={6} md={3}><TextField className="app-mui-text-field" data-control-id="work-on-holiday.my.filter.number.input" fullWidth size="small" label={t("request_number", "Request Number")} placeholder={t("enter_request_number", "Enter request number")} InputLabelProps={{ shrink: true }} value={strFilterNumber} onChange={(objEvent) => setStrFilterNumber(objEvent.target.value)} /></Grid>
-            <Grid item xs={12} sm={6} md={2}><TextField className="app-mui-text-field" data-control-id="work-on-holiday.my.filter.date.input" fullWidth size="small" type="date" label={t("work_date", "Work Date")} InputLabelProps={{ shrink: true }} value={strFilterDate} onChange={(objEvent) => setStrFilterDate(objEvent.target.value)} /></Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <TextField className="app-mui-text-field" data-control-id="work-on-holiday.my.filter.benefit.select" select fullWidth size="small" label={t("requested_benefit", "Requested Benefit")} InputLabelProps={{ shrink: true }} SelectProps={{ displayEmpty: true }} value={strFilterBenefit} onChange={(objEvent) => setStrFilterBenefit(objEvent.target.value)}>
+            <Grid item xs={12} sm={6} md={3}><TextField className="app-mui-text-field" data-control-id="work-on-holiday.my.filter.number.input" fullWidth size="small" label={t("request_number", "Request Number")} placeholder={t("enter_request_number", "Enter request number")} InputLabelProps={{ shrink: true }} value={strDraftNumber} onChange={(objEvent) => setStrDraftNumber(objEvent.target.value)} onKeyDown={(objEvent) => { if (objEvent.key === "Enter") applyFilters(); }} /></Grid>
+            <Grid item xs={12} sm={6} md={2}><TextField className="app-mui-text-field" data-control-id="work-on-holiday.my.filter.date.input" fullWidth size="small" type="date" label={t("work_date", "Work Date")} InputLabelProps={{ shrink: true }} value={strDraftDate} onChange={(objEvent) => setStrDraftDate(objEvent.target.value)} /></Grid>
+            <Grid item xs={12} sm={6} md={2}>
+              <TextField className="app-mui-text-field" data-control-id="work-on-holiday.my.filter.benefit.select" select fullWidth size="small" label={t("requested_benefit", "Requested Benefit")} InputLabelProps={{ shrink: true }} SelectProps={{ displayEmpty: true }} value={strDraftBenefit} onChange={(objEvent) => setStrDraftBenefit(objEvent.target.value)}>
                 <MenuItem value="">{t("all", "All")}</MenuItem>
                 {["ATTENDANCE_CREDIT", "COMPOFF", "BOTH"].map((strCode) => <MenuItem key={strCode} value={strCode}>{t(`outcome_${strCode.toLowerCase()}`, strCode)}</MenuItem>)}
               </TextField>
             </Grid>
             <Grid item xs={12} sm={6} md={2}>
-              <TextField className="app-mui-text-field" data-control-id="work-on-holiday.my.filter.status.select" select fullWidth size="small" label={t("status", "Status")} InputLabelProps={{ shrink: true }} SelectProps={{ displayEmpty: true }} value={strFilterStatus} onChange={(objEvent) => setStrFilterStatus(objEvent.target.value)}>
+              <TextField className="app-mui-text-field" data-control-id="work-on-holiday.my.filter.status.select" select fullWidth size="small" label={t("status", "Status")} InputLabelProps={{ shrink: true }} SelectProps={{ displayEmpty: true }} value={strDraftStatus} onChange={(objEvent) => setStrDraftStatus(objEvent.target.value)}>
                 <MenuItem value="">{t("all", "All")}</MenuItem>
                 {lstStatusFilterOptions.map((strLabel) => <MenuItem key={strLabel} value={strLabel}>{strLabel}</MenuItem>)}
               </TextField>
             </Grid>
-            <Grid item xs={12} md={2}>
-              <Button data-control-id="work-on-holiday.my.filter.clear.button" fullWidth variant="outlined" startIcon={<ClearRoundedIcon />} onClick={() => { setStrFilterNumber(""); setStrFilterDate(""); setStrFilterBenefit(""); setStrFilterStatus(""); }} sx={objSecondaryActionSx}>{t("clear", "Clear")}</Button>
+            <Grid item xs={12} md={3}>
+              <Stack direction="row" spacing={1}>
+                <Button data-control-id="work-on-holiday.my.filter.clear.button" fullWidth variant="outlined" startIcon={<ClearRoundedIcon />} onClick={clearFilters} sx={objSecondaryActionSx}>{t("clear", "Clear")}</Button>
+                <Button data-control-id="work-on-holiday.my.filter.search.button" fullWidth variant="contained" startIcon={<SearchRoundedIcon />} onClick={applyFilters} sx={{ backgroundColor: "var(--app-primary-color)", "&:hover": { backgroundColor: "var(--app-primary-hover-color, #164d7c)" } }}>{t("search", "Search")}</Button>
+              </Stack>
             </Grid>
           </Grid>
         </Paper>
