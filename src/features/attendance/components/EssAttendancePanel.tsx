@@ -745,7 +745,7 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
 
       <Grid container spacing={1} alignItems="stretch">
         <Grid item xs={12} sm={5} md={3} lg={3} sx={{ display: "flex" }}>
-          <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", flex: 1, minWidth: 0, minHeight: 168, boxShadow: 0, overflow: "hidden", position: "relative" }}>
+          <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", flex: 1, minWidth: 0, minHeight: 120, boxShadow: 0, overflow: "hidden", position: "relative" }}>
             <Box sx={{ position: "absolute", top: 8, right: 12, zIndex: 1 }}>
               {renderStatusChip(objSelectedDay)}
             </Box>
@@ -803,7 +803,7 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
         </Grid>
 
         <Grid item xs={12} sm={7} md={4} lg={4} sx={{ display: "flex" }}>
-          <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", flex: 1, minWidth: 0, minHeight: 168, boxShadow: 0, overflow: "hidden" }}>
+          <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", flex: 1, minWidth: 0, minHeight: 120, boxShadow: 0, overflow: "hidden" }}>
             <Typography fontWeight={900} sx={{ mb: 0.75 }}>{t("selected_day_summary", "Selected Day Summary")}</Typography>
             <Box
               sx={{
@@ -840,18 +840,18 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
                   </Typography>
                 </Box>
               ))}
-            </Box>
-            <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mt: 0.75 }}>
               <Button
                 data-control-id="ess.my-attendance.punch-timeline.button"
                 variant="contained"
                 size="small"
                 startIcon={<AccessTimeRoundedIcon />}
                 onClick={() => setBlnTimelineDialogOpen(true)}
-                sx={{ minHeight: 44, px: 1.25, borderRadius: "10px", fontWeight: 700, boxShadow: "none", whiteSpace: "nowrap", flex: "0 0 auto" }}
+                sx={{ minHeight: 52, minWidth: 0, px: 1, borderRadius: "10px", fontWeight: 700, boxShadow: "none", whiteSpace: "nowrap" }}
               >
                 {t("punch_timeline", "Punch Timeline")}
               </Button>
+            </Box>
+            <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mt: 0.75 }}>
               {blnViewingSelf && blnSelectedDayEligibleForRegularization && canViewRegularization() ? (
                 <Button
                   data-control-id="ess.my-attendance.regularize.button"
@@ -868,7 +868,7 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
         </Grid>
 
         <Grid item xs={12} md={5} lg={5} sx={{ display: "flex" }}>
-          <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", flex: 1, minWidth: 0, minHeight: 168, boxShadow: 0, overflow: "hidden" }}>
+          <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", flex: 1, minWidth: 0, minHeight: 120, boxShadow: 0, overflow: "hidden" }}>
             <Typography fontWeight={900} sx={{ mb: 0.25 }}>{t("monthly_summary", "Monthly Summary")}</Typography>
             <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "baseline", columnGap: 1 }}>
               <Typography variant="caption" color="text.secondary">
