@@ -1,5 +1,5 @@
 .filterRow {
-  grid-template-columns: minmax(220px, 0.7fr) minmax(360px, 1.4fr) auto !important;
+  grid-template-columns: minmax(200px, 0.6fr) minmax(320px, 1.3fr) minmax(180px, 0.5fr) auto !important;
   overflow: visible;
 }
 .employeeField { min-width: 0; }

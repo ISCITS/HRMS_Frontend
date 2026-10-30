@@ -26,7 +26,7 @@ import { DottedLoader } from "@/components/shared/BlockingLoader";
 import screen from "@/components/master/MasterScreen.module.css";
 import styles from "./CtcFormatReportPage.module.css";
 
-type Statement = { document: CtcDocument; employee: EmployeeListRecord };
+type Statement = { document: CtcDocument; employee: EmployeeListRecord; zeroStatutory: boolean };
 
 export default function CtcFormatReportPage() {
   const access = useActionRights();
@@ -35,6 +35,7 @@ export default function CtcFormatReportPage() {
   const [employees, setEmployees] = useState<EmployeeListRecord[]>([]);
   const [type, setType] = useState("All");
   const [selected, setSelected] = useState<EmployeeListRecord | null>(null);
+  const [zeroStatutory, setZeroStatutory] = useState(false);
   const [statement, setStatement] = useState<Statement | null>(null);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -63,8 +64,8 @@ export default function CtcFormatReportPage() {
     const request = ++generation.current;
     setGenerating(true); setError(""); setStatement(null);
     try {
-      const document = await ctcReportService.document(selected.strRecordUUID);
-      if (request === generation.current) setStatement({ employee: selected, document });
+      const document = await ctcReportService.document(selected.strRecordUUID, zeroStatutory);
+      if (request === generation.current) setStatement({ employee: selected, document, zeroStatutory });
     } catch (reason) { if (request === generation.current) setError(reason instanceof Error ? reason.message : "Unable to generate CTC statement."); }
     finally { if (request === generation.current) setGenerating(false); }
   }
@@ -73,7 +74,7 @@ export default function CtcFormatReportPage() {
     if (!statement || !canExport || busy) return;
     setDownloading(format); setError("");
     try {
-      const file = await ctcReportService.download(statement.employee.strRecordUUID, format, statement.document.version);
+      const file = await ctcReportService.download(statement.employee.strRecordUUID, format, statement.document.version, statement.zeroStatutory);
       const bytes = Uint8Array.from(atob(file.strBase64Content), value => value.charCodeAt(0));
       const url = URL.createObjectURL(new Blob([bytes], { type: file.strContentType }));
       const link = document.createElement("a");
@@ -107,9 +108,12 @@ export default function CtcFormatReportPage() {
             renderInput={params => <TextField {...params} className="app-mui-text-field" size="small" label="Employee Name" required placeholder={binding ? "Loading employees..." : "Search employee..."} data-testid="ctc.filter.employee"
               InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />} />
         </Box>
+        <TextField className="app-mui-text-field" fullWidth select size="small" label="PF / ESIC with 0 value" value={zeroStatutory ? "Show" : "Hide"} disabled={busy || binding} onChange={event => { setZeroStatutory(event.target.value === "Show"); setStatement(null); }} data-testid="ctc.filter.zeroStatutory">
+            {["Hide", "Show"].map(option => <MenuItem key={option} value={option}>{option}</MenuItem>)}
+        </TextField>
         <Box className={screen.searchActions}>
           <Button type="submit" size="small" className={screen.primaryButton} startIcon={generating ? <DottedLoader intSize={16} color="inherit" /> : <SearchRoundedIcon />} disabled={!selected || binding || busy} data-testid="ctc.generate" sx={{ minHeight: "30px !important", px: "8px !important" }}>Search</Button>
-          <Button size="small" className={screen.secondaryButton} startIcon={<ClearRoundedIcon />} disabled={busy || binding} onClick={() => { setType("All"); setSelected(null); setStatement(null); setError(""); }} sx={{ minHeight: "30px !important", px: "8px !important" }}>Clear</Button>
+          <Button size="small" className={screen.secondaryButton} startIcon={<ClearRoundedIcon />} disabled={busy || binding} onClick={() => { setType("All"); setSelected(null); setZeroStatutory(false); setStatement(null); setError(""); }} sx={{ minHeight: "30px !important", px: "8px !important" }}>Clear</Button>
         </Box>
       </Box>
     </Box>
