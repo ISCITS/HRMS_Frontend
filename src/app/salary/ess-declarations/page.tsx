@@ -3,9 +3,10 @@
 import AddCircleOutlineRoundedIcon from "@mui/icons-material/AddCircleOutlineRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, InputAdornment, Link, MenuItem, Stack, TextField } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { MasterAddColumnsControl, MasterBreadcrumbs, MasterGridSkeleton, dicMasterRowSx, onSearchEnter, type MasterOptionalColumn } from "@/components/master/MasterListUi";
 
 import { itDeclarationService, type ItDeclarationDashboardCardDto, type ItDeclarationRegime } from "@/features/it-declaration/services/itDeclarationService";
 import ITDeclarationStatusBadge from "@/features/it-declaration/components/ITDeclarationStatusBadge";
@@ -13,6 +14,8 @@ import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import styles from "@/components/master/MasterScreen.module.css";
+
+type OptionalColumnKey = "approved" | "lastUpdated";
 
 function formatCurrency(decValue: number) {
   return `INR ${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(decValue || 0)}`;
@@ -74,9 +77,15 @@ export default function SalaryEssDeclarationsPage() {
   const [strSearchRegime, setStrSearchRegime] = useState("");
   const [strSearchStatus, setStrSearchStatus] = useState("All");
   const [dicAppliedFilters, setDicAppliedFilters] = useState({ fy: "", regime: "", status: "All" });
+  const [lstVisibleOptionalColumns, setLstVisibleOptionalColumns] = useState<OptionalColumnKey[]>([]);
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
   const blnCanAdd = canDoAny("add") || canDoAny("start") || canDoAny("create");
   const blnCanEdit = canDoAny("edit") || canDoAny("update");
+  const blnBusy = blnLoading || blnRightsLoading;
+  const lstOptionalColumns: MasterOptionalColumn<OptionalColumnKey>[] = [
+    { strKey: "approved", strLabel: t("approved", "Approved") },
+    { strKey: "lastUpdated", strLabel: t("last_updated", "Last Updated") },
+  ];
 
   const getRegimeLabel = (strRegime: string) => {
     if (strRegime === "Old Regime") return t("old_regime", "Old Regime");
@@ -290,47 +299,58 @@ export default function SalaryEssDeclarationsPage() {
   const lstGridRows = useMemo(() => {
     return lstFilteredRows.map((objRow) => ({
       id: objRow.intDeclarationID,
-      fy: objRow.strFinancialYearCode,
+      strFinancialYearCode: objRow.strFinancialYearCode,
+      strTaxRegime: objRow.strTaxRegime,
+      fy: (
+        <Link
+          className="app-master-first-column-link"
+          component="button"
+          type="button"
+          underline="none"
+          title={blnCanEdit && canEditDeclarationByStatus(objRow.strStatus) ? t("continue", "Continue") : t("view", "View")}
+          controlId={`salary.ess-declarations.row.${blnCanEdit && canEditDeclarationByStatus(objRow.strStatus) ? "edit" : "view"}.link`}
+          data-row-key={objRow.intDeclarationID}
+          onClick={(objEvent) => {
+            objEvent.stopPropagation();
+            void openDeclaration(objRow.strFinancialYearCode, objRow.strTaxRegime);
+          }}
+        >
+          {objRow.strFinancialYearCode}
+        </Link>
+      ),
+      fySort: objRow.strFinancialYearCode,
       regime: getRegimeLabel(objRow.strTaxRegime),
       status: (
         <ITDeclarationStatusBadge strStatus={String(objRow.strStatus || "draft")} strLabel={getStatusLabel(objRow.strStatus)} />
       ),
+      statusSort: getStatusLabel(objRow.strStatus),
       declared: formatCurrency(objRow.decDeclaredAmount),
+      declaredSort: Number(objRow.decDeclaredAmount || 0),
       approved: formatCurrency(objRow.decApprovedAmount),
+      approvedSort: Number(objRow.decApprovedAmount || 0),
       lastUpdated: formatDateLabel(objRow.strLastUpdated),
-      action: (() => {
-        const blnRowGoesToEdit = blnCanEdit && canEditDeclarationByStatus(objRow.strStatus);
-        return (
-          <Stack direction="row" spacing={0.6} flexWrap="wrap" useFlexGap justifyContent="center">
-            <Button
-              controlId={`salary.ess-declarations.row.${blnRowGoesToEdit ? "edit" : "view"}.button`}
-              data-row-key={objRow.intDeclarationID}
-              size="small"
-              variant="outlined"
-              onClick={() => void openDeclaration(objRow.strFinancialYearCode, objRow.strTaxRegime)}
-            >
-              {blnRowGoesToEdit ? t("continue", "Continue") : t("view", "View")}
-            </Button>
-          </Stack>
-        );
-      })(),
+      lastUpdatedSort: objRow.strLastUpdated || "",
     }));
   }, [blnCanEdit, lstFilteredRows, strBusyKey, t]);
 
   const lstColumns: CommonTableColumn<(typeof lstGridRows)[number]>[] = [
-    { field: "action", headerName: t("action", "Action"), width: 120, sortable: false, exportable: false, align: "center" },
-    { field: "fy", headerName: t("fy", "FY"), width: 160 },
+    { field: "fy", headerName: t("fy", "FY"), width: 160, filterable: false, sortAccessor: (objRow) => String(objRow.fySort) },
     { field: "regime", headerName: t("regime", "Regime"), width: 180 },
-    { field: "status", headerName: t("status", "Status"), width: 140, sortable: false },
-    { field: "declared", headerName: t("declared", "Declared"), width: 150, align: "right" },
-    { field: "approved", headerName: t("approved", "Approved"), width: 150, align: "right" },
-    { field: "lastUpdated", headerName: t("last_updated", "Last Updated"), width: 160 },
+    { field: "status", headerName: t("status", "Status"), width: 140, filterable: false, sortAccessor: (objRow) => String(objRow.statusSort) },
+    { field: "declared", headerName: t("declared", "Declared"), width: 150, align: "right", sortAccessor: (objRow) => objRow.declaredSort },
+    ...(lstVisibleOptionalColumns.includes("approved") ? [{ field: "approved", headerName: t("approved", "Approved"), width: 150, align: "right", sortAccessor: (objRow) => objRow.approvedSort } as CommonTableColumn<(typeof lstGridRows)[number]>] : []),
+    ...(lstVisibleOptionalColumns.includes("lastUpdated") ? [{ field: "lastUpdated", headerName: t("last_updated", "Last Updated"), width: 160, sortAccessor: (objRow) => String(objRow.lastUpdatedSort) } as CommonTableColumn<(typeof lstGridRows)[number]>] : []),
   ];
+  const nodeBreadcrumbs = <MasterBreadcrumbs strSection={t("breadcrumb_payroll_benefits", "Payroll & Benefits")} strTitle={t("breadcrumb_my_it_declaration", "My IT Declaration")} />;
+  const dicTableCardSx = { position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" } as const;
 
-  if (blnLoading || blnRightsLoading) {
+  if (blnBusy) {
     return (
-      <Box sx={{ display: "grid", placeItems: "center", minHeight: "40vh" }}>
-        <CircularProgress size={28} />
+      <Box className={styles.page} data-controlid="salary.ess-declarations.loading">
+        {nodeBreadcrumbs}
+        <Box className={styles.tableCard} sx={dicTableCardSx}>
+          <MasterGridSkeleton strControlId="salary.ess-declarations.skeleton" intColumns={4} />
+        </Box>
       </Box>
     );
   }
@@ -338,6 +358,7 @@ export default function SalaryEssDeclarationsPage() {
   if (!blnCanView) {
     return (
       <Box className={styles.page}>
+        {nodeBreadcrumbs}
         <Alert severity="warning">
           {strRightsError || t("access_not_available", "IT declaration access is not available for your user group.")}
         </Alert>
@@ -346,31 +367,47 @@ export default function SalaryEssDeclarationsPage() {
   }
 
   return (
-    <Box className={styles.page}>
+    <Box className={styles.page} data-controlid="salary.ess-declarations.page">
+      {nodeBreadcrumbs}
       {strRightsError ? <Alert severity="warning">{strRightsError}</Alert> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
 
-      <Paper className={styles.controlsCard} sx={{ p: 1.2, borderRadius: "10px", border: "1px solid #dbe3ef" }}>
-        <Box className={styles.searchRow}>
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        <Box
+          className={styles.searchRow}
+          onKeyDown={onSearchEnter(() => setDicAppliedFilters({ fy: strSearchFy, regime: strSearchRegime, status: strSearchStatus }))}
+          sx={{
+            gridTemplateColumns: "minmax(200px, 1fr) minmax(200px, 1fr) minmax(160px, 0.8fr) auto auto",
+            alignItems: "center",
+            "& .MuiButton-root": { alignSelf: "center" },
+          }}
+        >
           <TextField
+            className="app-mui-text-field"
             controlId="salary.ess-declarations.search.financial-year.input"
             value={strSearchFy}
             onChange={(objEvent) => setStrSearchFy(objEvent.target.value)}
+            label={t("fy", "FY")}
             placeholder={t("search_fy", "Search FY")}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }}
             size="small"
             fullWidth
           />
           <TextField
+            className="app-mui-text-field"
             controlId="salary.ess-declarations.search.regime.input"
             value={strSearchRegime}
             onChange={(objEvent) => setStrSearchRegime(objEvent.target.value)}
+            label={t("regime", "Regime")}
             placeholder={t("search_regime", "Search Regime")}
             size="small"
             fullWidth
           />
           <TextField
+            className="app-mui-text-field"
             controlId="salary.ess-declarations.search.status.select"
             select
+            label={t("status", "Status")}
             value={strSearchStatus}
             onChange={(objEvent) => setStrSearchStatus(objEvent.target.value)}
             size="small"
@@ -414,9 +451,9 @@ export default function SalaryEssDeclarationsPage() {
             </Button>
           </Box>
         </Box>
-      </Paper>
+      </Box>
 
-      <Box className={styles.tableCard}>
+      <Box className={styles.tableCard} sx={dicTableCardSx}>
         <CommonTable
           columns={lstColumns}
           rows={lstGridRows}
@@ -429,8 +466,22 @@ export default function SalaryEssDeclarationsPage() {
           showExportOptions
           showPaginationSummary
           exportFileName="it-declaration-list"
+          toolbarAfterExport={(
+            <MasterAddColumnsControl
+              strControlPrefix="salary.ess-declarations"
+              strButtonLabel={t("add_columns", "Add columns")}
+              lstColumns={lstOptionalColumns}
+              lstVisibleKeys={lstVisibleOptionalColumns}
+              onChange={setLstVisibleOptionalColumns}
+            />
+          )}
+          onRowClick={(objRow) => void openDeclaration(String(objRow.strFinancialYearCode), String(objRow.strTaxRegime))}
+          hideRowClickHint
+          minTableWidth={800}
+          getRowSx={() => dicMasterRowSx}
           emptyMessage={t("no_it_declarations_found", "No IT declarations found for this employee.")}
           withPaper={false}
+          sx={{ p: 0, boxShadow: "none", background: "transparent" }}
         />
       </Box>
 

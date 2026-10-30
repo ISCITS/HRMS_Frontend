@@ -17,13 +17,14 @@ import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import {
   Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Drawer, Grid, IconButton, InputAdornment,
-  LinearProgress, MenuItem, Paper, Skeleton, Snackbar, Stack, Tab, Table, TableBody, TableCell,
+  LinearProgress, Link, MenuItem, Paper, Skeleton, Snackbar, Stack, Tab, Table, TableBody, TableCell,
   TableHead, TablePagination, TableRow, Tabs, TextField, Tooltip, Typography,
   useMediaQuery, useTheme,
 } from "@mui/material";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
+import { MasterBreadcrumbs, MasterGridSkeleton } from "@/components/master/MasterListUi";
 import { useLeaveApprovals } from "@/features/leave/hooks/useLeaveApprovals";
 import { useLeaveWorkflowPermissions } from "@/features/leave/hooks/useLeaveWorkflowPermissions";
 import { leaveService } from "@/features/leave/services/leaveService";
@@ -206,11 +207,13 @@ export default function EssLeaveApprovalsPanel() {
     }
   }
 
+  const nodeBreadcrumbs = <MasterBreadcrumbs strSection={t("breadcrumb_leave", "Leave")} strTitle={t("page_title", "Leave Approvals")} />;
+
   if (blnRightsLoading) {
-    return <Box sx={{ p: 2 }}><LinearProgress /></Box>;
+    return <Stack spacing={1.5}>{nodeBreadcrumbs}<MasterGridSkeleton strControlId="ess.leave.approvals.skeleton" intColumns={7} /></Stack>;
   }
   if (!blnCanView) {
-    return <Box sx={{ p: 3 }}><Alert severity="warning">{t("access_denied", "Leave approval access is not available for your user group.")}</Alert></Box>;
+    return <Stack spacing={1.5}>{nodeBreadcrumbs}<Box sx={{ p: 3 }}><Alert severity="warning">{t("access_denied", "Leave approval access is not available for your user group.")}</Alert></Box></Stack>;
   }
 
   const lstCards = [
@@ -228,6 +231,7 @@ export default function EssLeaveApprovalsPanel() {
   ];
 
   return <Stack spacing={2}>
+    {nodeBreadcrumbs}
     {/* Refresh sits at the right end of the tab bar rather than in its own row above the cards. */}
     <Grid container spacing={1.25}>
       {lstCards.map((objCard) => <Grid item xs={6} md={3} key={objCard.strKey}><Paper sx={{ p: 1.75, borderRadius: "16px", border: "1px solid #e2e8f0", height: "100%" }}><Stack direction="row" spacing={1.25} alignItems="center"><Box sx={{ width: 44, height: 44, borderRadius: "12px", bgcolor: `${objCard.strColor}18`, color: objCard.strColor, display: "grid", placeItems: "center" }}>{objCard.objIcon}</Box><Box>{blnLoading ? <Skeleton width={40} height={30} /> : <Typography sx={{ fontWeight: 800, fontSize: "1.5rem", lineHeight: 1 }}>{objCard.intValue}</Typography>}<Typography sx={{ fontSize: ".72rem", color: "#64748b", fontWeight: 600 }}>{objCard.strLabel}</Typography></Box></Stack></Paper></Grid>)}
@@ -338,17 +342,15 @@ function ApprovalTable({ lstItems, intTab, objSort, fnToggleSort, blnCanViewConf
     <TableCell>{fnSortLabel("decDays", fnLabel("chargeable_days", "Chargeable Days"))}</TableCell>
     <TableCell>{intTab === 2 ? fnLabel("actioned_on", "Actioned On") : fnSortLabel("dtAppliedOn", fnLabel("applied_on", "Applied On"))}</TableCell>
     <TableCell>{fnLabel("status", "Status")}</TableCell>
-    <TableCell align="right">{fnLabel("actions", "Actions")}</TableCell>
   </TableRow></TableHead><TableBody>
-    {lstItems.map((objItem) => <TableRow key={objItem.intID} hover>
-      <TableCell><Typography sx={{ fontWeight: 700, fontSize: ".82rem" }}>{fnEmployeeName(objItem)}</Typography><Typography sx={{ fontSize: ".7rem", color: "#64748b" }}>{objItem.strEmployeeCode ?? ""}</Typography></TableCell>
+    {lstItems.map((objItem) => <TableRow key={objItem.intID} hover onClick={() => fnOnOpen(objItem)} sx={{ cursor: "pointer", "&:hover .MuiLink-root": { textDecoration: "underline" } }}>
+      <TableCell><Link className="app-master-first-column-link" component="button" type="button" underline="none" data-controlid={`ess.leave.approvals.view.${objItem.intID}`} onClick={(objEvent) => { objEvent.stopPropagation(); fnOnOpen(objItem); }} sx={{ fontWeight: 700, fontSize: ".82rem" }}>{fnEmployeeName(objItem)}</Link><Typography sx={{ fontSize: ".7rem", color: "#64748b" }}>{objItem.strEmployeeCode ?? ""}</Typography></TableCell>
       <TableCell><Stack spacing={.5}><TypeCell objItem={objItem} blnCanViewConfidential={blnCanViewConfidential} fnLabel={fnLabel} /><RowTags objItem={objItem} fnLabel={fnLabel} /></Stack></TableCell>
       <TableCell>{formatLeaveDate(objItem.dtFromDate)}{objItem.blnFromHalf ? " (½)" : ""}</TableCell>
       <TableCell>{formatLeaveDate(objItem.dtToDate)}{objItem.blnToHalf ? " (½)" : ""}</TableCell>
       <TableCell>{objItem.decDays}</TableCell>
       <TableCell>{formatLeaveDate(intTab === 2 ? objItem.dtLastActionOn : objItem.dtAppliedOn)}</TableCell>
       <TableCell><StatusChip strStatus={objItem.strStatus} fnLabel={fnLabel} /></TableCell>
-      <TableCell align="right"><Button data-controlid={`ess.leave.approvals.view.${objItem.intID}`} size="small" variant="outlined" startIcon={<VisibilityOutlinedIcon />} onClick={() => fnOnOpen(objItem)}>{fnLabel("review", "Review")}</Button></TableCell>
     </TableRow>)}
   </TableBody></Table></Box>;
 }

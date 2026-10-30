@@ -18,9 +18,9 @@ async function get<T>(path: string): Promise<T> {
 }
 
 export const ctcReportService = {
-  document: (uuid: string) => get<CtcDocument>(`document/${encodeURIComponent(uuid)}`),
-  download: (uuid: string, format: "xlsx" | "pdf", version: string) =>
-    get<CtcDownload>(`document/${encodeURIComponent(uuid)}?format=${format}&version=${encodeURIComponent(version)}`),
+  document: (uuid: string, zeroStatutory = false) => get<CtcDocument>(`document/${encodeURIComponent(uuid)}?zero_statutory=${zeroStatutory}`),
+  download: (uuid: string, format: "xlsx" | "pdf", version: string, zeroStatutory = false) =>
+    get<CtcDownload>(`document/${encodeURIComponent(uuid)}?format=${format}&version=${encodeURIComponent(version)}&zero_statutory=${zeroStatutory}`),
   options: () => get<{ employees: EmployeeListRecord[]; salaries: EmployeeSalaryListRecord[] }>("options"),
   detail: (uuid: string, action: "view" | "export" = "view") =>
     get<EmployeeSalaryDetailRecord>(`employee/${encodeURIComponent(uuid)}?action=${action}`),

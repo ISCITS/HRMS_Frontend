@@ -5,13 +5,14 @@ import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import FingerprintRoundedIcon from "@mui/icons-material/FingerprintRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import LocationOnRoundedIcon from "@mui/icons-material/LocationOnRounded";
 import {
   Alert,
-  Autocomplete,
   Box,
   Button,
   ButtonBase,
   Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -23,21 +24,26 @@ import {
   Snackbar,
   Stack,
   TextField,
+  Tooltip,
   Typography,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
+import { MasterBreadcrumbs, MasterGridSkeleton } from "@/components/master/MasterListUi";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import styles from "@/components/master/MasterScreen.module.css";
 import { ATTENDANCE_STATUS_COLORS, LATE_ARRIVAL_BADGE_COLOR, type AttendanceDayDto } from "@/features/attendance/dto";
 import { useMyAttendance } from "@/features/attendance/hooks/useMyAttendance";
 import { attendanceService } from "@/features/attendance/services/attendanceService";
 import type { MyAttendanceOverview, MyAttendancePunch } from "@/features/attendance/types/MyAttendanceTypes";
+import { type GeoCoords, getCurrentPositionSafe } from "@/features/attendance/utils/geolocation";
+import { formatCoords, reverseGeocode } from "@/features/attendance/utils/reverseGeocode";
 import { employeeService } from "@/features/employee/services/employeeService";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
@@ -45,10 +51,6 @@ import { useModuleActionAccess } from "@/features/security/hooks/useModuleAction
 // Selectable employee for the Employee dropdown: HR mode's "Employee Attendance" (any employee)
 // or ESS manager mode (self + direct reports).
 type ReviewEmployeeDto = { intEmployeeID: number; strFullName: string; strEmployeeCode: string | null; blnIsSelf: boolean };
-
-function reviewEmployeeLabel(objEmployee: ReviewEmployeeDto): string {
-  return objEmployee.strEmployeeCode ? `${objEmployee.strFullName} (${objEmployee.strEmployeeCode})` : objEmployee.strFullName;
-}
 
 type ToastState = {
   blnOpen: boolean;
@@ -149,6 +151,45 @@ function buildPunchTimelineRows(lstPunches: MyAttendancePunch[]) {
     });
 
   return { lstRows, intTotalMinutes, blnHasUnmatchedPunch: intOpenInMinutes !== null };
+}
+
+// Resolves the captured lat/lng to a short address lazily (only while the timeline dialog
+// is open) and shows the raw coordinates on hover, per the "address primary, coordinates as
+// a fallback" decision for how punch locations should read to HR/managers.
+function PunchLocationLine({
+  decGeoLat,
+  decGeoLng,
+  fnTranslate,
+}: {
+  decGeoLat: number;
+  decGeoLng: number;
+  fnTranslate: (strKey: string, strDefault: string) => string;
+}) {
+  const [strAddress, setStrAddress] = useState<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    let blnCancelled = false;
+    setStrAddress(undefined);
+    void reverseGeocode(decGeoLat, decGeoLng).then((strResult) => {
+      if (!blnCancelled) setStrAddress(strResult);
+    });
+    return () => {
+      blnCancelled = true;
+    };
+  }, [decGeoLat, decGeoLng]);
+
+  const strCoords = formatCoords(decGeoLat, decGeoLng);
+
+  return (
+    <Tooltip title={strCoords} placement="top" arrow>
+      <Stack direction="row" spacing={0.5} alignItems="center" sx={{ gridColumn: "1 / -1", minWidth: 0 }}>
+        <LocationOnRoundedIcon fontSize="inherit" sx={{ color: "text.disabled", fontSize: 16 }} />
+        <Typography variant="caption" color="text.secondary" noWrap sx={{ minWidth: 0 }}>
+          {strAddress === undefined ? fnTranslate("locating", "Locating...") : strAddress ?? strCoords}
+        </Typography>
+      </Stack>
+    </Tooltip>
+  );
 }
 
 function punchSourceLabel(strSource: string) {
@@ -263,6 +304,8 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
   );
   const [strSelectedDate, setStrSelectedDate] = useState(strToday);
   const [blnPunchDialogOpen, setBlnPunchDialogOpen] = useState(false);
+  const [strPunchGeoStatus, setStrPunchGeoStatus] = useState<"idle" | "capturing" | "captured" | "unavailable">("idle");
+  const objPunchGeoRef = useRef<GeoCoords | null>(null);
   const [blnPolicyDialogOpen, setBlnPolicyDialogOpen] = useState(false);
   const [blnTimelineDialogOpen, setBlnTimelineDialogOpen] = useState(false);
   const [objSelectedOverview, setObjSelectedOverview] = useState<MyAttendanceOverview | null>(null);
@@ -457,10 +500,20 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
     setStrSelectedDate(strToday);
   }
 
+  function openPunchDialog() {
+    setBlnPunchDialogOpen(true);
+    setStrPunchGeoStatus("capturing");
+    objPunchGeoRef.current = null;
+    void getCurrentPositionSafe().then((objGeo) => {
+      objPunchGeoRef.current = objGeo;
+      setStrPunchGeoStatus(objGeo ? "captured" : "unavailable");
+    });
+  }
+
   async function confirmPunch() {
     if (!objOverview) return;
     try {
-      await punch(objOverview.strNextPunchDirection);
+      await punch(objOverview.strNextPunchDirection, objPunchGeoRef.current);
       setBlnPunchDialogOpen(false);
       setObjToast({
         blnOpen: true,
@@ -502,7 +555,12 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
   }
 
   if (blnRightsLoading) {
-    return <BlockingLoader blnOpen strLabel={t("loading", "Loading...")} />;
+    return (
+      <Stack spacing={1.5}>
+        <MasterBreadcrumbs strSection={t("breadcrumb_attendance", "Attendance")} strTitle={blnHrMode ? t("breadcrumb_attendance_review", "Employee Attendance") : t("breadcrumb_my_attendance", "My Attendance")} />
+        <MasterGridSkeleton strControlId="attendance.review.skeleton" intColumns={7} />
+      </Stack>
+    );
   }
   if (!blnCanViewMyAttendance) {
     return (
@@ -515,43 +573,37 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
   }
 
   const objEmployeeSelector = blnShowEmployeeSelector ? (
-    <Autocomplete
-      size="small"
-      options={lstEmployees}
-      value={objSelectedEmployee}
-      getOptionLabel={(objOption) => reviewEmployeeLabel(objOption)}
-      isOptionEqualToValue={(objA, objB) => objA.intEmployeeID === objB.intEmployeeID}
-      onChange={(_objEvent, objNext) => {
+    <CommonSearchableSelect
+      className="app-mui-text-field"
+      showSearchIcon={false}
+      controlId="attendance-review.employee.select"
+      label="Employee"
+      placeholder="Search employee..."
+      options={lstEmployees.map((objEmployee) => ({
+        intID: objEmployee.intEmployeeID,
+        strLabel: objEmployee.strFullName,
+        strCode: objEmployee.strEmployeeCode ?? undefined,
+      }))}
+      getOptionLabel={(dicOption) => (dicOption.strCode ? `${dicOption.strLabel} (${dicOption.strCode})` : dicOption.strLabel)}
+      value={objSelectedEmployee?.intEmployeeID ?? ""}
+      onChange={(intValue) => {
+        if (intValue === "") return;
+        const objNext = lstEmployees.find((objEmployee) => objEmployee.intEmployeeID === intValue) ?? null;
         if (objNext) setObjSelectedEmployee(objNext);
       }}
-      sx={{ width: { xs: "100%", sm: 300 }, "& .MuiAutocomplete-clearIndicator": { display: "none" } }}
-      renderInput={(objParams) => (
-        <TextField
-          {...objParams}
-          label="Employee"
-          placeholder="Search employee..."
-          controlId="attendance-review.employee.select"
-          InputLabelProps={{ ...objParams.InputLabelProps, shrink: true }}
-        />
-      )}
+      sx={{ width: { xs: "100%", sm: 300 } }}
     />
   ) : null;
 
   return (
     <Stack spacing={1.5}>
-      {blnHrMode && objEmployeeSelector ? (
-        <Box className={styles.controlsCard} data-control-id="attendance-review.filters.card">
+      <MasterBreadcrumbs strSection={t("breadcrumb_attendance", "Attendance")} strTitle={blnHrMode ? t("breadcrumb_attendance_review", "Employee Attendance") : t("breadcrumb_my_attendance", "My Attendance")} />
+      {blnHrMode && objEmployeeSelector && !objSelectedEmployee ? (
+        <Box className={styles.controlsCard} data-control-id="attendance-review.filters.card" sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
           <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", sm: "minmax(260px, 420px)" }, alignItems: "center", mt: 1 }}>
             {objEmployeeSelector}
           </Box>
         </Box>
-      ) : null}
-
-      {objSelectedEmployee && !objSelectedEmployee.blnIsSelf ? (
-        <Alert severity="info" variant="outlined" sx={{ borderRadius: "12px", py: 0.25 }}>
-          Viewing attendance for <strong>{objSelectedEmployee.strFullName}</strong>
-          {objSelectedEmployee.strEmployeeCode ? ` (${objSelectedEmployee.strEmployeeCode})` : ""}
-        </Alert>
       ) : null}
 
       {blnHrMode && !objSelectedEmployee ? (
@@ -573,12 +625,23 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
           flexWrap: "wrap",
           rowGap: 1,
           alignItems: "center",
-          justifyContent: !blnHrMode && objEmployeeSelector ? "space-between" : "flex-end",
+          columnGap: 1.5,
+          justifyContent: objEmployeeSelector ? "space-between" : "flex-end",
           boxShadow: "none",
           border: "1px solid rgba(31, 91, 142, 0.18)",
         }}
       >
-        {!blnHrMode ? objEmployeeSelector : null}
+        {objEmployeeSelector}
+        {objSelectedEmployee && !objSelectedEmployee.blnIsSelf ? (
+          <Alert
+            severity="info"
+            variant="outlined"
+            sx={{ borderRadius: "12px", py: 0, flex: "1 1 240px", minWidth: 0, "& .MuiAlert-message": { py: 0.75 } }}
+          >
+            Viewing attendance for <strong>{objSelectedEmployee.strFullName}</strong>
+            {objSelectedEmployee.strEmployeeCode ? ` (${objSelectedEmployee.strEmployeeCode})` : ""}
+          </Alert>
+        ) : null}
         <Stack
           direction="row"
           spacing={0.75}
@@ -681,31 +744,31 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
       ) : null}
 
       <Grid container spacing={1} alignItems="stretch">
-        <Grid item xs={12} sm={5} md={2}>
-          <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", height: { xs: "auto", md: 120 }, minHeight: 120, boxShadow: 0, overflow: "hidden", position: "relative" }}>
+        <Grid item xs={12} sm={5} md={3} lg={3} sx={{ display: "flex" }}>
+          <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", flex: 1, minWidth: 0, minHeight: 120, boxShadow: 0, overflow: "hidden", position: "relative" }}>
             <Box sx={{ position: "absolute", top: 8, right: 12, zIndex: 1 }}>
               {renderStatusChip(objSelectedDay)}
             </Box>
-            <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{ height: "100%" }}>
-              <Box sx={{ minWidth: 0, flex: "1 1 auto", pr: 0 }}>
+            <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" flexWrap="wrap" rowGap={1} useFlexGap sx={{ minHeight: "100%" }}>
+              <Box sx={{ minWidth: 120, flex: "1 1 120px", pr: 0 }}>
                 <Typography fontWeight={900} noWrap>
                   {strSelectedDate === strToday
                     ? t("today", "Today")
                     : t("selected_date", "Selected Date")}
                 </Typography>
-                <Typography variant="h6" fontWeight={900} noWrap sx={{ mt: 0.25, fontSize: { md: "1.08rem", xl: "1.25rem" } }}>
+                <Typography variant="h6" fontWeight={900} sx={{ mt: 0.25, fontSize: { md: "1.08rem", xl: "1.25rem" }, whiteSpace: "nowrap" }}>
                   {new Date(`${strSelectedDate}T00:00:00`).toLocaleDateString([], { day: "2-digit", month: "short", year: "numeric" })}
                 </Typography>
                 <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mt: 0.75 }} flexWrap="wrap" useFlexGap>
                   {strSelectedDate === strToday ? (
-                    <Typography variant="body2" color="text.secondary" noWrap sx={{ textTransform: "capitalize" }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ textTransform: "capitalize" }}>
                       {t(`state_${objOverview?.strCurrentState ?? "not_punched"}`, toTitleCase(objOverview?.strCurrentState ?? "not_punched"))}
                     </Typography>
                   ) : null}
                 </Stack>
               </Box>
               {blnViewingSelf ? (
-                <Box sx={{ flex: "0 0 118px", display: "flex", justifyContent: "flex-end" }}>
+                <Box sx={{ flex: "0 0 auto", minWidth: 0, display: "flex", justifyContent: "flex-end" }}>
                   {strSelectedDate === strToday ? (
                     <Button
                       data-control-id={`ess.my-attendance.punch-${objOverview?.strNextPunchDirection ?? "in"}.button`}
@@ -713,8 +776,8 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
                       variant="contained"
                       startIcon={<FingerprintRoundedIcon />}
                       disabled={blnLoading || blnPunching || !objOverview?.blnCanPunch}
-                      onClick={() => setBlnPunchDialogOpen(true)}
-                      sx={{ minHeight: 44, px: 1.25, borderRadius: "8px", fontWeight: 900, whiteSpace: "nowrap" }}
+                      onClick={openPunchDialog}
+                      sx={{ minHeight: 44, px: 1.25, borderRadius: "8px", fontWeight: 900, whiteSpace: "nowrap", flexShrink: 0 }}
                     >
                       {blnPunching
                         ? t("recording", "Recording...")
@@ -739,15 +802,15 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
           </Paper>
         </Grid>
 
-        <Grid item xs={12} sm={7} md={5}>
-          <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", height: { xs: "auto", md: 120 }, minHeight: 120, boxShadow: 0, overflow: "hidden" }}>
+        <Grid item xs={12} sm={7} md={4} lg={4} sx={{ display: "flex" }}>
+          <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", flex: 1, minWidth: 0, minHeight: 120, boxShadow: 0, overflow: "hidden" }}>
             <Typography fontWeight={900} sx={{ mb: 0.75 }}>{t("selected_day_summary", "Selected Day Summary")}</Typography>
-            <Stack
-              direction="row"
-              useFlexGap
-              spacing={0.75}
-              alignItems="stretch"
-              sx={{ flexWrap: { xs: "wrap", lg: "nowrap" }, overflowX: { lg: "hidden" } }}
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", sm: "repeat(3, minmax(0, 1fr))", md: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" },
+                gap: 0.75,
+              }}
             >
               {[
                 [t("first_in", "First In"), objSelectedDay?.strFirstIn?.slice(0, 5) ?? "—"],
@@ -763,7 +826,7 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
                 ...((objSelectedDay?.intEarlyMinutes ?? 0) > 0 ? [[t("early_by", "Early By"), `${objSelectedDay?.intEarlyMinutes} min`]] : []),
                 [t("paid_day", "Paid Day"), objSelectedDay ? (objSelectedDay.blnIsPaid ? t("yes", "Yes") : t("no", "No")) : "—"],
               ].map(([strLabel, strValue]) => (
-                <Box key={strLabel} sx={{ px: 1, py: 0.6, minHeight: 52, minWidth: 86, bgcolor: "action.hover", borderRadius: "10px", flex: "1 1 86px", overflow: "hidden" }}>
+                <Box key={strLabel} sx={{ px: 1, py: 0.6, minHeight: 52, minWidth: 0, bgcolor: "action.hover", borderRadius: "10px", overflow: "hidden" }}>
                   <Typography variant="caption" lineHeight={1.1} color="text.secondary" noWrap>{strLabel}</Typography>
                   <Typography
                     variant="body2"
@@ -783,30 +846,29 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
                 size="small"
                 startIcon={<AccessTimeRoundedIcon />}
                 onClick={() => setBlnTimelineDialogOpen(true)}
-                sx={{ minHeight: 52, px: 1.25, borderRadius: "10px", fontWeight: 700, boxShadow: "none", whiteSpace: "nowrap", flex: "0 0 auto" }}
+                sx={{ minHeight: 52, minWidth: 0, px: 1, borderRadius: "10px", fontWeight: 700, boxShadow: "none", whiteSpace: "nowrap" }}
               >
                 {t("punch_timeline", "Punch Timeline")}
               </Button>
-              <Box sx={{ flex: "0 0 94px", minHeight: 52 }}>
-                {blnViewingSelf && blnSelectedDayEligibleForRegularization && canViewRegularization() ? (
-                  <Button
-                    data-control-id="ess.my-attendance.regularize.button"
-                    variant="outlined"
-                    size="small"
-                    fullWidth
-                    onClick={() => objRouter.push(`/ess/attendance/regularization?date=${encodeURIComponent(strSelectedDate)}`)}
-                    sx={{ minHeight: 52, px: 1.25, borderRadius: "10px", fontWeight: 700, whiteSpace: "nowrap" }}
-                  >
-                    {t("regularize", "Regularize")}
-                  </Button>
-                ) : null}
-              </Box>
+            </Box>
+            <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mt: 0.75 }}>
+              {blnViewingSelf && blnSelectedDayEligibleForRegularization && canViewRegularization() ? (
+                <Button
+                  data-control-id="ess.my-attendance.regularize.button"
+                  variant="outlined"
+                  size="small"
+                  onClick={() => objRouter.push(`/ess/attendance/regularization?date=${encodeURIComponent(strSelectedDate)}`)}
+                  sx={{ minHeight: 44, px: 1.25, borderRadius: "10px", fontWeight: 700, whiteSpace: "nowrap", flex: "0 0 auto" }}
+                >
+                  {t("regularize", "Regularize")}
+                </Button>
+              ) : null}
             </Stack>
           </Paper>
         </Grid>
 
-        <Grid item xs={12} md={5}>
-          <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", minHeight: 120, boxShadow: 0, overflow: "hidden" }}>
+        <Grid item xs={12} md={5} lg={5} sx={{ display: "flex" }}>
+          <Paper sx={{ p: { xs: 1.25, md: 1.5 }, borderRadius: "10px", border: "1px solid", borderColor: "divider", flex: 1, minWidth: 0, minHeight: 120, boxShadow: 0, overflow: "hidden" }}>
             <Typography fontWeight={900} sx={{ mb: 0.25 }}>{t("monthly_summary", "Monthly Summary")}</Typography>
             <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "baseline", columnGap: 1 }}>
               <Typography variant="caption" color="text.secondary">
@@ -857,8 +919,7 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
                     variant="caption"
                     color="text.secondary"
                     title={String(strLabel)}
-                    noWrap
-                    sx={{ display: "block", mt: 0.3, overflow: "hidden", textOverflow: "ellipsis", fontSize: "0.68rem" }}
+                    sx={{ display: "block", mt: 0.3, fontSize: "0.68rem", lineHeight: 1.2, overflowWrap: "anywhere" }}
                   >
                     {strLabel}
                   </Typography>
@@ -873,7 +934,7 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
         <Typography variant="h6" fontWeight={900} sx={{ mb: 1 }}>{t("monthly_history", "Monthly Attendance")}</Typography>
 
         {blnLoading ? (
-          <Box sx={{ position: "relative", minHeight: 160 }}><BlockingLoader blnOpen blnLocal strLabel={t("loading", "Loading...")} /></Box>
+          <MasterGridSkeleton strControlId="ess.my-attendance.history.skeleton" intColumns={7} intRows={6} />
         ) : blnMobile ? (
           <Stack spacing={0.75}>
             {lstMonthDays.map((strDate) => {
@@ -1014,6 +1075,23 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
         <DialogTitle>{objOverview?.strNextPunchDirection === "out" ? t("confirm_punch_out", "Confirm Punch Out") : t("confirm_punch_in", "Confirm Punch In")}</DialogTitle>
         <DialogContent>
           <Typography>{t("punch_confirmation_message", "Your attendance punch will be recorded using the server time.")}</Typography>
+          <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mt: 1.25 }}>
+            {strPunchGeoStatus === "capturing" ? (
+              <CircularProgress size={14} />
+            ) : (
+              <LocationOnRoundedIcon
+                fontSize="small"
+                color={strPunchGeoStatus === "captured" ? "success" : "disabled"}
+              />
+            )}
+            <Typography variant="body2" color="text.secondary">
+              {strPunchGeoStatus === "capturing"
+                ? t("location_capturing", "Capturing your location...")
+                : strPunchGeoStatus === "captured"
+                  ? t("location_captured", "Location captured with this punch.")
+                  : t("location_unavailable", "Location unavailable - punch will be recorded without it.")}
+            </Typography>
+          </Stack>
         </DialogContent>
         <DialogActions>
           <Button data-control-id="ess.my-attendance.punch-confirm.cancel.button" onClick={() => setBlnPunchDialogOpen(false)}>{t("cancel", "Cancel")}</Button>
@@ -1027,12 +1105,13 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
         onClose={() => setBlnPolicyDialogOpen(false)}
         fullWidth
         maxWidth="sm"
+        PaperProps={{ sx: { borderRadius: "20px", px: 1, pt: 0.5 } }}
       >
-        <DialogTitle sx={{ pb: 1 }}>{t("my_attendance_policy", "My Attendance Policy")}</DialogTitle>
+        <DialogTitle sx={{ pb: 1.5, fontWeight: 800, fontSize: "1.25rem", color: "#0f2f55" }}>{t("my_attendance_policy", "My Attendance Policy")}</DialogTitle>
         <DialogContent sx={{ pt: "0 !important" }}>
           {objOverview?.objPolicy ? (
-            <Stack spacing={1.75}>
-              <Box sx={{ p: 1.5, borderRadius: "12px", bgcolor: (objThemeArg) => alpha(objThemeArg.palette.primary.main, 0.08), border: "1px solid", borderColor: (objThemeArg) => alpha(objThemeArg.palette.primary.main, 0.18) }}>
+            <Stack spacing={2.25}>
+              <Box sx={{ p: 1.75, borderRadius: "14px", bgcolor: (objThemeArg) => alpha(objThemeArg.palette.primary.main, 0.07), border: "1px solid", borderColor: (objThemeArg) => alpha(objThemeArg.palette.primary.main, 0.2) }}>
                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mb: 0.5 }}>
                   <Typography fontWeight={900} fontSize="1.05rem">{objOverview.objPolicy.strPolicyName}</Typography>
                   <Chip
@@ -1041,7 +1120,7 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
                     label={objOverview.objPolicy.strPolicySource === "EMPLOYEE_ASSIGNMENT"
                       ? t("policy_source_employee_assignment", "Employee Assignment")
                       : t("policy_source_company_default", "Company Default")}
-                    sx={{ fontWeight: 700 }}
+                    sx={{ fontWeight: 700, borderRadius: "999px" }}
                   />
                 </Stack>
                 <Typography variant="caption" color="text.secondary">
@@ -1050,8 +1129,8 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
               </Box>
 
               <Box>
-                <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 0.5, fontWeight: 700 }}>{t("working_hour_rules", "Working Hour Rules")}</Typography>
-                <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr 1fr", sm: "repeat(3, 1fr)" }, gap: 1, mt: 0.5 }}>
+                <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 0.6, fontWeight: 700, fontSize: "0.7rem" }}>{t("working_hour_rules", "Working Hour Rules")}</Typography>
+                <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr 1fr", sm: "repeat(3, 1fr)" }, gap: 1.25, mt: 0.75 }}>
                   {[
                     [t("full_day_threshold_short", "Full Day"), `${objOverview.objPolicy.decFullDayThresholdHours} h`],
                     [t("half_day_threshold_short", "Half Day"), `${objOverview.objPolicy.decHalfDayThresholdHours} h`],
@@ -1062,7 +1141,7 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
                     [t("early_grace", "Early Departure Grace"), `${objOverview.objPolicy.intEarlyDepartureGraceMinutes} min`],
                     [t("overtime_enabled", "Overtime"), objOverview.objPolicy.blnOtEnabled ? t("yes", "Yes") : t("no", "No")],
                   ].map(([strLabel, strValue]) => (
-                    <Box key={strLabel} sx={{ px: 1.25, py: 0.85, borderRadius: "10px", bgcolor: "action.hover", border: "1px solid", borderColor: "divider" }}>
+                    <Box key={strLabel} sx={{ px: 1.5, py: 1.1, borderRadius: "12px", bgcolor: "#f5f6f8", border: "1px solid #ebedf1" }}>
                       <Typography variant="caption" color="text.secondary" noWrap display="block">{strLabel}</Typography>
                       <Typography variant="body2" fontWeight={800} sx={{ mt: 0.25 }}>{strValue}</Typography>
                     </Box>
@@ -1071,8 +1150,8 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
               </Box>
 
               <Box>
-                <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 0.5, fontWeight: 700 }}>{t("standard_weekly_off_days", "Standard Weekly Off Days")}</Typography>
-                <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
+                <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 0.6, fontWeight: 700, fontSize: "0.7rem" }}>{t("standard_weekly_off_days", "Standard Weekly Off Days")}</Typography>
+                <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mt: 0.75 }}>
                   {(() => {
                     const lstOffDays = lstWeekdays.filter((_strDay, intJsIndex) => {
                       const intPatternIndex = (intJsIndex + 6) % 7;
@@ -1080,14 +1159,14 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
                     });
                     return lstOffDays.length > 0
                       ? lstOffDays.map((strDay) => (
-                        <Chip key={strDay} size="small" color="primary" label={t(`weekday_${strDay}`, strDay)} sx={{ fontWeight: 700 }} />
+                        <Chip key={strDay} size="small" color="primary" label={t(`weekday_${strDay}`, strDay)} sx={{ fontWeight: 700, borderRadius: "999px", px: 0.5 }} />
                       ))
                       : <Typography variant="body2" color="text.secondary">{t("none", "None")}</Typography>;
                   })()}
                 </Stack>
               </Box>
 
-              <Alert severity="info" icon={<InfoOutlinedIcon fontSize="small" />} sx={{ borderRadius: "10px", "& .MuiAlert-message": { py: 0.25 } }}>
+              <Alert severity="info" icon={<InfoOutlinedIcon fontSize="small" />} sx={{ borderRadius: "12px", bgcolor: "#e8f4fb", color: "#0f2f55", "& .MuiAlert-icon": { color: "#2563eb" }, "& .MuiAlert-message": { py: 0.25 } }}>
                 {t("missing_punch_treatment", "Missing Punch")}: {
                   objOverview.objPolicy.strMissingPunchTreatmentCode === "EXCEPTION"
                     ? t("missing_punch_treatment_exception", "Missing punch creates an attendance exception")
@@ -1100,7 +1179,7 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
             </Stack>
           ) : <Alert severity="info">{t("no_policy", "No attendance policy applies to the selected date. Punching is disabled until a policy is configured.")}</Alert>}
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button data-control-id="ess.my-attendance.policy-info.close.button" onClick={() => setBlnPolicyDialogOpen(false)}>{t("close", "Close")}</Button>
         </DialogActions>
       </Dialog>
@@ -1126,9 +1205,7 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
           }}
         >
           {blnTimelineLoading ? (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
-              <BlockingLoader blnOpen blnLocal strLabel={t("loading", "Loading")} />
-            </Box>
+            <MasterGridSkeleton strControlId="ess.my-attendance.punch-timeline.skeleton" intColumns={4} intRows={4} />
           ) : strTimelineError ? (
             <Alert severity="error">{strTimelineError}</Alert>
           ) : objPunchTimeline.lstRows.length > 0 ? (
@@ -1166,6 +1243,9 @@ export default function EssAttendancePanel({ blnHrMode = false }: { blnHrMode?: 
                   >
                     {objPunch.intPeriodMinutes !== null ? formatMinutesDuration(objPunch.intPeriodMinutes) : "—"}
                   </Typography>
+                  {objPunch.decGeoLat != null && objPunch.decGeoLng != null ? (
+                    <PunchLocationLine decGeoLat={objPunch.decGeoLat} decGeoLng={objPunch.decGeoLng} fnTranslate={t} />
+                  ) : null}
                 </Box>
               ))}
               <Divider sx={{ pt: 0.5 }} />

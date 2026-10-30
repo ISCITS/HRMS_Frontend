@@ -6,6 +6,7 @@ import { Box, Button, Stack, Typography } from "@mui/material";
 
 import RoleBasedDashboard from "../../components/dashboard/RoleBasedDashboard";
 import BlockingLoader from "@/components/shared/BlockingLoader";
+import { useDashboardBootstrapData, useSetDashboardContentLoading } from "@/components/layout/DashboardHeaderModeContext";
 import dicConstant from "@/constants/Constant.json";
 import { useDashboardLabels } from "@/features/dashboard/hooks/useDashboardLabels";
 import type { CurrentUserContext, DashboardResponse } from "@/models/AuthModels";
@@ -13,15 +14,27 @@ import { authApiService } from "@/services";
 
 export default function DashboardPage() {
   const { t } = useDashboardLabels();
-  const [blnLoading, setBlnLoading] = useState(true);
-  const [objUserContext, setObjUserContext] = useState<CurrentUserContext | null>(null);
-  const [objDashboard, setObjDashboard] = useState<DashboardResponse | null>(null);
+  const setShellDashboardContentLoading = useSetDashboardContentLoading();
+  const objBootstrappedData = useDashboardBootstrapData();
+  const [blnLoading, setBlnLoading] = useState(!objBootstrappedData?.objUserContext || !objBootstrappedData?.objDashboard);
+  const [objUserContext, setObjUserContext] = useState<CurrentUserContext | null>(objBootstrappedData?.objUserContext ?? null);
+  const [objDashboard, setObjDashboard] = useState<DashboardResponse | null>(objBootstrappedData?.objDashboard ?? null);
   const [strError, setStrError] = useState("");
   const [strSelectedPayrollMonth, setStrSelectedPayrollMonth] = useState<string | null>(null);
   const [intReloadKey, setIntReloadKey] = useState(0);
 
   useEffect(() => {
     let blnMounted = true;
+    if (intReloadKey === 0 && strSelectedPayrollMonth === null && objBootstrappedData?.objUserContext && objBootstrappedData.objDashboard) {
+      setObjUserContext(objBootstrappedData.objUserContext);
+      setObjDashboard(objBootstrappedData.objDashboard);
+      setBlnLoading(false);
+      setStrError("");
+      return () => {
+        blnMounted = false;
+      };
+    }
+
     setBlnLoading(true);
     setStrError("");
 
@@ -47,7 +60,7 @@ export default function DashboardPage() {
     return () => {
       blnMounted = false;
     };
-  }, [intReloadKey, strSelectedPayrollMonth, t]);
+  }, [intReloadKey, objBootstrappedData, strSelectedPayrollMonth, t]);
 
   useEffect(() => {
     function refreshOnReturn() {
@@ -63,9 +76,19 @@ export default function DashboardPage() {
     };
   }, []);
 
+  useEffect(() => {
+    const blnWaitingForInitialDashboard = blnLoading && (!objUserContext || !objDashboard);
+    setShellDashboardContentLoading?.(blnWaitingForInitialDashboard);
+    return () => setShellDashboardContentLoading?.(false);
+  }, [blnLoading, objDashboard, objUserContext, setShellDashboardContentLoading]);
+
   if ((!objUserContext || !objDashboard) && blnLoading) {
+    if (setShellDashboardContentLoading) {
+      return null;
+    }
+
     return (
-      <BlockingLoader blnOpen strLabel={t("loading", dicConstant.dashboard.loading)} />
+      <BlockingLoader blnOpen strLabel={t("loading", dicConstant.dashboard.loading)} blnLocal />
     );
   }
 

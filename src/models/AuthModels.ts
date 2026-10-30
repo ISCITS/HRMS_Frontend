@@ -21,6 +21,11 @@ export type TenantLookupData = {
 export type TenantAuthDetails = {
   tenant_id: number;
   tenant_uuid: string;
+  tenant_name?: string | null;
+  tenantName?: string | null;
+  TenantName?: string | null;
+  strTenantName?: string | null;
+  StrTenantName?: string | null;
   language_id?: number | null;
   secondary_language_id?: number | null;
   active_language_id?: number | null;
@@ -63,6 +68,15 @@ export type ChangePasswordResponse = {
   intRevokedSessionCount: number;
 };
 
+export type ForgotPasswordRequest = {
+  strEmailAddress: string;
+  strTenantUUID?: string | null;
+};
+
+export type ForgotPasswordResponse = {
+  blnResetRequested: boolean;
+};
+
 export type PasswordResetEmployeeOption = {
   intEmployeeID: number;
   strEmployeeCode: string;
@@ -98,6 +112,7 @@ export type EmployeeAvatarSummary = {
   strEmployeeCode?: string | null;
   strFullName?: string | null;
   strProfilePhotoUrl?: string | null;
+  strDesignationName?: string | null;
 };
 
 export type PortalCode = "ESS" | "HRMS";
@@ -182,6 +197,7 @@ export type SsoMfaBackupCodeVerifyRequest = {
 };
 
 export type CurrentUserContext = {
+  objCompany?: { strCompanyName: string; strLogoUrl?: string | null } | null;
   objTenant: TenantSummary;
   objUser: UserSummary;
   objEmployee?: EmployeeAvatarSummary | null;

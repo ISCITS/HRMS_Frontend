@@ -21,6 +21,8 @@ export default function MyProfileEditClient({ intEmployeeID }: MyProfileEditClie
       lstAccessModuleCodes={["MY_PROFILE"]}
       strMenuActionOverride="MY_PROFILE"
       strPageTitleOverride={t("edit_page_title", "Edit My Profile")}
+      strBreadcrumbSection={t("breadcrumb_section", "Employee Services")}
+      strBreadcrumbList={t("breadcrumb_title", "My Profile")}
     />
   );
 }

@@ -1,7 +1,7 @@
 import { Suspense } from "react";
-import { CircularProgress } from "@mui/material";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 import RegularizationRequestsPage from "@/features/attendance-regularization/components/RegularizationRequestsPage";
 
 export default function AttendanceRegularizationRequestsRoute() {
-  return <Suspense fallback={<CircularProgress />}><RegularizationRequestsPage /></Suspense>;
+  return <Suspense fallback={<DottedLoader />}><RegularizationRequestsPage /></Suspense>;
 }

@@ -1,0 +1,162 @@
+/* ESS My Profile: keep page-specific presentation scoped to this screen. */
+.my-profile-page {
+  container: my-profile / inline-size;
+  --profile-border: #dce8f3;
+  --profile-muted: #667895;
+  --profile-accent: var(--app-primary-color, #245bc4);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
+  padding: 4px 12px 12px;
+  color: #172b4d;
+}
+.my-profile-breadcrumbs.MuiBreadcrumbs-root { font-size: 13px; flex-shrink: 0; }
+.my-profile-breadcrumbs .MuiTypography-root { font-size: inherit; line-height: 1.4; }
+.my-profile-breadcrumbs h1 { font-weight: 700; color: #243b53; }
+.my-profile-breadcrumbs svg { font-size: 16px; }
+.my-profile-header.MuiPaper-root {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 265px;
+  align-items: stretch;
+  gap: 12px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.my-profile-banner-employee {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) 140px;
+  grid-template-areas: "avatar identity actions" "avatar details actions";
+  align-content: center;
+  align-items: center;
+  column-gap: 18px;
+  row-gap: 18px;
+  min-width: 0;
+  min-height: 178px;
+  padding: 18px;
+  border: 1px solid var(--profile-border);
+  border-radius: 9px;
+  background: linear-gradient(110deg, #f0f9ff, #f7fbff);
+}
+.my-profile-avatar.MuiAvatar-root { grid-area: avatar; align-self: start; width: 96px; height: 96px; background: #e5edf8; color: #344969; font-weight: 800; font-size: 32px; border: 2px solid #fff; }
+.my-profile-identity-text { grid-area: identity; min-width: 0; }
+.my-profile-name.MuiTypography-root { font-size: 23px; font-weight: 750; line-height: 1.3; overflow-wrap: anywhere; }
+.my-profile-identity-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 8px; }
+.my-profile-identity-meta .MuiTypography-root { color: var(--profile-muted); font-size: 14px; }
+.my-profile-status.MuiChip-root { height: 25px; background: #dcf9e7; color: #238046; font-weight: 600; }
+.my-profile-identity-details { grid-area: details; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; min-width: 0; }
+.my-profile-identity-item { display: flex; align-items: center; gap: 10px; padding-left: 14px; border-left: 1px solid var(--profile-border); min-width: 0; }
+.my-profile-identity-item:first-child { padding-left: 0; border-left: 0; }
+.my-profile-identity-item > span { color: var(--profile-accent); display: flex; flex-shrink: 0; }
+.my-profile-identity-item svg { font-size: 29px; }
+.my-profile-identity-item div { display: flex; flex-direction: column; gap: 4px; min-width: 0; font-size: 12px; overflow-wrap: anywhere; }
+.my-profile-identity-item strong { font-size: 13px; font-weight: 600; color: #243b63; }
+.my-profile-identity-item div > span { color: var(--profile-muted); }
+.my-profile-photo-actions { grid-area: actions; align-self: start; display: flex; flex-direction: column; gap: 8px; }
+.my-profile-photo-actions .MuiButton-root { font-size: 12px; min-height: 36px; border-radius: 5px; text-transform: none; white-space: nowrap; background: #fff; }
+.my-profile-salary { min-width: 0; }
+.my-profile-salary-card { height: 100%; border: 1px solid var(--profile-border); border-radius: 9px; background: #fff; overflow: hidden; }
+.my-profile-salary-heading { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid #e9f0f7; }
+.my-profile-salary-icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(140deg, #26769b, #53b3c8); color: #fff; flex-shrink: 0; }
+.my-profile-salary-icon svg { font-size: 23px; }
+.my-profile-salary-heading h3 { flex: 1; font-size: 14px; font-weight: 700; color: #243b63; }
+.my-profile-salary-heading .MuiIconButton-root { color: var(--profile-accent); }
+.my-profile-salary-heading .MuiIconButton-root svg { font-size: 21px; }
+.my-profile-salary-rows { margin: 0; padding: 0 12px 5px; }
+.my-profile-salary-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 36px; border-bottom: 1px solid #edf1f7; font-size: 12px; }
+.my-profile-salary-row:last-child { border-bottom: 0; }
+.my-profile-salary-row dt { display: flex; align-items: center; gap: 8px; color: var(--profile-muted); }
+.my-profile-salary-row dt svg { font-size: 15px; }
+.my-profile-salary-row dd { margin: 0; font-weight: 700; color: #243b63; overflow-wrap: anywhere; }
+.my-profile-salary-message { display: flex; align-items: center; gap: 8px; padding: 14px; color: var(--profile-muted); }
+.my-profile-salary-message.MuiTypography-root, .my-profile-salary-message .MuiTypography-root { font-size: 12px; }
+.my-profile-workspace { display: grid; grid-template-columns: 240px minmax(0, 1fr); flex: 1; min-height: 0; gap: 16px; }
+.my-profile-navigation { min-height: 0; overflow-y: auto; }
+.my-profile-tabs .MuiTabs-indicator { left: 0; right: auto; width: 3px; border-radius: 3px; background: var(--profile-accent); }
+.my-profile-tabs .MuiTab-root { min-height: 55px; max-width: none; width: 100%; justify-content: flex-start; padding: 12px 16px; gap: 10px; border-bottom: 1px solid #e7eef5; text-align: left; text-transform: none; font-size: 13px; font-weight: 500; color: #526581; }
+.my-profile-tabs .MuiTab-iconWrapper { margin: 0; font-size: 21px; flex-shrink: 0; }
+.my-profile-tabs .Mui-selected { color: var(--profile-accent); background: #e9f2fd; font-weight: 700; border-radius: 0 8px 8px 0; }
+.my-profile-tabs .MuiTab-root:hover { background: #f0f6fc; }
+.my-profile-tabs .Mui-focusVisible { outline: 2px solid var(--profile-accent); outline-offset: -2px; }
+.my-profile-content.MuiPaper-root { min-width: 0; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; border: 1px solid var(--profile-border); border-radius: 10px; padding: 18px; }
+.my-profile-section-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+.my-profile-section-icon { display: grid; place-items: center; width: 44px; height: 44px; flex-shrink: 0; border-radius: 10px; background: #e9f2ff; color: var(--profile-accent); }
+.my-profile-section-heading h2 { font-size: 17px; font-weight: 700; }
+.my-profile-section-heading p { font-size: 12px; color: var(--profile-muted); margin-top: 3px; }
+.my-profile-card-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.my-profile-card { min-width: 0; overflow: hidden; border: 1px solid var(--profile-border); border-radius: 8px; background: #fff; }
+.my-profile-card summary { display: flex; align-items: center; list-style: none; padding: 10px 14px; font-size: 13px; font-weight: 700; color: #243b63; background: linear-gradient(110deg, #eef7ff, #f8fbff); border-bottom: 1px solid var(--profile-border); }
+.my-profile-card-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.my-profile-card-icon { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 9px; }
+.my-profile-card-icon svg { font-size: 24px; }
+.my-profile-card-icon--blue { color: #2563eb; background: #dfeeff; }
+.my-profile-card-icon--purple { color: #8829df; background: #f0e2ff; }
+.my-profile-card-icon--green { color: #39a95b; background: #def8e8; }
+.my-profile-card-icon--orange { color: #e78b21; background: #fff0d6; }
+.my-profile-card-icon--red { color: #dc3547; background: #ffe3e8; }
+.my-profile-card summary::-webkit-details-marker { display: none; }
+.my-profile-card dl { margin: 0; padding: 6px 16px 12px; }
+.my-profile-detail-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: 36px; align-items: stretch; border-bottom: 1px solid #edf1f7; font-size: 12px; line-height: 1.5; }
+.my-profile-detail-row:last-child { border-bottom: 0; }
+.my-profile-detail-row dt { color: var(--profile-muted); padding: 7px 12px 7px 0; overflow-wrap: anywhere; }
+.my-profile-detail-row dd { margin: 0; padding: 7px 0 7px 12px; border-left: 1px solid #edf1f7; color: #243b63; overflow-wrap: anywhere; }
+.my-profile-record .my-profile-card dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 30px; }
+.my-profile-notice { display: flex; gap: 10px; align-items: center; margin-top: 18px; padding: 12px 14px; border-radius: 8px; background: #f1f7fd; color: #526b92; }
+.my-profile-notice svg { color: var(--profile-accent); font-size: 22px; flex-shrink: 0; }
+.my-profile-notice .MuiTypography-root { font-size: 12px; line-height: 1.6; }
+.my-profile-empty.MuiTypography-root { padding: 32px 16px; text-align: center; color: var(--profile-muted); font-size: 13px; border: 1px dashed var(--profile-border); border-radius: 8px; }
+.my-profile-rights-error.MuiTypography-root { color: #b45309; font-size: 13px; }
+.my-profile-error.MuiAlert-root { border-radius: 8px; }
+.my-profile-state { padding: 0 12px; }
+.my-profile-state-card.MuiPaper-root { padding: 24px; border-radius: 12px; }
+@media (min-width: 768px) {
+  .my-profile-card summary { pointer-events: none; }
+}
+@media (max-width: 1199px) {
+  .my-profile-workspace { grid-template-columns: 200px minmax(0, 1fr); }
+  .my-profile-card-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 767px) {
+  .my-profile-page { height: auto; padding: 4px 8px 16px; gap: 12px; }
+  .my-profile-workspace { display: flex; flex-direction: column; }
+  .my-profile-navigation { overflow: visible; }
+  .my-profile-tabs .MuiTabs-flexContainer { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .my-profile-tabs .MuiTabs-indicator { display: none; }
+  .my-profile-tabs .MuiTab-root { min-width: 0; min-height: 48px; font-size: 12px; padding: 10px; }
+  .my-profile-tabs .Mui-selected { border-radius: 6px; box-shadow: inset 3px 0 var(--profile-accent); }
+  .my-profile-content.MuiPaper-root { overflow: visible; padding: 14px; }
+  .my-profile-record .my-profile-card dl { display: block; }
+  .my-profile-card summary { display: flex; justify-content: space-between; gap: 12px; cursor: pointer; }
+  .my-profile-card summary::after { content: '+'; color: var(--profile-accent); font-size: 16px; }
+  .my-profile-card[open] summary::after { content: '\2212'; }
+  .my-profile-card summary:focus-visible { outline: 2px solid var(--profile-accent); outline-offset: -2px; }
+}
+
+.my-profile-loading { min-height: 50vh; display: grid; place-items: center; }
+
+/* Banner breakpoints follow the available content width, including the app sidebar. */
+@container my-profile (max-width: 1100px) {
+  .my-profile-banner-employee { grid-template-columns: 80px minmax(0, 1fr); grid-template-areas: "avatar identity" "avatar details" "avatar actions"; column-gap: 14px; row-gap: 12px; padding: 14px; }
+  .my-profile-avatar.MuiAvatar-root { width: 80px; height: 80px; }
+  .my-profile-photo-actions { flex-direction: row; flex-wrap: wrap; }
+  .my-profile-identity-details { gap: 10px; }
+  .my-profile-identity-item { padding-left: 10px; gap: 6px; }
+  .my-profile-identity-item svg { font-size: 23px; }
+}
+@container my-profile (max-width: 820px) {
+  .my-profile-header.MuiPaper-root { grid-template-columns: minmax(0, 1fr) 240px; }
+  .my-profile-banner-employee { grid-template-areas: "avatar identity" "details details" "actions actions"; }
+  .my-profile-name.MuiTypography-root { font-size: 20px; }
+}
+@container my-profile (max-width: 620px) {
+  .my-profile-header.MuiPaper-root { grid-template-columns: minmax(0, 1fr); }
+  .my-profile-banner-employee { grid-template-columns: 72px minmax(0, 1fr); }
+  .my-profile-avatar.MuiAvatar-root { width: 72px; height: 72px; }
+  .my-profile-identity-details { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .my-profile-identity-item { padding-left: 0; border-left: 0; gap: 10px; }
+  .my-profile-identity-meta { gap: 8px; }
+}
