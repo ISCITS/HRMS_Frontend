@@ -989,13 +989,25 @@ function prepareMenuItems(lstItems: MenuItem[], blnEssOnly: boolean, canViewCtc:
       ),
     ),
   );
-  return blnEssOnly ? buildEssOnlyMenu(lstPreparedItems) : groupHrEmployeeServicesMenus(canViewCtc ? appendCtcReportMenu(lstPreparedItems) : lstPreparedItems);
+  return blnEssOnly ? buildEssOnlyMenu(lstPreparedItems) : groupHrEmployeeServicesMenus(canViewCtc ? appendCtcReportMenu(lstPreparedItems) : renameCtcReportMenu(lstPreparedItems));
+}
+
+const CTC_REPORT_NAME = "CTC Statement";
+
+// A menu row saved for the route keeps its old "CTC Format" name; the screen is CTC Statement.
+function renameCtcReportMenu(items: MenuItem[]): MenuItem[] {
+  return items.map(node => ({
+    ...node,
+    strModuleName: node.strRoute === "/reports/ctc-format" ? CTC_REPORT_NAME : node.strModuleName,
+    lstChildren: renameCtcReportMenu(node.lstChildren),
+  }));
 }
 
 function appendCtcReportMenu(items: MenuItem[]): MenuItem[] {
-  if (hasRoute(items, "/reports/ctc-format") || !hasRoute(items, "/employee-salary")) return items;
+  if (hasRoute(items, "/reports/ctc-format")) return renameCtcReportMenu(items);
+  if (!hasRoute(items, "/employee-salary")) return items;
   const report: MenuItem = {
-    strModuleCode: "REPORT_CTC_FORMAT", strModuleName: "CTC Format",
+    strModuleCode: "REPORT_CTC_FORMAT", strModuleName: CTC_REPORT_NAME,
     strRoute: "/reports/ctc-format", strIconName: "ReceiptLong",
     lstPermissionCodes: [], blnIsHome: false, lstChildren: [],
   };

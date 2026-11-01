@@ -303,7 +303,7 @@ function getLocalizedHeaderTitle(
     const strTitle = tHeader("header_title", "Salary Statement");
     return stripMasterTitle(strTitle.split("/").pop()?.trim() || "Salary Statement");
   }
-  if (strHeaderModuleName === "ctc-format") return "CTC Format";
+  if (strHeaderModuleName === "ctc-format") return "CTC Statement";
 
   if (strHeaderModuleName === "payslips") {
     const blnEssPayslipContext =
