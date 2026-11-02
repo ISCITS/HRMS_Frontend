@@ -20,6 +20,7 @@ import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import FileUploadPanel from "@/components/shared/files/FileUploadPanel";
 import LoanAdvanceStatusBadge from "@/features/payroll/components/LoanAdvanceStatusBadge";
+import LoanPrepaymentTab from "@/features/payroll/components/LoanPrepaymentTab";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { employeeService } from "@/features/employee/services/employeeService";
 import type { EmployeeListRecord } from "@/features/employee/types";
@@ -47,6 +48,7 @@ const dicPayrollActionAliases: Record<string, string[]> = {
   manualRecovery: ["loan_adv_manual_recovery"],
   skipInstallment: ["loan_adv_skip_installment"],
   adjustSchedule: ["loan_adv_adjust_schedule"],
+  prepay: ["loan_adv_prepay"],
   close: ["loan_adv_close"],
   cancel: ["loan_adv_cancel"],
   export: ["loan_adv_export"],
@@ -219,6 +221,7 @@ export default function LoanAdvanceDetailPage({ strLoanAdvanceID, strMode = "pay
   const blnCanManualRecovery = canLoanAction("manualRecovery");
   const blnCanSkipInstallment = canLoanAction("skipInstallment");
   const blnCanAdjustSchedule = canLoanAction("adjustSchedule");
+  const blnCanPrepay = canLoanAction("prepay");
   const blnCanClose = canLoanAction("close");
   const blnCanCancel = canLoanAction("cancel");
   const strStatus = objRecord?.strWorkflowStatus || "draft";
@@ -596,22 +599,32 @@ export default function LoanAdvanceDetailPage({ strLoanAdvanceID, strMode = "pay
     return (
       <Box className={styles.tableWrap}>
         <table className={`${styles.table} ${styles.fnfDenseTable}`}>
-          <thead><tr><th>{t("schedule_no", "No.")}</th><th>{t("schedule_month", "Payroll Month")}</th><th>{t("schedule_opening", "Opening")}</th><th>{t("schedule_principal", "Principal")}</th><th>{t("schedule_interest", "Interest")}</th><th>{t("schedule_taxable", "Taxable Perquisite")}</th><th>{t("schedule_total", "Total Due")}</th><th>{t("schedule_recovered", "Recovered")}</th><th>{t("schedule_closing", "Closing")}</th><th>{t("schedule_status", "Status")}</th></tr></thead>
+          <thead><tr><th>{t("schedule_no", "No.")}</th><th>{t("schedule_month", "Payroll Month")}</th><th>{t("schedule_opening", "Opening")}</th><th>{t("schedule_principal", "Principal")}</th><th>{t("schedule_interest", "Interest")}</th><th>{t("schedule_taxable", "Taxable Perquisite")}</th><th>{t("schedule_total", "Total Due")}</th><th>{t("schedule_recovered", "Recovered")}</th><th>{t("schedule_closing", "Closing")}</th><th>{t("schedule_status", "Status")}</th><th>{t("schedule_prepayment", "Prepayment")}</th></tr></thead>
           <tbody>
-            {lstRows.map((objRow) => (
-              <tr key={`${objRow.intID}-${objRow.intInstallmentNo}`}>
-                <td>{objRow.intInstallmentNo}</td>
-                <td>{formatDate(objRow.dtPayrollMonth).slice(0, 7)}</td>
-                <td>{formatCurrency(objRow.decOpeningPrincipalBalance)}</td>
-                <td>{formatCurrency(objRow.decPrincipalDueAmount)}</td>
-                <td>{formatCurrency(objRow.decActualInterestAmount)}</td>
-                <td>{formatCurrency(objRow.decTaxablePerquisiteAmount)}</td>
-                <td>{formatCurrency(objRow.decTotalDueAmount)}</td>
-                <td>{formatCurrency(objRow.decRecoveredTotalAmount)}</td>
-                <td>{formatCurrency(objRow.decClosingPrincipalBalance)}</td>
-                <td>{t(`status_${objRow.strScheduleStatus}`, objRow.strScheduleStatus.replaceAll("_", " "))}</td>
-              </tr>
-            ))}
+            {lstRows.map((objRow) => {
+              // A full/partial prepayment settles every remaining row in one lump sum (see
+              // applyFullPrepayment/applyPartialPrepayment), but only the row carrying
+              // decPrepaymentAmount actually received that payment -- the other rows it swept
+              // along were never individually recovered, so their Recovered/Status columns
+              // would otherwise misleadingly repeat the original per-installment EMI/status.
+              const blnPrepaidFiller = objRow.strScheduleStatus === "prepaid" && !objRow.decPrepaymentAmount;
+              return (
+                <tr key={`${objRow.intID}-${objRow.intInstallmentNo}`}>
+                  <td>{objRow.intInstallmentNo}</td>
+                  <td>{formatDate(objRow.dtPayrollMonth).slice(0, 7)}</td>
+                  <td>{formatCurrency(objRow.decOpeningPrincipalBalance)}</td>
+                  <td>{formatCurrency(objRow.decPrincipalDueAmount)}</td>
+                  <td>{formatCurrency(objRow.decActualInterestAmount)}</td>
+                  <td>{formatCurrency(objRow.decTaxablePerquisiteAmount)}</td>
+                  <td>{formatCurrency(objRow.decTotalDueAmount)}</td>
+                  <td>{blnPrepaidFiller ? "-" : formatCurrency(objRow.decRecoveredTotalAmount)}</td>
+                  <td>{formatCurrency(objRow.decClosingPrincipalBalance)}</td>
+                  <td>{blnPrepaidFiller ? "-" : t(`status_${objRow.strScheduleStatus}`, objRow.strScheduleStatus.replaceAll("_", " "))}</td>
+                  <td>{objRow.decPrepaymentAmount ? formatCurrency(objRow.decPrepaymentAmount) : "-"}</td>
+                </tr>
+              );
+            })}
+            {!lstRows.length ? <tr><td colSpan={11} className={styles.emptyState}>{t("schedule_empty", "No installment schedule available yet.")}</td></tr> : null}
           </tbody>
         </table>
       </Box>
@@ -643,9 +656,10 @@ export default function LoanAdvanceDetailPage({ strLoanAdvanceID, strMode = "pay
           <Tabs className="app-employee-tabs" value={intTab} onChange={(_, intNextTab) => setIntTab(intNextTab)} variant="scrollable" scrollButtons="auto" sx={{ mt: 1 }}>
             <Tab label={<Box component="span" className="app-employee-tab-label">{t("tab_form", "Request")}</Box>} />
             <Tab label={<Box component="span" className="app-employee-tab-label">{t("tab_approval", "Approval")}</Box>} />
-            <Tab label={<Box component="span" className="app-employee-tab-label">{t("tab_disbursement", "Disbursement")}</Box>} disabled={!["approved", "disbursed", "active", "closed"].includes(strStatus)} />
-            <Tab label={<Box component="span" className="app-employee-tab-label">{t("tab_schedule", "Repayment Schedule")}</Box>} disabled={!objRecord && lstSchedulePreview.length === 0} />
-            <Tab label={<Box component="span" className="app-employee-tab-label">{t("tab_ledger", "Ledger / History")}</Box>} disabled={!objRecord} />
+            <Tab label={<Box component="span" className="app-employee-tab-label">{t("tab_disbursement", "Disbursement")}</Box>} />
+            <Tab label={<Box component="span" className="app-employee-tab-label">{t("tab_schedule", "Installment Schedule")}</Box>} />
+            <Tab label={<Box component="span" className="app-employee-tab-label">{t("tab_prepayment", "Prepayment")}</Box>} />
+            <Tab label={<Box component="span" className="app-employee-tab-label">{t("tab_ledger", "Ledger / History")}</Box>} />
           </Tabs>
           {intTab === 0 ? (
             <Box sx={{ display: "grid", gap: 2, mt: 2 }}>
@@ -731,14 +745,38 @@ export default function LoanAdvanceDetailPage({ strLoanAdvanceID, strMode = "pay
             </Box>
           ) : null}
           {intTab === 2 ? (
-            <Box className={styles.fnfWorkflowGrid} sx={{ mt: 2 }}>
-              {[["date", formatDate(objRecord?.dtDisbursementDate)], ["amount", formatCurrency(objRecord?.decDisbursedAmount)], ["reference", objRecord?.strTransactionReferenceNo || "-"]].map(([strKey, strValue]) => (
-                <Box key={strKey} className={styles.fnfWorkflowPanel}><Typography className={styles.fnfWorkflowTitle}>{t(`disbursement_${strKey}`, strKey)}</Typography><Typography className={styles.fnfWorkflowValue}>{strValue}</Typography></Box>
-              ))}
-            </Box>
+            ["approved", "disbursed", "active", "closed"].includes(strStatus) ? (
+              <Box className={styles.fnfWorkflowGrid} sx={{ mt: 2 }}>
+                {[["date", formatDate(objRecord?.dtDisbursementDate)], ["amount", formatCurrency(objRecord?.decDisbursedAmount)], ["reference", objRecord?.strTransactionReferenceNo || "-"]].map(([strKey, strValue]) => (
+                  <Box key={strKey} className={styles.fnfWorkflowPanel}><Typography className={styles.fnfWorkflowTitle}>{t(`disbursement_${strKey}`, strKey)}</Typography><Typography className={styles.fnfWorkflowValue}>{strValue}</Typography></Box>
+                ))}
+              </Box>
+            ) : (
+              <Alert severity="info" sx={{ mt: 2, borderRadius: "8px" }}>
+                {t("disbursement_not_yet", "Disbursement details will appear here once this request is approved and disbursed.")}
+              </Alert>
+            )
           ) : null}
           {intTab === 3 ? <Box sx={{ mt: 2 }}>{renderScheduleTable(lstSchedule)}</Box> : null}
           {intTab === 4 ? (
+            objRecord ? (
+              <LoanPrepaymentTab
+                objRecord={objRecord}
+                blnCanPrepay={blnCanPrepay}
+                onSuccess={(objNextRecord) => {
+                  setObjRecord(objNextRecord);
+                  setDicValues(toLoanAdvanceForm(objNextRecord));
+                  setStrSuccess(t("message_prepayment_recorded", "Prepayment recorded successfully."));
+                  setIntTab(3);
+                }}
+              />
+            ) : (
+              <Alert severity="info" sx={{ mt: 2, borderRadius: "8px" }}>
+                {t("prepayment_save_first", "Save this request before recording a prepayment.")}
+              </Alert>
+            )
+          ) : null}
+          {intTab === 5 ? (
             <Box className={styles.tableWrap} sx={{ mt: 2 }}>
               <table className={`${styles.table} ${styles.fnfDenseTable}`}>
                 <thead><tr><th>{t("ledger_event", "Event")}</th><th>{t("ledger_from", "From")}</th><th>{t("ledger_to", "To")}</th><th>{t("ledger_amount", "Amount")}</th><th>{t("ledger_balance", "Balance")}</th><th>{t("ledger_remarks", "Remarks")}</th><th>{t("ledger_on", "On")}</th></tr></thead>

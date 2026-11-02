@@ -673,6 +673,10 @@ export type LoanAdvanceScheduleRecord = {
   decRecoveredTotalAmount?: number;
   decClosingPrincipalBalance: number;
   strScheduleStatus: string;
+  // Stamped on exactly one row (the earliest touched installment) per prepayment event -- see
+  // the Prepayment tab on the loan detail page.
+  decPrepaymentAmount?: number | null;
+  dtPrepaymentAppliedOn?: string | null;
   // HR verification step on the Loan Finalization screen -- one installment at a time.
   blnIsFinalized?: boolean;
   dtFinalizedOn?: string | null;
@@ -680,6 +684,13 @@ export type LoanAdvanceScheduleRecord = {
   dtFinalizationReopenedOn?: string | null;
   intFinalizationReopenedBy?: number | null;
   strFinalizationReopenReason?: string | null;
+};
+
+export type LoanAdvanceEmployeeBankAccountRecord = {
+  intID: number;
+  strBankName?: string | null;
+  strAccountNumberMasked?: string | null;
+  blnIsPrimary: boolean;
 };
 
 export type LoanAdvanceLedgerRecord = {
@@ -705,6 +716,8 @@ export type LoanAdvanceRecord = {
   decRequestedAmount: number;
   decApprovedAmount: number;
   decDisbursedAmount?: number;
+  decPrincipalOutstandingAmount?: number;
+  decInterestOutstandingAmount?: number;
   decTotalOutstandingAmount?: number;
   strReason?: string | null;
   strEmployeeRemarks?: string | null;
