@@ -1,5 +1,8 @@
 "use client";
 
+import PayrollDataChangedNotice from "@/features/payroll/components/PayrollDataChangedNotice";
+import { usePayrollDataFreshness } from "@/features/payroll/hooks/usePayrollDataFreshness";
+
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
@@ -166,12 +169,14 @@ export default function TdsReportPage() {
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
   const blnMoreFiltersOpen = Boolean(objMoreFiltersAnchor);
   const blnPageLoading = blnRightsLoading || blnLoading;
+  const objPayrollFreshness = usePayrollDataFreshness(blnCanView);
 
   async function loadRows(objFilters: SearchForm) {
     setBlnLoading(true);
     setStrError("");
     try {
-      setLstRows(await payrollReportService.getTdsReportRows(objFilters));
+      // Remembers the figures' version so a later reprocess shows the Refresh notice.
+      setLstRows(await objPayrollFreshness.trackLoad(() => payrollReportService.getTdsReportRows(objFilters), objFilters.strPayrollMonth, () => loadRows(objFilters)));
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to load TDS report.");
     } finally {
@@ -391,6 +396,7 @@ export default function TdsReportPage() {
       <Box className={styles.tableCard} sx={{ p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {!blnRightsLoading && !blnCanView && !strError ? <Alert severity="warning" sx={{ mb: 1.5 }}>TDS report view access is not available for your user group.</Alert> : null}
         {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
+        <PayrollDataChangedNotice objFreshness={objPayrollFreshness} blnRefreshing={blnPageLoading} />
         <CommonTable
           columns={lstTableColumns as unknown as CommonTableColumn<Record<string, ReactNode>>[]}
           rows={lstTableRows as unknown as Record<string, ReactNode>[]}

@@ -58,7 +58,43 @@ function extractHtmlPayload(objData: unknown): string {
   return "";
 }
 
+/** Monthly: this month only. Detailed: adds year-to-date and annual tax figures. */
+export type PayslipView = "monthly" | "detailed";
+
+async function getHtml(strPath: string, strCsrfMenuAction: string): Promise<string> {
+  const objResponse = await axiosInstance.get(`${ApiRoutePrefix.ApiV1}${strPath}`, {
+    csrfMenuAction: strCsrfMenuAction,
+    responseType: "text",
+    headers: {
+      Accept: "text/html",
+      "x-skip-payload-encryption": "true",
+    },
+  } as ApiRequestConfig);
+  const strHtml = extractHtmlPayload(objResponse.data);
+  if (!strHtml.trim()) {
+    throw new Error("Payslip document is empty.");
+  }
+  return strHtml;
+}
+
 export const payslipService = {
+  /**
+   * The payslip page with the latest figures for an employee's run - built from the processed
+   * result until the run is finalized, the saved official copy after. No Generate step needed.
+   * purpose "export" (print/download) needs the export right; "view" shows it on screen.
+   */
+  async getPayslipDocument(
+    strRunID: string,
+    intEmployeeID: number,
+    strView: PayslipView,
+    strPurpose: "view" | "export" = "view",
+  ): Promise<string> {
+    return getHtml(
+      `/payroll/runs/${strRunID}/employees/${intEmployeeID}/payslip/document?view=${strView}&purpose=${strPurpose}`,
+      strPurpose === "export" ? "PAYSLIP_EXPORT" : "PAYSLIP_VIEW",
+    );
+  },
+
   async getPayslipPreview(
     strRunID: string,
     intEmployeeID: number
@@ -126,22 +162,8 @@ export const payslipService = {
     return objResult.Data;
   },
 
-  async getDownloadHtml(strPayslipID: string): Promise<string> {
-    const objResponse = await axiosInstance.get(
-      `${ApiRoutePrefix.ApiV1}/payslips/${strPayslipID}/download`,
-      {
-        csrfMenuAction: "PAYSLIP_EXPORT",
-        responseType: "text",
-        headers: {
-          Accept: "text/html",
-          "x-skip-payload-encryption": "true",
-        },
-      } as ApiRequestConfig
-    );
-    const strHtml = extractHtmlPayload(objResponse.data);
-    if (!strHtml.trim()) {
-      throw new Error("Payslip document is empty.");
-    }
-    return strHtml;
+  /** A saved payslip's page; the server returns the latest figures if that copy is outdated. */
+  async getDownloadHtml(strPayslipID: string, strView: PayslipView = "detailed"): Promise<string> {
+    return getHtml(`/payslips/${strPayslipID}/download?view=${strView}`, "PAYSLIP_EXPORT");
   },
 };

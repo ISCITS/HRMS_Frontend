@@ -32,7 +32,10 @@ export const payrollResultService = {
     strLocation?: string;
     strAllocationEntity?: string;
     strPayrollMonth?: string;
+    /** Payslip screens: every employee whose run has payslips (Processed or Finalized). */
     blnGeneratedPayslipsOnly?: boolean;
+    /** ESS: only runs released to employees by the payslip template's release policy. */
+    blnEssReleasedOnly?: boolean;
     strPayrollRunID?: string;
     /** Skip the per-employee calculation snapshot/trace (~7 KB each); list screens never show them. */
     blnExcludeCalculationDetails?: boolean;
@@ -67,6 +70,9 @@ export const payrollResultService = {
     }
     if (objFilters?.blnGeneratedPayslipsOnly) {
       objParams.set("blnGeneratedPayslipsOnly", "true");
+    }
+    if (objFilters?.blnEssReleasedOnly) {
+      objParams.set("blnEssReleasedOnly", "true");
     }
     const strQuery = objParams.toString();
     const objResult = await requestApi<PayrollResultListRecord[]>({

@@ -31,7 +31,10 @@ import { payrollResultService } from "@/features/payroll/services/payrollResultS
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import PayrollJobProgressDialog from "@/features/payroll/components/PayrollJobProgressDialog";
 import { usePayslipGenerationProgress } from "@/features/payroll/hooks/usePayslipGenerationProgress";
-import { payslipService } from "@/features/payroll/services/payslipService";
+import { payslipService, type PayslipView } from "@/features/payroll/services/payslipService";
+import { PayslipViewSwitch } from "@/features/payroll/components/PayslipHtmlPreview";
+import PayrollDataChangedNotice from "@/features/payroll/components/PayrollDataChangedNotice";
+import { usePayrollDataFreshness } from "@/features/payroll/hooks/usePayrollDataFreshness";
 import { authApiService } from "@/services";
 import type {
   PayrollResultDetailRecord,
@@ -248,8 +251,10 @@ export default function PayrollResultListPage({
   const dicInitialSearch = useMemo(() => buildInitialSearchFromQuery(objSearchParams), [objSearchParams]);
   const { t } = useModuleLabels("payslips");
   const { objPayslipProgress, trackPayslipGeneration } = usePayslipGenerationProgress(
-    t("generating_payslip", "Generating payslip"),
+    t("preparing_latest_payslip", "Preparing latest payslip"),
   );
+  const [strPayslipView, setStrPayslipView] = useState<PayslipView>("monthly");
+  const objPayrollFreshness = usePayrollDataFreshness();
   const lstAccessModuleHints = blnPayslipScreen
     ? (blnEssMode
         ? ["PAYSLIP", "PAYSLIPS", "MY_PAYSLIPS"]
@@ -289,7 +294,7 @@ export default function PayrollResultListPage({
     lstMonths: getUniqueOptions(lstResults.map((dicRow) => dicRow.dtPayrollMonth?.slice(0, 7))),
     lstDepartments: getUniqueOptions(lstResults.map((dicRow) => dicRow.strDepartmentName)),
     lstLocations: getUniqueOptions(lstResults.map((dicRow) => dicRow.strLocationName)),
-    lstStatuses: getUniqueOptions(lstResults.map((dicRow) => dicRow.strPayslipStatus || "Generated")),
+    lstStatuses: getUniqueOptions(lstResults.map((dicRow) => dicRow.strPayslipStatus || "Processed")),
   }), [lstResults]);
 
   async function loadResults(objFilters: SearchForm = dicSearchApplied) {
@@ -297,11 +302,13 @@ export default function PayrollResultListPage({
     setStrError("");
     try {
       setLstResults(
-        await payrollResultService.getPayrollResults({
+        await objPayrollFreshness.trackLoad(() => payrollResultService.getPayrollResults({
           ...objFilters,
           strStatus: blnPayslipScreen ? "All" : objFilters.strStatus,
+          // Every employee with a payslip (Processed or Finalized run) - no Generate step needed.
           blnGeneratedPayslipsOnly: blnPayslipScreen,
-        })
+          blnEssReleasedOnly: blnPayslipScreen && blnEssMode,
+        }), objFilters.strPayrollMonth)
       );
       setBlnHasLoadedRows(true);
     } catch (objError) {
@@ -383,7 +390,7 @@ export default function PayrollResultListPage({
       const blnRunMatch = matchesAnyFilter(lstRunSearches, dicRow.strRunCode, dicRow.strRunName);
       const blnStatusMatch = matchesAnyFilter(
         lstStatusFilters,
-        blnPayslipScreen ? dicRow.strPayslipStatus || "Generated" : dicRow.strStatus
+        blnPayslipScreen ? dicRow.strPayslipStatus || "Processed" : dicRow.strStatus
       );
       const blnMonthMatch =
         lstPayrollMonthFilters.length === 0 ||
@@ -400,32 +407,17 @@ export default function PayrollResultListPage({
     setIntPayslipActionID(dicRow.intID);
     setStrError("");
     try {
-      const dicPayslip = await payslipService.getPayslipPreview(
-        dicRow.strPayrollRunRecordUUID ?? String(dicRow.intPayrollRunID),
-        dicRow.intEmployeeID
+      // Always the latest figures: built from the processed result until the run is finalized,
+      // the saved official copy after - nothing to generate first.
+      const strHtml = await trackPayslipGeneration(() =>
+        payslipService.getPayslipDocument(
+          dicRow.strPayrollRunRecordUUID ?? String(dicRow.intPayrollRunID),
+          dicRow.intEmployeeID,
+          strPayslipView,
+          "export",
+        )
       );
-      // A reprocess since the last generated payslip leaves that persisted document
-      // stale - getPayslipPreview flags this with blnGenerated:false (no persisted
-      // document matches the current result version). Don't trust the row's cached
-      // intPayslipID in that case; regenerate instead where this screen allows it.
-      const intPayslipID = dicPayslip.blnGenerated
-        ? dicPayslip.intPayslipID ?? dicRow.intPayslipID
-        : blnPayslipScreen
-        ? dicRow.intPayslipID ?? dicPayslip.intPayslipID
-        : (
-            await trackPayslipGeneration(() =>
-              payslipService.generatePayslip(
-                dicRow.strPayrollRunRecordUUID ?? String(dicRow.intPayrollRunID),
-                dicRow.intEmployeeID
-              )
-            )
-          ).intPayslipID;
-      if (!intPayslipID) {
-        setStrError(t("payslip_not_generated", "Payslip could not be generated for this employee."));
-        return;
-      }
-      const strHtml = await payslipService.getDownloadHtml(String(intPayslipID));
-      const strFileName = buildPayslipFileName("payslip", dicRow.strPayslipNumber, dicRow.strEmployeeCode);
+      const strFileName = buildPayslipFileName("payslip", dicRow.strPayslipNumber, dicRow.strEmployeeCode, dicRow.dtPayrollMonth?.slice(0, 7));
       if (blnPrint) {
         // Same tax page the Payroll Results "i" opens; ESS goes through the payslip report route.
         const strListRoute = blnEssMode ? "/ess/my-payslips" : blnPayslipScreen ? "/reports/payslips" : "/payroll/results";
@@ -497,7 +489,8 @@ export default function PayrollResultListPage({
             data-row-key={String(dicRow.intID)}
             onClick={(objEvent) => { objEvent.stopPropagation(); void openPayslipDocument(dicRow, true); }}
           >
-            {dicRow.strPayslipNumber || "-"}
+            {/* A payslip number exists once the run is finalized (saved copy); before that it is built when opened. */}
+            {dicRow.strPayslipNumber || t("open_latest_payslip", "Open payslip")}
           </Link>
         ) : dicRow.strPayslipNumber || "-",
         strPayslipNumberSort: dicRow.strPayslipNumber || "",
@@ -522,12 +515,12 @@ export default function PayrollResultListPage({
             className={styles.statusPill}
             style={getStatusPillSx(
               blnPayslipScreen
-                ? dicRow.strPayslipStatus || "Generated"
+                ? dicRow.strPayslipStatus || "Processed"
                 : dicRow.strStatus
             )}
           >
             {blnPayslipScreen
-              ? translateDynamicLabel(t, dicRow.strPayslipStatus || "Generated", "status")
+              ? translateDynamicLabel(t, dicRow.strPayslipStatus || "Processed", "status")
               : translateDynamicLabel(t, dicRow.strStatus, "status")}
           </span>
         ),
@@ -545,7 +538,9 @@ export default function PayrollResultListPage({
           </IconButton>
         ),
       })),
-    [blnCanAccessResults, blnPayslipScreen, lstFilteredRows, objRouter, t]
+    // strPayslipView: the row Print/Download buttons must use the view chosen above the grid.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [blnCanAccessResults, blnPayslipScreen, lstFilteredRows, objRouter, t, strPayslipView]
   );
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(() => {
@@ -604,8 +599,8 @@ export default function PayrollResultListPage({
       <BlockingLoader blnOpen={intPayslipActionID !== null} strLabel={t("opening_payslip_tab", "Opening payslip...")} />
       <PayrollJobProgressDialog
         objJob={objPayslipProgress}
-        strTitle={t("generating_payslip", "Generating payslip...")}
-        strFallbackPhaseLabel={t("generating_payslip", "Generating payslip")}
+        strTitle={t("preparing_latest_payslip", "Preparing latest payslip...")}
+        strFallbackPhaseLabel={t("preparing_latest_payslip", "Preparing latest payslip")}
         strEmployeesLabel={t("job_employees", "employees")}
         fnTranslate={t}
       />
@@ -644,7 +639,7 @@ export default function PayrollResultListPage({
             <ReportMultiSelectField blnCompact disabled={blnBusy} value={dicSearchDraft.strPayrollMonth} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: strValue }))} options={dicPayslipFilterOptions.lstMonths} label={t("payroll_month", "Payroll Month")} placeholder={t("payroll_month", "Payroll Month")} />
             {!blnEssMode ? (
             <>
-            <ReportMultiSelectField blnCompact disabled={blnBusy} label={t("status", "Status")} value={dicSearchDraft.strStatus === "All" ? "" : dicSearchDraft.strStatus} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: strValue || "All" }))} options={dicPayslipFilterOptions.lstStatuses.length ? dicPayslipFilterOptions.lstStatuses : ["Generated"]} placeholder={t("status_all", "All")} />
+            <ReportMultiSelectField blnCompact disabled={blnBusy} label={t("status", "Status")} value={dicSearchDraft.strStatus === "All" ? "" : dicSearchDraft.strStatus} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: strValue || "All" }))} options={dicPayslipFilterOptions.lstStatuses.length ? dicPayslipFilterOptions.lstStatuses : ["Processed", "Finalized"]} placeholder={t("status_all", "All")} />
             <MasterMoreFilters
               strControlPrefix="payroll-results.list"
               intActiveCount={intActiveMoreFilters}
@@ -774,6 +769,17 @@ export default function PayrollResultListPage({
       ) : null}
 
       {strError ? <Alert severity="error">{strError}</Alert> : null}
+
+      <PayrollDataChangedNotice objFreshness={objPayrollFreshness} onRefresh={() => void loadResults()} blnRefreshing={blnBusy} />
+
+      {blnPayslipScreen ? (
+        <Box sx={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 1 }}>
+          <Typography sx={{ color: "#475569", fontSize: "0.82rem", fontWeight: 700 }}>
+            {t("payslip_print_view", "Print / download as:")}
+          </Typography>
+          <PayslipViewSwitch strView={strPayslipView} onViewChange={setStrPayslipView} blnDisabled={blnBusy} />
+        </Box>
+      ) : null}
 
       <Box className={masterStyles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {blnBusy ? (

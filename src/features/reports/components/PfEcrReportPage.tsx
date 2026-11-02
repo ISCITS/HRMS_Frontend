@@ -1,5 +1,8 @@
 "use client";
 
+import PayrollDataChangedNotice from "@/features/payroll/components/PayrollDataChangedNotice";
+import { usePayrollDataFreshness } from "@/features/payroll/hooks/usePayrollDataFreshness";
+
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
@@ -122,6 +125,7 @@ export default function PfEcrReportPage() {
   const [objReport, setObjReport] = useState<PfEcrReport | null>(null);
   const [blnOptionsLoading, setBlnOptionsLoading] = useState(false);
   const [blnReportLoading, setBlnReportLoading] = useState(false);
+  const objPayrollFreshness = usePayrollDataFreshness(blnCanView);
   const [blnExporting, setBlnExporting] = useState(false);
   // Format waiting for confirmation because some members cannot be filed.
   const [strConfirmFormat, setStrConfirmFormat] = useState<PfEcrExportFormat | "">("");
@@ -205,7 +209,8 @@ export default function PfEcrReportPage() {
     setStrError("");
     setObjReport(null);
     try {
-      const objResult = await pfEcrReportService.getReport(getFilters());
+      // Remembers the figures' version so a later reprocess shows the Refresh notice.
+      const objResult = await objPayrollFreshness.trackLoad(() => pfEcrReportService.getReport(getFilters()), strPayrollMonth, generateReport);
       if (intRequestSequence.current === intSequence) {
         setObjReport(objResult);
       }
@@ -389,6 +394,7 @@ export default function PfEcrReportPage() {
 
       {!blnRightsLoading && !blnCanView ? <Alert severity="warning">PF ECR report view access is not available for your user group.</Alert> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
+      <PayrollDataChangedNotice objFreshness={objPayrollFreshness} blnRefreshing={blnReportLoading} />
 
       {lstBlockingIssues.length > 0 ? (
         <Alert severity="error">

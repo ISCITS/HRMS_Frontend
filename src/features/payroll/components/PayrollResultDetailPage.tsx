@@ -42,10 +42,9 @@ import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payrollResultService } from "@/features/payroll/services/payrollResultService";
 import PayrollJobProgressDialog from "@/features/payroll/components/PayrollJobProgressDialog";
 import { usePayslipGenerationProgress } from "@/features/payroll/hooks/usePayslipGenerationProgress";
-import { payslipService } from "@/features/payroll/services/payslipService";
+import { payslipService, type PayslipView } from "@/features/payroll/services/payslipService";
 import type {
   PayrollResultDetailRecord,
-  PayslipPreviewRecord,
   WageRulePreviewRecord,
 } from "@/features/payroll/types";
 import {
@@ -433,7 +432,7 @@ export default function PayrollResultDetailPage({
   const strPathname = usePathname();
   const { t } = useModuleLabels("payslips");
   const { objPayslipProgress, trackPayslipGeneration } = usePayslipGenerationProgress(
-    t("generating_payslip", "Generating payslip"),
+    t("preparing_latest_payslip", "Preparing latest payslip"),
   );
   const { blnLoading: blnRightsLoading, canDoAny } = useModuleActionAccess(
     blnPayslipScreen
@@ -441,7 +440,7 @@ export default function PayrollResultDetailPage({
       : lstPayrollResultAccessModuleHints
   );
   const [objResult, setObjResult] = useState<PayrollResultDetailRecord | null>(null);
-  const [objPayslip, setObjPayslip] = useState<PayslipPreviewRecord | null>(null);
+  const [strPayslipView, setStrPayslipView] = useState<PayslipView>("monthly");
   const [strPayslipPreviewHtml, setStrPayslipPreviewHtml] = useState("");
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnPayslipLoading, setBlnPayslipLoading] = useState(false);
@@ -485,6 +484,38 @@ export default function PayrollResultDetailPage({
     };
   }, [strResultID]);
 
+  // Opened from Payslips: show the employee's latest payslip straight away (built from the
+  // latest processed result, or the saved copy once the run is finalized) - no Generate step.
+  const strPayslipRunID = objResult ? objResult.strPayrollRunRecordUUID ?? String(objResult.intPayrollRunID) : "";
+  const intPayslipEmployeeID = objResult?.intEmployeeID ?? 0;
+  useEffect(() => {
+    if (!blnPayslipScreen || !strPayslipRunID || !intPayslipEmployeeID) {
+      return;
+    }
+    let blnMounted = true;
+    setBlnPayslipLoading(true);
+    setStrError("");
+    trackPayslipGeneration(() => payslipService.getPayslipDocument(strPayslipRunID, intPayslipEmployeeID, strPayslipView, "view"))
+      .then((strHtml) => {
+        if (blnMounted) {
+          setStrPayslipPreviewHtml(strHtml);
+        }
+      })
+      .catch((objError) => {
+        if (blnMounted) {
+          setStrError(objError instanceof Error ? objError.message : "Unable to load payslip preview.");
+        }
+      })
+      .finally(() => {
+        if (blnMounted) {
+          setBlnPayslipLoading(false);
+        }
+      });
+    return () => {
+      blnMounted = false;
+    };
+  }, [blnPayslipScreen, strPayslipRunID, intPayslipEmployeeID, strPayslipView, trackPayslipGeneration]);
+
   const strResolvedBackRoute = strBackRoute || (blnPayslipScreen ? "/reports/payslips" : "/payroll/results");
   const blnEssRoute = strResolvedBackRoute.startsWith("/ess/");
   const strTaxInformationHref = (() => {
@@ -513,78 +544,24 @@ export default function PayrollResultDetailPage({
     );
   }
 
-  async function loadPayslipPreview() {
-    setBlnPayslipLoading(true);
-    setStrError("");
-    setStrSuccess("");
-    try {
-      const dicPayslip = await ensureGeneratedPayslip();
-      if (!dicPayslip?.intPayslipID) {
-        setStrError(t("payslip_not_generated", "Payslip could not be generated for this employee."));
-        return;
-      }
-      setObjPayslip(dicPayslip);
-      setStrPayslipPreviewHtml(await payslipService.getDownloadHtml(dicPayslip.strPayslipRecordUUID ?? String(dicPayslip.intPayslipID)));
-    } catch (objError) {
-      setStrError(
-        objError instanceof Error ? objError.message : "Unable to load payslip preview."
-      );
-    } finally {
-      setBlnPayslipLoading(false);
-    }
-  }
-
-  async function generatePayslip() {
-    setBlnPayslipLoading(true);
-    setStrError("");
-    setStrSuccess("");
-    try {
-      const dicPayslip = await trackPayslipGeneration(() =>
-        payslipService.generatePayslip(
-          objResult!.strPayrollRunRecordUUID ?? String(objResult!.intPayrollRunID),
-          objResult!.intEmployeeID
-        )
-      );
-      setObjPayslip(dicPayslip);
-      setStrSuccess(t("payslip_generated", "Payslip generated successfully."));
-      return dicPayslip;
-    } catch (objError) {
-      setStrError(
-        objError instanceof Error ? objError.message : "Unable to generate payslip."
-      );
-      return null;
-    } finally {
-      setBlnPayslipLoading(false);
-    }
-  }
-
-  async function ensureGeneratedPayslip() {
-    if (objPayslip?.intPayslipID) {
-      return objPayslip;
-    }
-    return generatePayslip();
-  }
-
+  // Print/Download use the same latest payslip, in the view chosen above the preview.
   async function openGeneratedPayslip(blnPrint: boolean) {
     setBlnPayslipLoading(true);
     setStrError("");
     try {
-      const dicPayslip = await ensureGeneratedPayslip();
-      if (!dicPayslip?.intPayslipID) {
-        return;
-      }
-      const strHtml = await payslipService.getDownloadHtml(dicPayslip.strPayslipRecordUUID ?? String(dicPayslip.intPayslipID));
+      const strHtml = await trackPayslipGeneration(() =>
+        payslipService.getPayslipDocument(
+          objResult!.strPayrollRunRecordUUID ?? String(objResult!.intPayrollRunID),
+          objResult!.intEmployeeID,
+          strPayslipView,
+          "export",
+        )
+      );
+      const strFileName = buildPayslipFileName("payslip", objResult!.strPayslipNumber, objResult!.strEmployeeCode, objResult!.dtPayrollMonth?.slice(0, 7));
       if (blnPrint) {
-        printPayslipHtml(
-          strHtml,
-          buildPayslipFileName("payslip", dicPayslip.strPayslipNumber, objResult!.strEmployeeCode),
-          strTaxInformationHref
-        );
+        printPayslipHtml(strHtml, strFileName, strTaxInformationHref);
       } else {
-        downloadPayslipHtml(
-          strHtml,
-          buildPayslipFileName("payslip", dicPayslip.strPayslipNumber, objResult!.strEmployeeCode)
-        );
+        downloadPayslipHtml(strHtml, strFileName);
       }
     } catch (objError) {
       setStrError(
@@ -678,8 +655,8 @@ export default function PayrollResultDetailPage({
     >
       <PayrollJobProgressDialog
         objJob={objPayslipProgress}
-        strTitle={t("generating_payslip", "Generating payslip...")}
-        strFallbackPhaseLabel={t("generating_payslip", "Generating payslip")}
+        strTitle={t("preparing_latest_payslip", "Preparing latest payslip...")}
+        strFallbackPhaseLabel={t("preparing_latest_payslip", "Preparing latest payslip")}
         strEmployeesLabel={t("job_employees", "employees")}
         fnTranslate={t}
       />
@@ -921,7 +898,13 @@ export default function PayrollResultDetailPage({
                   strControlID="payroll.result-detail.payslip-preview.tax-information.button"
                 />
               </Stack>
-              <PayslipHtmlPreview strHtml={strPayslipPreviewHtml} strTaxInformationUrl={strTaxInformationHref} />
+              <PayslipHtmlPreview
+                strHtml={strPayslipPreviewHtml}
+                strTaxInformationUrl={strTaxInformationHref}
+                strView={strPayslipView}
+                onViewChange={setStrPayslipView}
+                blnViewChanging={blnPayslipLoading}
+              />
             </Paper>
           ) : null}
         </Stack>

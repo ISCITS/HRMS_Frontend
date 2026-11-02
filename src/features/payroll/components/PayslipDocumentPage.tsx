@@ -10,7 +10,7 @@ import { DetailPageHeader } from "@/components/master/MasterListUi";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import PayslipHtmlPreview from "@/features/payroll/components/PayslipHtmlPreview";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
-import { payslipService } from "@/features/payroll/services/payslipService";
+import { payslipService, type PayslipView } from "@/features/payroll/services/payslipService";
 
 type PayslipDocumentPageProps = {
   /** record_uuid from the URL; the internal id is never routed on. */
@@ -24,17 +24,19 @@ export default function PayslipDocumentPage({ strPayslipID, strBackRoute }: Pays
   const [strHtml, setStrHtml] = useState("");
   const [strError, setStrError] = useState("");
   const [blnLoading, setBlnLoading] = useState(true);
+  const [blnChangingView, setBlnChangingView] = useState(false);
+  const [strView, setStrView] = useState<PayslipView>("monthly");
   const [intResultID, setIntResultID] = useState<number | null>(null);
 
   useEffect(() => {
     let blnCancelled = false;
 
     async function loadPayslipDocument() {
-      setBlnLoading(true);
       setStrError("");
       try {
+        // The server returns the latest figures even when this link points to an outdated copy.
         const [strDocumentHtml, dicSummary] = await Promise.all([
-          payslipService.getDownloadHtml(strPayslipID),
+          payslipService.getDownloadHtml(strPayslipID, strView),
           payslipService.getPayslipSummary(strPayslipID).catch(() => null),
         ]);
         if (!blnCancelled) {
@@ -48,6 +50,7 @@ export default function PayslipDocumentPage({ strPayslipID, strBackRoute }: Pays
       } finally {
         if (!blnCancelled) {
           setBlnLoading(false);
+          setBlnChangingView(false);
         }
       }
     }
@@ -57,10 +60,10 @@ export default function PayslipDocumentPage({ strPayslipID, strBackRoute }: Pays
     return () => {
       blnCancelled = true;
     };
-  }, [strPayslipID, t]);
+  }, [strPayslipID, strView, t]);
 
   if (blnLoading) {
-    return <BlockingLoader blnOpen strLabel={t("loading_payslip", "Loading payslip...")} />;
+    return <BlockingLoader blnOpen strLabel={t("loading_payslip", "Preparing latest payslip...")} />;
   }
 
   return (
@@ -84,6 +87,12 @@ export default function PayslipDocumentPage({ strPayslipID, strBackRoute }: Pays
       ) : (
         <PayslipHtmlPreview
           strHtml={strHtml}
+          strView={strView}
+          blnViewChanging={blnChangingView}
+          onViewChange={(strNext) => {
+            setBlnChangingView(true);
+            setStrView(strNext);
+          }}
           strTaxInformationUrl={
             intResultID
               ? `/reports/payslips/${intResultID}/tax-information?backRoute=${encodeURIComponent(

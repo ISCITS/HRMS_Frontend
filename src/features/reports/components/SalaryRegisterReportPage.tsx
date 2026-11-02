@@ -1,5 +1,8 @@
 "use client";
 
+import PayrollDataChangedNotice from "@/features/payroll/components/PayrollDataChangedNotice";
+import { usePayrollDataFreshness } from "@/features/payroll/hooks/usePayrollDataFreshness";
+
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
@@ -332,6 +335,7 @@ export default function SalaryRegisterReportPage() {
   const [lstAllocationEntityOptions, setLstAllocationEntityOptions] = useState<SelectOption[]>([]);
   const [blnLoadingMasters, setBlnLoadingMasters] = useState(true);
   const [blnLoadingReport, setBlnLoadingReport] = useState(false);
+  const objPayrollFreshness = usePayrollDataFreshness(blnCanView);
   const [blnHasSearched, setBlnHasSearched] = useState(false);
   const [objMoreFiltersAnchor, setObjMoreFiltersAnchor] = useState<HTMLElement | null>(null);
   const [dicMoreFiltersDraft, setDicMoreFiltersDraft] = useState<MoreFiltersForm>({ strDesignationIDs: "", strLocationIDs: "" });
@@ -374,7 +378,8 @@ export default function SalaryRegisterReportPage() {
     setBlnLoadingReport(true);
     try {
       const [strYear, strMonth] = dicSearch.strPeriod.split("-");
-      const objEnvelope = await salaryRegisterReportService.getSalaryRegister({
+      // Remembers the figures' version so a later reprocess shows the Refresh notice.
+      const objEnvelope = await objPayrollFreshness.trackLoad(() => salaryRegisterReportService.getSalaryRegister({
         year: strYear,
         month: strMonth,
         employee_id: dicSearch.strEmployeeIDs,
@@ -383,7 +388,7 @@ export default function SalaryRegisterReportPage() {
         location_id: dicSearch.strLocationIDs,
         allocation_entity_id: dicSearch.strAllocationEntityIDs,
         employment_status: dicSearch.strEmploymentStatus,
-      });
+      }), dicSearch.strPeriod, loadReport);
       setLstRows(objEnvelope.lstItems);
       setLstPaymentColumns(objEnvelope.lstPaymentColumns);
       setLstRecoveryColumns(objEnvelope.lstRecoveryColumns);
@@ -565,6 +570,7 @@ export default function SalaryRegisterReportPage() {
 
       {!blnCanView && !strError ? <Alert severity="warning">Salary register view access is not available for your user group.</Alert> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
+      <PayrollDataChangedNotice objFreshness={objPayrollFreshness} blnRefreshing={blnLoadingReport} />
 
       <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <CommonTable

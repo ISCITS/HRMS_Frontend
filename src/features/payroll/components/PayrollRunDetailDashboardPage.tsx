@@ -55,7 +55,7 @@ import PayslipHtmlPreview from "@/features/payroll/components/PayslipHtmlPreview
 import ResultLinesTable from "@/features/payroll/components/ResultLinesTable";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payrollResultService } from "@/features/payroll/services/payrollResultService";
-import { payslipService } from "@/features/payroll/services/payslipService";
+import { payslipService, type PayslipView } from "@/features/payroll/services/payslipService";
 import { payrollRunService } from "@/features/payroll/services/payrollRunService";
 import { attendancePayrollService } from "@/features/payroll/services/attendancePayrollService";
 import { variablePayService } from "@/features/variable-pay/services/variablePayService";
@@ -88,7 +88,9 @@ type PayrollRunDetailDashboardPageProps = {
 type Tone = "blue" | "green" | "amber" | "red" | "slate";
 
 const lstPayrollRunModuleCodes = ["PAYROLL_RUN", "PAYROLL_RUNS", "PAYROLL_PROCESS", "PAYROLL_PROCESSES"];
-const lstWorkflowStepNames = ["Draft", "Validate", "Process", "Generate Payslips"] as const;
+// Payslips need no step of their own: until Finalize every payslip is built from the latest
+// results whenever it is opened, and Finalize saves the official copies.
+const lstWorkflowStepNames = ["Draft", "Validate", "Process", "Finalize"] as const;
 
 function formatDateTime(strDate: string | null) {
   if (!strDate) {
@@ -130,19 +132,17 @@ function getPayrollRunStatusLabel(strStatus: string) {
   return dicLabels[strStatus] ?? strStatus;
 }
 
-function getWorkflowSteps(strRunStatus: string, blnIsVariablePayRun: boolean) {
+function getWorkflowSteps(strRunStatus: string) {
   const strCurrentStep =
     strRunStatus === "FINALIZED" || strRunStatus === "PROCESSED"
-      ? (blnIsVariablePayRun ? "Process" : "Generate Payslips")
+      ? "Finalize"
       : strRunStatus === "VALIDATED"
         ? "Process"
         : "Validate";
-  return lstWorkflowStepNames
-    .filter((strStep) => strStep !== "Generate Payslips" || !blnIsVariablePayRun)
-    .map((strStep) => ({
-      strStep,
-      blnActive: strStep === strCurrentStep,
-    }));
+  return lstWorkflowStepNames.map((strStep) => ({
+    strStep,
+    blnActive: strStep === strCurrentStep,
+  }));
 }
 
 function canProcessPayrollRun(objRun: PayrollRunDetailRecord, blnCanProcess: boolean) {
@@ -167,7 +167,6 @@ function isWorkflowStepEnabled(
   blnCanValidate: boolean,
   blnCanProcess: boolean,
   blnCanFinalize: boolean,
-  blnCanGeneratePayslip: boolean,
 ) {
   if (blnSaving || objRun.strRunStatus === "CANCELLED") {
     return false;
@@ -179,13 +178,8 @@ function isWorkflowStepEnabled(
       return blnCanValidate && objRun.strRunStatus === "DRAFT";
     case "Process":
       return canProcessPayrollRun(objRun, blnCanProcess);
-    case "Generate Payslips":
-      return (
-        blnCanGeneratePayslip
-        && !blnPayslipLoading
-        && objRun.strRunTypeCode !== "VARIABLE_PAY"
-        && ["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus)
-      );
+    case "Finalize":
+      return blnCanFinalize && !blnPayslipLoading && objRun.strRunStatus === "PROCESSED";
     default:
       return false;
   }
@@ -322,8 +316,8 @@ function getWorkflowStepIcon(strStep: string) {
   if (strStep === "Process") {
     return <PlayArrowRoundedIcon sx={{ fontSize: 18 }} />;
   }
-  if (strStep === "Generate Payslips") {
-    return <ReceiptLongRoundedIcon sx={{ fontSize: 18 }} />;
+  if (strStep === "Finalize") {
+    return <LockRoundedIcon sx={{ fontSize: 18 }} />;
   }
   return <TaskAltRoundedIcon sx={{ fontSize: 18 }} />;
 }
@@ -397,7 +391,10 @@ function getWorkflowButtonVariant(strStep: string, objRun: PayrollRunDetailRecor
     }
     return blnEnabled || blnActive ? "current" : "disabled";
   }
-  if (strStep === "Generate Payslips") {
+  if (strStep === "Finalize") {
+    if (objRun.strRunStatus === "FINALIZED") {
+      return "complete";
+    }
     return blnEnabled || blnActive ? "current" : "disabled";
   }
   return blnEnabled ? "available" : "disabled";
@@ -435,6 +432,9 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
   const [objJobProgress, setObjJobProgress] = useState<PayrollJobStatus | null>(null);
   const refResumedJobRunID = useRef<string | null>(null);
   const [blnPayslipDialogOpen, setBlnPayslipDialogOpen] = useState(false);
+  const [blnFinalizeDialogOpen, setBlnFinalizeDialogOpen] = useState(false);
+  const [strPayslipView, setStrPayslipView] = useState<PayslipView>("monthly");
+  const [objPreviewPayslipRow, setObjPreviewPayslipRow] = useState<PayslipRunListRecord | null>(null);
   const [blnReprocessDialogOpen, setBlnReprocessDialogOpen] = useState(false);
   const [strReprocessReason, setStrReprocessReason] = useState("");
   const [blnReopenDialogOpen, setBlnReopenDialogOpen] = useState(false);
@@ -457,7 +457,6 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
   const blnCanFinalize = canDoAny("edit") || canDoAny("close") || canDoAny("finalize");
   const blnCanReopen = canDoAny("reopen");
   const blnCanCancel = canDoAny("edit") || canDoAny("cancel");
-  const blnCanGeneratePayslip = canDoAny("add") || canDoAny("edit") || canDoAny("process");
   const blnCanExport = canDoAny("export");
 
   async function loadRun(blnShowLoader = true) {
@@ -735,14 +734,14 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
             : strKind === "validate"
               ? "Unable to validate payroll run."
               : strKind === "payslips"
-                ? "Unable to generate payslips."
+                ? "Saving the finalized payslips stopped. The run is finalized; any payslip not saved yet is saved when it is first opened."
                 : "Unable to reprocess payroll run."),
       );
     } else if (dicFinal.strStatus === "idle" || !dicFinal.dicSummary) {
       setStrError(t("job_status_unavailable", "The progress of this payroll job is no longer available. Refresh the page to see the current state of the run."));
     } else if (strKind === "payslips") {
       const dicGenerated = dicFinal.dicSummary as PayslipGenerateAllSummary;
-      setStrSuccess(t("payslip_generate_all_success", `${dicGenerated.intGeneratedCount} payslips generated successfully.`));
+      setStrSuccess(t("finalize_payslips_saved", `Payroll run finalized. ${dicGenerated.intGeneratedCount} payslips saved as the official copy.`));
     } else if (strKind === "validate") {
       setBlnValidationJustRun(true);
       const dicValidation = dicFinal.dicSummary as PayrollValidationSummary;
@@ -860,78 +859,73 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     setLstPayslips(await payslipService.getRunPayslips(strRunID));
   }
 
-  async function generateAllPayslips() {
-    if (!blnCanGeneratePayslip) {
+  function openFinalizeDialog() {
+    if (!blnCanFinalize) {
       return;
     }
-    await runPayrollJob("payslips", () => payslipService.startGenerateAll(strRunID));
+    setStrError("");
+    setBlnFinalizeDialogOpen(true);
   }
 
-  // Only reached while opening a payslip (row click / preview) whose document is missing or stale, so it
-  // runs silently under the caller's app loader - no progress dialog, no loader flicker, no success banner.
-  async function generatePayslip(dicRow: PayslipRunListRecord) {
-    if (!blnCanGeneratePayslip) {
-      return null;
+  // Finalize locks the run and issues the payslips: the server saves every employee's official
+  // copy in the background, shown here with the same progress bar as processing.
+  async function finalizeRun() {
+    if (!blnCanFinalize) {
+      return;
     }
+    setBlnFinalizeDialogOpen(false);
+    setBlnSaving(true);
+    setStrActionLoaderLabel(t("finalizing_run", "Finalizing payroll run..."));
+    setStrError("");
+    setStrSuccess("");
     try {
-      const dicPayslip = await payslipService.generatePayslip(strRunID, dicRow.intEmployeeID);
-      await reloadPayslips();
-      return dicPayslip;
+      const dicRun = await payrollRunService.closePayrollRun(strRunID);
+      setObjRun(dicRun);
+      setBlnIsLocked(dicRun.blnIsLocked);
+      if (dicRun.dicPayslipJob?.blnActive) {
+        setObjJobProgress({ ...dicRun.dicPayslipJob, strKind: "payslips" });
+        await finishRunJob(await followRunJob(), "payslips");
+      } else {
+        setStrSuccess(t("finalize_complete", "Payroll run finalized."));
+        await loadRun(false);
+      }
     } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to generate payslip.");
-      return null;
+      setObjJobProgress(null);
+      setStrError(objError instanceof Error ? objError.message : "Unable to finalize payroll run.");
+    } finally {
+      setBlnSaving(false);
+      setStrActionLoaderLabel("");
     }
   }
 
-  async function resolveFreshPayslipID(
-    dicRow: PayslipRunListRecord
-  ): Promise<{ intPayslipID: number | null; strPayslipRecordUUID: string | null; dicPayslip: PayslipPreviewRecord | null }> {
-    if (!dicRow.intPayslipID) {
-      const dicPayslip = await generatePayslip(dicRow);
-      return {
-        intPayslipID: dicPayslip?.intPayslipID ?? null,
-        strPayslipRecordUUID: dicPayslip?.strPayslipRecordUUID ?? null,
-        dicPayslip: dicPayslip ?? null,
-      };
-    }
-    // A payslip already exists for this row, but a reprocess since it was generated can
-    // leave that persisted document stale. getPayslipPreview flags this with
-    // blnGenerated:false (no persisted document matches the current result version) -
-    // regenerate in that case instead of silently reusing yesterday's snapshot.
-    const dicPreview = await payslipService.getPayslipPreview(strRunID, dicRow.intEmployeeID);
-    if (dicPreview.blnGenerated) {
-      return {
-        intPayslipID: dicPreview.intPayslipID ?? dicRow.intPayslipID,
-        strPayslipRecordUUID: dicPreview.strPayslipRecordUUID ?? null,
-        dicPayslip: dicPreview,
-      };
-    }
-    const dicPayslip = await generatePayslip(dicRow);
-    return {
-      intPayslipID: dicPayslip?.intPayslipID ?? null,
-      strPayslipRecordUUID: dicPayslip?.strPayslipRecordUUID ?? null,
-      dicPayslip: dicPayslip ?? null,
-    };
+  // Every payslip opened here shows the latest figures: built from the processed result until the
+  // run is finalized, the saved official copy after - no Generate step.
+  async function loadPayslipDocument(dicRow: PayslipRunListRecord, strView: PayslipView, strPurpose: "view" | "export") {
+    return payslipService.getPayslipDocument(strRunID, dicRow.intEmployeeID, strView, strPurpose);
   }
 
-  async function viewPayslip(dicRow: PayslipRunListRecord) {
+  async function viewPayslip(dicRow: PayslipRunListRecord, strView: PayslipView = strPayslipView) {
     setBlnPayslipLoading(true);
-    setStrActionLoaderLabel(t("opening_payslip", "Opening payslip preview..."));
+    setStrActionLoaderLabel(t("preparing_latest_payslip", "Preparing latest payslip..."));
     setStrError("");
     try {
-      const { intPayslipID, strPayslipRecordUUID, dicPayslip } = await resolveFreshPayslipID(dicRow);
-      if (!intPayslipID) {
-        setStrError(t("payslip_not_generated", "Payslip could not be generated for this employee."));
-        return;
-      }
-      setIntPreviewResultID(dicPayslip?.dicFooter?.intPayrollResultID ?? null);
-      setStrPayslipPreviewHtml(await payslipService.getDownloadHtml(strPayslipRecordUUID ?? String(intPayslipID)));
+      const strHtml = await loadPayslipDocument(dicRow, strView, "view");
+      setObjPreviewPayslipRow(dicRow);
+      setIntPreviewResultID(lstRunResults.find((dicResult) => dicResult.intEmployeeID === dicRow.intEmployeeID)?.intID ?? null);
+      setStrPayslipPreviewHtml(strHtml);
       setBlnPayslipDialogOpen(true);
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to load payslip preview.");
     } finally {
       setBlnPayslipLoading(false);
       setStrActionLoaderLabel("");
+    }
+  }
+
+  function changePreviewView(strView: PayslipView) {
+    setStrPayslipView(strView);
+    if (objPreviewPayslipRow) {
+      void viewPayslip(objPreviewPayslipRow, strView);
     }
   }
 
@@ -943,24 +937,15 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     setStrActionLoaderLabel(blnPrint ? t("opening_payslip_tab", "Opening payslip...") : t("preparing_download", "Preparing download..."));
     setStrError("");
     try {
-      const { intPayslipID, strPayslipRecordUUID, dicPayslip } = await resolveFreshPayslipID(dicRow);
-      if (!intPayslipID) {
-        return;
-      }
-      const strHtml = await payslipService.getDownloadHtml(strPayslipRecordUUID ?? String(intPayslipID));
-      const strFileName = buildPayslipFileName("payslip", dicRow.strPayslipNumber, dicRow.strEmployeeCode);
+      const strHtml = await loadPayslipDocument(dicRow, strPayslipView, "export");
+      const strFileName = buildPayslipFileName("payslip", dicRow.strPayslipNumber, dicRow.strEmployeeCode, objRun?.dtPayrollMonth?.slice(0, 7));
       if (blnPrint) {
-        // Employee's result in this run -> the same tax page the Payroll Results "i" opens. The run's
-        // results list can be empty (no Payroll Results rights, or its fetch failed), so fall back to
-        // the result id carried on the payslip itself - the same source the preview dialog uses.
+        // Employee's result in this run -> the same tax page the Payroll Results "i" opens.
         const strBackRoute = encodeURIComponent(`/payroll/runs/${strRunID}`);
         const strResultUUID = lstRunResults.find((dicResult) => dicResult.intEmployeeID === dicRow.intEmployeeID)?.strRecordUUID;
-        const intFooterResultID = dicPayslip?.dicFooter?.intPayrollResultID ?? null;
         const strTaxInformationUrl = strResultUUID
           ? `/payroll/results/${strResultUUID}/tax-information?backRoute=${strBackRoute}`
-          : intFooterResultID
-            ? `/reports/payslips/${intFooterResultID}/tax-information?backRoute=${strBackRoute}`
-            : undefined;
+          : undefined;
         printPayslipHtml(strHtml, strFileName, strTaxInformationUrl);
       } else {
         downloadPayslipHtml(strHtml, strFileName);
@@ -1071,7 +1056,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
         ? `${objRun.strScopedEmployeeName}${objRun.strScopedEmployeeCode ? ` (${objRun.strScopedEmployeeCode})` : ""}`
         : `${t("scope_selected_employee", "Selected Employees")} #${objRun.intScopedEmployeeID ?? "-"}`)
     : (objRun.strPayrollGroupName ?? t("scope_payroll_group", "Payroll Group"));
-  const lstWorkflowSteps = getWorkflowSteps(objRun.strRunStatus, objRun.strRunTypeCode === "VARIABLE_PAY");
+  const lstWorkflowSteps = getWorkflowSteps(objRun.strRunStatus);
   const blnShowReviewResults = ["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus);
   const blnShowPayslipsTab = blnShowReviewResults && objRun.strRunTypeCode !== "VARIABLE_PAY";
 
@@ -1095,7 +1080,12 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     { strLabel: t("tax_total", "Tax"), strValue: formatCurrency(objRun.decTaxTotal), objIcon: <SummarizeRoundedIcon sx={{ fontSize: 18 }} />, strTone: "amber" as Tone },
     { strLabel: t("employer_contribution_total", "Employer Contributions"), strValue: formatCurrency(objRun.decEmployerContributionTotal), objIcon: <WalletRoundedIcon sx={{ fontSize: 18 }} />, strTone: "slate" as Tone },
   ];
-  const intGeneratedPayslipCount = lstPayslips.filter((dicPayslip) => dicPayslip.blnGenerated).length;
+  // Before Finalize every payslip is current by construction (built when opened); after it, the
+  // count is how many official copies are saved.
+  const blnRunFinalized = objRun.strRunStatus === "FINALIZED";
+  const intGeneratedPayslipCount = blnRunFinalized
+    ? lstPayslips.filter((dicPayslip) => dicPayslip.blnGenerated).length
+    : lstPayslips.length;
   const intPayslipProgressPercent = lstPayslips.length ? Math.round((intGeneratedPayslipCount / lstPayslips.length) * 100) : 0;
   const objSummaryPanelSx = { border: "1px solid #DCE4EF", borderRadius: "10px", minWidth: 0, p: 1.25 };
   const objSummaryPanelTitleSx = { color: "#64748b", fontSize: "0.72rem", fontWeight: 800, letterSpacing: "0.04em", mb: 0.5, textTransform: "uppercase" };
@@ -1337,14 +1327,14 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
       >
           <Box sx={{ alignItems: "center", display: "flex", flex: "0 1 auto", gap: 0.75, minWidth: 0, overflowX: "auto", pb: 0.25 }}>
             {lstWorkflowSteps.map((dicStep, intIndex) => {
-              const blnEnabled = isWorkflowStepEnabled(dicStep.strStep, objRun, blnSaving, blnPayslipLoading, blnCanValidate, blnCanProcess, blnCanFinalize, blnCanGeneratePayslip);
+              const blnEnabled = isWorkflowStepEnabled(dicStep.strStep, objRun, blnSaving, blnPayslipLoading, blnCanValidate, blnCanProcess, blnCanFinalize);
               const fnOnClick =
                 dicStep.strStep === "Validate"
                   ? validateRun
                   : dicStep.strStep === "Process"
                     ? processRun
-                    : dicStep.strStep === "Generate Payslips"
-                      ? generateAllPayslips
+                    : dicStep.strStep === "Finalize"
+                      ? openFinalizeDialog
                       : undefined;
               const strVariant = getWorkflowButtonVariant(dicStep.strStep, objRun, dicStep.blnActive, blnEnabled);
               return (
@@ -1353,7 +1343,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
                   <Button
                     startIcon={getWorkflowStepIcon(dicStep.strStep)}
                     onClick={fnOnClick}
-                    disabled={!fnOnClick || !blnEnabled || (dicStep.strStep === "Generate Payslips" && blnPayslipLoading)}
+                    disabled={!fnOnClick || !blnEnabled}
                     sx={getWorkflowButtonSx(strVariant)}
                     controlId={`payroll.run-detail.workflow.${dicStep.strStep.toLowerCase().replaceAll(" ", "-")}.button`}
                   >
@@ -1631,7 +1621,9 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
                 <Box sx={{ pt: 1 }} data-controlid="payroll.run-detail.summary.payslip-progress">
                   <Box sx={{ alignItems: "center", display: "flex", justifyContent: "space-between", mb: 0.5 }}>
                     <Link component="button" type="button" underline="hover" onClick={() => setStrActiveTab("payslips")} sx={{ color: "#475569", fontSize: "0.8rem", fontWeight: 700 }}>
-                      {t("payslips_generated", "Payslips Generated")}
+                      {blnRunFinalized
+                        ? t("payslips_saved", "Payslips Saved (official copy)")
+                        : t("payslips_latest", "Payslips (always latest until Finalize)")}
                     </Link>
                     <Typography sx={{ color: "#0f172a", fontSize: "0.86rem", fontWeight: 900 }}>
                       {intGeneratedPayslipCount} / {lstPayslips.length}
@@ -1970,9 +1962,48 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
                   ? `/reports/payslips/${intPreviewResultID}/tax-information?backRoute=${encodeURIComponent(strPathname)}`
                   : undefined
               }
+              strView={strPayslipView}
+              onViewChange={changePreviewView}
+              blnViewChanging={blnPayslipLoading}
             />
           ) : null}
         </DialogContent>
+      </Dialog>
+      <Dialog
+        open={blnFinalizeDialogOpen}
+        onClose={() => !blnSaving && setBlnFinalizeDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        controlId="payroll.run-detail.finalize.dialog"
+      >
+        <DialogTitle>{t("finalize_confirm_title", "Finalize this payroll run?")}</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ color: "#5B6B82", mb: 1 }}>
+            {t("finalize_confirm_message", "Finalizing locks the run - it cannot be reprocessed until someone with reopen rights reopens it. Reimbursements in it are marked paid and loan recoveries are confirmed.")}
+          </Typography>
+          <Typography sx={{ color: "#5B6B82" }}>
+            {t("finalize_confirm_payslips", "Every employee's payslip is saved as the official copy (with a progress bar) and becomes visible to employees in ESS. Until now payslips always showed the latest figures, so nothing needs to be generated first.")}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            className={styles.secondaryButton}
+            onClick={() => setBlnFinalizeDialogOpen(false)}
+            disabled={blnSaving}
+            controlId="payroll.run-detail.finalize.cancel.button"
+          >
+            {tCommon("cancel", "Cancel")}
+          </Button>
+          <Button
+            className={styles.primaryButton}
+            startIcon={<LockRoundedIcon />}
+            onClick={finalizeRun}
+            disabled={blnSaving}
+            controlId="payroll.run-detail.finalize.submit.button"
+          >
+            {t("finalize_confirm_submit", "Yes, Finalize")}
+          </Button>
+        </DialogActions>
       </Dialog>
       <Dialog
         open={blnReprocessDialogOpen}
@@ -2098,7 +2129,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
             : objJobProgress?.strKind === "validate"
               ? t("validating_run", "Validating payroll run...")
               : objJobProgress?.strKind === "payslips"
-                ? t("generating_payslips", "Generating payslips...")
+                ? t("saving_finalized_payslips", "Finalizing - saving payslips...")
                 : t("processing_run", "Processing payroll run...")
         }
         strFallbackPhaseLabel={t("job_starting", "Starting")}

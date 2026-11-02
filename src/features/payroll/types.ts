@@ -199,6 +199,8 @@ export type PayrollRunDetailRecord = PayrollRunRecord & {
   dtAddedOn: string | null;
   dtLastModifiedOn: string | null;
   dtClosedOn: string | null;
+  /** Finalize response only: the background job saving the finalized payslips (null when none started). */
+  dicPayslipJob?: PayrollJobStatus | null;
   lstValidationResults: PayrollValidationResultRecord[];
   lstProcessedResults?: Array<PayrollResultRecord & { lstLines?: PayrollResultLineRecord[] }>;
 };

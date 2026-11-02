@@ -1,5 +1,8 @@
 "use client";
 
+import PayrollDataChangedNotice from "@/features/payroll/components/PayrollDataChangedNotice";
+import { usePayrollDataFreshness } from "@/features/payroll/hooks/usePayrollDataFreshness";
+
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
@@ -204,12 +207,14 @@ export default function StatutoryReportPage() {
   const [setSelectedRowIDs, setSetSelectedRowIDs] = useState<Set<number>>(new Set());
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
   const blnPageLoading = blnRightsLoading || blnLoading;
+  const objPayrollFreshness = usePayrollDataFreshness(blnCanView);
 
   async function loadRows(objFilters: SearchForm) {
     setBlnLoading(true);
     setStrError("");
     try {
-      setLstRows(await payrollReportService.getStatutoryReportRows(objFilters));
+      // Remembers the figures' version so a later reprocess shows the Refresh notice.
+      setLstRows(await objPayrollFreshness.trackLoad(() => payrollReportService.getStatutoryReportRows(objFilters), objFilters.strPayrollMonth, () => loadRows(objFilters)));
       setSetSelectedRowIDs(new Set());
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to load statutory report.");
@@ -488,6 +493,7 @@ export default function StatutoryReportPage() {
       <Box className={styles.tableCard} sx={{ p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {!blnRightsLoading && !blnCanView && !strError ? <Alert severity="warning" sx={{ mb: 1.5 }}>Statutory report view access is not available for your user group.</Alert> : null}
         {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
+        <PayrollDataChangedNotice objFreshness={objPayrollFreshness} blnRefreshing={blnPageLoading} />
         <CommonTable
           columns={(blnSummaryReport ? lstSummaryTableColumns : lstDetailTableColumns) as unknown as CommonTableColumn<Record<string, ReactNode>>[]}
           rows={(blnSummaryReport ? lstSummaryTableRows : lstDetailTableRows) as unknown as Record<string, ReactNode>[]}
