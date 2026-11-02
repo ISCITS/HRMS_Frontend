@@ -52,6 +52,7 @@ import masterStyles from "@/components/master/MasterScreen.module.css";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import PayrollJobProgressDialog from "@/features/payroll/components/PayrollJobProgressDialog";
 import PayslipHtmlPreview from "@/features/payroll/components/PayslipHtmlPreview";
+import { usePayslipViewChooser } from "@/features/payroll/components/PayslipViewChooser";
 import ResultLinesTable from "@/features/payroll/components/ResultLinesTable";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payrollResultService } from "@/features/payroll/services/payrollResultService";
@@ -434,6 +435,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
   const [blnPayslipDialogOpen, setBlnPayslipDialogOpen] = useState(false);
   const [blnFinalizeDialogOpen, setBlnFinalizeDialogOpen] = useState(false);
   const [strPayslipView, setStrPayslipView] = useState<PayslipView>("monthly");
+  const { choosePayslipView, blnCanSwitchView: blnCanSwitchPayslipView, objPayslipViewChooser } = usePayslipViewChooser();
   const [objPreviewPayslipRow, setObjPreviewPayslipRow] = useState<PayslipRunListRecord | null>(null);
   const [blnReprocessDialogOpen, setBlnReprocessDialogOpen] = useState(false);
   const [strReprocessReason, setStrReprocessReason] = useState("");
@@ -929,7 +931,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     }
   }
 
-  async function openPayslipDocument(dicRow: PayslipRunListRecord, blnPrint: boolean) {
+  async function openPayslipDocument(dicRow: PayslipRunListRecord, blnPrint: boolean, strView: PayslipView = strPayslipView) {
     if (!blnCanExport) {
       return;
     }
@@ -937,7 +939,9 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     setStrActionLoaderLabel(blnPrint ? t("opening_payslip_tab", "Opening payslip...") : t("preparing_download", "Preparing download..."));
     setStrError("");
     try {
-      const strHtml = await loadPayslipDocument(dicRow, strPayslipView, "export");
+      // With both views allowed the new tab gets the detailed payslip so its own Monthly / Detailed
+      // switch works; it opens in the chosen view.
+      const strHtml = await loadPayslipDocument(dicRow, blnPrint && blnCanSwitchPayslipView ? "detailed" : strView, "export");
       const strFileName = buildPayslipFileName("payslip", dicRow.strPayslipNumber, dicRow.strEmployeeCode, objRun?.dtPayrollMonth?.slice(0, 7));
       if (blnPrint) {
         // Employee's result in this run -> the same tax page the Payroll Results "i" opens.
@@ -946,7 +950,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
         const strTaxInformationUrl = strResultUUID
           ? `/payroll/results/${strResultUUID}/tax-information?backRoute=${strBackRoute}`
           : undefined;
-        printPayslipHtml(strHtml, strFileName, strTaxInformationUrl);
+        printPayslipHtml(strHtml, strFileName, strTaxInformationUrl, strView, blnCanSwitchPayslipView);
       } else {
         downloadPayslipHtml(strHtml, strFileName);
       }
@@ -1099,14 +1103,24 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
       )
     : lstPayslips;
 
-  // Row click opens the payslip document in a new tab (Print / Download live in that tab's toolbar);
-  // users without export rights get the in-page preview dialog instead.
-  function openPayslipFromRow(dicPayslip: PayslipRunListRecord) {
+  // Row click first asks Monthly or Detailed (only the views the user's group holds), then opens
+  // the payslip in a new tab (Print / Download live in that tab's toolbar); users without export
+  // rights get the in-page preview dialog instead.
+  async function openPayslipFromRow(dicPayslip: PayslipRunListRecord) {
     if (blnPayslipLoading) return;
+    let strView: PayslipView | null;
+    try {
+      strView = await choosePayslipView();
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to open payslip.");
+      return;
+    }
+    if (!strView) return;
+    setStrPayslipView(strView);
     if (blnCanExport) {
-      void openPayslipDocument(dicPayslip, true);
+      void openPayslipDocument(dicPayslip, true, strView);
     } else {
-      void viewPayslip(dicPayslip);
+      void viewPayslip(dicPayslip, strView);
     }
   }
 
@@ -1121,7 +1135,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
         onClick={(objEvent) => {
           objEvent.stopPropagation();
           if (window.getSelection()?.toString()) return;
-          openPayslipFromRow(dicPayslip);
+          void openPayslipFromRow(dicPayslip);
         }}
         sx={{
           color: "#334155", cursor: "pointer", fontSize: "inherit", fontWeight: 500,
@@ -1747,7 +1761,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
             exportFileName={`payslips-${objRun.strRunCode || objRun.intID}`}
             onRowClick={(dicRow) => {
               const dicPayslip = dicPayslipByRowID.get(String(dicRow.id));
-              if (dicPayslip) openPayslipFromRow(dicPayslip);
+              if (dicPayslip) void openPayslipFromRow(dicPayslip);
             }}
             getRowSx={() => ({
               backgroundColor: "#fff",
@@ -1917,6 +1931,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
         </DialogContent>
       </Dialog>
 
+      {objPayslipViewChooser}
       <Dialog open={blnPayslipDialogOpen} onClose={() => setBlnPayslipDialogOpen(false)} maxWidth="lg" fullWidth controlId="payroll.run-detail.payslip-preview.dialog">
         <DialogTitle sx={{ alignItems: "center", display: "flex", justifyContent: "space-between", gap: 1 }}>
           {t("payslip_preview", "Payslip Preview")}
@@ -1962,8 +1977,8 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
                   ? `/reports/payslips/${intPreviewResultID}/tax-information?backRoute=${encodeURIComponent(strPathname)}`
                   : undefined
               }
-              strView={strPayslipView}
-              onViewChange={changePreviewView}
+              strView={blnCanSwitchPayslipView ? strPayslipView : undefined}
+              onViewChange={blnCanSwitchPayslipView ? changePreviewView : undefined}
               blnViewChanging={blnPayslipLoading}
             />
           ) : null}

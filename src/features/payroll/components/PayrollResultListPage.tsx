@@ -32,7 +32,7 @@ import BlockingLoader from "@/components/shared/BlockingLoader";
 import PayrollJobProgressDialog from "@/features/payroll/components/PayrollJobProgressDialog";
 import { usePayslipGenerationProgress } from "@/features/payroll/hooks/usePayslipGenerationProgress";
 import { payslipService, type PayslipView } from "@/features/payroll/services/payslipService";
-import { PayslipViewSwitch } from "@/features/payroll/components/PayslipHtmlPreview";
+import { usePayslipViewChooser } from "@/features/payroll/components/PayslipViewChooser";
 import PayrollDataChangedNotice from "@/features/payroll/components/PayrollDataChangedNotice";
 import { usePayrollDataFreshness } from "@/features/payroll/hooks/usePayrollDataFreshness";
 import { authApiService } from "@/services";
@@ -253,7 +253,7 @@ export default function PayrollResultListPage({
   const { objPayslipProgress, trackPayslipGeneration } = usePayslipGenerationProgress(
     t("preparing_latest_payslip", "Preparing latest payslip"),
   );
-  const [strPayslipView, setStrPayslipView] = useState<PayslipView>("monthly");
+  const { choosePayslipView, blnCanSwitchView: blnCanSwitchPayslipView, objPayslipViewChooser } = usePayslipViewChooser();
   const objPayrollFreshness = usePayrollDataFreshness();
   const lstAccessModuleHints = blnPayslipScreen
     ? (blnEssMode
@@ -404,16 +404,29 @@ export default function PayrollResultListPage({
   );
 
   async function openPayslipDocument(dicRow: PayrollResultListRecord, blnPrint: boolean) {
-    setIntPayslipActionID(dicRow.intID);
     setStrError("");
+    // First ask Monthly or Detailed - only the views the user's group holds.
+    let strPayslipView: PayslipView | null;
+    try {
+      strPayslipView = await choosePayslipView();
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to open payslip.");
+      return;
+    }
+    if (!strPayslipView) {
+      return;
+    }
+    setIntPayslipActionID(dicRow.intID);
     try {
       // Always the latest figures: built from the processed result until the run is finalized,
-      // the saved official copy after - nothing to generate first.
+      // the saved official copy after - nothing to generate first. With both views allowed the new
+      // tab gets the detailed payslip so its own Monthly / Detailed switch works; it opens in the
+      // chosen view.
       const strHtml = await trackPayslipGeneration(() =>
         payslipService.getPayslipDocument(
           dicRow.strPayrollRunRecordUUID ?? String(dicRow.intPayrollRunID),
           dicRow.intEmployeeID,
-          strPayslipView,
+          blnPrint && blnCanSwitchPayslipView ? "detailed" : strPayslipView,
           "export",
         )
       );
@@ -425,7 +438,9 @@ export default function PayrollResultListPage({
         printPayslipHtml(
           strHtml,
           strFileName,
-          `${strTaxBase}/${dicRow.strRecordUUID}/tax-information?backRoute=${encodeURIComponent(strListRoute)}`
+          `${strTaxBase}/${dicRow.strRecordUUID}/tax-information?backRoute=${encodeURIComponent(strListRoute)}`,
+          strPayslipView,
+          blnCanSwitchPayslipView,
         );
       } else {
         downloadPayslipHtml(strHtml, strFileName);
@@ -538,9 +553,9 @@ export default function PayrollResultListPage({
           </IconButton>
         ),
       })),
-    // strPayslipView: the row Print/Download buttons must use the view chosen above the grid.
+    // blnCanSwitchPayslipView: the payslip links must see the user's payslip view rights once loaded.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [blnCanAccessResults, blnPayslipScreen, lstFilteredRows, objRouter, t, strPayslipView]
+    [blnCanAccessResults, blnPayslipScreen, lstFilteredRows, objRouter, t, blnCanSwitchPayslipView]
   );
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(() => {
@@ -772,14 +787,7 @@ export default function PayrollResultListPage({
 
       <PayrollDataChangedNotice objFreshness={objPayrollFreshness} onRefresh={() => void loadResults()} blnRefreshing={blnBusy} />
 
-      {blnPayslipScreen ? (
-        <Box sx={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 1 }}>
-          <Typography sx={{ color: "#475569", fontSize: "0.82rem", fontWeight: 700 }}>
-            {t("payslip_print_view", "Print / download as:")}
-          </Typography>
-          <PayslipViewSwitch strView={strPayslipView} onViewChange={setStrPayslipView} blnDisabled={blnBusy} />
-        </Box>
-      ) : null}
+      {objPayslipViewChooser}
 
       <Box className={masterStyles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {blnBusy ? (

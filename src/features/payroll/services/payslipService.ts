@@ -78,6 +78,16 @@ async function getHtml(strPath: string, strCsrfMenuAction: string): Promise<stri
 }
 
 export const payslipService = {
+  /** The payslip views this user may open (Payroll Runs rights; ESS employees get both). */
+  async getAllowedViews(): Promise<PayslipView[]> {
+    const objResult = await requestApi<{ lstViews: PayslipView[] }>({
+      strPath: "/payroll/payslip-views",
+      strMethod: "GET",
+      strMenuAction: "PAYSLIP_VIEW",
+    });
+    return (objResult.Data?.lstViews ?? []).filter((strView) => strView === "monthly" || strView === "detailed");
+  },
+
   /**
    * The payslip page with the latest figures for an employee's run - built from the processed
    * result until the run is finalized, the saved official copy after. No Generate step needed.

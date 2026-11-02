@@ -2,13 +2,14 @@
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import { Alert, Box, Button } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { DetailPageHeader } from "@/components/master/MasterListUi";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import PayslipHtmlPreview from "@/features/payroll/components/PayslipHtmlPreview";
+import { usePayslipViewChooser } from "@/features/payroll/components/PayslipViewChooser";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payslipService, type PayslipView } from "@/features/payroll/services/payslipService";
 
@@ -23,20 +24,48 @@ export default function PayslipDocumentPage({ strPayslipID, strBackRoute }: Pays
   const { t } = useModuleLabels("payslips");
   const [strHtml, setStrHtml] = useState("");
   const [strError, setStrError] = useState("");
-  const [blnLoading, setBlnLoading] = useState(true);
+  const [blnLoading, setBlnLoading] = useState(false);
   const [blnChangingView, setBlnChangingView] = useState(false);
-  const [strView, setStrView] = useState<PayslipView>("monthly");
+  // null until the user answers "which payslip do you want to see?".
+  const [strView, setStrView] = useState<PayslipView | null>(null);
   const [intResultID, setIntResultID] = useState<number | null>(null);
+  const { choosePayslipView, blnCanSwitchView, objPayslipViewChooser } = usePayslipViewChooser();
+  const refViewAsked = useRef(false);
+
+  async function askPayslipView() {
+    try {
+      const strChosen = await choosePayslipView();
+      if (strChosen) {
+        setBlnLoading(true);
+        setStrView(strChosen);
+      }
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : t("unable_to_load_payslip", "Unable to load payslip document."));
+    }
+  }
 
   useEffect(() => {
+    if (refViewAsked.current) {
+      return;
+    }
+    refViewAsked.current = true;
+    void askPayslipView();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!strView) {
+      return;
+    }
     let blnCancelled = false;
+    const strChosenView = strView;
 
     async function loadPayslipDocument() {
       setStrError("");
       try {
         // The server returns the latest figures even when this link points to an outdated copy.
         const [strDocumentHtml, dicSummary] = await Promise.all([
-          payslipService.getDownloadHtml(strPayslipID, strView),
+          payslipService.getDownloadHtml(strPayslipID, strChosenView),
           payslipService.getPayslipSummary(strPayslipID).catch(() => null),
         ]);
         if (!blnCancelled) {
@@ -82,17 +111,24 @@ export default function PayslipDocumentPage({ strPayslipID, strBackRoute }: Pays
           {t("back_button", "Back")}
         </Button>
       </DetailPageHeader>
+      {objPayslipViewChooser}
       {strError ? (
         <Alert severity="error">{strError}</Alert>
+      ) : !strHtml ? (
+        <Box>
+          <Button className={styles.secondaryButton} onClick={() => void askPayslipView()} data-controlid="payslip.document.open.button">
+            {t("open_payslip", "Open payslip")}
+          </Button>
+        </Box>
       ) : (
         <PayslipHtmlPreview
           strHtml={strHtml}
-          strView={strView}
+          strView={blnCanSwitchView && strView ? strView : undefined}
           blnViewChanging={blnChangingView}
-          onViewChange={(strNext) => {
+          onViewChange={blnCanSwitchView ? (strNext) => {
             setBlnChangingView(true);
             setStrView(strNext);
-          }}
+          } : undefined}
           strTaxInformationUrl={
             intResultID
               ? `/reports/payslips/${intResultID}/tax-information?backRoute=${encodeURIComponent(

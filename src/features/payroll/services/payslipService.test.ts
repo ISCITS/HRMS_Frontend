@@ -2,9 +2,23 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const objGet = vi.fn();
 vi.mock("@/lib/axiosInstance", () => ({ axiosInstance: { get: (...lstArgs: unknown[]) => objGet(...lstArgs) } }));
-vi.mock("@/Common/utils/apiErrorHandler", () => ({ requestEncryptedApi: vi.fn() }));
+const objRequestEncryptedApi = vi.fn();
+vi.mock("@/Common/utils/apiErrorHandler", () => ({ requestEncryptedApi: (...lstArgs: unknown[]) => objRequestEncryptedApi(...lstArgs) }));
 
 import { payslipService } from "./payslipService";
+
+describe("payslip view rights", () => {
+  it("reads the views the user may open and ignores anything unknown", async () => {
+    objRequestEncryptedApi.mockResolvedValueOnce({ Data: { lstViews: ["monthly", "annual", "detailed"] } });
+    await expect(payslipService.getAllowedViews()).resolves.toEqual(["monthly", "detailed"]);
+    expect(objRequestEncryptedApi.mock.calls[0][0].strPath).toMatch(/\/payroll\/payslip-views$/);
+  });
+
+  it("treats a missing list as no views", async () => {
+    objRequestEncryptedApi.mockResolvedValueOnce({ Data: null });
+    await expect(payslipService.getAllowedViews()).resolves.toEqual([]);
+  });
+});
 
 describe("payslip service", () => {
   beforeEach(() => {

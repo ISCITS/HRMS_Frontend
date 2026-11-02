@@ -28,7 +28,7 @@ import {
   Tooltip,
   Typography
 } from "@mui/material";
-import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -36,6 +36,7 @@ import { DetailPageHeader } from "@/components/master/MasterListUi";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import PayslipHtmlPreview from "@/features/payroll/components/PayslipHtmlPreview";
+import { usePayslipViewChooser } from "@/features/payroll/components/PayslipViewChooser";
 import PayrollResultBreakdown from "@/features/payroll/components/PayrollResultBreakdown";
 import masterStyles from "@/components/master/MasterScreen.module.css";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
@@ -440,7 +441,10 @@ export default function PayrollResultDetailPage({
       : lstPayrollResultAccessModuleHints
   );
   const [objResult, setObjResult] = useState<PayrollResultDetailRecord | null>(null);
-  const [strPayslipView, setStrPayslipView] = useState<PayslipView>("monthly");
+  // null until the user answers "which payslip do you want to see?".
+  const [strPayslipView, setStrPayslipView] = useState<PayslipView | null>(null);
+  const { choosePayslipView, blnCanSwitchView: blnCanSwitchPayslipView, objPayslipViewChooser } = usePayslipViewChooser();
+  const refPayslipViewAsked = useRef(false);
   const [strPayslipPreviewHtml, setStrPayslipPreviewHtml] = useState("");
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnPayslipLoading, setBlnPayslipLoading] = useState(false);
@@ -488,8 +492,32 @@ export default function PayrollResultDetailPage({
   // latest processed result, or the saved copy once the run is finalized) - no Generate step.
   const strPayslipRunID = objResult ? objResult.strPayrollRunRecordUUID ?? String(objResult.intPayrollRunID) : "";
   const intPayslipEmployeeID = objResult?.intEmployeeID ?? 0;
+
+  async function askPayslipView(): Promise<PayslipView | null> {
+    try {
+      const strChosen = await choosePayslipView();
+      if (strChosen) {
+        setStrPayslipView(strChosen);
+      }
+      return strChosen;
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to open payslip.");
+      return null;
+    }
+  }
+
+  // Opening the payslip first asks Monthly or Detailed (only the views the user's group holds).
   useEffect(() => {
-    if (!blnPayslipScreen || !strPayslipRunID || !intPayslipEmployeeID) {
+    if (!blnPayslipScreen || !strPayslipRunID || refPayslipViewAsked.current) {
+      return;
+    }
+    refPayslipViewAsked.current = true;
+    void askPayslipView();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blnPayslipScreen, strPayslipRunID]);
+
+  useEffect(() => {
+    if (!blnPayslipScreen || !strPayslipRunID || !intPayslipEmployeeID || !strPayslipView) {
       return;
     }
     let blnMounted = true;
@@ -544,22 +572,27 @@ export default function PayrollResultDetailPage({
     );
   }
 
-  // Print/Download use the same latest payslip, in the view chosen above the preview.
+  // Print/Download use the same latest payslip, in the view chosen above the preview. The new tab gets
+  // the detailed payslip so its own Monthly / Detailed switch works; it opens in the chosen view.
   async function openGeneratedPayslip(blnPrint: boolean) {
-    setBlnPayslipLoading(true);
     setStrError("");
+    const strView = strPayslipView ?? (await askPayslipView());
+    if (!strView) {
+      return;
+    }
+    setBlnPayslipLoading(true);
     try {
       const strHtml = await trackPayslipGeneration(() =>
         payslipService.getPayslipDocument(
           objResult!.strPayrollRunRecordUUID ?? String(objResult!.intPayrollRunID),
           objResult!.intEmployeeID,
-          strPayslipView,
+          blnPrint && blnCanSwitchPayslipView ? "detailed" : strView,
           "export",
         )
       );
       const strFileName = buildPayslipFileName("payslip", objResult!.strPayslipNumber, objResult!.strEmployeeCode, objResult!.dtPayrollMonth?.slice(0, 7));
       if (blnPrint) {
-        printPayslipHtml(strHtml, strFileName, strTaxInformationHref);
+        printPayslipHtml(strHtml, strFileName, strTaxInformationHref, strView, blnCanSwitchPayslipView);
       } else {
         downloadPayslipHtml(strHtml, strFileName);
       }
@@ -901,12 +934,19 @@ export default function PayrollResultDetailPage({
               <PayslipHtmlPreview
                 strHtml={strPayslipPreviewHtml}
                 strTaxInformationUrl={strTaxInformationHref}
-                strView={strPayslipView}
-                onViewChange={setStrPayslipView}
+                strView={blnCanSwitchPayslipView && strPayslipView ? strPayslipView : undefined}
+                onViewChange={blnCanSwitchPayslipView ? setStrPayslipView : undefined}
                 blnViewChanging={blnPayslipLoading}
               />
             </Paper>
+          ) : blnPayslipScreen && objResult && !strPayslipView && !blnPayslipLoading ? (
+            <Box>
+              <Button variant="outlined" startIcon={<ReceiptLongRoundedIcon />} onClick={() => void askPayslipView()} data-controlid="payroll.result-detail.open-payslip.button">
+                {t("open_payslip", "Open payslip")}
+              </Button>
+            </Box>
           ) : null}
+          {objPayslipViewChooser}
         </Stack>
       </Box>
     </Box>
