@@ -386,7 +386,7 @@ export default function EssWorkHolidayPage() {
       </Stack>
       {strNotice ? <Alert data-control-id="work-on-holiday.ess.success.alert" severity="success" onClose={() => setStrNotice("")}>{strNotice}</Alert> : null}
       {strError || strListError ? <Alert data-control-id="work-on-holiday.ess.error.alert" severity="error">{strError || strListError}</Alert> : null}
-      <Paper sx={{ borderRadius: "10px", boxShadow: "none", border: "1px solid #e8eef5" }}><Tabs value={intTab} onChange={changeTab} variant="scrollable" aria-label={t("ess_tabs", "Work on Holiday sections")}><Tab data-control-id="work-on-holiday.ess.new.tab" label={t("tab_new_request", "New Request")} disabled={!blnCanCreate} /><Tab data-control-id="work-on-holiday.ess.my.tab" label={t("tab_my_requests", "My Requests")} /><Tab data-control-id="work-on-holiday.ess.earned.tab" label={t("tab_earned_comp_off", "Earned Comp-Off")} /></Tabs></Paper>
+      <Paper sx={{ borderRadius: "10px", boxShadow: "none", border: "1px solid #e8eef5" }}><Tabs className="app-employee-tabs" value={intTab} onChange={changeTab} variant="scrollable" aria-label={t("ess_tabs", "Work on Holiday sections")}><Tab data-control-id="work-on-holiday.ess.new.tab" label={<Box component="span" className="app-employee-tab-label">{t("tab_new_request", "New Request")}</Box>} disabled={!blnCanCreate} /><Tab data-control-id="work-on-holiday.ess.my.tab" label={<Box component="span" className="app-employee-tab-label">{t("tab_my_requests", "My Requests")}</Box>} /><Tab data-control-id="work-on-holiday.ess.earned.tab" label={<Box component="span" className="app-employee-tab-label">{t("tab_earned_comp_off", "Earned Comp-Off")}</Box>} /></Tabs></Paper>
       {intTab === 0 ? (
         <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: "10px", boxShadow: "none", border: "1px solid #e8eef5" }}>
           {objEditingRequest ? (
@@ -502,8 +502,8 @@ export default function EssWorkHolidayPage() {
             </Grid>
             <Grid item xs={12} md={3}>
               <Stack direction="row" spacing={1}>
-                <Button data-control-id="work-on-holiday.my.filter.clear.button" fullWidth variant="outlined" startIcon={<ClearRoundedIcon />} onClick={clearFilters} sx={objSecondaryActionSx}>{t("clear", "Clear")}</Button>
-                <Button data-control-id="work-on-holiday.my.filter.search.button" fullWidth variant="contained" startIcon={<SearchRoundedIcon />} onClick={applyFilters} sx={{ backgroundColor: "var(--app-primary-color)", "&:hover": { backgroundColor: "var(--app-primary-hover-color, #164d7c)" } }}>{t("search", "Search")}</Button>
+                <Button data-control-id="work-on-holiday.my.filter.clear.button" fullWidth size="small" variant="outlined" startIcon={<ClearRoundedIcon />} onClick={clearFilters} sx={objSecondaryActionSx}>{t("clear", "Clear")}</Button>
+                <Button data-control-id="work-on-holiday.my.filter.search.button" fullWidth size="small" variant="contained" startIcon={<SearchRoundedIcon />} onClick={applyFilters} sx={{ backgroundColor: "var(--app-primary-color)", "&:hover": { backgroundColor: "var(--app-primary-hover-color, #164d7c)" } }}>{t("search", "Search")}</Button>
               </Stack>
             </Grid>
           </Grid>
