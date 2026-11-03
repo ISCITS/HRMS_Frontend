@@ -49,6 +49,7 @@ const dicPayrollActionAliases: Record<string, string[]> = {
   skipInstallment: ["loan_adv_skip_installment"],
   adjustSchedule: ["loan_adv_adjust_schedule"],
   prepay: ["loan_adv_prepay"],
+  prepayAdd: ["loan_adv_prepay_add"],
   close: ["loan_adv_close"],
   cancel: ["loan_adv_cancel"],
   export: ["loan_adv_export"],
@@ -222,6 +223,7 @@ export default function LoanAdvanceDetailPage({ strLoanAdvanceID, strMode = "pay
   const blnCanSkipInstallment = canLoanAction("skipInstallment");
   const blnCanAdjustSchedule = canLoanAction("adjustSchedule");
   const blnCanPrepay = canLoanAction("prepay");
+  const blnCanAddPrepayment = canLoanAction("prepayAdd");
   const blnCanClose = canLoanAction("close");
   const blnCanCancel = canLoanAction("cancel");
   const strStatus = objRecord?.strWorkflowStatus || "draft";
@@ -658,7 +660,7 @@ export default function LoanAdvanceDetailPage({ strLoanAdvanceID, strMode = "pay
             <Tab label={<Box component="span" className="app-employee-tab-label">{t("tab_approval", "Approval")}</Box>} />
             <Tab label={<Box component="span" className="app-employee-tab-label">{t("tab_disbursement", "Disbursement")}</Box>} />
             <Tab label={<Box component="span" className="app-employee-tab-label">{t("tab_schedule", "Installment Schedule")}</Box>} />
-            <Tab label={<Box component="span" className="app-employee-tab-label">{t("tab_prepayment", "Prepayment")}</Box>} />
+            {!blnIsEssMode ? <Tab label={<Box component="span" className="app-employee-tab-label">{t("tab_prepayment", "Prepayment")}</Box>} /> : null}
             <Tab label={<Box component="span" className="app-employee-tab-label">{t("tab_ledger", "Ledger / History")}</Box>} />
           </Tabs>
           {intTab === 0 ? (
@@ -758,11 +760,11 @@ export default function LoanAdvanceDetailPage({ strLoanAdvanceID, strMode = "pay
             )
           ) : null}
           {intTab === 3 ? <Box sx={{ mt: 2 }}>{renderScheduleTable(lstSchedule)}</Box> : null}
-          {intTab === 4 ? (
+          {!blnIsEssMode && intTab === 4 ? (
             objRecord ? (
               <LoanPrepaymentTab
                 objRecord={objRecord}
-                blnCanPrepay={blnCanPrepay}
+                blnCanAddPrepayment={blnCanAddPrepayment}
                 onSuccess={(objNextRecord) => {
                   setObjRecord(objNextRecord);
                   setDicValues(toLoanAdvanceForm(objNextRecord));
@@ -776,7 +778,7 @@ export default function LoanAdvanceDetailPage({ strLoanAdvanceID, strMode = "pay
               </Alert>
             )
           ) : null}
-          {intTab === 5 ? (
+          {intTab === (blnIsEssMode ? 4 : 5) ? (
             <Box className={styles.tableWrap} sx={{ mt: 2 }}>
               <table className={`${styles.table} ${styles.fnfDenseTable}`}>
                 <thead><tr><th>{t("ledger_event", "Event")}</th><th>{t("ledger_from", "From")}</th><th>{t("ledger_to", "To")}</th><th>{t("ledger_amount", "Amount")}</th><th>{t("ledger_balance", "Balance")}</th><th>{t("ledger_remarks", "Remarks")}</th><th>{t("ledger_on", "On")}</th></tr></thead>

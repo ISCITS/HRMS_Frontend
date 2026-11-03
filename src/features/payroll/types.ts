@@ -702,6 +702,7 @@ export type LoanAdvanceLedgerRecord = {
   decBalanceAfterEvent?: number;
   strRemarks?: string | null;
   dtEventOn: string;
+  objNewValues?: { strAdjustmentMode?: string; intPaymentModeID?: number; intEmployeeBankAccountID?: number; strTransactionReferenceNo?: string } | null;
 };
 
 export type LoanAdvanceRecord = {
