@@ -3,7 +3,12 @@
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { payslipService, type PayslipFormat, type PayslipView } from "@/features/payroll/services/payslipService";
+import {
+  payslipService,
+  type PayslipDocumentView,
+  type PayslipFormat,
+  type PayslipView,
+} from "@/features/payroll/services/payslipService";
 import {
   canUseClientPayslipFormat,
   getPayslipViewChoice,
@@ -14,14 +19,12 @@ import {
 } from "@/features/payroll/utils/payslipViewChoice";
 
 type PayslipChooserOptions = {
-  /** Offers the Client format (PDF) next to the default one; called when the user picks it. */
-  onOpenClientFormat?: () => Promise<void> | void;
+  /** Offers the Client format next to the default one (resolves "client" when picked). */
+  blnClientFormat?: boolean;
 };
 
-const CLIENT_FORMAT_CHOICE = "client";
-
 /**
- * Asks which payslip to open - the format (Default / Client PDF, when the screen offers the client
+ * Asks which payslip to open - the format (Default / Client, when the screen offers the client
  * format) and, for the default format, Monthly or Detailed (YTD & annual) - offering only the views
  * the user's group holds (Payroll Runs rights "Payslip - Monthly" / "Payslip - Detailed"; the client
  * format is a monthly payslip). With a single choice it opens that one without asking. Render
@@ -32,7 +35,7 @@ export function usePayslipViewChooser() {
   const [blnOpen, setBlnOpen] = useState(false);
   const [blnOfferClientFormat, setBlnOfferClientFormat] = useState(false);
   const [strFormat, setStrFormat] = useState<PayslipFormat>("default");
-  const refResolve = useRef<((strChoice: PayslipView | typeof CLIENT_FORMAT_CHOICE | null) => void) | null>(null);
+  const refResolve = useRef<((strChoice: PayslipDocumentView | null) => void) | null>(null);
 
   useEffect(() => {
     let blnCancelled = false;
@@ -47,13 +50,13 @@ export function usePayslipViewChooser() {
   }, []);
 
   /**
-   * Resolves the chosen view, null when the user closes the question - or when they pick the client
-   * format, which onOpenClientFormat then opens. Throws when no view is allowed.
+   * Resolves the chosen payslip - "monthly", "detailed" or (client format) "client" - or null when
+   * the user closes the question. Throws when no view is allowed.
    */
-  const choosePayslipView = useCallback(async (objOptions: PayslipChooserOptions = {}): Promise<PayslipView | null> => {
+  const choosePayslipView = useCallback(async (objOptions: PayslipChooserOptions = {}): Promise<PayslipDocumentView | null> => {
     const lstViews = await loadAllowedPayslipViews(payslipService.getAllowedViews);
     setLstAllowedViews(lstViews);
-    const blnClientFormat = Boolean(objOptions.onOpenClientFormat);
+    const blnClientFormat = Boolean(objOptions.blnClientFormat);
     const objChoice = getPayslipViewChoice(lstViews, blnClientFormat);
     if (objChoice === "none") {
       throw new Error(NO_PAYSLIP_VIEW_MESSAGE);
@@ -62,20 +65,15 @@ export function usePayslipViewChooser() {
       return objChoice.strView;
     }
     refResolve.current?.(null);
-    const strChoice = await new Promise<PayslipView | typeof CLIENT_FORMAT_CHOICE | null>((resolve) => {
+    return new Promise<PayslipDocumentView | null>((resolve) => {
       refResolve.current = resolve;
       setBlnOfferClientFormat(blnClientFormat && canUseClientPayslipFormat(lstViews));
       setStrFormat("default");
       setBlnOpen(true);
     });
-    if (strChoice === CLIENT_FORMAT_CHOICE) {
-      await objOptions.onOpenClientFormat?.();
-      return null;
-    }
-    return strChoice;
   }, []);
 
-  function finish(strChoice: PayslipView | typeof CLIENT_FORMAT_CHOICE | null) {
+  function finish(strChoice: PayslipDocumentView | null) {
     setBlnOpen(false);
     refResolve.current?.(strChoice);
     refResolve.current = null;
@@ -119,11 +117,11 @@ export function usePayslipViewChooser() {
             variant="contained"
             fullWidth
             autoFocus
-            onClick={() => finish(CLIENT_FORMAT_CHOICE)}
+            onClick={() => finish("client")}
             sx={{ alignItems: "flex-start", flexDirection: "column", px: 2, py: 1.25, textAlign: "left", textTransform: "none" }}
             data-controlid="payslip.view-chooser.client"
           >
-            <Typography component="span" sx={{ fontWeight: 800 }}>Open client format (PDF)</Typography>
+            <Typography component="span" sx={{ fontWeight: 800 }}>Open client format</Typography>
             <Typography component="span" variant="caption" sx={{ opacity: 0.85 }}>{objClientOption?.strDescription}</Typography>
           </Button>
         ) : (

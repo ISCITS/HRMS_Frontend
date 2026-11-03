@@ -47,15 +47,12 @@ describe("payslip service", () => {
     expect(objGet.mock.calls[1][0]).toMatch(/\/payslips\/payslip-uuid\/download\?view=monthly$/);
   });
 
-  it("fetches the client format as a monthly PDF", async () => {
-    objGet.mockResolvedValue({ data: new Blob(["%PDF"]) });
-    const objPdf = await payslipService.getClientPayslipPdf("run-uuid", 7);
-    expect(objPdf.type).toBe("application/pdf");
+  it("opens the client format as a page with the monthly figures", async () => {
+    await expect(payslipService.getPayslipDocument("run-uuid", 7, "client", "export")).resolves.toBe("<html>payslip</html>");
     const [strUrl, objConfig] = objGet.mock.calls[0];
-    expect(strUrl).toMatch(/\/payroll\/runs\/run-uuid\/employees\/7\/payslip\/document\?view=monthly&purpose=export&format=client$/);
-    expect(objConfig.responseType).toBe("blob");
-    expect(objConfig.csrfMenuAction).toBe("PAYSLIP_EXPORT");
-    await payslipService.getSavedClientPayslipPdf("payslip-uuid");
+    expect(strUrl).toMatch(/\/payroll\/runs\/run-uuid\/employees\/7\/payslip\/document\?view=monthly&format=client&purpose=export$/);
+    expect(objConfig.responseType).toBe("text");
+    await payslipService.getDownloadHtml("payslip-uuid", "client");
     expect(objGet.mock.calls[1][0]).toMatch(/\/payslips\/payslip-uuid\/download\?view=monthly&format=client$/);
   });
 

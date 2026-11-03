@@ -56,7 +56,8 @@ import { usePayslipViewChooser } from "@/features/payroll/components/PayslipView
 import ResultLinesTable from "@/features/payroll/components/ResultLinesTable";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payrollResultService } from "@/features/payroll/services/payrollResultService";
-import { payslipService, type PayslipView } from "@/features/payroll/services/payslipService";
+import { payslipService, type PayslipDocumentView, type PayslipView } from "@/features/payroll/services/payslipService";
+import { getPayslipSwitchView, getPayslipTabRequestView } from "@/features/payroll/utils/payslipViewChoice";
 import { payrollRunService } from "@/features/payroll/services/payrollRunService";
 import { attendancePayrollService } from "@/features/payroll/services/attendancePayrollService";
 import { variablePayService } from "@/features/variable-pay/services/variablePayService";
@@ -77,7 +78,6 @@ import type {
 import {
   buildPayslipFileName,
   downloadPayslipHtml,
-  openPayslipPdf,
   printPayslipHtml,
 } from "@/features/payroll/utils/payslipDocument";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
@@ -435,7 +435,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
   const refResumedJobRunID = useRef<string | null>(null);
   const [blnPayslipDialogOpen, setBlnPayslipDialogOpen] = useState(false);
   const [blnFinalizeDialogOpen, setBlnFinalizeDialogOpen] = useState(false);
-  const [strPayslipView, setStrPayslipView] = useState<PayslipView>("monthly");
+  const [strPayslipView, setStrPayslipView] = useState<PayslipDocumentView>("monthly");
   const { choosePayslipView, blnCanSwitchView: blnCanSwitchPayslipView, objPayslipViewChooser } = usePayslipViewChooser();
   const [objPreviewPayslipRow, setObjPreviewPayslipRow] = useState<PayslipRunListRecord | null>(null);
   const [blnReprocessDialogOpen, setBlnReprocessDialogOpen] = useState(false);
@@ -903,11 +903,11 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
 
   // Every payslip opened here shows the latest figures: built from the processed result until the
   // run is finalized, the saved official copy after - no Generate step.
-  async function loadPayslipDocument(dicRow: PayslipRunListRecord, strView: PayslipView, strPurpose: "view" | "export") {
+  async function loadPayslipDocument(dicRow: PayslipRunListRecord, strView: PayslipDocumentView, strPurpose: "view" | "export") {
     return payslipService.getPayslipDocument(strRunID, dicRow.intEmployeeID, strView, strPurpose);
   }
 
-  async function viewPayslip(dicRow: PayslipRunListRecord, strView: PayslipView = strPayslipView) {
+  async function viewPayslip(dicRow: PayslipRunListRecord, strView: PayslipDocumentView = strPayslipView) {
     setBlnPayslipLoading(true);
     setStrActionLoaderLabel(t("preparing_latest_payslip", "Preparing latest payslip..."));
     setStrError("");
@@ -932,7 +932,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     }
   }
 
-  async function openPayslipDocument(dicRow: PayslipRunListRecord, blnPrint: boolean, strView: PayslipView = strPayslipView) {
+  async function openPayslipDocument(dicRow: PayslipRunListRecord, blnPrint: boolean, strView: PayslipDocumentView = strPayslipView) {
     if (!blnCanExport) {
       return;
     }
@@ -942,7 +942,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     try {
       // With both views allowed the new tab gets the detailed payslip so its own Monthly / Detailed
       // switch works; it opens in the chosen view.
-      const strHtml = await loadPayslipDocument(dicRow, blnPrint && blnCanSwitchPayslipView ? "detailed" : strView, "export");
+      const strHtml = await loadPayslipDocument(dicRow, blnPrint ? getPayslipTabRequestView(strView, blnCanSwitchPayslipView) : strView, "export");
       const strFileName = buildPayslipFileName("payslip", dicRow.strPayslipNumber, dicRow.strEmployeeCode, objRun?.dtPayrollMonth?.slice(0, 7));
       if (blnPrint) {
         // Employee's result in this run -> the same tax page the Payroll Results "i" opens.
@@ -1104,28 +1104,14 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
       )
     : lstPayslips;
 
-  // Row click first asks Monthly or Detailed (only the views the user's group holds), then opens
-  // the payslip in a new tab (Print / Download live in that tab's toolbar); users without export
-  // rights get the in-page preview dialog instead.
-  async function openClientPayslip(dicRow: PayslipRunListRecord) {
-    setBlnPayslipLoading(true);
-    setStrActionLoaderLabel(t("opening_payslip_tab", "Opening payslip..."));
-    setStrError("");
-    try {
-      openPayslipPdf(await payslipService.getClientPayslipPdf(strRunID, dicRow.intEmployeeID, blnCanExport ? "export" : "view"));
-    } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to open the client format payslip.");
-    } finally {
-      setBlnPayslipLoading(false);
-      setStrActionLoaderLabel("");
-    }
-  }
-
+  // Row click first asks the format and Monthly or Detailed (only the views the user's group holds),
+  // then opens the payslip in a new tab (Print / Download live in that tab's toolbar; the client
+  // format downloads as a PDF); users without export rights get the in-page preview dialog instead.
   async function openPayslipFromRow(dicPayslip: PayslipRunListRecord) {
     if (blnPayslipLoading) return;
-    let strView: PayslipView | null;
+    let strView: PayslipDocumentView | null;
     try {
-      strView = await choosePayslipView({ onOpenClientFormat: () => openClientPayslip(dicPayslip) });
+      strView = await choosePayslipView({ blnClientFormat: true });
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to open payslip.");
       return;
@@ -1992,8 +1978,8 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
                   ? `/reports/payslips/${intPreviewResultID}/tax-information?backRoute=${encodeURIComponent(strPathname)}`
                   : undefined
               }
-              strView={blnCanSwitchPayslipView ? strPayslipView : undefined}
-              onViewChange={blnCanSwitchPayslipView ? changePreviewView : undefined}
+              strView={getPayslipSwitchView(strPayslipView, blnCanSwitchPayslipView)}
+              onViewChange={getPayslipSwitchView(strPayslipView, blnCanSwitchPayslipView) ? changePreviewView : undefined}
               blnViewChanging={blnPayslipLoading}
             />
           ) : null}

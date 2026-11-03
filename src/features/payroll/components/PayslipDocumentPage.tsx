@@ -1,6 +1,7 @@
 "use client";
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import { Alert, Box, Button } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -11,8 +12,9 @@ import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import PayslipHtmlPreview from "@/features/payroll/components/PayslipHtmlPreview";
 import { usePayslipViewChooser } from "@/features/payroll/components/PayslipViewChooser";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
-import { payslipService, type PayslipView } from "@/features/payroll/services/payslipService";
-import { openPayslipPdf } from "@/features/payroll/utils/payslipDocument";
+import { payslipService, type PayslipDocumentView } from "@/features/payroll/services/payslipService";
+import { buildPayslipFileName, downloadPayslipHtml } from "@/features/payroll/utils/payslipDocument";
+import { getPayslipSwitchView } from "@/features/payroll/utils/payslipViewChoice";
 
 type PayslipDocumentPageProps = {
   /** record_uuid from the URL; the internal id is never routed on. */
@@ -28,26 +30,14 @@ export default function PayslipDocumentPage({ strPayslipID, strBackRoute }: Pays
   const [blnLoading, setBlnLoading] = useState(false);
   const [blnChangingView, setBlnChangingView] = useState(false);
   // null until the user answers "which payslip do you want to see?".
-  const [strView, setStrView] = useState<PayslipView | null>(null);
+  const [strView, setStrView] = useState<PayslipDocumentView | null>(null);
   const [intResultID, setIntResultID] = useState<number | null>(null);
   const { choosePayslipView, blnCanSwitchView, objPayslipViewChooser } = usePayslipViewChooser();
   const refViewAsked = useRef(false);
 
-  async function openClientPayslip() {
-    setStrError("");
-    setBlnLoading(true);
-    try {
-      openPayslipPdf(await payslipService.getSavedClientPayslipPdf(strPayslipID));
-    } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : t("unable_to_load_payslip", "Unable to load payslip document."));
-    } finally {
-      setBlnLoading(false);
-    }
-  }
-
   async function askPayslipView() {
     try {
-      const strChosen = await choosePayslipView({ onOpenClientFormat: openClientPayslip });
+      const strChosen = await choosePayslipView({ blnClientFormat: true });
       if (strChosen) {
         setBlnLoading(true);
         setStrView(strChosen);
@@ -123,6 +113,17 @@ export default function PayslipDocumentPage({ strPayslipID, strBackRoute }: Pays
         >
           {t("back_button", "Back")}
         </Button>
+        {strHtml ? (
+          // The client format saves as a PDF, the default format as the page.
+          <Button
+            className={styles.secondaryButton}
+            startIcon={<DownloadRoundedIcon />}
+            onClick={() => downloadPayslipHtml(strHtml, buildPayslipFileName("payslip", strPayslipID))}
+            data-controlid="payslip.document.download.button"
+          >
+            {t("download_button", "Download")}
+          </Button>
+        ) : null}
       </DetailPageHeader>
       {objPayslipViewChooser}
       {strError ? (
@@ -136,9 +137,9 @@ export default function PayslipDocumentPage({ strPayslipID, strBackRoute }: Pays
       ) : (
         <PayslipHtmlPreview
           strHtml={strHtml}
-          strView={blnCanSwitchView && strView ? strView : undefined}
+          strView={getPayslipSwitchView(strView, blnCanSwitchView)}
           blnViewChanging={blnChangingView}
-          onViewChange={blnCanSwitchView ? (strNext) => {
+          onViewChange={getPayslipSwitchView(strView, blnCanSwitchView) ? (strNext) => {
             setBlnChangingView(true);
             setStrView(strNext);
           } : undefined}

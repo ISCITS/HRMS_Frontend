@@ -31,7 +31,8 @@ import { payrollResultService } from "@/features/payroll/services/payrollResultS
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import PayrollJobProgressDialog from "@/features/payroll/components/PayrollJobProgressDialog";
 import { usePayslipGenerationProgress } from "@/features/payroll/hooks/usePayslipGenerationProgress";
-import { payslipService, type PayslipView } from "@/features/payroll/services/payslipService";
+import { payslipService, type PayslipDocumentView } from "@/features/payroll/services/payslipService";
+import { getPayslipTabRequestView } from "@/features/payroll/utils/payslipViewChoice";
 import { usePayslipViewChooser } from "@/features/payroll/components/PayslipViewChooser";
 import PayrollDataChangedNotice from "@/features/payroll/components/PayrollDataChangedNotice";
 import { usePayrollDataFreshness } from "@/features/payroll/hooks/usePayrollDataFreshness";
@@ -43,8 +44,6 @@ import type {
 import {
   buildPayslipFileName,
   downloadPayslipHtml,
-  downloadPayslipPdf,
-  openPayslipPdf,
   printPayslipHtml,
 } from "@/features/payroll/utils/payslipDocument";
 
@@ -405,30 +404,12 @@ export default function PayrollResultListPage({
     [objPreviewRecord]
   );
 
-  async function openClientPayslip(dicRow: PayrollResultListRecord, blnPrint: boolean) {
-    setIntPayslipActionID(dicRow.intID);
-    try {
-      const objPdf = await trackPayslipGeneration(() =>
-        payslipService.getClientPayslipPdf(dicRow.strPayrollRunRecordUUID ?? String(dicRow.intPayrollRunID), dicRow.intEmployeeID, "export")
-      );
-      if (blnPrint) {
-        openPayslipPdf(objPdf);
-      } else {
-        downloadPayslipPdf(objPdf, buildPayslipFileName("payslip", dicRow.strPayslipNumber, dicRow.strEmployeeCode, dicRow.dtPayrollMonth?.slice(0, 7)));
-      }
-    } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to open the client format payslip.");
-    } finally {
-      setIntPayslipActionID(null);
-    }
-  }
-
   async function openPayslipDocument(dicRow: PayrollResultListRecord, blnPrint: boolean) {
     setStrError("");
     // First ask the format, and Monthly or Detailed - only the views the user's group holds.
-    let strPayslipView: PayslipView | null;
+    let strPayslipView: PayslipDocumentView | null;
     try {
-      strPayslipView = await choosePayslipView({ onOpenClientFormat: () => openClientPayslip(dicRow, blnPrint) });
+      strPayslipView = await choosePayslipView({ blnClientFormat: true });
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to open payslip.");
       return;
@@ -441,12 +422,12 @@ export default function PayrollResultListPage({
       // Always the latest figures: built from the processed result until the run is finalized,
       // the saved official copy after - nothing to generate first. With both views allowed the new
       // tab gets the detailed payslip so its own Monthly / Detailed switch works; it opens in the
-      // chosen view.
+      // chosen view. The client format opens as chosen; its Download saves a PDF.
       const strHtml = await trackPayslipGeneration(() =>
         payslipService.getPayslipDocument(
           dicRow.strPayrollRunRecordUUID ?? String(dicRow.intPayrollRunID),
           dicRow.intEmployeeID,
-          blnPrint && blnCanSwitchPayslipView ? "detailed" : strPayslipView,
+          blnPrint ? getPayslipTabRequestView(strPayslipView, blnCanSwitchPayslipView) : strPayslipView,
           "export",
         )
       );

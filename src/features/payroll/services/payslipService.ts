@@ -1,5 +1,5 @@
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
-import { createApiRequestError, requestEncryptedApi, type ApiEnvelope } from "@/Common/utils/apiErrorHandler";
+import { requestEncryptedApi, type ApiEnvelope } from "@/Common/utils/apiErrorHandler";
 import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
 import type {
   PayrollJobStatus,
@@ -61,23 +61,17 @@ function extractHtmlPayload(objData: unknown): string {
 /** Monthly: this month only. Detailed: adds year-to-date and annual tax figures. */
 export type PayslipView = "monthly" | "detailed";
 
-/** Default: the application's payslip page. Client: the client's payslip layout, as a PDF (monthly figures). */
+/** Default: the application's payslip page. Client: the client's payslip layout (monthly figures). */
 export type PayslipFormat = "default" | "client";
 
-async function getPdf(strPath: string, strCsrfMenuAction: string): Promise<Blob> {
-  try {
-    const objResponse = await axiosInstance.get<Blob>(`${ApiRoutePrefix.ApiV1}${strPath}`, {
-      csrfMenuAction: strCsrfMenuAction,
-      responseType: "blob",
-      headers: {
-        Accept: "application/pdf",
-        "x-skip-payload-encryption": "true",
-      },
-    } as ApiRequestConfig);
-    return new Blob([objResponse.data], { type: "application/pdf" });
-  } catch (objError) {
-    throw await createApiRequestError(objError, "Unable to load the client format payslip.");
-  }
+/**
+ * Which payslip page to open: the default format's Monthly / Detailed view, or "client" - the
+ * client format, shown on screen like the default one and downloaded as a PDF.
+ */
+export type PayslipDocumentView = PayslipView | "client";
+
+function buildViewQuery(strView: PayslipDocumentView) {
+  return strView === "client" ? "view=monthly&format=client" : `view=${strView}`;
 }
 
 async function getHtml(strPath: string, strCsrfMenuAction: string): Promise<string> {
@@ -115,30 +109,13 @@ export const payslipService = {
   async getPayslipDocument(
     strRunID: string,
     intEmployeeID: number,
-    strView: PayslipView,
+    strView: PayslipDocumentView,
     strPurpose: "view" | "export" = "view",
   ): Promise<string> {
     return getHtml(
-      `/payroll/runs/${strRunID}/employees/${intEmployeeID}/payslip/document?view=${strView}&purpose=${strPurpose}`,
+      `/payroll/runs/${strRunID}/employees/${intEmployeeID}/payslip/document?${buildViewQuery(strView)}&purpose=${strPurpose}`,
       strPurpose === "export" ? "PAYSLIP_EXPORT" : "PAYSLIP_VIEW",
     );
-  },
-
-  /** The client-format payslip (PDF) of an employee's run, with the same latest figures. */
-  async getClientPayslipPdf(
-    strRunID: string,
-    intEmployeeID: number,
-    strPurpose: "view" | "export" = "export",
-  ): Promise<Blob> {
-    return getPdf(
-      `/payroll/runs/${strRunID}/employees/${intEmployeeID}/payslip/document?view=monthly&purpose=${strPurpose}&format=client`,
-      strPurpose === "export" ? "PAYSLIP_EXPORT" : "PAYSLIP_VIEW",
-    );
-  },
-
-  /** A saved payslip's client-format PDF; the server returns the latest figures if that copy is outdated. */
-  async getSavedClientPayslipPdf(strPayslipID: string): Promise<Blob> {
-    return getPdf(`/payslips/${strPayslipID}/download?view=monthly&format=client`, "PAYSLIP_EXPORT");
   },
 
   async getPayslipPreview(
@@ -209,7 +186,7 @@ export const payslipService = {
   },
 
   /** A saved payslip's page; the server returns the latest figures if that copy is outdated. */
-  async getDownloadHtml(strPayslipID: string, strView: PayslipView = "detailed"): Promise<string> {
-    return getHtml(`/payslips/${strPayslipID}/download?view=${strView}`, "PAYSLIP_EXPORT");
+  async getDownloadHtml(strPayslipID: string, strView: PayslipDocumentView = "detailed"): Promise<string> {
+    return getHtml(`/payslips/${strPayslipID}/download?${buildViewQuery(strView)}`, "PAYSLIP_EXPORT");
   },
 };

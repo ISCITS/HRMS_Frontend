@@ -27,6 +27,7 @@ import { fnfSettlementService } from "@/features/payroll/services/fnfSettlementS
 import type { FNFCalculationValidation, FNFLineFormValues, FNFSettlementFormValues, FNFSettlementLineRecord, FNFSettlementRecord, FNFStatementRecord } from "@/features/payroll/types";
 import { useFNFRights } from "@/features/payroll/hooks/useFNFRights";
 import { printPayslipHtml } from "@/features/payroll/utils/payslipDocument";
+import { useReportFormatChooser } from "@/features/payroll/components/ReportFormatChooser";
 
 function formatDate(strValue?: string | null) {
   if (!strValue) return "-";
@@ -65,6 +66,7 @@ function toSettlementFormValues(objSettlement: FNFSettlementRecord): FNFSettleme
 export default function FNFSettlementDetailPage({ strSettlementID }: { /** record_uuid from the URL; the internal id is never routed on. */ strSettlementID: string }) {
   const objRouter = useRouter();
   const { can } = useFNFRights();
+  const { chooseFormat, objFormatChooser } = useReportFormatChooser();
   const [objSettlement, setObjSettlement] = useState<FNFSettlementRecord | null>(null);
   const [objStatement, setObjStatement] = useState<FNFStatementRecord | null>(null);
   const [objEditingLine, setObjEditingLine] = useState<FNFSettlementLineRecord | null>(null);
@@ -107,6 +109,13 @@ export default function FNFSettlementDetailPage({ strSettlementID }: { /** recor
   useEffect(() => { loadSettlement().catch(() => undefined); }, [strSettlementID]);
 
   function openAction(strAction: string) {
+    if (strAction === "payslip") {
+      // Generate FNF Report: our format or the client's Full and Final Settlement Report.
+      chooseFormat("Generate FNF report")
+        .then((strFormat) => (strFormat ? handleAction(strAction, strFormat) : undefined))
+        .catch(() => undefined);
+      return;
+    }
     const blnNeedsOverrideReason = strAction === "submit-review" && blnHasBlockingValidation;
     if (["release", "cancel", "mark-paid", "mark-recovered"].includes(strAction) || blnNeedsOverrideReason) {
       setStrPendingAction(strAction);
@@ -128,9 +137,11 @@ export default function FNFSettlementDetailPage({ strSettlementID }: { /** recor
         setObjStatement(await fnfSettlementService.getStatement(strSettlementID));
         setStrSuccess("Statement generated.");
       } else if (strAction === "payslip") {
-        const objPayslip = await fnfSettlementService.generatePayslip(strSettlementID);
+        // Generate FNF Report in the format chosen in openAction (both formats are kept with the
+        // version, so either can be opened later from the F&F Payslips tab).
+        const objPayslip = await fnfSettlementService.generatePayslip(strSettlementID, objBody === "client" ? "client" : "default");
         printPayslipHtml(objPayslip.strHtml, objPayslip.strFileName);
-        setStrSuccess(`Payslip ${objPayslip.strPayslipNumber} generated. It is also available in the F&F Payslips tab.`);
+        setStrSuccess(`F&F report ${objPayslip.strPayslipNumber} generated. It is also available in the F&F Payslips tab, in both formats.`);
         await loadSettlement(false);
       } else {
         setObjSettlement(await fnfSettlementService.action(strSettlementID, strAction, objBody));
@@ -334,6 +345,7 @@ export default function FNFSettlementDetailPage({ strSettlementID }: { /** recor
         <DialogContent><Stack spacing={2} sx={{ pt: 1 }}>{["mark-paid", "mark-recovered"].includes(strPendingAction) ? <><TextField label="Date" type="date" InputLabelProps={{ shrink: true }} value={strPaymentDate} onChange={(e) => setStrPaymentDate(e.target.value)} fullWidth controlId="payroll.fnf-settlement-detail.payment-date.input" /><TextField select label="Mode" value={strPaymentMode} onChange={(e) => setStrPaymentMode(e.target.value)} fullWidth controlId="payroll.fnf-settlement-detail.payment-mode.select"><MenuItem value="bank_transfer">Bank Transfer</MenuItem><MenuItem value="cheque">Cheque</MenuItem><MenuItem value="cash">Cash</MenuItem><MenuItem value="adjustment">Adjustment</MenuItem><MenuItem value="other">Other</MenuItem></TextField><TextField label="Reference Number" value={strPaymentReference} onChange={(e) => setStrPaymentReference(e.target.value)} fullWidth controlId="payroll.fnf-settlement-detail.payment-reference.input" /></> : null}<TextField label="Reason / Remarks" value={strReason} onChange={(e) => setStrReason(e.target.value)} fullWidth multiline minRows={3} controlId="payroll.fnf-settlement-detail.reason-remarks.input" /></Stack></DialogContent>
         <DialogActions><Button onClick={() => setStrPendingAction("")} controlId="payroll.fnf-settlement-detail.action-dialog.close.button">Close</Button><Button variant="contained" onClick={() => { if (["mark-paid", "mark-recovered"].includes(strPendingAction) && !strPaymentReference.trim()) { setStrError("Reference number is required."); return; } if (["release", "cancel", "submit-review"].includes(strPendingAction) && !strReason.trim()) { setStrError("Reason is required."); return; } handleAction(strPendingAction, { strRemarks: strReason, strPaymentReferenceNo: strPaymentReference, strPaymentMode, dtPaymentDate: strPaymentDate }).catch(() => undefined); }} controlId="payroll.fnf-settlement-detail.action-dialog.confirm.button">Confirm</Button></DialogActions>
       </Dialog>
+      {objFormatChooser}
       <BlockingLoader blnOpen={blnLoading || blnSaving} strLabel={blnLoading ? "Loading settlement..." : "Saving..."} />
     </Box>
   );

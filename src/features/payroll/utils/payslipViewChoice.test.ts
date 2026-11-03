@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  getPayslipSwitchView,
+  getPayslipTabRequestView,
   getPayslipViewChoice,
   loadAllowedPayslipViews,
   PAYSLIP_FORMAT_OPTIONS,
@@ -31,6 +33,18 @@ describe("payslip view choice", () => {
     // The client format is a monthly payslip: without the Monthly right it is not offered.
     expect(getPayslipViewChoice(["detailed"], true)).toEqual({ strView: "detailed" });
     expect(getPayslipViewChoice([], true)).toBe("none");
+  });
+
+  it("fetches the detailed page for the tab's switch, the client format as chosen", () => {
+    expect(getPayslipTabRequestView("monthly", true)).toBe("detailed");
+    expect(getPayslipTabRequestView("monthly", false)).toBe("monthly");
+    expect(getPayslipTabRequestView("client", true)).toBe("client");
+  });
+
+  it("shows the Monthly / Detailed switch for the default format only", () => {
+    expect(getPayslipSwitchView("monthly", true)).toBe("monthly");
+    expect(getPayslipSwitchView("client", true)).toBeUndefined();
+    expect(getPayslipSwitchView("detailed", false)).toBeUndefined();
   });
 
   it("offers the default format first, then the client format", () => {

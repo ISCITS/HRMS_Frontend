@@ -43,7 +43,8 @@ import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payrollResultService } from "@/features/payroll/services/payrollResultService";
 import PayrollJobProgressDialog from "@/features/payroll/components/PayrollJobProgressDialog";
 import { usePayslipGenerationProgress } from "@/features/payroll/hooks/usePayslipGenerationProgress";
-import { payslipService, type PayslipView } from "@/features/payroll/services/payslipService";
+import { payslipService, type PayslipDocumentView } from "@/features/payroll/services/payslipService";
+import { getPayslipSwitchView, getPayslipTabRequestView } from "@/features/payroll/utils/payslipViewChoice";
 import type {
   PayrollResultDetailRecord,
   WageRulePreviewRecord,
@@ -51,8 +52,6 @@ import type {
 import {
   buildPayslipFileName,
   downloadPayslipHtml,
-  downloadPayslipPdf,
-  openPayslipPdf,
   printPayslipHtml,
 } from "@/features/payroll/utils/payslipDocument";
 
@@ -444,7 +443,7 @@ export default function PayrollResultDetailPage({
   );
   const [objResult, setObjResult] = useState<PayrollResultDetailRecord | null>(null);
   // null until the user answers "which payslip do you want to see?".
-  const [strPayslipView, setStrPayslipView] = useState<PayslipView | null>(null);
+  const [strPayslipView, setStrPayslipView] = useState<PayslipDocumentView | null>(null);
   const { choosePayslipView, blnCanSwitchView: blnCanSwitchPayslipView, objPayslipViewChooser } = usePayslipViewChooser();
   const refPayslipViewAsked = useRef(false);
   const [strPayslipPreviewHtml, setStrPayslipPreviewHtml] = useState("");
@@ -495,31 +494,9 @@ export default function PayrollResultDetailPage({
   const strPayslipRunID = objResult ? objResult.strPayrollRunRecordUUID ?? String(objResult.intPayrollRunID) : "";
   const intPayslipEmployeeID = objResult?.intEmployeeID ?? 0;
 
-  async function openClientPayslip(blnPrint: boolean) {
-    if (!strPayslipRunID || !intPayslipEmployeeID) {
-      return;
-    }
-    setBlnPayslipLoading(true);
-    setStrError("");
+  async function askPayslipView(): Promise<PayslipDocumentView | null> {
     try {
-      const objPdf = await trackPayslipGeneration(() =>
-        payslipService.getClientPayslipPdf(strPayslipRunID, intPayslipEmployeeID, blnCanUsePayslipDocumentActions ? "export" : "view")
-      );
-      if (blnPrint) {
-        openPayslipPdf(objPdf);
-      } else {
-        downloadPayslipPdf(objPdf, buildPayslipFileName("payslip", objResult?.strPayslipNumber, objResult?.strEmployeeCode, objResult?.dtPayrollMonth?.slice(0, 7)));
-      }
-    } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to open the client format payslip.");
-    } finally {
-      setBlnPayslipLoading(false);
-    }
-  }
-
-  async function askPayslipView(blnPrint = true): Promise<PayslipView | null> {
-    try {
-      const strChosen = await choosePayslipView({ onOpenClientFormat: () => openClientPayslip(blnPrint) });
+      const strChosen = await choosePayslipView({ blnClientFormat: true });
       if (strChosen) {
         setStrPayslipView(strChosen);
       }
@@ -600,7 +577,7 @@ export default function PayrollResultDetailPage({
   // the detailed payslip so its own Monthly / Detailed switch works; it opens in the chosen view.
   async function openGeneratedPayslip(blnPrint: boolean) {
     setStrError("");
-    const strView = strPayslipView ?? (await askPayslipView(blnPrint));
+    const strView = strPayslipView ?? (await askPayslipView());
     if (!strView) {
       return;
     }
@@ -610,7 +587,7 @@ export default function PayrollResultDetailPage({
         payslipService.getPayslipDocument(
           objResult!.strPayrollRunRecordUUID ?? String(objResult!.intPayrollRunID),
           objResult!.intEmployeeID,
-          blnPrint && blnCanSwitchPayslipView ? "detailed" : strView,
+          blnPrint ? getPayslipTabRequestView(strView, blnCanSwitchPayslipView) : strView,
           "export",
         )
       );
@@ -958,8 +935,8 @@ export default function PayrollResultDetailPage({
               <PayslipHtmlPreview
                 strHtml={strPayslipPreviewHtml}
                 strTaxInformationUrl={strTaxInformationHref}
-                strView={blnCanSwitchPayslipView && strPayslipView ? strPayslipView : undefined}
-                onViewChange={blnCanSwitchPayslipView ? setStrPayslipView : undefined}
+                strView={getPayslipSwitchView(strPayslipView, blnCanSwitchPayslipView)}
+                onViewChange={getPayslipSwitchView(strPayslipView, blnCanSwitchPayslipView) ? setStrPayslipView : undefined}
                 blnViewChanging={blnPayslipLoading}
               />
             </Paper>

@@ -1,13 +1,26 @@
-import type { PayslipFormat, PayslipView } from "@/features/payroll/services/payslipService";
+import type { PayslipDocumentView, PayslipFormat, PayslipView } from "@/features/payroll/services/payslipService";
 
 export const PAYSLIP_FORMAT_OPTIONS: Array<{ strFormat: PayslipFormat; strLabel: string; strDescription: string }> = [
   { strFormat: "default", strLabel: "Default format", strDescription: "The application's payslip, monthly or with year-to-date figures." },
   {
     strFormat: "client",
-    strLabel: "Client format (PDF)",
-    strDescription: "The client's payslip layout: each head with rate, current, arrears and adjustment. Opens as a PDF to print or download.",
+    strLabel: "Client format",
+    strDescription: "The client's payslip layout: each head with rate, current, arrears and adjustment. Download saves it as a PDF.",
   },
 ];
+
+/**
+ * The page to fetch for the payslip tab: with both views allowed the default format comes as the
+ * detailed payslip, so the tab's own Monthly / Detailed switch works; the client format as chosen.
+ */
+export function getPayslipTabRequestView(strView: PayslipDocumentView, blnCanSwitchView: boolean): PayslipDocumentView {
+  return strView !== "client" && blnCanSwitchView ? "detailed" : strView;
+}
+
+/** The Monthly / Detailed switch above an on-screen payslip: the default format's views only. */
+export function getPayslipSwitchView(strView: PayslipDocumentView | null | undefined, blnCanSwitchView: boolean): PayslipView | undefined {
+  return blnCanSwitchView && strView && strView !== "client" ? strView : undefined;
+}
 
 /** The client format is a monthly payslip, so it is offered with the Monthly view right. */
 export function canUseClientPayslipFormat(lstViews: PayslipView[]) {

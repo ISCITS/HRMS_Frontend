@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
@@ -16,6 +16,8 @@ import { useFNFRights } from "@/features/payroll/hooks/useFNFRights";
 import { fnfSettlementService } from "@/features/payroll/services/fnfSettlementService";
 import type { FNFPayslipDocument, FNFPayslipEmployeeOption, FNFPayslipRecord, FNFRegularPayslipRecord } from "@/features/payroll/types";
 import { downloadPayslipHtml, printPayslipHtml } from "@/features/payroll/utils/payslipDocument";
+import { useReportFormatChooser } from "@/features/payroll/components/ReportFormatChooser";
+import type { PayslipFormat } from "@/features/payroll/services/payslipService";
 
 type PeriodPreset = "1" | "3" | "6" | "custom";
 const dicEmptySearch = { intEmployeeID: 0, strVersion: "latest", strGeneratedFrom: "", strGeneratedTo: "" };
@@ -46,6 +48,7 @@ function statusPill(strStatus: string) {
 
 export default function FNFPayslipsPage() {
   const { blnLoading: blnRightsLoading, can, canView } = useFNFRights();
+  const { chooseFormat, objFormatChooser } = useReportFormatChooser();
   const blnCanView = canView();
   const blnCanExport = can("export");
   const [lstEmployees, setLstEmployees] = useState<FNFPayslipEmployeeOption[]>([]);
@@ -114,12 +117,16 @@ export default function FNFPayslipsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [objSelectedEmployee, strFromMonth, strToMonth]);
 
-  async function runDocument(fnLoad: () => Promise<FNFPayslipDocument>, blnDownload: boolean) {
+  // Every open / download first asks the format: ours, or the client's (F&F report and client-format
+  // payslip; Download then saves a PDF).
+  async function runDocument(fnLoad: (strFormat: PayslipFormat) => Promise<FNFPayslipDocument>, blnDownload: boolean) {
+    const strFormat = await chooseFormat(blnDownload ? "Download" : "Open");
+    if (!strFormat) return;
     setBlnBusy(true);
     setStrError("");
     setStrInfo("");
     try {
-      const objDocument = await fnLoad();
+      const objDocument = await fnLoad(strFormat);
       if (blnDownload) downloadPayslipHtml(objDocument.strHtml, objDocument.strFileName);
       else printPayslipHtml(objDocument.strHtml, objDocument.strFileName);
     } catch (objError) {
@@ -130,7 +137,7 @@ export default function FNFPayslipsPage() {
   }
 
   function downloadSelection(lstFNF: string[], lstRegularIDs: string[]) {
-    runDocument(() => fnfSettlementService.getPayslipBundle(lstFNF, lstRegularIDs), true).catch(() => undefined);
+    runDocument((strFormat) => fnfSettlementService.getPayslipBundle(lstFNF, lstRegularIDs, strFormat), true).catch(() => undefined);
   }
 
   function toggle(lstCurrent: string[], strID: string) {
@@ -150,7 +157,7 @@ export default function FNFPayslipsPage() {
         onClick={(objEvent) => {
           objEvent.stopPropagation();
           if (window.getSelection()?.toString()) return;
-          runDocument(() => fnfSettlementService.getPayslipDocument(objRow.strRecordUUID), false).catch(() => undefined);
+          runDocument((strFormat) => fnfSettlementService.getPayslipDocument(objRow.strRecordUUID, strFormat), false).catch(() => undefined);
         }}>
         {objRow.strPayslipNumber}
       </Link>
@@ -197,7 +204,7 @@ export default function FNFPayslipsPage() {
         onClick={(objEvent) => {
           objEvent.stopPropagation();
           if (window.getSelection()?.toString()) return;
-          runDocument(() => fnfSettlementService.getRegularPayslipDocument(objRow.strRecordUUID), false).catch(() => undefined);
+          runDocument((strFormat) => fnfSettlementService.getRegularPayslipDocument(objRow.strRecordUUID, strFormat), false).catch(() => undefined);
         }}>
         {objRow.strPayslipNumber}
       </Link>
@@ -279,7 +286,7 @@ export default function FNFPayslipsPage() {
             showPaginationSummary
             hideRowClickHint
             minTableWidth={1100}
-            emptyMessage="No F&F payslips yet. Open a calculated settlement and click Generate Payslip."
+            emptyMessage="No F&F reports yet. Open a calculated settlement and click Generate FNF Report."
             className="app-master-common-table-reset"
           />
         )}
@@ -336,7 +343,8 @@ export default function FNFPayslipsPage() {
       ) : (
         <Typography sx={{ color: "#64748b", mt: 2 }}>Select an employee and click Search to also see their regular payslips before resignation.</Typography>
       )}
-      <BlockingLoader blnOpen={blnBusy} strLabel="Preparing payslip..." />
+      {objFormatChooser}
+      <BlockingLoader blnOpen={blnBusy} strLabel="Preparing report..." />
     </Box>
   );
 }
