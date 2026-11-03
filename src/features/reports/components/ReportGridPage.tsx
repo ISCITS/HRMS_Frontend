@@ -450,7 +450,7 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
           toolbarLeft={(
             <Box className={payrollStyles.listUtilityActions} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               {canDoAny("export") ? (
-                <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} disabled={blnExporting} onClick={exportCsv} data-controlid={`reports.${objProps.strCsvFileName}.export.button`}>Export CSV</Button>
+                <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} disabled={blnExporting} onClick={exportCsv} data-controlid={`reports.${objProps.strCsvFileName}.export.button`}>Export Excel</Button>
               ) : null}
               {objProps.blnSelectable && lstSelectedIds.length > 0 ? (
                 <>

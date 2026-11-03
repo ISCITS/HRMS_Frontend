@@ -114,7 +114,6 @@ export default function LeaveBalanceReportPage() {
       strInfo={t("leave_balance_info", "Current leave balances by type — opening, entitlement, accrued, carry forward, adjustments, utilised, hold, lapsed, encashed and available.")}
       lstColumns={lstColumns}
       lstFilters={lstFilters}
-      blnSelectable
       strRowIdField="__rowid"
       strCsvFileName="Leave_Balance_Report"
       lstRightsHints={["REPORTS_LEAVE_BALANCE", "REPORTS"]}
