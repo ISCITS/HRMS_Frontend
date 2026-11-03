@@ -1,5 +1,7 @@
 export type LeavePlanItem = {
   intID?: number;
+  /** Server-assigned row identity; read-only, stripped before save. */
+  strRecordUUID?: string | null;
   intLeaveTypeID: number;
   // Resolved server-side from Leave Type + plan effective date; the UI no longer selects it.
   intLeavePolicyID: number | null;
@@ -17,6 +19,8 @@ export type LeavePlanItem = {
 
 export type LeavePlanText = {
   intID?: number;
+  /** Server-assigned row identity; read-only, stripped before save. */
+  strRecordUUID?: string | null;
   intLanguageID: number;
   strPlanName: string;
   strDescription: string | null;

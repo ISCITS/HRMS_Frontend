@@ -199,14 +199,15 @@ export default function LeavePlanEditorPage({ strMode, strPlanID, strReturnTo }:
       strPlanCode: objValues.strPlanCode.trim().toUpperCase(), strPlanName: objValues.strPlanName.trim(), strDescription: objValues.strDescription.trim() || null,
       strCountryCode: objValues.strCountryCode.trim().toUpperCase(), dtEffectiveFrom: objValues.dtEffectiveFrom, dtEffectiveTo: objValues.dtEffectiveTo || null,
       blnIsDefault: objValues.blnIsDefault, blnIsActive: objValues.blnIsActive, intVersionNo: objValues.intVersionNo, strRemarks: objValues.strRemarks.trim() || null,
-      // Strip the DB-row intID and the server-computed base snapshot from items — the backend item
-      // schema forbids extra inputs (policy is resolved server-side, snapshot captured on save).
-      lstItems: objValues.lstItems.map(({ intID: _intItemID, decBaseEntitlementSnapshot: _decBaseSnapshot, strOverrideReason, ...objItem }) => ({
+      // Strip the DB-row intID, the server-assigned strRecordUUID and the server-computed base snapshot
+      // from items — the backend item schema forbids extra inputs (policy is resolved server-side,
+      // snapshot captured on save).
+      lstItems: objValues.lstItems.map(({ intID: _intItemID, strRecordUUID: _strItemUUID, decBaseEntitlementSnapshot: _decBaseSnapshot, strOverrideReason, ...objItem }) => ({
         ...objItem,
         intLeavePolicyID: objItem.intLeavePolicyID || null,
         strOverrideReason: objItem.blnIsEntitlementOverride ? (strOverrideReason?.trim() || null) : null,
       })),
-      lstText: objValues.lstText.map(({ intID: _intTextID, ...objText }) => ({ ...objText, strPlanName: objText.strPlanName.trim(), strDescription: objText.strDescription.trim() || null })),
+      lstText: objValues.lstText.map(({ intID: _intTextID, strRecordUUID: _strTextUUID, ...objText }) => ({ ...objText, strPlanName: objText.strPlanName.trim(), strDescription: objText.strDescription.trim() || null })),
     };
     try {
       await savePlan(objPayload);
