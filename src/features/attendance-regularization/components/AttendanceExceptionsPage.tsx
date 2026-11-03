@@ -586,6 +586,7 @@ export default function AttendanceExceptionsPage() {
               <Button
                 data-control-id="attendance-exceptions.search.button"
                 className={styles.primaryButton}
+                size="small"
                 startIcon={<SearchRoundedIcon />}
                 onClick={() => {
                   void loadQueue();
@@ -596,6 +597,7 @@ export default function AttendanceExceptionsPage() {
               <Button
                 data-control-id="attendance-exceptions.clear.button"
                 className={styles.secondaryButton}
+                size="small"
                 startIcon={<ClearRoundedIcon />}
                 onClick={clearFilters}
               >

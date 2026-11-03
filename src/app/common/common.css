@@ -912,7 +912,12 @@
 }
 
 .app-mui-text-field .MuiFormLabel-asterisk {
-  color: var(--app-field-error-color);
+  color: #dc2626;
+}
+
+.app-theme .MuiFormLabel-asterisk,
+.app-theme .MuiInputLabel-asterisk {
+  color: #dc2626;
 }
 
 .app-mui-text-field .MuiInputLabel-root {
