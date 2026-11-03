@@ -138,10 +138,10 @@ export default function FNFSettlementDetailPage({ strSettlementID }: { /** recor
         setStrSuccess("Statement generated.");
       } else if (strAction === "payslip") {
         // Generate FNF Report in the format chosen in openAction (both formats are kept with the
-        // version, so either can be opened later from the F&F Payslips tab).
+        // version, so either can be opened later from the F&F Reports tab).
         const objPayslip = await fnfSettlementService.generatePayslip(strSettlementID, objBody === "client" ? "client" : "default");
         printPayslipHtml(objPayslip.strHtml, objPayslip.strFileName);
-        setStrSuccess(`F&F report ${objPayslip.strPayslipNumber} generated. It is also available in the F&F Payslips tab, in both formats.`);
+        setStrSuccess(`F&F report ${objPayslip.strPayslipNumber} generated. It is also available in the F&F Reports tab, in both formats.`);
         await loadSettlement(false);
       } else {
         setObjSettlement(await fnfSettlementService.action(strSettlementID, strAction, objBody));

@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 const lstTabs = [
   { strCode: "settlements", strLabel: "Settlements", strRoute: "/payroll/fnf-settlements" },
   { strCode: "register", strLabel: "F&F Register", strRoute: "/payroll/fnf-settlements/register" },
-  { strCode: "payslips", strLabel: "F&F Payslips", strRoute: "/payroll/fnf-settlements/payslips" },
-  { strCode: "report", strLabel: "F&F Report", strRoute: "/payroll/fnf-settlements/report" },
+  { strCode: "payslips", strLabel: "F&F Reports", strRoute: "/payroll/fnf-settlements/payslips" },
+  { strCode: "report", strLabel: "F&F Register Report", strRoute: "/payroll/fnf-settlements/report" },
 ] as const;
 
 export type FNFModuleTabCode = (typeof lstTabs)[number]["strCode"];

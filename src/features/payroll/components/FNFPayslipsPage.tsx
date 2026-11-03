@@ -85,7 +85,7 @@ export default function FNFPayslipsPage() {
       generated_from: dicSearchApplied.strGeneratedFrom, generated_to: dicSearchApplied.strGeneratedTo,
     })
       .then(setLstPayslips)
-      .catch((objError) => setStrError(objError instanceof Error ? objError.message : "Unable to load F&F payslips."))
+      .catch((objError) => setStrError(objError instanceof Error ? objError.message : "Unable to load F&F reports."))
       .finally(() => setBlnLoading(false));
   }, [blnRightsLoading, blnCanView, dicSearchApplied]);
 
@@ -130,7 +130,7 @@ export default function FNFPayslipsPage() {
       if (blnDownload) downloadPayslipHtml(objDocument.strHtml, objDocument.strFileName);
       else printPayslipHtml(objDocument.strHtml, objDocument.strFileName);
     } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to open the payslip.");
+      setStrError(objError instanceof Error ? objError.message : "Unable to open the document.");
     } finally {
       setBlnBusy(false);
     }
@@ -146,7 +146,7 @@ export default function FNFPayslipsPage() {
 
   const strLatestFNFForEmployee = useMemo(() => lstPayslips.find((objRow) => objRow.intEmployeeID === objSelectedEmployee?.intEmployeeID && objRow.strPayslipStatus !== "Superseded")?.strRecordUUID, [lstPayslips, objSelectedEmployee]);
 
-  // ------------------------------------------------------------------ F&F payslips grid
+  // ------------------------------------------------------------------ F&F reports grid
   const lstFNFRows = useMemo(() => lstPayslips.map((objRow) => ({
     id: objRow.strRecordUUID,
     select: <Checkbox inputProps={{ "controlId": "payroll.fnf-payslips.list.row.select.checkbox", "data-row-key": objRow.strRecordUUID } as InputHTMLAttributes<HTMLInputElement>} checked={lstSelectedFNF.includes(objRow.strRecordUUID)} onChange={() => setLstSelectedFNF((lstCurrent) => toggle(lstCurrent, objRow.strRecordUUID))} />,
@@ -182,7 +182,7 @@ export default function FNFPayslipsPage() {
       headerName: <Checkbox inputProps={{ "controlId": "payroll.fnf-payslips.list.select-all.checkbox" } as InputHTMLAttributes<HTMLInputElement>} checked={blnAllFNFSelected} indeterminate={lstSelectedFNF.length > 0 && !blnAllFNFSelected} onChange={() => setLstSelectedFNF(blnAllFNFSelected ? [] : lstFNFRows.map((objRow) => objRow.id))} disabled={!lstFNFRows.length} />,
       sortable: false, filterable: false, exportable: false, width: 56,
     },
-    { field: "payslipNumber", headerName: "Payslip No.", sortAccessor: (row) => row.payslipNumberText },
+    { field: "payslipNumber", headerName: "Report No.", sortAccessor: (row) => row.payslipNumberText },
     { field: "employeeName", headerName: "Employee Name" },
     { field: "employeeCode", headerName: "Employee Code" },
     { field: "department", headerName: "Department" },
@@ -236,11 +236,11 @@ export default function FNFPayslipsPage() {
     { field: "status", headerName: "Status", sortable: false, filterable: false },
   ], [blnAllRegularSelected, lstRegularRows, lstSelectedRegular.length]);
 
-  if (!blnRightsLoading && !blnCanView) return <Alert severity="error">You do not have access to F&amp;F payslips.</Alert>;
+  if (!blnRightsLoading && !blnCanView) return <Alert severity="error">You do not have access to F&amp;F reports.</Alert>;
 
   return (
     <Box className={`${styles.page} app-master-page-relative`} data-controlid="payroll.fnf-payslips.page">
-      <MasterBreadcrumbs strSection="Employee Services" strTitle="F&F Payslips" />
+      <MasterBreadcrumbs strSection="Employee Services" strTitle="F&F Reports" />
       <FNFModuleTabs strActive="payslips" />
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {strInfo ? <Alert severity="info">{strInfo}</Alert> : null}
@@ -279,7 +279,7 @@ export default function FNFPayslipsPage() {
             columns={lstFNFColumns}
             rows={lstFNFRows}
             rowIdField="id"
-            exportFileName="fnf_payslips"
+            exportFileName="fnf_reports"
             exportButtonClassName="app-btn app-btn-outline"
             showExportOptions={blnCanExport}
             testIdPrefix="payroll.fnf-payslips.list"
@@ -317,7 +317,7 @@ export default function FNFPayslipsPage() {
               <Button data-control-id="payroll.fnf-payslips.regular.download-selected.button" className="app-btn app-btn-outline" startIcon={<DownloadRoundedIcon />} onClick={() => downloadSelection([], lstSelectedRegular)} disabled={blnBusy || !lstSelectedRegular.length}>Download Selected</Button>
               <Button data-control-id="payroll.fnf-payslips.regular.download-all.button" className="app-btn app-btn-outline" startIcon={<DownloadRoundedIcon />} onClick={() => downloadSelection([], lstRegularRows.map((objRow) => objRow.id))} disabled={blnBusy}>Download All</Button>
               {strLatestFNFForEmployee ? (
-                <Button data-control-id="payroll.fnf-payslips.regular.download-with-fnf.button" className="app-btn app-btn-primary" startIcon={<DownloadRoundedIcon />} onClick={() => downloadSelection([strLatestFNFForEmployee], lstSelectedRegular.length ? lstSelectedRegular : lstRegularRows.map((objRow) => objRow.id))} disabled={blnBusy}>Download with F&amp;F Payslip</Button>
+                <Button data-control-id="payroll.fnf-payslips.regular.download-with-fnf.button" className="app-btn app-btn-primary" startIcon={<DownloadRoundedIcon />} onClick={() => downloadSelection([strLatestFNFForEmployee], lstSelectedRegular.length ? lstSelectedRegular : lstRegularRows.map((objRow) => objRow.id))} disabled={blnBusy}>Download with F&amp;F Report</Button>
               ) : null}
             </Box>
           ) : null}

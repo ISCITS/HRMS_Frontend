@@ -6,7 +6,7 @@ import { useCallback, useRef, useState } from "react";
 import type { PayslipFormat } from "@/features/payroll/services/payslipService";
 
 export const FNF_REPORT_FORMAT_OPTIONS: Array<{ strFormat: PayslipFormat; strLabel: string; strDescription: string }> = [
-  { strFormat: "default", strLabel: "Our format", strDescription: "The application's F&F payslip with this settlement's earnings, deductions and net amount." },
+  { strFormat: "default", strLabel: "Our format", strDescription: "The application's F&F report with this settlement's earnings, deductions and net amount." },
   {
     strFormat: "client",
     strLabel: "Client format",

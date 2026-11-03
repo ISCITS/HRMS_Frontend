@@ -557,7 +557,7 @@ export type FNFPayslipRecord = {
   dtGeneratedOn: string;
 };
 
-/** Employee with an F&F settlement, for the F&F Payslips filters. */
+/** Employee with an F&F settlement, for the F&F Reports filters. */
 export type FNFPayslipEmployeeOption = {
   intEmployeeID: number;
   strEmployeeCode: string;
