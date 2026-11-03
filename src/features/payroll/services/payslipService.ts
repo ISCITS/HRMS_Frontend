@@ -61,6 +61,19 @@ function extractHtmlPayload(objData: unknown): string {
 /** Monthly: this month only. Detailed: adds year-to-date and annual tax figures. */
 export type PayslipView = "monthly" | "detailed";
 
+/** Default: the application's payslip page. Client: the client's payslip layout (monthly figures). */
+export type PayslipFormat = "default" | "client";
+
+/**
+ * Which payslip page to open: the default format's Monthly / Detailed view, or "client" - the
+ * client format, shown on screen like the default one and downloaded as a PDF.
+ */
+export type PayslipDocumentView = PayslipView | "client";
+
+function buildViewQuery(strView: PayslipDocumentView) {
+  return strView === "client" ? "view=monthly&format=client" : `view=${strView}`;
+}
+
 async function getHtml(strPath: string, strCsrfMenuAction: string): Promise<string> {
   const objResponse = await axiosInstance.get(`${ApiRoutePrefix.ApiV1}${strPath}`, {
     csrfMenuAction: strCsrfMenuAction,
@@ -96,11 +109,11 @@ export const payslipService = {
   async getPayslipDocument(
     strRunID: string,
     intEmployeeID: number,
-    strView: PayslipView,
+    strView: PayslipDocumentView,
     strPurpose: "view" | "export" = "view",
   ): Promise<string> {
     return getHtml(
-      `/payroll/runs/${strRunID}/employees/${intEmployeeID}/payslip/document?view=${strView}&purpose=${strPurpose}`,
+      `/payroll/runs/${strRunID}/employees/${intEmployeeID}/payslip/document?${buildViewQuery(strView)}&purpose=${strPurpose}`,
       strPurpose === "export" ? "PAYSLIP_EXPORT" : "PAYSLIP_VIEW",
     );
   },
@@ -173,7 +186,7 @@ export const payslipService = {
   },
 
   /** A saved payslip's page; the server returns the latest figures if that copy is outdated. */
-  async getDownloadHtml(strPayslipID: string, strView: PayslipView = "detailed"): Promise<string> {
-    return getHtml(`/payslips/${strPayslipID}/download?view=${strView}`, "PAYSLIP_EXPORT");
+  async getDownloadHtml(strPayslipID: string, strView: PayslipDocumentView = "detailed"): Promise<string> {
+    return getHtml(`/payslips/${strPayslipID}/download?${buildViewQuery(strView)}`, "PAYSLIP_EXPORT");
   },
 };

@@ -59,23 +59,36 @@ export type ReportGridPageProps = {
 const lstRowsPerPageOptions = [10, 20, 50];
 const SELECT_FIELD = "__select";
 
-function toCsvValue(objValue: unknown) {
-  return `"${String(objValue ?? "").replace(/"/g, '""')}"`;
-}
-
 function csvTimestamp() {
   const objNow = new Date();
   const fnPad = (intValue: number) => String(intValue).padStart(2, "0");
   return `${objNow.getFullYear()}${fnPad(objNow.getMonth() + 1)}${fnPad(objNow.getDate())}_${fnPad(objNow.getHours())}${fnPad(objNow.getMinutes())}${fnPad(objNow.getSeconds())}`;
 }
 
-function downloadCsv(strFileName: string, lstColumns: CommonTableColumn<ReportDisplayRow>[], lstRows: ReportDisplayRow[]) {
+async function downloadExcel(strFileName: string, lstColumns: CommonTableColumn<ReportDisplayRow>[], lstRows: ReportDisplayRow[]) {
   const lstExportColumns = lstColumns.filter((objColumn) => objColumn.field && objColumn.field !== SELECT_FIELD && objColumn.exportable !== false);
-  const lstLines = [
-    lstExportColumns.map((objColumn) => toCsvValue(objColumn.headerName)).join(","),
-    ...lstRows.map((dicRow) => lstExportColumns.map((objColumn) => toCsvValue(csvCellText(dicRow[objColumn.field as string]))).join(",")),
-  ];
-  const objBlob = new Blob(["﻿" + lstLines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const { Workbook } = await import("exceljs");
+  const objWorkbook = new Workbook();
+  const objSheet = objWorkbook.addWorksheet("Report");
+  objSheet.columns = lstExportColumns.map((objColumn) => ({ width: Math.max(12, Math.round((objColumn.width ?? 120) / 7)) }));
+  const objHeaderRow = objSheet.addRow(lstExportColumns.map((objColumn) => String(objColumn.headerName ?? "")));
+  objHeaderRow.font = { bold: true };
+  objHeaderRow.alignment = { vertical: "middle", wrapText: true };
+  objHeaderRow.eachCell((objCell) => { objCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE8F0FB" } }; });
+  lstRows.forEach((dicRow) => {
+    objSheet.addRow(lstExportColumns.map((objColumn) => {
+      const strText = csvCellText(dicRow[objColumn.field as string]);
+      // Right-aligned columns are numeric: write real numbers (drop the en-IN thousands separators).
+      if (objColumn.align === "right") {
+        const strNumber = strText.replace(/,/g, "");
+        if (/^-?\d+(\.\d+)?$/.test(strNumber)) return Number(strNumber);
+      }
+      return strText;
+    }));
+  });
+  objSheet.views = [{ state: "frozen", ySplit: 1 }];
+  const objBuffer = await objWorkbook.xlsx.writeBuffer();
+  const objBlob = new Blob([objBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
   const strUrl = URL.createObjectURL(objBlob);
   const objLink = document.createElement("a");
   objLink.href = strUrl;
@@ -279,14 +292,16 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
     });
   }, [lstRows, objProps.blnSelectable, objProps.strRowIdField, setSelectedIds, toggleOne]);
 
-  function exportCsv() {
+  async function exportCsv() {
     if (blnExporting) return; // guard against duplicate export while running
     setBlnExporting(true);
     try {
       const lstToExport = lstSelectedIds.length > 0
         ? lstRows.filter((dicRow) => setSelectedIds.has(String(dicRow[objProps.strRowIdField])))
         : lstRows;
-      downloadCsv(`${objProps.strCsvFileName}_${csvTimestamp()}.csv`, objProps.lstColumns, lstToExport);
+      await downloadExcel(`${objProps.strCsvFileName}_${csvTimestamp()}.xlsx`, objProps.lstColumns, lstToExport);
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to export this report.");
     } finally {
       setBlnExporting(false);
     }
@@ -450,7 +465,7 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
           toolbarLeft={(
             <Box className={payrollStyles.listUtilityActions} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               {canDoAny("export") ? (
-                <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} disabled={blnExporting} onClick={exportCsv} data-controlid={`reports.${objProps.strCsvFileName}.export.button`}>Export CSV</Button>
+                <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} disabled={blnExporting} onClick={exportCsv} data-controlid={`reports.${objProps.strCsvFileName}.export.button`}>Export Excel</Button>
               ) : null}
               {objProps.blnSelectable && lstSelectedIds.length > 0 ? (
                 <>

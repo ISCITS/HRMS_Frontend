@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
@@ -78,8 +78,8 @@ const lstOptionalColumns: MasterOptionalColumn<OptionalKey>[] = [
   { strKey: "approvedOn", strLabel: "Approved On" },
   { strKey: "paidOn", strLabel: "Paid On" },
   { strKey: "paymentReference", strLabel: "Payment Reference" },
-  { strKey: "payslipNumber", strLabel: "F&F Payslip No." },
-  { strKey: "payslipStatus", strLabel: "F&F Payslip Status" },
+  { strKey: "payslipNumber", strLabel: "F&F Report No." },
+  { strKey: "payslipStatus", strLabel: "F&F Report Status" },
   { strKey: "createdOn", strLabel: "Created On" },
 ];
 
@@ -235,7 +235,7 @@ export default function FNFReportPage() {
       employee_id: dicSearchApplied.intEmployeeID || "", department: dicSearchApplied.strDepartment.trim(),
     })
       .then((objResponse) => { setLstRows(objResponse.lstRows); setDicTotals(objResponse.dicTotals || {}); })
-      .catch((objError) => setStrError(objError instanceof Error ? objError.message : "Unable to load the F&F report."))
+      .catch((objError) => setStrError(objError instanceof Error ? objError.message : "Unable to load the F&F register report."))
       .finally(() => setBlnLoading(false));
   }, [blnRightsLoading, blnCanView, dicSearchApplied]);
 
@@ -313,11 +313,11 @@ export default function FNFReportPage() {
     return [...lstDefault, ...lstOptional];
   }, [lstVisibleOptional, dicRowsByID]);
 
-  if (!blnRightsLoading && !blnCanView) return <Alert severity="error">You do not have access to the F&amp;F report.</Alert>;
+  if (!blnRightsLoading && !blnCanView) return <Alert severity="error">You do not have access to the F&amp;F register report.</Alert>;
 
   return (
     <Box className={`${styles.page} app-master-page-relative`} data-controlid="payroll.fnf-report.page">
-      <MasterBreadcrumbs strSection="Employee Services" strTitle="F&F Report" />
+      <MasterBreadcrumbs strSection="Employee Services" strTitle="F&F Register Report" />
       <FNFModuleTabs strActive="report" />
       {strError ? <Alert severity="error">{strError}</Alert> : null}
 
@@ -358,7 +358,7 @@ export default function FNFReportPage() {
             columns={lstColumns}
             rows={lstTableRows}
             rowIdField="id"
-            exportFileName="fnf_report"
+            exportFileName="fnf_register_report"
             exportButtonClassName="app-btn app-btn-outline"
             showExportOptions={blnCanExport}
             testIdPrefix="payroll.fnf-report.list"

@@ -607,9 +607,9 @@ export default function AttendanceRegularizationPage() {
         ) : null}
       </Stack>
       <Paper className={styles.controlsCard} sx={{ pt: "0 !important", pb: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
-        <Tabs value={intTab} onChange={(_, intValue) => setIntTab(intValue)}>
-          <Tab data-control-id="attendance-regularization.new-request.tab" label={t("new_request_tab", "New Request")} />
-          <Tab data-control-id="attendance-regularization.my-requests.tab" label={t("my_requests_tab", "My Requests")} />
+        <Tabs className="app-employee-tabs" value={intTab} onChange={(_, intValue) => setIntTab(intValue)}>
+          <Tab data-control-id="attendance-regularization.new-request.tab" label={<Box component="span" className="app-employee-tab-label">{t("new_request_tab", "New Request")}</Box>} />
+          <Tab data-control-id="attendance-regularization.my-requests.tab" label={<Box component="span" className="app-employee-tab-label">{t("my_requests_tab", "My Requests")}</Box>} />
         </Tabs>
       </Paper>
       {strError ? <Alert severity="error">{strError}</Alert> : null}
@@ -793,8 +793,8 @@ export default function AttendanceRegularizationPage() {
               </Grid>
               <Grid item xs={12} md={3}>
                 <Stack direction="row" spacing={1} className={styles.filterActions}>
-                  <Button fullWidth data-control-id="attendance-regularization.requests.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setStrAppliedRequestSearch(strRequestSearch); setStrAppliedRequestStatus(strRequestStatusFilter); setStrAppliedFromDate(strRequestFromDate); setStrAppliedToDate(strRequestToDate); }}>{t("search", "Search")}</Button>
-                  <Button fullWidth data-control-id="attendance-regularization.requests.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setStrRequestSearch(""); setStrRequestStatusFilter(""); setStrAppliedRequestSearch(""); setStrAppliedRequestStatus(""); setStrRequestFromDate(""); setStrRequestToDate(""); setStrAppliedFromDate(""); setStrAppliedToDate(""); }}>{t("clear", "Clear")}</Button>
+                  <Button fullWidth data-control-id="attendance-regularization.requests.search.button" className={styles.primaryButton} size="small" startIcon={<SearchRoundedIcon />} onClick={() => { setStrAppliedRequestSearch(strRequestSearch); setStrAppliedRequestStatus(strRequestStatusFilter); setStrAppliedFromDate(strRequestFromDate); setStrAppliedToDate(strRequestToDate); }}>{t("search", "Search")}</Button>
+                  <Button fullWidth data-control-id="attendance-regularization.requests.clear.button" className={styles.secondaryButton} size="small" startIcon={<ClearRoundedIcon />} onClick={() => { setStrRequestSearch(""); setStrRequestStatusFilter(""); setStrAppliedRequestSearch(""); setStrAppliedRequestStatus(""); setStrRequestFromDate(""); setStrRequestToDate(""); setStrAppliedFromDate(""); setStrAppliedToDate(""); }}>{t("clear", "Clear")}</Button>
                 </Stack>
               </Grid>
             </Grid>

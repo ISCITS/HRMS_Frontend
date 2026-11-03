@@ -43,7 +43,8 @@ import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payrollResultService } from "@/features/payroll/services/payrollResultService";
 import PayrollJobProgressDialog from "@/features/payroll/components/PayrollJobProgressDialog";
 import { usePayslipGenerationProgress } from "@/features/payroll/hooks/usePayslipGenerationProgress";
-import { payslipService, type PayslipView } from "@/features/payroll/services/payslipService";
+import { payslipService, type PayslipDocumentView } from "@/features/payroll/services/payslipService";
+import { getPayslipSwitchView, getPayslipTabRequestView } from "@/features/payroll/utils/payslipViewChoice";
 import type {
   PayrollResultDetailRecord,
   WageRulePreviewRecord,
@@ -442,7 +443,7 @@ export default function PayrollResultDetailPage({
   );
   const [objResult, setObjResult] = useState<PayrollResultDetailRecord | null>(null);
   // null until the user answers "which payslip do you want to see?".
-  const [strPayslipView, setStrPayslipView] = useState<PayslipView | null>(null);
+  const [strPayslipView, setStrPayslipView] = useState<PayslipDocumentView | null>(null);
   const { choosePayslipView, blnCanSwitchView: blnCanSwitchPayslipView, objPayslipViewChooser } = usePayslipViewChooser();
   const refPayslipViewAsked = useRef(false);
   const [strPayslipPreviewHtml, setStrPayslipPreviewHtml] = useState("");
@@ -493,9 +494,9 @@ export default function PayrollResultDetailPage({
   const strPayslipRunID = objResult ? objResult.strPayrollRunRecordUUID ?? String(objResult.intPayrollRunID) : "";
   const intPayslipEmployeeID = objResult?.intEmployeeID ?? 0;
 
-  async function askPayslipView(): Promise<PayslipView | null> {
+  async function askPayslipView(): Promise<PayslipDocumentView | null> {
     try {
-      const strChosen = await choosePayslipView();
+      const strChosen = await choosePayslipView({ blnClientFormat: true });
       if (strChosen) {
         setStrPayslipView(strChosen);
       }
@@ -586,7 +587,7 @@ export default function PayrollResultDetailPage({
         payslipService.getPayslipDocument(
           objResult!.strPayrollRunRecordUUID ?? String(objResult!.intPayrollRunID),
           objResult!.intEmployeeID,
-          blnPrint && blnCanSwitchPayslipView ? "detailed" : strView,
+          blnPrint ? getPayslipTabRequestView(strView, blnCanSwitchPayslipView) : strView,
           "export",
         )
       );
@@ -934,8 +935,8 @@ export default function PayrollResultDetailPage({
               <PayslipHtmlPreview
                 strHtml={strPayslipPreviewHtml}
                 strTaxInformationUrl={strTaxInformationHref}
-                strView={blnCanSwitchPayslipView && strPayslipView ? strPayslipView : undefined}
-                onViewChange={blnCanSwitchPayslipView ? setStrPayslipView : undefined}
+                strView={getPayslipSwitchView(strPayslipView, blnCanSwitchPayslipView)}
+                onViewChange={getPayslipSwitchView(strPayslipView, blnCanSwitchPayslipView) ? setStrPayslipView : undefined}
                 blnViewChanging={blnPayslipLoading}
               />
             </Paper>

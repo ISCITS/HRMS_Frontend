@@ -1,4 +1,4 @@
-import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
+﻿import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { requestEncryptedApi, type ApiEnvelope } from "@/Common/utils/apiErrorHandler";
 import type {
   FNFAuditRecord,
@@ -21,6 +21,7 @@ import type {
   FNFSettlementRecord,
   FNFStatementRecord,
 } from "@/features/payroll/types";
+import type { PayslipFormat } from "@/features/payroll/services/payslipService";
 
 async function requestApi<TData>(objOptions: {
   strPath: string;
@@ -143,9 +144,10 @@ export const fnfSettlementService = {
     });
     return objResult.Data;
   },
-  async generatePayslip(strRecordUUID: string): Promise<FNFPayslipDocument> {
+  /** Generates a new F&F report version; returns it in the chosen format (both are kept with the version). */
+  async generatePayslip(strRecordUUID: string, strFormat: PayslipFormat = "default"): Promise<FNFPayslipDocument> {
     const objResult = await requestApi<FNFPayslipDocument>({
-      strPath: `/payroll/fnf-settlements/${strRecordUUID}/payslip`,
+      strPath: `/payroll/fnf-settlements/${strRecordUUID}/payslip?format=${strFormat}`,
       strMethod: "POST",
       strMenuAction: "PAYROLL_FNF_EDIT",
     });
@@ -180,27 +182,28 @@ export const fnfSettlementService = {
     });
     return objResult.Data;
   },
-  async getPayslipDocument(strRecordUUID: string): Promise<FNFPayslipDocument> {
+  /** An F&F report: our format, or the client format (shown as a page, downloaded as a PDF). */
+  async getPayslipDocument(strRecordUUID: string, strFormat: PayslipFormat = "default"): Promise<FNFPayslipDocument> {
     const objResult = await requestApi<FNFPayslipDocument>({
-      strPath: `/payroll/fnf-settlements/payslips/${strRecordUUID}/document`,
+      strPath: `/payroll/fnf-settlements/payslips/${strRecordUUID}/document?format=${strFormat}`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_FNF_EXPORT",
     });
     return objResult.Data;
   },
-  async getRegularPayslipDocument(strRecordUUID: string): Promise<FNFPayslipDocument> {
+  async getRegularPayslipDocument(strRecordUUID: string, strFormat: PayslipFormat = "default"): Promise<FNFPayslipDocument> {
     const objResult = await requestApi<FNFPayslipDocument>({
-      strPath: `/payroll/fnf-settlements/payslips/regular/${strRecordUUID}/document`,
+      strPath: `/payroll/fnf-settlements/payslips/regular/${strRecordUUID}/document?format=${strFormat}`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_FNF_EXPORT",
     });
     return objResult.Data;
   },
-  async getPayslipBundle(lstFNFPayslipIDs: string[], lstRegularPayslipIDs: string[]): Promise<FNFPayslipDocument> {
+  async getPayslipBundle(lstFNFPayslipIDs: string[], lstRegularPayslipIDs: string[], strFormat: PayslipFormat = "default"): Promise<FNFPayslipDocument> {
     const objResult = await requestApi<FNFPayslipDocument>({
       strPath: "/payroll/fnf-settlements/payslips/bundle",
       strMethod: "POST",
-      objBody: { lstFNFPayslipIDs, lstRegularPayslipIDs },
+      objBody: { lstFNFPayslipIDs, lstRegularPayslipIDs, strFormat },
       strMenuAction: "PAYROLL_FNF_EXPORT",
     });
     return objResult.Data;

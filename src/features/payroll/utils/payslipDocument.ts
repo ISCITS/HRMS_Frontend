@@ -1,4 +1,4 @@
-function createPayslipUrl(strHtml: string) {
+﻿function createPayslipUrl(strHtml: string) {
   const objBlob = new Blob([strHtml], { type: "text/html;charset=utf-8" });
   return URL.createObjectURL(objBlob);
 }
@@ -17,8 +17,39 @@ export function buildPayslipFileName(...lstParts: Array<string | number | null |
   return `${strSafeName || "payslip"}.html`;
 }
 
+// The client-format payslip page carries its own PDF (built by the server from the same figures) in
+// this element; Download saves that PDF instead of the page.
+const PAYSLIP_PDF_ELEMENT_ID = "hrms-payslip-pdf";
+
+export function getEmbeddedPayslipPdf(strHtml: string): { objPdf: Blob; strFileName: string } | null {
+  const objMatch = new RegExp(`<script([^>]*)id="${PAYSLIP_PDF_ELEMENT_ID}"([^>]*)>([^<]*)</script>`).exec(strHtml);
+  const strBase64 = objMatch?.[3].trim();
+  if (!objMatch || !strBase64) {
+    return null;
+  }
+  const strBinary = atob(strBase64);
+  const arrBytes = new Uint8Array(strBinary.length);
+  for (let intIndex = 0; intIndex < strBinary.length; intIndex += 1) {
+    arrBytes[intIndex] = strBinary.charCodeAt(intIndex);
+  }
+  const strFileName = /data-file-name="([^"]*)"/.exec(objMatch[1] + objMatch[2])?.[1].replace(/&amp;/g, "&");
+  return {
+    objPdf: new Blob([arrBytes], { type: "application/pdf" }),
+    strFileName: strFileName || "payslip.pdf",
+  };
+}
+
+/** Saves the payslip: the client format as its PDF, the default format as the page. */
 export function downloadPayslipHtml(strHtml: string, strFileName: string) {
-  const strUrl = createPayslipUrl(strHtml);
+  const objEmbeddedPdf = getEmbeddedPayslipPdf(strHtml);
+  if (objEmbeddedPdf) {
+    downloadPayslipUrl(URL.createObjectURL(objEmbeddedPdf.objPdf), strFileName.replace(/\.html$/i, "") + ".pdf");
+    return;
+  }
+  downloadPayslipUrl(createPayslipUrl(strHtml), strFileName);
+}
+
+function downloadPayslipUrl(strUrl: string, strFileName: string) {
   const objLink = document.createElement("a");
 
   objLink.href = strUrl;
@@ -93,7 +124,26 @@ function buildPayslipToolbar(strFileName: string, strTaxInformationUrl?: string,
         showView(document.body.classList.contains(strMonthlyClass));
       }
       document.getElementById(strToolbarId + "-print").addEventListener("click", function () { window.print(); });
+      function saveFile(objBlob, strName) {
+        var strUrl = URL.createObjectURL(objBlob);
+        var objLink = document.createElement("a");
+        objLink.href = strUrl;
+        objLink.download = strName;
+        document.body.appendChild(objLink);
+        objLink.click();
+        objLink.remove();
+        setTimeout(function () { URL.revokeObjectURL(strUrl); }, 1000);
+      }
       document.getElementById(strToolbarId + "-download").addEventListener("click", function () {
+        // Client format: the page carries its PDF - save that.
+        var objPdf = document.getElementById("${PAYSLIP_PDF_ELEMENT_ID}");
+        if (objPdf && objPdf.textContent.trim()) {
+          var strBinary = atob(objPdf.textContent.trim());
+          var arrBytes = new Uint8Array(strBinary.length);
+          for (var intIndex = 0; intIndex < strBinary.length; intIndex++) arrBytes[intIndex] = strBinary.charCodeAt(intIndex);
+          saveFile(new Blob([arrBytes], { type: "application/pdf" }), ${strSafeFileName}.replace(/\\.html$/i, "") + ".pdf");
+          return;
+        }
         var objCopy = document.documentElement.cloneNode(true);
         var objToolbar = objCopy.querySelector("#" + strToolbarId);
         if (objToolbar) objToolbar.remove();
@@ -103,15 +153,7 @@ function buildPayslipToolbar(strFileName: string, strTaxInformationUrl?: string,
           objCopy.querySelectorAll(".${PAYSLIP_YEAR_BLOCK_CLASS}").forEach(function (objBlock) { objBlock.remove(); });
           objBody.classList.remove(strMonthlyClass);
         }
-        var objBlob = new Blob(["<!DOCTYPE html>\\n" + objCopy.outerHTML], { type: "text/html;charset=utf-8" });
-        var strUrl = URL.createObjectURL(objBlob);
-        var objLink = document.createElement("a");
-        objLink.href = strUrl;
-        objLink.download = ${strSafeFileName};
-        document.body.appendChild(objLink);
-        objLink.click();
-        objLink.remove();
-        setTimeout(function () { URL.revokeObjectURL(strUrl); }, 1000);
+        saveFile(new Blob(["<!DOCTYPE html>\\n" + objCopy.outerHTML], { type: "text/html;charset=utf-8" }), ${strSafeFileName});
       });
     })();
   </script>
@@ -122,7 +164,7 @@ export function withPayslipToolbar(
   strHtml: string,
   strFileName: string,
   strTaxInformationUrl?: string,
-  strInitialView: "monthly" | "detailed" = "detailed",
+  strInitialView: "monthly" | "detailed" | "client" = "detailed",
   blnAllowViewSwitch = true,
 ) {
   // Only offered when the user holds both views (see usePayslipViewChooser).
@@ -148,7 +190,7 @@ export function printPayslipHtml(
   strHtml: string,
   strFileName = "payslip.html",
   strTaxInformationUrl?: string,
-  strInitialView: "monthly" | "detailed" = "detailed",
+  strInitialView: "monthly" | "detailed" | "client" = "detailed",
   blnAllowViewSwitch = true,
 ) {
   const strUrl = createPayslipUrl(
