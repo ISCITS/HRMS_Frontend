@@ -1,3 +1,5 @@
+import { openBlobUrlInNewTab } from "@/lib/openBlobUrlInNewTab";
+
 function createPayslipUrl(strHtml: string) {
   const objBlob = new Blob([strHtml], { type: "text/html;charset=utf-8" });
   return URL.createObjectURL(objBlob);
@@ -18,7 +20,14 @@ export function buildPayslipFileName(...lstParts: Array<string | number | null |
 }
 
 export function downloadPayslipHtml(strHtml: string, strFileName: string) {
-  const strUrl = createPayslipUrl(strHtml);
+  downloadPayslipUrl(createPayslipUrl(strHtml), strFileName);
+}
+
+export function downloadPayslipPdf(objPdf: Blob, strFileName: string) {
+  downloadPayslipUrl(URL.createObjectURL(objPdf), strFileName.replace(/\.html$/i, "") + ".pdf");
+}
+
+function downloadPayslipUrl(strUrl: string, strFileName: string) {
   const objLink = document.createElement("a");
 
   objLink.href = strUrl;
@@ -29,6 +38,14 @@ export function downloadPayslipHtml(strHtml: string, strFileName: string) {
   objLink.remove();
 
   window.setTimeout(() => URL.revokeObjectURL(strUrl), 1000);
+}
+
+// The client-format payslip is a PDF: the browser's PDF viewer in the new tab gives Print and
+// Download (saved as a .pdf).
+export function openPayslipPdf(objPdf: Blob) {
+  const strUrl = URL.createObjectURL(objPdf);
+  openBlobUrlInNewTab(strUrl);
+  window.setTimeout(() => URL.revokeObjectURL(strUrl), 60000);
 }
 
 const PAYSLIP_TOOLBAR_ID = "hrms-payslip-toolbar";

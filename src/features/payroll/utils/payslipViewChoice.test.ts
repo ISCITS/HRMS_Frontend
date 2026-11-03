@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   getPayslipViewChoice,
   loadAllowedPayslipViews,
+  PAYSLIP_FORMAT_OPTIONS,
   PAYSLIP_VIEW_OPTIONS,
   resetAllowedPayslipViews,
 } from "./payslipViewChoice";
@@ -22,6 +23,18 @@ describe("payslip view choice", () => {
 
   it("refuses when no view is allowed", () => {
     expect(getPayslipViewChoice([])).toBe("none");
+  });
+
+  it("always asks when the screen offers the client format and Monthly is allowed", () => {
+    expect(getPayslipViewChoice(["monthly"], true)).toBe("ask");
+    expect(getPayslipViewChoice(["monthly", "detailed"], true)).toBe("ask");
+    // The client format is a monthly payslip: without the Monthly right it is not offered.
+    expect(getPayslipViewChoice(["detailed"], true)).toEqual({ strView: "detailed" });
+    expect(getPayslipViewChoice([], true)).toBe("none");
+  });
+
+  it("offers the default format first, then the client format", () => {
+    expect(PAYSLIP_FORMAT_OPTIONS.map((objOption) => objOption.strFormat)).toEqual(["default", "client"]);
   });
 
   it("offers Monthly first, then Detailed", () => {

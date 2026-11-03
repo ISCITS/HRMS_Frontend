@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { fnfSettlementService } from "@/features/payroll/services/fnfSettlementService";
 import type { FNFPolicy, FNFPolicySection } from "@/features/payroll/types";
 
-type SectionKey = "salary" | "leave_encashment" | "notice" | "gratuity" | "approval" | "closure";
+type SectionKey = "salary" | "leave_encashment" | "notice" | "gratuity" | "rounding" | "approval" | "closure";
 type FieldSpec =
   | { strKey: string; strLabel: string; strKind: "number"; strHelp?: string }
   | { strKey: string; strLabel: string; strKind: "switch"; strHelp?: string }
@@ -15,7 +15,7 @@ type FieldSpec =
   | { strKey: string; strLabel: string; strKind: "list"; strHelp?: string };
 
 const lstBasisOptions = [
-  { strValue: "GRATUITY_COMPONENTS", strLabel: "Components marked 'include in gratuity' (Basic + DA)" },
+  { strValue: "GRATUITY_COMPONENTS", strLabel: "Components marked 'include in gratuity' (Basic + DA if none marked)" },
   { strValue: "GROSS", strLabel: "All earning components (gross)" },
   { strValue: "COMPONENT_CODES", strLabel: "Specific component codes" },
 ];
@@ -71,6 +71,13 @@ const lstSections: { strKey: SectionKey; strTitle: string; lstFields: FieldSpec[
       { strKey: "exempt_limit", strLabel: "Tax exemption limit (₹)", strKind: "number" },
       { strKey: "no_minimum_exit_types", strLabel: "Exit types with no minimum service", strKind: "list" },
       { strKey: "require_statutory_flag", strLabel: "Only employees marked gratuity applicable", strKind: "switch" },
+    ],
+  },
+  {
+    strKey: "rounding",
+    strTitle: "Rounding",
+    lstFields: [
+      { strKey: "component_rounding", strLabel: "Leave encashment, notice and gratuity amounts", strKind: "select", lstOptions: [{ strValue: "NEAREST", strLabel: "Nearest rupee" }, { strValue: "CEIL", strLabel: "Round up to the rupee" }, { strValue: "FLOOR", strLabel: "Round down to the rupee" }, { strValue: "NONE", strLabel: "No rounding (keep paise)" }], strHelp: "Salary and statutory lines follow each salary component's own rounding rule." },
     ],
   },
   {

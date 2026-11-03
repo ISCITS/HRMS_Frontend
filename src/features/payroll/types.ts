@@ -505,6 +505,7 @@ export type FNFPolicy = {
   leave_encashment: FNFPolicySection;
   notice: FNFPolicySection;
   gratuity: FNFPolicySection;
+  rounding: FNFPolicySection;
   death_exit_types: string[];
   approval: FNFPolicySection;
   closure: FNFPolicySection;

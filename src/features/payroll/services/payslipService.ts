@@ -1,5 +1,5 @@
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
-import { requestEncryptedApi, type ApiEnvelope } from "@/Common/utils/apiErrorHandler";
+import { createApiRequestError, requestEncryptedApi, type ApiEnvelope } from "@/Common/utils/apiErrorHandler";
 import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
 import type {
   PayrollJobStatus,
@@ -61,6 +61,25 @@ function extractHtmlPayload(objData: unknown): string {
 /** Monthly: this month only. Detailed: adds year-to-date and annual tax figures. */
 export type PayslipView = "monthly" | "detailed";
 
+/** Default: the application's payslip page. Client: the client's payslip layout, as a PDF (monthly figures). */
+export type PayslipFormat = "default" | "client";
+
+async function getPdf(strPath: string, strCsrfMenuAction: string): Promise<Blob> {
+  try {
+    const objResponse = await axiosInstance.get<Blob>(`${ApiRoutePrefix.ApiV1}${strPath}`, {
+      csrfMenuAction: strCsrfMenuAction,
+      responseType: "blob",
+      headers: {
+        Accept: "application/pdf",
+        "x-skip-payload-encryption": "true",
+      },
+    } as ApiRequestConfig);
+    return new Blob([objResponse.data], { type: "application/pdf" });
+  } catch (objError) {
+    throw await createApiRequestError(objError, "Unable to load the client format payslip.");
+  }
+}
+
 async function getHtml(strPath: string, strCsrfMenuAction: string): Promise<string> {
   const objResponse = await axiosInstance.get(`${ApiRoutePrefix.ApiV1}${strPath}`, {
     csrfMenuAction: strCsrfMenuAction,
@@ -103,6 +122,23 @@ export const payslipService = {
       `/payroll/runs/${strRunID}/employees/${intEmployeeID}/payslip/document?view=${strView}&purpose=${strPurpose}`,
       strPurpose === "export" ? "PAYSLIP_EXPORT" : "PAYSLIP_VIEW",
     );
+  },
+
+  /** The client-format payslip (PDF) of an employee's run, with the same latest figures. */
+  async getClientPayslipPdf(
+    strRunID: string,
+    intEmployeeID: number,
+    strPurpose: "view" | "export" = "export",
+  ): Promise<Blob> {
+    return getPdf(
+      `/payroll/runs/${strRunID}/employees/${intEmployeeID}/payslip/document?view=monthly&purpose=${strPurpose}&format=client`,
+      strPurpose === "export" ? "PAYSLIP_EXPORT" : "PAYSLIP_VIEW",
+    );
+  },
+
+  /** A saved payslip's client-format PDF; the server returns the latest figures if that copy is outdated. */
+  async getSavedClientPayslipPdf(strPayslipID: string): Promise<Blob> {
+    return getPdf(`/payslips/${strPayslipID}/download?view=monthly&format=client`, "PAYSLIP_EXPORT");
   },
 
   async getPayslipPreview(

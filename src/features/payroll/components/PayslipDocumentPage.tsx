@@ -12,6 +12,7 @@ import PayslipHtmlPreview from "@/features/payroll/components/PayslipHtmlPreview
 import { usePayslipViewChooser } from "@/features/payroll/components/PayslipViewChooser";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payslipService, type PayslipView } from "@/features/payroll/services/payslipService";
+import { openPayslipPdf } from "@/features/payroll/utils/payslipDocument";
 
 type PayslipDocumentPageProps = {
   /** record_uuid from the URL; the internal id is never routed on. */
@@ -32,9 +33,21 @@ export default function PayslipDocumentPage({ strPayslipID, strBackRoute }: Pays
   const { choosePayslipView, blnCanSwitchView, objPayslipViewChooser } = usePayslipViewChooser();
   const refViewAsked = useRef(false);
 
+  async function openClientPayslip() {
+    setStrError("");
+    setBlnLoading(true);
+    try {
+      openPayslipPdf(await payslipService.getSavedClientPayslipPdf(strPayslipID));
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : t("unable_to_load_payslip", "Unable to load payslip document."));
+    } finally {
+      setBlnLoading(false);
+    }
+  }
+
   async function askPayslipView() {
     try {
-      const strChosen = await choosePayslipView();
+      const strChosen = await choosePayslipView({ onOpenClientFormat: openClientPayslip });
       if (strChosen) {
         setBlnLoading(true);
         setStrView(strChosen);

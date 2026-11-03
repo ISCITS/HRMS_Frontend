@@ -77,6 +77,7 @@ import type {
 import {
   buildPayslipFileName,
   downloadPayslipHtml,
+  openPayslipPdf,
   printPayslipHtml,
 } from "@/features/payroll/utils/payslipDocument";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
@@ -1106,11 +1107,25 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
   // Row click first asks Monthly or Detailed (only the views the user's group holds), then opens
   // the payslip in a new tab (Print / Download live in that tab's toolbar); users without export
   // rights get the in-page preview dialog instead.
+  async function openClientPayslip(dicRow: PayslipRunListRecord) {
+    setBlnPayslipLoading(true);
+    setStrActionLoaderLabel(t("opening_payslip_tab", "Opening payslip..."));
+    setStrError("");
+    try {
+      openPayslipPdf(await payslipService.getClientPayslipPdf(strRunID, dicRow.intEmployeeID, blnCanExport ? "export" : "view"));
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to open the client format payslip.");
+    } finally {
+      setBlnPayslipLoading(false);
+      setStrActionLoaderLabel("");
+    }
+  }
+
   async function openPayslipFromRow(dicPayslip: PayslipRunListRecord) {
     if (blnPayslipLoading) return;
     let strView: PayslipView | null;
     try {
-      strView = await choosePayslipView();
+      strView = await choosePayslipView({ onOpenClientFormat: () => openClientPayslip(dicPayslip) });
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to open payslip.");
       return;

@@ -51,6 +51,8 @@ import type {
 import {
   buildPayslipFileName,
   downloadPayslipHtml,
+  downloadPayslipPdf,
+  openPayslipPdf,
   printPayslipHtml,
 } from "@/features/payroll/utils/payslipDocument";
 
@@ -493,9 +495,31 @@ export default function PayrollResultDetailPage({
   const strPayslipRunID = objResult ? objResult.strPayrollRunRecordUUID ?? String(objResult.intPayrollRunID) : "";
   const intPayslipEmployeeID = objResult?.intEmployeeID ?? 0;
 
-  async function askPayslipView(): Promise<PayslipView | null> {
+  async function openClientPayslip(blnPrint: boolean) {
+    if (!strPayslipRunID || !intPayslipEmployeeID) {
+      return;
+    }
+    setBlnPayslipLoading(true);
+    setStrError("");
     try {
-      const strChosen = await choosePayslipView();
+      const objPdf = await trackPayslipGeneration(() =>
+        payslipService.getClientPayslipPdf(strPayslipRunID, intPayslipEmployeeID, blnCanUsePayslipDocumentActions ? "export" : "view")
+      );
+      if (blnPrint) {
+        openPayslipPdf(objPdf);
+      } else {
+        downloadPayslipPdf(objPdf, buildPayslipFileName("payslip", objResult?.strPayslipNumber, objResult?.strEmployeeCode, objResult?.dtPayrollMonth?.slice(0, 7)));
+      }
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to open the client format payslip.");
+    } finally {
+      setBlnPayslipLoading(false);
+    }
+  }
+
+  async function askPayslipView(blnPrint = true): Promise<PayslipView | null> {
+    try {
+      const strChosen = await choosePayslipView({ onOpenClientFormat: () => openClientPayslip(blnPrint) });
       if (strChosen) {
         setStrPayslipView(strChosen);
       }
@@ -576,7 +600,7 @@ export default function PayrollResultDetailPage({
   // the detailed payslip so its own Monthly / Detailed switch works; it opens in the chosen view.
   async function openGeneratedPayslip(blnPrint: boolean) {
     setStrError("");
-    const strView = strPayslipView ?? (await askPayslipView());
+    const strView = strPayslipView ?? (await askPayslipView(blnPrint));
     if (!strView) {
       return;
     }
