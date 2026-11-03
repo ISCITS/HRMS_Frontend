@@ -26,7 +26,7 @@ import CommonPayrollDialog from "@/features/payroll/components/CommonPayrollDial
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
-import ReportMultiSelectField, { getUniqueOptions } from "@/features/reports/components/ReportMultiSelectField";
+import ReportMultiSelectField from "@/features/reports/components/ReportMultiSelectField";
 import { payrollResultService } from "@/features/payroll/services/payrollResultService";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import PayrollJobProgressDialog from "@/features/payroll/components/PayrollJobProgressDialog";
@@ -46,6 +46,11 @@ import {
   downloadPayslipHtml,
   printPayslipHtml,
 } from "@/features/payroll/utils/payslipDocument";
+import {
+  buildPayslipFilterOptions,
+  filterPayslipRows,
+  getPayslipMonthKeys,
+} from "@/features/payroll/utils/payslipListFilters";
 
 type PayrollResultListPageProps = {
   blnPayslipScreen?: boolean;
@@ -285,31 +290,29 @@ export default function PayrollResultListPage({
     canDoAny("PAYROLL_RESULT_LIST");
   const strEssBackRoute = encodeURIComponent("/ess/my-payslips");
   const strLatestPayrollMonth = useMemo(() => getLatestPayrollMonth(lstResults), [lstResults]);
-  const dicPayslipFilterOptions = useMemo(() => ({
-    lstEmployees: getUniqueOptions(lstResults.flatMap((dicRow) => [
-      dicRow.strEmployeeCode,
-      dicRow.strEmployeeName,
-      `${dicRow.strEmployeeCode} - ${dicRow.strEmployeeName}`,
-    ])),
-    lstRuns: getUniqueOptions(lstResults.flatMap((dicRow) => [dicRow.strRunCode, dicRow.strRunName])),
-    lstMonths: getUniqueOptions(lstResults.map((dicRow) => dicRow.dtPayrollMonth?.slice(0, 7))),
-    lstDepartments: getUniqueOptions(lstResults.map((dicRow) => dicRow.strDepartmentName)),
-    lstLocations: getUniqueOptions(lstResults.map((dicRow) => dicRow.strLocationName)),
-    lstStatuses: getUniqueOptions(lstResults.map((dicRow) => dicRow.strPayslipStatus || "Processed")),
-  }), [lstResults]);
+  const dicPayslipFilterOptions = useMemo(
+    () => buildPayslipFilterOptions(lstResults, dicSearchDraft),
+    [lstResults, dicSearchDraft]
+  );
 
   async function loadResults(objFilters: SearchForm = dicSearchApplied) {
     setBlnLoading(true);
     setStrError("");
     try {
       setLstResults(
-        await objPayrollFreshness.trackLoad(() => payrollResultService.getPayrollResults({
-          ...objFilters,
-          strStatus: blnPayslipScreen ? "All" : objFilters.strStatus,
-          // Every employee with a payslip (Processed or Finalized run) - no Generate step needed.
-          blnGeneratedPayslipsOnly: blnPayslipScreen,
-          blnEssReleasedOnly: blnPayslipScreen && blnEssMode,
-        }), objFilters.strPayrollMonth)
+        await objPayrollFreshness.trackLoad(() => payrollResultService.getPayrollResults(
+          blnPayslipScreen
+            ? {
+                // Every payslip is loaded and filtered on screen, so the run and month dropdowns
+                // keep every option after a search. Every employee with a payslip (Processed or
+                // Finalized run) - no Generate step needed.
+                strStatus: "All",
+                blnGeneratedPayslipsOnly: true,
+                blnEssReleasedOnly: blnEssMode,
+                blnExcludeCalculationDetails: true,
+              }
+            : objFilters
+        ), blnPayslipScreen ? getPayslipMonthKeys(objFilters.strPayrollMonth) : objFilters.strPayrollMonth)
       );
       setBlnHasLoadedRows(true);
     } catch (objError) {
@@ -366,6 +369,11 @@ export default function PayrollResultListPage({
   }, [blnRightsLoading, blnSelfOnly, blnUseOpeningFilterDialog]);
 
   const lstFilteredRows = useMemo(() => {
+    if (blnPayslipScreen) {
+      return filterPayslipRows(lstResults, dicSearchApplied).filter(
+        (dicRow) => !blnSelfOnly || (intSelfEmployeeID !== null && dicRow.intEmployeeID === intSelfEmployeeID)
+      );
+    }
     const lstEmployeeSearches = splitFilterValue(dicSearchApplied.strSearchEmployee);
     const lstRunSearches = splitFilterValue(dicSearchApplied.strSearchRun);
     const lstStatusFilters =

@@ -22,6 +22,7 @@ import {
   formatCurrency,
 } from "@/features/payroll/components/FNFSettlementPanels";
 import FNFStatusBadge from "@/features/payroll/components/FNFStatusBadge";
+import FNFValidationButton from "@/features/payroll/components/FNFValidationButton";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { fnfSettlementService } from "@/features/payroll/services/fnfSettlementService";
 import type { FNFCalculationValidation, FNFLineFormValues, FNFSettlementFormValues, FNFSettlementLineRecord, FNFSettlementRecord, FNFStatementRecord } from "@/features/payroll/types";
@@ -233,6 +234,7 @@ export default function FNFSettlementDetailPage({ strSettlementID }: { /** recor
                   <Stack direction="row" spacing={1} alignItems="center">
                     {["locked", "paid", "recovered"].includes(objSettlement.strSettlementStatus) ? <Chip size="small" color="success" label="Visible in ESS" /> : null}
                     {!blnReadOnly && blnCanEditDetails ? <Button className={styles.secondaryButton} size="small" startIcon={<EditRoundedIcon />} onClick={() => setDicEditingSettlement(toSettlementFormValues(objSettlement))} controlId="payroll.fnf-settlement-detail.edit-details.button">Edit Details</Button> : null}
+                    {blnShowValidations ? <FNFValidationButton lstValidations={lstValidations} /> : null}
                   </Stack>
                 </Box>
                 <Box className={styles.fnfSummaryGrid}>
@@ -272,15 +274,6 @@ export default function FNFSettlementDetailPage({ strSettlementID }: { /** recor
                 ))}
               </Box>
 
-              {blnShowValidations && lstValidations.length ? (
-                <Stack spacing={0.75}>
-                  {lstValidations.map((dicValidation) => (
-                    <Alert key={dicValidation.code} sx={{ py: 0 }} severity={dicValidation.severity === "blocking" ? "error" : dicValidation.severity === "warning" ? "warning" : "info"}>
-                      {dicValidation.message}{dicValidation.severity === "blocking" ? " Submitting for review will ask for an override reason." : ""}
-                    </Alert>
-                  ))}
-                </Stack>
-              ) : null}
               {objClosure ? (
                 <Alert severity="success" sx={{ py: 0 }}>
                   Settlement closed in the F&amp;F module:{" "}

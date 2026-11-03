@@ -2,9 +2,10 @@
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
-import { Alert, Autocomplete, Box, Button, Stack, Step, StepLabel, Stepper, TextField, Tooltip } from "@mui/material";
+import { Alert, Autocomplete, Box, Button, IconButton, Stack, Step, StepLabel, Stepper, TextField, Tooltip } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DetailPageHeader } from "@/components/master/MasterListUi";
@@ -226,12 +227,13 @@ export default function FNFSettlementCreatePage() {
 
             {intActiveStep === 0 ? (
               <Box className={styles.fnfWizardSingleField}>
-                {!blnOptionsLoading && !lstEmployeeOptions.length ? (
-                  <Alert severity="info" sx={{ mb: 2 }}>No employees are ready for a settlement. Set the date of exit in the employee master first; employees who already have a settlement are not listed.</Alert>
-                ) : (
-                  <Alert severity="info" sx={{ mb: 2 }}>Only employees with a date of exit in the employee master (and no settlement yet) are listed. Their exit details, notice period and leave balances are filled in automatically.</Alert>
-                )}
+                <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 0.5 }}>
+                  <Tooltip title="Only employees with a date of exit in the employee master (and no settlement yet) are listed. Their exit details, notice period and leave balances are filled in automatically.">
+                    <IconButton size="small" color="info" aria-label="Which employees are listed" controlId="payroll.fnf-settlement-create.employee-info.button"><InfoOutlinedIcon fontSize="small" /></IconButton>
+                  </Tooltip>
+                </Box>
                 <Autocomplete
+                  noOptionsText="No employees are ready for a settlement. Set the date of exit in the employee master first; employees who already have a settlement are not listed."
                   options={lstEmployeeOptions}
                   value={objSelectedEmployee}
                   loading={blnOptionsLoading}
