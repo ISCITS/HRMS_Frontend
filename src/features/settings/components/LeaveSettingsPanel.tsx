@@ -19,6 +19,7 @@ import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import BlockingLoader, { DottedLoader } from "@/components/shared/BlockingLoader";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
+import PayrollDocumentFormatSettings from "@/features/settings/components/PayrollDocumentFormatSettings";
 import { settingsService } from "@/features/settings/services/settingsService";
 import type { ApproverEmployeeDto, ApproverSnapshotDto, DefaultApproverSource, LeaveSettingsConfigDto } from "@/features/settings/types";
 
@@ -36,7 +37,7 @@ const lstDaysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 const lstCategories: { strKey: SettingsCategoryKey; strLabel: string; objIcon: ReactNode; strSubtitle: string }[] = [
   { strKey: "leave", strLabel: "Leave", objIcon: <SpaRoundedIcon />, strSubtitle: "Configure leave calendar and default approval behaviour." },
   { strKey: "attendance", strLabel: "Attendance", objIcon: <CalendarMonthRoundedIcon />, strSubtitle: "Configure default approval behaviour for attendance related requests." },
-  { strKey: "payroll", strLabel: "Payroll", objIcon: <PaymentsRoundedIcon />, strSubtitle: "Payroll settings will appear here when enabled." },
+  { strKey: "payroll", strLabel: "Payroll", objIcon: <PaymentsRoundedIcon />, strSubtitle: "Choose the payslip and F&F report formats used across the application." },
   { strKey: "employee", strLabel: "Employee", objIcon: <GroupsRoundedIcon />, strSubtitle: "Employee settings will appear here when enabled." },
   { strKey: "security", strLabel: "Security", objIcon: <SecurityRoundedIcon />, strSubtitle: "Security settings will appear here when enabled." },
   { strKey: "notifications", strLabel: "Notifications", objIcon: <NotificationsRoundedIcon />, strSubtitle: "Notification settings will appear here when enabled." },
@@ -48,7 +49,8 @@ const lstSearchOptions: SearchOption[] = [
   { strLabel: "Regularization", strCategory: "attendance", strAnchor: "settings-section-regularization" },
   { strLabel: "Attendance Approver", strCategory: "attendance", strAnchor: "settings-section-regularization" },
   { strLabel: "Work on Holiday Approver", strCategory: "attendance", strAnchor: "settings-section-work-holiday" },
-  { strLabel: "Payroll Cut-off", strCategory: "payroll", strAnchor: "settings-section-placeholder" },
+  { strLabel: "Payslip Format", strCategory: "payroll", strAnchor: "settings-section-payslip-format" },
+  { strLabel: "F&F Report Format", strCategory: "payroll", strAnchor: "settings-section-fnf-format" },
 ];
 
 function snapshotToOption(objSnapshot: ApproverSnapshotDto | null): ApproverEmployeeDto | null {
@@ -281,7 +283,8 @@ export default function LeaveSettingsPanel() {
           <Typography className="app-master-dialog-required-fields">
             Required fields are marked <Box component="span" className="app-master-dialog-required-asterisk">*</Box>
           </Typography>
-          {!blnReadOnly ? (
+          {/* The Payroll tab saves its own formats (own rights). */}
+          {!blnReadOnly && strActiveCategory !== "payroll" ? (
             <>
               <Button className="app-btn app-btn-outline" startIcon={<CancelRoundedIcon />} onClick={handleCancel} disabled={blnSaving || blnBusy} controlId="settings.cancel.button">Cancel</Button>
               <Button className="app-btn app-btn-primary" startIcon={<SaveRoundedIcon />} onClick={() => void handleSave()} disabled={blnSaving || blnBusy} controlId="settings.save.button">{blnSaving ? "Saving..." : "Save"}</Button>
@@ -475,6 +478,8 @@ export default function LeaveSettingsPanel() {
             </Box>
           </Paper>
         </>
+      ) : strActiveCategory === "payroll" ? (
+        <PayrollDocumentFormatSettings onMessage={showToast} />
       ) : (
         <Paper id="settings-section-placeholder" variant="outlined" sx={{ ...sxCard, py: 5, textAlign: "center" }}>
           <Typography sx={{ color: "#172033", fontWeight: 800, fontSize: "1rem" }}>{objActiveCategory.strLabel} settings are coming soon.</Typography>

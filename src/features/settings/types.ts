@@ -34,6 +34,26 @@ export type LeaveSettingsConfigDto = {
   objWorkHolidayAlternateHrApprover: ApproverSnapshotDto | null;
 };
 
+// ---- Payroll: payslip & F&F report formats ----
+export type PayrollDocumentTemplateDto = {
+  strFormat: "default" | "client";
+  strName: string;
+  strDescription: string;
+  blnIsDefault: boolean;
+  /** Our payslip opens Monthly or Detailed. */
+  blnHasViews: boolean;
+};
+
+export type PayrollDocumentFormatConfigDto = {
+  strPayslipFormat: "default" | "client";
+  strPayslipView: "monthly" | "detailed";
+  strFNFReportFormat: "default" | "client";
+  lstPayslipTemplates: PayrollDocumentTemplateDto[];
+  lstFNFTemplates: PayrollDocumentTemplateDto[];
+};
+
+export type PayrollDocumentFormatSaveRequest = Pick<PayrollDocumentFormatConfigDto, "strPayslipFormat" | "strPayslipView" | "strFNFReportFormat">;
+
 export type LeaveSettingsSaveRequest = {
   intLeaveYearStartDay: number;
   intLeaveYearStartMonth: number;

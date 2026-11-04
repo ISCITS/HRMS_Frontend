@@ -111,8 +111,9 @@ export default function FNFSettlementDetailPage({ strSettlementID }: { /** recor
 
   function openAction(strAction: string) {
     if (strAction === "payslip") {
-      // Generate FNF Report: our format or the client's Full and Final Settlement Report.
-      chooseFormat("Generate FNF report")
+      // Generate FNF Report in the format set in Settings > Payroll: ours or the client's Full and
+      // Final Settlement Report.
+      chooseFormat()
         .then((strFormat) => (strFormat ? handleAction(strAction, strFormat) : undefined))
         .catch(() => undefined);
       return;

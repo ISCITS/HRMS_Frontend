@@ -117,10 +117,10 @@ export default function FNFPayslipsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [objSelectedEmployee, strFromMonth, strToMonth]);
 
-  // Every open / download first asks the format: ours, or the client's (F&F report and client-format
-  // payslip; Download then saves a PDF).
+  // Every open / download uses the format set in Settings > Payroll: ours, or the client's (F&F
+  // report and client-format payslip; Download then saves a PDF).
   async function runDocument(fnLoad: (strFormat: PayslipFormat) => Promise<FNFPayslipDocument>, blnDownload: boolean) {
-    const strFormat = await chooseFormat(blnDownload ? "Download" : "Open");
+    const strFormat = await chooseFormat();
     if (!strFormat) return;
     setBlnBusy(true);
     setStrError("");
