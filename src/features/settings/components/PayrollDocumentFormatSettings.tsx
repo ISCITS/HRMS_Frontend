@@ -237,7 +237,7 @@ export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
           </Box>
         ) : (
           <Typography sx={{ color: "#60749b", fontSize: "0.75rem", mt: 1.5 }}>
-            The client format is a monthly payslip (needs the &quot;Payslip - Monthly&quot; right; others get our Detailed payslip).
+            Format 1 is a monthly payslip (needs the &quot;Payslip - Monthly&quot; right; others get our Detailed payslip).
           </Typography>
         )}
       </Paper>
