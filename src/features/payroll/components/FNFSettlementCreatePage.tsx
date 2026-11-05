@@ -272,10 +272,7 @@ export default function FNFSettlementCreatePage() {
             <Box className={styles.fnfStepPanel}>
               <Box className={styles.fnfStepHeader}>
                 <Box sx={{ minWidth: 0 }}>
-                  <Typography component="h3" className={styles.fnfStepTitle}>
-                    <span className={styles.fnfStepBadge}>{intActiveStep + 1}</span>
-                    {lstStepHeaders[intActiveStep].strTitle}
-                  </Typography>
+                  <Typography component="h3" className={styles.fnfStepTitle}>{lstStepHeaders[intActiveStep].strTitle}</Typography>
                   <Typography className={styles.fnfStepSubtitle}>{lstStepHeaders[intActiveStep].strSubtitle}</Typography>
                 </Box>
                 {intActiveStep === 0 ? (
@@ -293,7 +290,7 @@ export default function FNFSettlementCreatePage() {
             {intActiveStep === 0 ? (
               <Box className={styles.fnfWizardGrid}>
                 <Autocomplete
-                  sx={{ ...dicAutocompleteSx, gridColumn: "1 / -1" }}
+                  sx={dicAutocompleteSx}
                   noOptionsText="No employees are ready for a settlement. Set the date of exit in the employee master first; employees who already have a settlement are not listed."
                   options={lstEmployeeOptions}
                   value={objSelectedEmployee}
@@ -309,7 +306,7 @@ export default function FNFSettlementCreatePage() {
                     }} />}
                 />
                 {objPrefill ? (
-                  <Alert severity={lstMissing.length ? "warning" : "success"} sx={{ gridColumn: "1 / -1" }}>
+                  <Alert severity={lstMissing.length ? "warning" : "success"} className={`${styles.fnfInlineNote} ${styles.fnfSpanTwo}`}>
                     {Object.keys(objPrefill.dicSources).length ? `Filled in from existing records: ${Object.entries(objPrefill.dicSources).map(([, strSource]) => strSource).filter((strSource, intIndex, lstAll) => lstAll.indexOf(strSource) === intIndex).join("; ")}.` : "No existing exit data found for this employee."}
                     {lstMissing.length ? ` Not held anywhere in the system, please enter: ${lstMissing.join(", ")}.` : ""}
                   </Alert>
@@ -332,7 +329,7 @@ export default function FNFSettlementCreatePage() {
                 <TextField label="Exit submitted on" required type="date" InputLabelProps={{ shrink: true }} InputProps={{ endAdornment: fieldStatus("dtResignationDate", sourceHint("dtResignationDate")) }} value={dicForm.dtResignationDate} onChange={(e) => updateField("dtResignationDate", e.target.value)} error={Boolean(dicErrors.dtResignationDate)} fullWidth controlId="payroll.fnf-settlement-create.resignation-date.input" />
                 <TextField label="Leaving Date" required type="date" InputLabelProps={{ shrink: true }} InputProps={{ endAdornment: fieldStatus("dtLastWorkingDate", sourceHint("dtLastWorkingDate")) }} value={dicForm.dtLastWorkingDate} onChange={(e) => updateField("dtLastWorkingDate", e.target.value)} error={Boolean(dicErrors.dtLastWorkingDate)} fullWidth controlId="payroll.fnf-settlement-create.last-working-date.input" />
                 <TextField label="Settlement Date" required type="date" InputLabelProps={{ shrink: true }} InputProps={{ endAdornment: fieldStatus("dtSettlementDate") }} value={dicForm.dtSettlementDate} onChange={(e) => updateField("dtSettlementDate", e.target.value)} error={Boolean(dicErrors.dtSettlementDate)} fullWidth controlId="payroll.fnf-settlement-create.settlement-date.input" />
-                <TextField label="Exit reason" value={dicForm.strExitReason} onChange={(e) => updateField("strExitReason", e.target.value)} InputProps={{ endAdornment: fieldStatus("strExitReason", sourceHint("strExitReason")) }} fullWidth sx={{ gridColumn: "1 / -1" }} controlId="payroll.fnf-settlement-create.exit-reason.input" />
+                <TextField label="Exit reason" value={dicForm.strExitReason} onChange={(e) => updateField("strExitReason", e.target.value)} InputProps={{ endAdornment: fieldStatus("strExitReason", sourceHint("strExitReason")) }} fullWidth className={styles.fnfSpanTwo} controlId="payroll.fnf-settlement-create.exit-reason.input" />
               </Box>
             ) : null}
 
