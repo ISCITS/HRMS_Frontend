@@ -5,6 +5,7 @@ import type {
   PayrollRunFormOptions,
   PayrollRunFormValues,
   PayrollRunListRecord,
+  PayrollJobStatus,
   PayrollProcessSummary,
   PayrollRunStatus,
   PayrollValidationSummary,
@@ -32,6 +33,7 @@ export function createInitialPayrollRunForm(): PayrollRunFormValues {
     strScopeType: "All",
     strProcessFor: "PayrollGroup",
     intScopedEmployeeID: "",
+    lstScopedEmployeeIDs: [],
     dtPayrollMonth: new Date().toISOString().slice(0, 10),
     strRunStatus: "DRAFT",
     blnIsLocked: false,
@@ -43,15 +45,29 @@ export function createInitialPayrollRunForm(): PayrollRunFormValues {
   };
 }
 
+// One employee selected keeps sending the existing 'SelectedEmployee' scope (unchanged wire
+// behavior); two or more switches to the new 'EmployeeGroup' scope. The dropdown only ever sets
+// strScopeType to "SelectedEmployee" as a mode marker - the actual employee count decides which
+// of the two scope types is actually sent.
+function resolveEffectiveScopeType(dicValues: PayrollRunFormValues): PayrollRunFormValues["strScopeType"] {
+  if (dicValues.strScopeType !== "SelectedEmployee") {
+    return dicValues.strScopeType;
+  }
+  return dicValues.lstScopedEmployeeIDs.length >= 2 ? "EmployeeGroup" : "SelectedEmployee";
+}
+
 function toPayload(dicValues: PayrollRunFormValues) {
+  const strEffectiveScopeType = resolveEffectiveScopeType(dicValues);
   return {
     intPayrollCycleID: dicValues.intPayrollCycleID || undefined,
     strRunName: dicValues.strRunName.trim(),
-    strScopeType: dicValues.strScopeType,
+    strScopeType: strEffectiveScopeType,
     intScopedEmployeeID:
-      dicValues.strScopeType === "SelectedEmployee"
-        ? Number(dicValues.intScopedEmployeeID)
+      strEffectiveScopeType === "SelectedEmployee"
+        ? Number(dicValues.lstScopedEmployeeIDs[0] ?? dicValues.intScopedEmployeeID)
         : null,
+    lstScopedEmployeeIDs:
+      strEffectiveScopeType === "EmployeeGroup" ? dicValues.lstScopedEmployeeIDs : undefined,
     dtPayrollMonth: dicValues.dtPayrollMonth,
     strRunStatus: dicValues.strRunStatus,
     blnIsLocked: dicValues.blnIsLocked,
@@ -175,6 +191,46 @@ export const payrollRunService = {
         lstEmployeeIDs: lstEmployeeIDs?.length ? lstEmployeeIDs : undefined,
       },
       strMenuAction: "PAYROLL_RUN_REPROCESS",
+    });
+    return objResult.Data;
+  },
+
+  /** Starts validation in the background and returns at once; follow it with getRunJobStatus. */
+  async startValidatePayrollRun(strRunID: string): Promise<PayrollJobStatus> {
+    const objResult = await requestApi<PayrollJobStatus>({
+      strPath: `/payroll/runs/${strRunID}/validate?blnBackground=true`,
+      strMethod: "POST",
+      strMenuAction: "PAYROLL_RUN_VALIDATE",
+    });
+    return objResult.Data;
+  },
+
+  /** Starts process in the background and returns at once; follow it with getRunJobStatus. */
+  async startProcessPayrollRun(strRunID: string): Promise<PayrollJobStatus> {
+    const objResult = await requestApi<PayrollJobStatus>({
+      strPath: `/payroll/runs/${strRunID}/process?blnBackground=true`,
+      strMethod: "POST",
+      strMenuAction: "PAYROLL_RUN_PROCESS",
+    });
+    return objResult.Data;
+  },
+
+  /** Starts reprocess in the background and returns at once; follow it with getRunJobStatus. */
+  async startReprocessPayrollRun(strRunID: string, strReason: string): Promise<PayrollJobStatus> {
+    const objResult = await requestApi<PayrollJobStatus>({
+      strPath: `/payroll/runs/${strRunID}/reprocess?blnBackground=true`,
+      strMethod: "POST",
+      objBody: { strReason },
+      strMenuAction: "PAYROLL_RUN_REPROCESS",
+    });
+    return objResult.Data;
+  },
+
+  async getRunJobStatus(strRunID: string): Promise<PayrollJobStatus> {
+    const objResult = await requestApi<PayrollJobStatus>({
+      strPath: `/payroll/runs/${strRunID}/job-status`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_RUN_VIEW",
     });
     return objResult.Data;
   },

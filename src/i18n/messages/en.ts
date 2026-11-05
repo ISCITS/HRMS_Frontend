@@ -4,7 +4,7 @@ export const enMessages = {
     genericSubtitle: "Use your work email for shared-database local login.",
     tenantTitle: "Tenant workspace sign in",
     tenantSubtitle: "Your tenant is pre-resolved so we can route you to the right HRMS environment.",
-    loginIdLabel: "Work email or login ID",
+    loginIdLabel: "Login ID",
     tenantLabel: "Tenant UUID",
     passwordLabel: "Password",
     emailLabel: "Work email",

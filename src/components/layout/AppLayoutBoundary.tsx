@@ -4,6 +4,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import { authHelpers } from "@/lib/auth";
+import { stripBasePath } from "@/lib/basePath";
 import { getPostLoginRoute } from "@/lib/menu";
 import { isAuthRedirectRoute, isPublicAppRoute, readAuthenticatedRouteHistory } from "@/lib/routeAccess";
 
@@ -50,7 +51,10 @@ export default function AppLayoutBoundary({ children }: { children: ReactNode })
 
   useEffect(() => {
     function handlePopState() {
-      setStrBackForwardPathname(window.location.pathname);
+      // window.location.pathname includes the base path, but usePathname()
+      // (used for `pathname` above) does not; strip it so both sides compare
+      // the same logical route.
+      setStrBackForwardPathname(stripBasePath(window.location.pathname));
     }
 
     window.addEventListener("popstate", handlePopState);

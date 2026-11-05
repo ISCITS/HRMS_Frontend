@@ -15,17 +15,20 @@ import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import { yupResolver } from "@hookform/resolvers/yup";
 import {
   Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
-  Divider, FormHelperText, Grid, IconButton, InputAdornment, LinearProgress,
+  Divider, FormHelperText, Grid, IconButton, InputAdornment, LinearProgress, Link,
   MenuItem, Paper, Skeleton, Snackbar, Stack, Table, TableBody, TableCell,
   TableHead, TablePagination, TableRow, TextField, Tooltip, Typography,
   useMediaQuery, useTheme,
 } from "@mui/material";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm, useWatch, type Control, type FieldErrors, type Resolver, type UseFormSetValue } from "react-hook-form";
 import * as yup from "yup";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
+import { MasterBreadcrumbs } from "@/components/master/MasterListUi";
 import FileRowActions from "@/components/shared/files/FileRowActions";
 import FileUploadButton from "@/components/shared/files/FileUploadButton";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -236,6 +239,7 @@ function LeaveTypeBadge({ strTypeCode, strTypeName, intSize = 34 }: { strTypeCod
 
 export default function EssLeaveApplicationPanel() {
   const objTheme = useTheme();
+  const objSearchParams = useSearchParams();
   const blnMobile = useMediaQuery(objTheme.breakpoints.down("sm"));
   const { t, intLanguageID } = useModuleLabels("ess-leave", "Unable to load Leave Application labels.");
   const { blnLoading: blnRightsLoading, canDo } = useActionRights();
@@ -324,11 +328,11 @@ export default function EssLeaveApplicationPanel() {
   useEffect(() => {
     if (blnLoading || blnInitialRouteHandledRef.current) return;
     blnInitialRouteHandledRef.current = true;
-    if (new URLSearchParams(window.location.search).get("view") === "apply") {
+    if (objSearchParams.get("view") === "apply") {
       setObjEditing(null); setObjPreview(null); setLstQueuedFiles([]); setLstExistingAttachments([]);
       setBlnShowValidation(false); setLstServerFormErrors([]); reset(fnDefaultForm(lstTypes[0]?.intID ?? 0)); setBlnFormOpen(true);
     }
-  }, [blnLoading, lstTypes, reset]);
+  }, [blnLoading, lstTypes, objSearchParams, reset]);
   useEffect(() => { setIntPage(0); }, [strSearch, strStatus]);
   // Half-day not allowed for the type (or Restricted Holiday) → force full day and drop sessions.
   useEffect(() => {
@@ -571,6 +575,7 @@ export default function EssLeaveApplicationPanel() {
   const intPendingCount = lstApplications.filter((objApplication) => objApplication.strStatus === "pending").length;
 
   return <Stack spacing={2}>
+    <MasterBreadcrumbs strSection={t("breadcrumb_leave", "Leave")} strTitle={t("apply_leave", "Apply Leave")} />
     {/* Apply Leave sits with the list filters (next to Status) rather than in its own row above. */}
     {blnLoading ? <LoadingSkeleton /> : strLoadError ? <Paper sx={{ p: 3, borderRadius: "18px", border: "1px solid #fecaca", textAlign: "center" }}><Alert severity="error" sx={{ mb: 2 }}>{strLoadError}</Alert><Button startIcon={<RefreshRoundedIcon />} variant="outlined" onClick={() => void fnLoadAll()}>{t("retry", "Retry")}</Button></Paper> : <>
       <Paper id="leave-applications" sx={{ borderRadius: "18px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
@@ -616,8 +621,8 @@ function RequestFields({ control, setValue, objErrors, lstTypes, lstRestrictedHo
   // Half-day and hour are mutually exclusive ways of taking part of a day.
   const blnAllowHalfDay = Boolean(objSelectedType?.blnAllowHalfDay) && !blnHourUnit;
   return <Paper sx={{ p: 2, borderRadius: "16px", border: "1px solid #e2e8f0" }}><Typography component="h3" sx={{ fontWeight: 800, mb: 1.5 }}>{fnLabel("request_details", "Request Details")}</Typography><Grid container spacing={1.5}>
-    <Grid item xs={12} sm={6}><Controller name="intLeaveTypeID" control={control} render={({ field }) => <TextField {...field} data-controlid="ess.leave.type" select fullWidth size="small" label={fnLabel("leave_type", "Leave Type")} onChange={(objEvent) => { field.onChange(Number(objEvent.target.value)); setValue("intRestrictedHolidayID", 0); }} error={Boolean(objErrors.intLeaveTypeID)} helperText={objErrors.intLeaveTypeID?.message}>{lstTypes.map((objType) => <MenuItem key={objType.intID} value={objType.intID}>{objType.strTypeName} ({objType.strTypeCode})</MenuItem>)}</TextField>} /></Grid>
-    {blnRestrictedHolidayType ? <Grid item xs={12} sm={6}><Controller name="intRestrictedHolidayID" control={control} render={({ field }) => <TextField {...field} data-controlid="ess.leave.restricted-holiday" select fullWidth required size="small" label={fnLabel("restricted_holiday", "Restricted Holiday")} onChange={(objEvent) => { const intHolidayID = Number(objEvent.target.value); field.onChange(intHolidayID); const objHoliday = lstRestrictedHolidays.find((objItem) => objItem.intID === intHolidayID); if (objHoliday) { setValue("dtFromDate", objHoliday.dtHolidayDate, { shouldValidate: true }); setValue("dtToDate", objHoliday.dtHolidayDate, { shouldValidate: true }); } }}><MenuItem value={0} disabled>{fnLabel("select_restricted_holiday", "Select Restricted Holiday")}</MenuItem>{lstRestrictedHolidays.map((objHoliday) => <MenuItem key={objHoliday.intID} value={objHoliday.intID}>{objHoliday.strHolidayName} ({formatLeaveDate(objHoliday.dtHolidayDate)})</MenuItem>)}</TextField>} /></Grid> : null}
+    <Grid item xs={12} sm={6}><Controller name="intLeaveTypeID" control={control} render={({ field }) => <CommonSearchableSelect controlId="ess.leave.type" label={fnLabel("leave_type", "Leave Type")} value={field.value} options={lstTypes.map((objType) => ({ ...objType, strLabel: `${objType.strTypeName} (${objType.strTypeCode})` }))} onChange={(intValue) => { field.onChange(intValue === "" ? 0 : Number(intValue)); setValue("intRestrictedHolidayID", 0); }} fullWidth error={Boolean(objErrors.intLeaveTypeID)} helperText={objErrors.intLeaveTypeID?.message} />} /></Grid>
+    {blnRestrictedHolidayType ? <Grid item xs={12} sm={6}><Controller name="intRestrictedHolidayID" control={control} render={({ field }) => <CommonSearchableSelect controlId="ess.leave.restricted-holiday" required label={fnLabel("restricted_holiday", "Restricted Holiday")} placeholder={fnLabel("select_restricted_holiday", "Select Restricted Holiday")} value={field.value || ""} options={lstRestrictedHolidays.map((objHoliday) => ({ ...objHoliday, strLabel: `${objHoliday.strHolidayName} (${formatLeaveDate(objHoliday.dtHolidayDate)})` }))} onChange={(intValue) => { const intHolidayID = intValue === "" ? 0 : Number(intValue); field.onChange(intHolidayID); const objHoliday = lstRestrictedHolidays.find((objItem) => objItem.intID === intHolidayID); if (objHoliday) { setValue("dtFromDate", objHoliday.dtHolidayDate, { shouldValidate: true }); setValue("dtToDate", objHoliday.dtHolidayDate, { shouldValidate: true }); } }} fullWidth />} /></Grid> : null}
     {strPolicyHelp ? <Grid item xs={12}><Alert severity="info">{strPolicyHelp}</Alert></Grid> : null}
     {/* An hour-based Leave Type is applied for one date, so the range collapses to a single "Leave
         Date" field; To Date is kept equal to it in the form state rather than shown twice. */}
@@ -648,14 +653,14 @@ function EmptyState({ strMessage }: { strMessage: string }) { return <Box sx={{ 
 
 function StatusChip({ strStatus, fnLabel }: { strStatus: string; fnLabel?: LabelFunction }) { const objColor = LEAVE_STATUS_COLORS[strStatus] ?? { bg: "#f1f5f9", fg: "#475569" }; const strText = getLeaveStatusLabel(strStatus, fnLabel ?? ((_strKey, strFallback) => strFallback)); return <Chip size="small" label={strText} sx={{ fontWeight: 700, bgcolor: objColor.bg, color: objColor.fg }} />; }
 
-function ApplicationActions({ objApplication, blnCanManage, fnOnView, fnOnEdit, fnOnWithdraw }: { objApplication: LeaveApplicationDto; blnCanManage: boolean; fnOnView: () => void; fnOnEdit: () => void; fnOnWithdraw: () => void }) {
+function ApplicationActions({ objApplication, blnCanManage, fnOnView, fnOnEdit, fnOnWithdraw, blnHideView = false }: { objApplication: LeaveApplicationDto; blnCanManage: boolean; fnOnView: () => void; fnOnEdit: () => void; fnOnWithdraw: () => void; blnHideView?: boolean }) {
   // Pending → withdraw outright; Approved & not yet started → request withdrawal (re-approval).
   const blnCanWithdraw = blnCanManage && (
     objApplication.strStatus === "pending" ||
     (objApplication.strStatus === "approved" && fnIsBeforeLeaveStart(objApplication.dtFromDate))
   );
   const strWithdrawTip = objApplication.strStatus === "approved" ? "Request withdrawal" : "Withdraw application";
-  return <Stack direction="row" spacing={.25}><Tooltip title="View details"><IconButton size="small" aria-label="View details" onClick={fnOnView}><VisibilityOutlinedIcon fontSize="small" /></IconButton></Tooltip>{objApplication.strStatus === "draft" && blnCanManage ? <Tooltip title="Edit draft"><IconButton size="small" aria-label="Edit draft" color="primary" onClick={fnOnEdit}><EditRoundedIcon fontSize="small" /></IconButton></Tooltip> : null}{blnCanWithdraw ? <Tooltip title={strWithdrawTip}><IconButton size="small" aria-label={strWithdrawTip} color="error" onClick={fnOnWithdraw}><WarningAmberRoundedIcon fontSize="small" /></IconButton></Tooltip> : null}</Stack>;
+  return <Stack direction="row" spacing={.25} onClick={(objEvent) => objEvent.stopPropagation()}>{blnHideView ? null : <Tooltip title="View details"><IconButton size="small" aria-label="View details" onClick={fnOnView}><VisibilityOutlinedIcon fontSize="small" /></IconButton></Tooltip>}{objApplication.strStatus === "draft" && blnCanManage ? <Tooltip title="Edit draft"><IconButton size="small" aria-label="Edit draft" color="primary" onClick={fnOnEdit}><EditRoundedIcon fontSize="small" /></IconButton></Tooltip> : null}{blnCanWithdraw ? <Tooltip title={strWithdrawTip}><IconButton size="small" aria-label={strWithdrawTip} color="error" onClick={fnOnWithdraw}><WarningAmberRoundedIcon fontSize="small" /></IconButton></Tooltip> : null}</Stack>;
 }
 
 function ApplicationCard({ objApplication, blnCanManage, fnOnView, fnOnEdit, fnOnWithdraw }: { objApplication: LeaveApplicationDto; blnCanManage: boolean; fnOnView: () => void; fnOnEdit: () => void; fnOnWithdraw: () => void }) {
@@ -663,7 +668,8 @@ function ApplicationCard({ objApplication, blnCanManage, fnOnView, fnOnEdit, fnO
 }
 
 function ApplicationTable({ lstApplications, blnCanManage, fnOnView, fnOnEdit, fnOnWithdraw, fnLabel }: { lstApplications: LeaveApplicationDto[]; blnCanManage: boolean; fnOnView: (intApplicationID: number) => void; fnOnEdit: (objApplication: LeaveApplicationDto) => void; fnOnWithdraw: (objApplication: LeaveApplicationDto) => void; fnLabel: LabelFunction }) {
-  return <Box sx={{ overflowX: "auto" }}><Table size="small"><TableHead><TableRow sx={{ "& th": { fontWeight: 700, bgcolor: "#f8fafc", whiteSpace: "nowrap" } }}><TableCell>{fnLabel("actions", "Actions")}</TableCell><TableCell>{fnLabel("applied_on", "Applied On")}</TableCell><TableCell>{fnLabel("leave_type", "Leave Type")}</TableCell><TableCell>{fnLabel("from_date", "From Date")}</TableCell><TableCell>{fnLabel("to_date", "To Date")}</TableCell><TableCell>{fnLabel("quantity", "Quantity")}</TableCell><TableCell>{fnLabel("status", "Status")}</TableCell></TableRow></TableHead><TableBody>{lstApplications.map((objApplication) => <TableRow key={objApplication.intID} hover><TableCell><ApplicationActions objApplication={objApplication} blnCanManage={blnCanManage} fnOnView={() => fnOnView(objApplication.intID)} fnOnEdit={() => fnOnEdit(objApplication)} fnOnWithdraw={() => fnOnWithdraw(objApplication)} /></TableCell><TableCell>{formatLeaveDate(objApplication.dtAppliedOn)}</TableCell><TableCell><Stack direction="row" spacing={1} alignItems="center"><LeaveTypeBadge strTypeCode={objApplication.strTypeCode} strTypeName={objApplication.strTypeName} /><Typography sx={{ fontWeight: 700, fontSize: ".82rem" }}>{objApplication.strTypeName}</Typography></Stack></TableCell><TableCell>{formatLeaveDate(objApplication.dtFromDate)}{fnHalfSuffix(objApplication.blnFromHalf, objApplication.strFromHalfSession)}</TableCell><TableCell>{formatLeaveDate(objApplication.dtToDate)}{fnHalfSuffix(objApplication.blnToHalf, objApplication.strToHalfSession)}</TableCell><TableCell>{objApplication.decDays}</TableCell><TableCell><StatusChip strStatus={objApplication.strStatus} fnLabel={fnLabel} /></TableCell></TableRow>)}</TableBody></Table></Box>;
+  // No View button: the leave type link / row click opens the details. Edit and Withdraw stay as row actions.
+  return <Box sx={{ overflowX: "auto" }}><Table size="small"><TableHead><TableRow sx={{ "& th": { fontWeight: 700, bgcolor: "#f8fafc", whiteSpace: "nowrap" } }}><TableCell>{fnLabel("leave_type", "Leave Type")}</TableCell><TableCell>{fnLabel("applied_on", "Applied On")}</TableCell><TableCell>{fnLabel("from_date", "From Date")}</TableCell><TableCell>{fnLabel("to_date", "To Date")}</TableCell><TableCell>{fnLabel("quantity", "Quantity")}</TableCell><TableCell>{fnLabel("status", "Status")}</TableCell><TableCell>{fnLabel("actions", "Actions")}</TableCell></TableRow></TableHead><TableBody>{lstApplications.map((objApplication) => <TableRow key={objApplication.intID} hover onClick={() => fnOnView(objApplication.intID)} sx={{ cursor: "pointer", "&:hover .MuiLink-root": { textDecoration: "underline" } }}><TableCell><Stack direction="row" spacing={1} alignItems="center"><LeaveTypeBadge strTypeCode={objApplication.strTypeCode} strTypeName={objApplication.strTypeName} /><Link className="app-master-first-column-link" component="button" type="button" underline="none" data-controlid={`ess.leave.applications.${objApplication.intID}.view.link`} onClick={(objEvent) => { objEvent.stopPropagation(); fnOnView(objApplication.intID); }} sx={{ fontSize: ".82rem" }}>{objApplication.strTypeName}</Link></Stack></TableCell><TableCell>{formatLeaveDate(objApplication.dtAppliedOn)}</TableCell><TableCell>{formatLeaveDate(objApplication.dtFromDate)}{fnHalfSuffix(objApplication.blnFromHalf, objApplication.strFromHalfSession)}</TableCell><TableCell>{formatLeaveDate(objApplication.dtToDate)}{fnHalfSuffix(objApplication.blnToHalf, objApplication.strToHalfSession)}</TableCell><TableCell>{objApplication.decDays}</TableCell><TableCell><StatusChip strStatus={objApplication.strStatus} fnLabel={fnLabel} /></TableCell><TableCell><ApplicationActions objApplication={objApplication} blnCanManage={blnCanManage} blnHideView fnOnView={() => fnOnView(objApplication.intID)} fnOnEdit={() => fnOnEdit(objApplication)} fnOnWithdraw={() => fnOnWithdraw(objApplication)} /></TableCell></TableRow>)}</TableBody></Table></Box>;
 }
 
 function AttachmentRow({ strName, intBytes, fnOnPreview, fnOnReplace, fnOnDelete, blnBusy, blnReplacing, intReplaceProgress }: { strName: string; intBytes: number; fnOnPreview?: () => void; fnOnReplace?: (objNewFile: File) => void; fnOnDelete?: () => void; blnBusy?: boolean; blnReplacing?: boolean; intReplaceProgress?: number }) { return <Stack direction="row" spacing={1} alignItems="center" sx={{ p: .75, borderRadius: "10px", bgcolor: "#f8fafc", border: "1px solid #e2e8f0" }}><AttachFileRoundedIcon fontSize="small" color="action" /><Box sx={{ minWidth: 0, flex: 1 }}><Typography noWrap sx={{ fontWeight: 700, fontSize: ".8rem" }}>{strName}</Typography><Typography sx={{ fontSize: ".68rem", color: "#64748b" }}>{Math.max(1, Math.round(intBytes / 1024))} KB</Typography></Box><FileRowActions strFileName={strName} controlIdPrefix="ess.leave.attachment" busy={blnBusy} onPreview={fnOnPreview} onReplace={fnOnReplace} onDelete={fnOnDelete} isReplacing={blnReplacing} replaceProgress={intReplaceProgress} /></Stack>; }

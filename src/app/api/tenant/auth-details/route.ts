@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { ApiRequestError } from "@/Common/utils/apiErrorHandler";
+import { proxyTenantLookup } from "@/app/api/auth/AuthProxy";
 import { DefaultContextValue } from "@/Common/enums/AppEnums";
 import { apiConstants } from "@/config/constants";
 import { callBackendApi } from "@/lib/BackendApi";
@@ -28,6 +29,49 @@ function buildTenantProxyHeaders() {
   };
 }
 
+function resolveTenantLookupName(objData: unknown): string {
+  if (!objData || typeof objData !== "object") {
+    return "";
+  }
+
+  const dicData = objData as {
+    strTenantName?: string | null;
+    tenant_name?: string | null;
+    tenantName?: string | null;
+    TenantName?: string | null;
+    StrTenantName?: string | null;
+  };
+
+  return (
+    dicData.strTenantName?.trim() ||
+    dicData.tenant_name?.trim() ||
+    dicData.tenantName?.trim() ||
+    dicData.TenantName?.trim() ||
+    dicData.StrTenantName?.trim() ||
+    ""
+  );
+}
+
+function mergeTenantName(objAuthDetails: TenantAuthDetails, strTenantName: string): TenantAuthDetails {
+  const strExistingName =
+    objAuthDetails.tenant_name?.trim() ||
+    objAuthDetails.tenantName?.trim() ||
+    objAuthDetails.TenantName?.trim() ||
+    objAuthDetails.strTenantName?.trim() ||
+    objAuthDetails.StrTenantName?.trim();
+
+  if (strExistingName || !strTenantName) {
+    return objAuthDetails;
+  }
+
+  return {
+    ...objAuthDetails,
+    tenant_name: strTenantName,
+    tenantName: strTenantName,
+    strTenantName
+  };
+}
+
 async function proxyTenantAuthDetails(strTenantUUID: string, intLanguageID?: number) {
   if (!strTenantUUID) {
     return NextResponse.json(
@@ -52,7 +96,18 @@ async function proxyTenantAuthDetails(strTenantUUID: string, intLanguageID?: num
         headers: buildTenantProxyHeaders()
       }
     );
-    return NextResponse.json(objResult, { status: 200 });
+    const objTenantLookupResult = await proxyTenantLookup(objResult.Data?.tenant_uuid || strTenantUUID)
+      .catch(() => proxyTenantLookup(strTenantUUID))
+      .catch(() => null);
+    const strTenantName = resolveTenantLookupName(objTenantLookupResult?.Data);
+
+    return NextResponse.json(
+      {
+        ...objResult,
+        Data: mergeTenantName(objResult.Data, strTenantName)
+      },
+      { status: 200 }
+    );
   } catch (objError) {
     return NextResponse.json(
       {

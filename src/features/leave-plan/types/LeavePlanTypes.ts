@@ -1,5 +1,7 @@
 export type LeavePlanItem = {
   intID?: number;
+  /** Server-assigned row identity; read-only, stripped before save. */
+  strRecordUUID?: string | null;
   intLeaveTypeID: number;
   // Resolved server-side from Leave Type + plan effective date; the UI no longer selects it.
   intLeavePolicyID: number | null;
@@ -17,6 +19,8 @@ export type LeavePlanItem = {
 
 export type LeavePlanText = {
   intID?: number;
+  /** Server-assigned row identity; read-only, stripped before save. */
+  strRecordUUID?: string | null;
   intLanguageID: number;
   strPlanName: string;
   strDescription: string | null;
@@ -54,7 +58,20 @@ export type LeavePlanSaveRequest = Omit<LeavePlan, "intID" | "strRecordUUID" | "
   lstText: LeavePlanText[];
 };
 
-export type LeaveTypeOption = { intID: number; strTypeCode: string; strTypeName: string; blnIsActive: boolean; blnAllowNegativeBalance?: boolean };
+export type LeaveTypeOption = {
+  intID: number;
+  strTypeCode: string;
+  strTypeName: string;
+  strDisplayName?: string;
+  strDescription?: string | null;
+  strLeaveCategoryCode?: string | null;
+  strUnit?: string | null;
+  decEntitlementQty?: number | null;
+  blnIsActive: boolean;
+  blnAllowNegativeBalance?: boolean;
+  strColorCode?: string | null;
+  strIconName?: string | null;
+};
 export type LeavePolicyOption = {
   intID: number;
   intLeaveTypeID: number;

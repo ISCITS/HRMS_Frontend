@@ -7,7 +7,6 @@ import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   Divider,
   Paper,
   Stack,
@@ -15,6 +14,7 @@ import {
   Typography
 } from "@mui/material";
 import { useMemo } from "react";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import type { GoogleMfaChallengeData } from "@/models/AuthModels";
 
@@ -164,7 +164,7 @@ export default function GoogleMfaChallengeView({
               variant="contained"
               disabled={blnSubmitting || !blnCanVerify}
               onClick={onVerify}
-              startIcon={blnSubmitting ? <CircularProgress size={18} color="inherit" /> : undefined}
+              startIcon={blnSubmitting ? <DottedLoader intSize={18} color="inherit" /> : undefined}
               sx={{ minHeight: 52, borderRadius: "10px" }}
             >
               {strResolvedVerifyButtonLabel}

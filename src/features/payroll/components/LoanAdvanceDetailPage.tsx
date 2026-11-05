@@ -13,11 +13,14 @@ import UndoRoundedIcon from "@mui/icons-material/UndoRounded";
 import { Alert, Autocomplete, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Step, StepLabel, Stepper, Tab, Tabs, TextField, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { DetailPageHeader } from "@/components/master/MasterListUi";
 import type { MenuItem as AuthMenuItem } from "@/models/AuthModels";
 
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import FileUploadPanel from "@/components/shared/files/FileUploadPanel";
 import LoanAdvanceStatusBadge from "@/features/payroll/components/LoanAdvanceStatusBadge";
+import LoanPrepaymentTab from "@/features/payroll/components/LoanPrepaymentTab";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { employeeService } from "@/features/employee/services/employeeService";
 import type { EmployeeListRecord } from "@/features/employee/types";
@@ -45,6 +48,8 @@ const dicPayrollActionAliases: Record<string, string[]> = {
   manualRecovery: ["loan_adv_manual_recovery"],
   skipInstallment: ["loan_adv_skip_installment"],
   adjustSchedule: ["loan_adv_adjust_schedule"],
+  prepay: ["loan_adv_prepay"],
+  prepayAdd: ["loan_adv_prepay_add"],
   close: ["loan_adv_close"],
   cancel: ["loan_adv_cancel"],
   export: ["loan_adv_export"],
@@ -217,6 +222,8 @@ export default function LoanAdvanceDetailPage({ strLoanAdvanceID, strMode = "pay
   const blnCanManualRecovery = canLoanAction("manualRecovery");
   const blnCanSkipInstallment = canLoanAction("skipInstallment");
   const blnCanAdjustSchedule = canLoanAction("adjustSchedule");
+  const blnCanPrepay = canLoanAction("prepay");
+  const blnCanAddPrepayment = canLoanAction("prepayAdd");
   const blnCanClose = canLoanAction("close");
   const blnCanCancel = canLoanAction("cancel");
   const strStatus = objRecord?.strWorkflowStatus || "draft";
@@ -594,22 +601,32 @@ export default function LoanAdvanceDetailPage({ strLoanAdvanceID, strMode = "pay
     return (
       <Box className={styles.tableWrap}>
         <table className={`${styles.table} ${styles.fnfDenseTable}`}>
-          <thead><tr><th>{t("schedule_no", "No.")}</th><th>{t("schedule_month", "Payroll Month")}</th><th>{t("schedule_opening", "Opening")}</th><th>{t("schedule_principal", "Principal")}</th><th>{t("schedule_interest", "Interest")}</th><th>{t("schedule_taxable", "Taxable Perquisite")}</th><th>{t("schedule_total", "Total Due")}</th><th>{t("schedule_recovered", "Recovered")}</th><th>{t("schedule_closing", "Closing")}</th><th>{t("schedule_status", "Status")}</th></tr></thead>
+          <thead><tr><th>{t("schedule_no", "No.")}</th><th>{t("schedule_month", "Payroll Month")}</th><th>{t("schedule_opening", "Opening")}</th><th>{t("schedule_principal", "Principal")}</th><th>{t("schedule_interest", "Interest")}</th><th>{t("schedule_taxable", "Taxable Perquisite")}</th><th>{t("schedule_total", "Total Due")}</th><th>{t("schedule_recovered", "Recovered")}</th><th>{t("schedule_closing", "Closing")}</th><th>{t("schedule_status", "Status")}</th><th>{t("schedule_prepayment", "Prepayment")}</th></tr></thead>
           <tbody>
-            {lstRows.map((objRow) => (
-              <tr key={`${objRow.intID}-${objRow.intInstallmentNo}`}>
-                <td>{objRow.intInstallmentNo}</td>
-                <td>{formatDate(objRow.dtPayrollMonth).slice(0, 7)}</td>
-                <td>{formatCurrency(objRow.decOpeningPrincipalBalance)}</td>
-                <td>{formatCurrency(objRow.decPrincipalDueAmount)}</td>
-                <td>{formatCurrency(objRow.decActualInterestAmount)}</td>
-                <td>{formatCurrency(objRow.decTaxablePerquisiteAmount)}</td>
-                <td>{formatCurrency(objRow.decTotalDueAmount)}</td>
-                <td>{formatCurrency(objRow.decRecoveredTotalAmount)}</td>
-                <td>{formatCurrency(objRow.decClosingPrincipalBalance)}</td>
-                <td>{t(`status_${objRow.strScheduleStatus}`, objRow.strScheduleStatus.replaceAll("_", " "))}</td>
-              </tr>
-            ))}
+            {lstRows.map((objRow) => {
+              // A full/partial prepayment settles every remaining row in one lump sum (see
+              // applyFullPrepayment/applyPartialPrepayment), but only the row carrying
+              // decPrepaymentAmount actually received that payment -- the other rows it swept
+              // along were never individually recovered, so their Recovered/Status columns
+              // would otherwise misleadingly repeat the original per-installment EMI/status.
+              const blnPrepaidFiller = objRow.strScheduleStatus === "prepaid" && !objRow.decPrepaymentAmount;
+              return (
+                <tr key={`${objRow.intID}-${objRow.intInstallmentNo}`}>
+                  <td>{objRow.intInstallmentNo}</td>
+                  <td>{formatDate(objRow.dtPayrollMonth).slice(0, 7)}</td>
+                  <td>{formatCurrency(objRow.decOpeningPrincipalBalance)}</td>
+                  <td>{formatCurrency(objRow.decPrincipalDueAmount)}</td>
+                  <td>{formatCurrency(objRow.decActualInterestAmount)}</td>
+                  <td>{formatCurrency(objRow.decTaxablePerquisiteAmount)}</td>
+                  <td>{formatCurrency(objRow.decTotalDueAmount)}</td>
+                  <td>{blnPrepaidFiller ? "-" : formatCurrency(objRow.decRecoveredTotalAmount)}</td>
+                  <td>{formatCurrency(objRow.decClosingPrincipalBalance)}</td>
+                  <td>{blnPrepaidFiller ? "-" : t(`status_${objRow.strScheduleStatus}`, objRow.strScheduleStatus.replaceAll("_", " "))}</td>
+                  <td>{objRow.decPrepaymentAmount ? formatCurrency(objRow.decPrepaymentAmount) : "-"}</td>
+                </tr>
+              );
+            })}
+            {!lstRows.length ? <tr><td colSpan={11} className={styles.emptyState}>{t("schedule_empty", "No installment schedule available yet.")}</td></tr> : null}
           </tbody>
         </table>
       </Box>
@@ -618,17 +635,16 @@ export default function LoanAdvanceDetailPage({ strLoanAdvanceID, strMode = "pay
 
   return (
     <Box className={`${styles.page} ${styles.detailPage}`}>
-      <Box className={styles.controlsCard} sx={{ py: 1, minHeight: 0 }}>
-        <Box className={`${styles.controlsHeader} ${styles.detailHeader}`} sx={{ alignItems: "center", minHeight: 0 }}>
-          <Box>
-            <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push(blnIsEssMode ? "/ess/loans-advances" : "/payroll/loans-advances")}>{t("back_button", "Back")}</Button>
-          </Box>
-          <Box className={`${styles.headerActions} ${styles.detailHeaderActions}`}>
-            {objRecord ? <LoanAdvanceStatusBadge strStatus={objRecord.strWorkflowStatus} t={t} /> : null}
-            {renderWorkflowActions()}
-          </Box>
-        </Box>
-      </Box>
+      <DetailPageHeader
+        strSection={blnIsEssMode ? t("breadcrumb_ess", "ESS") : t("breadcrumb_loan_management", "Loan Management")}
+        strListTitle={blnIsEssMode ? t("ess_page_title", "My Loans & Advances") : t("page_title", "Loans & Advances")}
+        strListHref={blnIsEssMode ? "/ess/loans-advances" : "/payroll/loans-advances"}
+        strCurrent={!objRecord ? t("breadcrumb_add", "Add") : ["draft", "sent_back"].includes(strStatus) ? t("breadcrumb_edit", "Edit") : t("breadcrumb_view", "View")}
+      >
+        <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push(blnIsEssMode ? "/ess/loans-advances" : "/payroll/loans-advances")}>{t("back_button", "Back")}</Button>
+        {objRecord ? <LoanAdvanceStatusBadge strStatus={objRecord.strWorkflowStatus} t={t} /> : null}
+        {renderWorkflowActions()}
+      </DetailPageHeader>
       {strRightsError || strLabelError ? <Alert severity="warning">{strRightsError || strLabelError}</Alert> : null}
       {strError ? <Alert severity="error">{strError}</Alert> : null}
       {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
@@ -639,12 +655,13 @@ export default function LoanAdvanceDetailPage({ strLoanAdvanceID, strMode = "pay
           <Stepper activeStep={intWorkflowStep} alternativeLabel className={styles.fnfStepperShell}>
             {lstWorkflow.map((strStep) => <Step key={strStep}><StepLabel>{t(`workflow_${strStep}`, strStep.replaceAll("_", " "))}</StepLabel></Step>)}
           </Stepper>
-          <Tabs value={intTab} onChange={(_, intNextTab) => setIntTab(intNextTab)} sx={{ minHeight: 42, mt: 1 }}>
-            <Tab label={t("tab_form", "Request")} />
-            <Tab label={t("tab_approval", "Approval")} />
-            <Tab label={t("tab_disbursement", "Disbursement")} disabled={!["approved", "disbursed", "active", "closed"].includes(strStatus)} />
-            <Tab label={t("tab_schedule", "Repayment Schedule")} disabled={!objRecord && lstSchedulePreview.length === 0} />
-            <Tab label={t("tab_ledger", "Ledger / History")} disabled={!objRecord} />
+          <Tabs className="app-employee-tabs" value={intTab} onChange={(_, intNextTab) => setIntTab(intNextTab)} variant="scrollable" scrollButtons="auto" sx={{ mt: 1 }}>
+            <Tab label={<Box component="span" className="app-employee-tab-label">{t("tab_form", "Request")}</Box>} />
+            <Tab label={<Box component="span" className="app-employee-tab-label">{t("tab_approval", "Approval")}</Box>} />
+            <Tab label={<Box component="span" className="app-employee-tab-label">{t("tab_disbursement", "Disbursement")}</Box>} />
+            <Tab label={<Box component="span" className="app-employee-tab-label">{t("tab_schedule", "Installment Schedule")}</Box>} />
+            {!blnIsEssMode ? <Tab label={<Box component="span" className="app-employee-tab-label">{t("tab_prepayment", "Prepayment")}</Box>} /> : null}
+            <Tab label={<Box component="span" className="app-employee-tab-label">{t("tab_ledger", "Ledger / History")}</Box>} />
           </Tabs>
           {intTab === 0 ? (
             <Box sx={{ display: "grid", gap: 2, mt: 2 }}>
@@ -680,10 +697,16 @@ export default function LoanAdvanceDetailPage({ strLoanAdvanceID, strMode = "pay
                   <MenuItem value="loan">{t("type_loan", "Loan")}</MenuItem>
                   <MenuItem value="advance">{t("type_advance", "Advance")}</MenuItem>
                 </TextField>
-                <TextField required select size="small" label={t("field_category", "Category")} value={dicValues.intCategoryID} error={Boolean(getFieldError("intCategoryID"))} helperText={getFieldError("intCategoryID") || " "} disabled={blnReadonly} onChange={(e) => updateValue("intCategoryID", e.target.value ? Number(e.target.value) : "")}>
-                  <MenuItem value="">{t("select_category", "Select category")}</MenuItem>
-                  {lstFilteredCategories.map((objCategory) => <MenuItem key={objCategory.intID} value={objCategory.intID}>{t(toLabelKey(objCategory.strCategoryName), objCategory.strCategoryName)}</MenuItem>)}
-                </TextField>
+                <CommonSearchableSelect
+                  required
+                  label={t("field_category", "Category")}
+                  value={dicValues.intCategoryID}
+                  options={lstFilteredCategories.map((objCategory) => ({ intID: objCategory.intID, strLabel: t(toLabelKey(objCategory.strCategoryName), objCategory.strCategoryName) }))}
+                  error={Boolean(getFieldError("intCategoryID"))}
+                  helperText={getFieldError("intCategoryID") || " "}
+                  disabled={blnReadonly}
+                  onChange={(intValue) => updateValue("intCategoryID", intValue)}
+                />
                 <TextField required size="small" type="date" label={t("field_request_date", "Request Date")} InputLabelProps={{ shrink: true }} value={dicValues.dtRequestDate} error={Boolean(getFieldError("dtRequestDate"))} helperText={getFieldError("dtRequestDate") || " "} disabled={blnReadonly} onChange={(e) => updateValue("dtRequestDate", e.target.value)} />
                 <TextField required size="small" label={t("field_requested_amount", "Requested Amount")} value={dicValues.decRequestedAmount} error={Boolean(getFieldError("decRequestedAmount"))} helperText={getFieldError("decRequestedAmount") || " "} disabled={blnReadonly} onChange={(e) => updateValue("decRequestedAmount", e.target.value)} />
                 <TextField required size="small" type="month" label={t("field_recovery_start_month", "Recovery Start Month")} InputLabelProps={{ shrink: true }} value={(dicValues.dtRecoveryStartMonth || "").slice(0, 7)} error={Boolean(getFieldError("dtRecoveryStartMonth"))} helperText={getFieldError("dtRecoveryStartMonth") || " "} disabled={blnReadonly} onChange={(e) => updateValue("dtRecoveryStartMonth", `${e.target.value}-01`)} />
@@ -724,14 +747,38 @@ export default function LoanAdvanceDetailPage({ strLoanAdvanceID, strMode = "pay
             </Box>
           ) : null}
           {intTab === 2 ? (
-            <Box className={styles.fnfWorkflowGrid} sx={{ mt: 2 }}>
-              {[["date", formatDate(objRecord?.dtDisbursementDate)], ["amount", formatCurrency(objRecord?.decDisbursedAmount)], ["reference", objRecord?.strTransactionReferenceNo || "-"]].map(([strKey, strValue]) => (
-                <Box key={strKey} className={styles.fnfWorkflowPanel}><Typography className={styles.fnfWorkflowTitle}>{t(`disbursement_${strKey}`, strKey)}</Typography><Typography className={styles.fnfWorkflowValue}>{strValue}</Typography></Box>
-              ))}
-            </Box>
+            ["approved", "disbursed", "active", "closed"].includes(strStatus) ? (
+              <Box className={styles.fnfWorkflowGrid} sx={{ mt: 2 }}>
+                {[["date", formatDate(objRecord?.dtDisbursementDate)], ["amount", formatCurrency(objRecord?.decDisbursedAmount)], ["reference", objRecord?.strTransactionReferenceNo || "-"]].map(([strKey, strValue]) => (
+                  <Box key={strKey} className={styles.fnfWorkflowPanel}><Typography className={styles.fnfWorkflowTitle}>{t(`disbursement_${strKey}`, strKey)}</Typography><Typography className={styles.fnfWorkflowValue}>{strValue}</Typography></Box>
+                ))}
+              </Box>
+            ) : (
+              <Alert severity="info" sx={{ mt: 2, borderRadius: "8px" }}>
+                {t("disbursement_not_yet", "Disbursement details will appear here once this request is approved and disbursed.")}
+              </Alert>
+            )
           ) : null}
           {intTab === 3 ? <Box sx={{ mt: 2 }}>{renderScheduleTable(lstSchedule)}</Box> : null}
-          {intTab === 4 ? (
+          {!blnIsEssMode && intTab === 4 ? (
+            objRecord ? (
+              <LoanPrepaymentTab
+                objRecord={objRecord}
+                blnCanAddPrepayment={blnCanAddPrepayment}
+                onSuccess={(objNextRecord) => {
+                  setObjRecord(objNextRecord);
+                  setDicValues(toLoanAdvanceForm(objNextRecord));
+                  setStrSuccess(t("message_prepayment_recorded", "Prepayment recorded successfully."));
+                  setIntTab(3);
+                }}
+              />
+            ) : (
+              <Alert severity="info" sx={{ mt: 2, borderRadius: "8px" }}>
+                {t("prepayment_save_first", "Save this request before recording a prepayment.")}
+              </Alert>
+            )
+          ) : null}
+          {intTab === (blnIsEssMode ? 4 : 5) ? (
             <Box className={styles.tableWrap} sx={{ mt: 2 }}>
               <table className={`${styles.table} ${styles.fnfDenseTable}`}>
                 <thead><tr><th>{t("ledger_event", "Event")}</th><th>{t("ledger_from", "From")}</th><th>{t("ledger_to", "To")}</th><th>{t("ledger_amount", "Amount")}</th><th>{t("ledger_balance", "Balance")}</th><th>{t("ledger_remarks", "Remarks")}</th><th>{t("ledger_on", "On")}</th></tr></thead>
@@ -748,13 +795,15 @@ export default function LoanAdvanceDetailPage({ strLoanAdvanceID, strMode = "pay
         <DialogTitle>{objActionDialog?.strTitle}</DialogTitle>
         <DialogContent sx={{ display: "grid", gap: 1.4, pt: "12px !important" }}>
           {objActionDialog?.blnNeedsScheduleRow ? (
-            <TextField select size="small" label={t("field_installment", "Installment")} value={dicActionValues.intScheduleID} onChange={(e) => updateActionSchedule(e.target.value)}>
-              {lstDirectActionSchedules.map((objSchedule) => (
-                <MenuItem key={objSchedule.intID} value={String(objSchedule.intID)}>
-                  {t("schedule_no", "No.")} {objSchedule.intInstallmentNo} - {formatDate(objSchedule.dtPayrollMonth).slice(0, 7)} - {formatCurrency(objSchedule.decTotalDueAmount)}
-                </MenuItem>
-              ))}
-            </TextField>
+            <CommonSearchableSelect
+              label={t("field_installment", "Installment")}
+              value={dicActionValues.intScheduleID}
+              options={lstDirectActionSchedules.map((objSchedule) => ({
+                intID: String(objSchedule.intID),
+                strLabel: `${t("schedule_no", "No.")} ${objSchedule.intInstallmentNo} - ${formatDate(objSchedule.dtPayrollMonth).slice(0, 7)} - ${formatCurrency(objSchedule.decTotalDueAmount)}`,
+              }))}
+              onChange={(strValue) => updateActionSchedule(String(strValue))}
+            />
           ) : null}
           {objActionDialog?.blnNeedsManualRecovery ? (
             <>

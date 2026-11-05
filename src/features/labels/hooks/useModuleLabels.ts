@@ -19,6 +19,7 @@ const dicModuleConstantMap: Record<string, unknown> = {
   user: dicConstant.users,
   department: dicConstant.departments,
   designation: dicConstant.designations,
+  employee_category: dicConstant.employeeCategories,
   bank: dicConstant.banks,
   cost_center: dicConstant.costCenters,
   country: dicConstant.countries,

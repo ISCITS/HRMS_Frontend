@@ -3,14 +3,18 @@
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Autocomplete, Box, Button, Checkbox, Chip, CircularProgress, MenuItem, TextField, Typography } from "@mui/material";
+import { Alert, Autocomplete, Box, Breadcrumbs, Button, Checkbox, Chip, MenuItem, TextField, Typography } from "@mui/material";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
+import { dicMasterRowSx } from "@/components/master/MasterListUi";
+import { ReportMoreFilters } from "@/features/reports/components/ReportFilterUi";
+import masterStyles from "@/components/master/MasterScreen.module.css";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
-import styles from "@/features/payroll/components/PayrollScreen.module.css";
+import payrollStyles from "@/features/payroll/components/PayrollScreen.module.css";
 
 export type ReportDisplayRow = Record<string, ReactNode>;
 
@@ -43,14 +47,17 @@ export type ReportGridPageProps = {
   /** Keep column labels on one line and allow horizontal scrolling when needed. */
   blnWrapColumnHeaders?: boolean;
   blnAlignSearchActionsBottomRight?: boolean;
+  blnEqualSearchFilterWidths?: boolean;
+  blnUseMasterStyle?: boolean;
+  /** Opt-in TDS-style layout: show only the first N filters inline and put the rest behind a "More filters" popover. */
+  intInlineFilterCount?: number;
+  strBreadcrumbRoot?: string;
+  strBreadcrumbSection?: string;
+  strBreadcrumbTitle?: string;
 };
 
 const lstRowsPerPageOptions = [10, 20, 50];
 const SELECT_FIELD = "__select";
-
-function toCsvValue(objValue: unknown) {
-  return `"${String(objValue ?? "").replace(/"/g, '""')}"`;
-}
 
 function csvTimestamp() {
   const objNow = new Date();
@@ -58,13 +65,30 @@ function csvTimestamp() {
   return `${objNow.getFullYear()}${fnPad(objNow.getMonth() + 1)}${fnPad(objNow.getDate())}_${fnPad(objNow.getHours())}${fnPad(objNow.getMinutes())}${fnPad(objNow.getSeconds())}`;
 }
 
-function downloadCsv(strFileName: string, lstColumns: CommonTableColumn<ReportDisplayRow>[], lstRows: ReportDisplayRow[]) {
+async function downloadExcel(strFileName: string, lstColumns: CommonTableColumn<ReportDisplayRow>[], lstRows: ReportDisplayRow[]) {
   const lstExportColumns = lstColumns.filter((objColumn) => objColumn.field && objColumn.field !== SELECT_FIELD && objColumn.exportable !== false);
-  const lstLines = [
-    lstExportColumns.map((objColumn) => toCsvValue(objColumn.headerName)).join(","),
-    ...lstRows.map((dicRow) => lstExportColumns.map((objColumn) => toCsvValue(csvCellText(dicRow[objColumn.field as string]))).join(",")),
-  ];
-  const objBlob = new Blob(["﻿" + lstLines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const { Workbook } = await import("exceljs");
+  const objWorkbook = new Workbook();
+  const objSheet = objWorkbook.addWorksheet("Report");
+  objSheet.columns = lstExportColumns.map((objColumn) => ({ width: Math.max(12, Math.round((objColumn.width ?? 120) / 7)) }));
+  const objHeaderRow = objSheet.addRow(lstExportColumns.map((objColumn) => String(objColumn.headerName ?? "")));
+  objHeaderRow.font = { bold: true };
+  objHeaderRow.alignment = { vertical: "middle", wrapText: true };
+  objHeaderRow.eachCell((objCell) => { objCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE8F0FB" } }; });
+  lstRows.forEach((dicRow) => {
+    objSheet.addRow(lstExportColumns.map((objColumn) => {
+      const strText = csvCellText(dicRow[objColumn.field as string]);
+      // Right-aligned columns are numeric: write real numbers (drop the en-IN thousands separators).
+      if (objColumn.align === "right") {
+        const strNumber = strText.replace(/,/g, "");
+        if (/^-?\d+(\.\d+)?$/.test(strNumber)) return Number(strNumber);
+      }
+      return strText;
+    }));
+  });
+  objSheet.views = [{ state: "frozen", ySplit: 1 }];
+  const objBuffer = await objWorkbook.xlsx.writeBuffer();
+  const objBlob = new Blob([objBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
   const strUrl = URL.createObjectURL(objBlob);
   const objLink = document.createElement("a");
   objLink.href = strUrl;
@@ -132,6 +156,7 @@ function ReportMultiSelect(objProps: {
       renderInput={(objParams) => (
         <TextField
           {...objParams}
+          className="app-mui-text-field"
           label={objProps.strLabel}
           placeholder={`Search ${objProps.strLabel}...`}
           error={Boolean(strError)}
@@ -148,7 +173,7 @@ function ReportMultiSelect(objProps: {
             ),
             endAdornment: (
               <>
-                {blnLoading ? <CircularProgress color="inherit" size={16} /> : null}
+                {blnLoading ? <DottedLoader intSize={16} /> : null}
                 {objParams.InputProps.endAdornment}
               </>
             ),
@@ -163,6 +188,7 @@ function ReportMultiSelect(objProps: {
 export default function ReportGridPage(objProps: ReportGridPageProps) {
   const { blnLoading: blnRightsLoading, canDoAny, canViewAny } = useModuleActionAccess(objProps.lstRightsHints);
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
+  const styles = objProps.blnUseMasterStyle ? masterStyles : payrollStyles;
 
   const [dicFilters, setDicFilters] = useState<Record<string, string>>(objProps.dicDefaultFilters ?? {});
   const [lstRows, setLstRows] = useState<ReportDisplayRow[]>([]);
@@ -171,6 +197,7 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
   const [strError, setStrError] = useState("");
   const [lstSelectedIds, setLstSelectedIds] = useState<string[]>([]);
   const [blnExporting, setBlnExporting] = useState(false);
+  const [dicMoreDraft, setDicMoreDraft] = useState<Record<string, string>>({});
   const intRequestSeqRef = useRef(0);
 
   const loadRows = useCallback(async (dicAppliedFilters: Record<string, string>) => {
@@ -207,6 +234,7 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
   function clearFilters() {
     const dicReset = objProps.dicDefaultFilters ?? {};
     setDicFilters(dicReset);
+    setDicMoreDraft({});
     setLstSelectedIds([]);
     loadRows(dicReset).catch(() => undefined);
   }
@@ -264,89 +292,147 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
     });
   }, [lstRows, objProps.blnSelectable, objProps.strRowIdField, setSelectedIds, toggleOne]);
 
-  function exportCsv() {
+  async function exportCsv() {
     if (blnExporting) return; // guard against duplicate export while running
     setBlnExporting(true);
     try {
       const lstToExport = lstSelectedIds.length > 0
         ? lstRows.filter((dicRow) => setSelectedIds.has(String(dicRow[objProps.strRowIdField])))
         : lstRows;
-      downloadCsv(`${objProps.strCsvFileName}_${csvTimestamp()}.csv`, objProps.lstColumns, lstToExport);
+      await downloadExcel(`${objProps.strCsvFileName}_${csvTimestamp()}.xlsx`, objProps.lstColumns, lstToExport);
+    } catch (objError) {
+      setStrError(objError instanceof Error ? objError.message : "Unable to export this report.");
     } finally {
       setBlnExporting(false);
     }
   }
 
-  if (blnRightsLoading || (blnLoading && !blnHasLoaded)) {
-    return <BlockingLoader blnOpen strLabel={`Loading ${objProps.strTitle.toLowerCase()}...`} />;
+  const blnPageLoading = blnRightsLoading || blnLoading;
+
+  const intInlineCount = objProps.intInlineFilterCount ?? objProps.lstFilters.length;
+  const lstInlineFilters = objProps.lstFilters.slice(0, intInlineCount);
+  const lstMoreFilters = objProps.lstFilters.slice(intInlineCount);
+  const blnCompactLayout = objProps.intInlineFilterCount !== undefined;
+
+  function applyMoreFilters() {
+    const dicNext = { ...dicFilters, ...dicMoreDraft };
+    setDicFilters(dicNext);
+    loadRows(dicNext).catch(() => undefined);
+  }
+
+  function renderFilterControl(objFilter: ReportFilterField, dicValues: Record<string, string>, fnSetValue: (strKey: string, strValue: string) => void) {
+    return objFilter.strType === "multiselect" ? (
+        <ReportMultiSelect
+          strLabel={objFilter.strLabel}
+          strValue={dicValues[objFilter.strKey] ?? ""}
+          lstStaticOptions={objFilter.lstOptions}
+          fnLoadOptions={objFilter.fnLoadOptions}
+          fnOnChange={(strCsv) => fnSetValue(objFilter.strKey, strCsv)}
+          strControlId={`reports.${objProps.strCsvFileName}.${objFilter.strKey}.multiselect`}
+        />
+      ) : objFilter.strType === "select" ? (
+        <Autocomplete
+          size="small"
+          options={objFilter.lstOptions ?? []}
+          value={(objFilter.lstOptions ?? []).find((objOption) => objOption.strValue === (dicValues[objFilter.strKey] ?? "")) ?? null}
+          getOptionLabel={(objOption) => objOption.strLabel}
+          isOptionEqualToValue={(objA, objB) => objA.strValue === objB.strValue}
+          onChange={(_objEvent, objSelected) => fnSetValue(objFilter.strKey, objSelected?.strValue ?? "")}
+          fullWidth
+          renderInput={(objParams) => (
+            <TextField
+              {...objParams}
+              className="app-mui-text-field"
+              label={objFilter.strLabel}
+              placeholder={`Search ${objFilter.strLabel}...`}
+              InputLabelProps={{ shrink: true }}
+              inputProps={{ ...objParams.inputProps, "data-controlid": `reports.${objProps.strCsvFileName}.${objFilter.strKey}.select` }}
+              InputProps={{
+                ...objParams.InputProps,
+                startAdornment: (
+                  <>
+                    <SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />
+                    {objParams.InputProps.startAdornment}
+                  </>
+                ),
+              }}
+            />
+          )}
+        />
+      ) : (
+        <TextField
+          className="app-mui-text-field"
+          size="small"
+          type={objFilter.strType === "month" ? "month" : objFilter.strType === "date" ? "date" : "text"}
+          label={objFilter.strLabel}
+          value={dicValues[objFilter.strKey] ?? ""}
+          onChange={(objEvent) => fnSetValue(objFilter.strKey, objEvent.target.value)}
+          placeholder={objFilter.strLabel}
+          fullWidth
+          InputLabelProps={objFilter.strType === "text" ? undefined : { shrink: true }}
+          data-controlid={`reports.${objProps.strCsvFileName}.${objFilter.strKey}.input`}
+          sx={{
+            "& .MuiOutlinedInput-root": { boxSizing: "border-box", height: "36px !important", minHeight: "36px !important" },
+            "& .MuiOutlinedInput-input": { boxSizing: "border-box", height: "19px", paddingBottom: "7.5px !important", paddingTop: "7.5px !important" },
+          }}
+        />
+    );
   }
 
   return (
     <Box className={styles.page}>
-      <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>{objProps.strTitle}</Typography>
+      {objProps.strBreadcrumbSection || objProps.strBreadcrumbTitle ? (
+        <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ ml: "3px" }}>
+          {objProps.strBreadcrumbRoot ? (
+            <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{objProps.strBreadcrumbRoot}</Typography>
+          ) : null}
+          <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{objProps.strBreadcrumbSection ?? objProps.strTitle}</Typography>
+          <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{objProps.strBreadcrumbTitle ?? objProps.strTitle}</Typography>
+        </Breadcrumbs>
+      ) : (
+        <Typography className={`${styles.breadcrumbs} ${payrollStyles.hiddenHeader}`}>{objProps.strTitle}</Typography>
+      )}
 
-      <Box className={styles.controlsCard}>
-        <Box className={styles.reportSearchPanelRow}>
-          {objProps.lstFilters.map((objFilter) => (
+      <Box className={styles.controlsCard} sx={objProps.blnUseMasterStyle || blnCompactLayout ? { p: "12px !important", borderRadius: "10px !important", boxShadow: "none" } : undefined}>
+        <Box
+          className={objProps.blnUseMasterStyle ? styles.searchRow : styles.reportSearchPanelRow}
+          sx={objProps.blnUseMasterStyle ? {
+            alignItems: "center",
+            gridTemplateColumns: {
+              xs: "1fr",
+              md: objProps.blnEqualSearchFilterWidths
+                ? `repeat(${objProps.lstFilters.length}, minmax(0, 1fr)) auto auto !important`
+                : "minmax(150px, 0.7fr) minmax(220px, 1fr) minmax(180px, 0.85fr) minmax(180px, 0.85fr) auto auto",
+            },
+            "& .MuiButton-root": { alignSelf: "center" },
+          } : blnCompactLayout ? { py: "0 !important" } : undefined}
+        >
+          {lstInlineFilters.map((objFilter) => (
             <Box
-              className={styles.reportSearchField}
+              className={objProps.blnUseMasterStyle ? undefined : styles.reportSearchField}
               key={objFilter.strKey}
               sx={objFilter.intWidth ? { flexBasis: objFilter.intWidth, minWidth: objFilter.intWidth } : undefined}
             >
-              {objFilter.strType === "multiselect" ? (
-                <ReportMultiSelect
-                  strLabel={objFilter.strLabel}
-                  strValue={dicFilters[objFilter.strKey] ?? ""}
-                  lstStaticOptions={objFilter.lstOptions}
-                  fnLoadOptions={objFilter.fnLoadOptions}
-                  fnOnChange={(strCsv) => setFilterValue(objFilter.strKey, strCsv)}
-                  strControlId={`reports.${objProps.strCsvFileName}.${objFilter.strKey}.multiselect`}
-                />
-              ) : objFilter.strType === "select" ? (
-                <Autocomplete
-                  size="small"
-                  options={objFilter.lstOptions ?? []}
-                  value={(objFilter.lstOptions ?? []).find((objOption) => objOption.strValue === (dicFilters[objFilter.strKey] ?? "")) ?? null}
-                  getOptionLabel={(objOption) => objOption.strLabel}
-                  isOptionEqualToValue={(objA, objB) => objA.strValue === objB.strValue}
-                  onChange={(_objEvent, objSelected) => setFilterValue(objFilter.strKey, objSelected?.strValue ?? "")}
-                  fullWidth
-                  renderInput={(objParams) => (
-                    <TextField
-                      {...objParams}
-                      label={objFilter.strLabel}
-                      placeholder={`Search ${objFilter.strLabel}...`}
-                      InputLabelProps={{ shrink: true }}
-                      inputProps={{ ...objParams.inputProps, "data-controlid": `reports.${objProps.strCsvFileName}.${objFilter.strKey}.select` }}
-                      InputProps={{
-                        ...objParams.InputProps,
-                        startAdornment: (
-                          <>
-                            <SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />
-                            {objParams.InputProps.startAdornment}
-                          </>
-                        ),
-                      }}
-                    />
-                  )}
-                />
-              ) : (
-                <TextField
-                  type={objFilter.strType === "month" ? "month" : objFilter.strType === "date" ? "date" : "text"}
-                  label={objFilter.strLabel}
-                  value={dicFilters[objFilter.strKey] ?? ""}
-                  onChange={(objEvent) => setFilterValue(objFilter.strKey, objEvent.target.value)}
-                  placeholder={objFilter.strLabel}
-                  fullWidth
-                  InputLabelProps={objFilter.strType === "text" ? undefined : { shrink: true }}
-                  data-controlid={`reports.${objProps.strCsvFileName}.${objFilter.strKey}.input`}
-                />
-              )}
+              {renderFilterControl(objFilter, dicFilters, setFilterValue)}
             </Box>
           ))}
           <Box className={`${styles.searchActions} ${objProps.blnAlignSearchActionsBottomRight ? styles.reportBottomRightActions : ""}`}>
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => loadRows(dicFilters)} data-controlid={`reports.${objProps.strCsvFileName}.search.button`}>Search</Button>
-            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} data-controlid={`reports.${objProps.strCsvFileName}.clear.button`}>Clear</Button>
+            {lstMoreFilters.length > 0 ? (
+              <ReportMoreFilters
+                strControlPrefix={`reports.${objProps.strCsvFileName}`}
+                intActiveCount={lstMoreFilters.filter((objFilter) => Boolean(dicFilters[objFilter.strKey])).length}
+                blnDisabled={blnPageLoading}
+                onOpen={() => setDicMoreDraft(Object.fromEntries(lstMoreFilters.map((objFilter) => [objFilter.strKey, dicFilters[objFilter.strKey] ?? ""])))}
+                onApply={applyMoreFilters}
+                onClearAll={() => setDicMoreDraft(Object.fromEntries(lstMoreFilters.map((objFilter) => [objFilter.strKey, ""])))}
+              >
+                {lstMoreFilters.map((objFilter) => (
+                  <Box key={objFilter.strKey}>{renderFilterControl(objFilter, dicMoreDraft, (strKey, strValue) => setDicMoreDraft((dicPrevious) => ({ ...dicPrevious, [strKey]: strValue })))}</Box>
+                ))}
+              </ReportMoreFilters>
+            ) : null}
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => loadRows(dicFilters)} disabled={blnPageLoading} data-controlid={`reports.${objProps.strCsvFileName}.search.button`}>Search</Button>
+            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} disabled={blnPageLoading} data-controlid={`reports.${objProps.strCsvFileName}.clear.button`}>Clear</Button>
           </Box>
         </Box>
       </Box>
@@ -356,8 +442,8 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
         <Typography sx={{ color: "inherit", lineHeight: 1.5 }}>{objProps.strInfo}</Typography>
       </Box>
 
-      <Box className={styles.tableCard}>
-        {!blnCanView && !strError ? <Alert severity="warning" sx={{ mb: 1.5 }}>This report is not available for your user group.</Alert> : null}
+      <Box className={styles.tableCard} sx={objProps.blnUseMasterStyle || blnCompactLayout ? { p: "0 !important", borderRadius: "10px !important", boxShadow: "none" } : undefined}>
+        {!blnRightsLoading && !blnCanView && !strError ? <Alert severity="warning" sx={{ mb: 1.5 }}>This report is not available for your user group.</Alert> : null}
         {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
         <CommonTable
           columns={lstColumns}
@@ -369,12 +455,17 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
           showPaginationSummary
           withPaper={false}
           testIdPrefix={`reports.${objProps.strCsvFileName}`}
+          loading={blnPageLoading}
+          loadingHeaderSkeleton
+          skeletonRowCount={10}
           wrapColumnHeaders={objProps.blnWrapColumnHeaders ?? true}
-          getRowSx={objProps.blnSelectable ? (dicRow) => (setSelectedIds.has(String(dicRow[objProps.strRowIdField])) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : {}) : undefined}
+          getRowSx={objProps.blnUseMasterStyle ? () => dicMasterRowSx : objProps.blnSelectable ? (dicRow) => (setSelectedIds.has(String(dicRow[objProps.strRowIdField])) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : {}) : undefined}
+          hideRowClickHint
+          onRowClick={() => undefined}
           toolbarLeft={(
-            <Box className={styles.listUtilityActions} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Box className={payrollStyles.listUtilityActions} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               {canDoAny("export") ? (
-                <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} disabled={blnExporting} onClick={exportCsv} data-controlid={`reports.${objProps.strCsvFileName}.export.button`}>Export CSV</Button>
+                <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} disabled={blnExporting} onClick={exportCsv} data-controlid={`reports.${objProps.strCsvFileName}.export.button`}>Export Excel</Button>
               ) : null}
               {objProps.blnSelectable && lstSelectedIds.length > 0 ? (
                 <>

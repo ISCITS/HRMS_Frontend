@@ -12,6 +12,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
+import { MasterGridSkeleton } from "@/components/master/MasterListUi";
 import { useLeaveWorkflowPermissions } from "@/features/leave/hooks/useLeaveWorkflowPermissions";
 import { useTeamCalendar, type CalendarDateMeta } from "@/features/leave/hooks/useTeamCalendar";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -158,7 +159,7 @@ export default function EssTeamCalendarPage({
   }
 
   if (blnRightsLoading) {
-    return <Box sx={{ p: 2 }}><LinearProgress /></Box>;
+    return <MasterGridSkeleton strControlId="ess.team-calendar.skeleton" intColumns={7} />;
   }
   if (!blnCanViewTeamCalendar) {
     return <Box sx={{ p: 3 }}><Alert severity="warning">{t("access_denied", "Team Calendar access is not available for your user group.")}</Alert></Box>;

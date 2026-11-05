@@ -11,7 +11,6 @@ import {
   Autocomplete,
   Box,
   Button,
-  Checkbox,
   Chip,
   Dialog,
   DialogActions,
@@ -19,6 +18,8 @@ import {
   DialogContentText,
   DialogTitle,
   IconButton,
+  InputAdornment,
+  Link,
   Stack,
   Table,
   TableBody,
@@ -32,8 +33,8 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
-import BlockingLoader from "@/components/shared/BlockingLoader";
-import styles from "@/features/payroll/components/PayrollScreen.module.css";
+import { MasterBreadcrumbs } from "@/components/master/MasterListUi";
+import styles from "@/components/master/MasterScreen.module.css";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { loanAdvanceService } from "@/features/payroll/services/loanAdvanceService";
 import { loanRecoveryService } from "@/features/payroll/services/loanRecoveryService";
@@ -71,7 +72,6 @@ export default function LoanFinalizationPage() {
   const [strSelectedRunUUID, setStrSelectedRunUUID] = useState("");
   const [objRun, setObjRun] = useState<LoanRecoveryRunOption | null>(null);
   const [lstRows, setLstRows] = useState<LoanRecoveryRow[]>([]);
-  const [setSelectedScheduleIDs, setSetSelectedScheduleIDs] = useState<Set<number>>(new Set());
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnActionLoading, setBlnActionLoading] = useState(false);
   const [strError, setStrError] = useState("");
@@ -120,7 +120,6 @@ export default function LoanFinalizationPage() {
       const objResult = await loanRecoveryService.listEligible(strRunUUID);
       setObjRun(objResult.objRun);
       setLstRows(objResult.lstRows);
-      setSetSelectedScheduleIDs(new Set());
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : t("error_load_eligible", "Unable to load loans due for this payroll run."));
     } finally {
@@ -135,39 +134,19 @@ export default function LoanFinalizationPage() {
     void loadEligible(strRunUUID);
   }
 
-  function toggleRowSelected(intScheduleID: number) {
-    setSetSelectedScheduleIDs((setPrev) => {
-      const setNext = new Set(setPrev);
-      if (setNext.has(intScheduleID)) setNext.delete(intScheduleID);
-      else setNext.add(intScheduleID);
-      return setNext;
-    });
-  }
-
   const lstPostableRows = useMemo(() => lstRows.filter((objRow) => objRow.blnCanPost), [lstRows]);
-  const blnAllPostableSelected = lstPostableRows.length > 0 && lstPostableRows.every((objRow) => setSelectedScheduleIDs.has(objRow.intScheduleID));
-
-  function toggleSelectAll() {
-    setSetSelectedScheduleIDs((setPrev) => {
-      if (blnAllPostableSelected) return new Set();
-      return new Set(lstPostableRows.map((objRow) => objRow.intScheduleID));
-    });
-  }
-
-  const lstSelectedRows = useMemo(() => lstRows.filter((objRow) => setSelectedScheduleIDs.has(objRow.intScheduleID)), [lstRows, setSelectedScheduleIDs]);
-  const decSelectedTotal = useMemo(() => lstSelectedRows.reduce((decSum, objRow) => decSum + objRow.decTotalDueAmount, 0), [lstSelectedRows]);
+  const decPostableTotal = useMemo(() => lstPostableRows.reduce((decSum, objRow) => decSum + objRow.decTotalDueAmount, 0), [lstPostableRows]);
 
   async function confirmPostToPayroll() {
     setBlnConfirmPostOpen(false);
-    if (!strSelectedRunUUID || setSelectedScheduleIDs.size === 0) return;
+    if (!strSelectedRunUUID || lstPostableRows.length === 0) return;
     setBlnActionLoading(true);
     setStrError("");
     setStrSuccess("");
     try {
-      const objResult = await loanRecoveryService.post(strSelectedRunUUID, Array.from(setSelectedScheduleIDs));
+      const objResult = await loanRecoveryService.post(strSelectedRunUUID, lstPostableRows.map((objRow) => objRow.intScheduleID));
       setObjRun(objResult.objRun);
       setLstRows(objResult.lstRows);
-      setSetSelectedScheduleIDs(new Set());
       setStrSuccess(
         t("post_success", `Posted ${objResult.intPostedCount} installment(s) to payroll.${objResult.intFailedCount ? ` ${objResult.intFailedCount} could not be posted.` : ""}`)
       );
@@ -274,14 +253,6 @@ export default function LoanFinalizationPage() {
         const objPostingMeta = dicPostingStatusMeta[objRow.intPayrollPostingStatus] || dicPostingStatusMeta[dicLoanRecoveryPostingStatus.NOT_POSTED];
         return {
           id: objRow.intScheduleID,
-          action: objRow.blnCanPost && blnCanPost ? (
-            <Checkbox
-              size="small"
-              checked={setSelectedScheduleIDs.has(objRow.intScheduleID)}
-              onChange={() => toggleRowSelected(objRow.intScheduleID)}
-              controlId={`loan-recovery.row-select.${objRow.intScheduleID}.checkbox`}
-            />
-          ) : null,
           rowActions: (
             <Stack direction="row" spacing={0}>
               <Tooltip title={t("history_button", "View Installment History")} arrow>
@@ -313,7 +284,19 @@ export default function LoanFinalizationPage() {
             </Stack>
           ),
           employeeCode: objRow.strEmployeeCode,
-          employeeName: objRow.strEmployeeName,
+          employeeNameSort: objRow.strEmployeeName,
+          employeeName: (
+            <Link
+              className="app-master-first-column-link"
+              component="button"
+              type="button"
+              underline="none"
+              data-controlid={`loan-recovery.row.${objRow.intScheduleID}.employee-name.link`}
+              onClick={(objEvent) => { objEvent.stopPropagation(); openHistoryDialog(objRow); }}
+            >
+              {objRow.strEmployeeName}
+            </Link>
+          ),
           loanNumber: objRow.strLoanAdvanceNumber || "-",
           category: objRow.strCategoryName,
           installmentNo: objRow.intInstallmentNo,
@@ -338,25 +321,14 @@ export default function LoanFinalizationPage() {
           scheduleStatus: t(`schedule_status_${objRow.strScheduleStatus}`, dicScheduleStatusFallbackLabels[objRow.strScheduleStatus] || objRow.strScheduleStatus.replaceAll("_", " ")),
         };
       }),
-    [lstRows, setSelectedScheduleIDs, blnCanPost, blnCanUnpost, blnCanAdjust, blnCanSkip, t]
+    [lstRows, blnCanUnpost, blnCanAdjust, blnCanSkip, t]
   );
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      {
-        field: "action",
-        headerName: lstPostableRows.length > 0 && blnCanPost ? (
-          <Checkbox size="small" checked={blnAllPostableSelected} onChange={toggleSelectAll} controlId="loan-recovery.select-all.checkbox" />
-        ) : "",
-        align: "center",
-        sortable: false,
-        filterable: false,
-        exportable: false,
-        width: 44,
-      },
-      { field: "rowActions", headerName: t("table_actions", "Actions"), align: "center", sortable: false, filterable: false, exportable: false, width: 120 },
+      { field: "employeeName", headerName: t("table_employee_name", "Employee Name"), width: 150, sortAccessor: (dicRow) => dicRow.employeeNameSort },
+      { field: "rowActions", headerName: t("table_actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 120 },
       { field: "employeeCode", headerName: t("table_employee_code", "Employee Code"), width: 110 },
-      { field: "employeeName", headerName: t("table_employee_name", "Employee Name"), width: 150 },
       { field: "loanNumber", headerName: t("table_loan_no", "Loan/Advance No."), width: 120 },
       { field: "category", headerName: t("table_category", "Category"), width: 120 },
       { field: "installmentNo", headerName: t("table_installment_no", "Installment No."), align: "center", width: 90 },
@@ -368,7 +340,7 @@ export default function LoanFinalizationPage() {
       { field: "postingStatus", headerName: t("table_posting_status", "Posting Status"), sortable: false, filterable: false, width: 130 },
       { field: "scheduleStatus", headerName: t("table_schedule_status", "Schedule Status"), width: 110 },
     ],
-    [t, lstPostableRows, blnCanPost, blnAllPostableSelected]
+    [t]
   );
 
   if (!blnCanView && !blnRightsLoading) {
@@ -381,33 +353,44 @@ export default function LoanFinalizationPage() {
 
   return (
     <Box className={styles.page}>
-      <Typography className={styles.title}>{t("page_title", "Loan Recovery")}</Typography>
+      <MasterBreadcrumbs strSection={t("breadcrumb_loan_management", "Loan Management")} strTitle={t("page_title", "Loan Recovery")} />
 
-      <Box className={styles.controlsCard}>
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.2, alignItems: "flex-end" }}>
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        <Box
+          className={styles.searchRow}
+          aria-busy={blnLoading || blnRightsLoading || blnLoadingLabels || blnActionLoading}
+          sx={{
+            gridTemplateColumns: "minmax(320px, 1fr) auto",
+            alignItems: "center",
+            "& .MuiButton-root": { alignSelf: "center" },
+          }}
+        >
           <Autocomplete
             size="small"
+            fullWidth
             options={lstPayrollRuns}
             value={lstPayrollRuns.find((objOption) => objOption.strRecordUUID === strSelectedRunUUID) ?? null}
             getOptionLabel={(objOption) => `${objOption.strRunName} (${objOption.dtPayrollMonth.slice(0, 7)})`}
             isOptionEqualToValue={(objA, objB) => objA.strRecordUUID === objB.strRecordUUID}
             onChange={(_e, objOption) => selectRun(objOption ? objOption.strRecordUUID : "")}
-            sx={{ minWidth: 320, flex: "1 1 320px" }}
+            sx={{ minWidth: 0 }}
             renderInput={(params) => (
-              <TextField {...params} label={t("field_payroll_run", "Payroll Run")} placeholder={t("select_run_prompt", "Search an open payroll run")} controlId="loan-recovery.select.payroll-run"
-                InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />
+              <TextField {...params} className="app-mui-text-field" size="small" label={t("field_payroll_run", "Payroll Run")} placeholder={t("select_run_prompt", "Search an open payroll run")} controlId="loan-recovery.select.payroll-run"
+                InputProps={{ ...params.InputProps, startAdornment: (<><InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment>{params.InputProps.startAdornment}</>) }} />
             )}
           />
           {blnCanPost ? (
-            <Button
-              className={styles.primaryButton}
-              startIcon={<CloudUploadRoundedIcon />}
-              onClick={() => setBlnConfirmPostOpen(true)}
-              disabled={!objRun || setSelectedScheduleIDs.size === 0 || blnActionLoading}
-              controlId="loan-recovery.post.button"
-            >
-              {t("post_button", "Post to Payroll")}
-            </Button>
+            <Box className={styles.searchActions}>
+              <Button
+                className={styles.primaryButton}
+                startIcon={<CloudUploadRoundedIcon />}
+                onClick={() => setBlnConfirmPostOpen(true)}
+                disabled={!objRun || lstPostableRows.length === 0 || blnActionLoading}
+                controlId="loan-recovery.post.button"
+              >
+                {t("post_button", "Post to Payroll")}
+              </Button>
+            </Box>
           ) : null}
         </Box>
       </Box>
@@ -419,7 +402,7 @@ export default function LoanFinalizationPage() {
       {!objRun ? (
         <Alert severity="info">{t("select_run_hint", "Select an open payroll run above to see the loan/advance installments due that month.")}</Alert>
       ) : (
-        <Box className={styles.tableCard}>
+        <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
           <CommonTable
             columns={lstTableColumns}
             rows={lstTableRows}
@@ -428,6 +411,17 @@ export default function LoanFinalizationPage() {
             showPaginationSummary
             emptyMessage={t("empty_message", "No loan/advance installments due for this payroll run.")}
             testIdPrefix="loan-recovery.list"
+            loading={blnLoading || blnRightsLoading || blnLoadingLabels || blnActionLoading}
+            skeletonRowCount={8}
+            onRowClick={(dicRow) => {
+              const objRow = lstRows.find((objItem) => objItem.intScheduleID === Number(dicRow.id));
+              if (objRow) openHistoryDialog(objRow);
+            }}
+            hideRowClickHint
+            getRowSx={() => ({
+              backgroundColor: "#fff",
+              "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
+            })}
             sx={{ p: 0, boxShadow: "none", background: "transparent" }}
           />
         </Box>
@@ -439,7 +433,7 @@ export default function LoanFinalizationPage() {
           <DialogContentText>
             {t(
               "confirm_post_body",
-              `This will post ${setSelectedScheduleIDs.size} installment(s) totalling ${formatCurrency(decSelectedTotal)} to this payroll run's deductions.`
+              `This will post ${lstPostableRows.length} installment(s) totalling ${formatCurrency(decPostableTotal)} to this payroll run's deductions.`
             )}
           </DialogContentText>
           <DialogContentText sx={{ mt: 1, fontSize: ".82rem" }}>
@@ -567,6 +561,7 @@ export default function LoanFinalizationPage() {
             </DialogContentText>
           ) : null}
           {strHistoryError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strHistoryError}</Alert> : null}
+          {blnHistoryLoading ? <Typography sx={{ color: "text.secondary" }}>{t("loading", "Loading...")}</Typography> : null}
           {objHistoryLoan ? (
             <>
               <Typography sx={{ fontWeight: 800, mb: 1.5 }}>
@@ -608,8 +603,6 @@ export default function LoanFinalizationPage() {
           </Button>
         </DialogActions>
       </Dialog>
-
-      <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnLoadingLabels || blnActionLoading || blnHistoryLoading} strLabel={t("loading", "Loading...")} />
     </Box>
   );
 }

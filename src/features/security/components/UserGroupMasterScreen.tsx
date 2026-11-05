@@ -2,23 +2,25 @@
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
   Box,
+  Breadcrumbs,
   Button,
-  Checkbox,
+  InputAdornment,
+  Link,
   MenuItem,
+  Skeleton,
   Snackbar,
   TextField,
   Typography,
 } from "@mui/material";
-import { type HTMLAttributes, type InputHTMLAttributes, type ReactNode, useEffect, useMemo, useState } from "react";
+import { type HTMLAttributes, type ReactNode, useEffect, useMemo, useState } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { runFrontendAction } from "@/Common/utils/apiErrorHandler";
-import CommonRowActions from "@/components/master/CommonRowActions";
-import BlockingLoader from "@/components/shared/BlockingLoader";
 import UserGroupMasterDialog from "@/features/security/components/UserGroupMasterDialog";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import styles from "@/components/master/MasterScreen.module.css";
@@ -30,14 +32,17 @@ import { securityApiService } from "@/features/security/services/securityApiServ
 type FormMode = "add" | "edit" | "view";
 type UserGroupTableRow = {
   intID: number;
-  select: ReactNode;
-  rowActions: ReactNode;
   strGroupCode: string;
-  strGroupName: string;
+  strGroupName: ReactNode;
+  strGroupNameText: string;
   strGroupDescription: string;
   strGroupType: string;
+  intAssignedUserCount: number;
+  strStatus: string;
   status: ReactNode;
 };
+
+const intUserGroupSkeletonRows = 8;
 
 const objEmptyForm: UserGroupFormPayload = {
   strGroupCode: "",
@@ -48,6 +53,65 @@ const objEmptyForm: UserGroupFormPayload = {
   blnIsActive: true,
   intLanguageID: authHelpers.getLanguageID() ?? 1,
 };
+
+function UserGroupGridSkeleton() {
+  return (
+    <Box
+      data-control-id="security.user-group.list.skeleton"
+      sx={{
+        border: "1px solid #e8eef5",
+        borderRadius: "8px",
+        overflow: "hidden",
+        backgroundColor: "#fff",
+      }}
+    >
+      <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, px: 1.75, py: 1.25, flexWrap: "wrap" }}>
+        <Skeleton variant="rounded" width={150} height={36} />
+        <Box sx={{ display: "flex", gap: 1.25, alignItems: "center", flexWrap: "wrap" }}>
+          <Skeleton variant="rounded" width={64} height={36} />
+          <Skeleton variant="text" width={72} height={24} />
+          <Skeleton variant="rounded" width={116} height={32} />
+        </Box>
+      </Box>
+      <Box sx={{ minWidth: 1040 }}>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: "1fr 0.9fr 0.75fr 1.25fr 0.65fr 0.65fr",
+            bgcolor: "#edf3f9",
+            borderTop: "1px solid #e8eef5",
+            borderBottom: "1px solid #d9e3ee",
+          }}
+        >
+          {[0, 1, 2, 3, 4, 5].map((intColumn) => (
+            <Box key={intColumn} sx={{ px: 2, py: 1 }}>
+              <Skeleton variant="text" width={intColumn === 3 ? 120 : intColumn >= 4 ? 84 : 110} height={22} />
+            </Box>
+          ))}
+        </Box>
+        {Array.from({ length: intUserGroupSkeletonRows }).map((_, intIndex) => (
+          <Box
+            key={intIndex}
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "1fr 0.9fr 0.75fr 1.25fr 0.65fr 0.65fr",
+              borderBottom: "1px solid #edf1f6",
+              minHeight: 40,
+              alignItems: "center",
+            }}
+          >
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${58 + (intIndex % 3) * 10}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${42 + (intIndex % 2) * 12}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={48} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${64 + (intIndex % 2) * 10}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={34} height={20} sx={{ ml: "auto" }} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="rounded" width={72} height={22} /></Box>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+}
 
 function mapRecordToForm(objRecord: UserGroupRecord): UserGroupFormPayload {
   return {
@@ -73,9 +137,16 @@ export default function UserGroupMasterScreen() {
   const [lstRecords, setLstRecords] = useState<UserGroupRecord[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSaving, setBlnSaving] = useState(false);
-  const [dicSearchDraft, setDicSearchDraft] = useState({ code: "", name: "", status: "All" as "All" | "Active" | "Inactive" });
-  const [dicSearchApplied, setDicSearchApplied] = useState({ code: "", name: "", status: "All" as "All" | "Active" | "Inactive" });
-  const [lstSelectedIds, setLstSelectedIds] = useState<number[]>([]);
+  const [dicSearchDraft, setDicSearchDraft] = useState({
+    query: "",
+    groupType: "All" as "All" | "HR" | "ESS" | "BOTH",
+    status: "All" as "All" | "Active" | "Inactive",
+  });
+  const [dicSearchApplied, setDicSearchApplied] = useState({
+    query: "",
+    groupType: "All" as "All" | "HR" | "ESS" | "BOTH",
+    status: "All" as "All" | "Active" | "Inactive",
+  });
   const [blnDialogOpen, setBlnDialogOpen] = useState(false);
   const [strMode, setStrMode] = useState<FormMode>("add");
   const [intEditingID, setIntEditingID] = useState<number | null>(null);
@@ -88,8 +159,10 @@ export default function UserGroupMasterScreen() {
     severity: "success",
   });
   const dicLabels = {
-    searchNamePlaceholder: t("search_name_placeholder", "Search group name"),
-    searchCodePlaceholder: t("search_code_placeholder", "Search group code"),
+    searchNameOrCodeLabel: t("search_name_or_code_label", "Search group name or code"),
+    searchNameOrCodePlaceholder: t("search_name_or_code_placeholder", "Search group name or code"),
+    searchGroupTypeLabel: t("search_group_type_label", "Group type"),
+    searchGroupTypeAll: t("search_group_type_all", "All"),
     searchStatusLabel: t("search_status_label", "Status"),
     searchStatusAll: t("search_status_all", "All"),
     searchStatusActive: t("search_status_active", "Active"),
@@ -101,12 +174,12 @@ export default function UserGroupMasterScreen() {
     accessUnavailableMessage: t("access_unavailable_message", "Contact your administrator if you need user group visibility."),
     emptyTitle: t("empty_title", "No user groups found"),
     emptyMessage: t("empty_message", "Add the first user group to start assigning dynamic menu and action rights from `tblmenu` and `tblaction`."),
-    tableActions: t("table_actions", "Actions"),
-    tableCode: t("table_code", "Code"),
-    tableName: t("table_name", "Name"),
+    tableGroupName: t("table_group_name", "Group name"),
+    tableGroupCode: t("table_group_code", "Group code"),
     tableDescription: t("table_description", "Description"),
     tableGroupType: t("table_group_type", "Group Type"),
-    tableIsActive: t("table_is_active", "Is Active"),
+    tableAssignedUsers: t("table_assigned_users", "Assigned users"),
+    tableStatus: t("table_status", "Status"),
     statusActive: t("status_active", "Active"),
     statusInactive: t("status_inactive", "Inactive"),
     noDescription: t("no_description", "No description configured."),
@@ -120,11 +193,11 @@ export default function UserGroupMasterScreen() {
     errorSave: t("error_save", "Unable to save user group."),
     exportFileName: t("export_file_name", "user_groups"),
   };
+  const strPageTitle = t("page_title", "User Group");
 
   async function loadUserGroups() {
     if (!canViewAny()) {
       setLstRecords([]);
-      setLstSelectedIds([]);
       setBlnLoading(false);
       return;
     }
@@ -135,7 +208,6 @@ export default function UserGroupMasterScreen() {
       fnAction: () => securityApiService.listUserGroups(),
       fnOnSuccess: (objResult) => {
         setLstRecords(objResult.Data);
-        setLstSelectedIds([]);
       },
       fnOnError: (objError) => setObjToast({
         open: true,
@@ -153,7 +225,6 @@ export default function UserGroupMasterScreen() {
     }
     if (!canViewAny()) {
       setLstRecords([]);
-      setLstSelectedIds([]);
       setBlnLoading(false);
       return;
     }
@@ -168,99 +239,68 @@ export default function UserGroupMasterScreen() {
 
   const lstFilteredRecords = useMemo(() => {
     return lstRecords.filter((objRecord) => {
-      const blnCodeMatch = !dicSearchApplied.code || objRecord.strGroupCode.toLowerCase().includes(dicSearchApplied.code.toLowerCase());
-      const blnNameMatch =
-        !dicSearchApplied.name ||
-        [objRecord.strGroupName, objRecord.strGroupDescription ?? ""].join(" ").toLowerCase().includes(dicSearchApplied.name.toLowerCase());
+      const strSearch = dicSearchApplied.query.trim().toLowerCase();
+      const blnSearchMatch =
+        !strSearch ||
+        [objRecord.strGroupName, objRecord.strGroupCode].join(" ").toLowerCase().includes(strSearch);
+      const blnGroupTypeMatch =
+        dicSearchApplied.groupType === "All" || objRecord.strGroupType === dicSearchApplied.groupType;
       const blnStatusMatch =
         dicSearchApplied.status === "All" ||
         (dicSearchApplied.status === "Active" ? objRecord.blnIsActive : !objRecord.blnIsActive);
-      return blnCodeMatch && blnNameMatch && blnStatusMatch;
+      return blnSearchMatch && blnGroupTypeMatch && blnStatusMatch;
     });
   }, [dicSearchApplied, lstRecords]);
 
-  const blnAllFilteredSelected = lstFilteredRecords.length > 0 && lstFilteredRecords.every((objRecord) => lstSelectedIds.includes(objRecord.intID));
-  const blnSomeFilteredSelected = !blnAllFilteredSelected && lstSelectedIds.some((intID) => lstFilteredRecords.some((objRecord) => objRecord.intID === intID));
   const lstTableRows = useMemo<UserGroupTableRow[]>(() => lstFilteredRecords.map((objRecord) => {
-    const blnSelected = lstSelectedIds.includes(objRecord.intID);
-    const strRowControlPrefix = `security.user-group.list.row.${objRecord.intID}`;
     return {
       intID: objRecord.intID,
-      select: (
-        <Checkbox
-          checked={blnSelected}
-          onChange={() => toggleSelection(objRecord.intID)}
-          inputProps={{
-            controlId: `${strRowControlPrefix}.select.checkbox`,
-            "data-control-id": `${strRowControlPrefix}.select.checkbox`,
-            "data-row-key": objRecord.intID,
-          } as InputHTMLAttributes<HTMLInputElement>}
-        />
-      ),
-      rowActions: (
-        <CommonRowActions
-          testIdPrefix={strRowControlPrefix}
-          rowKey={objRecord.intID}
-          blnCanView={blnCanView}
-          blnCanEdit={blnCanEdit}
-          onView={() => openDialog("view", objRecord)}
-          onEdit={blnCanEdit ? () => openDialog("edit", objRecord) : undefined}
-        />
-      ),
       strGroupCode: objRecord.strGroupCode,
-      strGroupName: objRecord.strGroupName,
+      strGroupNameText: objRecord.strGroupName,
+      strGroupName: (
+        <Link
+          component="button"
+          type="button"
+          underline="none"
+          disabled={!blnCanView && !blnCanEdit}
+          data-control-id="security.user-group.list.row.name.button"
+          className="app-master-first-column-link"
+          onClick={(objEvent) => {
+            if (window.getSelection()?.toString()) {
+              objEvent.stopPropagation();
+              return;
+            }
+            openDialog(blnCanEdit ? "edit" : "view", objRecord);
+          }}
+        >
+          {objRecord.strGroupName}
+        </Link>
+      ),
       strGroupDescription: objRecord.strGroupDescription || dicLabels.noDescription,
       strGroupType: objRecord.strGroupType ?? "HR",
+      intAssignedUserCount: objRecord.intAssignedUserCount ?? 0,
+      strStatus: objRecord.blnIsActive ? dicLabels.statusActive : dicLabels.statusInactive,
       status: (
-        <span className={`${styles.statusPill} ${objRecord.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
+        <span
+          className={styles.statusPill}
+          style={{
+            background: objRecord.blnIsActive ? "#dcfce7" : "#fee2e2",
+            color: objRecord.blnIsActive ? "#15803d" : "#dc2626",
+          }}
+        >
           {objRecord.blnIsActive ? dicLabels.statusActive : dicLabels.statusInactive}
         </span>
       ),
     };
-  }), [blnCanEdit, blnCanView, dicLabels.noDescription, dicLabels.statusActive, dicLabels.statusInactive, lstFilteredRecords, lstSelectedIds]);
+  }), [blnCanEdit, blnCanView, dicLabels.noDescription, dicLabels.statusActive, dicLabels.statusInactive, lstFilteredRecords]);
   const lstTableColumns = useMemo<CommonTableColumn<UserGroupTableRow>[]>(() => [
-    {
-      field: "select",
-      headerName: (
-        <Checkbox
-          checked={blnAllFilteredSelected}
-          indeterminate={blnSomeFilteredSelected}
-          onChange={toggleSelectAll}
-          disabled={lstFilteredRecords.length === 0}
-          inputProps={{
-            controlId: "security.user-group.list.select-all.checkbox",
-            "data-control-id": "security.user-group.list.select-all.checkbox",
-          } as InputHTMLAttributes<HTMLInputElement>}
-        />
-      ),
-      width: 64,
-      sortable: false,
-      filterable: false,
-      exportable: false
-    },
-    { field: "rowActions", headerName: dicLabels.tableActions, width: 140, sortable: false, filterable: false, exportable: false },
-    { field: "strGroupCode", headerName: dicLabels.tableCode },
-    { field: "strGroupName", headerName: dicLabels.tableName },
-    { field: "strGroupDescription", headerName: dicLabels.tableDescription },
+    { field: "strGroupName", headerName: dicLabels.tableGroupName, sortAccessor: (objRow) => objRow.strGroupNameText },
+    { field: "strGroupCode", headerName: dicLabels.tableGroupCode },
     { field: "strGroupType", headerName: dicLabels.tableGroupType },
-    { field: "status", headerName: dicLabels.tableIsActive, sortable: false, filterable: false },
-  ], [blnAllFilteredSelected, blnSomeFilteredSelected, dicLabels.tableActions, dicLabels.tableCode, dicLabels.tableDescription, dicLabels.tableGroupType, dicLabels.tableIsActive, dicLabels.tableName, lstFilteredRecords.length]);
-
-  function toggleSelection(intUserGroupID: number) {
-    setLstSelectedIds((lstPrevious) =>
-      lstPrevious.includes(intUserGroupID)
-        ? lstPrevious.filter((intID) => intID !== intUserGroupID)
-        : [...lstPrevious, intUserGroupID],
-    );
-  }
-
-  function toggleSelectAll() {
-    if (blnAllFilteredSelected) {
-      setLstSelectedIds((lstPrevious) => lstPrevious.filter((intID) => !lstFilteredRecords.some((objRecord) => objRecord.intID === intID)));
-      return;
-    }
-    setLstSelectedIds((lstPrevious) => [...new Set([...lstPrevious, ...lstFilteredRecords.map((objRecord) => objRecord.intID)])]);
-  }
+    { field: "strGroupDescription", headerName: dicLabels.tableDescription },
+    { field: "intAssignedUserCount", headerName: dicLabels.tableAssignedUsers, align: "right", width: 150 },
+    { field: "status", headerName: dicLabels.tableStatus, sortAccessor: (objRow) => objRow.strStatus, filterable: false },
+  ], [dicLabels.tableAssignedUsers, dicLabels.tableDescription, dicLabels.tableGroupCode, dicLabels.tableGroupName, dicLabels.tableGroupType, dicLabels.tableStatus]);
 
   function openDialog(strNextMode: FormMode, objRecord?: UserGroupRecord) {
     setStrMode(strNextMode);
@@ -338,7 +378,12 @@ export default function UserGroupMasterScreen() {
 
   return (
     <Box className={styles.page}>
-      <Box className={styles.controlsCard}>
+      <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />}>
+        <Typography className="app-breadcrumb-label">{t("breadcrumb_administration", "Administration")}</Typography>
+        <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{strPageTitle}</Typography>
+      </Breadcrumbs>
+
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {strRightsError ? (
           <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography>
         ) : null}
@@ -347,31 +392,67 @@ export default function UserGroupMasterScreen() {
             You have view-only access for User Group.
           </Typography>
         ) : null}
-        <Box className={styles.searchRow}>
+        <Box
+          className={styles.searchRow}
+          sx={{
+            gridTemplateColumns: {
+              xs: "1fr",
+              md: "minmax(280px, 1.4fr) minmax(180px, 0.7fr) minmax(180px, 0.7fr) auto auto",
+            },
+            alignItems: "center",
+            "& .MuiButton-root": { alignSelf: "center" },
+          }}
+        >
           <TextField
-            placeholder={dicLabels.searchNamePlaceholder}
-            value={dicSearchDraft.name}
-            onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))}
-            inputProps={{ controlId: "security.user-group.search.name.input" }}
+            className="app-mui-text-field"
+            label={dicLabels.searchNameOrCodeLabel}
+            placeholder={dicLabels.searchNameOrCodePlaceholder}
+            value={dicSearchDraft.query}
+            onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, query: objEvent.target.value }))}
+            inputProps={{ controlId: "security.user-group.search.name-code.input" }}
+            size="small"
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} />
+                </InputAdornment>
+              ),
+            }}
             fullWidth
           />
           <TextField
-            placeholder={dicLabels.searchCodePlaceholder}
-            value={dicSearchDraft.code}
-            onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, code: objEvent.target.value.toUpperCase() }))}
-            inputProps={{ controlId: "security.user-group.search.code.input" }}
+            className="app-mui-text-field"
+            select
+            label={dicLabels.searchGroupTypeLabel}
+            value={dicSearchDraft.groupType}
+            onChange={(objEvent) =>
+              setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, groupType: objEvent.target.value as "All" | "HR" | "ESS" | "BOTH" }))
+            }
+            inputProps={{ controlId: "security.user-group.search.group-type.select" }}
+            SelectProps={{
+              SelectDisplayProps: { "data-control-id": "security.user-group.search.group-type.select" } as HTMLAttributes<HTMLDivElement>,
+            }}
+            size="small"
             fullWidth
-          />
+          >
+            <MenuItem value="All" data-control-id="security.user-group.search.group-type.all.option">{dicLabels.searchGroupTypeAll}</MenuItem>
+            <MenuItem value="HR" data-control-id="security.user-group.search.group-type.hr.option">HR</MenuItem>
+            <MenuItem value="ESS" data-control-id="security.user-group.search.group-type.ess.option">ESS</MenuItem>
+            <MenuItem value="BOTH" data-control-id="security.user-group.search.group-type.both.option">BOTH</MenuItem>
+          </TextField>
           <TextField
+            className="app-mui-text-field"
             select
             label={dicLabels.searchStatusLabel}
             value={dicSearchDraft.status}
             onChange={(objEvent) =>
               setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as "All" | "Active" | "Inactive" }))
             }
+            inputProps={{ controlId: "security.user-group.search.status.select" }}
             SelectProps={{
               SelectDisplayProps: { "data-control-id": "security.user-group.search.status.select" } as HTMLAttributes<HTMLDivElement>,
             }}
+            size="small"
             fullWidth
           >
             <MenuItem value="All" data-control-id="security.user-group.search.status.all.option">{dicLabels.searchStatusAll}</MenuItem>
@@ -380,7 +461,7 @@ export default function UserGroupMasterScreen() {
           </TextField>
           <Box className={styles.searchActions}>
             <Button
-              className={styles.primaryButton}
+              className="app-btn app-btn-primary"
               startIcon={<SearchRoundedIcon />}
               onClick={() => setDicSearchApplied(dicSearchDraft)}
               data-control-id="security.user-group.search.button"
@@ -390,10 +471,10 @@ export default function UserGroupMasterScreen() {
           </Box>
           <Box className={styles.searchActions}>
             <Button
-              className={styles.secondaryButton}
+              className="app-btn app-btn-outline"
               startIcon={<ClearRoundedIcon />}
               onClick={() => {
-                const dicEmpty = { code: "", name: "", status: "All" as const };
+                const dicEmpty = { query: "", groupType: "All" as const, status: "All" as const };
                 setDicSearchDraft(dicEmpty);
                 setDicSearchApplied(dicEmpty);
               }}
@@ -405,9 +486,11 @@ export default function UserGroupMasterScreen() {
         </Box>
       </Box>
 
-      <Box className={styles.tableCard}>
+      <Box className={styles.tableCard} sx={{ p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <Box sx={{ overflowX: "auto", overflowY: "auto", minHeight: 0, flex: 1 }}>
-          {blnLoading || blnRightsLoading ? null : !blnCanView ? (
+          {blnLoading || blnRightsLoading ? (
+            <UserGroupGridSkeleton />
+          ) : !blnCanView ? (
             <Box className={styles.emptyState}>
               <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{dicLabels.accessUnavailableTitle}</Typography>
               <Typography sx={{ color: "#64748b", textAlign: "center" }}>{dicLabels.accessUnavailableMessage}</Typography>
@@ -424,20 +507,33 @@ export default function UserGroupMasterScreen() {
               rowIdField="intID"
               emptyMessage={dicLabels.emptyMessage}
               exportFileName={dicLabels.exportFileName}
+              exportButtonClassName="app-btn app-btn-outline"
               showExportOptions={blnCanExport}
               showPaginationSummary
               testIdPrefix="security.user-group.list"
+              minTableWidth={1040}
+              hideRowClickHint
+              onRowClick={(objRow) => {
+                if (blnRightsLoading || blnLoading || blnSaving || (!blnCanEdit && !blnCanView)) return;
+                const objRecord = lstFilteredRecords.find((dicRecord) => dicRecord.intID === objRow.intID);
+                if (objRecord) openDialog(blnCanEdit ? "edit" : "view", objRecord);
+              }}
               sx={{ p: 0, boxShadow: "none", background: "transparent" }}
               toolbarLeft={
                 <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
                   {blnCanAdd ? (
-                    <Button className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSaving || blnRightsLoading} data-control-id="security.user-group.add.button">
+                    <Button className="app-btn app-btn-primary" startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSaving || blnRightsLoading} data-control-id="security.user-group.add.button">
                       {dicLabels.addButton}
                     </Button>
                   ) : null}
                 </Box>
               }
-              getRowSx={(objRow) => lstSelectedIds.includes(objRow.intID) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : undefined}
+              getRowSx={() => ({
+                backgroundColor: "#fff",
+                "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
+                "&.MuiTableRow-hover:hover td:first-of-type .MuiLink-root": { textDecoration: "underline" },
+              })}
+              className="app-master-common-table-reset"
             />
           )}
         </Box>
@@ -469,7 +565,6 @@ export default function UserGroupMasterScreen() {
         onSave={saveRecord}
       />
 
-      <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnSaving} strLabel={blnSaving ? dicLabels.processing : dicLabels.loading} />
       <Snackbar open={objToast.open} autoHideDuration={3000} onClose={() => setObjToast((objPrevious) => ({ ...objPrevious, open: false }))}>
         <Alert severity={objToast.severity} variant="filled">
           {objToast.message}

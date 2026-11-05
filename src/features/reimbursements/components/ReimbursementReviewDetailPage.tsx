@@ -6,6 +6,7 @@ import { Alert, Autocomplete, Box, Button, Checkbox, Dialog, DialogActions, Dial
 import { useRouter } from "next/navigation";
 import { type InputHTMLAttributes, useEffect, useMemo, useState } from "react";
 
+import { DetailPageHeader } from "@/components/master/MasterListUi";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import ReimbursementActionBar from "@/features/reimbursements/components/ReimbursementActionBar";
 import ReimbursementAuditTimeline from "@/features/reimbursements/components/ReimbursementAuditTimeline";
@@ -275,34 +276,30 @@ export default function ReimbursementReviewDetailPage({ strClaimRecordUUID }: { 
   return (
     <Stack spacing={1.4}>
       <BlockingLoader blnOpen={blnLoading || blnRightsLoading} strLabel="Loading reimbursement review..." />
+      <DetailPageHeader strSection="Employee Services" strListTitle="Review Reimbursements" strListHref="/payroll/reimbursements" strCurrent="View">
+        <Button size="small" variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/reimbursements")} sx={{ minHeight: 30, px: 1.2, py: 0.25, textTransform: "none", fontWeight: 800, borderRadius: "8px", fontSize: "0.75rem" }}>Back</Button>
+        {objClaim ? (
+          <ReimbursementActionBar
+            objClaim={objClaim}
+            blnBusy={blnBusy}
+            blnCanStart={blnCanReview}
+            blnCanApprove={blnCanApprove}
+            blnCanReject={blnCanReject}
+            blnCanRelease={blnCanRelease}
+            blnCanLock={blnCanLock}
+            blnCanPush={blnCanPush}
+            blnCanFinanceSettle={blnCanRelease}
+            onAction={(strAction) => void handleActionBar(strAction)}
+          />
+        ) : null}
+      </DetailPageHeader>
       <Paper sx={{ p: 1.35, borderRadius: "8px", border: "1px solid #dbe3ef" }}>
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Box>
-              <Typography sx={{ fontWeight: 900, color: "#0f172a", fontSize: "1.08rem" }}>{`Claim Ref #: ${getClaimReferenceNumber(objClaim) || "-"}`}</Typography>
-              <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{objClaim ? `Claim Purpose: ${objClaim.strClaimTitle || "-"} | Claim Date: ${formatDateLabel(objClaim.dtClaimDate)}` : "Review reimbursement claim"}</Typography>
-            </Box>
-          </Stack>
-          <Stack direction="row" spacing={1} alignItems="center" justifyContent={{ xs: "flex-start", md: "flex-end" }} flexWrap="wrap" useFlexGap>
-            {objClaim ? (
-              <>
-              <ReimbursementStatusBadge strStatus={objClaim.strClaimStatus} />
-              <ReimbursementActionBar
-                objClaim={objClaim}
-                blnBusy={blnBusy}
-                blnCanStart={blnCanReview}
-                blnCanApprove={blnCanApprove}
-                blnCanReject={blnCanReject}
-                blnCanRelease={blnCanRelease}
-                blnCanLock={blnCanLock}
-                blnCanPush={blnCanPush}
-                blnCanFinanceSettle={blnCanRelease}
-                onAction={(strAction) => void handleActionBar(strAction)}
-              />
-              </>
-            ) : null}
-            <Button size="small" variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/reimbursements")} sx={{ minHeight: 30, px: 1.2, py: 0.25, textTransform: "none", fontWeight: 800, borderRadius: "8px", fontSize: "0.75rem" }}>Back</Button>
-          </Stack>
+        <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between" flexWrap="wrap" useFlexGap>
+          <Box>
+            <Typography sx={{ fontWeight: 900, color: "#0f172a", fontSize: "1.08rem" }}>{`Claim Ref #: ${getClaimReferenceNumber(objClaim) || "-"}`}</Typography>
+            <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{objClaim ? `Claim Purpose: ${objClaim.strClaimTitle || "-"} | Claim Date: ${formatDateLabel(objClaim.dtClaimDate)}` : "Review reimbursement claim"}</Typography>
+          </Box>
+          {objClaim ? <ReimbursementStatusBadge strStatus={objClaim.strClaimStatus} /> : null}
         </Stack>
       </Paper>
 

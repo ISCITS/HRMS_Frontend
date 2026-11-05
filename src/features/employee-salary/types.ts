@@ -134,6 +134,8 @@ export type EmployeeSalaryComponentLine = {
   strFormulaExpression: string | null;
   blnIsOverride: boolean;
   strRemarks: string | null;
+  strSourceType?: "structure" | "override" | "direct";
+  strVariablePayCalculationMethodCode?: string | null;
 };
 
 export type EmployeeSalaryHistoryRecord = {
@@ -250,6 +252,7 @@ export type EmployeeSalaryDetailRecord = {
     intFlexiBalanceComponentID?: number | null;
     strRevisionReason: string | null;
     dtEffectiveFrom: string;
+    dtEffectiveTo?: string | null;
   } | null;
   objAssignedStructure: {
     intSalaryStructureID: number;

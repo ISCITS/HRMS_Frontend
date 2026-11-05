@@ -7,6 +7,7 @@ export type PayrollReportFilters = {
   strStatus?: string;
   strDepartment?: string;
   strLocation?: string;
+  strAllocationEntity?: string;
   strPayrollMonth?: string;
 };
 

@@ -8,9 +8,9 @@ import {
   Autocomplete,
   Box,
   Button,
-  MenuItem,
+  InputAdornment,
+  Link,
   Snackbar,
-  Stack,
   TextField,
   Typography
 } from "@mui/material";
@@ -18,9 +18,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
-import CommonRowActions from "@/components/master/CommonRowActions";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
+import { MasterBreadcrumbs, MasterGridSkeleton, dicMasterRowSx, onSearchEnter } from "@/components/master/MasterListUi";
 import styles from "@/components/master/MasterScreen.module.css";
-import BlockingLoader from "@/components/shared/BlockingLoader";
 import { usePayrollProcessLogLabels } from "@/features/payroll-process-logs/hooks/usePayrollProcessLogLabels";
 import {
   createInitialPayrollProcessLogFilters,
@@ -131,19 +131,21 @@ export default function PayrollProcessLogPage({ strInitialPayrollRunRecordUUID }
   const lstTableRows = useMemo(
     () => lstLogs.map((dicRow) => ({
       id: dicRow.strRecordUUID,
-      action: (
-        <CommonRowActions
-          testIdPrefix="payroll-process-logs.list.row"
-          rowKey={dicRow.strRecordUUID}
-          blnCanView
-          onView={() => objRouter.push(`/payroll/process-log/run/${dicRow.strPayrollRunRecordUUID}`)}
-        />
-      ),
+      strPayrollRunRecordUUID: dicRow.strPayrollRunRecordUUID,
+      employeeSort: dicRow.strEmployeeName ?? "",
       employee: (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
-          <Typography sx={{ fontSize: "0.86rem", fontWeight: 700, color: "#1f2937" }}>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25, alignItems: "flex-start" }}>
+          <Link
+            className="app-master-first-column-link"
+            component="button"
+            type="button"
+            underline="none"
+            data-controlid="payroll-process-logs.list.row.employee.link"
+            data-row-key={dicRow.strRecordUUID}
+            onClick={(objEvent) => { objEvent.stopPropagation(); openLog(dicRow.strPayrollRunRecordUUID); }}
+          >
             {dicRow.strEmployeeName ?? "-"}
-          </Typography>
+          </Link>
           {dicRow.strEmployeeCode ? (
             <Typography sx={{ fontSize: "0.78rem", color: "#64748b" }}>
               {dicRow.strEmployeeCode}
@@ -171,8 +173,7 @@ export default function PayrollProcessLogPage({ strInitialPayrollRunRecordUUID }
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 110 },
-      { field: "employee", headerName: t("employee", "Employee"), sortable: false, filterable: false, width: 220 },
+      { field: "employee", headerName: t("employee", "Employee"), filterable: false, width: 220, sortAccessor: (dicRow) => dicRow.employeeSort },
       { field: "strProcessStage", headerName: t("process_stage", "Process Stage") },
       { field: "strProcessStatus", headerName: t("process_status", "Process Status"), sortable: false, filterable: false, width: 150 },
       { field: "entity", headerName: t("entity", "Entity"), sortable: false, filterable: false, width: 220 },
@@ -181,6 +182,10 @@ export default function PayrollProcessLogPage({ strInitialPayrollRunRecordUUID }
     ],
     [lstTableRows, t]
   );
+
+  function openLog(strPayrollRunRecordUUID: string) {
+    objRouter.push(`/payroll/process-log/run/${strPayrollRunRecordUUID}`);
+  }
 
   function applySearch() {
     loadLogs(dicFiltersDraft).catch(() => undefined);
@@ -192,26 +197,13 @@ export default function PayrollProcessLogPage({ strInitialPayrollRunRecordUUID }
     loadLogs(dicReset).catch(() => undefined);
   }
 
-  if (!blnCanView) {
-    return (
-      <Box className={styles.emptyState}>
-        <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
-          {t("access_denied", "Payroll process log access is not available for your user group.")}
-        </Typography>
-        <Typography sx={{ mt: 1, color: "#64748b" }}>
-          {t("access_denied_help", "Contact your administrator if you need payroll process log visibility.")}
-        </Typography>
-        {strRightsError ? (
-          <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography>
-        ) : null}
-      </Box>
-    );
-  }
+  const blnBusy = blnLoading || blnRightsLoading;
 
   return (
-    <Stack spacing={1.5} sx={{ height: "100%", overflow: "auto", pr: 0.5 }}>
-      {blnRunScoped ? (
-        <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+    <Box className={styles.page}>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1.5, flexWrap: "wrap" }}>
+        <MasterBreadcrumbs strSection={t("breadcrumb_section", "Payroll")} strTitle={t("breadcrumb_title", "Payroll Process Logs")} />
+        {blnRunScoped ? (
           <Button
             data-controlid="payroll-process-logs.view.back.button"
             className={styles.secondaryButton}
@@ -220,16 +212,18 @@ export default function PayrollProcessLogPage({ strInitialPayrollRunRecordUUID }
           >
             {t("back_to_list", "Back to List")}
           </Button>
-        </Box>
-      ) : null}
+        ) : null}
+      </Box>
 
-      <Box className={styles.controlsCard}>
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <Box
+          className={styles.searchRow}
+          aria-busy={blnBusy}
+          onKeyDown={onSearchEnter(() => { if (!blnBusy && blnCanView) applySearch(); })}
           sx={{
-            display: "flex",
-            flexWrap: "wrap",
             alignItems: "center",
-            gap: 1,
+            "&&": { gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "minmax(200px, 1.2fr) minmax(160px, 1fr) minmax(160px, 1fr) minmax(200px, 1.2fr) max-content max-content" } },
+            "& .MuiButton-root": { alignSelf: "center", whiteSpace: "nowrap" },
           }}
         >
           <Autocomplete
@@ -244,58 +238,54 @@ export default function PayrollProcessLogPage({ strInitialPayrollRunRecordUUID }
                 intEmployeeID: dicOption ? dicOption.intID : ""
               }))
             }
-            sx={{ flex: { xs: "1 1 100%", md: "1 1 220px" }, minWidth: { md: 220 }, maxWidth: { md: 320 } }}
+            disabled={blnBusy || !blnCanView}
             renderInput={(params) => (
-              <TextField {...params} label={t("employee", "Employee")} placeholder={t("search_employee", "Search employee...")}
-                InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />
+              <TextField {...params} className="app-mui-text-field" size="small" label={t("employee", "Employee")} placeholder={t("search_employee", "Search employee...")}
+                InputProps={{ ...params.InputProps, startAdornment: (<><InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment>{params.InputProps.startAdornment}</>) }} />
             )}
           />
-          <TextField
-            select
+          <CommonSearchableSelect
+            className="app-mui-text-field"
             label={t("process_stage", "Process Stage")}
             value={dicFiltersDraft.strProcessStage}
-            onChange={(objEvent) => setDicFiltersDraft((dicPrevious) => ({ ...dicPrevious, strProcessStage: objEvent.target.value }))}
+            options={dicOptions.lstProcessStages.map((strStage) => ({ intID: strStage, strLabel: strStage }))}
+            onChange={(strValue) => setDicFiltersDraft((dicPrevious) => ({ ...dicPrevious, strProcessStage: strValue }))}
+            placeholder={t("all_stages", "All Stages")}
             size="small"
-            sx={{ flex: { xs: "1 1 100%", md: "1 1 210px" }, minWidth: { md: 210 }, maxWidth: { md: 280 } }}
-          >
-            <MenuItem value="">{t("all_stages", "All Stages")}</MenuItem>
-            {dicOptions.lstProcessStages.map((strStage) => (
-              <MenuItem key={strStage} value={strStage}>
-                {strStage}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            select
+            disabled={blnBusy || !blnCanView}
+            fullWidth
+          />
+          <CommonSearchableSelect
+            className="app-mui-text-field"
             label={t("process_status", "Process Status")}
             value={dicFiltersDraft.strProcessStatus}
-            onChange={(objEvent) => setDicFiltersDraft((dicPrevious) => ({ ...dicPrevious, strProcessStatus: objEvent.target.value }))}
+            options={dicOptions.lstProcessStatuses.map((strStatus) => ({ intID: strStatus, strLabel: strStatus }))}
+            onChange={(strValue) => setDicFiltersDraft((dicPrevious) => ({ ...dicPrevious, strProcessStatus: strValue }))}
+            placeholder={t("all_statuses", "All Statuses")}
             size="small"
-            sx={{ flex: { xs: "1 1 100%", md: "1 1 210px" }, minWidth: { md: 210 }, maxWidth: { md: 280 } }}
-          >
-            <MenuItem value="">{t("all_statuses", "All Statuses")}</MenuItem>
-            {dicOptions.lstProcessStatuses.map((strStatus) => (
-              <MenuItem key={strStatus} value={strStatus}>
-                {strStatus}
-              </MenuItem>
-            ))}
-          </TextField>
+            disabled={blnBusy || !blnCanView}
+            fullWidth
+          />
           <TextField
+            className="app-mui-text-field"
             data-controlid="payroll-process-logs.list.search-text.input"
             inputProps={{ "data-controlid": "payroll-process-logs.list.search-text.input" }}
             label={t("search_text", "Search Text")}
+            placeholder={t("search_text_placeholder", "Search message text")}
             value={dicFiltersDraft.strSearchText}
             onChange={(objEvent) => setDicFiltersDraft((dicPrevious) => ({ ...dicPrevious, strSearchText: objEvent.target.value }))}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }}
             size="small"
-            sx={{ flex: { xs: "1 1 100%", md: "1 1 280px" }, minWidth: { md: 260 }, maxWidth: { md: 360 } }}
+            disabled={blnBusy || !blnCanView}
+            fullWidth
           />
-          <Box className={styles.searchActions} sx={{ ml: { md: "auto" } }}>
-            <Button data-controlid="payroll-process-logs.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={applySearch}>
+          <Box className={styles.searchActions}>
+            <Button data-controlid="payroll-process-logs.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={applySearch} disabled={blnBusy || !blnCanView}>
               {t("search", "Search")}
             </Button>
           </Box>
           <Box className={styles.searchActions}>
-            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters}>
+            <Button data-controlid="payroll-process-logs.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} disabled={blnBusy || !blnCanView}>
               {t("clear", "Clear")}
             </Button>
           </Box>
@@ -312,23 +302,39 @@ export default function PayrollProcessLogPage({ strInitialPayrollRunRecordUUID }
         <Alert severity="info">{t("read_only_mode", "You have view-only access for Payroll Process Logs.")}</Alert>
       ) : null}
 
-      <Box className={styles.tableCard}>
-        <CommonTable
-          columns={lstTableColumns}
-          rows={lstTableRows}
-          rowIdField="id"
-          exportFileName="payroll_process_logs"
-          showExportOptions={blnCanExport}
-          showPaginationSummary
-          emptyMessage={t("empty_message", "No payroll process logs found for the selected filters.")}
-          testIdPrefix="payroll-process-logs.list"
-          hideToolbar
-          withPaper={false}
-          sx={{ p: 0, boxShadow: "none", background: "transparent" }}
-        />
+      {strRightsError && !blnCanView && !blnBusy ? <Alert severity="warning">{strRightsError}</Alert> : null}
+
+      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        {blnBusy ? (
+          <MasterGridSkeleton strControlId="payroll-process-logs.list.skeleton" intColumns={6} />
+        ) : !blnCanView ? (
+          <Box className={styles.emptyState}>
+            <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>
+              {t("access_denied", "Payroll process log access is not available for your user group.")}
+            </Typography>
+            <Typography sx={{ mt: 1, color: "#64748b" }}>
+              {t("access_denied_help", "Contact your administrator if you need payroll process log visibility.")}
+            </Typography>
+          </Box>
+        ) : (
+          <CommonTable
+            columns={lstTableColumns}
+            rows={lstTableRows}
+            rowIdField="id"
+            exportFileName="payroll_process_logs"
+            showExportOptions={blnCanExport}
+            showPaginationSummary
+            emptyMessage={t("empty_message", "No payroll process logs found for the selected filters.")}
+            testIdPrefix="payroll-process-logs.list"
+            onRowClick={(dicRow) => openLog(dicRow.strPayrollRunRecordUUID)}
+            minTableWidth={1300}
+            hideRowClickHint
+            getRowSx={() => dicMasterRowSx}
+            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+          />
+        )}
       </Box>
 
-      <BlockingLoader blnOpen={blnLoading || blnRightsLoading} strLabel={t("loading_payroll_process_logs", "Loading payroll process logs...")} />
       <Snackbar
         open={objToast.blnOpen}
         autoHideDuration={3500}
@@ -339,6 +345,6 @@ export default function PayrollProcessLogPage({ strInitialPayrollRunRecordUUID }
           {objToast.strMessage}
         </Alert>
       </Snackbar>
-    </Stack>
+    </Box>
   );
 }

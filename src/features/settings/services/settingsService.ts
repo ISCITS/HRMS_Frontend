@@ -6,6 +6,8 @@ import type {
   ApproverEmployeeDto,
   LeaveSettingsConfigDto,
   LeaveSettingsSaveRequest,
+  PayrollDocumentFormatConfigDto,
+  PayrollDocumentFormatSaveRequest,
 } from "@/features/settings/types";
 
 const SETTINGS_VIEW = "SETTINGS_VIEW";
@@ -65,5 +67,49 @@ export const settingsService = {
       strMenuAction: SETTINGS_EDIT,
     });
     return objResult.Data as LeaveSettingsConfigDto;
+  },
+
+  // ---- Payroll: payslip & F&F report formats ----
+  async getPayrollDocumentFormat(): Promise<PayrollDocumentFormatConfigDto> {
+    const objResult = await requestApi<PayrollDocumentFormatConfigDto>({
+      strPath: "/settings/payroll/document-format",
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: SETTINGS_VIEW,
+    });
+    return objResult.Data as PayrollDocumentFormatConfigDto;
+  },
+
+  async savePayrollDocumentFormat(objPayload: PayrollDocumentFormatSaveRequest): Promise<PayrollDocumentFormatConfigDto> {
+    const objResult = await requestApi<PayrollDocumentFormatConfigDto>({
+      strPath: "/settings/payroll/document-format",
+      strMethod: ApiRequestMethod.Put,
+      objBody: objPayload,
+      strMenuAction: SETTINGS_EDIT,
+    });
+    return objResult.Data as PayrollDocumentFormatConfigDto;
+  },
+
+  /** A template filled with sample figures. */
+  async previewPayrollDocumentFormat(
+    strDocument: "payslip" | "fnf" | "ctc",
+    strFormat: "default" | "client",
+    strView: "monthly" | "detailed" | "annual" = "monthly",
+  ): Promise<string> {
+    const objResult = await requestApi<{ strHtml: string }>({
+      strPath: `/settings/payroll/document-format/preview?document=${strDocument}&format=${strFormat}&view=${strView}`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: SETTINGS_VIEW,
+    });
+    return objResult.Data?.strHtml ?? "";
+  },
+
+  /** The formats payslip / F&F screens open (any signed-in user). */
+  async getEffectivePayrollDocumentFormat(): Promise<PayrollDocumentFormatSaveRequest> {
+    const objResult = await requestApi<PayrollDocumentFormatSaveRequest>({
+      strPath: "/settings/payroll/document-format/effective",
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: "PAYSLIP_VIEW",
+    });
+    return objResult.Data as PayrollDocumentFormatSaveRequest;
   },
 };
