@@ -8,6 +8,13 @@ export type CtcDocument = {
   rows: Array<Array<{ text: string; span: number; bold: boolean; background: string; color: string | null; borders: boolean[]; align: "left" | "center" | "right" }>>;
 };
 type CtcDownload = { strFileName: string; strContentType: string; strBase64Content: string };
+/** ours: the application's statement; format1: the client's layout (previous salary next to the current one). */
+export type CtcLayout = "ours" | "format1";
+export type CtcPeriod = "monthly" | "annual";
+
+function query(month: string, zeroStatutory: boolean, layout: CtcLayout, period: CtcPeriod) {
+  return `month=${encodeURIComponent(month)}&zero_statutory=${zeroStatutory}&layout=${layout}&period=${period}`;
+}
 
 async function get<T>(path: string): Promise<T> {
   const result = await requestEncryptedApi<T>({
@@ -19,10 +26,10 @@ async function get<T>(path: string): Promise<T> {
 
 export const ctcReportService = {
   /** month: "YYYY-MM" - the statement shows the salary in force that month. */
-  document: (uuid: string, month: string, zeroStatutory = false) =>
-    get<CtcDocument>(`document/${encodeURIComponent(uuid)}?month=${encodeURIComponent(month)}&zero_statutory=${zeroStatutory}`),
-  download: (uuid: string, format: "xlsx" | "pdf", version: string, month: string, zeroStatutory = false) =>
-    get<CtcDownload>(`document/${encodeURIComponent(uuid)}?format=${format}&version=${encodeURIComponent(version)}&month=${encodeURIComponent(month)}&zero_statutory=${zeroStatutory}`),
+  document: (uuid: string, month: string, zeroStatutory = false, layout: CtcLayout = "ours", period: CtcPeriod = "monthly") =>
+    get<CtcDocument>(`document/${encodeURIComponent(uuid)}?${query(month, zeroStatutory, layout, period)}`),
+  download: (uuid: string, format: "xlsx" | "pdf", version: string, month: string, zeroStatutory = false, layout: CtcLayout = "ours", period: CtcPeriod = "monthly") =>
+    get<CtcDownload>(`document/${encodeURIComponent(uuid)}?format=${format}&version=${encodeURIComponent(version)}&${query(month, zeroStatutory, layout, period)}`),
   options: () => get<{ employees: EmployeeListRecord[]; salaries: EmployeeSalaryListRecord[] }>("options"),
   detail: (uuid: string, action: "view" | "export" = "view") =>
     get<EmployeeSalaryDetailRecord>(`employee/${encodeURIComponent(uuid)}?action=${action}`),
