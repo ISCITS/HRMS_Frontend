@@ -51,8 +51,8 @@
 .ess-dashboard .badge.pending { color:#f76d13; background:#fff4e8; }
 .ess-dashboard .badge.approved { color:#129541; background:#e9fbf1; }
 
-/* Preserve the welcome banner's artwork, height and selected crop. */
-.ess-dashboard .ess-welcome { display:flex; align-items:center; gap:28px; padding:26px; border-radius:22px; min-height:210px; background-color:#deefff; background-size:cover; background-position:right 60%; background-repeat:no-repeat; min-width:0; }
+/* Keep the welcome artwork while letting the content determine banner height. */
+.ess-dashboard .ess-welcome { display:flex; align-items:center; gap:28px; padding:16px 26px; border-radius:22px; background-color:#deefff; background-size:cover; background-position:right 60%; background-repeat:no-repeat; min-width:0; }
 .ess-dashboard .ess-welcome > div { min-width:0; }
 .ess-dashboard .ess-greeting { font-size:18px; font-weight:600; }
 .ess-dashboard .ess-employee-name { font-size:30px; font-weight:800; line-height:1.2; margin:3px 0 6px; color:var(--ink); }
@@ -170,7 +170,7 @@
   .ess-dashboard .action-tile > svg { display:none; }
   .ess-dashboard .action-tile strong { font-size:12px; }
   .ess-dashboard .action-tile small { font-size:12px; }
-  .ess-dashboard .ess-welcome { min-height:240px; padding:20px; gap:16px; }
+  .ess-dashboard .ess-welcome { padding:14px 20px; gap:16px; }
   .ess-dashboard .ess-welcome-details { flex-basis:100%; border-left:0; border-top:1px solid #c9dff4; padding:12px 0 0; grid-template-columns:repeat(2,minmax(0,1fr)); }
   .ess-dashboard .ess-today { margin-left:0; }
   .ess-dashboard .big-number { font-size:34px; }
@@ -189,6 +189,11 @@
   .ess-dashboard .ess-welcome > .MuiAvatar-root { width:64px; height:64px; }
   .ess-dashboard .ess-employee-name { font-size:22px; }
   .ess-dashboard .balance-details > div + div { padding-left:12px; }
+}
+/* Keep shortcuts on one swipeable row on tablets and phones. */
+@media(max-width:1024px) {
+  .ess-dashboard .action-grid { grid-template-columns:none; grid-auto-flow:column; grid-auto-columns:200px; gap:10px; overflow-x:auto; overscroll-behavior-x:contain; padding:4px 4px 8px; }
+  .ess-dashboard .action-tile { flex-direction:row; align-items:center; min-height:80px; }
 }
 @media(prefers-reduced-motion:no-preference) {
   .ess-dashboard .action-tile { transition:background-color .15s,box-shadow .15s; }

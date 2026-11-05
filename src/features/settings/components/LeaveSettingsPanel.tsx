@@ -37,7 +37,7 @@ const lstDaysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 const lstCategories: { strKey: SettingsCategoryKey; strLabel: string; objIcon: ReactNode; strSubtitle: string }[] = [
   { strKey: "leave", strLabel: "Leave", objIcon: <SpaRoundedIcon />, strSubtitle: "Configure leave calendar and default approval behaviour." },
   { strKey: "attendance", strLabel: "Attendance", objIcon: <CalendarMonthRoundedIcon />, strSubtitle: "Configure default approval behaviour for attendance related requests." },
-  { strKey: "payroll", strLabel: "Payroll", objIcon: <PaymentsRoundedIcon />, strSubtitle: "Choose the payslip and F&F report formats used across the application." },
+  { strKey: "payroll", strLabel: "Payroll", objIcon: <PaymentsRoundedIcon />, strSubtitle: "Choose the payslip, F&F report and CTC statement formats used across the application." },
   { strKey: "employee", strLabel: "Employee", objIcon: <GroupsRoundedIcon />, strSubtitle: "Employee settings will appear here when enabled." },
   { strKey: "security", strLabel: "Security", objIcon: <SecurityRoundedIcon />, strSubtitle: "Security settings will appear here when enabled." },
   { strKey: "notifications", strLabel: "Notifications", objIcon: <NotificationsRoundedIcon />, strSubtitle: "Notification settings will appear here when enabled." },
@@ -51,6 +51,7 @@ const lstSearchOptions: SearchOption[] = [
   { strLabel: "Work on Holiday Approver", strCategory: "attendance", strAnchor: "settings-section-work-holiday" },
   { strLabel: "Payslip Format", strCategory: "payroll", strAnchor: "settings-section-payslip-format" },
   { strLabel: "F&F Report Format", strCategory: "payroll", strAnchor: "settings-section-fnf-format" },
+  { strLabel: "CTC Format", strCategory: "payroll", strAnchor: "settings-section-ctc-format" },
 ];
 
 function snapshotToOption(objSnapshot: ApproverSnapshotDto | null): ApproverEmployeeDto | null {
