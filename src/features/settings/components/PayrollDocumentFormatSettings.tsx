@@ -14,10 +14,12 @@ import { useActionRights } from "@/features/security/hooks/useActionRights";
 import { settingsService } from "@/features/settings/services/settingsService";
 import type { PayrollDocumentFormatConfigDto, PayrollDocumentFormatSaveRequest, PayrollDocumentTemplateDto } from "@/features/settings/types";
 
-type DocumentKind = "payslip" | "fnf";
+type DocumentKind = "payslip" | "fnf" | "ctc";
 type DocumentFormat = PayrollDocumentTemplateDto["strFormat"];
 type PayslipView = PayrollDocumentFormatSaveRequest["strPayslipView"];
-type PreviewState = { strDocument: DocumentKind; objTemplate: PayrollDocumentTemplateDto; strView: PayslipView } | null;
+type CtcPeriod = PayrollDocumentFormatSaveRequest["strCtcPeriod"];
+type PreviewView = PayslipView | CtcPeriod;
+type PreviewState = { strDocument: DocumentKind; objTemplate: PayrollDocumentTemplateDto; strView: PreviewView } | null;
 
 const PAYROLL_FORMAT_VIEW = "payroll_format_view";
 const PAYROLL_FORMAT_EDIT = "payroll_format_edit";
@@ -25,14 +27,20 @@ const lstViewOptions: { strView: PayslipView; strLabel: string }[] = [
   { strView: "monthly", strLabel: "Monthly" },
   { strView: "detailed", strLabel: "Detailed (YTD & annual)" },
 ];
+const lstCtcPeriodOptions: { strView: CtcPeriod; strLabel: string }[] = [
+  { strView: "monthly", strLabel: "Monthly" },
+  { strView: "annual", strLabel: "Annual" },
+];
+const DIC_DOCUMENT_LABEL: Record<DocumentKind, string> = { payslip: "Payslip", fnf: "F&F report", ctc: "CTC statement" };
 
 type Props = {
   onMessage: (strMessage: string, strSeverity: "success" | "error") => void;
 };
 
 /**
- * Settings > Payroll: the payslip and F&F report formats every screen opens (payroll run, results,
- * payslips, ESS, F&F). Rights: "Payslip & F&F Format - View" to see, "- Edit" to change.
+ * Settings > Payroll: the payslip, F&F report and CTC statement formats every screen opens (payroll
+ * run, results, payslips, ESS, F&F, Reports > CTC Statement). Rights: "Payslip & F&F Format - View"
+ * to see, "- Edit" to change.
  */
 export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
   const { canDo, blnLoading: blnRightsLoading } = useActionRights();
@@ -48,7 +56,13 @@ export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
 
   function applyConfig(objNext: PayrollDocumentFormatConfigDto) {
     setObjConfig(objNext);
-    setObjDraft({ strPayslipFormat: objNext.strPayslipFormat, strPayslipView: objNext.strPayslipView, strFNFReportFormat: objNext.strFNFReportFormat });
+    setObjDraft({
+      strPayslipFormat: objNext.strPayslipFormat,
+      strPayslipView: objNext.strPayslipView,
+      strFNFReportFormat: objNext.strFNFReportFormat,
+      strCtcFormat: objNext.strCtcFormat,
+      strCtcPeriod: objNext.strCtcPeriod,
+    });
   }
 
   useEffect(() => {
@@ -99,7 +113,7 @@ export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
       applyConfig(await settingsService.savePayrollDocumentFormat(objDraft));
       // Screens opened from here on use the new formats.
       resetPayrollDocumentFormats();
-      onMessage("Payslip and F&F report formats saved. Every screen now opens these formats.", "success");
+      onMessage("Payslip, F&F report and CTC statement formats saved. Every screen now opens these formats.", "success");
     } catch (objError) {
       onMessage((await createApiRequestError(objError)).message, "error");
     } finally {
@@ -138,7 +152,9 @@ export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
   const blnDirty =
     objDraft.strPayslipFormat !== objConfig.strPayslipFormat ||
     objDraft.strPayslipView !== objConfig.strPayslipView ||
-    objDraft.strFNFReportFormat !== objConfig.strFNFReportFormat;
+    objDraft.strFNFReportFormat !== objConfig.strFNFReportFormat ||
+    objDraft.strCtcFormat !== objConfig.strCtcFormat ||
+    objDraft.strCtcPeriod !== objConfig.strCtcPeriod;
   const objSelectedPayslipTemplate = objConfig.lstPayslipTemplates.find((objTemplate) => objTemplate.strFormat === objDraft.strPayslipFormat);
   const sxCard = { p: { xs: 2, md: 2.25 }, borderRadius: "8px", border: "1px solid #dfe9f5", boxShadow: "0 8px 24px rgba(15, 23, 42, 0.04)", backgroundColor: "#fff" } as const;
   const sxSubHeading = { fontWeight: 800, color: "#172033", fontSize: "0.98rem", lineHeight: 1.2 } as const;
@@ -189,7 +205,8 @@ export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
                   startIcon={<VisibilityRoundedIcon />}
                   onClick={(objEvent) => {
                     objEvent.stopPropagation();
-                    openPreview({ strDocument, objTemplate, strView: strDocument === "payslip" ? objDraft!.strPayslipView : "monthly" });
+                    const strView = strDocument === "payslip" ? objDraft!.strPayslipView : strDocument === "ctc" ? objDraft!.strCtcPeriod : "monthly";
+                    openPreview({ strDocument, objTemplate, strView });
                   }}
                   controlId={`settings.payroll-format.${strDocument}.${objTemplate.strFormat}.preview`}
                 >
@@ -248,6 +265,33 @@ export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
         {renderTemplates("fnf", objConfig.lstFNFTemplates, objDraft.strFNFReportFormat, (strFormat) => setObjDraft({ ...objDraft, strFNFReportFormat: strFormat }))}
       </Paper>
 
+      <Paper id="settings-section-ctc-format" variant="outlined" sx={sxCard}>
+        <Typography sx={sxSubHeading}>CTC Format</Typography>
+        <Typography sx={sxSubCaption}>Reports - CTC Statement, its Excel and PDF downloads - open in this format. Nothing is asked on open.</Typography>
+        {renderTemplates("ctc", objConfig.lstCtcTemplates, objDraft.strCtcFormat, (strFormat) => setObjDraft({ ...objDraft, strCtcFormat: strFormat }))}
+        <Box sx={{ mt: 2 }}>
+          <Typography sx={{ ...sxSubCaption, mb: 0.75 }}>Open CTC statements as</Typography>
+          <ToggleButtonGroup
+            exclusive
+            size="small"
+            color="primary"
+            value={objDraft.strCtcPeriod}
+            disabled={blnReadOnly}
+            onChange={(_objEvent, strNext: CtcPeriod | null) => strNext && setObjDraft({ ...objDraft, strCtcPeriod: strNext })}
+            data-controlid="settings.payroll-format.ctc.period"
+          >
+            {lstCtcPeriodOptions.map((objOption) => (
+              <ToggleButton key={objOption.strView} value={objOption.strView} sx={{ fontWeight: 700, textTransform: "none", px: 2 }}>
+                {objOption.strLabel}
+              </ToggleButton>
+            ))}
+          </ToggleButtonGroup>
+          <Typography sx={{ color: "#60749b", fontSize: "0.75rem", mt: 0.75 }}>
+            Monthly shows amounts per month, Annual per year - in either format.
+          </Typography>
+        </Box>
+      </Paper>
+
       {!blnReadOnly ? (
         <Stack direction="row" spacing={1} justifyContent="flex-end">
           <Button className="app-btn app-btn-outline" startIcon={<CancelRoundedIcon />} onClick={handleCancel} disabled={blnSaving || !blnDirty} controlId="settings.payroll-format.cancel.button">Cancel</Button>
@@ -260,7 +304,7 @@ export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
       <Dialog open={Boolean(objPreview)} onClose={() => setObjPreview(null)} maxWidth="lg" fullWidth data-testid="settings.payroll-format.preview">
         <DialogTitle sx={{ fontWeight: 800, display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
           <Box component="span" sx={{ flex: 1 }}>
-            {objPreview ? `${objPreview.strDocument === "payslip" ? "Payslip" : "F&F report"} - ${objPreview.objTemplate.strName}` : ""}
+            {objPreview ? `${DIC_DOCUMENT_LABEL[objPreview.strDocument]} - ${objPreview.objTemplate.strName}` : ""}
           </Box>
           {objPreview?.strDocument === "payslip" && objPreview.objTemplate.blnHasViews ? (
             <ToggleButtonGroup
@@ -271,6 +315,19 @@ export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
               onChange={(_objEvent, strNext: PayslipView | null) => strNext && openPreview({ ...objPreview, strView: strNext })}
             >
               {lstViewOptions.map((objOption) => (
+                <ToggleButton key={objOption.strView} value={objOption.strView} sx={{ fontWeight: 700, textTransform: "none" }}>{objOption.strLabel}</ToggleButton>
+              ))}
+            </ToggleButtonGroup>
+          ) : null}
+          {objPreview?.strDocument === "ctc" ? (
+            <ToggleButtonGroup
+              exclusive
+              size="small"
+              color="primary"
+              value={objPreview.strView}
+              onChange={(_objEvent, strNext: CtcPeriod | null) => strNext && openPreview({ ...objPreview, strView: strNext })}
+            >
+              {lstCtcPeriodOptions.map((objOption) => (
                 <ToggleButton key={objOption.strView} value={objOption.strView} sx={{ fontWeight: 700, textTransform: "none" }}>{objOption.strLabel}</ToggleButton>
               ))}
             </ToggleButtonGroup>
@@ -290,7 +347,9 @@ export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
               className="app-btn app-btn-primary"
               onClick={() => {
                 if (objPreview.strDocument === "payslip") {
-                  setObjDraft({ ...objDraft, strPayslipFormat: objPreview.objTemplate.strFormat, ...(objPreview.objTemplate.blnHasViews ? { strPayslipView: objPreview.strView } : {}) });
+                  setObjDraft({ ...objDraft, strPayslipFormat: objPreview.objTemplate.strFormat, ...(objPreview.objTemplate.blnHasViews ? { strPayslipView: objPreview.strView as PayslipView } : {}) });
+                } else if (objPreview.strDocument === "ctc") {
+                  setObjDraft({ ...objDraft, strCtcFormat: objPreview.objTemplate.strFormat, strCtcPeriod: objPreview.strView as CtcPeriod });
                 } else {
                   setObjDraft({ ...objDraft, strFNFReportFormat: objPreview.objTemplate.strFormat });
                 }

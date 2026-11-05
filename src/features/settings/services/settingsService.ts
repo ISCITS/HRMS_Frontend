@@ -90,7 +90,11 @@ export const settingsService = {
   },
 
   /** A template filled with sample figures. */
-  async previewPayrollDocumentFormat(strDocument: "payslip" | "fnf", strFormat: "default" | "client", strView: "monthly" | "detailed" = "monthly"): Promise<string> {
+  async previewPayrollDocumentFormat(
+    strDocument: "payslip" | "fnf" | "ctc",
+    strFormat: "default" | "client",
+    strView: "monthly" | "detailed" | "annual" = "monthly",
+  ): Promise<string> {
     const objResult = await requestApi<{ strHtml: string }>({
       strPath: `/settings/payroll/document-format/preview?document=${strDocument}&format=${strFormat}&view=${strView}`,
       strMethod: ApiRequestMethod.Get,

@@ -18,17 +18,15 @@ import PictureAsPdfRoundedIcon from "@mui/icons-material/PictureAsPdfRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
-import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import type { EmployeeListRecord } from "@/features/employee/types";
-import { ctcReportService, type CtcDocument } from "@/features/reports/services/ctcReportService";
-import { ctcFormatLabel, useCtcFormatChooser, type CtcFormatChoice } from "@/features/reports/components/CtcFormatChooser";
+import { ctcFormatLabel, ctcReportService, type CtcDocument } from "@/features/reports/services/ctcReportService";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
 import { hasCtcAction } from "@/features/reports/utils/ctcAccess";
 import { DottedLoader } from "@/components/shared/BlockingLoader";
 import screen from "@/components/master/MasterScreen.module.css";
 import styles from "./CtcFormatReportPage.module.css";
 
-type Statement = { document: CtcDocument; employee: EmployeeListRecord; month: string; zeroStatutory: boolean; choice: CtcFormatChoice };
+type Statement = { document: CtcDocument; employee: EmployeeListRecord; month: string; zeroStatutory: boolean };
 
 function currentMonth() {
   const today = new Date();
@@ -51,7 +49,6 @@ export default function CtcFormatReportPage() {
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
   const generation = useRef(0);
-  const { chooseFormat, objFormatChooser } = useCtcFormatChooser();
 
   useEffect(() => {
     if (access.blnLoading) return;
@@ -68,17 +65,15 @@ export default function CtcFormatReportPage() {
   const eligible = employees.filter(row => type === "All" || (row.blnIsWorker ? "Worker" : "Non-Worker") === type);
   const binding = access.blnLoading || loading;
   const busy = generating || !!downloading;
-  // Like payslips and F&F reports, every statement opens in the format chosen for it: Our format or
-  // Format I, monthly or annual.
-  async function generate(initial?: CtcFormatChoice | null) {
+  // The statement opens in the format set in Settings > Payroll > CTC Format (our format or Format 1,
+  // monthly or annual); downloads use the format the preview was generated in.
+  async function generate() {
     if (!canView || !selected || !month || busy) return;
-    const choice = await chooseFormat(initial);
-    if (!choice) return;
     const request = ++generation.current;
     setGenerating(true); setError(""); setStatement(null);
     try {
-      const document = await ctcReportService.document(selected.strRecordUUID, month, zeroStatutory, choice.layout, choice.period);
-      if (request === generation.current) setStatement({ employee: selected, document, month, zeroStatutory, choice });
+      const document = await ctcReportService.document(selected.strRecordUUID, month, zeroStatutory);
+      if (request === generation.current) setStatement({ employee: selected, document, month, zeroStatutory });
     } catch (reason) { if (request === generation.current) setError(reason instanceof Error ? reason.message : "Unable to generate CTC statement."); }
     finally { if (request === generation.current) setGenerating(false); }
   }
@@ -87,7 +82,7 @@ export default function CtcFormatReportPage() {
     if (!statement || !canExport || busy) return;
     setDownloading(format); setError("");
     try {
-      const file = await ctcReportService.download(statement.employee.strRecordUUID, format, statement.document.version, statement.month, statement.zeroStatutory, statement.choice.layout, statement.choice.period);
+      const file = await ctcReportService.download(statement.employee.strRecordUUID, format, statement.document.version, statement.month, statement.zeroStatutory, statement.document.layout, statement.document.period);
       const bytes = Uint8Array.from(atob(file.strBase64Content), value => value.charCodeAt(0));
       const url = URL.createObjectURL(new Blob([bytes], { type: file.strContentType }));
       const link = document.createElement("a");
@@ -107,7 +102,7 @@ export default function CtcFormatReportPage() {
       <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">CTC Statement</Typography>
     </Breadcrumbs>
 
-    <Box component="form" className={screen.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }} onSubmit={event => { event.preventDefault(); void generate(statement?.choice); }}>
+    <Box component="form" className={screen.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }} onSubmit={event => { event.preventDefault(); void generate(); }}>
       <Box className={`${screen.searchRow} ${styles.filterRow}`}>
         <TextField className="app-mui-text-field" fullWidth type="month" size="small" label="Month" required value={month} disabled={busy || binding} onChange={event => { setMonth(event.target.value); setStatement(null); }} InputLabelProps={{ shrink: true }} data-testid="ctc.filter.month" />
         <TextField className="app-mui-text-field" fullWidth select size="small" label="Worker / Non-Worker" value={type} disabled={busy || binding} onChange={event => { setType(event.target.value); setSelected(null); setStatement(null); }} data-testid="ctc.filter.type">
@@ -142,9 +137,8 @@ export default function CtcFormatReportPage() {
     )}
     <Box className={screen.tableCard} sx={{ position: "relative", p: "10px !important", borderRadius: "10px !important", boxShadow: "none" }}>
       <Box className={styles.toolbar}>
-        <Typography fontWeight={700}>CTC Statement{statement ? ` - ${ctcFormatLabel(statement.choice)}` : ""}</Typography>
+        <Typography fontWeight={700}>CTC Statement{statement ? ` - ${ctcFormatLabel(statement.document.layout, statement.document.period)}` : ""}</Typography>
         <Box className={styles.downloads}>
-          {statement && <Button className={screen.secondaryButton} startIcon={<TuneRoundedIcon />} disabled={busy} onClick={() => void generate(statement.choice)} data-testid="ctc.changeFormat">Change format</Button>}
           {canExport && <>
           <Button className={screen.secondaryButton} startIcon={downloading === "xlsx" ? <DottedLoader intSize={16} /> : <DownloadRoundedIcon />} disabled={!statement || busy} onClick={() => void download("xlsx")} data-testid="ctc.export.xlsx">Export Excel</Button>
           <Button className={screen.secondaryButton} startIcon={downloading === "pdf" ? <DottedLoader intSize={16} /> : <PictureAsPdfRoundedIcon />} disabled={!statement || busy} onClick={() => void download("pdf")} data-testid="ctc.export.pdf">Download PDF</Button>
@@ -154,13 +148,12 @@ export default function CtcFormatReportPage() {
       {statement?.document.warnings.map((warning, index) => <Alert severity="warning" key={index} sx={{ mb: 1 }}>{warning}</Alert>)}
       <Box className={styles.preview}>
         {!statement ? <Box className={styles.empty}>
-          {binding || generating ? <DottedLoader /> : <Typography color="text.secondary">Select a month and an employee, then search and choose the format (Our format or Format I, monthly or annual) to generate the CTC statement for the salary in force that month.</Typography>}
+          {binding || generating ? <DottedLoader /> : <Typography color="text.secondary">Select a month and an employee, then search to generate the CTC statement for the salary in force that month, in the format set under Settings - Payroll - CTC Format.</Typography>}
         </Box> : <table className={styles.worksheet} aria-label="CTC statement matching the Excel template">
           <colgroup>{statement.document.widths.map((width, index) => <col key={index} style={{ width: `${width / statement.document.widths.reduce((a, b) => a + b, 0) * 100}%` }} />)}</colgroup>
           <tbody>{statement.document.rows.map((row, rowIndex) => <tr key={rowIndex}>{row.map((cell, cellIndex) => <td key={cellIndex} colSpan={cell.span} style={{ fontWeight: cell.bold ? 700 : 400, background: cell.background, color: cell.color || undefined, textAlign: cell.align, borderStyle: cell.borders.map(border => border ? "solid" : "none").join(" ") }}>{cell.text}</td>)}</tr>)}</tbody>
         </table>}
       </Box>
     </Box>
-    {objFormatChooser}
   </Box>;
 }
