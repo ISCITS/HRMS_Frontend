@@ -6,7 +6,7 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { Alert, Box, Breadcrumbs, Button, Checkbox, Typography } from "@mui/material";
-import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
+import { useEffect, useMemo, useState, type InputHTMLAttributes, type ReactNode } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -59,6 +59,10 @@ type VariablePayRegisterLabels = {
 
 type LabelFn = (strKey: string, strFallback?: string) => string;
 
+/** A register grid row: fixed columns plus one dynamic `entity_<n>` column per allocation entity. */
+type RegisterTableRow = Record<string, ReactNode> & { intID: number };
+const INT_ENTITY_COLUMN_WIDTH = 140;
+
 function buildVariablePayRegisterLabels(t: LabelFn): VariablePayRegisterLabels {
   return {
     strEmployeeCode: t("employee_code", "Employee Code"),
@@ -100,7 +104,29 @@ function toCsvValue(objValue: unknown) {
   return `"${String(objValue ?? "").replace(/"/g, '""')}"`;
 }
 
+/** Allocation entities (e.g. RPL / AZAD) present in the rows, in entity display order - one
+ * register column each, showing how much of the paid incentive belongs to that entity. */
+function getEntityColumnNames(lstRows: VariablePayRegisterRow[]): string[] {
+  const dicOrderByName = new Map<string, number>();
+  lstRows.forEach((dicRow) => (dicRow.lstEntityBreakup ?? []).forEach((dicEntity) => {
+    const intOrder = dicOrderByName.get(dicEntity.strEntityName);
+    if (intOrder === undefined || dicEntity.intDisplayOrder < intOrder) {
+      dicOrderByName.set(dicEntity.strEntityName, dicEntity.intDisplayOrder);
+    }
+  }));
+  return [...dicOrderByName.entries()]
+    .sort(([strNameA, intOrderA], [strNameB, intOrderB]) => intOrderA - intOrderB || strNameA.localeCompare(strNameB))
+    .map(([strName]) => strName);
+}
+
+function getEntityAmount(dicRow: VariablePayRegisterRow, strEntityName: string): number {
+  return (dicRow.lstEntityBreakup ?? [])
+    .filter((dicEntity) => dicEntity.strEntityName === strEntityName)
+    .reduce((decTotal, dicEntity) => decTotal + (dicEntity.decAmount || 0), 0);
+}
+
 function downloadCsv(strFileName: string, lstRows: VariablePayRegisterRow[], dicLabels: VariablePayRegisterLabels) {
+  const lstEntityNames = getEntityColumnNames(lstRows);
   const lstHeaders = [
     dicLabels.strEmployeeCode,
     dicLabels.strEmployeeName,
@@ -110,6 +136,7 @@ function downloadCsv(strFileName: string, lstRows: VariablePayRegisterRow[], dic
     dicLabels.strInputAmount,
     dicLabels.strApprovedAmount,
     dicLabels.strFinalAmount,
+    ...lstEntityNames,
     dicLabels.strTransactionStatus,
     dicLabels.strTaxRegime,
     dicLabels.strGrossEarnings,
@@ -129,6 +156,7 @@ function downloadCsv(strFileName: string, lstRows: VariablePayRegisterRow[], dic
         dicRow.decInputAmount ?? 0,
         dicRow.decApprovedAmount ?? 0,
         dicRow.decFinalAmount ?? 0,
+        ...lstEntityNames.map((strEntityName) => getEntityAmount(dicRow, strEntityName)),
         dicRow.strTransactionStatus,
         dicRow.strRegimeUsed ?? "",
         dicRow.decGrossEarningsAmount ?? 0,
@@ -152,6 +180,7 @@ function exportPdf(strTitle: string, lstRows: VariablePayRegisterRow[], dicLabel
   if (!objWindow) {
     return;
   }
+  const lstEntityNames = getEntityColumnNames(lstRows);
   const strRows = lstRows.map((dicRow) => `
     <tr>
       <td>${dicRow.strEmployeeCode}</td>
@@ -162,6 +191,7 @@ function exportPdf(strTitle: string, lstRows: VariablePayRegisterRow[], dicLabel
       <td>${formatCurrency(dicRow.decInputAmount)}</td>
       <td>${formatCurrency(dicRow.decApprovedAmount)}</td>
       <td>${formatCurrency(dicRow.decFinalAmount)}</td>
+      ${lstEntityNames.map((strEntityName) => `<td>${formatCurrency(getEntityAmount(dicRow, strEntityName))}</td>`).join("")}
       <td>${dicRow.strTransactionStatus}</td>
       <td>${dicRow.strRegimeUsed ?? "-"}</td>
       <td>${formatCurrency(dicRow.decGrossEarningsAmount)}</td>
@@ -195,6 +225,7 @@ function exportPdf(strTitle: string, lstRows: VariablePayRegisterRow[], dicLabel
               <th>${dicLabels.strInputAmount}</th>
               <th>${dicLabels.strApprovedAmount}</th>
               <th>${dicLabels.strFinalAmount}</th>
+              ${lstEntityNames.map((strEntityName) => `<th>${strEntityName}</th>`).join("")}
               <th>${dicLabels.strTransactionStatus}</th>
               <th>${dicLabels.strTaxRegime}</th>
               <th>${dicLabels.strGrossEarnings}</th>
@@ -259,6 +290,11 @@ export default function VariablePayRegisterReportPage() {
     lstStatuses: getUniqueOptions(lstRows.map((dicRow) => dicRow.strPayrollRunStatus)),
   }), [lstRows]);
 
+  const lstEntityNames = useMemo(() => getEntityColumnNames(lstFilteredRows), [lstFilteredRows]);
+  const lstEntityTotals = useMemo(
+    () => lstEntityNames.map((strEntityName) => lstFilteredRows.reduce((decTotal, dicRow) => decTotal + getEntityAmount(dicRow, strEntityName), 0)),
+    [lstEntityNames, lstFilteredRows],
+  );
   const dicTotals = useMemo(() => lstFilteredRows.reduce(
     (dicAccumulator, dicRow) => ({
       decInput: dicAccumulator.decInput + (dicRow.decInputAmount || 0),
@@ -327,7 +363,11 @@ export default function VariablePayRegisterReportPage() {
 
   const lstTableRows = useMemo(
     () =>
-      lstFilteredRows.map((dicRow) => ({
+      lstFilteredRows.map((dicRow): RegisterTableRow => ({
+        ...Object.fromEntries(lstEntityNames.flatMap((strEntityName, intIndex) => {
+          const decAmount = getEntityAmount(dicRow, strEntityName);
+          return [[`entity_${intIndex}`, formatCurrency(decAmount)], [`entity_${intIndex}_sort`, decAmount]];
+        })),
         intID: dicRow.intID,
         select: (
           <Checkbox
@@ -359,10 +399,24 @@ export default function VariablePayRegisterReportPage() {
         decNetPayAmountSortValue: Number(dicRow.decNetPayAmount ?? 0),
         strPayrollRunStatus: dicRow.strPayrollRunStatus,
       })),
-    [lstFilteredRows, setSelectedRowIDs]
+    [lstFilteredRows, setSelectedRowIDs, lstEntityNames]
   );
 
-  const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
+  const lstEntityColumns: CommonTableColumn<RegisterTableRow>[] = lstEntityNames.map((strEntityName, intIndex) => ({
+    field: `entity_${intIndex}`,
+    headerName: strEntityName,
+    width: INT_ENTITY_COLUMN_WIDTH,
+    align: "right",
+    sortAccessor: (dicRow) => Number(dicRow[`entity_${intIndex}_sort`] ?? 0),
+  }));
+  // Footer cells line up with the table columns, entity columns included.
+  const lstFooterColumnWidths = [
+    56, 200, 150, 160, 160, 140, 150, 160, 150,
+    ...lstEntityNames.map(() => INT_ENTITY_COLUMN_WIDTH),
+    150, 130, 150, 140, 140, 130,
+  ];
+
+  const lstTableColumns = useMemo<CommonTableColumn<RegisterTableRow>[]>(
     () => [
       {
         field: "select",
@@ -385,18 +439,20 @@ export default function VariablePayRegisterReportPage() {
       { field: "strEmployeeCode", headerName: dicLabels.strEmployeeCode, width: 150 },
       { field: "strVariablePayTypeName", headerName: dicLabels.strVariablePayType, width: 160 },
       { field: "strComponentName", headerName: dicLabels.strComponent, width: 160 },
-      { field: "strPayrollPeriod", headerName: dicLabels.strPayrollPeriod, width: 140, sortAccessor: (dicRow) => dicRow.strPayrollPeriodSortValue },
-      { field: "decInputAmount", headerName: dicLabels.strInputAmount, width: 150, align: "right", sortAccessor: (dicRow) => dicRow.decInputAmountSortValue },
-      { field: "decApprovedAmount", headerName: dicLabels.strApprovedAmount, width: 160, align: "right", sortAccessor: (dicRow) => dicRow.decApprovedAmountSortValue },
-      { field: "decFinalAmount", headerName: dicLabels.strFinalAmount, width: 150, align: "right", sortAccessor: (dicRow) => dicRow.decFinalAmountSortValue },
+      { field: "strPayrollPeriod", headerName: dicLabels.strPayrollPeriod, width: 140, sortAccessor: (dicRow) => Number(dicRow.strPayrollPeriodSortValue) },
+      { field: "decInputAmount", headerName: dicLabels.strInputAmount, width: 150, align: "right", sortAccessor: (dicRow) => Number(dicRow.decInputAmountSortValue) },
+      { field: "decApprovedAmount", headerName: dicLabels.strApprovedAmount, width: 160, align: "right", sortAccessor: (dicRow) => Number(dicRow.decApprovedAmountSortValue) },
+      { field: "decFinalAmount", headerName: dicLabels.strFinalAmount, width: 150, align: "right", sortAccessor: (dicRow) => Number(dicRow.decFinalAmountSortValue) },
+      ...lstEntityColumns,
       { field: "strTransactionStatus", headerName: dicLabels.strTransactionStatus, width: 150 },
       { field: "strRegimeUsed", headerName: dicLabels.strTaxRegime, width: 130 },
-      { field: "decGrossEarningsAmount", headerName: dicLabels.strGrossEarnings, width: 150, align: "right", sortAccessor: (dicRow) => dicRow.decGrossEarningsAmountSortValue },
-      { field: "decTaxTotal", headerName: dicLabels.strTaxDeducted, width: 140, align: "right", sortAccessor: (dicRow) => dicRow.decTaxTotalSortValue },
-      { field: "decNetPayAmount", headerName: dicLabels.strNetPay, width: 140, align: "right", sortAccessor: (dicRow) => dicRow.decNetPayAmountSortValue },
+      { field: "decGrossEarningsAmount", headerName: dicLabels.strGrossEarnings, width: 150, align: "right", sortAccessor: (dicRow) => Number(dicRow.decGrossEarningsAmountSortValue) },
+      { field: "decTaxTotal", headerName: dicLabels.strTaxDeducted, width: 140, align: "right", sortAccessor: (dicRow) => Number(dicRow.decTaxTotalSortValue) },
+      { field: "decNetPayAmount", headerName: dicLabels.strNetPay, width: 140, align: "right", sortAccessor: (dicRow) => Number(dicRow.decNetPayAmountSortValue) },
       { field: "strPayrollRunStatus", headerName: dicLabels.strRunStatus, width: 130 },
     ],
-    [blnAllFilteredSelected, blnSomeFilteredSelected, dicLabels, lstFilteredRows.length]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [blnAllFilteredSelected, blnSomeFilteredSelected, dicLabels, lstFilteredRows.length, lstEntityNames]
   );
 
   return (
@@ -452,7 +508,7 @@ export default function VariablePayRegisterReportPage() {
       >
         <InfoOutlinedIcon sx={{ color: "#2b6cb0", fontSize: 20 }} />
         <Typography sx={{ color: "inherit", lineHeight: 1.5 }}>
-          Employee-wise Variable Pay transactions and their processed payroll result - variable pay type, component, input/approved/final amount, tax, and net pay, for every Separate Payroll (Variable Pay) run.
+          Employee-wise Variable Pay transactions and their processed payroll result - variable pay type, component, input/approved/final amount, tax, and net pay, for every Separate Payroll (Variable Pay) run. Allocation-based amounts are also split by allocation entity (one column per entity, totals at the bottom = cost per entity).
         </Typography>
       </Box>
 
@@ -483,11 +539,14 @@ export default function VariablePayRegisterReportPage() {
           )}
           footerContent={lstFilteredRows.length > 0 ? (
             <Box sx={{ px: 1.5, py: 1.25, borderTop: "1px solid #e2e8f0" }}>
-              <Box sx={{ minWidth: 1976, display: "grid", gridTemplateColumns: "56px 150px 200px 160px 160px 140px 150px 160px 150px 150px 130px 150px 140px 140px 130px", alignItems: "center" }}>
-                <Typography sx={{ fontWeight: 700, gridColumn: "1 / span 5" }}>{dicLabels.strTotal}</Typography>
+              <Box sx={{ minWidth: lstFooterColumnWidths.reduce((intTotal, intWidth) => intTotal + intWidth, 0), display: "grid", gridTemplateColumns: lstFooterColumnWidths.map((intWidth) => `${intWidth}px`).join(" "), alignItems: "center" }}>
+                <Typography sx={{ fontWeight: 700, gridColumn: "1 / span 6" }}>{dicLabels.strTotal}</Typography>
                 <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicTotals.decInput)}</Typography>
                 <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicTotals.decApproved)}</Typography>
                 <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicTotals.decFinal)}</Typography>
+                {lstEntityTotals.map((decEntityTotal, intIndex) => (
+                  <Typography key={lstEntityNames[intIndex]} sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(decEntityTotal)}</Typography>
+                ))}
                 <Box />
                 <Box />
                 <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicTotals.decGross)}</Typography>

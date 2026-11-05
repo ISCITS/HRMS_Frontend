@@ -1356,6 +1356,16 @@ export type VariablePayRegisterRow = {
   decTaxTotal: number;
   decNetPayAmount: number;
   strPayrollRunStatus: string;
+  lstEntityBreakup?: VariablePayEntityBreakup[];
+};
+
+export type VariablePayEntityBreakup = {
+  intAllocationEntityID: number | null;
+  strEntityCode: string;
+  strEntityName: string;
+  intDisplayOrder: number;
+  decAllocationPercent: number | null;
+  decAmount: number;
 };
 
 export type PayslipLineRecord = {
