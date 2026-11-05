@@ -6,8 +6,8 @@ import ErrorOutlineRoundedIcon from "@mui/icons-material/ErrorOutlineRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
-import { Alert, Autocomplete, Box, Button, IconButton, InputAdornment, Step, StepLabel, Stepper, TextField, Tooltip, Typography } from "@mui/material";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Alert, Autocomplete, Box, Button, Fade, IconButton, InputAdornment, Step, StepLabel, Stepper, TextField, Tooltip, Typography } from "@mui/material";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { DetailPageHeader } from "@/components/master/MasterListUi";
 import BlockingLoader from "@/components/shared/BlockingLoader";
@@ -28,6 +28,9 @@ const lstFallbackLeaveFields = [
   { strCode: "SL", strName: "SL", strTooltip: "Sick Leave" },
   { strCode: "COMPOFF", strName: "COMPOFF", strTooltip: "Compensatory off leave" },
 ];
+
+// How long the "filled in from existing records" note stays on screen after an employee is picked.
+const PREFILL_NOTE_VISIBLE_MS = 2000;
 
 const lstStepHeaders = [
   { strTitle: "Select employee", strSubtitle: "Pick the exiting employee. Exit details, notice period and leave balances are filled in automatically." },
@@ -91,11 +94,25 @@ export default function FNFSettlementCreatePage() {
   const [blnOptionsLoading, setBlnOptionsLoading] = useState(true);
   const [objPrefill, setObjPrefill] = useState<FNFEmployeePrefill | null>(null);
   const [blnPrefillLoading, setBlnPrefillLoading] = useState(false);
+  // The "filled in from existing records" note is shown briefly after an employee is picked, then fades out.
+  const [blnShowPrefillNote, setBlnShowPrefillNote] = useState(false);
+  const objPrefillNoteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const objSelectedEmployee = useMemo(() => lstEmployeeOptions.find((objEmployee) => objEmployee.strEmployeeCode === dicForm.strEmployeeCode) || null, [lstEmployeeOptions, dicForm.strEmployeeCode]);
   const { blnLoading: blnRightsLoading, can } = useFNFRights();
   const blnHasSystemLeave = Boolean(objPrefill?.lstLeaveBalances.length);
   const decLeaveOverrideTotal = useMemo(() => (dicForm.lstLeaveEncashments || []).reduce((decTotal, dicLeave) => decTotal + Number(dicLeave.decEncashableDays || 0), 0), [dicForm.lstLeaveEncashments]);
   const decSystemLeaveTotal = useMemo(() => (objPrefill?.lstLeaveBalances || []).reduce((decTotal, dicLeave) => decTotal + dicLeave.decEncashableDays, 0), [objPrefill]);
+
+  function hidePrefillNote() {
+    if (objPrefillNoteTimer.current) clearTimeout(objPrefillNoteTimer.current);
+    objPrefillNoteTimer.current = null;
+    setBlnShowPrefillNote(false);
+  }
+
+  // Stop a pending hide timer if the page is left before it fires.
+  useEffect(() => () => {
+    if (objPrefillNoteTimer.current) clearTimeout(objPrefillNoteTimer.current);
+  }, []);
 
   useEffect(() => {
     setBlnOptionsLoading(true);
@@ -120,6 +137,7 @@ export default function FNFSettlementCreatePage() {
 
   async function handleEmployeeChange(objEmployee: FNFEmployeeOption | null) {
     setObjPrefill(null);
+    hidePrefillNote();
     setDicForm((dicCurrent) => ({
       ...buildInitialWizardForm(),
       strRemarks: dicCurrent.strRemarks,
@@ -134,6 +152,8 @@ export default function FNFSettlementCreatePage() {
     try {
       const objData = await fnfSettlementService.getEmployeePrefill(objEmployee.intID);
       setObjPrefill(objData);
+      setBlnShowPrefillNote(true);
+      objPrefillNoteTimer.current = setTimeout(() => setBlnShowPrefillNote(false), PREFILL_NOTE_VISIBLE_MS);
       setDicForm((dicCurrent) => {
         if (dicCurrent.intEmployeeID !== objEmployee.intID) return dicCurrent;
         return {
@@ -306,10 +326,12 @@ export default function FNFSettlementCreatePage() {
                     }} />}
                 />
                 {objPrefill ? (
-                  <Alert severity={lstMissing.length ? "warning" : "success"} className={`${styles.fnfInlineNote} ${styles.fnfSpanTwo}`}>
-                    {Object.keys(objPrefill.dicSources).length ? `Filled in from existing records: ${Object.entries(objPrefill.dicSources).map(([, strSource]) => strSource).filter((strSource, intIndex, lstAll) => lstAll.indexOf(strSource) === intIndex).join("; ")}.` : "No existing exit data found for this employee."}
-                    {lstMissing.length ? ` Not held anywhere in the system, please enter: ${lstMissing.join(", ")}.` : ""}
-                  </Alert>
+                  <Fade in={blnShowPrefillNote} timeout={{ enter: 200, exit: 500 }} unmountOnExit>
+                    <Alert severity={lstMissing.length ? "warning" : "success"} className={`${styles.fnfInlineNote} ${styles.fnfSpanTwo}`}>
+                      {Object.keys(objPrefill.dicSources).length ? `Filled in from existing records: ${Object.entries(objPrefill.dicSources).map(([, strSource]) => strSource).filter((strSource, intIndex, lstAll) => lstAll.indexOf(strSource) === intIndex).join("; ")}.` : "No existing exit data found for this employee."}
+                      {lstMissing.length ? ` Not held anywhere in the system, please enter: ${lstMissing.join(", ")}.` : ""}
+                    </Alert>
+                  </Fade>
                 ) : null}
               </Box>
             ) : null}
