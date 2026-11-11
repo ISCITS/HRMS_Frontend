@@ -11,6 +11,8 @@ import { Alert,
   Button,
   MenuItem,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography
 } from "@mui/material";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
@@ -19,7 +21,7 @@ import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import type { EmployeeListRecord } from "@/features/employee/types";
-import { ctcFormatLabel, ctcReportService, type CtcDocument } from "@/features/reports/services/ctcReportService";
+import { ctcFormatLabel, ctcReportService, type CtcDocument, type CtcLayout, type CtcPeriod } from "@/features/reports/services/ctcReportService";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
 import { hasCtcAction } from "@/features/reports/utils/ctcAccess";
 import { DottedLoader } from "@/components/shared/BlockingLoader";
@@ -48,6 +50,8 @@ export default function CtcFormatReportPage() {
   const [downloading, setDownloading] = useState<"xlsx" | "pdf" | null>(null);
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
+  // Format / period picked on this screen; until then the statement opens as Settings > Payroll > CTC Format says.
+  const [view, setView] = useState<{ layout?: CtcLayout; period?: CtcPeriod }>({});
   const generation = useRef(0);
 
   useEffect(() => {
@@ -67,12 +71,12 @@ export default function CtcFormatReportPage() {
   const busy = generating || !!downloading;
   // The statement opens in the format set in Settings > Payroll > CTC Format (our format or Format 1,
   // monthly or annual); downloads use the format the preview was generated in.
-  async function generate() {
+  async function generate(next: { layout?: CtcLayout; period?: CtcPeriod } = view) {
     if (!canView || !selected || !month || busy) return;
     const request = ++generation.current;
-    setGenerating(true); setError(""); setStatement(null);
+    setGenerating(true); setError(""); setStatement(null); setView(next);
     try {
-      const document = await ctcReportService.document(selected.strRecordUUID, month, zeroStatutory);
+      const document = await ctcReportService.document(selected.strRecordUUID, month, zeroStatutory, next.layout, next.period);
       if (request === generation.current) setStatement({ employee: selected, document, month, zeroStatutory });
     } catch (reason) { if (request === generation.current) setError(reason instanceof Error ? reason.message : "Unable to generate CTC statement."); }
     finally { if (request === generation.current) setGenerating(false); }
@@ -139,6 +143,16 @@ export default function CtcFormatReportPage() {
       <Box className={styles.toolbar}>
         <Typography fontWeight={700}>CTC Statement{statement ? ` - ${ctcFormatLabel(statement.document.layout, statement.document.period)}` : ""}</Typography>
         <Box className={styles.downloads}>
+          {statement && statement.document.layouts?.length > 1 && <ToggleButtonGroup exclusive size="small" color="primary" value={statement.document.layout} disabled={busy}
+            onChange={(_, layout: CtcLayout | null) => { if (layout && layout !== statement.document.layout) void generate({ layout, period: statement.document.period }); }} data-testid="ctc.switch.layout">
+            <ToggleButton value="ours" sx={{ fontWeight: 700, textTransform: "none", px: 1.5, py: 0.25 }}>Our format</ToggleButton>
+            <ToggleButton value="format1" sx={{ fontWeight: 700, textTransform: "none", px: 1.5, py: 0.25 }}>Format 1</ToggleButton>
+          </ToggleButtonGroup>}
+          {statement && <ToggleButtonGroup exclusive size="small" color="primary" value={statement.document.period} disabled={busy}
+            onChange={(_, period: CtcPeriod | null) => { if (period && period !== statement.document.period) void generate({ layout: statement.document.layout, period }); }} data-testid="ctc.switch.period">
+            <ToggleButton value="monthly" sx={{ fontWeight: 700, textTransform: "none", px: 1.5, py: 0.25 }}>Monthly</ToggleButton>
+            <ToggleButton value="annual" sx={{ fontWeight: 700, textTransform: "none", px: 1.5, py: 0.25 }}>Annual</ToggleButton>
+          </ToggleButtonGroup>}
           {canExport && <>
           <Button className={screen.secondaryButton} startIcon={downloading === "xlsx" ? <DottedLoader intSize={16} /> : <DownloadRoundedIcon />} disabled={!statement || busy} onClick={() => void download("xlsx")} data-testid="ctc.export.xlsx">Export Excel</Button>
           <Button className={screen.secondaryButton} startIcon={downloading === "pdf" ? <DottedLoader intSize={16} /> : <PictureAsPdfRoundedIcon />} disabled={!statement || busy} onClick={() => void download("pdf")} data-testid="ctc.export.pdf">Download PDF</Button>
@@ -148,7 +162,7 @@ export default function CtcFormatReportPage() {
       {statement?.document.warnings.map((warning, index) => <Alert severity="warning" key={index} sx={{ mb: 1 }}>{warning}</Alert>)}
       <Box className={styles.preview}>
         {!statement ? <Box className={styles.empty}>
-          {binding || generating ? <DottedLoader /> : <Typography color="text.secondary">Select a month and an employee, then search to generate the CTC statement for the salary in force that month, in the format set under Settings - Payroll - CTC Format.</Typography>}
+          {binding || generating ? <DottedLoader /> : <Typography color="text.secondary">Select a month and an employee, then search to generate the CTC statement for the salary in force that month, in the format set under Settings - Payroll - CTC Format. Switch between Monthly and Annual (and between formats, when both are offered) above the statement.</Typography>}
         </Box> : <table className={styles.worksheet} aria-label="CTC statement matching the Excel template">
           <colgroup>{statement.document.widths.map((width, index) => <col key={index} style={{ width: `${width / statement.document.widths.reduce((a, b) => a + b, 0) * 100}%` }} />)}</colgroup>
           <tbody>{statement.document.rows.map((row, rowIndex) => <tr key={rowIndex}>{row.map((cell, cellIndex) => <td key={cellIndex} colSpan={cell.span} style={{ fontWeight: cell.bold ? 700 : 400, background: cell.background, color: cell.color || undefined, textAlign: cell.align, borderStyle: cell.borders.map(border => border ? "solid" : "none").join(" ") }}>{cell.text}</td>)}</tr>)}</tbody>

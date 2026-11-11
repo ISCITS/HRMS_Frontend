@@ -32,6 +32,20 @@ const lstCtcPeriodOptions: { strView: CtcPeriod; strLabel: string }[] = [
   { strView: "annual", strLabel: "Annual" },
 ];
 const DIC_DOCUMENT_LABEL: Record<DocumentKind, string> = { payslip: "Payslip", fnf: "F&F report", ctc: "CTC statement" };
+type CtcFormat = PayrollDocumentFormatSaveRequest["strCtcFormat"];
+
+/** The CTC formats a setting offers: one of them, or both ("both"). */
+function ctcFormats(strCtcFormat: CtcFormat): DocumentFormat[] {
+  return strCtcFormat === "both" ? ["default", "client"] : [strCtcFormat];
+}
+
+/** Ticks or unticks one CTC format; at least one always stays offered. */
+function toggleCtcFormat(strCtcFormat: CtcFormat, strFormat: DocumentFormat): CtcFormat {
+  const lstCurrent = ctcFormats(strCtcFormat);
+  const lstNext = lstCurrent.includes(strFormat) ? lstCurrent.filter((strItem) => strItem !== strFormat) : [...lstCurrent, strFormat];
+  if (lstNext.length === 0) return strCtcFormat;
+  return lstNext.length === 2 ? "both" : lstNext[0];
+}
 
 type Props = {
   onMessage: (strMessage: string, strSeverity: "success" | "error") => void;
@@ -160,16 +174,16 @@ export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
   const sxSubHeading = { fontWeight: 800, color: "#172033", fontSize: "0.98rem", lineHeight: 1.2 } as const;
   const sxSubCaption = { color: "#48638d", fontSize: "0.78rem", mb: 1.25, lineHeight: 1.25 } as const;
 
-  function renderTemplates(strDocument: DocumentKind, lstTemplates: PayrollDocumentTemplateDto[], strSelected: DocumentFormat, fnSelect: (strFormat: DocumentFormat) => void) {
+  function renderTemplates(strDocument: DocumentKind, lstTemplates: PayrollDocumentTemplateDto[], lstSelected: DocumentFormat[], fnSelect: (strFormat: DocumentFormat) => void, blnMultiple = false) {
     return (
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(260px, 1fr))" }, gap: 1.5 }}>
         {lstTemplates.map((objTemplate) => {
-          const blnSelected = objTemplate.strFormat === strSelected;
+          const blnSelected = lstSelected.includes(objTemplate.strFormat);
           return (
             <Paper
               key={objTemplate.strFormat}
               variant="outlined"
-              role="radio"
+              role={blnMultiple ? "checkbox" : "radio"}
               aria-checked={blnSelected}
               tabIndex={blnReadOnly ? -1 : 0}
               onClick={() => !blnReadOnly && fnSelect(objTemplate.strFormat)}
@@ -229,7 +243,7 @@ export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
       <Paper id="settings-section-payslip-format" variant="outlined" sx={sxCard}>
         <Typography sx={sxSubHeading}>Payslip Format</Typography>
         <Typography sx={sxSubCaption}>Every payslip opens in this format - payroll run, results, payslips and employee self-service. Nothing is asked on open.</Typography>
-        {renderTemplates("payslip", objConfig.lstPayslipTemplates, objDraft.strPayslipFormat, (strFormat) => setObjDraft({ ...objDraft, strPayslipFormat: strFormat }))}
+        {renderTemplates("payslip", objConfig.lstPayslipTemplates, [objDraft.strPayslipFormat], (strFormat) => setObjDraft({ ...objDraft, strPayslipFormat: strFormat }))}
         {objSelectedPayslipTemplate?.blnHasViews ? (
           <Box sx={{ mt: 2 }}>
             <Typography sx={{ ...sxSubCaption, mb: 0.75 }}>Open payslips as</Typography>
@@ -262,13 +276,13 @@ export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
       <Paper id="settings-section-fnf-format" variant="outlined" sx={sxCard}>
         <Typography sx={sxSubHeading}>F&amp;F Report Format</Typography>
         <Typography sx={sxSubCaption}>F&amp;F reports - Generate FNF Report, F&amp;F Reports tab and its downloads - open in this format.</Typography>
-        {renderTemplates("fnf", objConfig.lstFNFTemplates, objDraft.strFNFReportFormat, (strFormat) => setObjDraft({ ...objDraft, strFNFReportFormat: strFormat }))}
+        {renderTemplates("fnf", objConfig.lstFNFTemplates, [objDraft.strFNFReportFormat], (strFormat) => setObjDraft({ ...objDraft, strFNFReportFormat: strFormat }))}
       </Paper>
 
       <Paper id="settings-section-ctc-format" variant="outlined" sx={sxCard}>
         <Typography sx={sxSubHeading}>CTC Format</Typography>
-        <Typography sx={sxSubCaption}>Reports - CTC Statement, its Excel and PDF downloads - open in this format. Nothing is asked on open.</Typography>
-        {renderTemplates("ctc", objConfig.lstCtcTemplates, objDraft.strCtcFormat, (strFormat) => setObjDraft({ ...objDraft, strCtcFormat: strFormat }))}
+        <Typography sx={sxSubCaption}>Reports - CTC Statement, its Excel and PDF downloads - offer the formats ticked here. Tick both to switch between them on the CTC Statement screen.</Typography>
+        {renderTemplates("ctc", objConfig.lstCtcTemplates, ctcFormats(objDraft.strCtcFormat), (strFormat) => setObjDraft({ ...objDraft, strCtcFormat: toggleCtcFormat(objDraft.strCtcFormat, strFormat) }), true)}
         <Box sx={{ mt: 2 }}>
           <Typography sx={{ ...sxSubCaption, mb: 0.75 }}>Open CTC statements as</Typography>
           <ToggleButtonGroup
@@ -287,7 +301,7 @@ export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
             ))}
           </ToggleButtonGroup>
           <Typography sx={{ color: "#60749b", fontSize: "0.75rem", mt: 0.75 }}>
-            Monthly shows amounts per month, Annual per year - in either format.
+            The statement opens in this period; Monthly shows amounts per month, Annual per year, and the screen can switch between them.
           </Typography>
         </Box>
       </Paper>
@@ -349,7 +363,12 @@ export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
                 if (objPreview.strDocument === "payslip") {
                   setObjDraft({ ...objDraft, strPayslipFormat: objPreview.objTemplate.strFormat, ...(objPreview.objTemplate.blnHasViews ? { strPayslipView: objPreview.strView as PayslipView } : {}) });
                 } else if (objPreview.strDocument === "ctc") {
-                  setObjDraft({ ...objDraft, strCtcFormat: objPreview.objTemplate.strFormat, strCtcPeriod: objPreview.strView as CtcPeriod });
+                  const lstOffered = ctcFormats(objDraft.strCtcFormat);
+                  setObjDraft({
+                    ...objDraft,
+                    strCtcFormat: lstOffered.includes(objPreview.objTemplate.strFormat) ? objDraft.strCtcFormat : toggleCtcFormat(objDraft.strCtcFormat, objPreview.objTemplate.strFormat),
+                    strCtcPeriod: objPreview.strView as CtcPeriod,
+                  });
                 } else {
                   setObjDraft({ ...objDraft, strFNFReportFormat: objPreview.objTemplate.strFormat });
                 }

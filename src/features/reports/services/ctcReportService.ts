@@ -5,8 +5,8 @@ import type { EmployeeSalaryDetailRecord, EmployeeSalaryListRecord } from "@/fea
 
 export type CtcDocument = {
   sheetName: string; widths: number[]; version: string; warnings: string[];
-  /** The format it was generated in (Settings > Payroll > CTC Format). */
-  layout: CtcLayout; period: CtcPeriod;
+  /** The format it was generated in, and the formats Settings > Payroll > CTC Format offers (two: the screen switches). */
+  layout: CtcLayout; period: CtcPeriod; layouts: CtcLayout[];
   rows: Array<Array<{ text: string; span: number; bold: boolean; background: string; color: string | null; borders: boolean[]; align: "left" | "center" | "right" }>>;
 };
 type CtcDownload = { strFileName: string; strContentType: string; strBase64Content: string };
@@ -18,7 +18,7 @@ export function ctcFormatLabel(layout: CtcLayout, period: CtcPeriod) {
   return `${layout === "format1" ? "Format 1" : "Our format"} - ${period === "annual" ? "Annual" : "Monthly"}`;
 }
 
-/** Without layout / period the server uses Settings > Payroll > CTC Format. */
+/** Without layout / period the server opens the format and period set in Settings > Payroll > CTC Format. */
 function query(month: string, zeroStatutory: boolean, layout?: CtcLayout, period?: CtcPeriod) {
   return `month=${encodeURIComponent(month)}&zero_statutory=${zeroStatutory}${layout ? `&layout=${layout}` : ""}${period ? `&period=${period}` : ""}`;
 }

@@ -48,8 +48,9 @@ export type PayrollDocumentFormatConfigDto = {
   strPayslipFormat: "default" | "client";
   strPayslipView: "monthly" | "detailed";
   strFNFReportFormat: "default" | "client";
-  /** CTC Statement: our format ("default") or Format 1 ("client"), monthly or annual. */
-  strCtcFormat: "default" | "client";
+  /** CTC Statement: our format ("default"), Format 1 ("client") or both (the screen switches between
+   * them); strCtcPeriod is the period it opens in (the screen can switch that too). */
+  strCtcFormat: "default" | "client" | "both";
   strCtcPeriod: "monthly" | "annual";
   lstPayslipTemplates: PayrollDocumentTemplateDto[];
   lstFNFTemplates: PayrollDocumentTemplateDto[];
