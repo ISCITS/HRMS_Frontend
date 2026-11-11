@@ -78,8 +78,8 @@ export type PfEcrReport = {
   };
 };
 
-// PF: xls (PFECRVersionII) or txt (PFECRFile). ESIC: xls (ESIC ECR file) or mc (portal MC_Template).
-export type PfEcrExportFormat = "xls" | "txt" | "mc";
+// PF: xlsx (PFECRVersionII) or txt (PFECRFile). ESIC: xlsx (ESIC ECR file) or mc (portal MC_Template, also .xlsx).
+export type PfEcrExportFormat = "xlsx" | "txt" | "mc";
 
 export type PfEcrFilters = {
   strPayrollMonth: string;

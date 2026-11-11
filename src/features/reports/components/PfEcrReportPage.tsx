@@ -85,11 +85,11 @@ const dicReturnTotals: Record<PfEcrReturnType, Array<{ strKey: string; strLabel:
 // Upload files each return can be exported as, in the client's template layouts.
 const dicReturnExports: Record<PfEcrReturnType, Array<{ strFormat: PfEcrExportFormat; strLabel: string }>> = {
   PF: [
-    { strFormat: "xls", strLabel: "Export Excel" },
+    { strFormat: "xlsx", strLabel: "Export Excel" },
     { strFormat: "txt", strLabel: "Export TXT" },
   ],
   ESIC: [
-    { strFormat: "xls", strLabel: "Export ESIC ECR" },
+    { strFormat: "xlsx", strLabel: "Export ESIC ECR" },
     { strFormat: "mc", strLabel: "Export MC Template" },
   ],
 };
@@ -233,7 +233,7 @@ export default function PfEcrReportPage() {
     setBlnExporting(true);
     setStrError("");
     try {
-      const strFallbackFileName = objReport.dicSummary.strFileName.replace(/\.xlsx$/i, strFormat === "txt" ? ".txt" : ".xls");
+      const strFallbackFileName = objReport.dicSummary.strFileName.replace(/\.xlsx$/i, strFormat === "txt" ? ".txt" : ".xlsx");
       await pfEcrReportService.downloadFile(getFilters(), strFormat, strFallbackFileName);
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to export the file.");

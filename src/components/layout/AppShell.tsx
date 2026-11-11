@@ -1301,7 +1301,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           flexDirection: "column",
           flex: 1,
           minHeight: 0,
-          borderRadius: 0,
+          borderRadius: "20px",
           overflow: "hidden",
           backgroundColor: "var(--app-menu-surface)",
           backdropFilter: "blur(22px)",
@@ -1603,20 +1603,40 @@ export default function AppShell({ children }: { children: ReactNode }) {
           <LogoutRoundedIcon sx={{ fontSize: { xs: 20, xl: 24 } }} />
         </Box>
       </Box>
+      {/* Dimming scrim behind the desktop floating panel -- the panel itself has no
+          Modal backdrop (it's a plain fixed Box, not an MUI Drawer), so without this
+          the frosted-glass panel blurs live page content behind it instead of a dimmed
+          layer, which read as text bleeding through. Click-to-close, like the mobile
+          app's nav menu. */}
+      <Box
+        onClick={() => setBlnDesktopSidebarOpen(false)}
+        aria-hidden="true"
+        sx={{
+          position: "fixed",
+          inset: 0,
+          zIndex: intMenuZIndex + 1,
+          display: { xs: "none", lg: "block" },
+          backgroundColor: "rgba(15, 23, 42, 0.35)",
+          opacity: blnDesktopSidebarOpen ? 1 : 0,
+          transition: "opacity 220ms ease",
+          pointerEvents: blnDesktopSidebarOpen ? "auto" : "none"
+        }}
+      />
+      {/* Floating drawer: inset from the top/bottom edges with rounded corners all
+          round, mirroring the mobile app's nav menu rather than a full-bleed panel. */}
       <Box
         sx={{
           position: "fixed",
-          left: 0,
-          top: 0,
-          zIndex: intMenuZIndex + 1,
-          width: intDrawerWidth + 28,
-          height: "100dvh",
+          left: 12,
+          top: 24,
+          bottom: 24,
+          zIndex: intMenuZIndex + 2,
+          width: intDrawerWidth,
+          height: "auto",
           minHeight: 0,
           display: { xs: "none", lg: "block" },
           p: 0,
-          pr: 0,
-          overflow: "hidden",
-          transform: blnDesktopSidebarOpen ? "translateX(0)" : `translateX(-${intDrawerWidth + 28}px)`,
+          transform: blnDesktopSidebarOpen ? "translateX(0)" : `translateX(-${intDrawerWidth + 24}px)`,
           transition: "transform 240ms cubic-bezier(0.2, 0, 0, 1), opacity 180ms ease",
           opacity: blnDesktopSidebarOpen ? 1 : 0,
           pointerEvents: blnDesktopSidebarOpen ? "auto" : "none"
@@ -1633,14 +1653,18 @@ export default function AppShell({ children }: { children: ReactNode }) {
           display: { xs: "block", lg: "none" },
           zIndex: intMenuZIndex,
           "& .MuiDrawer-paper": {
-            // Leave a visible edge on narrow phones so the temporary drawer never exceeds the viewport.
-            width: `min(${intDrawerWidth}px, calc(100vw - 24px))`,
-            height: "100dvh",
+            // Floating card inset from the viewport edges on every side (not just the
+            // right), matching the mobile app's nav menu treatment.
+            top: 24,
+            bottom: 24,
+            left: 12,
+            height: "auto",
+            width: `min(${intDrawerWidth}px, calc(100vw - 36px))`,
             border: "none",
-            borderRadius: "0 32px 32px 0",
+            borderRadius: "20px",
             backgroundColor: "transparent",
             boxShadow: "none",
-            overflow: "hidden"
+            overflow: "visible"
           }
         }}
         {...getAutomationProps("app-shell.mobile-drawer")}
