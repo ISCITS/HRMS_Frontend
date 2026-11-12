@@ -43,6 +43,7 @@ type OptionalKey =
 
 const lstAmountColumns: { strKey: AmountKey; strLabel: string }[] = [
   { strKey: "decSalaryEarned", strLabel: "Salary Earned" },
+  { strKey: "decArrears", strLabel: "Arrears" },
   { strKey: "decLeaveEncashment", strLabel: "Leave Encashment" },
   { strKey: "decNoticePay", strLabel: "Notice Pay" },
   { strKey: "decGratuity", strLabel: "Gratuity" },

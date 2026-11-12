@@ -1423,6 +1423,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
   const [blnSaving, setBlnSaving] = useState(false);
   const [strError, setStrError] = useState("");
   const [strSuccess, setStrSuccess] = useState("");
+  const [strArrearNotice, setStrArrearNotice] = useState("");
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [intAllocationTargetComponentID, setIntAllocationTargetComponentID] = useState<number | null>(null);
   const [blnAddingLine, setBlnAddingLine] = useState(false);
@@ -2224,7 +2225,8 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
     setBlnSaving(true);
     setStrError("");
     try {
-      await employeeSalaryService.createRevision(strEmployeeID, {
+      setStrArrearNotice("");
+      const dicSavedRevision = await employeeSalaryService.createRevision(strEmployeeID, {
         ...dicRevisionForm,
         lstOverrides: dicRevisionForm.lstOverrides.map((dicOverride) => ({
           ...dicOverride,
@@ -2246,6 +2248,8 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
       setStrSuccess(
         t("employee_salary_revision_saved_success", "Employee salary revision saved successfully.")
       );
+      // Arrear automation: backdated into finalized payroll months -> how the difference is paid.
+      setStrArrearNotice(dicSavedRevision?.strArrearNotice || "");
       setBlnIsRevisionMode(blnRevisionMode);
     } catch (objError) {
       setStrError(
@@ -2285,6 +2289,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
   function handleOpenRevisionDialog() {
     setStrError("");
     setStrSuccess("");
+    setStrArrearNotice("");
     setDicRevisionForm(buildRevisionForm(objDetail, objFormOptions, lstSalaryComponents, t));
     setBlnIsRevisionMode(true);
   }
@@ -2428,6 +2433,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
 
         {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
         {strSuccess ? <Alert severity="success" onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
+        {strArrearNotice ? <Alert severity="info" onClose={() => setStrArrearNotice("")} data-testid="employee-salary.arrear-notice">{strArrearNotice}</Alert> : null}
 
         <Box className={`${styles.tableCard} ${styles.revisionCard}`} sx={{ px: 2.25, py: 3 }}>
           <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr" } }}>
@@ -2785,6 +2791,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
 
           {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
           {strSuccess ? <Alert severity="success" onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
+          {strArrearNotice ? <Alert severity="info" onClose={() => setStrArrearNotice("")} data-testid="employee-salary.arrear-notice">{strArrearNotice}</Alert> : null}
           <CommonEditModeBanner
             blnReadOnly={blnEffectiveViewMode}
             strReadOnlyMessage={t("employee_salary_read_only_mode", "You have view-only access for Employee Salary.")}

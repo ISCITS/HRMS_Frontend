@@ -2177,7 +2177,7 @@ export default function SalaryComponentEditorPage({
             display: "grid",
             gap: 2,
             alignItems: "start",
-            gridTemplateColumns: { xs: "1fr", md: "minmax(220px, 280px) repeat(2, minmax(0, 1fr))" },
+            gridTemplateColumns: { xs: "1fr", md: "minmax(220px, 280px) repeat(3, minmax(0, 1fr))" },
             mb: 1.5,
           }}
         >
@@ -2198,6 +2198,17 @@ export default function SalaryComponentEditorPage({
             controlId="salary-components.editor.payslip-section.select"
           />
           <TextField required={dicForm.blnIncludeInPayslip && !blnIsFlexiBucketCategory} label={t("display_order", "Display Order")} value={dicForm.strDisplayOrder} onChange={(objEvent) => updateRootField("strDisplayOrder", objEvent.target.value.replace(/\D/g, ""))} disabled={blnFieldDisabled || blnIsFlexiBucketCategory || !dicForm.blnIncludeInPayslip} fullWidth data-controlid="salary-components.editor.display-order.input" inputProps={buildInputTestIdProps("salary-components.editor.display-order.input")} />
+          <TextField
+            label={t("name_on_payslip", "Name on Payslip")}
+            value={dicForm.strPayslipDisplayName}
+            onChange={(objEvent) => updateRootField("strPayslipDisplayName", objEvent.target.value.slice(0, 100))}
+            placeholder={dicForm.strComponentName || t("component_name", "Component Name")}
+            helperText={t("name_on_payslip_help", "Leave blank to show the component name.")}
+            disabled={blnFieldDisabled || blnIsFlexiBucketCategory || !dicForm.blnIncludeInPayslip}
+            fullWidth
+            data-controlid="salary-components.editor.payslip-display-name.input"
+            inputProps={{ maxLength: 100, ...buildInputTestIdProps("salary-components.editor.payslip-display-name.input") }}
+          />
         </Box>
       </Paper>
 

@@ -201,6 +201,8 @@ export type PayrollRunDetailRecord = PayrollRunRecord & {
   dtClosedOn: string | null;
   /** Finalize response only: the background job saving the finalized payslips (null when none started). */
   dicPayslipJob?: PayrollJobStatus | null;
+  /** Reopen response only: arrears for this month already paid in later runs (arrear automation). */
+  lstArrearWarnings?: string[];
   lstValidationResults: PayrollValidationResultRecord[];
   lstProcessedResults?: Array<PayrollResultRecord & { lstLines?: PayrollResultLineRecord[] }>;
 };
@@ -318,6 +320,7 @@ export type FNFReportRow = {
   decNoticeShortfallDays: number;
   decLeaveEncashedDays: number;
   decSalaryEarned: number;
+  decArrears: number;
   decLeaveEncashment: number;
   decNoticePay: number;
   decGratuity: number;
@@ -832,6 +835,9 @@ export type EmployeePayrollInputLineRecord = {
   strLineType: EmployeePayrollInputLineType;
   decAmount: number;
   strRemarks: string | null;
+  strSourceType?: string | null;
+  /** System or imported line (e.g. TDS import, arrear import): read-only, kept as is on save. */
+  blnIsProtected?: boolean;
 };
 
 export type EmployeePayrollInputRecord = {
@@ -975,12 +981,83 @@ export type ArrearAdjustmentLine = {
   dtAddedOn: string | null;
 };
 
+/** Arrear automation: one original month x component (or PF/ESI on it) in the run that pays it. */
+export type ArrearLineRecord = {
+  intID: number;
+  dtOriginalPayrollMonth: string;
+  strTriggerType: string;
+  strLineKind: string;
+  strLineKindLabel: string;
+  intSalaryComponentID: number | null;
+  strComponentCode: string | null;
+  strComponentName: string | null;
+  decCalendarDays: number;
+  decPaidDays: number;
+  decPaidRate: number | null;
+  decCorrectRate: number | null;
+  decPaidAmount: number;
+  decCorrectAmount: number;
+  decAlreadyArrearedAmount: number;
+  decArrearAmount: number;
+  strStatus: "PREVIEW" | "HELD" | "PAYABLE" | "PAID" | string;
+  intOriginalPayrollRunID: number | null;
+  intImportBatchID: number | null;
+};
+
+/** One row of the Arrear Register (GET /payroll/arrear-register?format=json). */
+export type ArrearRegisterRow = Omit<ArrearLineRecord, "strStatus"> & {
+  strRunCode: string;
+  /** "Oct 2026": the payroll month the arrear is paid in. */
+  strPaidMonth: string;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strOriginalMonth: string;
+  strOriginalFy: string;
+  strItem: string;
+  /** Display status: "Preview (not paid)", "Held", "To pay", "Paid". */
+  strStatus: string;
+};
+
+export type RunArrearEmployeeRecord = {
+  intEmployeeID: number;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strPeriodLabel: string;
+  decArrearAmount: number;
+  decRecoveryAmount: number;
+  decPfEmployee: number;
+  decEsiEmployee: number;
+  strStatus: string;
+  blnHeld: boolean;
+};
+
+export type RunArrearsRecord = {
+  blnAvailable: boolean;
+  strMode?: "off" | "shadow" | "on";
+  blnRequiresReviewAck?: boolean;
+  blnReviewAcknowledged?: boolean;
+  dicSummary: {
+    strMode: string;
+    intEmployeeCount: number;
+    decArrearTotal: number;
+    decRecoveryTotal: number;
+    intHeldCount: number;
+    lstAboveAlert: string[];
+    lstFailures: { intEmployeeID: number; strEmployeeCode: string; strMessage: string }[];
+  } | null;
+  lstEmployees: RunArrearEmployeeRecord[];
+};
+
 export type EmployeePayrollInputFormLine = {
   intTempID: number;
+  /** Saved line id; absent for lines added in this session. */
+  intID?: number;
   intSalaryComponentID: number | "";
   strLineType: EmployeePayrollInputLineType;
   strAmount: string;
   strRemarks: string;
+  strSourceType?: string | null;
+  blnIsProtected?: boolean;
 };
 
 export type EmployeePayrollInputFormValues = {

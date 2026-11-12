@@ -605,26 +605,42 @@ export default function EmployeePayrollInputEditorPage({
     </InputAdornment>
   );
 
+  // System / imported lines (TDS import, arrear import, attendance adjustments) are read-only
+  // here; the server keeps them as they are when the form is saved.
+  const getProtectedLineLabel = (strSourceType?: string | null) =>
+    strSourceType === "client_tds_import"
+      ? t("protected_line_tds_import", "Imported TDS - read-only")
+      : strSourceType === "arrear_import"
+      ? t("protected_line_arrear_import", "Imported arrear - read-only")
+      : t("protected_line_system", "System line - read-only");
+
   const lstAdjustmentRows = dicForm.lstLines.map((dicLine) => ({
     id: dicLine.intTempID,
     strComponent: (
-      <CommonSearchableSelect
-        label=""
-        value={dicLine.intSalaryComponentID}
-        options={objOptions?.lstSalaryComponents ?? []}
-        onChange={(intValue) => updateLine(dicLine.intTempID, "intSalaryComponentID", intValue)}
-        disabled={blnFormLocked}
-        fullWidth
-        placeholder={t("select_component", "Select component")}
-        sx={objFieldSx}
-      />
+      <Stack spacing={0.25}>
+        <CommonSearchableSelect
+          label=""
+          value={dicLine.intSalaryComponentID}
+          options={objOptions?.lstSalaryComponents ?? []}
+          onChange={(intValue) => updateLine(dicLine.intTempID, "intSalaryComponentID", intValue)}
+          disabled={blnFormLocked || Boolean(dicLine.blnIsProtected)}
+          fullWidth
+          placeholder={t("select_component", "Select component")}
+          sx={objFieldSx}
+        />
+        {dicLine.blnIsProtected ? (
+          <Typography variant="caption" sx={{ color: "#64748b" }}>
+            {getProtectedLineLabel(dicLine.strSourceType)}
+          </Typography>
+        ) : null}
+      </Stack>
     ),
     strCategory: (
       <TextField
         select
         value={dicLine.strLineType}
         onChange={(objEvent) => updateLine(dicLine.intTempID, "strLineType", objEvent.target.value as EmployeePayrollInputFormLine["strLineType"])}
-        disabled={blnFormLocked}
+        disabled={blnFormLocked || Boolean(dicLine.blnIsProtected)}
         fullWidth
         size="small"
         sx={objFieldSx}
@@ -647,7 +663,7 @@ export default function EmployeePayrollInputEditorPage({
       <TextField
         value={dicLine.strAmount}
         onChange={(objEvent) => updateLine(dicLine.intTempID, "strAmount", objEvent.target.value)}
-        disabled={blnFormLocked}
+        disabled={blnFormLocked || Boolean(dicLine.blnIsProtected)}
         placeholder="0.00"
         fullWidth
         size="small"
@@ -665,7 +681,7 @@ export default function EmployeePayrollInputEditorPage({
       <TextField
         value={dicLine.strRemarks}
         onChange={(objEvent) => updateLine(dicLine.intTempID, "strRemarks", objEvent.target.value)}
-        disabled={blnFormLocked}
+        disabled={blnFormLocked || Boolean(dicLine.blnIsProtected)}
         placeholder={t("line_remarks", "Optional line remarks")}
         fullWidth
         size="small"
@@ -673,7 +689,7 @@ export default function EmployeePayrollInputEditorPage({
         InputProps={{ startAdornment: objStartDescriptionAdornment }}
       />
     ),
-    strActions: blnCanSave ? (
+    strActions: blnCanSave && !dicLine.blnIsProtected ? (
       <Button onClick={() => removeLine(dicLine.intTempID)} disabled={blnFormLocked} sx={{ minWidth: 34, width: 34, height: 34, borderRadius: "10px", border: "1px solid rgba(255,169,169,0.9)", background: "#fff2f2", color: "#ff2c2c", "&:hover": { background: "#ffe3e3", borderColor: "#ff8f8f" } }}>
         <DeleteOutlineRoundedIcon />
       </Button>

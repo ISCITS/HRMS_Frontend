@@ -19,6 +19,7 @@ import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import BlockingLoader, { DottedLoader } from "@/components/shared/BlockingLoader";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
+import ArrearSettingsPanel from "@/features/settings/components/ArrearSettingsPanel";
 import PayrollDocumentFormatSettings from "@/features/settings/components/PayrollDocumentFormatSettings";
 import { settingsService } from "@/features/settings/services/settingsService";
 import type { ApproverEmployeeDto, ApproverSnapshotDto, DefaultApproverSource, LeaveSettingsConfigDto } from "@/features/settings/types";
@@ -480,7 +481,10 @@ export default function LeaveSettingsPanel() {
           </Paper>
         </>
       ) : strActiveCategory === "payroll" ? (
-        <PayrollDocumentFormatSettings onMessage={showToast} />
+        <>
+          <PayrollDocumentFormatSettings onMessage={showToast} />
+          <ArrearSettingsPanel onMessage={showToast} />
+        </>
       ) : (
         <Paper id="settings-section-placeholder" variant="outlined" sx={{ ...sxCard, py: 5, textAlign: "center" }}>
           <Typography sx={{ color: "#172033", fontWeight: 800, fontSize: "1rem" }}>{objActiveCategory.strLabel} settings are coming soon.</Typography>

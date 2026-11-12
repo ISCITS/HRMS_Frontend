@@ -235,6 +235,8 @@ export type EmployeeFlexiDeclarationRecord = {
 };
 
 export type EmployeeSalaryDetailRecord = {
+  /** Only on the response of saving a revision: info when it is backdated into finalized payroll months (arrears). */
+  strArrearNotice?: string | null;
   objEmployeeSummary: {
     intEmployeeID: number;
     strEmployeeRecordUUID: string;

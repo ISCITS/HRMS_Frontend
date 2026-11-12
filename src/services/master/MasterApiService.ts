@@ -844,6 +844,7 @@ export type SalaryComponentApiRecord = {
   blnIncludeInPayslip: boolean;
   intPayslipSectionID?: number | null;
   strPayslipSection: string | null;
+  strPayslipDisplayName?: string | null;
   intDisplayOrder: number;
   intLwpTreatmentID?: number | null;
   strLwpTreatmentCode?: string | null;
@@ -1138,6 +1139,7 @@ export type SalaryStructureComponentApiRecord = {
   strWageType?: string | null;
   strRoundingRule?: string | null;
   strPayslipSection?: string | null;
+  strPayslipDisplayName?: string | null;
   intLwpTreatmentID?: number | null;
   strLwpTreatmentCode?: string | null;
   strLwpTreatment?: string | null;

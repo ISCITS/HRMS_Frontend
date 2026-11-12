@@ -51,6 +51,7 @@ import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonT
 import masterStyles from "@/components/master/MasterScreen.module.css";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import PayrollJobProgressDialog from "@/features/payroll/components/PayrollJobProgressDialog";
+import PayrollRunArrearsPanel from "@/features/payroll/components/PayrollRunArrearsPanel";
 import PayslipHtmlPreview from "@/features/payroll/components/PayslipHtmlPreview";
 import { usePayslipViewChooser } from "@/features/payroll/components/PayslipViewChooser";
 import ResultLinesTable from "@/features/payroll/components/ResultLinesTable";
@@ -583,7 +584,11 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
       const dicRun = await payrollRunService.reopenPayrollRun(strRunID, strReason);
       setObjRun(dicRun);
       setBlnIsLocked(dicRun.blnIsLocked);
-      setStrSuccess(t("reopen_complete", "Payroll run reopened successfully."));
+      // Arrear automation: arrears for this month already paid in later runs.
+      const lstArrearWarnings = dicRun.lstArrearWarnings ?? [];
+      setStrSuccess(
+        [t("reopen_complete", "Payroll run reopened successfully."), ...lstArrearWarnings].join(" ")
+      );
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to reopen payroll run.");
     } finally {
@@ -1833,6 +1838,19 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
 
         {strActiveTab === "review" ? (
         <Box className={masterStyles.controlsCard} sx={{ display: "flex", flexDirection: "column", minWidth: 0, p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+          {objRun.strRunTypeCode !== "VARIABLE_PAY" ? (
+            <PayrollRunArrearsPanel
+              key={`${objRun.intID}-${objRun.dtLastModifiedOn ?? ""}`}
+              strRunID={strRunID}
+              strRunStatus={objRun.strRunStatus}
+              strRunLabel={objRun.strRunName || objRun.strRunCode || ""}
+              onReprocessEmployee={async (intEmployeeID, strReason) => {
+                await payrollRunService.reprocessPayrollRun(strRunID, strReason, [intEmployeeID]);
+                await loadRun(false);
+              }}
+              onMessage={(strMessage, strSeverity) => (strSeverity === "success" ? setStrSuccess(strMessage) : setStrError(strMessage))}
+            />
+          ) : null}
           <TextField
             className="app-mui-text-field"
             label={t("review_results_search_label", "Employee name or code")}

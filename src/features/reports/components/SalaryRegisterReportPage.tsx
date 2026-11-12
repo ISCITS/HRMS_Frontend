@@ -9,7 +9,7 @@ import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import FilterListRoundedIcon from "@mui/icons-material/FilterListRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, Checkbox, Divider, IconButton, ListItemText, ListSubheader, MenuItem, Popover, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Checkbox, Divider, IconButton, ListItemText, ListSubheader, MenuItem, Popover, Tab, Tabs, TextField, Typography } from "@mui/material";
 import type { SelectChangeEvent } from "@mui/material";
 import { useEffect, useMemo, useState, type ChangeEventHandler, type ReactNode } from "react";
 
@@ -19,6 +19,10 @@ import { employeeService } from "@/features/employee/services/employeeService";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { salaryRegisterReportService, type SalaryRegisterRow } from "@/features/reports/services/salaryRegisterReportService";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
+import { useActionRights } from "@/features/security/hooks/useActionRights";
+import ArrearRegisterReport from "@/features/reports/components/ArrearRegisterReport";
+
+const ARREAR_REGISTER_RIGHT = "report_arrear_register";
 
 type SelectOption = { strValue: string; strLabel: string };
 
@@ -326,6 +330,16 @@ export default function SalaryRegisterReportPage() {
     "REPORTS", "SALARY_REGISTER", "REPORT_SALARY_REGISTER", "PAYROLL_RESULTS", "PAYROLL_RESULT",
   ]);
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
+  // Arrear Register lives here as a second tab (no menu row of its own): right
+  // "report_arrear_register" on the Salary Register menu.
+  const { canDo: canDoAction, blnLoading: blnActionRightsLoading } = useActionRights();
+  const blnCanArrearRegister = canDoAction("salary_register", ARREAR_REGISTER_RIGHT);
+  const [strView, setStrView] = useState<"salary" | "arrear">("salary");
+  const strEffectiveView: "salary" | "arrear" = !blnCanArrearRegister
+    ? "salary"
+    : !blnRightsLoading && !blnActionRightsLoading && !blnCanView
+      ? "arrear"
+      : strView;
 
   const [dicSearch, setDicSearch] = useState<SearchForm>(getDefaultSearch());
   const [lstEmployeeOptions, setLstEmployeeOptions] = useState<SelectOption[]>([]);
@@ -462,9 +476,31 @@ export default function SalaryRegisterReportPage() {
       .catch((objError) => setStrError(objError instanceof Error ? objError.message : "Unable to export the salary register."));
   }
 
+  const objViewTabs = blnCanArrearRegister ? (
+    <Tabs
+      value={strEffectiveView}
+      onChange={(_objEvent, strNext: "salary" | "arrear") => setStrView(strNext)}
+      sx={{ minHeight: 36, "& .MuiTab-root": { minHeight: 36, textTransform: "none", fontWeight: 700 } }}
+    >
+      {blnCanView ? <Tab value="salary" label="Salary Register" data-controlid="reports.salary-register.tab.salary" /> : null}
+      <Tab value="arrear" label="Arrear Register" data-controlid="reports.salary-register.tab.arrear" />
+    </Tabs>
+  ) : null;
+
+  if (strEffectiveView === "arrear") {
+    return (
+      <Box className={styles.page}>
+        <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>Arrear Register</Typography>
+        {objViewTabs}
+        <ArrearRegisterReport />
+      </Box>
+    );
+  }
+
   return (
     <Box className={styles.page}>
       <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>Salary Register</Typography>
+      {objViewTabs}
 
       <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <Box className={styles.reportSearchPanelRow}>

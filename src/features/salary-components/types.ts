@@ -17,6 +17,7 @@ export type SalaryComponentListRecord = {
   blnIncludedInCtc: boolean;
   blnIncludeInPayslip: boolean;
   strPayslipSection: string | null;
+  strPayslipDisplayName?: string | null;
   intDisplayOrder: number;
   intLwpTreatmentID?: number | null;
   strLwpTreatmentCode?: string | null;
@@ -159,6 +160,7 @@ export type SalaryComponentFormValues = {
   blnIncludeInPayslip: boolean;
   intPayslipSectionID: number | "";
   strPayslipSection: string;
+  strPayslipDisplayName: string;
   strDisplayOrder: string;
   intLwpTreatmentID: number | "";
   strLwpTreatmentCode: string;
