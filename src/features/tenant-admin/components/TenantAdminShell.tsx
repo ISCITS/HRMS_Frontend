@@ -15,6 +15,7 @@ import {
 
 import { authApiService } from "@/services";
 import { authHelpers } from "@/lib/auth";
+import { getLoginUrl } from "@/lib/urlHelpers";
 
 const lstLinks = [
   { strHref: "/HRMS/Administrator/dashboard", strLabel: "Dashboard" },
@@ -32,13 +33,14 @@ export default function TenantAdminShell({ children }: PropsWithChildren) {
         objLogoutResult?.Data?.strRedirectUrl ||
         objLogoutResult?.Data?.redirectUrl ||
         "";
-      const strFallbackLoginUrl = authHelpers.getLoginUrl(
+      const strFallbackLoginUrl = getLoginUrl(
         objLogoutResult?.Data?.strTenantUUID || undefined
       );
+      // strBackendRedirect, when present, is a backend-issued URL and is used as-is.
       window.location.replace(strBackendRedirect || strFallbackLoginUrl);
     } catch {
       authHelpers.clearSession(true);
-      window.location.replace(authHelpers.getLoginUrl());
+      window.location.replace(getLoginUrl());
     }
   }
 

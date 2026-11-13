@@ -52,7 +52,7 @@ export type PayrollRunOption = PayrollSelectOption & {
   blnIsLocked: boolean;
 };
 
-export type PayrollRunScopeType = "All" | "SelectedEmployee";
+export type PayrollRunScopeType = "All" | "SelectedEmployee" | "EmployeeGroup";
 
 export type PayrollRunStatus =
   | "DRAFT"
@@ -135,6 +135,23 @@ export type PayrollProcessSummary = {
   }[];
 };
 
+/** Live state of a run's background process/reprocess job (GET /payroll/runs/{id}/job-status). */
+export type PayrollJobStatus = {
+  strJobID?: string;
+  strKind?: "process" | "reprocess" | "validate" | "payslips";
+  /** idle = no job on this run; completed/failed are kept for a few minutes after the job ends. */
+  strStatus: "idle" | "running" | "completed" | "failed";
+  blnActive: boolean;
+  strPhase?: "queued" | "syncing" | "validating" | "processing" | "generating" | "finalizing";
+  strPhaseLabel?: string;
+  intDone?: number;
+  intTotal?: number;
+  intPercent: number;
+  /** Process/reprocess give a process summary; validate gives a validation summary. */
+  dicSummary?: PayrollProcessSummary | PayrollValidationSummary | PayslipGenerateAllSummary | null;
+  strError?: string | null;
+};
+
 export type PayrollRunRecord = {
   intID: number;
   /** Public identifier the UI routes on; the internal id stays out of the address bar. */
@@ -148,6 +165,8 @@ export type PayrollRunRecord = {
   intScopedEmployeeID: number | null;
   strScopedEmployeeName?: string | null;
   strScopedEmployeeCode?: string | null;
+  lstScopedEmployeeGroup?: PayrollSelectOption[];
+  intScopedEmployeeCount?: number | null;
   dtPayrollMonth: string;
   strRunStatus: PayrollRunStatus;
   intRunTypeID: number | null;
@@ -180,6 +199,10 @@ export type PayrollRunDetailRecord = PayrollRunRecord & {
   dtAddedOn: string | null;
   dtLastModifiedOn: string | null;
   dtClosedOn: string | null;
+  /** Finalize response only: the background job saving the finalized payslips (null when none started). */
+  dicPayslipJob?: PayrollJobStatus | null;
+  /** Reopen response only: arrears for this month already paid in later runs (arrear automation). */
+  lstArrearWarnings?: string[];
   lstValidationResults: PayrollValidationResultRecord[];
   lstProcessedResults?: Array<PayrollResultRecord & { lstLines?: PayrollResultLineRecord[] }>;
 };
@@ -190,6 +213,7 @@ export type PayrollRunFormValues = {
   strScopeType: PayrollRunScopeType;
   strProcessFor: "AllEmployees" | "SelectedEmployees" | "PayrollGroup";
   intScopedEmployeeID: number | "";
+  lstScopedEmployeeIDs: number[];
   dtPayrollMonth: string;
   strRunStatus: PayrollRunStatus;
   blnIsLocked: boolean;
@@ -246,7 +270,93 @@ export type FNFEmployeeOption = {
   strEmployeeCode: string;
   strEmployeeName: string;
   strLabel: string;
+  /** Date of exit from the employee master; used as the settlement's last working date. */
+  dtDateOfExit?: string | null;
+  /** Notice period from the employee master (bulk creation default). */
+  intNoticePeriodDays?: number | null;
 };
+
+/** One employee in a bulk F&F creation. */
+export type FNFBulkCreateItem = {
+  intEmployeeID: number;
+  /** Blank: taken from existing records (earlier settlement, retirement/contract end), else resignation. */
+  strExitType?: string;
+  dtResignationDate?: string;
+  decNoticePeriodDays?: number;
+};
+export type FNFBulkCreateResult = {
+  intEmployeeID: number;
+  strEmployeeCode: string | null;
+  strEmployeeName: string | null;
+  strStatus: "created" | "calculated" | "failed";
+  strMessage: string | null;
+  strSettlementRecordUUID: string | null;
+  decNetPayable: number | null;
+  decNetRecoverable: number | null;
+  intBlockingIssues: number;
+};
+export type FNFBulkCreateResponse = { lstResults: FNFBulkCreateResult[]; intCreated: number; intCalculated: number; intFailed: number };
+
+/** One row of the full F&F report (all data for a settlement). */
+export type FNFReportRow = {
+  strRecordUUID: string;
+  strSettlementNumber: string;
+  intEmployeeID: number;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strDepartmentName: string | null;
+  strDesignationName: string | null;
+  dtDateOfJoining: string | null;
+  strEmploymentStatus: string | null;
+  strExitType: string;
+  strExitReason: string | null;
+  dtResignationDate: string | null;
+  dtLastWorkingDate: string;
+  dtSettlementDate: string | null;
+  strServicePeriod: string | null;
+  intGratuityYears: number | null;
+  decNoticePeriodDays: number;
+  decNoticeServedDays: number;
+  decNoticeShortfallDays: number;
+  decLeaveEncashedDays: number;
+  decSalaryEarned: number;
+  decArrears: number;
+  decLeaveEncashment: number;
+  decNoticePay: number;
+  decGratuity: number;
+  decReimbursement: number;
+  decOtherEarnings: number;
+  decNoticeRecovery: number;
+  decLoanRecovery: number;
+  decExcessSalaryRecovery: number;
+  decExcessLeaveRecovery: number;
+  decOtherRecoveries: number;
+  decOtherDeductions: number;
+  decPf: number;
+  decEsi: number;
+  decPt: number;
+  decLwf: number;
+  decOtherStatutory: number;
+  decTds: number;
+  decTotalEarnings: number;
+  decTotalRecoveries: number;
+  decTotalDeductions: number;
+  decTotalStatutory: number;
+  decTaxableIncome: number;
+  decNetPayable: number;
+  decNetRecoverable: number;
+  strSettlementStatus: FNFSettlementStatus;
+  intBlockingIssues: number;
+  dtSubmittedOn: string | null;
+  dtApprovedOn: string | null;
+  dtLockedOn: string | null;
+  dtPaidOn: string | null;
+  strPaymentReferenceNo: string | null;
+  strPayslipNumber: string | null;
+  strPayslipStatus: string | null;
+  dtAddedOn: string | null;
+};
+export type FNFReportResponse = { lstRows: FNFReportRow[]; dicTotals: Record<string, number> };
 
 export type FNFDefaultPayrollRunOption = {
   intID: number;
@@ -290,6 +400,7 @@ export type FNFSettlementRecord = {
   strRecordUUID: string;
   intEmployeeID: number;
   strEmployeeCode?: string | null;
+  strEmployeeName?: string | null;
   strDepartmentName?: string | null;
   intCompanyID?: number;
   strSettlementNumber?: string | null;
@@ -326,8 +437,6 @@ export type FNFSettlementFormValues = {
   intEmployeeID?: number | "";
   strEmployeeCode: string;
   strSettlementNumber: string;
-  intPayrollRunID: number | "";
-  strPayrollCycleCode?: string;
   strExitType: string;
   strExitReason: string;
   dtResignationDate: string;
@@ -337,11 +446,37 @@ export type FNFSettlementFormValues = {
   decNoticePeriodDays: string;
   decNoticeServedDays: string;
   decNoticeShortfallDays: string;
-  decWorkDays?: string;
-  decDaysWorked?: string;
   strCurrencyCode: string;
   strRemarks: string;
   lstLeaveEncashments?: FNFLeaveEncashmentFormValue[];
+};
+
+/** Leave balance on the last working date, read from leave records for a new settlement. */
+export type FNFLeaveBalancePreview = {
+  strLeaveTypeCode: string;
+  strLeaveTypeName: string;
+  decBalanceDays: number;
+  decEncashableDays: number;
+  blnEncashable: boolean;
+};
+
+/** Values the system already holds for an employee, used to prefill a new settlement. */
+export type FNFEmployeePrefill = {
+  intEmployeeID: number;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strExitType: string | null;
+  strExitReason: string | null;
+  dtResignationDate: string | null;
+  dtLastWorkingDate: string | null;
+  dtSettlementDate: string | null;
+  decNoticePeriodDays: number | null;
+  decNoticeServedDays: number | null;
+  decNoticeShortfallDays: number | null;
+  lstLeaveBalances: FNFLeaveBalancePreview[];
+  strLeaveMessage: string | null;
+  /** Field name -> where the prefilled value came from. */
+  dicSources: Record<string, string>;
 };
 
 export type FNFLeaveEncashmentFormValue = {
@@ -359,9 +494,121 @@ export type FNFLineFormValues = {
   strLineName: string;
   decActualAmount: string;
   decAmount: string;
+  /** Part of an EARNING line that counts as taxable income for final TDS. */
+  decTaxableAmount: string;
   blnIsManualOverride: boolean;
   strOverrideReason: string;
   strRemarks: string;
+};
+
+/** Company F&F calculation rules (stored as JSON; any missing value uses the built-in default). */
+export type FNFPolicySection = Record<string, string | number | boolean | string[]>;
+export type FNFPolicy = {
+  salary: FNFPolicySection;
+  leave_encashment: FNFPolicySection;
+  notice: FNFPolicySection;
+  gratuity: FNFPolicySection;
+  rounding: FNFPolicySection;
+  death_exit_types: string[];
+  approval: FNFPolicySection;
+  closure: FNFPolicySection;
+};
+
+/** One row of the F&F register (kept separate from the payroll salary register). */
+export type FNFRegisterRow = {
+  strRecordUUID: string | null;
+  strSettlementNumber: string;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strExitType: string;
+  dtLastWorkingDate: string;
+  strSettlementStatus: FNFSettlementStatus;
+  dtPaidOn: string | null;
+  strPaymentReferenceNo: string | null;
+  decTotalEarnings: number;
+  decTotalDeductions: number;
+  decTotalRecoveries: number;
+  decPfEmployee: number;
+  decPfEmployer: number;
+  decEsiEmployee: number;
+  decEsiEmployer: number;
+  decPt: number;
+  decLwf: number;
+  decTds: number;
+  decNetPayable: number;
+  decNetRecoverable: number;
+};
+export type FNFRegisterResponse = { lstRows: FNFRegisterRow[]; dicTotals: Record<string, number> };
+
+/** Generated F&F payslip (one row per version). */
+export type FNFPayslipStatus = "Generated" | "Outdated" | "Superseded";
+export type FNFPayslipRecord = {
+  strRecordUUID: string;
+  strPayslipNumber: string;
+  intVersion: number;
+  strPayslipStatus: FNFPayslipStatus;
+  intEmployeeID: number;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strDepartmentName: string | null;
+  strSettlementRecordUUID: string;
+  strSettlementNumber: string;
+  strSettlementStatus: FNFSettlementStatus;
+  dtLastWorkingDate: string;
+  decNetPayAmount: number;
+  decNetRecoverableAmount: number;
+  dtGeneratedOn: string;
+};
+
+/** Employee with an F&F settlement, for the F&F Reports filters. */
+export type FNFPayslipEmployeeOption = {
+  intEmployeeID: number;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strLabel: string;
+  strSettlementRecordUUID: string;
+  strSettlementStatus: FNFSettlementStatus;
+  dtResignationDate: string | null;
+  dtLastWorkingDate: string;
+};
+
+/** A regular (payroll run) payslip of the exiting employee. */
+export type FNFRegularPayslipRecord = {
+  intPayslipID: number;
+  strRecordUUID: string;
+  strPayslipNumber: string;
+  strPayslipStatus: string;
+  dtPayrollMonth: string;
+  strRunCode: string;
+  decGrossAmount: number;
+  decNetPayAmount: number;
+  dtGeneratedOn: string | null;
+};
+
+/** A payslip document ready to view/print/download. */
+export type FNFPayslipDocument = { strHtml: string; strFileName: string; strRecordUUID?: string; strPayslipNumber?: string };
+
+/** Bank payment advice row for a locked, net-payable settlement. */
+export type FNFPaymentAdviceRow = {
+  strSettlementNumber: string;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strAccountHolderName: string | null;
+  strAccountNumber: string | null;
+  strIfscCode: string | null;
+  strBranchName: string | null;
+  decAmount: number;
+  strNarration: string;
+  strIssue: string | null;
+};
+export type FNFPaymentAdviceResponse = { lstRows: FNFPaymentAdviceRow[]; decTotal: number; intIssueCount: number };
+export type FNFPolicyResponse = { objPolicy: FNFPolicy; objDefaults: FNFPolicy; blnIsDefault: boolean };
+
+/** A problem found while calculating; "blocking" ones need an override reason before review. */
+export type FNFCalculationValidation = {
+  code: string;
+  severity: "blocking" | "warning" | "info";
+  message: string;
 };
 
 export type FNFAuditRecord = {
@@ -430,6 +677,10 @@ export type LoanAdvanceScheduleRecord = {
   decRecoveredTotalAmount?: number;
   decClosingPrincipalBalance: number;
   strScheduleStatus: string;
+  // Stamped on exactly one row (the earliest touched installment) per prepayment event -- see
+  // the Prepayment tab on the loan detail page.
+  decPrepaymentAmount?: number | null;
+  dtPrepaymentAppliedOn?: string | null;
   // HR verification step on the Loan Finalization screen -- one installment at a time.
   blnIsFinalized?: boolean;
   dtFinalizedOn?: string | null;
@@ -437,6 +688,13 @@ export type LoanAdvanceScheduleRecord = {
   dtFinalizationReopenedOn?: string | null;
   intFinalizationReopenedBy?: number | null;
   strFinalizationReopenReason?: string | null;
+};
+
+export type LoanAdvanceEmployeeBankAccountRecord = {
+  intID: number;
+  strBankName?: string | null;
+  strAccountNumberMasked?: string | null;
+  blnIsPrimary: boolean;
 };
 
 export type LoanAdvanceLedgerRecord = {
@@ -448,6 +706,7 @@ export type LoanAdvanceLedgerRecord = {
   decBalanceAfterEvent?: number;
   strRemarks?: string | null;
   dtEventOn: string;
+  objNewValues?: { strAdjustmentMode?: string; intPaymentModeID?: number; intEmployeeBankAccountID?: number; strTransactionReferenceNo?: string } | null;
 };
 
 export type LoanAdvanceRecord = {
@@ -462,6 +721,8 @@ export type LoanAdvanceRecord = {
   decRequestedAmount: number;
   decApprovedAmount: number;
   decDisbursedAmount?: number;
+  decPrincipalOutstandingAmount?: number;
+  decInterestOutstandingAmount?: number;
   decTotalOutstandingAmount?: number;
   strReason?: string | null;
   strEmployeeRemarks?: string | null;
@@ -574,6 +835,9 @@ export type EmployeePayrollInputLineRecord = {
   strLineType: EmployeePayrollInputLineType;
   decAmount: number;
   strRemarks: string | null;
+  strSourceType?: string | null;
+  /** System or imported line (e.g. TDS import, arrear import): read-only, kept as is on save. */
+  blnIsProtected?: boolean;
 };
 
 export type EmployeePayrollInputRecord = {
@@ -717,12 +981,83 @@ export type ArrearAdjustmentLine = {
   dtAddedOn: string | null;
 };
 
+/** Arrear automation: one original month x component (or PF/ESI on it) in the run that pays it. */
+export type ArrearLineRecord = {
+  intID: number;
+  dtOriginalPayrollMonth: string;
+  strTriggerType: string;
+  strLineKind: string;
+  strLineKindLabel: string;
+  intSalaryComponentID: number | null;
+  strComponentCode: string | null;
+  strComponentName: string | null;
+  decCalendarDays: number;
+  decPaidDays: number;
+  decPaidRate: number | null;
+  decCorrectRate: number | null;
+  decPaidAmount: number;
+  decCorrectAmount: number;
+  decAlreadyArrearedAmount: number;
+  decArrearAmount: number;
+  strStatus: "PREVIEW" | "HELD" | "PAYABLE" | "PAID" | string;
+  intOriginalPayrollRunID: number | null;
+  intImportBatchID: number | null;
+};
+
+/** One row of the Arrear Register (GET /payroll/arrear-register?format=json). */
+export type ArrearRegisterRow = Omit<ArrearLineRecord, "strStatus"> & {
+  strRunCode: string;
+  /** "Oct 2026": the payroll month the arrear is paid in. */
+  strPaidMonth: string;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strOriginalMonth: string;
+  strOriginalFy: string;
+  strItem: string;
+  /** Display status: "Preview (not paid)", "Held", "To pay", "Paid". */
+  strStatus: string;
+};
+
+export type RunArrearEmployeeRecord = {
+  intEmployeeID: number;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strPeriodLabel: string;
+  decArrearAmount: number;
+  decRecoveryAmount: number;
+  decPfEmployee: number;
+  decEsiEmployee: number;
+  strStatus: string;
+  blnHeld: boolean;
+};
+
+export type RunArrearsRecord = {
+  blnAvailable: boolean;
+  strMode?: "off" | "shadow" | "on";
+  blnRequiresReviewAck?: boolean;
+  blnReviewAcknowledged?: boolean;
+  dicSummary: {
+    strMode: string;
+    intEmployeeCount: number;
+    decArrearTotal: number;
+    decRecoveryTotal: number;
+    intHeldCount: number;
+    lstAboveAlert: string[];
+    lstFailures: { intEmployeeID: number; strEmployeeCode: string; strMessage: string }[];
+  } | null;
+  lstEmployees: RunArrearEmployeeRecord[];
+};
+
 export type EmployeePayrollInputFormLine = {
   intTempID: number;
+  /** Saved line id; absent for lines added in this session. */
+  intID?: number;
   intSalaryComponentID: number | "";
   strLineType: EmployeePayrollInputLineType;
   strAmount: string;
   strRemarks: string;
+  strSourceType?: string | null;
+  blnIsProtected?: boolean;
 };
 
 export type EmployeePayrollInputFormValues = {
@@ -757,6 +1092,7 @@ export type PayrollResultLineRecord = {
   intSalaryComponentID: number;
   strComponentCode: string;
   strComponentName: string;
+  intDisplayOrder?: number | null;
   strComponentCategory: string;
   strLineType: string;
   decAmount: number;
@@ -841,6 +1177,7 @@ export type PayrollResultRecord = {
   strEmployeeName: string;
   strDepartmentName?: string | null;
   strLocationName?: string | null;
+  strAllocationEntityName?: string | null;
   strBankName?: string | null;
   strBankCode?: string | null;
   strBankAccountMasked?: string | null;
@@ -903,6 +1240,7 @@ export type PayrollResultRecord = {
   dtPeriodEndDate?: string | null;
   decCalendarDays?: number | null;
   decPaidDays: number | null;
+  decPayableDays?: number | null;
   decLwpDays?: number | null;
   decLopDays: number | null;
   intPayslipID: number | null;
@@ -952,6 +1290,14 @@ export type TaxCessRuleRecord = {
   decCessAmount: number;
 };
 
+export type VariablePayProjectedIncomeBreakdownRow = {
+  strComponentCode: string | null;
+  strComponentName: string | null;
+  decMonthlyBaseAmount: number;
+  intRemainingMonths: number;
+  decProjectedAmount: number;
+};
+
 export type TaxCalculationDetailRecord = {
   intResultID: number;
   strEmployeeCode: string;
@@ -961,6 +1307,11 @@ export type TaxCalculationDetailRecord = {
   strRegimeTypeCode: string | null;
   decGrossTaxableIncomeYtd: number;
   decProjectedTaxableIncome: number;
+  /** How much of decProjectedTaxableIncome comes from Separate-Payroll components (e.g. an
+   * Allocation-Based Incentive) configured to project their remaining CTC/base entitlement into
+   * annual tax ahead of actually being paid. 0 when no such component applies. */
+  decVariablePayProjectedIncome: number;
+  lstVariablePayProjectedIncomeBreakdown: VariablePayProjectedIncomeBreakdownRow[];
   dicExemptions: {
     decTotalAmount: number;
     lstItems: TaxDeclarationItemRecord[];
@@ -1012,6 +1363,7 @@ export type StatutoryReportRow = {
   strEmployeeName: string;
   strDepartmentName?: string | null;
   strLocationName?: string | null;
+  strAllocationEntityName?: string | null;
   strStatus: string;
   strStatutoryCode: string;
   strStatutoryName: string;
@@ -1038,6 +1390,7 @@ export type TdsReportRow = {
   strEmployeeName: string;
   strDepartmentName?: string | null;
   strLocationName?: string | null;
+  strAllocationEntityName?: string | null;
   strStatus: string;
   strFinancialYearCode: string | null;
   strRegimeUsed: string | null;
@@ -1047,6 +1400,13 @@ export type TdsReportRow = {
   decTaxDeductedYtd: number;
   decMonthlyTds: number;
   strSlabProfileCode: string | null;
+  // decMonthlyTds is the TDS actually deducted; these show the system figure and its source.
+  decSystemTds?: number;
+  decTdsDifference?: number;
+  strTdsSource?: string;
+  strTdsSourceLabel?: string;
+  strTdsMode?: string;
+  strTdsModeLabel?: string;
 };
 
 export type VariablePayRegisterRow = {
@@ -1058,6 +1418,7 @@ export type VariablePayRegisterRow = {
   intEmployeeID: number;
   strEmployeeCode: string;
   strEmployeeName: string;
+  strAllocationEntityName?: string | null;
   strVariablePayTypeName: string;
   strComponentName: string;
   decInputAmount: number;
@@ -1072,6 +1433,16 @@ export type VariablePayRegisterRow = {
   decTaxTotal: number;
   decNetPayAmount: number;
   strPayrollRunStatus: string;
+  lstEntityBreakup?: VariablePayEntityBreakup[];
+};
+
+export type VariablePayEntityBreakup = {
+  intAllocationEntityID: number | null;
+  strEntityCode: string;
+  strEntityName: string;
+  intDisplayOrder: number;
+  decAllocationPercent: number | null;
+  decAmount: number;
 };
 
 export type PayslipLineRecord = {

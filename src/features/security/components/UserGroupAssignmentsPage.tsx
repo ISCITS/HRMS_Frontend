@@ -16,6 +16,7 @@ import {
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import { useEffect, useState } from "react";
 
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import styles from "@/components/master/MasterScreen.module.css";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import type { UserGroupAssignmentRecord, UserGroupAssignmentSaveItem, UserGroupRecord } from "@/models/SecurityModels";
@@ -160,34 +161,34 @@ export default function UserGroupAssignmentsPage({ intUserID }: UserGroupAssignm
                   p: 1.5,
                 }}
               >
-                <TextField
-                  select
+                <CommonSearchableSelect
                   label="User Group"
                   value={objAssignment.intUserGroupID}
                   controlId="security.user-group-assignments.user-group.select"
-                  onChange={(objEvent) =>
+                  options={lstUserGroups
+                    .filter(
+                      (objGroup) =>
+                        objGroup.intID === objAssignment.intUserGroupID ||
+                        !lstAssignments.some(
+                          (objItem, intItemIndex) =>
+                            intItemIndex !== intIndex && objItem.intUserGroupID === objGroup.intID,
+                        ),
+                    )
+                    .map((objGroup) => ({
+                      intID: objGroup.intID,
+                      strLabel: objGroup.strGroupName,
+                      strCode: objGroup.strGroupCode,
+                    }))}
+                  onChange={(intValue) =>
                     setLstAssignments((lstPrevious) =>
                       lstPrevious.map((objItem, intItemIndex) =>
                         intItemIndex === intIndex
-                          ? { ...objItem, intUserGroupID: Number(objEvent.target.value) }
+                          ? { ...objItem, intUserGroupID: intValue === "" ? 0 : Number(intValue) }
                           : objItem
                       )
                     )
                   }
-                >
-                  {lstUserGroups.map((objGroup) => (
-                    <MenuItem
-                      key={objGroup.intID}
-                      value={objGroup.intID}
-                      disabled={lstAssignments.some(
-                        (objItem, intItemIndex) =>
-                          intItemIndex !== intIndex && objItem.intUserGroupID === objGroup.intID,
-                      )}
-                    >
-                      {objGroup.strGroupCode} - {objGroup.strGroupName}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                />
                 <TextField
                   label="Effective From"
                   type="date"

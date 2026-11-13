@@ -37,6 +37,8 @@ import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
 import { useRouter } from "next/navigation";
 
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
+import { DetailPageHeader } from "@/components/master/MasterListUi";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -123,9 +125,8 @@ const objFieldSx = {
     "&:hover fieldset": {
       borderColor: "#94a3b8",
     },
-    "&.Mui-focused fieldset": {
-      borderColor: "#2563eb",
-      boxShadow: "0 0 0 3px rgba(37, 99, 235, 0.12)",
+    "&.Mui-focused:not(.Mui-error) fieldset": {
+      borderColor: "#7896b0",
     },
   },
   "& .MuiInputBase-input": {
@@ -143,6 +144,9 @@ const objFieldSx = {
     lineHeight: 1.35,
     marginLeft: 2,
     marginTop: "4px",
+  },
+  "& .MuiFormHelperText-root.Mui-error": {
+    color: "#ef4444",
   },
 };
 
@@ -455,12 +459,17 @@ export default function EmployeePayrollInputEditorPage({
     }
     const decLwpDays = parseOptionalDecimal(dicForm.strLwpDays) ?? 0;
     const decLopDays = parseOptionalDecimal(dicForm.strLopDays) ?? 0;
+    // A field is only usable as the denominator when it's a positive value - 0 is a valid
+    // outcome (e.g. payable days legitimately reaches 0 when LWP consumes the whole period)
+    // but not a valid period length, so it must fall through to the next candidate just like
+    // the backend's getManualLwpDenominator does (PayrollRepository.py).
     const decDenominator =
-      parseOptionalDecimal(dicForm.strPayableDays) ??
-      parseOptionalDecimal(dicForm.strWorkingDays) ??
-      parseOptionalDecimal(dicForm.strCalendarDays) ??
-      dicSelectedRun?.decCalendarDays ??
-      null;
+      [
+        parseOptionalDecimal(dicForm.strPayableDays),
+        parseOptionalDecimal(dicForm.strWorkingDays),
+        parseOptionalDecimal(dicForm.strCalendarDays),
+        dicSelectedRun?.decCalendarDays ?? null,
+      ].find((decCandidate) => decCandidate !== null && decCandidate > 0) ?? null;
     if (decDenominator !== null && decDenominator <= 0 && (decLwpDays > 0 || decLopDays > 0)) {
       return t("denominator_required", "A positive payroll-period denominator is required for LWP/LOP days.");
     }
@@ -596,39 +605,42 @@ export default function EmployeePayrollInputEditorPage({
     </InputAdornment>
   );
 
+  // System / imported lines (TDS import, arrear import, attendance adjustments) are read-only
+  // here; the server keeps them as they are when the form is saved.
+  const getProtectedLineLabel = (strSourceType?: string | null) =>
+    strSourceType === "client_tds_import"
+      ? t("protected_line_tds_import", "Imported TDS - read-only")
+      : strSourceType === "arrear_import"
+      ? t("protected_line_arrear_import", "Imported arrear - read-only")
+      : t("protected_line_system", "System line - read-only");
+
   const lstAdjustmentRows = dicForm.lstLines.map((dicLine) => ({
     id: dicLine.intTempID,
     strComponent: (
-      <TextField
-        select
-        value={dicLine.intSalaryComponentID}
-        onChange={(objEvent) => updateLine(dicLine.intTempID, "intSalaryComponentID", parseSelectNumber(objEvent.target.value))}
-        disabled={blnFormLocked}
-        fullWidth
-        size="small"
-        sx={objFieldSx}
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <StorageRoundedIcon sx={{ color: "#94a3b8", fontSize: 18 }} />
-            </InputAdornment>
-          ),
-        }}
-      >
-        <MenuItem value="">{t("select_component", "Select component")}</MenuItem>
-        {(objOptions?.lstSalaryComponents ?? []).map((dicComponent) => (
-          <MenuItem key={dicComponent.intID} value={dicComponent.intID}>
-            {dicComponent.strLabel}
-          </MenuItem>
-        ))}
-      </TextField>
+      <Stack spacing={0.25}>
+        <CommonSearchableSelect
+          label=""
+          value={dicLine.intSalaryComponentID}
+          options={objOptions?.lstSalaryComponents ?? []}
+          onChange={(intValue) => updateLine(dicLine.intTempID, "intSalaryComponentID", intValue)}
+          disabled={blnFormLocked || Boolean(dicLine.blnIsProtected)}
+          fullWidth
+          placeholder={t("select_component", "Select component")}
+          sx={objFieldSx}
+        />
+        {dicLine.blnIsProtected ? (
+          <Typography variant="caption" sx={{ color: "#64748b" }}>
+            {getProtectedLineLabel(dicLine.strSourceType)}
+          </Typography>
+        ) : null}
+      </Stack>
     ),
     strCategory: (
       <TextField
         select
         value={dicLine.strLineType}
         onChange={(objEvent) => updateLine(dicLine.intTempID, "strLineType", objEvent.target.value as EmployeePayrollInputFormLine["strLineType"])}
-        disabled={blnFormLocked}
+        disabled={blnFormLocked || Boolean(dicLine.blnIsProtected)}
         fullWidth
         size="small"
         sx={objFieldSx}
@@ -651,7 +663,7 @@ export default function EmployeePayrollInputEditorPage({
       <TextField
         value={dicLine.strAmount}
         onChange={(objEvent) => updateLine(dicLine.intTempID, "strAmount", objEvent.target.value)}
-        disabled={blnFormLocked}
+        disabled={blnFormLocked || Boolean(dicLine.blnIsProtected)}
         placeholder="0.00"
         fullWidth
         size="small"
@@ -669,7 +681,7 @@ export default function EmployeePayrollInputEditorPage({
       <TextField
         value={dicLine.strRemarks}
         onChange={(objEvent) => updateLine(dicLine.intTempID, "strRemarks", objEvent.target.value)}
-        disabled={blnFormLocked}
+        disabled={blnFormLocked || Boolean(dicLine.blnIsProtected)}
         placeholder={t("line_remarks", "Optional line remarks")}
         fullWidth
         size="small"
@@ -677,7 +689,7 @@ export default function EmployeePayrollInputEditorPage({
         InputProps={{ startAdornment: objStartDescriptionAdornment }}
       />
     ),
-    strActions: blnCanSave ? (
+    strActions: blnCanSave && !dicLine.blnIsProtected ? (
       <Button onClick={() => removeLine(dicLine.intTempID)} disabled={blnFormLocked} sx={{ minWidth: 34, width: 34, height: 34, borderRadius: "10px", border: "1px solid rgba(255,169,169,0.9)", background: "#fff2f2", color: "#ff2c2c", "&:hover": { background: "#ffe3e3", borderColor: "#ff8f8f" } }}>
         <DeleteOutlineRoundedIcon />
       </Button>
@@ -707,39 +719,21 @@ export default function EmployeePayrollInputEditorPage({
         px: { xs: 0, md: 0.5 },
       }}
     >
-      {strLabelError && !objDismissedNotices.has("labelError") ? <Alert severity="warning" onClose={() => dismissNotice("labelError")}>{strLabelError}</Alert> : null}
-      {strCommonLabelError && !objDismissedNotices.has("commonLabelError") ? <Alert severity="warning" onClose={() => dismissNotice("commonLabelError")}>{strCommonLabelError}</Alert> : null}
-      {strRightsError && !objDismissedNotices.has("rightsError") ? <Alert severity="warning" onClose={() => dismissNotice("rightsError")}>{strRightsError}</Alert> : null}
-      {!blnCanView && !blnCanSave ? <Alert severity="warning">{t("access_denied", "Payroll input access is not available for your user group.")}</Alert> : null}
-      {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
-      {strSuccess ? <Alert severity="success" onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
-      <CommonEditModeBanner
-        blnReadOnly={blnReadOnly}
-        strReadOnlyMessage={t("read_only_mode", "This payroll input is open in view mode.")}
-      />
-      {blnSelectedRunBlocksInputChanges && !objDismissedNotices.has("runBlocks") ? <Alert severity="warning" onClose={() => dismissNotice("runBlocks")}>{t("run_locked_input_warning", "Selected payroll run is locked, so payroll input cannot be edited.")}</Alert> : null}
-
-      <Box
-        sx={{
-          background: "var(--app-surface-color)",
-          border: "1px solid var(--app-card-border-color)",
-          borderRadius: "var(--app-card-radius)",
-          boxShadow: "var(--app-shadow-soft)",
-          p: { xs: 1.5, md: 2 },
-        }}
+      <DetailPageHeader
+        strSection={t("breadcrumb_section", "Payroll")}
+        strListTitle={t("breadcrumb_title", "Payroll Input")}
+        strListHref={strBackRoute || "/payroll/employee-payroll-inputs"}
+        strCurrent={strMode === "add" ? t("breadcrumb_add", "Add") : blnReadOnly ? t("breadcrumb_view", "View") : t("breadcrumb_edit", "Edit")}
+        lstNotices={[
+          strLabelError && !objDismissedNotices.has("labelError") ? { strKey: "label-error", strSeverity: "warning", objMessage: strLabelError, fnDismiss: () => dismissNotice("labelError") } : null,
+          strCommonLabelError && !objDismissedNotices.has("commonLabelError") ? { strKey: "common-label-error", strSeverity: "warning", objMessage: strCommonLabelError, fnDismiss: () => dismissNotice("commonLabelError") } : null,
+          strRightsError && !objDismissedNotices.has("rightsError") ? { strKey: "rights", strSeverity: "warning", objMessage: strRightsError, fnDismiss: () => dismissNotice("rightsError") } : null,
+          !blnCanView && !blnCanSave ? { strKey: "access-denied", strSeverity: "warning", objMessage: t("access_denied", "Payroll input access is not available for your user group.") } : null,
+          { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+          { strKey: "success", strSeverity: "success", objMessage: strSuccess, fnDismiss: () => setStrSuccess("") },
+          blnSelectedRunBlocksInputChanges && !objDismissedNotices.has("runBlocks") ? { strKey: "run-locked", strSeverity: "warning", objMessage: t("run_locked_input_warning", "Selected payroll run is locked, so payroll input cannot be edited."), fnDismiss: () => dismissNotice("runBlocks") } : null,
+        ]}
       >
-      <Box sx={{ pt: 0.5 }}>
-        <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", columnGap: 1, rowGap: 1.25, mb: 2.5 }}>
-          <Box>
-            <Typography sx={{ display: "flex", alignItems: "center", gap: 1, fontWeight: 800, color: "#0f172a", fontSize: "0.96rem" }}>
-              <PersonOutlineRoundedIcon sx={{ color: "#2563eb", fontSize: 20 }} />
-              {t("section_employee_run", "Employee and Run Details").replace(/^\d+\.\s*/, "")}
-            </Typography>
-            <Typography sx={{ color: "#64748b", mt: 0.35, fontSize: "0.83rem" }}>
-              {t("section_employee_run_help", "Select the employee and payroll run to view or edit attendance/leave inputs.")}
-            </Typography>
-          </Box>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ alignItems: { xs: "stretch", sm: "center" } }}>
             <Button
               controlId="employee-payroll-input.editor.back.button"
               className={styles.secondaryButton}
@@ -774,7 +768,32 @@ export default function EmployeePayrollInputEditorPage({
                 {blnSaving ? tCommon("processing", "Processing...") : tCommon("save", "Save")}
               </Button>
             ) : null}
-          </Stack>
+      </DetailPageHeader>
+      <CommonEditModeBanner
+        blnReadOnly={blnReadOnly}
+        strReadOnlyMessage={t("read_only_mode", "This payroll input is open in view mode.")}
+      />
+
+      <Box
+        sx={{
+          background: "var(--app-surface-color)",
+          border: "1px solid var(--app-card-border-color)",
+          borderRadius: "var(--app-card-radius)",
+          boxShadow: "var(--app-shadow-soft)",
+          p: { xs: 1.5, md: 2 },
+        }}
+      >
+      <Box sx={{ pt: 0.5 }}>
+        <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", columnGap: 1, rowGap: 1.25, mb: 2.5 }}>
+          <Box>
+            <Typography sx={{ display: "flex", alignItems: "center", gap: 1, fontWeight: 800, color: "#0f172a", fontSize: "0.96rem" }}>
+              <PersonOutlineRoundedIcon sx={{ color: "#2563eb", fontSize: 20 }} />
+              {t("section_employee_run", "Employee and Run Details").replace(/^\d+\.\s*/, "")}
+            </Typography>
+            <Typography sx={{ color: "#64748b", mt: 0.35, fontSize: "0.83rem" }}>
+              {t("section_employee_run_help", "Select the employee and payroll run to view or edit attendance/leave inputs.")}
+            </Typography>
+          </Box>
         </Box>
         <Box sx={{ display: "grid", columnGap: 1.5, rowGap: 1.25, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" }, alignItems: "start" }}>
           <Autocomplete

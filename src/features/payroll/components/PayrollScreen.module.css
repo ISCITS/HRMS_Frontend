@@ -163,10 +163,78 @@
   width: 100%;
 }
 
+/* Full-width wizard grid: 3 columns on wide screens, 2 on laptops, 1 on mobile (media queries below). */
 .fnfWizardGrid {
+  align-items: start;
   display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.fnfWizardGridThree {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.fnfSpanTwo {
+  grid-column: span 2;
+}
+
+.fnfSpanAll {
+  grid-column: 1 / -1;
+}
+
+/* Stepper and step content use the full card width, separated by one hairline. */
+.fnfWizardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 4px 4px 8px;
+  width: 100%;
+}
+
+.fnfStepPanel {
+  border-top: 1px solid #e5edf4;
+  padding-top: 18px;
+}
+
+/* Compact status note that sits beside a field at the same height. */
+.fnfInlineNote {
+  align-items: center;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  min-height: 40px;
+  padding-bottom: 0 !important;
+  padding-top: 0 !important;
+}
+
+.fnfInlineNote :global(.MuiAlert-message) {
+  font-size: 0.8rem;
+  padding: 6px 0;
+}
+
+.fnfInlineNote :global(.MuiAlert-icon) {
+  padding: 6px 0;
+}
+
+.fnfStepHeader {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.fnfStepTitle {
+  color: #0f172a;
+  font-size: 0.98rem !important;
+  font-weight: 700 !important;
+  line-height: 1.3 !important;
+}
+
+.fnfStepSubtitle {
+  color: #64748b;
+  font-size: 0.8rem !important;
+  margin-top: 2px !important;
 }
 
 .fnfWizardActions {
@@ -320,10 +388,10 @@
 .reportSearchPanelRow {
   align-items: center;
   display: flex;
-  flex-wrap: nowrap;
-  gap: 10px;
-  overflow-x: auto;
-  padding-bottom: 4px;
+  flex-wrap: wrap;
+  gap: 16px 10px;
+  /* Floating labels extend above the input outline. */
+  padding: 8px 0 4px;
 }
 
 .reportSearchField {
@@ -346,7 +414,7 @@
 }
 
 .payrollRunSearchRow {
-  grid-template-columns: minmax(150px, 0.9fr) minmax(140px, 0.7fr) minmax(140px, 0.7fr) minmax(110px, 0.5fr) auto auto;
+  grid-template-columns: minmax(150px, 0.85fr) minmax(130px, 0.6fr) minmax(130px, 0.6fr) minmax(110px, 0.45fr) minmax(110px, 0.45fr) auto auto;
 }
 
 .payrollRunSearchRow .searchActions {
@@ -414,7 +482,7 @@
   flex-direction: column;
   overflow: hidden;
   padding: 10px;
-  min-height: 0;
+  min-height: 260px;
 }
 
 .detailPage {
@@ -441,6 +509,16 @@
   overflow-y: auto;
   scrollbar-gutter: stable;
   min-height: 0;
+}
+
+/* Use alongside .tableWrap when a DataTable needs a fixed scroll height (e.g. the run detail
+   page's Payslips panel) -- a same-file class beats an inline sx override reliably, while sx
+   alone races against CSS Modules injection order and loses (see .sectionBarTight above). */
+.tableWrapBounded {
+  /* Scales with the window (so it also works when zoomed out) instead of a fixed pixel height;
+     the table scrolls inside this box and the page scrolls around it. */
+  max-height: max(280px, calc(100vh - 300px));
+  min-height: min(300px, 45vh);
 }
 
 .table {
@@ -584,8 +662,7 @@
 }
 
 .fnfStepperShell {
-  border-bottom: 1px solid #d9e6ef;
-  padding: 0 0 14px;
+  padding: 4px 0 0;
 }
 
 .fnfStepperShell :global(.MuiStepLabel-label) {
@@ -598,6 +675,115 @@
 .fnfStepperShell :global(.MuiStepIcon-root.Mui-active),
 .fnfStepperShell :global(.MuiStepIcon-root.Mui-completed) {
   color: var(--app-primary-color);
+}
+
+.fnfSummaryCard {
+  border: 1px solid #d9e6ef;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.fnfSummaryHead {
+  align-items: center;
+  border-bottom: 1px solid #eef2f7;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+}
+
+.fnfSummaryName {
+  color: #0f172a;
+  font-size: 1rem !important;
+  font-weight: 800 !important;
+  line-height: 1.3 !important;
+}
+
+.fnfSummaryCode {
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-left: 6px;
+}
+
+.fnfSummaryGrid {
+  display: grid;
+  gap: 8px 16px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.fnfSummaryItem {
+  min-width: 0;
+}
+
+.fnfSummaryLabel {
+  color: #64748b;
+  font-size: 0.74rem !important;
+  font-weight: 600 !important;
+  line-height: 1.3 !important;
+}
+
+.fnfSummaryValue {
+  color: #0f172a;
+  font-size: 0.86rem !important;
+  font-weight: 700 !important;
+  line-height: 1.35 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fnfSummaryRemarks {
+  border-top: 1px solid #eef2f7;
+  color: #334155;
+  font-size: 0.82rem !important;
+  margin-top: 8px !important;
+  padding-top: 6px;
+}
+
+.fnfTotalsGrid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.fnfTotalTile {
+  background: #f8fafc;
+  border: 1px solid #d9e6ef;
+  border-radius: 8px;
+  min-width: 0;
+  padding: 8px 10px;
+}
+
+.fnfTotalValue {
+  font-size: 0.98rem !important;
+  font-weight: 900 !important;
+  line-height: 1.3 !important;
+  white-space: nowrap;
+}
+
+@media (max-width: 1200px) {
+  .fnfTotalsGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .fnfSummaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .fnfSummaryGrid,
+  .fnfTotalsGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .fnfSummaryHead {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 .fnfWorkflowGrid {
@@ -924,7 +1110,7 @@
   }
 
   .payrollRunSearchRow {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
   }
 
   .payrollRunSearchRow .searchActions {
@@ -943,6 +1129,7 @@
   .tableCard,
   .listUtilityBar {
     padding: 8px;
+    padding-top: 2px;
   }
 
   .controlsHeader,
@@ -957,6 +1144,16 @@
   .fnfCreateGrid,
   .fnfWizardGrid {
     gap: 12px;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1100px) {
+  .fnfWizardGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .fnfSpanTwo {
+    grid-column: 1 / -1;
   }
 }
 
@@ -983,8 +1180,13 @@
     grid-template-columns: 1fr;
   }
 
-  .fnfWizardGrid {
+  .fnfWizardGrid,
+  .fnfWizardGridThree {
     grid-template-columns: 1fr;
+  }
+
+  .fnfSpanTwo {
+    grid-column: 1 / -1;
   }
 
   .fnfWorkflowGrid,
@@ -1042,6 +1244,7 @@
   .tableCard,
   .listUtilityBar {
     padding: 8px;
+    padding-top: 2px;
   }
 
   .headerActions > *,

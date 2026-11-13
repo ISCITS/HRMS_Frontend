@@ -20,7 +20,14 @@ export default function SalaryCalculationTooltip({ children, title, rows = [], t
     style: "currency", currency, minimumFractionDigits: 2, maximumFractionDigits: 2,
   }).format(amount);
   return (
-    <Tooltip arrow describeChild slotProps={{ tooltip: { sx: { maxWidth: 420 } } }} title={(
+    <Tooltip
+      arrow
+      describeChild
+      slotProps={{
+        popper: { sx: { zIndex: 2500 } },
+        tooltip: { sx: { maxWidth: 420 } }
+      }}
+      title={(
       <Box sx={{ maxHeight: 420, minWidth: 260, overflowY: "auto", p: 0.5 }}>
         <Typography sx={{ fontSize: "0.8rem", fontWeight: 800, mb: 0.5 }}>{t("calculation_details", "Calculation details")}</Typography>
         <Typography sx={{ fontSize: "0.72rem", lineHeight: 1.4, mb: 1, opacity: 0.9 }}>{title}</Typography>
@@ -39,7 +46,8 @@ export default function SalaryCalculationTooltip({ children, title, rows = [], t
           </Stack>
         ) : null}
       </Box>
-    )}>
+    )}
+    >
       <Box component="span" tabIndex={0} sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, cursor: "help" }}>
         {children}
         <InfoOutlinedIcon sx={{ fontSize: 14, flexShrink: 0, color: "#61738b" }} />

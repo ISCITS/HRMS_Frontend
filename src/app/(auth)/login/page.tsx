@@ -17,10 +17,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   // tenant login page instead of the generic email-only experience.
   const objCookieStore = await cookies();
   const strTenantCookie = objCookieStore.get(appConfig.tenantCookieName)?.value?.trim() ?? "";
-  const strTenantUUID =
-    strTenantHint ||
-    strTenantCookie ||
-    appConfig.defaultTenantUuid.trim();
+  const strTenantUUID = strTenantHint || strTenantCookie;
 
   if (strTenantUUID) {
     redirect(`${appRoutes.login}/${encodeURIComponent(strTenantUUID)}`);

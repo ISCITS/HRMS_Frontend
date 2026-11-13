@@ -13,7 +13,7 @@ import {
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 
-import styles from "@/components/master/MasterScreen.module.css";
+import styles from "./FamilyDetailsTab.module.css";
 import {
   dicEmptyEmployeeFamilyDetailForm,
   toEmployeeFamilyDetailFormValues
@@ -48,6 +48,10 @@ function validateFamilyForm(
   if (!dicForm.strName.trim()) {
     dicErrors.strName = "Name is required.";
   }
+
+  if (!dicForm.strRelationship) dicErrors.strRelationship = "Relationship is required.";
+  if (!dicForm.dtDateOfBirth) dicErrors.dtDateOfBirth = "Date of birth is required.";
+  if (!dicForm.strGender) dicErrors.strGender = "Gender is required.";
 
   if (dicForm.strContactNumber.trim() && !/^[0-9+\- ]{7,15}$/.test(dicForm.strContactNumber.trim())) {
     dicErrors.strContactNumber = "Contact number must be valid.";
@@ -88,7 +92,7 @@ export default function FamilyDetailsTab({
   const objEmployeeRequestOptions = strMenuActionOverride ? { strMenuAction: strMenuActionOverride } : undefined;
   const [lstRows, setLstRows] = useState<EmployeeFamilyDetailRecord[]>([]);
   const [blnSaving, setBlnSaving] = useState(false);
-  const [blnDialogOpen, setBlnDialogOpen] = useState(false);
+  const [blnDialogOpen, setBlnDialogOpen] = useState(!blnViewOnly);
   const [strMode, setStrMode] = useState<"add" | "edit">("add");
   const [intEditingFamilyID, setIntEditingFamilyID] = useState<number | null>(null);
   const [dicForm, setDicForm] = useState<EmployeeFamilyDetailFormValues>(dicEmptyEmployeeFamilyDetailForm);
@@ -137,7 +141,7 @@ export default function FamilyDetailsTab({
     strField: TKey,
     objValue: EmployeeFamilyDetailFormValues[TKey]
   ) {
-    setDicErrors((dicPrevious) => ({ ...dicPrevious, [strField]: undefined }));
+    setDicErrors((dicPrevious) => ({ ...dicPrevious, [strField]: undefined, ...(strField === "decNomineePercentage" || strField === "blnIsNominee" ? { blnIsNominee: undefined, decNomineePercentage: undefined } : {}) }));
     setDicForm((dicPrevious) => ({
       ...dicPrevious,
       [strField]: strField === "decNomineePercentage" ? String(objValue).replace(/[^0-9.]/g, "") : objValue
@@ -149,6 +153,9 @@ export default function FamilyDetailsTab({
     setDicErrors({
       ...dicValidationErrors,
       strName: dicValidationErrors.strName ? t("validation_family_name_required", "Name is required.") : undefined,
+      strRelationship: dicValidationErrors.strRelationship ? t("validation_family_relationship_required", "Relationship is required.") : undefined,
+      dtDateOfBirth: dicValidationErrors.dtDateOfBirth ? t("validation_family_dob_required", "Date of birth is required.") : undefined,
+      strGender: dicValidationErrors.strGender ? t("validation_family_gender_required", "Gender is required.") : undefined,
       strContactNumber: dicValidationErrors.strContactNumber ? t("validation_family_contact_invalid", "Contact number must be valid.") : undefined,
       decNomineePercentage: dicValidationErrors.decNomineePercentage === "Nominee percentage is required."
         ? t("validation_family_nominee_required", "Nominee percentage is required.")
@@ -158,6 +165,21 @@ export default function FamilyDetailsTab({
       blnIsNominee: dicValidationErrors.blnIsNominee ? t("validation_family_nominee_total_invalid", "Total nominee percentage across family members cannot exceed 100.") : undefined
     });
     if (Object.keys(dicValidationErrors).length > 0) {
+      window.requestAnimationFrame(() => {
+        const lstFields: Array<[keyof EmployeeFamilyDetailFormValues, string]> = [
+          ["strName", "family-name"],
+          ["strRelationship", "family-relationship"],
+          ["dtDateOfBirth", "family-dob"],
+          ["strGender", "family-gender"],
+          ["strContactNumber", "family-contact"],
+          ["decNomineePercentage", "family-percentage"],
+          ["blnIsNominee", "family-percentage"],
+        ];
+        const objFirstError = lstFields.find(([strField]) => Boolean(dicValidationErrors[strField]));
+        const objField = objFirstError ? document.getElementById(objFirstError[1]) : null;
+        objField?.scrollIntoView({ behavior: "smooth", block: "center" });
+        objField?.focus({ preventScroll: true });
+      });
       return;
     }
     setBlnSaving(true);
@@ -212,49 +234,52 @@ export default function FamilyDetailsTab({
   }
 
   return (
-    <Stack spacing={2.5}>
-      <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.5}>
+    <Stack className={styles.root} spacing={0}>
+      <Box className={styles.heading}>
         <Box>
-          <Typography sx={{ mt: 0.5, color: "#64748b" }}>
+          <Typography className={styles.title}>{t("tab_family_details", "Family details")}</Typography>
+          <Typography className={styles.subtitle}>
             {t("section_family_details_help", "Manage dependents, nominees, and contact details for employee family members.")}
-          </Typography>
-          <Typography sx={{ mt: 0.75, color: "#475569", fontSize: "0.85rem" }}>
-            {t("family_nominee_total", "Current nominee total")}: {decNomineeTotal.toFixed(2)}%
           </Typography>
         </Box>
         {!blnViewOnly ? (
           <Button
             data-controlid="employee.family.add.button"
-            className={styles.primaryButton}
+            className={styles.addButton}
             size="small"
-            variant="contained"
             startIcon={<PostAddRoundedIcon />}
             onClick={openAddDialog}
-            sx={{ borderRadius: "14px", px: 2, minHeight: 32, height: 32, py: 0 }}
           >
-            {t("add_family_member", "Add Family Member")}
+            {t("add_family_member", "Add family member")}
           </Button>
         ) : null}
-      </Stack>
+      </Box>
+
+      <Box className={styles.allocation}>
+        <span>{t("family_nominee_allocation", "Nominee allocation")}</span>
+        <strong>{Number(decNomineeTotal.toFixed(2))}% {t("family_of_100_percent", "of 100%")}</strong>
+        <span className={styles.progress} role="progressbar" aria-label={t("family_nominee_allocation", "Nominee allocation")} aria-valuenow={decNomineeTotal} aria-valuemin={0} aria-valuemax={100}><span className={styles.progressFill} style={{ width: `${Math.min(100, decNomineeTotal)}%`, display: "block" }} /></span>
+      </Box>
 
       <FamilyTable
         lstRows={lstRows}
         blnViewOnly={blnViewOnly}
         blnCanDelete={blnCanDelete}
+        blnAdding={blnDialogOpen && strMode === "add"}
+        intEditingFamilyID={blnDialogOpen && strMode === "edit" ? intEditingFamilyID : null}
+        objEditor={<FamilyForm
+          strMode={strMode}
+          dicValues={dicForm}
+          dicErrors={dicErrors}
+          blnSaving={blnSaving}
+          fnOnClose={closeDialog}
+          fnOnChange={updateField}
+          fnOnSubmit={handleSubmit}
+          fnTranslate={t}
+        />}
+        fnOnAddToggle={closeDialog}
         fnOnEdit={openEditDialog}
         fnOnDelete={handleDeleteRequest}
-        fnTranslate={t}
-      />
-
-      <FamilyForm
-        blnOpen={blnDialogOpen}
-        strMode={strMode}
-        dicValues={dicForm}
-        dicErrors={dicErrors}
-        blnSaving={blnSaving}
-        fnOnClose={closeDialog}
-        fnOnChange={updateField}
-        fnOnSubmit={handleSubmit}
         fnTranslate={t}
       />
 

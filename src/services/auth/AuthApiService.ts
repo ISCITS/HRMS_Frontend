@@ -13,6 +13,8 @@ import {
   GenericLoginRequest,
   type ChangePasswordRequest,
   type ChangePasswordResponse,
+  type ForgotPasswordRequest,
+  type ForgotPasswordResponse,
   LoginRequest,
   type ActionRightsResponse,
   type AuthLoginData,
@@ -67,6 +69,7 @@ async function requestApi<TData>(objOptions: {
   objQueryParams?: Record<string, string | number | boolean | null | undefined>;
   strMenuAction: string;
   blnUseAuthHeader?: boolean;
+  blnSkipAuthHeader?: boolean;
 }) {
   try {
     const strBffPath = `/api/${objOptions.strPath}`;
@@ -80,7 +83,8 @@ async function requestApi<TData>(objOptions: {
       objBody: objOptions.objBody,
       objQueryParams: objOptions.objQueryParams,
       strMenuAction: objOptions.strMenuAction,
-      blnUseAuthHeader: objOptions.blnUseAuthHeader
+      blnUseAuthHeader: objOptions.blnUseAuthHeader,
+      blnSkipAuthHeader: objOptions.blnSkipAuthHeader
     });
   } catch (objError) {
     if (objError instanceof ApiRequestError) {
@@ -117,6 +121,8 @@ function deriveTenantAuthDetails(objTenant: TenantLookupData, objLabels?: Module
   return {
     tenant_id: objTenant.intTenantID,
     tenant_uuid: objTenant.strTenantUUID,
+    tenant_name: objTenant.strTenantName,
+    strTenantName: objTenant.strTenantName,
     language_id: objTenant.intLanguageID ?? null,
     is_active: true,
     auth_mode: blnSsoEnabled ? "SSO" : "LOCAL",
@@ -234,6 +240,16 @@ export const authApiService = {
       objBody: objRequestBody,
       strMenuAction: "AUTH_CHANGE_PASSWORD",
       blnUseAuthHeader: true
+    });
+  },
+
+  async forgotPassword(objPayload: ForgotPasswordRequest) {
+    return requestApi<ForgotPasswordResponse>({
+      strPath: "auth/forgot-password",
+      strMethod: ApiRequestMethod.Post,
+      objBody: objPayload,
+      strMenuAction: "AUTH_FORGOT_PASSWORD",
+      blnSkipAuthHeader: true
     });
   },
 

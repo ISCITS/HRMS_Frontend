@@ -6,12 +6,13 @@ import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import FactCheckRoundedIcon from "@mui/icons-material/FactCheckRounded";
 import GavelRoundedIcon from "@mui/icons-material/GavelRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import ReplayRoundedIcon from "@mui/icons-material/ReplayRounded";
 import SwapHorizRoundedIcon from "@mui/icons-material/SwapHorizRounded";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import {
   Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider,
-  Drawer, Grid, IconButton, InputAdornment, LinearProgress, MenuItem, Paper, Skeleton,
+  Drawer, Grid, IconButton, InputAdornment, LinearProgress, Link, MenuItem, Paper, Skeleton,
   Snackbar, Stack, Tab, Table, TableBody, TableCell, TableHead, TablePagination, TableRow,
   Tabs, TextField, Typography, useMediaQuery, useTheme,
 } from "@mui/material";
@@ -19,6 +20,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import styles from "@/components/master/MasterScreen.module.css";
+import { dicMasterNameLinkSx, MasterBreadcrumbs, MasterGridSkeleton } from "@/components/master/MasterListUi";
 import { useLeaveWorkflowPermissions } from "@/features/leave/hooks/useLeaveWorkflowPermissions";
 import { leaveService } from "@/features/leave/services/leaveService";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -180,7 +182,7 @@ export default function LeaveApprovalPanel() {
     }
   }
 
-  if (blnRightsLoading) return <Box sx={{ p: 2 }}><LinearProgress /></Box>;
+  if (blnRightsLoading) return <Stack spacing={1.5}><MasterBreadcrumbs strSection={t("breadcrumb_leave", "Leave Management")} strTitle={t("page_title", "Leave Requests & Approvals")} /><MasterGridSkeleton strControlId="hr.leave.workbench.skeleton" intColumns={7} /></Stack>;
   if (!blnCanView) return <Box sx={{ p: 3 }}><Alert severity="warning">{t("access_denied", "Leave Requests & Approvals access is not available for your user group.")}</Alert></Box>;
 
   const lstTabs = [
@@ -194,15 +196,12 @@ export default function LeaveApprovalPanel() {
 
   // 12px between cards and the light toolbar chrome shared by the other HR leave-management screens.
   return <Stack spacing={1.5}>
-    <Paper sx={{ borderRadius: "28px", px: { xs: 2, md: 3 }, py: { xs: 1.5, md: 2 }, border: "1px solid rgba(148,163,184,0.18)", background: "linear-gradient(135deg, #f9fbff 0%, #eef4ff 50%, #f8fafc 100%)" }}>
-      <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ md: "center" }} justifyContent="space-between">
-        {/* The page title lives here rather than in the app-shell header (see blnLeaveApprovalsRoute). */}
-        <Typography component="h1" sx={{ fontWeight: 800, fontSize: { xs: "1.1rem", md: "1.28rem" }, color: "#0f172a" }}>{t("page_title", "Leave Requests & Approvals")}</Typography>
-        <Button className={styles.secondaryButton} startIcon={<RefreshRoundedIcon />} onClick={() => void fnLoadTab(intTab, true)} sx={{ borderRadius: "14px", height: 38, minHeight: 38, py: 0, px: 2.25, minWidth: 100, fontSize: "0.9rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }} data-controlid="hr.leave.workbench.refresh">{t("refresh", "Refresh")}</Button>
-      </Stack>
-    </Paper>
-
-    <Paper sx={{ borderRadius: "18px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
+    {/* The page title lives in the breadcrumb (the app-shell header title is hidden for this route). */}
+    <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1.5}>
+      <MasterBreadcrumbs strSection={t("breadcrumb_leave", "Leave Management")} strTitle={t("page_title", "Leave Requests & Approvals")} />
+      <Button className={styles.secondaryButton} startIcon={<RefreshRoundedIcon />} onClick={() => void fnLoadTab(intTab, true)} sx={{ whiteSpace: "nowrap", flexShrink: 0 }} data-controlid="hr.leave.workbench.refresh">{t("refresh", "Refresh")}</Button>
+    </Stack>
+    <Paper sx={{ borderRadius: "10px", border: "1px solid #e8eef5", boxShadow: "none", overflow: "hidden" }}>
       <Tabs value={intTab} onChange={(_objEvent, intValue) => setIntTab(intValue)} variant="scrollable" scrollButtons="auto" sx={{ borderBottom: "1px solid #e2e8f0", px: 1 }}>
         {lstTabs.map((objTab) => <Tab key={objTab.strLabel} label={objTab.strLabel} disabled={!objTab.blnShow} sx={{ fontWeight: 700, textTransform: "none", display: objTab.blnShow ? "inline-flex" : "none" }} />)}
       </Tabs>
@@ -214,10 +213,10 @@ export default function LeaveApprovalPanel() {
       ) : <>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ p: 2 }} justifyContent="space-between" alignItems={{ sm: "center" }}>
           <Typography sx={{ fontSize: ".8rem", color: "#64748b" }}>{lstFiltered.length} {t("requests", "request(s)")}</Typography>
-          <TextField data-controlid="hr.leave.workbench.search" size="small" value={strSearch} onChange={(objEvent) => setStrSearch(objEvent.target.value)} placeholder={t("search_placeholder", "Search by employee or type")} InputProps={{ startAdornment: <InputAdornment position="start"><FactCheckRoundedIcon fontSize="small" /></InputAdornment> }} sx={{ minWidth: { sm: 280 } }} />
+          <TextField className="app-mui-text-field" data-controlid="hr.leave.workbench.search" size="small" label={t("search_label", "Search")} value={strSearch} onChange={(objEvent) => setStrSearch(objEvent.target.value)} placeholder={t("search_placeholder", "Search by employee or type")} InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} sx={{ minWidth: { sm: 280 } }} />
         </Stack>
         <Divider />
-        {blnTabLoading ? <Box sx={{ p: 2 }}><Skeleton variant="rounded" height={280} /></Box>
+        {blnTabLoading ? <MasterGridSkeleton strControlId="hr.leave.workbench.skeleton" intColumns={7} />
           : lstPaged.length === 0 ? <EmptyState strMessage={t("empty", "No requests to show here.")} />
           : <WorkbenchTable lstItems={lstPaged} intTab={intTab} blnMobile={blnMobile} blnCanViewConfidential={blnCanViewConfidential} fnOnOpen={(objItem) => void fnOpenDetail(objItem)} fnLabel={t} />}
         <TablePagination component="div" count={lstFiltered.length} page={intPage} onPageChange={(_objEvent, intNext) => setIntPage(intNext)} rowsPerPage={intRowsPerPage} onRowsPerPageChange={(objEvent) => { setIntRowsPerPage(Number(objEvent.target.value)); setIntPage(0); }} rowsPerPageOptions={[5, 10, 25]} />
@@ -285,7 +284,7 @@ function WorkbenchTable({ lstItems, intTab, blnMobile, blnCanViewConfidential, f
   if (blnMobile) {
     return <Stack spacing={1} sx={{ p: 1.5 }}>{lstItems.map((objItem) => <Paper key={objItem.intID} variant="outlined" sx={{ p: 1.5, borderRadius: "14px" }} onClick={() => fnOnOpen(objItem)}><Stack direction="row" justifyContent="space-between"><Box><Typography sx={{ fontWeight: 800, fontSize: ".86rem" }}>{fnEmployeeName(objItem)}</Typography><Box sx={{ mt: .5 }}><TypeText objItem={objItem} blnCanViewConfidential={blnCanViewConfidential} fnLabel={fnLabel} /></Box><Typography sx={{ fontSize: ".74rem", color: "#64748b", mt: .5 }}>{formatLeaveDate(objItem.dtFromDate)} – {formatLeaveDate(objItem.dtToDate)} · {objItem.decDays}</Typography></Box><StatusChip strStatus={objItem.strStatus} /></Stack></Paper>)}</Stack>;
   }
-  return <Box sx={{ overflowX: "auto" }}><Table size="small"><TableHead><TableRow sx={{ "& th": { fontWeight: 700, bgcolor: "#f8fafc", whiteSpace: "nowrap" } }}>
+  return <Box sx={{ overflowX: "auto" }}><Table size="small"><TableHead><TableRow sx={{ "& th": { fontWeight: 700, bgcolor: "#edf3f9", whiteSpace: "nowrap" } }}>
     <TableCell>{fnLabel("employee", "Employee")}</TableCell>
     <TableCell>{fnLabel("leave_type", "Leave Type")}</TableCell>
     <TableCell>{fnLabel("from_date", "From")}</TableCell>
@@ -293,39 +292,35 @@ function WorkbenchTable({ lstItems, intTab, blnMobile, blnCanViewConfidential, f
     <TableCell>{fnLabel("days", "Days")}</TableCell>
     <TableCell>{blnActionedTab ? fnLabel("actioned_on", "Actioned On") : fnLabel("applied_on", "Applied On")}</TableCell>
     <TableCell>{fnLabel("status", "Status")}</TableCell>
-    <TableCell align="right">{fnLabel("actions", "Actions")}</TableCell>
   </TableRow></TableHead><TableBody>
-    {lstItems.map((objItem) => <TableRow key={objItem.intID} hover>
-      <TableCell><Typography sx={{ fontWeight: 700, fontSize: ".82rem" }}>{fnEmployeeName(objItem)}</Typography><Typography sx={{ fontSize: ".7rem", color: "#64748b" }}>{objItem.strEmployeeCode ?? ""}</Typography></TableCell>
+    {lstItems.map((objItem) => <TableRow key={objItem.intID} hover onClick={() => fnOnOpen(objItem)} sx={{ cursor: "pointer", "&:hover .MuiLink-root": { textDecoration: "underline", color: "#0066df" } }}>
+      <TableCell><Link component="button" type="button" underline="none" className="app-master-first-column-link" data-controlid={`hr.leave.workbench.view.${objItem.intID}`} onClick={(objEvent) => { if (window.getSelection()?.toString()) { objEvent.stopPropagation(); return; } fnOnOpen(objItem); objEvent.stopPropagation(); }} sx={dicMasterNameLinkSx}>{fnEmployeeName(objItem)}</Link><Typography sx={{ fontSize: ".7rem", color: "#64748b" }}>{objItem.strEmployeeCode ?? ""}</Typography></TableCell>
       <TableCell><TypeText objItem={objItem} blnCanViewConfidential={blnCanViewConfidential} fnLabel={fnLabel} /></TableCell>
       <TableCell>{formatLeaveDate(objItem.dtFromDate)}</TableCell>
       <TableCell>{formatLeaveDate(objItem.dtToDate)}</TableCell>
       <TableCell>{objItem.decDays}</TableCell>
       <TableCell>{formatLeaveDate(blnActionedTab ? (objItem.dtLastActionOn ?? objItem.dtDecidedOn) : objItem.dtAppliedOn)}</TableCell>
       <TableCell><StatusChip strStatus={objItem.strStatus} /></TableCell>
-      <TableCell align="right"><Button data-controlid={`hr.leave.workbench.view.${objItem.intID}`} size="small" variant="outlined" onClick={() => fnOnOpen(objItem)}>{fnLabel("review", "Review")}</Button></TableCell>
     </TableRow>)}
   </TableBody></Table></Box>;
 }
 
 function ExceptionsTable({ lstExceptions, blnLoading, fnOnOpen, fnLabel }: { lstExceptions: LeaveWorkflowExceptionDto[]; blnLoading: boolean; fnOnOpen: (intApplicationID: number) => void; fnLabel: LabelFn }) {
-  if (blnLoading) return <Box sx={{ p: 2 }}><Skeleton variant="rounded" height={220} /></Box>;
+  if (blnLoading) return <MasterGridSkeleton strControlId="hr.leave.workbench.exceptions.skeleton" intColumns={5} />;
   if (lstExceptions.length === 0) return <EmptyState strMessage={fnLabel("no_exceptions", "No workflow exceptions.")} />;
-  return <Box sx={{ overflowX: "auto" }}><Table size="small"><TableHead><TableRow sx={{ "& th": { fontWeight: 700, bgcolor: "#f8fafc", whiteSpace: "nowrap" } }}>
+  return <Box sx={{ overflowX: "auto" }}><Table size="small"><TableHead><TableRow sx={{ "& th": { fontWeight: 700, bgcolor: "#edf3f9", whiteSpace: "nowrap" } }}>
     <TableCell>{fnLabel("application", "Application")}</TableCell>
     <TableCell>{fnLabel("exception_code", "Exception")}</TableCell>
     <TableCell>{fnLabel("detail", "Detail")}</TableCell>
     <TableCell>{fnLabel("resolved", "Resolved")}</TableCell>
     <TableCell>{fnLabel("raised_on", "Raised On")}</TableCell>
-    <TableCell align="right">{fnLabel("actions", "Actions")}</TableCell>
   </TableRow></TableHead><TableBody>
-    {lstExceptions.map((objException) => <TableRow key={objException.intID} hover>
-      <TableCell>#{objException.intApplicationID}</TableCell>
+    {lstExceptions.map((objException) => <TableRow key={objException.intID} hover onClick={() => fnOnOpen(objException.intApplicationID)} sx={{ cursor: "pointer", "&:hover .MuiLink-root": { textDecoration: "underline", color: "#0066df" } }}>
+      <TableCell><Link component="button" type="button" underline="none" className="app-master-first-column-link" data-controlid={`hr.leave.workbench.exception.view.${objException.intID}`} onClick={(objEvent) => { objEvent.stopPropagation(); fnOnOpen(objException.intApplicationID); }} sx={dicMasterNameLinkSx}>#{objException.intApplicationID}</Link></TableCell>
       <TableCell><Chip size="small" label={(objException.strExceptionCode ?? "—").replaceAll("_", " ")} sx={{ bgcolor: "#fef3c7", color: "#92400e", fontWeight: 700, textTransform: "capitalize" }} /></TableCell>
       <TableCell sx={{ maxWidth: 320 }}><Typography sx={{ fontSize: ".8rem" }}>{objException.strExceptionDetail ?? "—"}</Typography></TableCell>
       <TableCell>{objException.blnIsResolved ? <Chip size="small" color="success" label={fnLabel("yes", "Yes")} /> : <Chip size="small" color="warning" label={fnLabel("open", "Open")} />}</TableCell>
       <TableCell>{formatLeaveDate(objException.dtAddedOn)}</TableCell>
-      <TableCell align="right"><Button data-controlid={`hr.leave.workbench.exception.view.${objException.intID}`} size="small" variant="outlined" onClick={() => fnOnOpen(objException.intApplicationID)}>{fnLabel("open_request", "Open")}</Button></TableCell>
     </TableRow>)}
   </TableBody></Table></Box>;
 }

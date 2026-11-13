@@ -1,9 +1,10 @@
 "use client";
 
 import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
-import { Box, CircularProgress, Paper, Stack, Typography } from "@mui/material";
+import { Box, Paper, Stack, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import GoogleMfaChallengeView from "@/components/auth/GoogleMfaChallengeView";
 import type {
@@ -162,7 +163,7 @@ export default function SsoCallbackClient() {
             </Box>
             <Typography variant="h4">{enMessages.auth.ssoCallbackTitle}</Typography>
             <Typography sx={{ color: "#64748b" }}>{strStatus}</Typography>
-            <CircularProgress />
+            <DottedLoader />
           </Stack>
         </Paper>
       </Box>

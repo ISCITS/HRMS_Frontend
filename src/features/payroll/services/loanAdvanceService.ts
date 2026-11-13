@@ -1,6 +1,6 @@
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { ApiRequestError, requestEncryptedApi, type ApiEnvelope } from "@/Common/utils/apiErrorHandler";
-import type { LoanAdvanceCategoryRecord, LoanAdvanceFormValues, LoanAdvanceRecord } from "@/features/payroll/types";
+import type { LoanAdvanceCategoryRecord, LoanAdvanceEmployeeBankAccountRecord, LoanAdvanceFormValues, LoanAdvanceRecord } from "@/features/payroll/types";
 
 async function requestApi<TData>(objOptions: {
   strPath: string;
@@ -179,6 +179,7 @@ export const loanAdvanceService = {
       "manual-recovery": "LOAN_ADV_MANUAL_RECOVERY",
       "skip-installment": "LOAN_ADV_SKIP_INSTALLMENT",
       "adjust-schedule": "LOAN_ADV_ADJUST_SCHEDULE",
+      prepay: "LOAN_ADV_PREPAY",
       finalize: "LOAN_ADV_FINALIZE",
       "reopen-finalization": "LOAN_ADV_REOPEN_FINALIZATION",
     };
@@ -187,6 +188,14 @@ export const loanAdvanceService = {
       strMethod: "POST",
       objBody,
       strMenuAction: dicActionCodeByAction[strAction] || "LOAN_ADV_VIEW",
+    });
+    return objResult.Data;
+  },
+  async listEmployeeBankAccounts(strRecordUUID: string): Promise<LoanAdvanceEmployeeBankAccountRecord[]> {
+    const objResult = await requestApi<LoanAdvanceEmployeeBankAccountRecord[]>({
+      strPath: `/payroll/loans-advances/${strRecordUUID}/employee-bank-accounts`,
+      strMethod: "GET",
+      strMenuAction: "LOAN_ADV_VIEW",
     });
     return objResult.Data;
   },

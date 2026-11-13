@@ -16,7 +16,6 @@ import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   Chip,
   Dialog,
   DialogActions,
@@ -30,13 +29,14 @@ import {
   Switch,
   TextField,
   Tooltip,
-  Typography,
+  Typography
 } from "@mui/material";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { DetailPageHeader } from "@/components/master/MasterListUi";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import BlockingLoader, { DottedLoader } from "@/components/shared/BlockingLoader";
 import {
   buildEmployeeSalaryFixedRows,
   calculateEmployeeSalaryBaseSummaryMetrics,
@@ -60,19 +60,6 @@ type ProofFileMap = Record<number, FlexiProofPayload | null>;
 const intEligibilityPreviewLimit = 6;
 const lstEmployeeSalaryModuleCodes = ["EMPLOYEE_SALARY", "EMPLOYEE-SALARY", "EMPLOYEE_SALARIES"];
 const lstEssFlexiModuleCodes = ["ESS_FLEXI_PAY_DECLARATION"];
-const objHeaderActionButtonSx = {
-  color: "#ffffff",
-  borderColor: "rgba(255,255,255,0.72)",
-  "&:hover": {
-    borderColor: "#ffffff",
-    backgroundColor: "rgba(255,255,255,0.1)",
-  },
-  "&.Mui-disabled": {
-    color: "rgba(255,255,255,0.45)",
-    borderColor: "rgba(255,255,255,0.2)",
-  },
-} as const;
-
 function getCurrentFinancialYearCode() {
   const objNow = new Date();
   const intYear = objNow.getFullYear();
@@ -418,7 +405,6 @@ function formatFileSize(intFileSizeBytes?: number | null) {
 const OBJ_ELIGIBILITY_FIELD_SX = {
   "& .MuiOutlinedInput-notchedOutline": { borderColor: "#7dd3fc" },
   "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#38bdf8" },
-  "& .Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#0ea5e9" },
 };
 
 function hasAnyEligibilityAnswers(dicEligibilityAnswers: EligibilityAnswerMap) {
@@ -1853,43 +1839,17 @@ export default function FlexiPayDeclarationPage() {
         </Alert>
       ) : null}
 
-      <Paper
-        sx={{
-          p: 1.35,
-          borderRadius: "12px",
-          border: "1px solid #1e3a8a",
-          background: "linear-gradient(90deg, #184f94 0%, #0f7ea7 100%)",
-          boxShadow: "0 8px 20px rgba(11, 47, 99, 0.18)",
-          position: "sticky",
-          top: 0,
-          zIndex: 8,
-        }}
+      <DetailPageHeader
+        strSection={blnReviewEntryMode ? "Payroll" : "Employee Services"}
+        strListTitle={blnReviewEntryMode ? "Flexi Declaration Review" : "Flexi Pay Declaration"}
+        strListHref={strBackPath}
+        strCurrent={blnShowEssDraftAction || blnShowEssSubmitAction ? "Edit" : "View"}
       >
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
-          <Box>
-            <Typography sx={{ fontWeight: 900, color: "#f8fcff", fontSize: "1.05rem" }}>
-              {objContext?.objEmployeeSummary?.strEmployeeName || t("employee", "Employee")}
-            </Typography>
-            <Typography sx={{ color: "rgba(239,252,255,0.92)", fontSize: "0.82rem" }}>
-              {objContext?.objEmployeeSummary?.strEmployeeCode || "-"} | {t("fy", "FY")} {strActiveFinancialYearCode} | {strPageModeLabel} | {t("current_status", "Current Status")} {formatTranslatedStatus(strWorkflowStatus)} | {t("it_regime", "IT Regime")} {strSelectedTaxRegimeLabel}
-            </Typography>
-          </Box>
-
-          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-            <Chip label={formatTranslatedStatus(strWorkflowStatus)} color={getStatusTone(strWorkflowStatus)} />
-            {blnEvaluating && !blnSaving ? (
-              <Chip
-                icon={<CircularProgress size={14} color="inherit" />}
-                label={t("evaluating", "Evaluating...")}
-                variant="outlined"
-                sx={{ color: "#f8fcff", borderColor: "rgba(255,255,255,0.55)" }}
-              />
-            ) : null}
             <Button
               size="small"
               variant="outlined"
               startIcon={<ArrowBackRoundedIcon />}
-              sx={objHeaderActionButtonSx}
+             
               onClick={() => objRouter.push(strBackPath)}
             >
               {t("back", "Back")}
@@ -1922,21 +1882,43 @@ export default function FlexiPayDeclarationPage() {
                   {t("reject", "Reject")}
                 </Button>
                 {blnCanReleaseCurrent ? (
-                  <Button size="small" variant="outlined" disabled={blnSaving} sx={objHeaderActionButtonSx} onClick={() => void handleReleaseReview()}>
+                  <Button size="small" variant="outlined" disabled={blnSaving} onClick={() => void handleReleaseReview()}>
                     {t("release", "Release")}
                   </Button>
                 ) : null}
                 {blnCanLockCurrent ? (
-                  <Button size="small" variant="outlined" disabled={blnSaving} sx={objHeaderActionButtonSx} onClick={() => void handleLockReview()}>
+                  <Button size="small" variant="outlined" disabled={blnSaving} onClick={() => void handleLockReview()}>
                     {t("lock", "Lock")}
                   </Button>
                 ) : null}
                 {blnCanApproveCurrent ? (
-                  <Button size="small" variant="outlined" disabled={blnSaving || blnAllocationExceeded} sx={objHeaderActionButtonSx} onClick={() => void handleApproveReview()}>
+                  <Button size="small" variant="outlined" disabled={blnSaving || blnAllocationExceeded} onClick={() => void handleApproveReview()}>
                     {t("approve", "Approve")}
                   </Button>
                 ) : null}
               </>
+            ) : null}
+      </DetailPageHeader>
+
+      <Paper sx={{ p: 1.35, borderRadius: "12px", border: "1px solid #1e3a8a", background: "linear-gradient(90deg, #184f94 0%, #0f7ea7 100%)", boxShadow: "0 8px 20px rgba(11, 47, 99, 0.18)" }}>
+        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
+          <Box>
+            <Typography sx={{ fontWeight: 900, color: "#f8fcff", fontSize: "1.05rem" }}>
+              {objContext?.objEmployeeSummary?.strEmployeeName || t("employee", "Employee")}
+            </Typography>
+            <Typography sx={{ color: "rgba(239,252,255,0.92)", fontSize: "0.82rem" }}>
+              {objContext?.objEmployeeSummary?.strEmployeeCode || "-"} | {t("fy", "FY")} {strActiveFinancialYearCode} | {strPageModeLabel} | {t("current_status", "Current Status")} {formatTranslatedStatus(strWorkflowStatus)} | {t("it_regime", "IT Regime")} {strSelectedTaxRegimeLabel}
+            </Typography>
+          </Box>
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+            <Chip label={formatTranslatedStatus(strWorkflowStatus)} color={getStatusTone(strWorkflowStatus)} />
+            {blnEvaluating && !blnSaving ? (
+              <Chip
+                icon={<DottedLoader intSize={14} color="inherit" />}
+                label={t("evaluating", "Evaluating...")}
+                variant="outlined"
+                sx={{ color: "#f8fcff", borderColor: "rgba(255,255,255,0.55)" }}
+              />
             ) : null}
           </Stack>
         </Stack>

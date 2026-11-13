@@ -2,8 +2,9 @@
 
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Switch, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Switch, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import { InvestmentOptionApiRecord, masterApiService } from "@/services/master/MasterApiService";
@@ -194,7 +195,7 @@ export default function InvestmentOptionsManagerDialog({
           </Box>
 
           {blnLoading ? (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}><CircularProgress size={24} /></Box>
+            <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}><DottedLoader intSize={24} /></Box>
           ) : lstOptions.length === 0 ? (
             <Typography sx={{ color: "#94a3b8", fontSize: "0.85rem", py: 1 }}>No investment options configured for this section yet.</Typography>
           ) : (

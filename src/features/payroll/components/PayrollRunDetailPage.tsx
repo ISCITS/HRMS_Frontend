@@ -23,6 +23,7 @@ import {
 import { type InputHTMLAttributes, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import PageNotices from "@/Common/components/PageNotices";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
@@ -497,20 +498,44 @@ function PayrollRunDetailPageLegacy({
     }
   }
 
+  async function resolveFreshPayslipID(
+    dicRow: PayslipRunListRecord
+  ): Promise<{ intPayslipID: number | null; strPayslipRecordUUID: string | null }> {
+    if (!dicRow.intPayslipID) {
+      const dicPayslip = await generatePayslip(dicRow);
+      return {
+        intPayslipID: dicPayslip?.intPayslipID ?? null,
+        strPayslipRecordUUID: dicPayslip?.strPayslipRecordUUID ?? null,
+      };
+    }
+    // A payslip already exists for this row, but a reprocess since it was generated can
+    // leave that persisted document stale. getPayslipPreview flags this with
+    // blnGenerated:false (no persisted document matches the current result version) -
+    // regenerate in that case instead of silently reusing yesterday's snapshot.
+    const dicPreview = await payslipService.getPayslipPreview(strRunID, dicRow.intEmployeeID);
+    if (dicPreview.blnGenerated) {
+      return {
+        intPayslipID: dicPreview.intPayslipID ?? dicRow.intPayslipID,
+        strPayslipRecordUUID: dicPreview.strPayslipRecordUUID ?? null,
+      };
+    }
+    const dicPayslip = await generatePayslip(dicRow);
+    return {
+      intPayslipID: dicPayslip?.intPayslipID ?? null,
+      strPayslipRecordUUID: dicPayslip?.strPayslipRecordUUID ?? null,
+    };
+  }
+
   async function viewPayslip(dicRow: PayslipRunListRecord) {
     setBlnPayslipLoading(true);
     setStrError("");
     try {
-      let intPayslipID = dicRow.intPayslipID;
-      if (!intPayslipID) {
-        const dicPayslip = await generatePayslip(dicRow);
-        intPayslipID = dicPayslip?.intPayslipID ?? null;
-      }
+      const { intPayslipID, strPayslipRecordUUID } = await resolveFreshPayslipID(dicRow);
       if (!intPayslipID) {
         setStrError(t("payslip_not_generated", "Payslip could not be generated for this employee."));
         return;
       }
-      setStrPayslipPreviewHtml(await payslipService.getDownloadHtml(String(intPayslipID)));
+      setStrPayslipPreviewHtml(await payslipService.getDownloadHtml(strPayslipRecordUUID ?? String(intPayslipID)));
       setBlnPayslipDialogOpen(true);
     } catch (objError) {
       setStrError(
@@ -529,15 +554,11 @@ function PayrollRunDetailPageLegacy({
     setBlnPayslipLoading(true);
     setStrError("");
     try {
-      let intPayslipID = dicRow.intPayslipID;
-      if (!intPayslipID) {
-        const dicPayslip = await generatePayslip(dicRow);
-        intPayslipID = dicPayslip?.intPayslipID ?? null;
-      }
+      const { intPayslipID, strPayslipRecordUUID } = await resolveFreshPayslipID(dicRow);
       if (!intPayslipID) {
         return;
       }
-      const strHtml = await payslipService.getDownloadHtml(String(intPayslipID));
+      const strHtml = await payslipService.getDownloadHtml(strPayslipRecordUUID ?? String(intPayslipID));
       if (blnPrint) {
         printPayslipHtml(strHtml);
       } else {
@@ -712,9 +733,19 @@ function PayrollRunDetailPageLegacy({
         }}
       >
         <Box className={styles.controlsHeader}>
-          <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
-            {objRun.strRunName}
-          </Typography>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <Typography sx={{ fontSize: "1.7rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em" }}>
+              {objRun.strRunName}
+            </Typography>
+            <PageNotices
+              strControlId="payroll.run-detail.notices"
+              lstNotices={[
+                { strKey: "rights", strSeverity: "warning", objMessage: strRightsError },
+                { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+                { strKey: "success", strSeverity: "success", objMessage: strSuccess, fnDismiss: () => setStrSuccess("") },
+              ]}
+            />
+          </Stack>
           <span className={styles.statusPill} style={getStatusPillSx(objRun.strRunStatus)}>
             {getPayrollRunStatusLabel(objRun.strRunStatus)}
           </span>
@@ -760,9 +791,6 @@ function PayrollRunDetailPageLegacy({
           overflow: "visible",
         }}
       >
-        {strRightsError ? <Alert severity="warning">{strRightsError}</Alert> : null}
-        {strError ? <Alert severity="error">{strError}</Alert> : null}
-        {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
         {blnPayslipLoading ? (
           <Alert severity="info">{t("payslip_preparing", "Preparing payslips...")}</Alert>
         ) : null}
@@ -894,20 +922,22 @@ function PayrollRunDetailPageLegacy({
 
         {objProcessSummary ? (
           <Box sx={objSectionCardSx}>
-            <Typography sx={objSectionTitleSx}>
-              {t("process_summary", "Processing Summary")}
-            </Typography>
+            <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mb: 1.5 }}>
+              <Typography sx={{ ...objSectionTitleSx, mb: 0 }}>
+                {t("process_summary", "Processing Summary")}
+              </Typography>
+              <PageNotices
+                blnSmall
+                strControlId="payroll.run-detail.process-exceptions.notices"
+                lstNotices={objProcessSummary.lstExceptions.map((dicException, intIndex) => ({ strKey: `exception-${intIndex}`, strSeverity: "warning" as const, objMessage: dicException.strMessage, blnToast: false }))}
+              />
+            </Stack>
             <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", md: "repeat(4, minmax(0, 1fr))" } }}>
               <DetailValue strLabel={t("status", "Status")} strValue={objProcessSummary.strStatus} />
               <DetailValue strLabel={t("processed", "Processed")} strValue={objProcessSummary.intProcessedEmployeeCount} />
               <DetailValue strLabel={t("failed", "Failed")} strValue={objProcessSummary.intFailedEmployeeCount} />
               <DetailValue strLabel={t("net_total", "Net Pay")} strValue={formatCurrency(objProcessSummary.decNetPayTotal || 0)} />
             </Box>
-            {objProcessSummary.lstExceptions.length ? (
-              <Alert severity="warning" sx={{ mt: 1.5 }}>
-                {objProcessSummary.lstExceptions.map((dicException) => dicException.strMessage).join(" | ")}
-              </Alert>
-            ) : null}
           </Box>
         ) : null}
 

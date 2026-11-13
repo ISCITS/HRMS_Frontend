@@ -12,7 +12,6 @@ import {
   Box,
   Button,
   Checkbox,
-  CircularProgress,
   Dialog,
   DialogContent,
   DialogTitle,
@@ -26,15 +25,16 @@ import type { InputHTMLAttributes } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import { handleSingleDialogActionEnter } from "@/Common/utils/dialogKeyboard";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/components/master/MasterScreen.module.css";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import BlockingLoader, { DottedLoader } from "@/components/shared/BlockingLoader";
 import dicConstant from "@/constants/Constant.json";
 import { useEmployeeLabels } from "@/features/employee/hooks/useEmployeeLabels";
 import { employeeService } from "@/features/employee/services/employeeService";
 import { dicEmptyEmployeeForm, toEmployeeFormValues } from "@/features/employee/EmployeeFormUtils";
-import type { EmployeeDetailRecord, EmployeeFormOptions, EmployeeFormValues, EmployeeListRecord, EmployeeStatus } from "@/features/employee/types";
+import type { EmployeeDetailRecord, EmployeeFormOptions, EmployeeFormValues, EmployeeListRecord, EmployeeLookupOption, EmployeeStatus } from "@/features/employee/types";
 
 type EmployeeMode = "add" | "edit" | "view";
 type SearchForm = {
@@ -72,6 +72,7 @@ export default function EmployeeMasterPanel() {
   const [blnDialogOpen, setBlnDialogOpen] = useState(false);
   const [intEditingEmployeeID, setIntEditingEmployeeID] = useState<number | null>(null);
   const [dicForm, setDicForm] = useState<EmployeeFormValues>(dicEmptyForm);
+  const [objSelectedAllocationEntityOption, setObjSelectedAllocationEntityOption] = useState<EmployeeLookupOption | null>(null);
   const [dicErrors, setDicErrors] = useState<Partial<Record<keyof EmployeeFormValues, string>>>({});
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
@@ -125,10 +126,21 @@ export default function EmployeeMasterPanel() {
   const blnSomeVisibleSelected = !blnAllVisibleSelected && lstSelectedIDs.some((intID) => lstVisibleEmployees.some((dicEmployee) => dicEmployee.intID == intID));
 
   const lstManagerOptions = useMemo(() => (objFormOptions?.lstManagers ?? []).filter((dicOption) => dicOption.intID !== intEditingEmployeeID), [intEditingEmployeeID, objFormOptions]);
+  const lstAllocationEntityOptions = useMemo(() => {
+    const lstOptions = objFormOptions?.lstAllocationEntities ?? [];
+    if (
+      objSelectedAllocationEntityOption
+      && !lstOptions.some((dicOption) => dicOption.intID === objSelectedAllocationEntityOption.intID)
+    ) {
+      return [...lstOptions, objSelectedAllocationEntityOption];
+    }
+    return lstOptions;
+  }, [objFormOptions, objSelectedAllocationEntityOption]);
 
   function resetDialog() {
     setIntEditingEmployeeID(null);
     setDicForm(dicEmptyForm);
+    setObjSelectedAllocationEntityOption(null);
     setDicErrors({});
     setStrError("");
   }
@@ -148,6 +160,15 @@ export default function EmployeeMasterPanel() {
     try {
       const dicEmployee = await employeeService.getEmployeeById(intEmployeeID);
       setIntEditingEmployeeID(intEmployeeID);
+      setObjSelectedAllocationEntityOption(
+        dicEmployee.intAllocationEntityID && dicEmployee.strAllocationEntityLabel
+          ? {
+              intID: dicEmployee.intAllocationEntityID,
+              strCode: dicEmployee.strAllocationEntityCode ?? undefined,
+              strLabel: dicEmployee.strAllocationEntityLabel,
+            }
+          : null
+      );
       setDicForm(toFormValues(dicEmployee));
       setBlnDialogOpen(true);
     } catch (objError) {
@@ -301,26 +322,19 @@ export default function EmployeeMasterPanel() {
   }
 
   function renderOptionField(strLabel: string, strField: keyof EmployeeFormValues, lstOptions: Array<{ intID: number; strLabel: string; strCode?: string }>, blnDisabled = false) {
+    const strControlId = `employee.master.dialog.${String(strField).replace(/^int/, "").replace(/^str/, "").replace(/^dt/, "").replace(/^bln/, "").replace(/[A-Z]/g, (strChar) => `-${strChar.toLowerCase()}`).replace(/^-/, "")}.select`;
     return (
-        <TextField
-        controlId={`employee.master.dialog.${String(strField).replace(/^int/, "").replace(/^str/, "").replace(/^dt/, "").replace(/^bln/, "").replace(/[A-Z]/g, (strChar) => `-${strChar.toLowerCase()}`).replace(/^-/, "")}.select`}
-        inputProps={{ "controlId": `employee.master.dialog.${String(strField).replace(/^int/, "").replace(/^str/, "").replace(/^dt/, "").replace(/^bln/, "").replace(/[A-Z]/g, (strChar) => `-${strChar.toLowerCase()}`).replace(/^-/, "")}.select` }}
-        select
+      <CommonSearchableSelect
+        controlId={strControlId}
         label={strLabel}
-        value={dicForm[strField]}
+        value={dicForm[strField] as number | ""}
+        options={lstOptions}
         disabled={blnDisabled || strMode === "view"}
-        onChange={(objEvent) => updateField(strField, (objEvent.target.value ? Number(objEvent.target.value) : "") as EmployeeFormValues[typeof strField])}
+        onChange={(intValue) => updateField(strField, intValue as EmployeeFormValues[typeof strField])}
         error={Boolean(dicErrors[strField])}
         helperText={dicErrors[strField]}
         fullWidth
-      >
-        <MenuItem value="">Select</MenuItem>
-        {lstOptions.map((dicOption) => (
-          <MenuItem key={dicOption.intID} value={dicOption.intID}>
-            {dicOption.strCode ? `${dicOption.strCode} - ${dicOption.strLabel}` : dicOption.strLabel}
-          </MenuItem>
-        ))}
-      </TextField>
+      />
     );
   }
 
@@ -330,7 +344,7 @@ export default function EmployeeMasterPanel() {
         <Button controlId="employee.master.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicConstant.employeeMaster.backButton}</Button>
       </Box>
 
-      <Box className={styles.controlsCard}>
+      <Box className="app-master-search-panel">
         {strFeedback ? <Alert severity="success" onClose={() => setStrFeedback("")} sx={{ mt: 1.5 }}>{strFeedback}</Alert> : null}
         {strError && !blnDialogOpen ? <Alert severity="error" onClose={() => setStrError("")} sx={{ mt: 1.5 }}>{strError}</Alert> : null}
 
@@ -343,12 +357,12 @@ export default function EmployeeMasterPanel() {
               <MenuItem value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
             </TextField>
           <Box className={styles.searchActions}>
-            <Button controlId="employee.master.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>
+            <Button controlId="employee.master.search.button" className="app-btn app-btn-primary" startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>
               {dicConstant.common.search}
             </Button>
           </Box>
           <Box className={styles.searchActions}>
-            <Button controlId="employee.master.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>
+            <Button controlId="employee.master.clear.button" className="app-btn app-btn-outline" startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setIntPage(1); }} disabled={blnLoading || blnSubmitting}>
               {dicConstant.common.clear}
             </Button>
           </Box>
@@ -356,7 +370,7 @@ export default function EmployeeMasterPanel() {
 
         {blnSubmitting ? (
           <Box className={styles.bulkBar}>
-            <CircularProgress size={20} />
+            <DottedLoader intSize={20} />
             <Typography className={styles.bulkCount}>Applying changes...</Typography>
           </Box>
         ) : lstSelectedIDs.length > 0 ? (
@@ -369,10 +383,10 @@ export default function EmployeeMasterPanel() {
         ) : null}
       </Box>
 
-      <Box className={styles.tableCard}>
+      <Box className="app-master-table-panel">
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "stretch", md: "center" }, gap: 1.25, flexWrap: "wrap", pb: 1 }}>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            <Button controlId="employee.master.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || !objFormOptions}>
+            <Button controlId="employee.master.add.button" className="app-btn app-btn-primary" startIcon={<AddRoundedIcon />} onClick={() => openDialog("add")} disabled={blnLoading || blnSubmitting || !objFormOptions}>
               {dicConstant.employeeMaster.addButton}
             </Button>
           </Box>
@@ -407,7 +421,7 @@ export default function EmployeeMasterPanel() {
 
         {blnLoading ? (
           <Box className={styles.emptyState}>
-            <CircularProgress size={24} />
+            <DottedLoader intSize={24} />
             <Typography sx={{ mt: 1 }}>{dicConstant.employeeMaster.loading}</Typography>
           </Box>
         ) : (
@@ -449,7 +463,7 @@ export default function EmployeeMasterPanel() {
                       <td>{dicEmployee.strDepartmentName || "-"}</td>
                       <td>{dicEmployee.strDesignationName || "-"}</td>
                       <td>{formatDisplayDate(dicEmployee.dtDateOfJoining)}</td>
-                      <td><span className={`${styles.statusPill} ${dicEmployee.strEmploymentStatus === "Active" ? styles.statusActive : styles.statusInactive}`}>{dicEmployee.strEmploymentStatus === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span></td>
+                      <td><span className={`app-master-status-pill ${dicEmployee.strEmploymentStatus === "Active" ? "app-master-status-active" : "app-master-status-inactive"}`}>{dicEmployee.strEmploymentStatus === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}</span></td>
                     </tr>
                   );
                 })}
@@ -485,6 +499,7 @@ export default function EmployeeMasterPanel() {
             {renderOptionField(`${dicConstant.employeeMaster.fields.location} *`, "intLocationID", objFormOptions?.lstLocations ?? [])}
             {renderOptionField(dicConstant.employeeMaster.fields.payrollGroup, "intPayrollGroupID", objFormOptions?.lstPayrollGroups ?? [])}
             {renderOptionField(dicConstant.employeeMaster.fields.manager, "intManagerEmployeeID", lstManagerOptions)}
+            {renderOptionField(dicConstant.employeeMaster.fields.allocationEntity ?? "Allocation Entity", "intAllocationEntityID", lstAllocationEntityOptions)}
           </Box>
 
           <Typography className={styles.sectionBar}>Contact & Preferences</Typography>
@@ -517,7 +532,7 @@ export default function EmployeeMasterPanel() {
             <>
               <Button controlId="employee.master.dialog.reset.button" className={styles.textAction} onClick={() => setDicForm(dicEmptyForm)}>{dicConstant.common.reset}</Button>
               <Button controlId="employee.master.dialog.cancel.button" className={styles.textAction} onClick={closeDialog}>{dicConstant.common.cancel}</Button>
-              <Button controlId="employee.master.dialog.save.button" className={styles.primaryButton} onClick={saveEmployee} disabled={blnSubmitting}>
+              <Button controlId="employee.master.dialog.save.button" className="app-btn app-btn-primary" onClick={saveEmployee} disabled={blnSubmitting}>
                 {blnSubmitting ? "Saving..." : dicConstant.common.save}
               </Button>
             </>

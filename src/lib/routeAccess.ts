@@ -1,7 +1,7 @@
 "use client";
 
 const lstPublicRoutes = ["/", "/home", "/login", "/register", "/forgot-password", "/session-expired"];
-const lstPublicPrefixes = ["/t", "/sso/callback", "/HRMS/Administrator"];
+const lstPublicPrefixes = ["/sso/callback", "/HRMS/Administrator"];
 const strAuthenticatedHistoryStorageKey = "hrms_authenticated_route_history_v1";
 
 function normalizePathname(strPathname?: string | null) {
@@ -24,16 +24,10 @@ export function isPublicAppRoute(strPathname?: string | null) {
     return true;
   }
 
-  return lstPublicPrefixes.some((strPrefix) => {
-    if (strPrefix === "/t") {
-      return strNormalizedPathname === "/t" || strNormalizedPathname.startsWith("/t/");
-    }
-
-    return (
-      strNormalizedPathname === strPrefix ||
-      strNormalizedPathname.startsWith(`${strPrefix}/`)
-    );
-  });
+  return lstPublicPrefixes.some((strPrefix) => (
+    strNormalizedPathname === strPrefix ||
+    strNormalizedPathname.startsWith(`${strPrefix}/`)
+  ));
 }
 
 export function isAuthenticatedAppRoute(strPathname?: string | null) {
@@ -49,7 +43,7 @@ export function isAuthRedirectRoute(strPathname?: string | null) {
   const strNormalizedPathname = normalizePathname(strPathname);
   const blnTenantLoginRoute = strNormalizedPathname.startsWith("/login/");
 
-  return strNormalizedPathname === "/login" || blnTenantLoginRoute || strNormalizedPathname.startsWith("/t/");
+  return strNormalizedPathname === "/login" || blnTenantLoginRoute;
 }
 
 export function readAuthenticatedRouteHistory() {

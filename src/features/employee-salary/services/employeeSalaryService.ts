@@ -121,8 +121,25 @@ export const employeeSalaryService = {
 
   async getFormOptions(): Promise<EmployeeSalaryFormOptions> {
     const objResult = await masterApiService.getEmployeeSalaryFormOptions();
+    const dicOptions = objResult.Data;
+    // Older salary responses omit these collections; use the employee master lookups.
+    const dicEmployeeOptions =
+      !Array.isArray(dicOptions.lstDesignations) ||
+      !Array.isArray(dicOptions.lstDepartments) ||
+      !Array.isArray(dicOptions.lstGrades)
+        ? (await masterApiService.getEmployeeFormOptions()).Data
+        : null;
     return {
-      ...objResult.Data,
+      ...dicOptions,
+      lstDesignations: (dicOptions.lstDesignations ?? dicEmployeeOptions?.lstDesignations ?? []).map((dicOption) => ({
+        ...dicOption, intID: Number(dicOption.intID), strLabel: dicOption.strLabel,
+      })),
+      lstDepartments: (dicOptions.lstDepartments ?? dicEmployeeOptions?.lstDepartments ?? []).map((dicOption) => ({
+        ...dicOption, intID: Number(dicOption.intID), strLabel: dicOption.strLabel,
+      })),
+      lstGrades: (dicOptions.lstGrades ?? dicEmployeeOptions?.lstGrades ?? []).map((dicOption) => ({
+        ...dicOption, intID: Number(dicOption.intID), strLabel: dicOption.strLabel,
+      })),
       lstSalaryStructures: (objResult.Data.lstSalaryStructures ?? []).map((dicStructure) => ({
         ...dicStructure,
         strLabel: resolveLookupDisplayLabel({
@@ -152,6 +169,10 @@ export const employeeSalaryService = {
       dtEffectiveFrom: dicValues.dtEffectiveFrom,
       dtEffectiveTo: dicValues.dtEffectiveTo || null,
       strRevisionReason: dicValues.strRevisionReason.trim() || null,
+      intDesignationID: dicValues.intDesignationID || null,
+      intDepartmentID: dicValues.intDepartmentID || null,
+      intGradeID: dicValues.intGradeID || null,
+
       lstOverrides: dicValues.lstOverrides
         .filter((dicOverride) => dicOverride.blnAllowManualOverride)
         .map(mapOverridePayload)
@@ -179,6 +200,10 @@ export const employeeSalaryService = {
       dtEffectiveFrom: dicValues.dtEffectiveFrom,
       dtEffectiveTo: dicValues.dtEffectiveTo || null,
       strRevisionReason: dicValues.strRevisionReason.trim() || null,
+      intDesignationID: dicValues.intDesignationID || null,
+      intDepartmentID: dicValues.intDepartmentID || null,
+      intGradeID: dicValues.intGradeID || null,
+
       lstOverrides: dicValues.lstOverrides
         .filter((dicOverride) => dicOverride.blnAllowManualOverride)
         .map(mapOverridePayload)

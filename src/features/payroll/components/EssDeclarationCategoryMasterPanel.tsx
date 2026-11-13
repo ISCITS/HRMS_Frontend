@@ -5,17 +5,18 @@ import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import ListAltRoundedIcon from "@mui/icons-material/ListAltRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, Checkbox, Chip, CircularProgress, FormControl, FormControlLabel, FormHelperText, FormLabel, IconButton, MenuItem, Paper, Radio, RadioGroup, Snackbar, Stack, Switch, TextField, Tooltip, Typography } from "@mui/material";
+import { Alert, Box, Button, Checkbox, Chip, FormControl, FormControlLabel, FormHelperText, FormLabel, IconButton, MenuItem, Paper, Radio, RadioGroup, Snackbar, Stack, Switch, TextField, Tooltip, Typography } from "@mui/material";
 import { type InputHTMLAttributes, type ReactNode, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import BlockingLoader, { DottedLoader } from "@/components/shared/BlockingLoader";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { stripMasterTitle } from "@/features/labels/utils/stripMasterTitle";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
@@ -488,7 +489,7 @@ export default function EssDeclarationCategoryMasterPanel({
         maxLimitAppliedAt: formatMaxLimitAppliedAt(dicCategory.maxLimitAppliedAt, dicMaxLimitAppliedAtLabels),
         proofRequired: dicCategory.proofRequired ? dicCommonLabels.yes : dicCommonLabels.no,
         status: (
-          <span className={`${styles.statusPill} ${dicCategory.status === "Active" ? styles.statusActive : styles.statusInactive}`}>
+          <span className={`app-master-status-pill ${dicCategory.status === "Active" ? "app-master-status-active" : "app-master-status-inactive"}`}>
             {dicCategory.status === "Active" ? dicCommonLabels.statusActive : dicCommonLabels.statusInactive}
           </span>
         ),
@@ -788,30 +789,24 @@ export default function EssDeclarationCategoryMasterPanel({
                 disabled={blnDialogReadOnly}
                 size="small"
               />
-              <TextField
-                select
+              <CommonSearchableSelect
                 label={dicLabels.fieldDeclarationKind}
                 required
                 value={dicForm.declarationKind}
-                onChange={(objEvent) => {
+                options={
+                  dicForm.declarationKind && !lstDeclarationKindTypes.some((dicOption) => dicOption.strKindCode === dicForm.declarationKind)
+                    ? [...lstDeclarationKindTypes.map((dicOption) => ({ intID: dicOption.strKindCode, strLabel: dicOption.strKindName })), { intID: dicForm.declarationKind, strLabel: dicForm.declarationKind }]
+                    : lstDeclarationKindTypes.map((dicOption) => ({ intID: dicOption.strKindCode, strLabel: dicOption.strKindName }))
+                }
+                onChange={(strValue) => {
                   setDicErrors((dicPrevious) => ({ ...dicPrevious, declarationKind: undefined }));
-                  setDicForm((dicPrevious) => ({ ...dicPrevious, declarationKind: objEvent.target.value }));
+                  setDicForm((dicPrevious) => ({ ...dicPrevious, declarationKind: String(strValue) }));
                 }}
                 error={Boolean(dicErrors.declarationKind)}
                 helperText={dicErrors.declarationKind || strDeclarationKindTypeError}
                 fullWidth
                 disabled={blnDialogReadOnly || blnDeclarationKindTypeLoading}
-                size="small"
-              >
-                {lstDeclarationKindTypes.map((dicOption) => (
-                  <MenuItem key={dicOption.strKindCode} value={dicOption.strKindCode}>
-                    {dicOption.strKindName}
-                  </MenuItem>
-                ))}
-                {dicForm.declarationKind && !lstDeclarationKindTypes.some((dicOption) => dicOption.strKindCode === dicForm.declarationKind) ? (
-                  <MenuItem value={dicForm.declarationKind}>{dicForm.declarationKind}</MenuItem>
-                ) : null}
-              </TextField>
+              />
               <FormControl
                 required
                 error={Boolean(dicErrors.applicableRegime)}
@@ -969,7 +964,7 @@ export default function EssDeclarationCategoryMasterPanel({
       <Box className={styles.topBar}>
         <Button data-testid="ess-declaration-category.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>{dicLabels.backButton}</Button>
       </Box>
-      <Box className={styles.controlsCard}>
+      <Box className="app-master-search-panel">
         {strRightsError ? <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography> : null}
         {!blnRightsLoading && blnCanView && blnReadOnly ? <Typography sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>{t("read_only_mode", `You have view-only access for ${strEntityLabel}.`)}</Typography> : null}
         <Typography sx={{ display: "none" }}>{strLoadDiagnostics}</Typography>
@@ -984,21 +979,25 @@ export default function EssDeclarationCategoryMasterPanel({
         >
           <TextField size="small" inputProps={{ "data-testid": "ess-declaration-category.list.search-name.input" }} value={dicSearchDraft.name} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, name: objEvent.target.value }))} placeholder={dicLabels.searchNamePlaceholder} fullWidth />
           <TextField size="small" inputProps={{ "data-testid": "ess-declaration-category.list.search-section.input" }} value={dicSearchDraft.section} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, section: objEvent.target.value }))} placeholder={dicLabels.searchSectionPlaceholder} fullWidth />
-          <TextField size="small" inputProps={{ "data-testid": "ess-declaration-category.list.search-kind.select" }} select label={dicLabels.searchDeclarationKindPlaceholder} value={dicSearchDraft.declarationKind} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, declarationKind: objEvent.target.value }))} fullWidth>
-            <MenuItem value="All">{dicCommonLabels.all}</MenuItem>
-            {lstDeclarationKindTypes.map((dicKind) => <MenuItem key={dicKind.strKindCode} value={dicKind.strKindCode}>{dicKind.strKindName}</MenuItem>)}
-          </TextField>
+          <CommonSearchableSelect
+            controlId="ess-declaration-category.list.search-kind.select"
+            label={dicLabels.searchDeclarationKindPlaceholder}
+            value={dicSearchDraft.declarationKind}
+            options={[{ intID: "All", strLabel: dicCommonLabels.all }, ...lstDeclarationKindTypes.map((dicKind) => ({ intID: dicKind.strKindCode, strLabel: dicKind.strKindName }))]}
+            onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, declarationKind: strValue ? String(strValue) : "All" }))}
+            fullWidth
+          />
           <TextField size="small" inputProps={{ "data-testid": "ess-declaration-category.list.search-status.select" }} select label={dicLabels.searchStatusPlaceholder} value={dicSearchDraft.status} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, status: objEvent.target.value as SearchForm["status"] }))} fullWidth>
             <MenuItem data-testid="ess-declaration-category.list.search-status.all.option" value="All">{dicCommonLabels.all}</MenuItem>
             <MenuItem data-testid="ess-declaration-category.list.search-status.active.option" value="Active">{dicCommonLabels.statusActive}</MenuItem>
             <MenuItem data-testid="ess-declaration-category.list.search-status.inactive.option" value="Inactive">{dicCommonLabels.statusInactive}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions}><Button data-testid="ess-declaration-category.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
-          <Box className={styles.searchActions}><Button data-testid="ess-declaration-category.list.clear.button" className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
+          <Box className={styles.searchActions}><Button data-testid="ess-declaration-category.list.search.button" className="app-btn app-btn-primary" startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.search}</Button></Box>
+          <Box className={styles.searchActions}><Button data-testid="ess-declaration-category.list.clear.button" className="app-btn app-btn-outline" startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnSubmitting}>{dicCommonLabels.clear}</Button></Box>
         </Box>
         {blnSubmitting ? (
           <Box className={styles.bulkBar}>
-            <CircularProgress size={20} />
+            <DottedLoader intSize={20} />
             <Typography className={styles.bulkCount}>{dicLabels.bulkApplyingChanges}</Typography>
           </Box>
         ) : lstSelectedIds.length > 0 && !blnReadOnly && blnCanChangeStatus ? (
@@ -1009,7 +1008,7 @@ export default function EssDeclarationCategoryMasterPanel({
           </Box>
         ) : null}
       </Box>
-      <Box className={styles.tableCard}>
+      <Box className="app-master-table-panel">
         {!blnCanView ? (
           <Box className={styles.emptyState}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", `${strEntityLabel} access is not available for your user group.`)}</Typography>
@@ -1029,7 +1028,7 @@ export default function EssDeclarationCategoryMasterPanel({
             toolbarLeft={blnCanAdd ? (
               <Button
                 data-testid="ess-declaration-category.list.add.button"
-                className={styles.primaryButton}
+                className="app-btn app-btn-primary"
                 startIcon={<AddRoundedIcon />}
                 onClick={() => openDialog("add")}
                 disabled={blnLoading || blnSubmitting || blnRightsLoading}
@@ -1039,7 +1038,7 @@ export default function EssDeclarationCategoryMasterPanel({
             ) : null}
             withPaper={false}
             getRowSx={(objRow) => objRow.blnSelected ? { backgroundColor: "rgba(219, 234, 254, 0.45)" } : {}}
-            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+            className="app-master-common-table-reset"
           />
         )}
       </Box>
@@ -1080,7 +1079,7 @@ export default function EssDeclarationCategoryMasterPanel({
         nodeTitleAction={strMode === "add" && blnCanAdd ? (
           <Button
             data-testid="ess-declaration-category.dialog.save-and-manage-investment-options.button"
-            className={styles.secondaryButton}
+            className="app-btn app-btn-outline"
             startIcon={<ListAltRoundedIcon />}
             onClick={() => saveCategory(true)}
             disabled={blnSubmitting}
@@ -1090,7 +1089,7 @@ export default function EssDeclarationCategoryMasterPanel({
         ) : blnCanEdit && objDialogCategory?.section ? (
           <Button
             data-testid="ess-declaration-category.dialog.manage-tax-component.button"
-            className={styles.secondaryButton}
+            className="app-btn app-btn-outline"
             startIcon={<ListAltRoundedIcon />}
             onClick={() => setObjInvestmentOptionsTarget({ id: Number(objDialogCategory.id), code: objDialogCategory.section, name: objDialogCategory.name })}
             disabled={blnSubmitting}
@@ -1110,7 +1109,7 @@ export default function EssDeclarationCategoryMasterPanel({
       />
       <BlockingLoader blnOpen={blnSubmitting || ((blnLoading || blnRightsLoading) && !blnDialogOpen)} strLabel={blnLoading || blnRightsLoading ? dicCommonLabels.loading : dicCommonLabels.processing} intZIndex={1400} />
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
-        <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>
+        <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" className="app-master-toast-alert">
           {objToast.strMessage}
         </Alert>
       </Snackbar>

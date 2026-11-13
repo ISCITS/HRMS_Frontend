@@ -3,16 +3,18 @@
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField, Typography } from "@mui/material";
-import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
+import { Box, Breadcrumbs, Button, Checkbox, Stack, Typography } from "@mui/material";
+import { useEffect, useMemo, useState, type InputHTMLAttributes, type ReactNode } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import PageNotices from "@/Common/components/PageNotices";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
-import ReportMultiSelectField, { getUniqueOptions } from "@/features/reports/components/ReportMultiSelectField";
+import { ReportMoreFilters, SingleSelectFilter } from "@/features/reports/components/ReportFilterUi";
+import { getUniqueOptions } from "@/features/reports/components/ReportMultiSelectField";
 import { payrollReportService } from "@/features/reports/services/payrollReportService";
 import type { VariablePayRegisterRow } from "@/features/payroll/types";
 
@@ -22,6 +24,7 @@ type SearchForm = {
   strStatus: string;
   strPayrollMonth: string;
   strVariablePayType: string;
+  strAllocationEntity: string;
 };
 
 const dicEmptySearch: SearchForm = {
@@ -30,8 +33,11 @@ const dicEmptySearch: SearchForm = {
   strStatus: "All",
   strPayrollMonth: "",
   strVariablePayType: "",
+  strAllocationEntity: "",
 };
 const lstRowsPerPageOptions = [10, 20, 50];
+type MoreFiltersForm = Pick<SearchForm, "strVariablePayType" | "strAllocationEntity">;
+const dicEmptyMoreFilters: MoreFiltersForm = { strVariablePayType: "", strAllocationEntity: "" };
 
 type VariablePayRegisterLabels = {
   strEmployeeCode: string;
@@ -53,6 +59,10 @@ type VariablePayRegisterLabels = {
 };
 
 type LabelFn = (strKey: string, strFallback?: string) => string;
+
+/** A register grid row: fixed columns plus one dynamic `entity_<n>` column per allocation entity. */
+type RegisterTableRow = Record<string, ReactNode> & { intID: number };
+const INT_ENTITY_COLUMN_WIDTH = 140;
 
 function buildVariablePayRegisterLabels(t: LabelFn): VariablePayRegisterLabels {
   return {
@@ -95,7 +105,29 @@ function toCsvValue(objValue: unknown) {
   return `"${String(objValue ?? "").replace(/"/g, '""')}"`;
 }
 
+/** Allocation entities (e.g. RPL / AZAD) present in the rows, in entity display order - one
+ * register column each, showing how much of the paid incentive belongs to that entity. */
+function getEntityColumnNames(lstRows: VariablePayRegisterRow[]): string[] {
+  const dicOrderByName = new Map<string, number>();
+  lstRows.forEach((dicRow) => (dicRow.lstEntityBreakup ?? []).forEach((dicEntity) => {
+    const intOrder = dicOrderByName.get(dicEntity.strEntityName);
+    if (intOrder === undefined || dicEntity.intDisplayOrder < intOrder) {
+      dicOrderByName.set(dicEntity.strEntityName, dicEntity.intDisplayOrder);
+    }
+  }));
+  return [...dicOrderByName.entries()]
+    .sort(([strNameA, intOrderA], [strNameB, intOrderB]) => intOrderA - intOrderB || strNameA.localeCompare(strNameB))
+    .map(([strName]) => strName);
+}
+
+function getEntityAmount(dicRow: VariablePayRegisterRow, strEntityName: string): number {
+  return (dicRow.lstEntityBreakup ?? [])
+    .filter((dicEntity) => dicEntity.strEntityName === strEntityName)
+    .reduce((decTotal, dicEntity) => decTotal + (dicEntity.decAmount || 0), 0);
+}
+
 function downloadCsv(strFileName: string, lstRows: VariablePayRegisterRow[], dicLabels: VariablePayRegisterLabels) {
+  const lstEntityNames = getEntityColumnNames(lstRows);
   const lstHeaders = [
     dicLabels.strEmployeeCode,
     dicLabels.strEmployeeName,
@@ -105,6 +137,7 @@ function downloadCsv(strFileName: string, lstRows: VariablePayRegisterRow[], dic
     dicLabels.strInputAmount,
     dicLabels.strApprovedAmount,
     dicLabels.strFinalAmount,
+    ...lstEntityNames,
     dicLabels.strTransactionStatus,
     dicLabels.strTaxRegime,
     dicLabels.strGrossEarnings,
@@ -124,6 +157,7 @@ function downloadCsv(strFileName: string, lstRows: VariablePayRegisterRow[], dic
         dicRow.decInputAmount ?? 0,
         dicRow.decApprovedAmount ?? 0,
         dicRow.decFinalAmount ?? 0,
+        ...lstEntityNames.map((strEntityName) => getEntityAmount(dicRow, strEntityName)),
         dicRow.strTransactionStatus,
         dicRow.strRegimeUsed ?? "",
         dicRow.decGrossEarningsAmount ?? 0,
@@ -147,6 +181,7 @@ function exportPdf(strTitle: string, lstRows: VariablePayRegisterRow[], dicLabel
   if (!objWindow) {
     return;
   }
+  const lstEntityNames = getEntityColumnNames(lstRows);
   const strRows = lstRows.map((dicRow) => `
     <tr>
       <td>${dicRow.strEmployeeCode}</td>
@@ -157,6 +192,7 @@ function exportPdf(strTitle: string, lstRows: VariablePayRegisterRow[], dicLabel
       <td>${formatCurrency(dicRow.decInputAmount)}</td>
       <td>${formatCurrency(dicRow.decApprovedAmount)}</td>
       <td>${formatCurrency(dicRow.decFinalAmount)}</td>
+      ${lstEntityNames.map((strEntityName) => `<td>${formatCurrency(getEntityAmount(dicRow, strEntityName))}</td>`).join("")}
       <td>${dicRow.strTransactionStatus}</td>
       <td>${dicRow.strRegimeUsed ?? "-"}</td>
       <td>${formatCurrency(dicRow.decGrossEarningsAmount)}</td>
@@ -190,6 +226,7 @@ function exportPdf(strTitle: string, lstRows: VariablePayRegisterRow[], dicLabel
               <th>${dicLabels.strInputAmount}</th>
               <th>${dicLabels.strApprovedAmount}</th>
               <th>${dicLabels.strFinalAmount}</th>
+              ${lstEntityNames.map((strEntityName) => `<th>${strEntityName}</th>`).join("")}
               <th>${dicLabels.strTransactionStatus}</th>
               <th>${dicLabels.strTaxRegime}</th>
               <th>${dicLabels.strGrossEarnings}</th>
@@ -220,19 +257,18 @@ export default function VariablePayRegisterReportPage() {
   ]);
   const [lstRows, setLstRows] = useState<VariablePayRegisterRow[]>([]);
   const [blnLoading, setBlnLoading] = useState(false);
-  const [blnHasLoadedRows, setBlnHasLoadedRows] = useState(false);
-  const [blnFilterDialogOpen, setBlnFilterDialogOpen] = useState(false);
+  const [dicMoreFiltersDraft, setDicMoreFiltersDraft] = useState<MoreFiltersForm>(dicEmptyMoreFilters);
   const [strError, setStrError] = useState("");
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [setSelectedRowIDs, setSetSelectedRowIDs] = useState<Set<number>>(new Set());
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
+  const blnPageLoading = blnRightsLoading || blnLoading;
 
   async function loadRows(objFilters: SearchForm) {
     setBlnLoading(true);
     setStrError("");
     try {
       setLstRows(await payrollReportService.getVariablePayRegisterRows(objFilters));
-      setBlnHasLoadedRows(true);
       setSetSelectedRowIDs(new Set());
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to load Variable Pay register.");
@@ -251,9 +287,15 @@ export default function VariablePayRegisterReportPage() {
     lstRuns: getUniqueOptions(lstRows.flatMap((dicRow) => [dicRow.strRunCode, dicRow.strRunName])),
     lstMonths: getUniqueOptions(lstRows.map((dicRow) => dicRow.dtPayrollMonth?.slice(0, 7))),
     lstVariablePayTypes: getUniqueOptions(lstRows.map((dicRow) => dicRow.strVariablePayTypeName)),
+    lstAllocationEntities: getUniqueOptions(lstRows.map((dicRow) => dicRow.strAllocationEntityName)),
     lstStatuses: getUniqueOptions(lstRows.map((dicRow) => dicRow.strPayrollRunStatus)),
   }), [lstRows]);
 
+  const lstEntityNames = useMemo(() => getEntityColumnNames(lstFilteredRows), [lstFilteredRows]);
+  const lstEntityTotals = useMemo(
+    () => lstEntityNames.map((strEntityName) => lstFilteredRows.reduce((decTotal, dicRow) => decTotal + getEntityAmount(dicRow, strEntityName), 0)),
+    [lstEntityNames, lstFilteredRows],
+  );
   const dicTotals = useMemo(() => lstFilteredRows.reduce(
     (dicAccumulator, dicRow) => ({
       decInput: dicAccumulator.decInput + (dicRow.decInputAmount || 0),
@@ -299,13 +341,17 @@ export default function VariablePayRegisterReportPage() {
 
   function applyFilters(dicFilters: SearchForm) {
     setDicSearchDraft(dicFilters);
-    setBlnFilterDialogOpen(false);
     loadRows(dicFilters).catch(() => undefined);
   }
 
   function clearFilters() {
     setDicSearchDraft(dicEmptySearch);
+    setDicMoreFiltersDraft(dicEmptyMoreFilters);
     loadRows(dicEmptySearch).catch(() => undefined);
+  }
+
+  function applyMoreFilters() {
+    applyFilters({ ...dicSearchDraft, ...dicMoreFiltersDraft });
   }
 
   useEffect(() => {
@@ -318,7 +364,11 @@ export default function VariablePayRegisterReportPage() {
 
   const lstTableRows = useMemo(
     () =>
-      lstFilteredRows.map((dicRow) => ({
+      lstFilteredRows.map((dicRow): RegisterTableRow => ({
+        ...Object.fromEntries(lstEntityNames.flatMap((strEntityName, intIndex) => {
+          const decAmount = getEntityAmount(dicRow, strEntityName);
+          return [[`entity_${intIndex}`, formatCurrency(decAmount)], [`entity_${intIndex}_sort`, decAmount]];
+        })),
         intID: dicRow.intID,
         select: (
           <Checkbox
@@ -350,10 +400,24 @@ export default function VariablePayRegisterReportPage() {
         decNetPayAmountSortValue: Number(dicRow.decNetPayAmount ?? 0),
         strPayrollRunStatus: dicRow.strPayrollRunStatus,
       })),
-    [lstFilteredRows, setSelectedRowIDs]
+    [lstFilteredRows, setSelectedRowIDs, lstEntityNames]
   );
 
-  const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
+  const lstEntityColumns: CommonTableColumn<RegisterTableRow>[] = lstEntityNames.map((strEntityName, intIndex) => ({
+    field: `entity_${intIndex}`,
+    headerName: strEntityName,
+    width: INT_ENTITY_COLUMN_WIDTH,
+    align: "right",
+    sortAccessor: (dicRow) => Number(dicRow[`entity_${intIndex}_sort`] ?? 0),
+  }));
+  // Footer cells line up with the table columns, entity columns included.
+  const lstFooterColumnWidths = [
+    56, 200, 150, 160, 160, 140, 150, 160, 150,
+    ...lstEntityNames.map(() => INT_ENTITY_COLUMN_WIDTH),
+    150, 130, 150, 140, 140, 130,
+  ];
+
+  const lstTableColumns = useMemo<CommonTableColumn<RegisterTableRow>[]>(
     () => [
       {
         field: "select",
@@ -372,54 +436,69 @@ export default function VariablePayRegisterReportPage() {
         exportable: false,
         width: 56,
       },
-      { field: "strEmployeeCode", headerName: dicLabels.strEmployeeCode, width: 150 },
       { field: "strEmployeeName", headerName: dicLabels.strEmployeeName, width: 200 },
+      { field: "strEmployeeCode", headerName: dicLabels.strEmployeeCode, width: 150 },
       { field: "strVariablePayTypeName", headerName: dicLabels.strVariablePayType, width: 160 },
       { field: "strComponentName", headerName: dicLabels.strComponent, width: 160 },
-      { field: "strPayrollPeriod", headerName: dicLabels.strPayrollPeriod, width: 140, sortAccessor: (dicRow) => dicRow.strPayrollPeriodSortValue },
-      { field: "decInputAmount", headerName: dicLabels.strInputAmount, width: 150, align: "right", sortAccessor: (dicRow) => dicRow.decInputAmountSortValue },
-      { field: "decApprovedAmount", headerName: dicLabels.strApprovedAmount, width: 160, align: "right", sortAccessor: (dicRow) => dicRow.decApprovedAmountSortValue },
-      { field: "decFinalAmount", headerName: dicLabels.strFinalAmount, width: 150, align: "right", sortAccessor: (dicRow) => dicRow.decFinalAmountSortValue },
+      { field: "strPayrollPeriod", headerName: dicLabels.strPayrollPeriod, width: 140, sortAccessor: (dicRow) => Number(dicRow.strPayrollPeriodSortValue) },
+      { field: "decInputAmount", headerName: dicLabels.strInputAmount, width: 150, align: "right", sortAccessor: (dicRow) => Number(dicRow.decInputAmountSortValue) },
+      { field: "decApprovedAmount", headerName: dicLabels.strApprovedAmount, width: 160, align: "right", sortAccessor: (dicRow) => Number(dicRow.decApprovedAmountSortValue) },
+      { field: "decFinalAmount", headerName: dicLabels.strFinalAmount, width: 150, align: "right", sortAccessor: (dicRow) => Number(dicRow.decFinalAmountSortValue) },
+      ...lstEntityColumns,
       { field: "strTransactionStatus", headerName: dicLabels.strTransactionStatus, width: 150 },
       { field: "strRegimeUsed", headerName: dicLabels.strTaxRegime, width: 130 },
-      { field: "decGrossEarningsAmount", headerName: dicLabels.strGrossEarnings, width: 150, align: "right", sortAccessor: (dicRow) => dicRow.decGrossEarningsAmountSortValue },
-      { field: "decTaxTotal", headerName: dicLabels.strTaxDeducted, width: 140, align: "right", sortAccessor: (dicRow) => dicRow.decTaxTotalSortValue },
-      { field: "decNetPayAmount", headerName: dicLabels.strNetPay, width: 140, align: "right", sortAccessor: (dicRow) => dicRow.decNetPayAmountSortValue },
+      { field: "decGrossEarningsAmount", headerName: dicLabels.strGrossEarnings, width: 150, align: "right", sortAccessor: (dicRow) => Number(dicRow.decGrossEarningsAmountSortValue) },
+      { field: "decTaxTotal", headerName: dicLabels.strTaxDeducted, width: 140, align: "right", sortAccessor: (dicRow) => Number(dicRow.decTaxTotalSortValue) },
+      { field: "decNetPayAmount", headerName: dicLabels.strNetPay, width: 140, align: "right", sortAccessor: (dicRow) => Number(dicRow.decNetPayAmountSortValue) },
       { field: "strPayrollRunStatus", headerName: dicLabels.strRunStatus, width: 130 },
     ],
-    [blnAllFilteredSelected, blnSomeFilteredSelected, dicLabels, lstFilteredRows.length]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [blnAllFilteredSelected, blnSomeFilteredSelected, dicLabels, lstFilteredRows.length, lstEntityNames]
   );
-
-  if (blnRightsLoading || (blnLoading && !blnHasLoadedRows)) {
-    return <BlockingLoader blnOpen strLabel="Loading Variable Pay register..." />;
-  }
 
   return (
     <Box className={styles.page}>
-      <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>Variable Pay Register</Typography>
-      <Box className={styles.controlsCard}>
-        <Box className={styles.controlsHeader} sx={{ mb: 1.25 }}>
-          <Box />
-        </Box>
-        <Box className={styles.reportSearchPanelRow}>
-          <Box className={styles.reportSearchField}>
-            <ReportMultiSelectField value={dicSearchDraft.strSearchEmployee} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: strValue }))} options={dicFilterOptions.lstEmployees} placeholder="Search by employee code or name" controlId="reports.variable-pay-register.employee-search.input" />
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ minWidth: 0 }}>
+        <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ ml: "3px" }}>
+          <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>Reports</Typography>
+          <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">Variable Pay Register</Typography>
+        </Breadcrumbs>
+        <PageNotices
+          strControlId="reports.variable-pay-register.notices"
+          lstNotices={[
+            !blnRightsLoading && !blnCanView && !strError ? { strKey: "rights", strSeverity: "warning", objMessage: "Variable Pay register view access is not available for your user group." } : null,
+            { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+          ]}
+        />
+      </Stack>
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        <Box className={styles.reportSearchPanelRow} sx={{ py: "0 !important" }}>
+          <Box className={styles.reportSearchField} sx={{ flex: "2 1 340px", minWidth: { xs: "100%", md: 320 } }}>
+            <SingleSelectFilter strLabel="Employee" strValue={dicSearchDraft.strSearchEmployee} fnOnChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: strValue }))} lstOptions={dicFilterOptions.lstEmployees} strPlaceholder="Search by employee code or name" strControlId="reports.variable-pay-register.employee-search.input" blnDisabled={blnPageLoading} />
           </Box>
           <Box className={styles.reportSearchField}>
-            <ReportMultiSelectField value={dicSearchDraft.strSearchRun} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: strValue }))} options={dicFilterOptions.lstRuns} placeholder="Payroll run" controlId="reports.variable-pay-register.run-search.input" />
+            <SingleSelectFilter strLabel="Payroll Run" strValue={dicSearchDraft.strSearchRun} fnOnChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: strValue }))} lstOptions={dicFilterOptions.lstRuns} strPlaceholder="Payroll run" strControlId="reports.variable-pay-register.run-search.input" blnDisabled={blnPageLoading} />
           </Box>
           <Box className={styles.reportSearchField}>
-            <ReportMultiSelectField value={dicSearchDraft.strPayrollMonth} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: strValue }))} options={dicFilterOptions.lstMonths} label="Payroll Month" placeholder="Payroll Month" controlId="reports.variable-pay-register.payroll-month.input" />
+            <SingleSelectFilter strLabel="Payroll Month" strValue={dicSearchDraft.strPayrollMonth} fnOnChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: strValue }))} lstOptions={dicFilterOptions.lstMonths} strPlaceholder="Payroll Month" strControlId="reports.variable-pay-register.payroll-month.input" blnDisabled={blnPageLoading} />
           </Box>
-          <Box className={styles.reportSearchField}>
-            <ReportMultiSelectField value={dicSearchDraft.strVariablePayType} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strVariablePayType: strValue }))} options={dicFilterOptions.lstVariablePayTypes} label="Variable Pay Type" placeholder="Variable Pay Type" controlId="reports.variable-pay-register.variable-pay-type.input" />
+          <Box className={styles.reportSearchField} sx={{ flexBasis: 160, minWidth: 160 }}>
+            <SingleSelectFilter strLabel="Run Status" strValue={dicSearchDraft.strStatus === "All" ? "" : dicSearchDraft.strStatus} fnOnChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: strValue || "All" }))} lstOptions={dicFilterOptions.lstStatuses.length ? dicFilterOptions.lstStatuses : ["Processed", "Finalized"]} strPlaceholder="All Statuses" strControlId="reports.variable-pay-register.status.select" blnDisabled={blnPageLoading} />
           </Box>
-          <Box className={styles.reportSearchField}>
-            <ReportMultiSelectField label="Run Status" value={dicSearchDraft.strStatus === "All" ? "" : dicSearchDraft.strStatus} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: (strValue || "All") as SearchForm["strStatus"] }))} options={dicFilterOptions.lstStatuses.length ? dicFilterOptions.lstStatuses : ["Processed", "Finalized"]} placeholder="All statuses" controlId="reports.variable-pay-register.status.select" />
-          </Box>
-          <Box className={`${styles.searchActions} ${styles.reportBottomRightActions}`}>
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} data-controlid="reports.variable-pay-register.search.button">Search</Button>
-            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} data-controlid="reports.variable-pay-register.clear.button">Clear</Button>
+          <Box className={styles.searchActions}>
+            <ReportMoreFilters
+              strControlPrefix="reports.variable-pay-register"
+              intActiveCount={(dicSearchDraft.strVariablePayType ? 1 : 0) + (dicSearchDraft.strAllocationEntity ? 1 : 0)}
+              blnDisabled={blnPageLoading}
+              onOpen={() => setDicMoreFiltersDraft({ strVariablePayType: dicSearchDraft.strVariablePayType, strAllocationEntity: dicSearchDraft.strAllocationEntity })}
+              onApply={applyMoreFilters}
+              onClearAll={() => setDicMoreFiltersDraft(dicEmptyMoreFilters)}
+            >
+              <SingleSelectFilter strLabel="Variable Pay Type" strValue={dicMoreFiltersDraft.strVariablePayType} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strVariablePayType: strValue }))} lstOptions={dicFilterOptions.lstVariablePayTypes} strPlaceholder="All" strControlId="reports.variable-pay-register.variable-pay-type.input" blnDisabled={blnPageLoading} />
+              <SingleSelectFilter strLabel="Allocation Entity" strValue={dicMoreFiltersDraft.strAllocationEntity} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strAllocationEntity: strValue }))} lstOptions={dicFilterOptions.lstAllocationEntities} strPlaceholder="All" strControlId="reports.variable-pay-register.allocation-entity.input" blnDisabled={blnPageLoading} />
+            </ReportMoreFilters>
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} disabled={blnPageLoading} data-controlid="reports.variable-pay-register.search.button">Search</Button>
+            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} disabled={blnPageLoading} data-controlid="reports.variable-pay-register.clear.button">Clear</Button>
           </Box>
         </Box>
       </Box>
@@ -439,13 +518,11 @@ export default function VariablePayRegisterReportPage() {
       >
         <InfoOutlinedIcon sx={{ color: "#2b6cb0", fontSize: 20 }} />
         <Typography sx={{ color: "inherit", lineHeight: 1.5 }}>
-          Employee-wise Variable Pay transactions and their processed payroll result - variable pay type, component, input/approved/final amount, tax, and net pay, for every Separate Payroll (Variable Pay) run.
+          Employee-wise Variable Pay transactions and their processed payroll result - variable pay type, component, input/approved/final amount, tax, and net pay, for every Separate Payroll (Variable Pay) run. Allocation-based amounts are also split by allocation entity (one column per entity, totals at the bottom = cost per entity).
         </Typography>
       </Box>
 
-      <Box className={styles.tableCard}>
-        {!blnCanView && !strError ? <Alert severity="warning" sx={{ mb: 1.5 }}>Variable Pay register view access is not available for your user group.</Alert> : null}
-        {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
+      <Box className={styles.tableCard} sx={{ p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <CommonTable
           columns={lstTableColumns}
           rows={lstTableRows}
@@ -456,6 +533,11 @@ export default function VariablePayRegisterReportPage() {
           showPaginationSummary
           withPaper={false}
           testIdPrefix="reports.variable-pay-register"
+          loading={blnPageLoading}
+          loadingHeaderSkeleton
+          skeletonRowCount={10}
+          hideRowClickHint
+          onRowClick={() => undefined}
           toolbarLeft={(
             <Box className={styles.listUtilityActions}>
               {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("variable-pay-register.csv", lstExportRows, dicLabels)} data-controlid="reports.variable-pay-register.export-excel.button">Export Excel</Button> : null}
@@ -465,11 +547,14 @@ export default function VariablePayRegisterReportPage() {
           )}
           footerContent={lstFilteredRows.length > 0 ? (
             <Box sx={{ px: 1.5, py: 1.25, borderTop: "1px solid #e2e8f0" }}>
-              <Box sx={{ minWidth: 1976, display: "grid", gridTemplateColumns: "56px 150px 200px 160px 160px 140px 150px 160px 150px 150px 130px 150px 140px 140px 130px", alignItems: "center" }}>
-                <Typography sx={{ fontWeight: 700, gridColumn: "1 / span 5" }}>{dicLabels.strTotal}</Typography>
+              <Box sx={{ minWidth: lstFooterColumnWidths.reduce((intTotal, intWidth) => intTotal + intWidth, 0), display: "grid", gridTemplateColumns: lstFooterColumnWidths.map((intWidth) => `${intWidth}px`).join(" "), alignItems: "center" }}>
+                <Typography sx={{ fontWeight: 700, gridColumn: "1 / span 6" }}>{dicLabels.strTotal}</Typography>
                 <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicTotals.decInput)}</Typography>
                 <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicTotals.decApproved)}</Typography>
                 <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicTotals.decFinal)}</Typography>
+                {lstEntityTotals.map((decEntityTotal, intIndex) => (
+                  <Typography key={lstEntityNames[intIndex]} sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(decEntityTotal)}</Typography>
+                ))}
                 <Box />
                 <Box />
                 <Typography sx={{ fontWeight: 700, textAlign: "right" }}>{formatCurrency(dicTotals.decGross)}</Typography>
@@ -483,44 +568,6 @@ export default function VariablePayRegisterReportPage() {
           sx={{ p: 0, boxShadow: "none", background: "transparent" }}
         />
       </Box>
-
-      <Dialog open={blnFilterDialogOpen} maxWidth="sm" fullWidth>
-        <DialogTitle>Variable Pay Register</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2, pt: 1 }}>
-            <TextField
-              label="Payroll Month"
-              type="month"
-              value={dicSearchDraft.strPayrollMonth}
-              onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: objEvent.target.value }))}
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-            />
-            <TextField
-              label="Variable Pay Type"
-              value={dicSearchDraft.strVariablePayType}
-              onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strVariablePayType: objEvent.target.value }))}
-              fullWidth
-            />
-            <TextField
-              label="Run Status"
-              select
-              value={dicSearchDraft.strStatus}
-              onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))}
-              fullWidth
-            >
-              <MenuItem value="All">All statuses</MenuItem>
-              <MenuItem value="Processed">Processed</MenuItem>
-              <MenuItem value="Finalized">Finalized</MenuItem>
-            </TextField>
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => setDicSearchDraft(dicEmptySearch)}>Reset</Button>
-          {blnHasLoadedRows ? <Button className={styles.secondaryButton} onClick={() => setBlnFilterDialogOpen(false)}>Close</Button> : null}
-          <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} disabled={blnLoading}>Show Report</Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 }
