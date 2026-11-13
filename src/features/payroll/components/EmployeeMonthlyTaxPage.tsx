@@ -247,15 +247,17 @@ export default function EmployeeMonthlyTaxPage({
 
   return (
     <Box className={styles.page}>
-      <MasterBreadcrumbs strSection={t("breadcrumb_section", "Payroll")} strTitle={t("breadcrumb_title", "Employee Monthly Tax")} />
+      <MasterBreadcrumbs
+        strSection={t("breadcrumb_section", "Payroll")}
+        strTitle={t("breadcrumb_title", "Employee Monthly Tax")}
+        lstNotices={[{ strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") }]}
+      />
 
       <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {blnCanImport ? (
           <MonthlyTaxImportPanel onImported={loadMatrix} objToolbarLeft={objFilters} />
         ) : objFilters}
       </Box>
-
-      {strError && <Alert severity="error">{strError}</Alert>}
 
       {blnLoading && (
         <Box className={styles.tableCard} sx={{ p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>

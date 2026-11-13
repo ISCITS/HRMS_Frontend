@@ -9,6 +9,7 @@ import {
   TableContainer, TableHead, TableRow, Tooltip, Typography,
 } from "@mui/material";
 
+import PageNotices from "@/Common/components/PageNotices";
 import payrollStyles from "@/features/payroll/components/PayrollScreen.module.css";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import {
@@ -119,11 +120,10 @@ export default function MonthlyTaxImportPanel({ onImported, objToolbarLeft }: { 
           </Typography>
         ) : null}
 
-      {strCommitSummary ? (
-        <Alert componentsProps={{ closeButton: { controlId: "employee-monthly-tax.import.success.close.button" } }} severity="success" sx={{ mt: 2 }} onClose={() => setStrCommitSummary(null)}>
-          {strCommitSummary}
-        </Alert>
-      ) : null}
+      <PageNotices
+        strControlId="employee-monthly-tax.import.notices"
+        lstNotices={[{ strKey: "import-success", strSeverity: "success", objMessage: strCommitSummary, fnDismiss: () => setStrCommitSummary(null) }]}
+      />
 
       {objPreview ? (
         <Paper variant="outlined" sx={{ p: 2, mt: 2 }}>

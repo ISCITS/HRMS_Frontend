@@ -7,12 +7,13 @@ import FilterAltOutlinedIcon from "@mui/icons-material/FilterAltOutlined";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import ViewColumnRoundedIcon from "@mui/icons-material/ViewColumnRounded";
-import { Alert, Autocomplete, Box, Breadcrumbs, Button, Checkbox, IconButton, Link, Menu, MenuItem, Popover, Skeleton, TextField, Typography } from "@mui/material";
+import { Autocomplete, Box, Breadcrumbs, Button, Checkbox, IconButton, Link, Menu, MenuItem, Popover, Skeleton, Stack, TextField, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { MenuItem as AuthMenuItem } from "@/models/AuthModels";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import PageNotices from "@/Common/components/PageNotices";
 import LoanAdvanceStatusBadge from "@/features/payroll/components/LoanAdvanceStatusBadge";
 import styles from "@/components/master/MasterScreen.module.css";
 import { employeeService } from "@/features/employee/services/employeeService";
@@ -444,10 +445,22 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
 
   return (
     <Box className={styles.page}>
-      <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />}>
-        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{blnIsEssMode ? t("breadcrumb_ess", "ESS") : t("breadcrumb_loan_management", "Loan Management")}</Typography>
-        <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{blnIsEssMode ? t("ess_page_title", "My Loans & Advances") : t("page_title", "Loans & Advances")}</Typography>
-      </Breadcrumbs>
+      <Stack direction="row" alignItems="center" spacing={1}>
+        <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />}>
+          <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{blnIsEssMode ? t("breadcrumb_ess", "ESS") : t("breadcrumb_loan_management", "Loan Management")}</Typography>
+          <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{blnIsEssMode ? t("ess_page_title", "My Loans & Advances") : t("page_title", "Loans & Advances")}</Typography>
+        </Breadcrumbs>
+        <PageNotices
+          strControlId="loan-advance.list.notices"
+          lstNotices={[
+            { strKey: "rights", strSeverity: "warning", objMessage: strRightsError || strLabelError },
+            { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+            !blnCanView && !blnRightsLoading
+              ? { strKey: "no-access", strSeverity: "warning", objMessage: blnIsEssMode ? t("ess_no_access", "ESS loans and advances access is not available for your user group.") : t("no_access", "Loans and advances access is not available for your user group.") }
+              : null,
+          ]}
+        />
+      </Stack>
       <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none", overflowX: "auto" }}>
         {objFilters}
         <Popover
@@ -475,9 +488,6 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
           </Box>
         </Popover>
       </Box>
-      {strRightsError || strLabelError ? <Alert severity="warning">{strRightsError || strLabelError}</Alert> : null}
-      {strError ? <Alert severity="error">{strError}</Alert> : null}
-      {!blnCanView && !blnRightsLoading ? <Alert severity="warning">{blnIsEssMode ? t("ess_no_access", "ESS loans and advances access is not available for your user group.") : t("no_access", "Loans and advances access is not available for your user group.")}</Alert> : null}
       <Box className={styles.tableCard} sx={{ p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {blnLoading || blnRightsLoading || blnLoadingLabels ? (
           <LoanAdvanceGridSkeleton />
