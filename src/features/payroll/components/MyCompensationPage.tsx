@@ -352,8 +352,11 @@ export default function MyCompensationPage() {
 
   return (
     <Stack spacing={1}>
-      {nodeBreadcrumbs}
-      {strError ? <Alert severity="error">{strError}</Alert> : null}
+      <MasterBreadcrumbs
+        strSection={t("breadcrumb_payroll_benefits", "Payroll & Benefits")}
+        strTitle={t("page_title", "My Compensation")}
+        lstNotices={[{ strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") }]}
+      />
 
       <Box
         sx={{

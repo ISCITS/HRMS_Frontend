@@ -5,7 +5,7 @@ import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import GroupAddRoundedIcon from "@mui/icons-material/GroupAddRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
-import { Alert, Autocomplete, Box, Button, InputAdornment, Link, MenuItem, TextField, Typography } from "@mui/material";
+import { Autocomplete, Box, Button, InputAdornment, Link, MenuItem, TextField, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { ReactNode, useEffect, useMemo, useState } from "react";
 
@@ -170,7 +170,11 @@ export default function FNFSettlementListPage() {
 
   return (
     <Box className={styles.page} data-controlid="payroll.fnf-settlements.list.page">
-      <MasterBreadcrumbs strSection="Employee Services" strTitle="Full & Final Settlement" />
+      <MasterBreadcrumbs
+        strSection="Employee Services"
+        strTitle="Full & Final Settlement"
+        lstNotices={[{ strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") }]}
+      />
       <FNFModuleTabs strActive="settlements" />
 
       <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
@@ -224,8 +228,6 @@ export default function FNFSettlementListPage() {
           </Box>
         </Box>
       </Box>
-
-      {strError ? <Alert severity="error">{strError}</Alert> : null}
 
       <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {blnBusy ? (

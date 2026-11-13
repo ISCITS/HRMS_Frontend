@@ -6,7 +6,6 @@ import UploadFileIcon from "@mui/icons-material/UploadFile";
 import PlayCircleOutlineRoundedIcon from "@mui/icons-material/PlayCircleOutlineRounded";
 import TaskAltRoundedIcon from "@mui/icons-material/TaskAltRounded";
 import {
-  Alert,
   Box,
   Button,
   Chip,
@@ -24,6 +23,7 @@ import {
 } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
 
+import PageNotices from "@/Common/components/PageNotices";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { DottedLoader } from "@/components/shared/BlockingLoader";
 import PayrollRunArrearImportDialog from "@/features/payroll/components/PayrollRunArrearImportDialog";
@@ -179,6 +179,20 @@ export default function PayrollRunArrearsPanel({ strRunID, strRunStatus, strRunL
         <Stack direction="row" spacing={1} alignItems="center">
           <Typography sx={{ fontWeight: 800, color: "#172033" }}>Arrears</Typography>
           <Chip size="small" color={blnPreview ? "default" : "primary"} label={blnPreview ? "Preview - not paid" : "Paid in this run"} />
+          <PageNotices
+            blnSmall
+            strControlId="payroll.run-detail.arrears.notices"
+            lstNotices={[
+              objSummary?.lstFailures?.length
+                ? {
+                    strKey: "arrear-failures",
+                    strSeverity: "warning",
+                    objMessage: `Arrears could not be calculated for ${objSummary.lstFailures.map((objItem) => objItem.strEmployeeCode).join(", ")}. Their regular salary is not affected; see the validation results.`,
+                    blnToast: false,
+                  }
+                : null,
+            ]}
+          />
         </Stack>
         <Stack direction="row" spacing={1} alignItems="center">
           <Typography sx={{ color: "#48638d", fontSize: "0.85rem" }}>
@@ -198,11 +212,6 @@ export default function PayrollRunArrearsPanel({ strRunID, strRunStatus, strRunL
         <Typography sx={{ color: "#60749b", fontSize: "0.75rem", mt: 0.5 }}>
           Calculated for checking only. Net pay, TDS, PF, ESI, payslips and registers do not include these amounts.
         </Typography>
-      ) : null}
-      {objSummary?.lstFailures?.length ? (
-        <Alert severity="warning" sx={{ mt: 1 }}>
-          Arrears could not be calculated for {objSummary.lstFailures.map((objItem) => objItem.strEmployeeCode).join(", ")}. Their regular salary is not affected; see the validation results.
-        </Alert>
       ) : null}
       {objData.blnRequiresReviewAck && !blnPreview && !blnFinalized ? (
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>

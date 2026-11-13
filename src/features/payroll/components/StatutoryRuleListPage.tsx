@@ -203,7 +203,12 @@ export default function StatutoryRuleListPage() {
 
   return (
     <Box className={masterStyles.page}>
-      <MasterBreadcrumbs strSection={t("breadcrumb_section", "Payroll")} strTitle={t("breadcrumb_title", "Statutory Rules")} />
+      <MasterBreadcrumbs strSection={t("breadcrumb_section", "Payroll")} strTitle={t("breadcrumb_title", "Statutory Rules")}
+        lstNotices={[
+          { strKey: "rights", strSeverity: "warning", objMessage: strRightsError },
+          { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+        ]}
+      />
 
       <Box className={masterStyles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <Box
@@ -278,9 +283,6 @@ export default function StatutoryRuleListPage() {
           </Box>
         </Box>
       </Box>
-
-      {strRightsError ? <Alert severity="warning">{strRightsError}</Alert> : null}
-      {strError ? <Alert severity="error">{strError}</Alert> : null}
 
       <Box className={masterStyles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {blnBusy ? (

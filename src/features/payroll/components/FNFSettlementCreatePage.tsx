@@ -6,9 +6,10 @@ import ErrorOutlineRoundedIcon from "@mui/icons-material/ErrorOutlineRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
-import { Alert, Autocomplete, Box, Button, Fade, IconButton, InputAdornment, Step, StepLabel, Stepper, TextField, Tooltip, Typography } from "@mui/material";
+import { Alert, Autocomplete, Box, Button, IconButton, InputAdornment, Stack, Step, StepLabel, Stepper, TextField, Tooltip, Typography } from "@mui/material";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import PageNotices, { type PageNoticeInput } from "@/Common/components/PageNotices";
 import { DetailPageHeader } from "@/components/master/MasterListUi";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
@@ -273,13 +274,34 @@ export default function FNFSettlementCreatePage() {
   ].filter(Boolean) : [];
   const blnStepHasErrors = Object.values(dicErrors).some(Boolean) || Object.values(dicLeaveErrors).some(Boolean);
   const blnNoticeAutoCalculated = Boolean(dicForm.dtResignationDate && dicForm.dtLastWorkingDate);
+  const lstStepNotices: PageNoticeInput[] = [
+    intActiveStep === 0 && objPrefill && blnShowPrefillNote
+      ? {
+          strKey: "prefill-note",
+          strSeverity: lstMissing.length ? "warning" : "success",
+          objMessage: `${Object.keys(objPrefill.dicSources).length ? `Filled in from existing records: ${Object.entries(objPrefill.dicSources).map(([, strSource]) => strSource).filter((strSource, intIndex, lstAll) => lstAll.indexOf(strSource) === intIndex).join("; ")}.` : "No existing exit data found for this employee."}${lstMissing.length ? ` Not held anywhere in the system, please enter: ${lstMissing.join(", ")}.` : ""}`,
+          blnToast: false,
+        }
+      : null,
+    intActiveStep === 3 && blnHasSystemLeave
+      ? { strKey: "leave-system-info", strSeverity: "info", objMessage: "Balances are read from leave records. Encashable days are used automatically; type days in Override only to change them.", blnToast: false }
+      : null,
+    intActiveStep === 3 && !blnHasSystemLeave && !blnPrefillLoading
+      ? { strKey: "leave-manual-warning", strSeverity: "warning", objMessage: `${objPrefill?.strLeaveMessage || "No leave balances were found."} Enter encashable days manually if any are due; otherwise leave them blank.`, blnToast: false }
+      : null,
+  ];
 
   return (
     <Box className={styles.page}>
-      <DetailPageHeader strSection="Employee Services" strListTitle="Full & Final Settlement" strListHref="/payroll/fnf-settlements" strCurrent="Add">
+      <DetailPageHeader
+        strSection="Employee Services"
+        strListTitle="Full & Final Settlement"
+        strListHref="/payroll/fnf-settlements"
+        strCurrent="Add"
+        lstNotices={[{ strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") }]}
+      >
         <Button className={styles.secondaryButton} variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={handleCancel} controlId="payroll.fnf-settlement-create.back-top.button">Back</Button>
       </DetailPageHeader>
-      {strError ? <Alert severity="error">{strError}</Alert> : null}
       <Box className={`${styles.tableCard} ${styles.fnfCreateCard}`}>
         <Box className={styles.detailScrollCard}>
           <Box className={styles.fnfWizardBody}>
@@ -292,7 +314,10 @@ export default function FNFSettlementCreatePage() {
             <Box className={styles.fnfStepPanel}>
               <Box className={styles.fnfStepHeader}>
                 <Box sx={{ minWidth: 0 }}>
-                  <Typography component="h3" className={styles.fnfStepTitle}>{lstStepHeaders[intActiveStep].strTitle}</Typography>
+                  <Stack direction="row" alignItems="center" spacing={1}>
+                    <Typography component="h3" className={styles.fnfStepTitle}>{lstStepHeaders[intActiveStep].strTitle}</Typography>
+                    <PageNotices blnSmall strControlId="payroll.fnf-settlement-create.step.notices" lstNotices={lstStepNotices} />
+                  </Stack>
                   <Typography className={styles.fnfStepSubtitle}>{lstStepHeaders[intActiveStep].strSubtitle}</Typography>
                 </Box>
                 {intActiveStep === 0 ? (
@@ -325,14 +350,6 @@ export default function FNFSettlementCreatePage() {
                       endAdornment: (<><FieldStatusIcon strError={dicErrors.strEmployeeCode} />{params.InputProps.endAdornment}</>),
                     }} />}
                 />
-                {objPrefill ? (
-                  <Fade in={blnShowPrefillNote} timeout={{ enter: 200, exit: 500 }} unmountOnExit>
-                    <Alert severity={lstMissing.length ? "warning" : "success"} className={`${styles.fnfInlineNote} ${styles.fnfSpanTwo}`}>
-                      {Object.keys(objPrefill.dicSources).length ? `Filled in from existing records: ${Object.entries(objPrefill.dicSources).map(([, strSource]) => strSource).filter((strSource, intIndex, lstAll) => lstAll.indexOf(strSource) === intIndex).join("; ")}.` : "No existing exit data found for this employee."}
-                      {lstMissing.length ? ` Not held anywhere in the system, please enter: ${lstMissing.join(", ")}.` : ""}
-                    </Alert>
-                  </Fade>
-                ) : null}
               </Box>
             ) : null}
 
@@ -367,7 +384,6 @@ export default function FNFSettlementCreatePage() {
               <Box>
                 {blnHasSystemLeave ? (
                   <>
-                    <Alert severity="info" sx={{ mb: 2 }}>Balances are read from leave records. Encashable days are used automatically; type days in Override only to change them.</Alert>
                     <Box component="table" className={styles.table} sx={{ width: "100%" }}>
                       <thead><tr><th>Leave Type</th><th>Balance on Leaving Date</th><th>Encashable (system)</th><th>Override Days</th></tr></thead>
                       <tbody>
@@ -388,7 +404,7 @@ export default function FNFSettlementCreatePage() {
                   </>
                 ) : (
                   <Box className={styles.fnfWizardGrid}>
-                    <Alert severity="warning" sx={{ gridColumn: "1 / -1" }}>{blnPrefillLoading ? "Reading leave balances..." : `${objPrefill?.strLeaveMessage || "No leave balances were found."} Enter encashable days manually if any are due; otherwise leave them blank.`}</Alert>
+                    {blnPrefillLoading ? <Alert severity="warning" sx={{ gridColumn: "1 / -1" }}>Reading leave balances...</Alert> : null}
                     {(dicForm.lstLeaveEncashments || []).map((dicLeave) => {
                       const dicField = lstFallbackLeaveFields.find((dicCurrent) => dicCurrent.strCode === dicLeave.strLeaveTypeCode);
                       return (

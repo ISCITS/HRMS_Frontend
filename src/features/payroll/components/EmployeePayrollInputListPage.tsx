@@ -294,7 +294,15 @@ function EmployeePayrollInputList({ intInitialRunID }: { intInitialRunID: number
 
   return (
     <Box className={styles.page}>
-      <MasterBreadcrumbs strSection={t("breadcrumb_section", "Payroll")} strTitle={t("breadcrumb_title", "Payroll Input")} />
+      <MasterBreadcrumbs
+        strSection={t("breadcrumb_section", "Payroll")}
+        strTitle={t("breadcrumb_title", "Payroll Input")}
+        lstNotices={[
+          { strKey: "rights", strSeverity: "warning", objMessage: strRightsError },
+          { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+          { strKey: "run-options-error", strSeverity: "error", objMessage: strRunOptionsError, fnDismiss: () => setStrRunOptionsError("") },
+        ]}
+      />
 
       <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <Box
@@ -403,10 +411,6 @@ function EmployeePayrollInputList({ intInitialRunID }: { intInitialRunID: number
           </Box>
         </Box>
       </Box>
-
-      {strRightsError ? <Alert severity="warning">{strRightsError}</Alert> : null}
-      {strError ? <Alert severity="error">{strError}</Alert> : null}
-      {strRunOptionsError ? <Alert severity="error">{strRunOptionsError}</Alert> : null}
 
       <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {blnBusy ? (

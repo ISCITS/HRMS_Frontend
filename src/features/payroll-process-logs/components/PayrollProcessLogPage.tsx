@@ -202,7 +202,15 @@ export default function PayrollProcessLogPage({ strInitialPayrollRunRecordUUID }
   return (
     <Box className={styles.page}>
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1.5, flexWrap: "wrap" }}>
-        <MasterBreadcrumbs strSection={t("breadcrumb_section", "Payroll")} strTitle={t("breadcrumb_title", "Payroll Process Logs")} />
+        <MasterBreadcrumbs
+          strSection={t("breadcrumb_section", "Payroll")}
+          strTitle={t("breadcrumb_title", "Payroll Process Logs")}
+          lstNotices={[
+            blnRunScoped ? { strKey: "run-scoped", strSeverity: "info", objMessage: t("run_scoped_message", "Showing payroll process logs for the selected payroll run only.") } : null,
+            blnReadOnly ? { strKey: "read-only", strSeverity: "info", objMessage: t("read_only_mode", "You have view-only access for Payroll Process Logs.") } : null,
+            strRightsError && !blnCanView && !blnBusy ? { strKey: "rights", strSeverity: "warning", objMessage: strRightsError } : null,
+          ]}
+        />
         {blnRunScoped ? (
           <Button
             data-controlid="payroll-process-logs.view.back.button"
@@ -291,18 +299,6 @@ export default function PayrollProcessLogPage({ strInitialPayrollRunRecordUUID }
           </Box>
         </Box>
       </Box>
-
-      {blnRunScoped ? (
-        <Alert severity="info">
-          {t("run_scoped_message", "Showing payroll process logs for the selected payroll run only.")}
-        </Alert>
-      ) : null}
-
-      {blnReadOnly ? (
-        <Alert severity="info">{t("read_only_mode", "You have view-only access for Payroll Process Logs.")}</Alert>
-      ) : null}
-
-      {strRightsError && !blnCanView && !blnBusy ? <Alert severity="warning">{strRightsError}</Alert> : null}
 
       <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {blnBusy ? (

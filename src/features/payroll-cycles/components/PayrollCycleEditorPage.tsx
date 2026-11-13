@@ -3,7 +3,6 @@
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import {
-  Alert,
   Box,
   Button,
   FormControlLabel,
@@ -191,6 +190,10 @@ export default function PayrollCycleEditorPage({
         strListTitle={t("breadcrumb_title", "Payroll Schedules")}
         strListHref="/payroll/schedules"
         strCurrent={strMode === "add" ? t("breadcrumb_add", "Add") : blnReadOnly ? t("breadcrumb_view", "View") : t("breadcrumb_edit", "Edit")}
+        lstNotices={[
+          { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+          { strKey: "success", strSeverity: "success", objMessage: strSuccess, fnDismiss: () => setStrSuccess("") },
+        ]}
       >
         <Button
           controlId="payroll-cycles.editor.back.button"
@@ -230,8 +233,6 @@ export default function PayrollCycleEditorPage({
         </Paper>
       </Stack>
 
-      {strError ? <Alert severity="error">{strError}</Alert> : null}
-      {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
       <CommonEditModeBanner
         blnReadOnly={blnReadOnly}
         strReadOnlyMessage={t("schedule_read_only_mode")}

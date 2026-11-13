@@ -7,10 +7,11 @@ import FilterListRoundedIcon from "@mui/icons-material/FilterListRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Autocomplete, Box, Breadcrumbs, Button, Divider, IconButton, Popover, TextField, Typography } from "@mui/material";
+import { Autocomplete, Box, Breadcrumbs, Button, Divider, IconButton, Popover, Stack, TextField, Typography } from "@mui/material";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import PageNotices from "@/Common/components/PageNotices";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
@@ -235,11 +236,20 @@ export default function AttendanceExceptionReportPage() {
 
   return (
     <Box className={styles.page}>
-      <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ ml: "3px" }}>
-        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{t("reports", "Reports")}</Typography>
-        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{t("attendance_reports", "Attendance Reports")}</Typography>
-        <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{t("attendance_exceptions", "Attendance Exception Report")}</Typography>
-      </Breadcrumbs>
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ minWidth: 0 }}>
+        <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ ml: "3px" }}>
+          <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{t("reports", "Reports")}</Typography>
+          <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{t("attendance_reports", "Attendance Reports")}</Typography>
+          <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{t("attendance_exceptions", "Attendance Exception Report")}</Typography>
+        </Breadcrumbs>
+        <PageNotices
+          strControlId="reports.attendance-exceptions.notices"
+          lstNotices={[
+            !blnRightsLoading && !blnCanView && !strError ? { strKey: "rights", strSeverity: "warning", objMessage: "Attendance exception report view access is not available for your user group." } : null,
+            { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+          ]}
+        />
+      </Stack>
 
       <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <Box className={styles.reportSearchPanelRow}>
@@ -330,9 +340,6 @@ export default function AttendanceExceptionReportPage() {
           {t("attendance_exceptions_info", "Attendance exceptions with severity, status, ageing, regularization link and resolution. Defaults to open and under-review.")}
         </Typography>
       </Box>
-
-      {!blnRightsLoading && !blnCanView && !strError ? <Alert severity="warning">Attendance exception report view access is not available for your user group.</Alert> : null}
-      {strError ? <Alert severity="error">{strError}</Alert> : null}
 
       <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <CommonTable

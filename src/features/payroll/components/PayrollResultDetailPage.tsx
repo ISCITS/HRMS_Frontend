@@ -713,6 +713,10 @@ export default function PayrollResultDetailPage({
             }}
           />
         }
+        lstNotices={[
+          { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+          { strKey: "success", strSeverity: "success", objMessage: strSuccess, fnDismiss: () => setStrSuccess("") },
+        ]}
       >
               <Button
                 className={masterStyles.secondaryButton}
@@ -793,8 +797,6 @@ export default function PayrollResultDetailPage({
 
           </Box>
 
-          {strError ? <Alert severity="error">{strError}</Alert> : null}
-          {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
           {blnPayslipLoading ? <Alert severity="info">{t("payslip_loading", "Preparing payslip...")}</Alert> : null}
 
           <Box

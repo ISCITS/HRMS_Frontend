@@ -153,7 +153,12 @@ export default function PayrollCycleListPage() {
 
   return (
     <Box className={styles.page}>
-      <MasterBreadcrumbs strSection={t("breadcrumb_section", "Payroll")} strTitle={t("breadcrumb_title", "Payroll Schedules")} />
+      <MasterBreadcrumbs strSection={t("breadcrumb_section", "Payroll")} strTitle={t("breadcrumb_title", "Payroll Schedules")}
+        lstNotices={[
+          strRightsError && !blnCanView && !blnBusy ? { strKey: "rights", strSeverity: "warning", objMessage: strRightsError } : null,
+          blnReadOnly ? { strKey: "read-only", strSeverity: "info", objMessage: t("schedule_read_only_mode") } : null,
+        ]}
+      />
 
       <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <Box
@@ -193,9 +198,6 @@ export default function PayrollCycleListPage() {
           </Box>
         </Box>
       </Box>
-
-      {strRightsError && !blnCanView && !blnBusy ? <Alert severity="warning">{strRightsError}</Alert> : null}
-      {blnReadOnly ? <Alert severity="info">{t("schedule_read_only_mode")}</Alert> : null}
 
       <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <BlockingLoader blnOpen={blnSubmitting} strLabel={t("schedule_processing")} />

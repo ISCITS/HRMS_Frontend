@@ -635,6 +635,12 @@ export default function PayrollResultListPage({
               ? t("ess_breadcrumbs", "My Payslips")
               : t("payslip_breadcrumbs", "Payslips"))
           : t("payroll_results_breadcrumbs", "Payroll Results")}
+        lstNotices={[
+          !blnBusy && !blnCanAccessResults && !strError
+            ? { strKey: "access-denied", strSeverity: "warning", objMessage: t("access_denied", "Payroll result view access is not available for your user group.") }
+            : null,
+          { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+        ]}
       />
 
       <Box className={masterStyles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
@@ -782,17 +788,6 @@ export default function PayrollResultListPage({
           </Box>
         )}
       </Box>
-
-      {!blnBusy && !blnCanAccessResults && !strError ? (
-        <Alert severity="warning">
-          {t(
-            "access_denied",
-            "Payroll result view access is not available for your user group."
-          )}
-        </Alert>
-      ) : null}
-
-      {strError ? <Alert severity="error">{strError}</Alert> : null}
 
       <PayrollDataChangedNotice objFreshness={objPayrollFreshness} onRefresh={() => void loadResults()} blnRefreshing={blnBusy} />
 

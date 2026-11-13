@@ -215,12 +215,14 @@ export default function FNFSettlementDetailPage({ strSettlementID }: { /** recor
         strListHref="/payroll/fnf-settlements"
         strCurrent={objSettlement?.strSettlementNumber || "View"}
         objCurrentAdornment={objSettlement ? <FNFStatusBadge strStatus={objSettlement.strSettlementStatus} /> : undefined}
+        lstNotices={[
+          { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+          { strKey: "success", strSeverity: "success", objMessage: strSuccess, fnDismiss: () => setStrSuccess("") },
+        ]}
       >
         <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/payroll/fnf-settlements")} controlId="payroll.fnf-settlement-detail.back.button">Back</Button>
         {objSettlement ? <FNFActionBar objSettlement={objSettlement} blnBusy={blnSaving} onAction={openAction} /> : null}
       </DetailPageHeader>
-      {strError ? <Alert severity="error">{strError}</Alert> : null}
-      {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
       {objSettlement ? (
         <Box className={styles.tableCard}>
           <Box className={styles.detailScrollCard}>

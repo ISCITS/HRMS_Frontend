@@ -225,6 +225,12 @@ export default function PayrollRunEditorPage() {
         strListTitle={t("breadcrumb_title", "Payroll Runs")}
         strListHref="/payroll/runs"
         strCurrent={t("breadcrumb_add", "Add")}
+        lstNotices={[
+          { strKey: "rights", strSeverity: "warning", objMessage: strRightsError },
+          !blnCanAdd ? { strKey: "add-access-denied", strSeverity: "warning", objMessage: t("add_access_denied", "Payroll run add access is not available for your user group.") } : null,
+          { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+          { strKey: "success", strSeverity: "success", objMessage: strSuccess, fnDismiss: () => setStrSuccess("") },
+        ]}
       >
         <Button
           className={masterStyles.secondaryButton}
@@ -245,11 +251,6 @@ export default function PayrollRunEditorPage() {
           {blnSaving ? tCommon("processing", "Processing...") : tCommon("save", "Save")}
         </Button> : null}
       </DetailPageHeader>
-
-      {strRightsError ? <Alert severity="warning">{strRightsError}</Alert> : null}
-      {!blnCanAdd ? <Alert severity="warning">{t("add_access_denied", "Payroll run add access is not available for your user group.")}</Alert> : null}
-      {strError ? <Alert severity="error">{strError}</Alert> : null}
-      {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
 
       <Paper
         sx={{

@@ -302,6 +302,10 @@ export default function Form16ListPage({ blnAdminMode = false }: Form16ListPageP
       <MasterBreadcrumbs
         strSection={blnAdminMode ? t("breadcrumb_reports", "Reports") : t("breadcrumb_payroll_benefits", "Payroll & Benefits")}
         strTitle={blnAdminMode ? t("breadcrumb_form16", "Form 16") : t("breadcrumb_my_form16", "My Form 16")}
+        lstNotices={[
+          { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+          { strKey: "action-error", strSeverity: "error", objMessage: strActionError, fnDismiss: () => setStrActionError("") },
+        ]}
       />
       <Box className={masterStyles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <Box className={masterStyles.searchRow} aria-busy={blnBusy} sx={{ gridTemplateColumns: "minmax(180px, 240px)", alignItems: "center" }}>
@@ -324,9 +328,6 @@ export default function Form16ListPage({ blnAdminMode = false }: Form16ListPageP
           </TextField>
         </Box>
       </Box>
-
-      {strError ? <Alert severity="error">{strError}</Alert> : null}
-      {strActionError ? <Alert severity="error">{strActionError}</Alert> : null}
 
       <Box className={masterStyles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {blnBusy ? (

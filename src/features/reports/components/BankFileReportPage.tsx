@@ -8,10 +8,11 @@ import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Breadcrumbs, Button, Checkbox, Typography } from "@mui/material";
+import { Box, Breadcrumbs, Button, Checkbox, Stack, Typography } from "@mui/material";
 import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import PageNotices from "@/Common/components/PageNotices";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { ReportMoreFilters, SingleSelectFilter } from "@/features/reports/components/ReportFilterUi";
@@ -315,10 +316,19 @@ export default function BankFileReportPage() {
 
   return (
     <Box className={styles.page}>
-      <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ ml: "3px" }}>
-        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>Reports</Typography>
-        <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">Bank File</Typography>
-      </Breadcrumbs>
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ minWidth: 0 }}>
+        <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ ml: "3px" }}>
+          <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>Reports</Typography>
+          <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">Bank File</Typography>
+        </Breadcrumbs>
+        <PageNotices
+          strControlId="reports.bank-file.notices"
+          lstNotices={[
+            !blnRightsLoading && !blnCanView && !strError ? { strKey: "rights", strSeverity: "warning", objMessage: "Bank file view access is not available for your user group." } : null,
+            { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+          ]}
+        />
+      </Stack>
       <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <Box className={styles.reportSearchPanelRow} sx={{ py: "0 !important" }}>
           <Box className={styles.reportSearchField} sx={{ flex: "2 1 340px", minWidth: { xs: "100%", md: 320 } }}>
@@ -372,8 +382,6 @@ export default function BankFileReportPage() {
       </Box>
 
       <Box className={styles.tableCard} sx={{ p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
-        {!blnRightsLoading && !blnCanView && !strError ? <Alert severity="warning" sx={{ mb: 1.5 }}>Bank file view access is not available for your user group.</Alert> : null}
-        {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
         <PayrollDataChangedNotice objFreshness={objPayrollFreshness} blnRefreshing={blnPageLoading} />
         <CommonTable
           columns={lstTableColumns}

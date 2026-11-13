@@ -10,6 +10,7 @@ import { Alert,
   Breadcrumbs,
   Button,
   MenuItem,
+  Stack,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
@@ -20,6 +21,7 @@ import PictureAsPdfRoundedIcon from "@mui/icons-material/PictureAsPdfRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
+import PageNotices from "@/Common/components/PageNotices";
 import type { EmployeeListRecord } from "@/features/employee/types";
 import { ctcFormatLabel, ctcReportService, type CtcDocument, type CtcLayout, type CtcPeriod } from "@/features/reports/services/ctcReportService";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
@@ -101,10 +103,23 @@ export default function CtcFormatReportPage() {
   if (!access.blnLoading && !canView) return <Alert severity="warning">Employee Salary view access is required to view CTC statements.</Alert>;
 
   return <Box className={screen.page}>
-    <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />}>
-      <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>Reports</Typography>
-      <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">CTC Statement</Typography>
-    </Breadcrumbs>
+    <Stack direction="row" alignItems="center" spacing={1} sx={{ minWidth: 0 }}>
+      <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />}>
+        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>Reports</Typography>
+        <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">CTC Statement</Typography>
+      </Breadcrumbs>
+      <PageNotices
+        strControlId="reports.ctc-statement.notices"
+        lstNotices={[
+          !error && !binding && employees.length === 0
+            ? { strKey: "no-employees", strSeverity: "info", objMessage: "No employees are available in the Employee Name list. This usually means your Employee Salary access scope is set to \"Self\" or \"Team\" but your login isn't linked to an employee record - ask an administrator to either link your account to an employee or grant a broader (Team/All) CTC access scope." }
+            : null,
+          !error && !binding && employees.length > 0 && eligible.length === 0
+            ? { strKey: "no-type-employees", strSeverity: "info", objMessage: `No ${type} employees found. Try a different Worker / Non-Worker filter.` }
+            : null,
+        ]}
+      />
+    </Stack>
 
     <Box component="form" className={screen.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }} onSubmit={event => { event.preventDefault(); void generate(); }}>
       <Box className={`${screen.searchRow} ${styles.filterRow}`}>
@@ -131,17 +146,16 @@ export default function CtcFormatReportPage() {
       </Box>
     </Box>
     {error && <Alert severity="error" action={<Button color="inherit" disabled={busy} onClick={() => setReload(value => value + 1)}>Retry</Button>}>{error}</Alert>}
-    {!error && !binding && employees.length === 0 && (
-      <Alert severity="info">
-        No employees are available in the Employee Name list. This usually means your Employee Salary access scope is set to "Self" or "Team" but your login isn't linked to an employee record - ask an administrator to either link your account to an employee or grant a broader (Team/All) CTC access scope.
-      </Alert>
-    )}
-    {!error && !binding && employees.length > 0 && eligible.length === 0 && (
-      <Alert severity="info">No {type} employees found. Try a different Worker / Non-Worker filter.</Alert>
-    )}
     <Box className={screen.tableCard} sx={{ position: "relative", p: "10px !important", borderRadius: "10px !important", boxShadow: "none" }}>
       <Box className={styles.toolbar}>
-        <Typography fontWeight={700}>CTC Statement{statement ? ` - ${ctcFormatLabel(statement.document.layout, statement.document.period)}` : ""}</Typography>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <Typography fontWeight={700}>CTC Statement{statement ? ` - ${ctcFormatLabel(statement.document.layout, statement.document.period)}` : ""}</Typography>
+          <PageNotices
+            blnSmall
+            strControlId="reports.ctc-statement.document-warnings.notices"
+            lstNotices={(statement?.document.warnings ?? []).map((warning, index) => ({ strKey: `document-warning-${index}`, strSeverity: "warning" as const, objMessage: warning, blnToast: false }))}
+          />
+        </Stack>
         <Box className={styles.downloads}>
           {statement && statement.document.layouts?.length > 1 && <ToggleButtonGroup exclusive size="small" color="primary" value={statement.document.layout} disabled={busy}
             onChange={(_, layout: CtcLayout | null) => { if (layout && layout !== statement.document.layout) void generate({ layout, period: statement.document.period }); }} data-testid="ctc.switch.layout">
@@ -159,7 +173,6 @@ export default function CtcFormatReportPage() {
           </>}
         </Box>
       </Box>
-      {statement?.document.warnings.map((warning, index) => <Alert severity="warning" key={index} sx={{ mb: 1 }}>{warning}</Alert>)}
       <Box className={styles.preview}>
         {!statement ? <Box className={styles.empty}>
           {binding || generating ? <DottedLoader /> : <Typography color="text.secondary">Select a month and an employee, then search to generate the CTC statement for the salary in force that month, in the format set under Settings - Payroll - CTC Format. Switch between Monthly and Annual (and between formats, when both are offered) above the statement.</Typography>}
