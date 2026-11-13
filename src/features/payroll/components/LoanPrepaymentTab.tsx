@@ -5,6 +5,7 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import { useEffect, useMemo, useState } from "react";
 
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
+import PageNotices from "@/Common/components/PageNotices";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { usePayrollLookups } from "@/features/payroll-lookups/hooks/usePayrollLookups";
@@ -163,9 +164,20 @@ export default function LoanPrepaymentTab({ objRecord, blnCanAddPrepayment, onSu
       </Box>
 
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mt: 2.5, mb: 1.2 }}>
-        <Typography sx={{ fontSize: "0.82rem", fontWeight: 800, color: "#334155" }}>
-          {t("section_prepayment_history", "Prepayment History")}
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Typography sx={{ fontSize: "0.82rem", fontWeight: 800, color: "#334155" }}>
+            {t("section_prepayment_history", "Prepayment History")}
+          </Typography>
+          <PageNotices
+            blnSmall
+            strControlId="loan-advance.prepayment-tab.notices"
+            lstNotices={[
+              !blnIsActiveLoan
+                ? { strKey: "not-active", strSeverity: "info", objMessage: t("prepayment_not_active", "Prepayment can only be recorded while this loan is Active."), blnToast: false }
+                : null,
+            ]}
+          />
+        </Box>
         {blnCanAddPrepayment ? (
           <Button
             className={styles.primaryButton}
@@ -178,11 +190,6 @@ export default function LoanPrepaymentTab({ objRecord, blnCanAddPrepayment, onSu
           </Button>
         ) : null}
       </Box>
-      {!blnIsActiveLoan ? (
-        <Alert severity="info" sx={{ mb: 1.2, borderRadius: "8px" }}>
-          {t("prepayment_not_active", "Prepayment can only be recorded while this loan is Active.")}
-        </Alert>
-      ) : null}
 
       <Box className={styles.tableWrap}>
         <table className={`${styles.table} ${styles.fnfDenseTable}`}>

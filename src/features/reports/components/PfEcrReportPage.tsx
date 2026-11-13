@@ -8,7 +8,6 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import {
-  Alert,
   Box,
   Breadcrumbs,
   Button,
@@ -17,12 +16,14 @@ import {
   DialogContent,
   DialogTitle,
   MenuItem,
+  Stack,
   TextField,
   Typography,
 } from "@mui/material";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import PageNotices from "@/Common/components/PageNotices";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import {
   pfEcrReportService,
@@ -292,10 +293,36 @@ export default function PfEcrReportPage() {
 
   return (
     <Box className={styles.page}>
-      <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ ml: "3px" }}>
-        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>Reports</Typography>
-        <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">PF / ESIC ECR Report</Typography>
-      </Breadcrumbs>
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ minWidth: 0 }}>
+        <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ ml: "3px" }}>
+          <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>Reports</Typography>
+          <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">PF / ESIC ECR Report</Typography>
+        </Breadcrumbs>
+        <PageNotices
+          strControlId="reports.pf-ecr.notices"
+          lstNotices={[
+            !blnRightsLoading && !blnCanView ? { strKey: "rights", strSeverity: "warning", objMessage: "PF ECR report view access is not available for your user group." } : null,
+            { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+            lstBlockingIssues.length > 0
+              ? {
+                  strKey: "blocking-issues",
+                  strSeverity: "error",
+                  strTitle: objReport?.intExcludedCount ? `${objReport.intExcludedCount} member(s) left out of the upload files` : "Needs attention before filing",
+                  objMessage: (
+                    <Box component="ul" sx={{ m: 0, mt: 0.5, pl: 2.5, maxHeight: 160, overflowY: "auto" }}>
+                      {lstBlockingIssues.map((dicIssue, intIndex) => (
+                        <Typography component="li" variant="body2" key={`${dicIssue.strEmployeeCode}-${intIndex}`}>
+                          {dicIssue.strEmployeeCode ? `${dicIssue.strEmployeeCode} ${dicIssue.strEmployeeName}: ` : ""}{dicIssue.strIssue}
+                        </Typography>
+                      ))}
+                    </Box>
+                  ),
+                  blnToast: false,
+                }
+              : null,
+          ]}
+        />
+      </Stack>
 
       <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <Box className={styles.reportSearchPanelRow} sx={{ py: "0 !important" }}>
@@ -392,24 +419,7 @@ export default function PfEcrReportPage() {
         </Typography>
       </Box>
 
-      {!blnRightsLoading && !blnCanView ? <Alert severity="warning">PF ECR report view access is not available for your user group.</Alert> : null}
-      {strError ? <Alert severity="error">{strError}</Alert> : null}
       <PayrollDataChangedNotice objFreshness={objPayrollFreshness} blnRefreshing={blnReportLoading} />
-
-      {lstBlockingIssues.length > 0 ? (
-        <Alert severity="error">
-          <Typography sx={{ fontWeight: 600 }}>
-            {objReport?.intExcludedCount ? `${objReport.intExcludedCount} member(s) left out of the upload files` : "Needs attention before filing"}
-          </Typography>
-          <Box component="ul" sx={{ m: 0, mt: 0.5, pl: 2.5, maxHeight: 160, overflowY: "auto" }}>
-            {lstBlockingIssues.map((dicIssue, intIndex) => (
-              <Typography component="li" variant="body2" key={`${dicIssue.strEmployeeCode}-${intIndex}`}>
-                {dicIssue.strEmployeeCode ? `${dicIssue.strEmployeeCode} ${dicIssue.strEmployeeName}: ` : ""}{dicIssue.strIssue}
-              </Typography>
-            ))}
-          </Box>
-        </Alert>
-      ) : null}
 
       <Box className={styles.tableCard} sx={{ p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <CommonTable

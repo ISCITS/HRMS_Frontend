@@ -5,9 +5,10 @@ import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Autocomplete, Box, Breadcrumbs, Button, MenuItem, TextField, Typography } from "@mui/material";
+import { Autocomplete, Box, Breadcrumbs, Button, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 
+import PageNotices from "@/Common/components/PageNotices";
 import BlockingLoader, { DottedLoader } from "@/components/shared/BlockingLoader";
 import { employeeService } from "@/features/employee/services/employeeService";
 import type { EmployeeListRecord } from "@/features/employee/types";
@@ -328,10 +329,19 @@ export default function SalaryStatementReportPage() {
 
   return (
     <Box className={screen.page}>
-      <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />}>
-        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>Reports</Typography>
-        <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">Salary Statement</Typography>
-      </Breadcrumbs>
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ minWidth: 0 }}>
+        <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />}>
+          <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>Reports</Typography>
+          <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">Salary Statement</Typography>
+        </Breadcrumbs>
+        <PageNotices
+          strControlId="reports.salary-statement.notices"
+          lstNotices={[
+            !blnCanView && !strError ? { strKey: "rights", strSeverity: "warning", objMessage: "Salary statement view access is not available for your user group." } : null,
+            { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+          ]}
+        />
+      </Stack>
 
       <Box className={screen.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <Box className={styles.reportSearchPanelRow}>
@@ -361,9 +371,6 @@ export default function SalaryStatementReportPage() {
           </Box>
         </Box>
       </Box>
-
-      {!blnCanView && !strError ? <Alert severity="warning">Salary statement view access is not available for your user group.</Alert> : null}
-      {strError ? <Alert severity="error">{strError}</Alert> : null}
 
       <Box className={screen.tableCard} sx={{ position: "relative", p: "10px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <Box sx={{ alignItems: "center", display: "flex", flex: "0 0 auto", justifyContent: "space-between", gap: 2, mb: 1 }}>

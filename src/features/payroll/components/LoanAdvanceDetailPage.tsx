@@ -10,9 +10,10 @@ import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import UndoRoundedIcon from "@mui/icons-material/UndoRounded";
-import { Alert, Autocomplete, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Step, StepLabel, Stepper, Tab, Tabs, TextField, Typography } from "@mui/material";
+import { Alert, Autocomplete, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Stack, Step, StepLabel, Stepper, Tab, Tabs, TextField, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import PageNotices, { type PageNoticeInput } from "@/Common/components/PageNotices";
 import { DetailPageHeader } from "@/components/master/MasterListUi";
 import type { MenuItem as AuthMenuItem } from "@/models/AuthModels";
 
@@ -582,19 +583,29 @@ export default function LoanAdvanceDetailPage({ strLoanAdvanceID, strMode = "pay
     return <Button className={styles.secondaryButton} startIcon={<PrintRoundedIcon />} onClick={() => window.print()}>{t("button_print", "Print")}</Button>;
   }
 
-  function renderPolicy() {
-    if (!objPolicy) return null;
-    return (
-      <Alert severity={objPolicy.blnPreventDuplicateActive && blnHasActiveWarning ? "warning" : "info"} sx={{ borderRadius: "8px" }}>
-        <Typography sx={{ fontWeight: 900 }}>{t(toLabelKey(objPolicy.strCategoryName), objPolicy.strCategoryName)}</Typography>
-        <Typography sx={{ fontSize: "0.82rem" }}>
-          {objPolicy.strCategoryDescription || t("policy_default", "Category policy is applied to amount, installment, interest, payroll recovery, and tax checks.")}
-        </Typography>
-        <Typography sx={{ fontSize: "0.82rem", mt: 0.5 }}>
-          {t("policy_limits", "Limits")}: {objPolicy.decMaxRequestAmount ? formatCurrency(objPolicy.decMaxRequestAmount) : t("not_configured", "Not configured")} | {t("policy_installments", "Installments")}: {objPolicy.intMaxInstallments || t("not_configured", "Not configured")} | {t("policy_tax", "Perquisite Tax")}: {objPolicy.blnPerquisiteTaxApplicable ? t("yes", "Yes") : t("no", "No")}
-        </Typography>
-      </Alert>
-    );
+  function getPolicyNotices(): PageNoticeInput[] {
+    if (!objPolicy) return [];
+    return [
+      {
+        strKey: "policy",
+        strSeverity: objPolicy.blnPreventDuplicateActive && blnHasActiveWarning ? "warning" : "info",
+        strTitle: t(toLabelKey(objPolicy.strCategoryName), objPolicy.strCategoryName),
+        objMessage: (
+          <>
+            <Typography sx={{ fontSize: "0.82rem" }}>
+              {objPolicy.strCategoryDescription || t("policy_default", "Category policy is applied to amount, installment, interest, payroll recovery, and tax checks.")}
+            </Typography>
+            <Typography sx={{ fontSize: "0.82rem", mt: 0.5 }}>
+              {t("policy_limits", "Limits")}: {objPolicy.decMaxRequestAmount ? formatCurrency(objPolicy.decMaxRequestAmount) : t("not_configured", "Not configured")} | {t("policy_installments", "Installments")}: {objPolicy.intMaxInstallments || t("not_configured", "Not configured")} | {t("policy_tax", "Perquisite Tax")}: {objPolicy.blnPerquisiteTaxApplicable ? t("yes", "Yes") : t("no", "No")}
+            </Typography>
+          </>
+        ),
+        blnToast: false,
+      },
+      objPolicy.blnPerquisiteTaxApplicable
+        ? { strKey: "notional-tax", strSeverity: "warning", objMessage: t("notional_tax_note", "Notional tax applies because the benchmark interest rate is higher than the company recovery rate. Taxable perquisite preview is shown in the schedule."), blnToast: false }
+        : null,
+    ];
   }
 
   function renderScheduleTable(lstRows: LoanAdvanceScheduleRecord[]) {
@@ -640,15 +651,19 @@ export default function LoanAdvanceDetailPage({ strLoanAdvanceID, strMode = "pay
         strListTitle={blnIsEssMode ? t("ess_page_title", "My Loans & Advances") : t("page_title", "Loans & Advances")}
         strListHref={blnIsEssMode ? "/ess/loans-advances" : "/payroll/loans-advances"}
         strCurrent={!objRecord ? t("breadcrumb_add", "Add") : ["draft", "sent_back"].includes(strStatus) ? t("breadcrumb_edit", "Edit") : t("breadcrumb_view", "View")}
+        lstNotices={[
+          { strKey: "rights", strSeverity: "warning", objMessage: strRightsError || strLabelError },
+          { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+          { strKey: "success", strSeverity: "success", objMessage: strSuccess, fnDismiss: () => setStrSuccess("") },
+          blnHasActiveWarning
+            ? { strKey: "active-loans", strSeverity: "warning", objMessage: t("warning_active_loans", "This employee already has active or pending loans/advances. Review outstanding recoveries before submitting.") }
+            : null,
+        ]}
       >
         <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push(blnIsEssMode ? "/ess/loans-advances" : "/payroll/loans-advances")}>{t("back_button", "Back")}</Button>
         {objRecord ? <LoanAdvanceStatusBadge strStatus={objRecord.strWorkflowStatus} t={t} /> : null}
         {renderWorkflowActions()}
       </DetailPageHeader>
-      {strRightsError || strLabelError ? <Alert severity="warning">{strRightsError || strLabelError}</Alert> : null}
-      {strError ? <Alert severity="error">{strError}</Alert> : null}
-      {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
-      {blnHasActiveWarning ? <Alert severity="warning">{t("warning_active_loans", "This employee already has active or pending loans/advances. Review outstanding recoveries before submitting.")}</Alert> : null}
       {!blnCanView && !blnRightsLoading ? <Alert severity="warning">{blnIsEssMode ? t("ess_no_access", "ESS loans and advances access is not available for your user group.") : t("no_access", "Loans and advances access is not available for your user group.")}</Alert> : null}
       {blnCanView ? (
         <Box className={`${styles.tableCard} ${styles.detailScrollCard}`}>
@@ -719,9 +734,10 @@ export default function LoanAdvanceDetailPage({ strLoanAdvanceID, strMode = "pay
                 <FormControlLabel control={<Checkbox checked={dicValues.blnLastInstallmentAdjustment} disabled={blnReadonly} onChange={(e) => updateValue("blnLastInstallmentAdjustment", e.target.checked)} />} label={t("field_last_adjustment", "Adjust final installment")} />
                 <FormControlLabel control={<Checkbox checked={dicValues.blnAutoDeductInPayroll} disabled={blnReadonly} onChange={(e) => updateValue("blnAutoDeductInPayroll", e.target.checked)} />} label={t("field_auto_deduct", "Auto deduct in payroll")} />
               </Box>
-              {renderPolicy()}
-              {objPolicy?.blnPerquisiteTaxApplicable ? <Alert severity="warning" sx={{ borderRadius: "8px" }}>{t("notional_tax_note", "Notional tax applies because the benchmark interest rate is higher than the company recovery rate. Taxable perquisite preview is shown in the schedule.")}</Alert> : null}
-              <Typography sx={{ color: "#0f172a", fontWeight: 900 }}>{t("preview_title", "Reducing-balance Schedule Preview")}</Typography>
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <Typography sx={{ color: "#0f172a", fontWeight: 900 }}>{t("preview_title", "Reducing-balance Schedule Preview")}</Typography>
+                <PageNotices blnSmall strControlId="loan-advance.detail.policy.notices" lstNotices={getPolicyNotices()} />
+              </Stack>
               {renderScheduleTable(lstSchedulePreview)}
               {blnIsEssMode ? (
                 <FileUploadPanel

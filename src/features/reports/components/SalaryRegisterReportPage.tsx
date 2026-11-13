@@ -9,12 +9,13 @@ import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import FilterListRoundedIcon from "@mui/icons-material/FilterListRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, Checkbox, Divider, IconButton, ListItemText, ListSubheader, MenuItem, Popover, Tab, Tabs, TextField, Typography } from "@mui/material";
+import { Box, Button, Checkbox, Divider, IconButton, ListItemText, ListSubheader, MenuItem, Popover, Tab, Tabs, TextField, Typography } from "@mui/material";
 import type { SelectChangeEvent } from "@mui/material";
 import { useEffect, useMemo, useState, type ChangeEventHandler, type ReactNode } from "react";
 
 import type { CommonTableColumn } from "@/Common/components/CommonTable";
 import CommonTable from "@/Common/components/CommonTable";
+import PageNotices from "@/Common/components/PageNotices";
 import { employeeService } from "@/features/employee/services/employeeService";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { salaryRegisterReportService, type SalaryRegisterRow } from "@/features/reports/services/salaryRegisterReportService";
@@ -602,10 +603,16 @@ export default function SalaryRegisterReportPage() {
         <Typography sx={{ color: "inherit", lineHeight: 1.5 }}>
           Shows actual processed payroll figures when payroll has been run for the selected month; otherwise falls back to the employee's configured CTC/salary structure so a figure is always available.
         </Typography>
+        {/* Page title is hidden on this screen, so the notices icon sits in the info strip. */}
+        <PageNotices
+          strControlId="reports.salary-register.notices"
+          lstNotices={[
+            !blnCanView && !strError ? { strKey: "rights", strSeverity: "warning", objMessage: "Salary register view access is not available for your user group." } : null,
+            { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+          ]}
+        />
       </Box>
 
-      {!blnCanView && !strError ? <Alert severity="warning">Salary register view access is not available for your user group.</Alert> : null}
-      {strError ? <Alert severity="error">{strError}</Alert> : null}
       <PayrollDataChangedNotice objFreshness={objPayrollFreshness} blnRefreshing={blnLoadingReport} />
 
       <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>

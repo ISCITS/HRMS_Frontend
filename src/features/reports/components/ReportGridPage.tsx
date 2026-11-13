@@ -5,10 +5,11 @@ import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Autocomplete, Box, Breadcrumbs, Button, Checkbox, Chip, MenuItem, TextField, Typography } from "@mui/material";
+import { Autocomplete, Box, Breadcrumbs, Button, Checkbox, Chip, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import PageNotices, { type PageNoticeInput } from "@/Common/components/PageNotices";
 import { DottedLoader } from "@/components/shared/BlockingLoader";
 import { dicMasterRowSx } from "@/components/master/MasterListUi";
 import { ReportMoreFilters } from "@/features/reports/components/ReportFilterUi";
@@ -379,16 +380,25 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
     );
   }
 
+  const blnShowBreadcrumbs = Boolean(objProps.strBreadcrumbSection || objProps.strBreadcrumbTitle);
+  const lstPageNotices: PageNoticeInput[] = [
+    !blnRightsLoading && !blnCanView && !strError ? { strKey: "rights", strSeverity: "warning", objMessage: "This report is not available for your user group." } : null,
+    { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+  ];
+
   return (
     <Box className={styles.page}>
-      {objProps.strBreadcrumbSection || objProps.strBreadcrumbTitle ? (
-        <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ ml: "3px" }}>
-          {objProps.strBreadcrumbRoot ? (
-            <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{objProps.strBreadcrumbRoot}</Typography>
-          ) : null}
-          <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{objProps.strBreadcrumbSection ?? objProps.strTitle}</Typography>
-          <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{objProps.strBreadcrumbTitle ?? objProps.strTitle}</Typography>
-        </Breadcrumbs>
+      {blnShowBreadcrumbs ? (
+        <Stack direction="row" alignItems="center" spacing={1} sx={{ minWidth: 0 }}>
+          <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ ml: "3px" }}>
+            {objProps.strBreadcrumbRoot ? (
+              <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{objProps.strBreadcrumbRoot}</Typography>
+            ) : null}
+            <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{objProps.strBreadcrumbSection ?? objProps.strTitle}</Typography>
+            <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{objProps.strBreadcrumbTitle ?? objProps.strTitle}</Typography>
+          </Breadcrumbs>
+          <PageNotices strControlId={`reports.${objProps.strCsvFileName}.notices`} lstNotices={lstPageNotices} />
+        </Stack>
       ) : (
         <Typography className={`${styles.breadcrumbs} ${payrollStyles.hiddenHeader}`}>{objProps.strTitle}</Typography>
       )}
@@ -440,11 +450,11 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
       <Box sx={{ alignItems: "center", backgroundColor: "#f8fbff", border: "1px solid rgba(191,219,254,0.7)", borderRadius: "16px", color: "#1f2937", display: "flex", gap: 1, px: 1.5, py: 1.25 }}>
         <InfoOutlinedIcon sx={{ color: "#2b6cb0", fontSize: 20 }} />
         <Typography sx={{ color: "inherit", lineHeight: 1.5 }}>{objProps.strInfo}</Typography>
+        {/* Title is hidden when there are no breadcrumbs, so the notices icon sits in the info strip instead. */}
+        {!blnShowBreadcrumbs ? <PageNotices strControlId={`reports.${objProps.strCsvFileName}.notices`} lstNotices={lstPageNotices} /> : null}
       </Box>
 
       <Box className={styles.tableCard} sx={objProps.blnUseMasterStyle || blnCompactLayout ? { p: "0 !important", borderRadius: "10px !important", boxShadow: "none" } : undefined}>
-        {!blnRightsLoading && !blnCanView && !strError ? <Alert severity="warning" sx={{ mb: 1.5 }}>This report is not available for your user group.</Alert> : null}
-        {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
         <CommonTable
           columns={lstColumns}
           rows={lstDisplayRows}

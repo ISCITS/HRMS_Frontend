@@ -353,7 +353,15 @@ export default function LoanFinalizationPage() {
 
   return (
     <Box className={styles.page}>
-      <MasterBreadcrumbs strSection={t("breadcrumb_loan_management", "Loan Management")} strTitle={t("page_title", "Loan Recovery")} />
+      <MasterBreadcrumbs
+        strSection={t("breadcrumb_loan_management", "Loan Management")}
+        strTitle={t("page_title", "Loan Recovery")}
+        lstNotices={[
+          { strKey: "rights", strSeverity: "warning", objMessage: strRightsError },
+          { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+          { strKey: "success", strSeverity: "success", objMessage: strSuccess, fnDismiss: () => setStrSuccess("") },
+        ]}
+      />
 
       <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <Box
@@ -394,10 +402,6 @@ export default function LoanFinalizationPage() {
           ) : null}
         </Box>
       </Box>
-
-      {strRightsError ? <Alert severity="warning">{strRightsError}</Alert> : null}
-      {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
-      {strSuccess ? <Alert severity="success" onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
 
       {!objRun ? (
         <Alert severity="info">{t("select_run_hint", "Select an open payroll run above to see the loan/advance installments due that month.")}</Alert>

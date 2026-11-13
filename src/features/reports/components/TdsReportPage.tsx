@@ -10,10 +10,11 @@ import FilterListRoundedIcon from "@mui/icons-material/FilterListRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Autocomplete, Box, Breadcrumbs, Button, Checkbox, Divider, FormControlLabel, IconButton, Popover, TextField, Typography } from "@mui/material";
+import { Autocomplete, Box, Breadcrumbs, Button, Checkbox, Divider, FormControlLabel, IconButton, Popover, Stack, TextField, Typography } from "@mui/material";
 import { type InputHTMLAttributes, type ReactNode, useEffect, useMemo, useState } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import PageNotices from "@/Common/components/PageNotices";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import type { TdsReportRow } from "@/features/payroll/types";
 import { getUniqueOptions } from "@/features/reports/components/ReportMultiSelectField";
@@ -292,10 +293,19 @@ export default function TdsReportPage() {
 
   return (
     <Box className={styles.page}>
-      <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ ml: "3px" }}>
-        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>Reports</Typography>
-        <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">TDS Register</Typography>
-      </Breadcrumbs>
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ minWidth: 0 }}>
+        <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ ml: "3px" }}>
+          <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>Reports</Typography>
+          <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">TDS Register</Typography>
+        </Breadcrumbs>
+        <PageNotices
+          strControlId="reports.tds.notices"
+          lstNotices={[
+            !blnRightsLoading && !blnCanView && !strError ? { strKey: "rights", strSeverity: "warning", objMessage: "TDS report view access is not available for your user group." } : null,
+            { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+          ]}
+        />
+      </Stack>
       <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <Box className={styles.reportSearchPanelRow} sx={{ py: "0 !important" }}>
           <Box className={styles.reportSearchField} sx={{ flex: "2 1 340px", minWidth: { xs: "100%", md: 320 } }}>
@@ -394,8 +404,6 @@ export default function TdsReportPage() {
         </Typography>
       </Box>
       <Box className={styles.tableCard} sx={{ p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
-        {!blnRightsLoading && !blnCanView && !strError ? <Alert severity="warning" sx={{ mb: 1.5 }}>TDS report view access is not available for your user group.</Alert> : null}
-        {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
         <PayrollDataChangedNotice objFreshness={objPayrollFreshness} blnRefreshing={blnPageLoading} />
         <CommonTable
           columns={lstTableColumns as unknown as CommonTableColumn<Record<string, ReactNode>>[]}

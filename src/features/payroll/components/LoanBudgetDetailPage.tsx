@@ -3,7 +3,7 @@
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
-import { Alert, Box, Button, FormControlLabel, MenuItem, Pagination, Radio, RadioGroup, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, TextField, Typography } from "@mui/material";
+import { Box, Button, FormControlLabel, MenuItem, Pagination, Radio, RadioGroup, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, TextField, Typography } from "@mui/material";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 import { DetailPageHeader } from "@/components/master/MasterListUi";
@@ -323,6 +323,11 @@ export default function LoanBudgetDetailPage({
         strListHref="/payroll/loan-budget"
         fnListClick={onBack}
         strCurrent={blnEditMode ? (blnCanEdit ? t("breadcrumb_edit", "Edit") : t("breadcrumb_view", "View")) : t("breadcrumb_add", "Add")}
+        lstNotices={[
+          { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+          { strKey: "success", strSeverity: "success", objMessage: strSuccess, fnDismiss: () => setStrSuccess("") },
+          !blnCanEdit ? { strKey: "read-only", strSeverity: "warning", objMessage: t("read_only", "You have view-only access to loan budgets.") } : null,
+        ]}
       >
             <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={onBack} controlId="loan-budget.detail.back.button">
               {t("back_button", "Back")}
@@ -385,10 +390,6 @@ export default function LoanBudgetDetailPage({
           </Box>
         </Box>
       </Box>
-
-      {strError ? <Alert severity="error" sx={{ flex: "0 0 auto" }} onClose={() => setStrError("")}>{strError}</Alert> : null}
-      {strSuccess ? <Alert severity="success" sx={{ flex: "0 0 auto" }} onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
-      {!blnCanEdit ? <Alert severity="warning" sx={{ flex: "0 0 auto" }}>{t("read_only", "You have view-only access to loan budgets.")}</Alert> : null}
 
       {/* Company budget: fixed, small form */}
       <Box className={styles.controlsCard}>

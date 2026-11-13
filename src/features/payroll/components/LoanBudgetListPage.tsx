@@ -96,9 +96,14 @@ export default function LoanBudgetListPage({ intRefreshKey, onOpenBudget, onCrea
 
   return (
     <Box className={styles.page}>
-      <MasterBreadcrumbs strSection={t("breadcrumb_loan_management", "Loan Management")} strTitle={t("breadcrumb_loan_budget", "Loan Budget")} />
-      {strRightsError || strLabelError ? <Alert severity="warning">{strRightsError || strLabelError}</Alert> : null}
-      {strError ? <Alert severity="error">{strError}</Alert> : null}
+      <MasterBreadcrumbs
+        strSection={t("breadcrumb_loan_management", "Loan Management")}
+        strTitle={t("breadcrumb_loan_budget", "Loan Budget")}
+        lstNotices={[
+          { strKey: "rights", strSeverity: "warning", objMessage: strRightsError || strLabelError },
+          { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+        ]}
+      />
       {!blnCanView && !blnRightsLoading ? <Alert severity="warning">{t("no_access", "Loan budget access is not available for your user group.")}</Alert> : null}
       {blnCanView || blnRightsLoading ? (
         <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
