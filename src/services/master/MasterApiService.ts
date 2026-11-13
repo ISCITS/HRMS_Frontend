@@ -1378,6 +1378,9 @@ export type EmployeeSalaryStructureComponentOptionApiRecord = {
 };
 
 export type EmployeeSalaryFormOptionsApiRecord = {
+  lstDesignations?: EmployeeSalaryFormOptionApiRecord[];
+  lstDepartments?: EmployeeSalaryFormOptionApiRecord[];
+  lstGrades?: EmployeeSalaryFormOptionApiRecord[];
   lstEmployees: EmployeeSalaryFormOptionApiRecord[];
   lstSalaryStructures: EmployeeSalaryFormOptionApiRecord[];
 };

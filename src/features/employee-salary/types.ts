@@ -85,6 +85,10 @@ export type EmployeeSalaryStructureComponentOption = {
 };
 
 export type EmployeeSalaryFormOptions = {
+  lstDesignations?: EmployeeSalaryOption[];
+  lstDepartments?: EmployeeSalaryOption[];
+  lstGrades?: EmployeeSalaryOption[];
+
   lstEmployees: EmployeeSalaryOption[];
   lstSalaryStructures: EmployeeSalaryOption[];
 };
@@ -139,6 +143,10 @@ export type EmployeeSalaryComponentLine = {
 };
 
 export type EmployeeSalaryHistoryRecord = {
+  intDesignationID?: number | null;
+  intDepartmentID?: number | null;
+  intGradeID?: number | null;
+
   intEmployeeSalaryStructureID: number;
   strStructureName: string | null;
   strStructureCode: string | null;
@@ -238,6 +246,10 @@ export type EmployeeSalaryDetailRecord = {
   /** Only on the response of saving a revision: info when it is backdated into finalized payroll months (arrears). */
   strArrearNotice?: string | null;
   objEmployeeSummary: {
+    intDesignationID?: number | null;
+    intDepartmentID?: number | null;
+    intGradeID?: number | null;
+
     intEmployeeID: number;
     strEmployeeRecordUUID: string;
     strEmployeeCode: string;
@@ -337,6 +349,10 @@ export type EmployeeSalaryFlexiAllocationFormValue = {
 };
 
 export type EmployeeSalaryRevisionFormValues = {
+  intDesignationID?: number | "";
+  intDepartmentID?: number | "";
+  intGradeID?: number | "";
+
   intSalaryStructureID: number | "";
   dtEffectiveFrom: string;
   dtEffectiveTo?: string;

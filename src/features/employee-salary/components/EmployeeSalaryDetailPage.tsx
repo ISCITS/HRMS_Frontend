@@ -12,7 +12,6 @@ import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import RemoveCircleOutlineRoundedIcon from "@mui/icons-material/RemoveCircleOutlineRounded";
 import SavingsOutlinedIcon from "@mui/icons-material/SavingsOutlined";
-import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import {
   Alert,
@@ -199,6 +198,10 @@ type HistoryGridRow = {
   blnIsCurrent: boolean;
   strCurrent: string;
   strReason: string;
+  strDesignation: string;
+  strDepartment: string;
+  strGrade: string;
+
 };
 
 type ComponentDataGridRow = Omit<ComponentGridRow, "strComponentName" | "strOverride" | "strMonthly"> & {
@@ -1390,6 +1393,10 @@ function buildRevisionForm(
     dtEffectiveFrom: getRevisionMinEffectiveDate(objDetail) || getTodayDateString(),
     dtEffectiveTo: objDetail?.objCurrentSalarySnapshot?.dtEffectiveTo ?? "",
     strRevisionReason: "",
+    intDesignationID: objDetail?.objEmployeeSummary.intDesignationID ?? "",
+    intDepartmentID: objDetail?.objEmployeeSummary.intDepartmentID ?? "",
+    intGradeID: objDetail?.objEmployeeSummary.intGradeID ?? "",
+
     lstOverrides: buildOverrideRows(
       lstStructureComponents.length > 0 ? lstStructureComponents : objDetail?.lstComponentLines ?? [],
       objDetail?.lstComponentLines ?? [],
@@ -1479,10 +1486,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
       try {
         const dicDetail = await employeeSalaryService.getEmployeeSalaryDetail(strEmployeeID);
         const [dicFormOptions, dicSalaryComponents] = await Promise.all([
-          employeeSalaryService.getFormOptions().catch(() => ({
-            lstEmployees: [],
-            lstSalaryStructures: [],
-          })),
+          employeeSalaryService.getFormOptions(),
           masterApiService.getSalaryComponents().catch(() => ({ Data: [] as SalaryComponentApiRecord[] })),
         ]);
         let intDeclarationID = dicDetail.objFlexiDeclaration?.intDeclarationID ?? null;
@@ -1615,7 +1619,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
         blnIsAllocationBased: dicLine.strVariablePayCalculationMethodCode === "ALLOCATION_BASED"
       };
     });
-  }, [objDetail, strCurrencyCode, t]);
+  }, [objDetail, objFormOptions, strCurrencyCode, t]);
 
   const lstHistoryRows: HistoryGridRow[] = useMemo(() => {
     return (objDetail?.lstRevisionHistory ?? []).map((dicRow: EmployeeSalaryHistoryRecord) => {
@@ -1635,6 +1639,9 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
         strCurrent: dicRow.blnIsCurrent
           ? t("employee_salary_current", "Current")
           : t("employee_salary_history", "History"),
+        strDesignation: objFormOptions?.lstDesignations?.find((dicOption) => dicOption.intID === dicRow.intDesignationID)?.strLabel ?? "-",
+        strDepartment: objFormOptions?.lstDepartments?.find((dicOption) => dicOption.intID === dicRow.intDepartmentID)?.strLabel ?? "-",
+        strGrade: objFormOptions?.lstGrades?.find((dicOption) => dicOption.intID === dicRow.intGradeID)?.strLabel ?? "-",
         strReason: dicRow.strRevisionReason ?? "-"
       };
     });
@@ -2016,6 +2023,9 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
     { field: "strGrossMonthly", headerName: t("employee_salary_gross_monthly", "Gross Monthly"), width: 150, align: "right", sortAccessor: (dicRow) => dicRow.decGrossMonthlySort },
     { field: "strCtcAnnual", headerName: t("employee_salary_ctc_annual", "CTC Annual"), width: 150, align: "right", sortAccessor: (dicRow) => dicRow.decCtcAnnualSort },
     { field: "strCurrent", headerName: t("employee_salary_record_type", "Record Type"), width: 130, sortable: false },
+    { field: "strDesignation", headerName: t("employee_salary_designation", "Designation"), width: 170 },
+    { field: "strDepartment", headerName: t("employee_salary_department", "Department"), width: 170 },
+    { field: "strGrade", headerName: t("employee_salary_grade", "Grade"), width: 170 },
     { field: "strReason", headerName: t("employee_salary_revision_reason", "Revision Reason"), width: 210 }
   ], [t]);
   const lstRevisionFlexiDataGridRows = useMemo<RevisionFlexiDataGridRow[]>(
@@ -2435,7 +2445,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
         {strSuccess ? <Alert severity="success" onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
         {strArrearNotice ? <Alert severity="info" onClose={() => setStrArrearNotice("")} data-testid="employee-salary.arrear-notice">{strArrearNotice}</Alert> : null}
 
-        <Box className={`${styles.tableCard} ${styles.revisionCard}`} sx={{ px: 2.25, py: 3 }}>
+        <Box className={`${styles.tableCard} ${styles.revisionCard}`} sx={{ mt: 2, px: 2.25, py: 3 }}>
           <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr" } }}>
             <CommonSearchableSelect
               controlId="employee-salary.revision.salary-structure.select"
@@ -2462,6 +2472,35 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
               value={dicRevisionForm.dtEffectiveTo}
               onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({ ...dicPrev, dtEffectiveTo: objEvent.target.value }))}
               InputLabelProps={{ shrink: true }}
+            />
+          </Box>
+          <Box sx={{ display: "grid", gap: 1.5, mt: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr" } }}>
+            <CommonSearchableSelect
+              controlId="employee-salary.revision.designation.select"
+              label={t("employee_salary_designation", "Designation")}
+              value={dicRevisionForm.intDesignationID ?? ""}
+              options={objFormOptions?.lstDesignations ?? []}
+              onChange={(intValue) => setDicRevisionForm((dicPrev) => ({ ...dicPrev, intDesignationID: intValue === "" ? "" : Number(intValue) }))}
+              placeholder={t("employee_salary_select", "Select")}
+              disabled={blnSaving}
+            />
+            <CommonSearchableSelect
+              controlId="employee-salary.revision.department.select"
+              label={t("employee_salary_department", "Department")}
+              value={dicRevisionForm.intDepartmentID ?? ""}
+              options={objFormOptions?.lstDepartments ?? []}
+              onChange={(intValue) => setDicRevisionForm((dicPrev) => ({ ...dicPrev, intDepartmentID: intValue === "" ? "" : Number(intValue) }))}
+              placeholder={t("employee_salary_select", "Select")}
+              disabled={blnSaving}
+            />
+            <CommonSearchableSelect
+              controlId="employee-salary.revision.grade.select"
+              label={t("employee_salary_grade", "Grade")}
+              value={dicRevisionForm.intGradeID ?? ""}
+              options={objFormOptions?.lstGrades ?? []}
+              onChange={(intValue) => setDicRevisionForm((dicPrev) => ({ ...dicPrev, intGradeID: intValue === "" ? "" : Number(intValue) }))}
+              placeholder={t("employee_salary_select", "Select")}
+              disabled={blnSaving}
             />
           </Box>
           <TextField
@@ -2919,7 +2958,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
       </Paper>
 
     {blnIsRevisionMode ? (
-        <Box className={`${styles.tableCard} ${styles.revisionCard}`} sx={{ px: 2.25, py: 3 }}>
+        <Box className={`${styles.tableCard} ${styles.revisionCard}`} sx={{ mt: 2, px: 2.25, py: 3 }}>
           <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr" } }}>
             <CommonSearchableSelect
               controlId="employee-salary.revision.salary-structure.select"
@@ -2947,6 +2986,35 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
               value={dicRevisionForm.dtEffectiveTo}
               onChange={(objEvent) => setDicRevisionForm((dicPrev) => ({ ...dicPrev, dtEffectiveTo: objEvent.target.value }))}
               InputLabelProps={{ shrink: true }}
+            />
+          </Box>
+          <Box sx={{ display: "grid", gap: 1.5, mt: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr" } }}>
+            <CommonSearchableSelect
+              controlId="employee-salary.revision.designation.select"
+              label={t("employee_salary_designation", "Designation")}
+              value={dicRevisionForm.intDesignationID ?? ""}
+              options={objFormOptions?.lstDesignations ?? []}
+              onChange={(intValue) => setDicRevisionForm((dicPrev) => ({ ...dicPrev, intDesignationID: intValue === "" ? "" : Number(intValue) }))}
+              placeholder={t("employee_salary_select", "Select")}
+              disabled={blnSaving}
+            />
+            <CommonSearchableSelect
+              controlId="employee-salary.revision.department.select"
+              label={t("employee_salary_department", "Department")}
+              value={dicRevisionForm.intDepartmentID ?? ""}
+              options={objFormOptions?.lstDepartments ?? []}
+              onChange={(intValue) => setDicRevisionForm((dicPrev) => ({ ...dicPrev, intDepartmentID: intValue === "" ? "" : Number(intValue) }))}
+              placeholder={t("employee_salary_select", "Select")}
+              disabled={blnSaving}
+            />
+            <CommonSearchableSelect
+              controlId="employee-salary.revision.grade.select"
+              label={t("employee_salary_grade", "Grade")}
+              value={dicRevisionForm.intGradeID ?? ""}
+              options={objFormOptions?.lstGrades ?? []}
+              onChange={(intValue) => setDicRevisionForm((dicPrev) => ({ ...dicPrev, intGradeID: intValue === "" ? "" : Number(intValue) }))}
+              placeholder={t("employee_salary_select", "Select")}
+              disabled={blnSaving}
             />
           </Box>
           <TextField
@@ -3261,35 +3329,6 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
                 {t("employee_salary_salary_structure", "Salary Structure")}
               </Typography>
             )}
-            paginationLeftSlot={
-              blnCanEdit && !blnAddingLine ? (
-                <Button
-                  data-controlid="employee-salary.detail.salary-structure.add-line.button"
-                  className={styles.primaryButton}
-                  startIcon={<AddRoundedIcon />}
-                  onClick={() => setBlnAddingLine(true)}
-                  sx={{
-                    borderRadius: "14px",
-                    height: 34,
-                    minHeight: 34,
-                    py: 0,
-                    px: 1.75,
-                    minWidth: 0,
-                    fontSize: "0.82rem",
-                    whiteSpace: "nowrap",
-                    flexShrink: 0,
-                    "& .MuiButton-startIcon": {
-                      mr: 0.5,
-                      "& svg": {
-                        fontSize: "0.95rem"
-                      }
-                    }
-                  }}
-                >
-                  {t("add_line", "Add Line")}
-                </Button>
-              ) : null
-            }
             minTableWidth={980}
             emptyMessage={t("employee_salary_no_component_lines_found", "No salary component lines found.")}
             testIdPrefix="employee-salary.detail.salary-structure"

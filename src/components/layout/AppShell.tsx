@@ -1301,7 +1301,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           flexDirection: "column",
           flex: 1,
           minHeight: 0,
-          borderRadius: "20px",
+          borderRadius: 0,
           overflow: "hidden",
           backgroundColor: "var(--app-menu-surface)",
           backdropFilter: "blur(22px)",
@@ -1425,7 +1425,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           gap: 1.25,
           px: 2,
           py: 1.4,
-          borderRadius: "18px",
+          borderRadius: 0,
           backgroundColor: "rgba(255,255,255,0.86)",
           border: "1px solid rgba(148, 163, 184, 0.16)",
           boxShadow: "0 10px 24px rgba(15, 23, 42, 0.06)",
@@ -1622,14 +1622,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
           pointerEvents: blnDesktopSidebarOpen ? "auto" : "none"
         }}
       />
-      {/* Floating drawer: inset from the top/bottom edges with rounded corners all
-          round, mirroring the mobile app's nav menu rather than a full-bleed panel. */}
+      {/* Navigation panel sits flush against the viewport edges. */}
       <Box
         sx={{
           position: "fixed",
-          left: 12,
-          top: 24,
-          bottom: 24,
+          left: 0,
+          top: 0,
+          bottom: 0,
           zIndex: intMenuZIndex + 2,
           width: intDrawerWidth,
           height: "auto",
@@ -1653,15 +1652,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
           display: { xs: "block", lg: "none" },
           zIndex: intMenuZIndex,
           "& .MuiDrawer-paper": {
-            // Floating card inset from the viewport edges on every side (not just the
-            // right), matching the mobile app's nav menu treatment.
-            top: 24,
-            bottom: 24,
-            left: 12,
+            top: 0,
+            bottom: 0,
+            left: 0,
             height: "auto",
-            width: `min(${intDrawerWidth}px, calc(100vw - 36px))`,
+            width: `min(${intDrawerWidth}px, 100vw)`,
             border: "none",
-            borderRadius: "20px",
+            borderRadius: 0,
             backgroundColor: "transparent",
             boxShadow: "none",
             overflow: "visible"
