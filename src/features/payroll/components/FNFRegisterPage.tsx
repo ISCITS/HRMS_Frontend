@@ -115,10 +115,15 @@ export default function FNFRegisterPage() {
 
   return (
     <Box className={styles.page} data-controlid="payroll.fnf-register.page">
-      <MasterBreadcrumbs strSection="Employee Services" strTitle="F&F Register" />
+      <MasterBreadcrumbs
+        strSection="Employee Services"
+        strTitle="F&F Register"
+        lstNotices={[
+          { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+          { strKey: "info", strSeverity: "info", objMessage: strInfo },
+        ]}
+      />
       <FNFModuleTabs strActive="register" />
-      {strError ? <Alert severity="error">{strError}</Alert> : null}
-      {strInfo ? <Alert severity="info">{strInfo}</Alert> : null}
       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, alignItems: "center", mb: 2 }}>
         <TextField size="small" type="date" label="LWD from" InputLabelProps={{ shrink: true }} value={dicFilters.lwd_from} onChange={(e) => setDicFilters((d) => ({ ...d, lwd_from: e.target.value }))} controlId="payroll.fnf-register.lwd-from.input" />
         <TextField size="small" type="date" label="LWD to" InputLabelProps={{ shrink: true }} value={dicFilters.lwd_to} onChange={(e) => setDicFilters((d) => ({ ...d, lwd_to: e.target.value }))} controlId="payroll.fnf-register.lwd-to.input" />

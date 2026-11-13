@@ -240,10 +240,15 @@ export default function FNFPayslipsPage() {
 
   return (
     <Box className={`${styles.page} app-master-page-relative`} data-controlid="payroll.fnf-payslips.page">
-      <MasterBreadcrumbs strSection="Employee Services" strTitle="F&F Reports" />
+      <MasterBreadcrumbs
+        strSection="Employee Services"
+        strTitle="F&F Reports"
+        lstNotices={[
+          { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+          { strKey: "info", strSeverity: "info", objMessage: strInfo },
+        ]}
+      />
       <FNFModuleTabs strActive="payslips" />
-      {strError ? <Alert severity="error">{strError}</Alert> : null}
-      {strInfo ? <Alert severity="info">{strInfo}</Alert> : null}
 
       <Box className="app-master-search-panel">
         <Box className={`${styles.searchRow} app-master-search-row-centered`}>

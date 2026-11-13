@@ -3,7 +3,6 @@
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import {
-  Alert,
   Box,
   Button,
   FormControlLabel,
@@ -191,6 +190,12 @@ export default function StatutoryRuleEditorPage({
         strListTitle={t("breadcrumb_title", "Statutory Rules")}
         strListHref="/payroll/statutory-rules"
         strCurrent={strMode === "edit" ? t("breadcrumb_edit", "Edit") : t("breadcrumb_add", "Add")}
+        lstNotices={[
+          { strKey: "rights", strSeverity: "warning", objMessage: strRightsError },
+          !blnCanSave ? { strKey: "save-access", strSeverity: "warning", objMessage: t("save_access_denied", "Statutory rule save access is not available for your user group.") } : null,
+          { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+          { strKey: "success", strSeverity: "success", objMessage: strSuccess, fnDismiss: () => setStrSuccess("") },
+        ]}
       >
         <Button
           controlId="statutory-rules.editor.back.button"
@@ -211,11 +216,6 @@ export default function StatutoryRuleEditorPage({
           {blnSaving ? tCommon("processing", "Processing...") : tCommon("save", "Save")}
         </Button> : null}
       </DetailPageHeader>
-
-      {strRightsError ? <Alert severity="warning">{strRightsError}</Alert> : null}
-      {!blnCanSave ? <Alert severity="warning">{t("save_access_denied", "Statutory rule save access is not available for your user group.")}</Alert> : null}
-      {strError ? <Alert severity="error">{strError}</Alert> : null}
-      {strSuccess ? <Alert severity="success">{strSuccess}</Alert> : null}
 
       <Paper
         sx={{

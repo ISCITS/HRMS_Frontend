@@ -8,6 +8,7 @@ import { Box, Breadcrumbs, Button, Checkbox, IconButton, Link, Menu, MenuItem, P
 import NextLink from "next/link";
 import { useState, type KeyboardEvent, type ReactNode } from "react";
 
+import PageNotices, { type PageNoticeInput } from "@/Common/components/PageNotices";
 import styles from "@/components/master/MasterScreen.module.css";
 
 // Shared building blocks for list screens styled like the Department master:
@@ -16,14 +17,23 @@ import styles from "@/components/master/MasterScreen.module.css";
 type MasterBreadcrumbsProps = {
   strSection: string;
   strTitle: string;
+  /** Validation messages / warnings / hints, shown behind an "i" icon beside the title. */
+  lstNotices?: PageNoticeInput[];
 };
 
-export function MasterBreadcrumbs({ strSection, strTitle }: MasterBreadcrumbsProps) {
-  return (
+export function MasterBreadcrumbs({ strSection, strTitle, lstNotices }: MasterBreadcrumbsProps) {
+  const objCrumbs = (
     <Breadcrumbs className="app-breadcrumbs app-breadcrumbs-master" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon className="app-breadcrumb-separator-icon" />}>
       <Typography className="app-breadcrumb-label">{strSection}</Typography>
       <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{strTitle}</Typography>
     </Breadcrumbs>
+  );
+  if (!lstNotices) return objCrumbs;
+  return (
+    <Stack direction="row" alignItems="center" spacing={1} sx={{ minWidth: 0 }}>
+      {objCrumbs}
+      <PageNotices lstNotices={lstNotices} strControlId="page.notices.icon" />
+    </Stack>
   );
 }
 
@@ -40,11 +50,13 @@ type DetailPageHeaderProps = {
   objCurrentAdornment?: ReactNode;
   /** Action buttons kept visible in the sticky heading. */
   children?: ReactNode;
+  /** Validation messages / warnings / hints, shown behind an "i" icon beside the title. */
+  lstNotices?: PageNoticeInput[];
 };
 
 // Heading shared by detail (add / edit / view) screens: Section > List > Mode, with the screen's
 // action buttons pinned beside it like the Employee details screen.
-export function DetailPageHeader({ strSection, strListTitle, strListHref, fnListClick, strCurrent, objCurrentAdornment, children }: DetailPageHeaderProps) {
+export function DetailPageHeader({ strSection, strListTitle, strListHref, fnListClick, strCurrent, objCurrentAdornment, children, lstNotices }: DetailPageHeaderProps) {
   return (
     <Stack
       direction={{ xs: "column", sm: "row" }}
@@ -64,6 +76,7 @@ export function DetailPageHeader({ strSection, strListTitle, strListHref, fnList
         <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{strCurrent}</Typography>
       </Breadcrumbs>
       {objCurrentAdornment}
+      {lstNotices ? <PageNotices lstNotices={lstNotices} strControlId="page.notices.icon" /> : null}
       </Stack>
       {children ? (
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: { xs: "100%", sm: "auto" }, flexShrink: 0 }}>

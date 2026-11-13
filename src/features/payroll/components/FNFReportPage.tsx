@@ -318,9 +318,12 @@ export default function FNFReportPage() {
 
   return (
     <Box className={`${styles.page} app-master-page-relative`} data-controlid="payroll.fnf-report.page">
-      <MasterBreadcrumbs strSection="Employee Services" strTitle="F&F Register Report" />
+      <MasterBreadcrumbs
+        strSection="Employee Services"
+        strTitle="F&F Register Report"
+        lstNotices={[{ strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") }]}
+      />
       <FNFModuleTabs strActive="report" />
-      {strError ? <Alert severity="error">{strError}</Alert> : null}
 
       <Box className="app-master-search-panel">
         <Box className={`${styles.searchRow} app-master-search-row-centered`}>

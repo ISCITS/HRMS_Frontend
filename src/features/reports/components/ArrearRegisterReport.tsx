@@ -3,9 +3,10 @@
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, TextField, Typography } from "@mui/material";
+import { Box, Button, Stack, TextField, Typography } from "@mui/material";
 import { useMemo, useState, type ReactNode } from "react";
 
+import PageNotices from "@/Common/components/PageNotices";
 import type { CommonTableColumn } from "@/Common/components/CommonTable";
 import CommonTable from "@/Common/components/CommonTable";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
@@ -165,12 +166,18 @@ export default function ArrearRegisterReport() {
         </Box>
       </Box>
 
-      <Typography sx={{ color: "#48638d", fontSize: "0.85rem" }}>
-        Arrears of the payroll runs whose payroll month is in the selected range: one row per employee, original month and item (earning, PF / ESI on arrears). Useful for Form 10E (relief under section 89).
-      </Typography>
-
-      {strRangeError ? <Alert severity="warning">{strRangeError}</Alert> : null}
-      {strError ? <Alert severity="error">{strError}</Alert> : null}
+      <Stack direction="row" alignItems="center" spacing={1}>
+        <Typography sx={{ color: "#48638d", fontSize: "0.85rem" }}>
+          Arrears of the payroll runs whose payroll month is in the selected range: one row per employee, original month and item (earning, PF / ESI on arrears). Useful for Form 10E (relief under section 89).
+        </Typography>
+        <PageNotices
+          strControlId="reports.arrear-register.notices"
+          lstNotices={[
+            { strKey: "range-error", strSeverity: "warning", objMessage: strRangeError },
+            { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+          ]}
+        />
+      </Stack>
 
       <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <CommonTable

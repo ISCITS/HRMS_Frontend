@@ -724,6 +724,15 @@ export default function EmployeePayrollInputEditorPage({
         strListTitle={t("breadcrumb_title", "Payroll Input")}
         strListHref={strBackRoute || "/payroll/employee-payroll-inputs"}
         strCurrent={strMode === "add" ? t("breadcrumb_add", "Add") : blnReadOnly ? t("breadcrumb_view", "View") : t("breadcrumb_edit", "Edit")}
+        lstNotices={[
+          strLabelError && !objDismissedNotices.has("labelError") ? { strKey: "label-error", strSeverity: "warning", objMessage: strLabelError, fnDismiss: () => dismissNotice("labelError") } : null,
+          strCommonLabelError && !objDismissedNotices.has("commonLabelError") ? { strKey: "common-label-error", strSeverity: "warning", objMessage: strCommonLabelError, fnDismiss: () => dismissNotice("commonLabelError") } : null,
+          strRightsError && !objDismissedNotices.has("rightsError") ? { strKey: "rights", strSeverity: "warning", objMessage: strRightsError, fnDismiss: () => dismissNotice("rightsError") } : null,
+          !blnCanView && !blnCanSave ? { strKey: "access-denied", strSeverity: "warning", objMessage: t("access_denied", "Payroll input access is not available for your user group.") } : null,
+          { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+          { strKey: "success", strSeverity: "success", objMessage: strSuccess, fnDismiss: () => setStrSuccess("") },
+          blnSelectedRunBlocksInputChanges && !objDismissedNotices.has("runBlocks") ? { strKey: "run-locked", strSeverity: "warning", objMessage: t("run_locked_input_warning", "Selected payroll run is locked, so payroll input cannot be edited."), fnDismiss: () => dismissNotice("runBlocks") } : null,
+        ]}
       >
             <Button
               controlId="employee-payroll-input.editor.back.button"
@@ -760,17 +769,10 @@ export default function EmployeePayrollInputEditorPage({
               </Button>
             ) : null}
       </DetailPageHeader>
-      {strLabelError && !objDismissedNotices.has("labelError") ? <Alert severity="warning" onClose={() => dismissNotice("labelError")}>{strLabelError}</Alert> : null}
-      {strCommonLabelError && !objDismissedNotices.has("commonLabelError") ? <Alert severity="warning" onClose={() => dismissNotice("commonLabelError")}>{strCommonLabelError}</Alert> : null}
-      {strRightsError && !objDismissedNotices.has("rightsError") ? <Alert severity="warning" onClose={() => dismissNotice("rightsError")}>{strRightsError}</Alert> : null}
-      {!blnCanView && !blnCanSave ? <Alert severity="warning">{t("access_denied", "Payroll input access is not available for your user group.")}</Alert> : null}
-      {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
-      {strSuccess ? <Alert severity="success" onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
       <CommonEditModeBanner
         blnReadOnly={blnReadOnly}
         strReadOnlyMessage={t("read_only_mode", "This payroll input is open in view mode.")}
       />
-      {blnSelectedRunBlocksInputChanges && !objDismissedNotices.has("runBlocks") ? <Alert severity="warning" onClose={() => dismissNotice("runBlocks")}>{t("run_locked_input_warning", "Selected payroll run is locked, so payroll input cannot be edited.")}</Alert> : null}
 
       <Box
         sx={{

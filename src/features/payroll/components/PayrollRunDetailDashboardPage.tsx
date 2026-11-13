@@ -45,6 +45,7 @@ import {
 import { type MouseEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
+import PageNotices from "@/Common/components/PageNotices";
 import { DetailPageHeader } from "@/components/master/MasterListUi";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
@@ -1344,6 +1345,14 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
         strListHref="/payroll/runs"
         strCurrent={objRun.strRunName}
         objCurrentAdornment={<StatusPill strStatus={objRun.strRunStatus} />}
+        lstNotices={[
+          strRightsError && !blnRightsErrorDismissed ? { strKey: "rights", strSeverity: "warning", objMessage: strRightsError, fnDismiss: () => setBlnRightsErrorDismissed(true) } : null,
+          { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+          { strKey: "success", strSeverity: "success", objMessage: strSuccess, fnDismiss: () => setStrSuccess("") },
+          objRun.strRunStatus === "PROCESSED" && objRun.strRunTypeCode !== "VARIABLE_PAY" && !blnReviewHintDismissed
+            ? { strKey: "review-hint", strSeverity: "info", objMessage: t("payroll_results_help", "Review processed payroll calculations before generating payslips."), fnDismiss: () => setBlnReviewHintDismissed(true) }
+            : null,
+        ]}
       >
           <Box sx={{ alignItems: "center", display: "flex", flex: "0 1 auto", gap: 0.75, minWidth: 0, overflowX: "auto", pb: 0.25 }}>
             {lstWorkflowSteps.map((dicStep, intIndex) => {
@@ -1434,15 +1443,6 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
           ) : null}
         </Menu>
       </DetailPageHeader>
-
-      {strRightsError && !blnRightsErrorDismissed ? <Alert severity="warning" onClose={() => setBlnRightsErrorDismissed(true)}>{strRightsError}</Alert> : null}
-      {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
-      {strSuccess ? <Alert severity="success" onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
-      {objRun.strRunStatus === "PROCESSED" && objRun.strRunTypeCode !== "VARIABLE_PAY" && !blnReviewHintDismissed ? (
-        <Alert severity="info" onClose={() => setBlnReviewHintDismissed(true)} data-controlid="payroll.run-detail.review-before-payslips.alert">
-          {t("payroll_results_help", "Review processed payroll calculations before generating payslips.")}
-        </Alert>
-      ) : null}
 
       <Box sx={{ ...objCardSx, borderColor: "#DCE4EF", overflow: "hidden", p: 0 }}>
         <Tabs
@@ -1919,14 +1919,20 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
 
       {objProcessSummary ? (
         <Box sx={{ ...objCardSx, p: 1.25 }}>
-          <Typography sx={{ fontSize: "1rem", fontWeight: 900, mb: 1 }}>{t("process_summary", "Processing Summary")}</Typography>
+          <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mb: 1 }}>
+            <Typography sx={{ fontSize: "1rem", fontWeight: 900 }}>{t("process_summary", "Processing Summary")}</Typography>
+            <PageNotices
+              blnSmall
+              strControlId="payroll.run-detail.process-exceptions.notices"
+              lstNotices={objProcessSummary.lstExceptions.map((dicException, intIndex) => ({ strKey: `exception-${intIndex}`, strSeverity: "warning" as const, objMessage: dicException.strMessage, blnToast: false }))}
+            />
+          </Stack>
           <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" } }}>
             <MetricTile objIcon={<TaskAltRoundedIcon sx={{ fontSize: 18 }} />} strLabel={t("status", "Status")} strValue={objProcessSummary.strStatus} strTone={objProcessSummary.strStatus === "Failed" ? "red" : "green"} />
             <MetricTile objIcon={<GroupRoundedIcon sx={{ fontSize: 18 }} />} strLabel={t("processed", "Processed")} strValue={objProcessSummary.intProcessedEmployeeCount} strTone="blue" />
             <MetricTile objIcon={<ErrorOutlineRoundedIcon sx={{ fontSize: 18 }} />} strLabel={t("failed", "Failed")} strValue={objProcessSummary.intFailedEmployeeCount} strTone="red" />
             <MetricTile objIcon={<PaidRoundedIcon sx={{ fontSize: 18 }} />} strLabel={t("net_total", "Net Pay")} strValue={formatCurrency(objProcessSummary.decNetPayTotal || 0)} strTone="green" />
           </Box>
-          {objProcessSummary.lstExceptions.length ? <Alert severity="warning" sx={{ mt: 1 }}>{objProcessSummary.lstExceptions.map((dicException) => dicException.strMessage).join(" | ")}</Alert> : null}
         </Box>
       ) : null}
 
