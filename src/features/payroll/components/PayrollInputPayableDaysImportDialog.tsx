@@ -152,6 +152,14 @@ export default function PayrollInputPayableDaysImportDialog({
         decLwpDays: toNumberOrNull(objRow.decLwpDays),
         decLopDays: toNumberOrNull(objRow.decLopDays),
         decPaidDays: toNumberOrNull(objRow.decPaidDays),
+        decPresentDays: toNumberOrNull(objRow.decPresentDays),
+        decWeeklyOffDays: toNumberOrNull(objRow.decWeeklyOffDays),
+        decPaidLeaveDays: toNumberOrNull(objRow.decPaidLeaveDays),
+        decHolidayDays: toNumberOrNull(objRow.decHolidayDays),
+        decHoursWorked: toNumberOrNull(objRow.decHoursWorked),
+        decProrateFactor: toNumberOrNull(objRow.decProrateFactor),
+        intPayrollYear: objRow.intPayrollYear,
+        intPayrollMonth: objRow.intPayrollMonth,
         strRemarks: objRow.strRemarks,
       }));
     if (lstRows.length === 0) {
@@ -217,7 +225,7 @@ export default function PayrollInputPayableDaysImportDialog({
         <Alert severity="info" sx={{ mb: 2 }}>
           {t(
             "payable_days_import_help",
-            "Upload the payable days sheet for this run. Each row sets the employee's Calendar, Working, Payable, LWP, LOP and Paid days in Payroll Input. Blank optional columns are filled in (Calendar = days of the month, Working = Calendar, LWP/LOP = 0, Paid = Payable - LWP - LOP). Only employees in the sheet change, adjustment lines such as TDS are not touched, and imported days are not overwritten by an attendance refresh."
+            "Upload our template or the client's payable days sheet as it is (Employee No, Year Month, Total Present Days, Total Hours worked, Prorate Factor, Physical present days, Weekly off, Paid Leaves, Holidays, LWP Days are recognised). Payable Days (Total Present Days) is taken as already net of LWP, so Paid Days = Payable Days unless the sheet says otherwise; LWP is informational. Blank Calendar/Working Days = days of the month. Only employees in the sheet change, adjustment lines such as TDS are not touched, and imported days are not overwritten by an attendance refresh."
           )}
         </Alert>
         {objStatus && objStatus.intEmployeesWithImportedDays > 0 ? (
@@ -253,7 +261,7 @@ export default function PayrollInputPayableDaysImportDialog({
               ) : null}
               <Chip label={`${t("payable_days_import_run_employees", "Employees in run")}: ${objPreview.intRunEmployeeCount}`} />
               <Chip label={`${t("payable_days_import_not_in_sheet", "Not in sheet (unchanged)")}: ${objPreview.intEmployeesNotInSheet}`} />
-              <Chip label={`${t("payable_days_import_month_days", "Days in month")}: ${formatDays(objPreview.decMonthCalendarDays)}`} />
+              <Chip label={`${t("payable_days_import_month", "Payroll month")}: ${objPreview.strPayrollMonth} (${formatDays(objPreview.decMonthCalendarDays)} ${t("days", "days")})`} />
             </Box>
             <TableContainer sx={{ maxHeight: 440 }}>
               <Table size="small" stickyHeader>
@@ -271,13 +279,20 @@ export default function PayrollInputPayableDaysImportDialog({
                     <TableCell>{t("row", "Row")}</TableCell>
                     <TableCell>{t("employee_code", "Employee Code")}</TableCell>
                     <TableCell>{t("employee_name", "Employee Name")}</TableCell>
+                    <TableCell>{t("payroll_month", "Month")}</TableCell>
                     <TableCell align="right">{t("current_payable_days", "Current Payable")}</TableCell>
-                    <TableCell align="right">{t("calendar_days", "Calendar Days")}</TableCell>
-                    <TableCell align="right">{t("working_days", "Working Days")}</TableCell>
+                    <TableCell align="right">{t("present_days", "Present")}</TableCell>
+                    <TableCell align="right">{t("weekly_off_days", "Weekly Off")}</TableCell>
+                    <TableCell align="right">{t("paid_leave_days", "Paid Leave")}</TableCell>
+                    <TableCell align="right">{t("holiday_days", "Holidays")}</TableCell>
                     <TableCell align="right">{t("payable_days", "Payable Days")}</TableCell>
                     <TableCell align="right">{t("lwp", "LWP")}</TableCell>
                     <TableCell align="right">{t("lop", "LOP")}</TableCell>
                     <TableCell align="right">{t("paid_days", "Paid Days")}</TableCell>
+                    <TableCell align="right">{t("hours_worked", "Hours")}</TableCell>
+                    <TableCell align="right">{t("prorate_factor", "Prorate")}</TableCell>
+                    <TableCell align="right">{t("calendar_days", "Calendar")}</TableCell>
+                    <TableCell align="right">{t("working_days", "Working")}</TableCell>
                     <TableCell>{t("remarks", "Remarks")}</TableCell>
                     <TableCell>{t("result", "Result")}</TableCell>
                   </TableRow>
@@ -301,15 +316,22 @@ export default function PayrollInputPayableDaysImportDialog({
                         <TableCell>{objRow.intExcelRowNumber}</TableCell>
                         <TableCell>{objRow.strEmployeeCode || "-"}</TableCell>
                         <TableCell>{objRow.strEmployeeName ?? "-"}</TableCell>
+                        <TableCell>{objRow.strPayrollMonth ?? "-"}</TableCell>
                         <TableCell align="right">{formatDays(objRow.decCurrentPayableDays)}</TableCell>
-                        <TableCell align="right">{formatDays(objRow.decCalendarDays)}</TableCell>
-                        <TableCell align="right">{formatDays(objRow.decWorkingDays)}</TableCell>
+                        <TableCell align="right">{formatDays(objRow.decPresentDays)}</TableCell>
+                        <TableCell align="right">{formatDays(objRow.decWeeklyOffDays)}</TableCell>
+                        <TableCell align="right">{formatDays(objRow.decPaidLeaveDays)}</TableCell>
+                        <TableCell align="right">{formatDays(objRow.decHolidayDays)}</TableCell>
                         <TableCell align="right" sx={{ fontWeight: 700, color: blnChanged ? "#b45309" : undefined }}>
                           {formatDays(objRow.decPayableDays)}
                         </TableCell>
                         <TableCell align="right">{formatDays(objRow.decLwpDays)}</TableCell>
                         <TableCell align="right">{formatDays(objRow.decLopDays)}</TableCell>
-                        <TableCell align="right">{formatDays(objRow.decPaidDays)}</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>{formatDays(objRow.decPaidDays)}</TableCell>
+                        <TableCell align="right">{formatDays(objRow.decHoursWorked)}</TableCell>
+                        <TableCell align="right">{objRow.decProrateFactor ?? "-"}</TableCell>
+                        <TableCell align="right">{formatDays(objRow.decCalendarDays)}</TableCell>
+                        <TableCell align="right">{formatDays(objRow.decWorkingDays)}</TableCell>
                         <TableCell>{objRow.strRemarks ?? "-"}</TableCell>
                         <TableCell>{renderResult(objRow)}</TableCell>
                       </TableRow>

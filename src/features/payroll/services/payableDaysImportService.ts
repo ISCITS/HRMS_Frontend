@@ -23,6 +23,15 @@ export type PayableDaysImportPreviewRow = {
   decLwpDays: string | null;
   decLopDays: string | null;
   decPaidDays: string | null;
+  decPresentDays: string | null;
+  decWeeklyOffDays: string | null;
+  decPaidLeaveDays: string | null;
+  decHolidayDays: string | null;
+  decHoursWorked: string | null;
+  decProrateFactor: string | null;
+  intPayrollYear: number | null;
+  intPayrollMonth: number | null;
+  strPayrollMonth: string | null;
   decCurrentPayableDays: string | null;
   strCurrentSource: string | null;
   strRemarks: string | null;
@@ -40,6 +49,7 @@ export type PayableDaysImportPreviewResult = {
   intRunEmployeeCount: number;
   intEmployeesNotInSheet: number;
   decMonthCalendarDays: string;
+  strPayrollMonth: string;
   strRunStatus: string;
   strFileChecksum: string;
 };
@@ -53,6 +63,14 @@ export type PayableDaysImportCommitRow = {
   decLwpDays: number | null;
   decLopDays: number | null;
   decPaidDays: number | null;
+  decPresentDays: number | null;
+  decWeeklyOffDays: number | null;
+  decPaidLeaveDays: number | null;
+  decHolidayDays: number | null;
+  decHoursWorked: number | null;
+  decProrateFactor: number | null;
+  intPayrollYear: number | null;
+  intPayrollMonth: number | null;
   strRemarks: string | null;
 };
 
