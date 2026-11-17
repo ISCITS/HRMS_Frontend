@@ -241,6 +241,14 @@ These components define reusable selector patterns used across the application.
   - prefix: `reports.payroll-register.*`
 - `src/features/reports/components/StatutoryReportPage.tsx`
   - prefix: `reports.statutory.*`
+- `src/features/reports/components/Form14ReportPage.tsx`
+  - prefix: `reports.form14.*` (generate, export-pdf, export-xlsx, year-end-close, config, year/department/employee/status selects, show-additional checkbox, page-size select, table view / filter-worker buttons)
+- `src/features/reports/components/Form14PreviewDialog.tsx`
+  - prefix: `reports.form14.preview.*` (dialog, print, download-pdf, download-xlsx, close, details/reverse/opening toggles), `reports.form14.details.*`, `reports.form14.opening.*`, `reports.form14.reverse.*`
+- `src/features/reports/components/Form14CloseDialog.tsx`
+  - prefix: `reports.form14.close.*` (dialog, cancel, confirm)
+- `src/features/reports/components/Form14ConfigDialog.tsx`
+  - prefix: `reports.form14.config.*` (dialog, cancel, save, one input/select/switch per setting key, e.g. `reports.form14.config.eligibility-days.input`)
 
 ## Salary Components and Structures
 

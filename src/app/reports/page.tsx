@@ -38,6 +38,11 @@ const lstReports = [
     strHref: "/reports/pf-ecr",
   },
   {
+    strTitle: "Form 14 – Leave with Wages Register",
+    strDescription: "Statutory leave with wages register per worker (Factories Act), with print, Excel export and year-end close.",
+    strHref: "/reports/form14",
+  },
+  {
     strTitle: "TDS Register",
     strDescription: "Employee-wise monthly TDS deducted, year-to-date TDS, and total tax liability.",
     strHref: "/reports/tds-register",

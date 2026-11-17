@@ -1086,6 +1086,16 @@ const objGeneratedPfEcrReportMenu: MenuItem = {
   lstChildren: [],
 };
 
+const objGeneratedForm14ReportMenu: MenuItem = {
+  strModuleCode: "FORM14_REPORT",
+  strModuleName: "Form 14 – Leave with Wages Register",
+  strRoute: "/reports/form14",
+  strIconName: "Source",
+  lstPermissionCodes: ["FORM14_VIEW", "FORM14_EXPORT"],
+  blnIsHome: false,
+  lstChildren: [],
+};
+
 const objGeneratedSalaryRegisterMenu: MenuItem = {
   strModuleCode: "SALARY_REGISTER",
   strModuleName: "Salary Register",
@@ -1155,6 +1165,9 @@ function appendGeneratedReportsMenu(lstItems: MenuItem[]): MenuItem[] {
     }
     if (!hasRoute(lstGeneratedChildren, "/reports/pf-ecr")) {
       lstGeneratedChildren.push(objGeneratedPfEcrReportMenu);
+    }
+    if (!hasRoute(lstGeneratedChildren, "/reports/form14")) {
+      lstGeneratedChildren.push(objGeneratedForm14ReportMenu);
     }
     return {
       ...objItem,

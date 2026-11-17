@@ -26,6 +26,7 @@ export const appRoutes = {
   payrollReimbursementReview: "/payroll/reimbursements",
   statutoryReport: "/reports/statutory",
   pfEcrReport: "/reports/pf-ecr",
+  form14Report: "/reports/form14",
   tenantAdminBase: "/HRMS/Administrator",
   tenantAdminLogin: "/HRMS/Administrator/login",
   tenantAdminDashboard: "/HRMS/Administrator/dashboard",
