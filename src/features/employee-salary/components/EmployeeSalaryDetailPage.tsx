@@ -348,17 +348,6 @@ type FlexiSourceLine = {
   strFlexiComponentRole?: string | null;
 };
 
-type DetailWithPayrollLock = EmployeeSalaryDetailRecord & {
-  isPayrollLocked?: boolean;
-  isCurrentMonthLocked?: boolean;
-  payrollProcessed?: boolean;
-  blnIsPayrollLocked?: boolean;
-  blnIsCurrentMonthLocked?: boolean;
-  blnPayrollProcessed?: boolean;
-  lockedPayrollMonth?: string | null;
-  strLockedPayrollMonth?: string | null;
-};
-
 type FlexiAllocationLineWithStatus = EmployeeSalaryFlexiAllocationSummary["lstAllocationLines"][number] & {
   decDeclaredAnnualAmount?: number | string | null;
   decDeclaredMonthlyAmount?: number | string | null;
@@ -938,25 +927,6 @@ function getHistorySalaryDisplayAmounts(dicRow: EmployeeSalaryHistoryRecord) {
     decGrossMonthly: getNumberValue(dicRow.decGrossMonthly),
     decCtcAnnual: getNumberValue(dicRow.decCtcAnnual) + decFlexiBasketAnnual
   };
-}
-
-function getPayrollLockMessage(objDetail: EmployeeSalaryDetailRecord | null) {
-  const dicDetail = objDetail as DetailWithPayrollLock | null;
-  const blnLocked = Boolean(
-    dicDetail?.isPayrollLocked ||
-    dicDetail?.isCurrentMonthLocked ||
-    dicDetail?.payrollProcessed ||
-    dicDetail?.blnIsPayrollLocked ||
-    dicDetail?.blnIsCurrentMonthLocked ||
-    dicDetail?.blnPayrollProcessed
-  );
-  if (!blnLocked) {
-    return "";
-  }
-  const strLockedMonth = dicDetail?.lockedPayrollMonth ?? dicDetail?.strLockedPayrollMonth;
-  return strLockedMonth
-    ? `Payroll for ${strLockedMonth} is processed or locked. Approved allocations and HR overrides cannot be changed for this month.`
-    : "Payroll for the current month is processed or locked. Approved allocations and HR overrides cannot be changed for this month.";
 }
 
 function getValidationMessages(
@@ -1659,7 +1629,6 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
   const blnHasFlexiAllocations = objFlexiAllocation.lstAllocationLines.some(
     (dicLine) => !isFlexiBucketAllocationLine(dicLine, objFlexiAllocation)
   );
-  const strPayrollLockMessage = useMemo(() => getPayrollLockMessage(objDetail), [objDetail]);
   const lstValidationMessages = useMemo(
     () => getValidationMessages(objFlexiAllocation, dicFlexiTotals, objDetail?.lstComponentLines ?? []),
     [dicFlexiTotals, objDetail, objFlexiAllocation]
@@ -1937,14 +1906,6 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
     [lstComponentRows]
   );
   const blnHasStructureFlexi = lstFilteredComponentRows.some((dicRow) => dicRow.blnIsFlexiBucket);
-  const blnHasVisibleStructureFlexi = blnIsRevisionMode
-    ? Boolean(dicFlexiPayOverride)
-    : blnHasStructureFlexi;
-  const lstVisibleWarnings = (objDetail?.lstWarnings ?? []).filter(
-    (strWarning) => blnHasVisibleStructureFlexi ||
-      strWarning !== "Flexi Bucket exists but the employee has no approved or locked flexi declaration."
-  );
-
   const lstComponentDataGridRows = useMemo<ComponentDataGridRow[]>(
     () => lstFilteredComponentRows.map((dicRow) => ({
       ...dicRow,
@@ -2446,7 +2407,7 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
         {strArrearNotice ? <Alert severity="info" onClose={() => setStrArrearNotice("")} data-testid="employee-salary.arrear-notice">{strArrearNotice}</Alert> : null}
 
         <Box className={`${styles.tableCard} ${styles.revisionCard}`} sx={{ mt: 2, px: 2.25, py: 3 }}>
-          <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr" } }}>
+          <Box sx={{ display: "grid", gap: 1.5, mt: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr" } }}>
             <CommonSearchableSelect
               controlId="employee-salary.revision.salary-structure.select"
               label={t("employee_salary_structure_field", "Salary structure")}
@@ -2820,7 +2781,9 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
                         }
                       }}
                     >
-                      {t("employee_salary_assign_revise_salary", "Assign / Revise Salary")}
+                      {blnHasAssignedSalary
+                        ? t("employee_salary_revise_salary", "Revise Salary")
+                        : t("employee_salary_assign_salary", "Assign Salary")}
                     </Button>
                   ) : null}
                 </>
@@ -2835,10 +2798,6 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
             blnReadOnly={blnEffectiveViewMode}
             strReadOnlyMessage={t("employee_salary_read_only_mode", "You have view-only access for Employee Salary.")}
           />
-          {strPayrollLockMessage ? <Alert severity="warning">{strPayrollLockMessage}</Alert> : null}
-          {lstVisibleWarnings.map((strWarning, intIndex) => (
-            <Alert key={`${strWarning}-${intIndex}`} severity="warning">{strWarning}</Alert>
-          ))}
           {lstValidationMessages.map((strMessage) => (
             <Alert key={strMessage} severity="error">{strMessage}</Alert>
           ))}
@@ -2860,75 +2819,10 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
           sx={{
             display: "grid",
             gap: { xs: 1.5, md: 1 },
-            gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" },
+            gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "minmax(0, 1.5fr) repeat(6, minmax(0, 1fr))" },
           }}
         >
-          <Stack spacing={1.2} sx={{ order: 4 }}>
-            <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
-              <Box sx={{ width: 28, height: 28, borderRadius: "50%", bgcolor: "#e7f5ec", color: "#15803d", display: "grid", flexShrink: 0, placeItems: "center" }}>
-                <CalendarMonthOutlinedIcon sx={{ fontSize: 15 }} />
-              </Box>
-              <Box sx={{ minWidth: 0 }}>
-                <Typography sx={{ color: "#61738b", fontSize: "0.73rem", fontWeight: 700 }}><SalaryCalculationTooltip rows={dicCalculationRows.ctcAnnual} total={dicSalarySummaryMetrics.decAnnualCtc} currency={strCurrencyCode} title={t("employee_salary_ctc_annual_calculation", "CTC Annual = annual CTC-included earnings + annual employer contributions included in CTC + annual Flexi Bucket. Flexi allocations and residual taxable amounts are not added again.")}>{t("employee_salary_ctc_annual", "CTC Annual")}</SalaryCalculationTooltip></Typography>
-                <Typography sx={{ color: "#155eef", fontSize: "1.02rem", fontWeight: 900, whiteSpace: "nowrap" }}>{formatCurrency(dicSalarySummaryMetrics.decAnnualCtc, strCurrencyCode)}</Typography>
-              </Box>
-            </Stack>
-            <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
-              <Box sx={{ width: 28, height: 28, borderRadius: "50%", bgcolor: "#fff4e5", color: "#b45309", display: "grid", flexShrink: 0, placeItems: "center" }}>
-                <CalendarMonthOutlinedIcon sx={{ fontSize: 15 }} />
-              </Box>
-              <Box sx={{ minWidth: 0 }}>
-                <Typography sx={{ color: "#61738b", fontSize: "0.73rem", fontWeight: 700 }}>{t("employee_salary_salary_revised_on", "Salary Revised On")}</Typography>
-                <Typography sx={{ color: "#172b4d", fontSize: "0.9rem", fontWeight: 700, whiteSpace: "nowrap" }}>
-                  {formatDate(objDetail?.objCurrentSalarySnapshot?.dtEffectiveFrom ?? objDetail?.objAssignedStructure?.dtEffectiveFrom ?? null)}
-                </Typography>
-              </Box>
-            </Stack>
-          </Stack>
-
-          <Stack spacing={1.2} sx={{ order: 2 }}>
-            <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
-              <Box sx={{ width: 28, height: 28, borderRadius: "50%", bgcolor: "#eaf0ff", color: "#155eef", display: "grid", flexShrink: 0, placeItems: "center" }}>
-                <AccountBalanceWalletOutlinedIcon sx={{ fontSize: 15 }} />
-              </Box>
-              <Box sx={{ minWidth: 0 }}>
-                <Typography sx={{ color: "#61738b", fontSize: "0.73rem", fontWeight: 700 }}><SalaryCalculationTooltip rows={dicCalculationRows.grossAnnual} total={decGrossAnnual} currency={strCurrencyCode} title={t("employee_salary_gross_annual_calculation", "Gross Annual = Gross Monthly * 12.")}>{t("employee_salary_gross_annual", "Gross Annual")}</SalaryCalculationTooltip></Typography>
-                <Typography sx={{ color: "#155eef", fontSize: "1.02rem", fontWeight: 900, whiteSpace: "nowrap" }}>{formatCurrency(decGrossAnnual, strCurrencyCode)}</Typography>
-              </Box>
-            </Stack>
-            <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
-              <Box sx={{ width: 28, height: 28, borderRadius: "50%", bgcolor: "#eaf0ff", color: "#155eef", display: "grid", flexShrink: 0, placeItems: "center" }}>
-                <AccountBalanceWalletOutlinedIcon sx={{ fontSize: 15 }} />
-              </Box>
-              <Box sx={{ minWidth: 0 }}>
-                <Typography sx={{ color: "#61738b", fontSize: "0.73rem", fontWeight: 700 }}><SalaryCalculationTooltip rows={dicCalculationRows.grossMonthly} total={dicSalarySummaryMetrics.decGrossMonthly} currency={strCurrencyCode} title={t("employee_salary_gross_monthly_calculation", "Gross Monthly = monthly CTC-included earnings + monthly Flexi Bucket. Employer contributions, employee deductions, information-only components, flexi allocations and residual taxable amounts are excluded from the earnings sum.")}>{t("employee_salary_gross_monthly", "Gross Monthly")}</SalaryCalculationTooltip></Typography>
-                <Typography sx={{ color: "#172b4d", fontSize: "0.9rem", fontWeight: 700, whiteSpace: "nowrap" }}>{formatCurrency(dicSalarySummaryMetrics.decGrossMonthly, strCurrencyCode)}</Typography>
-              </Box>
-            </Stack>
-          </Stack>
-
-          <Stack spacing={1.2} sx={{ order: 3 }}>
-            <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
-              <Box sx={{ width: 28, height: 28, borderRadius: "50%", bgcolor: "#f1eafe", color: "#7c3aed", display: "grid", flexShrink: 0, placeItems: "center" }}>
-                <SavingsOutlinedIcon sx={{ fontSize: 15 }} />
-              </Box>
-              <Box sx={{ minWidth: 0 }}>
-                <Typography sx={{ color: "#61738b", fontSize: "0.73rem", fontWeight: 700 }}><SalaryCalculationTooltip rows={lstNetAnnualCalculationRows} total={decNetAnnual} currency={strCurrencyCode} title={t("employee_salary_net_annual_calculation", "Net Annual = Net Monthly * 12.")}>{t("employee_salary_net_annual", "Net Annual")}</SalaryCalculationTooltip></Typography>
-                <Typography sx={{ color: "#155eef", fontSize: "1.02rem", fontWeight: 900, whiteSpace: "nowrap" }}>{formatCurrency(decNetAnnual, strCurrencyCode)}</Typography>
-              </Box>
-            </Stack>
-            <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
-              <Box sx={{ width: 28, height: 28, borderRadius: "50%", bgcolor: "#f1eafe", color: "#7c3aed", display: "grid", flexShrink: 0, placeItems: "center" }}>
-                <SavingsOutlinedIcon sx={{ fontSize: 15 }} />
-              </Box>
-              <Box sx={{ minWidth: 0 }}>
-                <Typography sx={{ color: "#61738b", fontSize: "0.73rem", fontWeight: 700 }}><SalaryCalculationTooltip rows={lstNetMonthlyCalculationRows} total={decNetMonthly} currency={strCurrencyCode} title={t("employee_salary_net_monthly_calculation", "Net Monthly = Gross Monthly - monthly employee deductions, with a minimum of zero.")}>{t("employee_salary_net_monthly", "Net Monthly")}</SalaryCalculationTooltip></Typography>
-                <Typography sx={{ color: "#172b4d", fontSize: "0.9rem", fontWeight: 700, whiteSpace: "nowrap" }}>{formatCurrency(decNetMonthly, strCurrencyCode)}</Typography>
-              </Box>
-            </Stack>
-          </Stack>
-
-          <Stack spacing={1.2} sx={{ order: 1 }}>
+          <Stack spacing={1.2} sx={{ gridRow: { lg: "span 2" }, minWidth: 0 }}>
             <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
               <Box sx={{ width: 28, height: 28, borderRadius: "50%", bgcolor: "#eaf3ff", color: "#1677ff", display: "grid", flexShrink: 0, placeItems: "center" }}>
                 <BadgeOutlinedIcon sx={{ fontSize: 15 }} />
@@ -2954,12 +2848,110 @@ export default function EmployeeSalaryDetailPage({ strEmployeeID, blnRevisionMod
               </Box>
             </Stack>
           </Stack>
+
+            <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
+              <Box sx={{ width: 28, height: 28, borderRadius: "50%", bgcolor: "#eaf0ff", color: "#155eef", display: "grid", flexShrink: 0, placeItems: "center" }}>
+                <AccountBalanceWalletOutlinedIcon sx={{ fontSize: 15 }} />
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography sx={{ color: "#61738b", fontSize: "0.73rem", fontWeight: 700 }}><SalaryCalculationTooltip rows={dicCalculationRows.grossAnnual} total={decGrossAnnual} currency={strCurrencyCode} title={t("employee_salary_gross_annual_calculation", "Gross Annual = Gross Monthly * 12.")}>{t("employee_salary_gross_annual", "Gross Annual")}</SalaryCalculationTooltip></Typography>
+                <Typography sx={{ color: "#155eef", fontSize: "1.02rem", fontWeight: 900, whiteSpace: "nowrap" }}>{formatCurrency(decGrossAnnual, strCurrencyCode)}</Typography>
+              </Box>
+            </Stack>
+
+            <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
+              <Box sx={{ width: 28, height: 28, borderRadius: "50%", bgcolor: "#eaf0ff", color: "#155eef", display: "grid", flexShrink: 0, placeItems: "center" }}>
+                <AccountBalanceWalletOutlinedIcon sx={{ fontSize: 15 }} />
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography sx={{ color: "#61738b", fontSize: "0.73rem", fontWeight: 700 }}><SalaryCalculationTooltip rows={dicCalculationRows.grossMonthly} total={dicSalarySummaryMetrics.decGrossMonthly} currency={strCurrencyCode} title={t("employee_salary_gross_monthly_calculation", "Gross Monthly = monthly CTC-included earnings + monthly Flexi Bucket. Employer contributions, employee deductions, information-only components, flexi allocations and residual taxable amounts are excluded from the earnings sum.")}>{t("employee_salary_gross_monthly", "Gross Monthly")}</SalaryCalculationTooltip></Typography>
+                <Typography sx={{ color: "#172b4d", fontSize: "0.9rem", fontWeight: 700, whiteSpace: "nowrap" }}>{formatCurrency(dicSalarySummaryMetrics.decGrossMonthly, strCurrencyCode)}</Typography>
+              </Box>
+            </Stack>
+
+            <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
+              <Box sx={{ width: 28, height: 28, borderRadius: "50%", bgcolor: "#f1eafe", color: "#7c3aed", display: "grid", flexShrink: 0, placeItems: "center" }}>
+                <SavingsOutlinedIcon sx={{ fontSize: 15 }} />
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography sx={{ color: "#61738b", fontSize: "0.73rem", fontWeight: 700 }}><SalaryCalculationTooltip rows={lstNetAnnualCalculationRows} total={decNetAnnual} currency={strCurrencyCode} title={t("employee_salary_net_annual_calculation", "Net Annual = Net Monthly * 12.")}>{t("employee_salary_net_annual", "Net Annual")}</SalaryCalculationTooltip></Typography>
+                <Typography sx={{ color: "#155eef", fontSize: "1.02rem", fontWeight: 900, whiteSpace: "nowrap" }}>{formatCurrency(decNetAnnual, strCurrencyCode)}</Typography>
+              </Box>
+            </Stack>
+
+            <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
+              <Box sx={{ width: 28, height: 28, borderRadius: "50%", bgcolor: "#f1eafe", color: "#7c3aed", display: "grid", flexShrink: 0, placeItems: "center" }}>
+                <SavingsOutlinedIcon sx={{ fontSize: 15 }} />
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography sx={{ color: "#61738b", fontSize: "0.73rem", fontWeight: 700 }}><SalaryCalculationTooltip rows={lstNetMonthlyCalculationRows} total={decNetMonthly} currency={strCurrencyCode} title={t("employee_salary_net_monthly_calculation", "Net Monthly = Gross Monthly - monthly employee deductions, with a minimum of zero.")}>{t("employee_salary_net_monthly", "Net Monthly")}</SalaryCalculationTooltip></Typography>
+                <Typography sx={{ color: "#172b4d", fontSize: "0.9rem", fontWeight: 700, whiteSpace: "nowrap" }}>{formatCurrency(decNetMonthly, strCurrencyCode)}</Typography>
+              </Box>
+            </Stack>
+
+            <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
+              <Box sx={{ width: 28, height: 28, borderRadius: "50%", bgcolor: "#e7f5ec", color: "#15803d", display: "grid", flexShrink: 0, placeItems: "center" }}>
+                <CalendarMonthOutlinedIcon sx={{ fontSize: 15 }} />
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography sx={{ color: "#61738b", fontSize: "0.73rem", fontWeight: 700 }}><SalaryCalculationTooltip rows={dicCalculationRows.ctcAnnual} total={dicSalarySummaryMetrics.decAnnualCtc} currency={strCurrencyCode} title={t("employee_salary_ctc_annual_calculation", "CTC Annual = annual CTC-included earnings + annual employer contributions included in CTC + annual Flexi Bucket. Flexi allocations and residual taxable amounts are not added again.")}>{t("employee_salary_ctc_annual", "CTC Annual")}</SalaryCalculationTooltip></Typography>
+                <Typography sx={{ color: "#155eef", fontSize: "1.02rem", fontWeight: 900, whiteSpace: "nowrap" }}>{formatCurrency(dicSalarySummaryMetrics.decAnnualCtc, strCurrencyCode)}</Typography>
+              </Box>
+            </Stack>
+
+            <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
+              <Box sx={{ width: 28, height: 28, borderRadius: "50%", bgcolor: "#fff4e5", color: "#b45309", display: "grid", flexShrink: 0, placeItems: "center" }}>
+                <CalendarMonthOutlinedIcon sx={{ fontSize: 15 }} />
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography sx={{ color: "#61738b", fontSize: "0.73rem", fontWeight: 700 }}>{t("employee_salary_salary_revised_on", "Salary Revised On")}</Typography>
+                <Typography sx={{ color: "#172b4d", fontSize: "0.9rem", fontWeight: 700, whiteSpace: "nowrap" }}>
+                  {formatDate(objDetail?.objCurrentSalarySnapshot?.dtEffectiveFrom ?? objDetail?.objAssignedStructure?.dtEffectiveFrom ?? null)}
+                </Typography>
+              </Box>
+            </Stack>
+
+            <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0, gridColumn: { sm: "span 2" } }}>
+              <Box sx={{ width: 28, height: 28, borderRadius: "50%", bgcolor: "#eef2ff", color: "#4f46e5", display: "grid", flexShrink: 0, placeItems: "center" }}>
+                <BadgeOutlinedIcon sx={{ fontSize: 15 }} />
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography sx={{ color: "#61738b", fontSize: "0.73rem", fontWeight: 700 }}>{t("employee_salary_designation", "Designation")}</Typography>
+                <Typography sx={{ color: "#172b4d", fontSize: "0.9rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {objFormOptions?.lstDesignations?.find((dicOption) => dicOption.intID === objDetail?.objEmployeeSummary.intDesignationID)?.strLabel ?? "-"}
+                </Typography>
+              </Box>
+            </Stack>
+
+            <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0, gridColumn: { sm: "span 2" } }}>
+              <Box sx={{ width: 28, height: 28, borderRadius: "50%", bgcolor: "#eef2ff", color: "#4f46e5", display: "grid", flexShrink: 0, placeItems: "center" }}>
+                <BadgeOutlinedIcon sx={{ fontSize: 15 }} />
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography sx={{ color: "#61738b", fontSize: "0.73rem", fontWeight: 700 }}>{t("employee_salary_department", "Department")}</Typography>
+                <Typography sx={{ color: "#172b4d", fontSize: "0.9rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {objFormOptions?.lstDepartments?.find((dicOption) => dicOption.intID === objDetail?.objEmployeeSummary.intDepartmentID)?.strLabel ?? "-"}
+                </Typography>
+              </Box>
+            </Stack>
+
+            <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0, gridColumn: { sm: "span 2" } }}>
+              <Box sx={{ width: 28, height: 28, borderRadius: "50%", bgcolor: "#eef2ff", color: "#4f46e5", display: "grid", flexShrink: 0, placeItems: "center" }}>
+                <BadgeOutlinedIcon sx={{ fontSize: 15 }} />
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography sx={{ color: "#61738b", fontSize: "0.73rem", fontWeight: 700 }}>{t("employee_salary_grade", "Grade")}</Typography>
+                <Typography sx={{ color: "#172b4d", fontSize: "0.9rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {objFormOptions?.lstGrades?.find((dicOption) => dicOption.intID === objDetail?.objEmployeeSummary.intGradeID)?.strLabel ?? "-"}
+                </Typography>
+              </Box>
+            </Stack>
         </Box>
       </Paper>
 
     {blnIsRevisionMode ? (
         <Box className={`${styles.tableCard} ${styles.revisionCard}`} sx={{ mt: 2, px: 2.25, py: 3 }}>
-          <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr" } }}>
+          <Box sx={{ display: "grid", gap: 1.5, mt: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr" } }}>
             <CommonSearchableSelect
               controlId="employee-salary.revision.salary-structure.select"
               label={t("employee_salary_structure_field", "Salary structure")}
