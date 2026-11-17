@@ -25,8 +25,10 @@ import { MasterBreadcrumbs, MasterGridSkeleton, MasterStatusPill, dicMasterRowSx
 import styles from "@/components/master/MasterScreen.module.css";
 import { withBasePath } from "@/lib/basePath";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import PayrollInputPayableDaysImportDialog from "@/features/payroll/components/PayrollInputPayableDaysImportDialog";
 import PayrollInputTdsImportDialog from "@/features/payroll/components/PayrollInputTdsImportDialog";
 import { employeePayrollInputService } from "@/features/payroll/services/employeePayrollInputService";
+import { payableDaysImportService, type PayableDaysImportStatus } from "@/features/payroll/services/payableDaysImportService";
 import { tdsService, type TdsImportStatus } from "@/features/payroll/services/tdsService";
 import type {
   EmployeePayrollInputListRecord,
@@ -133,6 +135,26 @@ function EmployeePayrollInputList({ intInitialRunID }: { intInitialRunID: number
     if (blnRightsLoading) return;
     loadTdsStatus(intSelectedRunID).catch(() => undefined);
   }, [blnRightsLoading, intSelectedRunID, loadTdsStatus]);
+
+  const [objPayableDaysStatus, setObjPayableDaysStatus] = useState<PayableDaysImportStatus | null>(null);
+  const [blnPayableDaysDialogOpen, setBlnPayableDaysDialogOpen] = useState(false);
+
+  const loadPayableDaysStatus = useCallback(async (intRunID: number | null) => {
+    if (!intRunID || !blnCanView) {
+      setObjPayableDaysStatus(null);
+      return;
+    }
+    try {
+      setObjPayableDaysStatus(await payableDaysImportService.getImportStatus(intRunID));
+    } catch {
+      setObjPayableDaysStatus(null);
+    }
+  }, [blnCanView]);
+
+  useEffect(() => {
+    if (blnRightsLoading) return;
+    loadPayableDaysStatus(intSelectedRunID).catch(() => undefined);
+  }, [blnRightsLoading, intSelectedRunID, loadPayableDaysStatus]);
 
   const strSelectedRunLabel = useMemo(() => {
     const objRun = lstPayrollRuns.find((dicRun) => dicRun.intID === intSelectedRunID);
@@ -442,31 +464,50 @@ function EmployeePayrollInputList({ intInitialRunID }: { intInitialRunID: number
                     {t("employee_payroll_input_add_button", "Add Payroll Input")}
                   </Button>
                 ) : null}
-                {blnCanImportTds && intSelectedRunID && objTdsStatus ? (
+                {blnCanImportTds && intSelectedRunID ? (
                   <>
-                    <Tooltip title={objTdsStatus.blnImportEnabled ? "" : objTdsStatus.strImportDisabledReason ?? ""}>
-                      <span>
-                        <Button
-                          controlId="employee-payroll-input.list.tds-import.button"
-                          className={styles.secondaryButton}
-                          startIcon={<UploadFileIcon />}
-                          disabled={!objTdsStatus.blnImportEnabled}
-                          onClick={() => setBlnTdsDialogOpen(true)}
-                        >
-                          {t("tds_import_button", "Import TDS")}
-                        </Button>
-                      </span>
-                    </Tooltip>
-                    <Chip
-                      size="small"
-                      data-controlid="employee-payroll-input.list.tds-mode.chip"
-                      color={objTdsStatus.strTdsMode === "CLIENT_PROVIDED" ? "warning" : "default"}
-                      label={`${t("tds_mode", "TDS mode")}: ${objTdsStatus.strTdsModeLabel}${
-                        objTdsStatus.strTdsMode === "CLIENT_PROVIDED"
-                          ? ` · ${objTdsStatus.intEmployeesWithClientTds} ${t("tds_with_client_tds", "with manual TDS")}`
-                          : ""
-                      }`}
-                    />
+                    {objTdsStatus ? (
+                      <Tooltip title={objTdsStatus.blnImportEnabled ? "" : objTdsStatus.strImportDisabledReason ?? ""}>
+                        <span>
+                          <Button
+                            controlId="employee-payroll-input.list.tds-import.button"
+                            className={styles.secondaryButton}
+                            startIcon={<UploadFileIcon />}
+                            disabled={!objTdsStatus.blnImportEnabled}
+                            onClick={() => setBlnTdsDialogOpen(true)}
+                          >
+                            {t("tds_import_button", "Import TDS")}
+                          </Button>
+                        </span>
+                      </Tooltip>
+                    ) : null}
+                    {objPayableDaysStatus ? (
+                      <Tooltip title={objPayableDaysStatus.blnImportEnabled ? "" : objPayableDaysStatus.strImportDisabledReason ?? ""}>
+                        <span>
+                          <Button
+                            controlId="employee-payroll-input.list.payable-days-import.button"
+                            className={styles.secondaryButton}
+                            startIcon={<UploadFileIcon />}
+                            disabled={!objPayableDaysStatus.blnImportEnabled}
+                            onClick={() => setBlnPayableDaysDialogOpen(true)}
+                          >
+                            {t("payable_days_import_button", "Import Payable Days")}
+                          </Button>
+                        </span>
+                      </Tooltip>
+                    ) : null}
+                    {objTdsStatus ? (
+                      <Chip
+                        size="small"
+                        data-controlid="employee-payroll-input.list.tds-mode.chip"
+                        color={objTdsStatus.strTdsMode === "CLIENT_PROVIDED" ? "warning" : "default"}
+                        label={`${t("tds_mode", "TDS mode")}: ${objTdsStatus.strTdsModeLabel}${
+                          objTdsStatus.strTdsMode === "CLIENT_PROVIDED"
+                            ? ` · ${objTdsStatus.intEmployeesWithClientTds} ${t("tds_with_client_tds", "with manual TDS")}`
+                            : ""
+                        }`}
+                      />
+                    ) : null}
                   </>
                 ) : null}
               </Box>
@@ -493,6 +534,23 @@ function EmployeePayrollInputList({ intInitialRunID }: { intInitialRunID: number
             showToast(strMessage);
             loadInputs(dicSearchApplied).catch(() => undefined);
             loadTdsStatus(intSelectedRunID).catch(() => undefined);
+          }}
+        />
+      ) : null}
+
+      {intSelectedRunID ? (
+        <PayrollInputPayableDaysImportDialog
+          blnOpen={blnPayableDaysDialogOpen}
+          intPayrollRunID={intSelectedRunID}
+          strRunLabel={strSelectedRunLabel}
+          objStatus={objPayableDaysStatus}
+          t={t}
+          onClose={() => setBlnPayableDaysDialogOpen(false)}
+          onImported={(strMessage) => {
+            setBlnPayableDaysDialogOpen(false);
+            showToast(strMessage);
+            loadInputs(dicSearchApplied).catch(() => undefined);
+            loadPayableDaysStatus(intSelectedRunID).catch(() => undefined);
           }}
         />
       ) : null}
