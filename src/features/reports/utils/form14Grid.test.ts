@@ -179,7 +179,7 @@ describe("form14 footer and header blocks", () => {
     const dicRegister = makeRegister();
     dicRegister.dicHeader = { ...dicRegister.dicHeader, strState: "", strFactoryName: "", strRuleReference: "Rule" };
     const dicFooter = buildForm14Footer(dicRegister);
-    expect(dicFooter.strCentre2).toBe("(Rule No. - · - Factories Rules)");
+    expect(dicFooter.strCentre2).toBe("(Rule No. - · Factories Rules)");
     expect(dicFooter.strCentre4).toBe("Name of Factory: -");
   });
 

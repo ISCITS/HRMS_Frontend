@@ -178,7 +178,7 @@ export function buildForm14Footer(dicRegister: Form14Register): Form14Footer {
     strEarned: `Leave earned for next year: ${blnClosed ? fmtNum(dicSummary.decEarnedForNextYear) : strAtClose}`,
     strCarry: `Carry forward (cap ${fmtNum(dicSummary.decCarryForwardCap)}): ${blnClosed ? fmtNum(dicSummary.decCarryForward) : strAtClose}`,
     strCentre1: "Form No. 14",
-    strCentre2: `(Rule No. ${strRule} · ${dicHeader.strState || "-"} Factories Rules)`,
+    strCentre2: `(Rule No. ${strRule} · ${dicHeader.strState ? `${dicHeader.strState} ` : ""}Factories Rules)`,
     strCentre3: "LEAVE WITH WAGES REGISTER",
     strCentre4: `Name of Factory: ${dicHeader.strFactoryName || "-"}`,
     strCentre5: `Calendar year: ${dicRegister.intYear}`,
