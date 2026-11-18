@@ -111,7 +111,6 @@ export default function LeaveBalanceReportPage() {
       strBreadcrumbSection={t("leave_reports", "Leave Reports")}
       strBreadcrumbTitle={t("leave_balance", "Leave Balance")}
       intInlineFilterCount={3}
-      strInfo={t("leave_balance_info", "Current leave balances by type — opening, entitlement, accrued, carry forward, adjustments, utilised, hold, lapsed, encashed and available.")}
       lstColumns={lstColumns}
       lstFilters={lstFilters}
       strRowIdField="__rowid"

@@ -34,7 +34,7 @@ export type ReportFilterField = {
 
 export type ReportGridPageProps = {
   strTitle: string;
-  strInfo: string;
+  strInfo?: string;
   lstColumns: CommonTableColumn<ReportDisplayRow>[];
   lstFilters: ReportFilterField[];
   dicDefaultFilters?: Record<string, string>;
@@ -447,12 +447,18 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
         </Box>
       </Box>
 
-      <Box sx={{ alignItems: "center", backgroundColor: "#f8fbff", border: "1px solid rgba(191,219,254,0.7)", borderRadius: "16px", color: "#1f2937", display: "flex", gap: 1, px: 1.5, py: 1.25 }}>
-        <InfoOutlinedIcon sx={{ color: "#2b6cb0", fontSize: 20 }} />
-        <Typography sx={{ color: "inherit", lineHeight: 1.5 }}>{objProps.strInfo}</Typography>
-        {/* Title is hidden when there are no breadcrumbs, so the notices icon sits in the info strip instead. */}
-        {!blnShowBreadcrumbs ? <PageNotices strControlId={`reports.${objProps.strCsvFileName}.notices`} lstNotices={lstPageNotices} /> : null}
-      </Box>
+      {objProps.strInfo ? (
+        <Box sx={{ alignItems: "center", backgroundColor: "#f8fbff", border: "1px solid rgba(191,219,254,0.7)", borderRadius: "16px", color: "#1f2937", display: "flex", gap: 1, px: 1.5, py: 1.25 }}>
+          <InfoOutlinedIcon sx={{ color: "#2b6cb0", fontSize: 20 }} />
+          <Typography sx={{ color: "inherit", lineHeight: 1.5 }}>{objProps.strInfo}</Typography>
+          {/* Title is hidden when there are no breadcrumbs, so the notices icon sits in the info strip instead. */}
+          {!blnShowBreadcrumbs ? <PageNotices strControlId={`reports.${objProps.strCsvFileName}.notices`} lstNotices={lstPageNotices} /> : null}
+        </Box>
+      ) : !blnShowBreadcrumbs ? (
+        <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+          <PageNotices strControlId={`reports.${objProps.strCsvFileName}.notices`} lstNotices={lstPageNotices} />
+        </Box>
+      ) : null}
 
       <Box className={styles.tableCard} sx={objProps.blnUseMasterStyle || blnCompactLayout ? { p: "0 !important", borderRadius: "10px !important", boxShadow: "none" } : undefined}>
         <CommonTable

@@ -70,7 +70,6 @@ export default function MonthlyAttendanceReportPage() {
       strBreadcrumbRoot={t("reports", "Reports")}
       strBreadcrumbSection={t("attendance_reports", "Attendance Reports")}
       strBreadcrumbTitle={t("monthly_attendance", "Monthly Attendance Summary")}
-      strInfo={t("monthly_attendance_info", "Per-employee attendance totals for the selected month by final day status, paid days, late minutes and OT.")}
       lstColumns={lstColumns}
       lstFilters={lstFilters}
       dicDefaultFilters={{ month: currentMonth() }}
