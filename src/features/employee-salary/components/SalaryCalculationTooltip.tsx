@@ -24,26 +24,23 @@ export default function SalaryCalculationTooltip({ children, title, rows = [], t
     <Tooltip
       arrow
       describeChild
-      slotProps={{
-        popper: { sx: { zIndex: 2500 } },
-        tooltip: { sx: { maxWidth: 420 } }
-      }}
+      slotProps={{ popper: { sx: { zIndex: 2500 } } }}
       title={(
       <Box sx={{ maxHeight: 420, minWidth: 260, overflowY: "auto", p: 0.5 }}>
-        <Typography sx={{ fontSize: "0.8rem", fontWeight: 800, mb: 0.5 }}>{t("calculation_details", "Calculation details")}</Typography>
-        <Typography sx={{ fontSize: "0.72rem", lineHeight: 1.4, mb: 1, opacity: 0.9 }}>{title}</Typography>
+        <Typography sx={{ fontSize: "1rem", fontWeight: 800, mb: 0.5 }}>{t("calculation_details", "Calculation details")}</Typography>
+        <Typography sx={{ fontSize: "0.875rem", lineHeight: 1.4, mb: 1, opacity: 0.9 }}>{title}</Typography>
         <Stack spacing={0.45}>
           {rows.map((row, index) => (
             <Stack key={`${row.strName}-${index}`} direction="row" justifyContent="space-between" spacing={2}>
-              <Typography sx={{ fontSize: "0.72rem", overflowWrap: "anywhere" }}>{row.strName}</Typography>
-              <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, whiteSpace: "nowrap" }}>{formatAmount(row.decAmount)}</Typography>
+              <Typography sx={{ fontSize: "0.875rem", overflowWrap: "anywhere" }}>{row.strName}</Typography>
+              <Typography sx={{ fontSize: "0.875rem", fontWeight: 700, whiteSpace: "nowrap" }}>{formatAmount(row.decAmount)}</Typography>
             </Stack>
           ))}
         </Stack>
         {total !== undefined ? (
-          <Stack direction="row" justifyContent="space-between" spacing={2} sx={{ borderTop: "1px solid rgba(255,255,255,0.35)", mt: 1, pt: 0.75 }}>
-            <Typography sx={{ fontSize: "0.74rem", fontWeight: 800 }}>{t("calculated_total", "Calculated total")}</Typography>
-            <Typography sx={{ fontSize: "0.74rem", fontWeight: 800, whiteSpace: "nowrap" }}>{percentage && !maskAmounts ? `${total.toFixed(2)}%` : formatAmount(total)}</Typography>
+          <Stack direction="row" justifyContent="space-between" spacing={2} sx={{ borderTop: "1px solid", borderColor: "#dce8f3", mt: 1, pt: 0.75 }}>
+            <Typography sx={{ fontSize: "0.9375rem", fontWeight: 800 }}>{t("calculated_total", "Calculated total")}</Typography>
+            <Typography sx={{ fontSize: "0.9375rem", fontWeight: 800, whiteSpace: "nowrap" }}>{percentage && !maskAmounts ? `${total.toFixed(2)}%` : formatAmount(total)}</Typography>
           </Stack>
         ) : null}
       </Box>
