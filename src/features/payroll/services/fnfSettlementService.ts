@@ -6,6 +6,8 @@ import type {
   FNFBulkCreateResponse,
   FNFEmployeeOption,
   FNFEmployeePrefill,
+  FNFLeaverInactiveResult,
+  FNFLeaversResponse,
   FNFReportResponse,
   FNFLineFormValues,
   FNFPaymentAdviceResponse,
@@ -235,6 +237,29 @@ export const fnfSettlementService = {
       strPath: `/payroll/fnf-settlements/register${strQuery ? `?${strQuery}` : ""}`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_FNF_VIEW",
+    });
+    return objResult.Data;
+  },
+  /** Leavers whose F&F is finalized and given (paid/recovered); employee_status: All / active / inactive. */
+  async getLeavers(objFilters: { lwd_from?: string; lwd_to?: string; employee_status?: string }): Promise<FNFLeaversResponse> {
+    const objParams = new URLSearchParams();
+    Object.entries(objFilters).forEach(([strKey, strValue]) => {
+      if (strValue && strValue !== "All") objParams.set(strKey, strValue);
+    });
+    const strQuery = objParams.toString();
+    const objResult = await requestApi<FNFLeaversResponse>({
+      strPath: `/payroll/fnf-settlements/leavers${strQuery ? `?${strQuery}` : ""}`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_FNF_VIEW",
+    });
+    return objResult.Data;
+  },
+  async setLeaversInactive(lstSettlementIDs: number[]): Promise<FNFLeaverInactiveResult> {
+    const objResult = await requestApi<FNFLeaverInactiveResult>({
+      strPath: "/payroll/fnf-settlements/leavers/set-inactive",
+      strMethod: "POST",
+      objBody: { lstSettlementIDs },
+      strMenuAction: "PAYROLL_FNF_SET_INACTIVE",
     });
     return objResult.Data;
   },

@@ -467,6 +467,9 @@ function getLocalizedHeaderTitle(
     if (strLowerPath === "/payroll/fnf-settlements/report") {
       return tHeader("register_report_title", "F&F Register Report");
     }
+    if (strLowerPath === "/payroll/fnf-settlements/leavers") {
+      return tHeader("leavers_title", "F&F Leavers");
+    }
     if (Boolean(strLowerPath.match(/^\/payroll\/fnf-settlements\/\d+$/))) {
       return tHeader("detail_title", "Full & Final Settlement");
     }

@@ -540,6 +540,38 @@ export type FNFRegisterRow = {
 };
 export type FNFRegisterResponse = { lstRows: FNFRegisterRow[]; dicTotals: Record<string, number> };
 
+/** Leaver whose F&F is finalized and given (settlement paid or recovered). */
+export type FNFLeaverRow = {
+  intSettlementID: number;
+  strRecordUUID: string | null;
+  strSettlementNumber: string;
+  intEmployeeID: number;
+  strEmployeeCode: string;
+  strEmployeeName: string;
+  strDepartment: string | null;
+  strDesignation: string | null;
+  strLocation: string | null;
+  dtDateOfJoining: string | null;
+  dtDateOfExit: string | null;
+  dtLastWorkingDate: string | null;
+  strExitType: string | null;
+  strExitReason: string | null;
+  strSettlementStatus: string;
+  decNetPayable: number;
+  decNetRecoverable: number;
+  dtPaidOn: string | null;
+  strPaymentReferenceNo: string | null;
+  strEmploymentStatus: string | null;
+  blnIsInactive: boolean;
+};
+export type FNFLeaversResponse = { lstRows: FNFLeaverRow[]; intTotal: number; intActive: number; intInactive: number };
+export type FNFLeaverInactiveResult = {
+  intUpdated: number;
+  intSkipped: number;
+  lstUpdated: { intSettlementID: number; strEmployeeCode: string; strEmployeeName: string }[];
+  lstSkipped: { intSettlementID: number; strEmployeeCode?: string; strEmployeeName?: string; strReason: string }[];
+};
+
 /** Generated F&F payslip (one row per version). */
 export type FNFPayslipStatus = "Generated" | "Outdated" | "Superseded";
 export type FNFPayslipRecord = {
