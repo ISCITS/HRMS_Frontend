@@ -376,15 +376,18 @@ export default function EssMyProfilePage() {
         <div className="my-profile-banner-employee">
           <Avatar src={strAuthenticatedAvatarUrl || undefined} className="my-profile-avatar">{strInitial}</Avatar>
           <div className="my-profile-identity-text"><Typography component="h2" className="my-profile-name">{strFullName}</Typography>
-            <div className="my-profile-identity-meta"><Typography>{valueOrNotAvailable(objEmployee?.strEmployeeCode)}</Typography>
-              <Chip size="small" label={translateKnownValue(objEmployee?.strEmploymentStatus)} className="my-profile-status" />
+            <div className="my-profile-identity-meta">
+              <div className="my-profile-employee-status">
+                <Typography>{valueOrNotAvailable(objEmployee?.strEmployeeCode)}</Typography>
+                <Chip size="small" label={translateKnownValue(objEmployee?.strEmploymentStatus)} className="my-profile-status" />
+              </div>
+              <div className="my-profile-identity-details">
+                <IdentityItem objIcon={<ApartmentOutlinedIcon />} strLabel={t("field_department", "Department")} strValue={strDepartment} />
+                <IdentityItem objIcon={<BadgeRoundedIcon />} strLabel={t("field_designation", "Designation")} strValue={strDesignation} />
+                <IdentityItem objIcon={<LocationOnOutlinedIcon />} strLabel={t("field_location", "Location")} strValue={strLocation} />
+              </div>
             </div>
           </div>
-        <div className="my-profile-identity-details">
-          <IdentityItem objIcon={<ApartmentOutlinedIcon />} strLabel={t("field_department", "Department")} strValue={strDepartment} />
-          <IdentityItem objIcon={<BadgeRoundedIcon />} strLabel={t("field_designation", "Designation")} strValue={strDesignation} />
-          <IdentityItem objIcon={<LocationOnOutlinedIcon />} strLabel={t("field_location", "Location")} strValue={strLocation} />
-        </div>
         <div className="my-profile-photo-actions">
           <Button component="label" variant="outlined" startIcon={blnAvatarUpdating ? <DottedLoader intSize={13} /> : <PhotoCameraRoundedIcon />} disabled={blnAvatarUpdating || !blnCanEditProfile}>
             {t("change_photo", "Change Photo")}

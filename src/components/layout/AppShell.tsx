@@ -1701,7 +1701,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               width: blnDashboardRoute
                 ? { xs: "calc(100% + 12px)", xl: "calc(100% + 16px)" }
                 : { xs: "calc(100% + 16px)", xl: "calc(100% + 24px)" },
-              mb: { xs: 1, xl: 1.5 },
+              mb: strNormalizedLowerPathname === "/ess/my-profile" ? 0 : { xs: 1, xl: 1.5 },
               background: "#ffffff",
               border: 0,
               borderBottom: "1px solid var(--app-banner-border-color)",

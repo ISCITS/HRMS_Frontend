@@ -12,11 +12,12 @@ type SalaryCalculationTooltipProps = {
   total?: number;
   currency?: string;
   percentage?: boolean;
+  maskAmounts?: boolean;
 };
 
-export default function SalaryCalculationTooltip({ children, title, rows = [], total, currency = "INR", percentage = false }: SalaryCalculationTooltipProps) {
+export default function SalaryCalculationTooltip({ children, title, rows = [], total, currency = "INR", percentage = false, maskAmounts = false }: SalaryCalculationTooltipProps) {
   const { t } = useEmployeeSalaryLabels();
-  const formatAmount = (amount: number) => new Intl.NumberFormat("en-IN", {
+  const formatAmount = (amount: number) => maskAmounts ? "••••••" : new Intl.NumberFormat("en-IN", {
     style: "currency", currency, minimumFractionDigits: 2, maximumFractionDigits: 2,
   }).format(amount);
   return (
@@ -42,7 +43,7 @@ export default function SalaryCalculationTooltip({ children, title, rows = [], t
         {total !== undefined ? (
           <Stack direction="row" justifyContent="space-between" spacing={2} sx={{ borderTop: "1px solid rgba(255,255,255,0.35)", mt: 1, pt: 0.75 }}>
             <Typography sx={{ fontSize: "0.74rem", fontWeight: 800 }}>{t("calculated_total", "Calculated total")}</Typography>
-            <Typography sx={{ fontSize: "0.74rem", fontWeight: 800, whiteSpace: "nowrap" }}>{percentage ? `${total.toFixed(2)}%` : formatAmount(total)}</Typography>
+            <Typography sx={{ fontSize: "0.74rem", fontWeight: 800, whiteSpace: "nowrap" }}>{percentage && !maskAmounts ? `${total.toFixed(2)}%` : formatAmount(total)}</Typography>
           </Stack>
         ) : null}
       </Box>
