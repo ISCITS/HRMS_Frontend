@@ -1774,31 +1774,31 @@ export default function SalaryStructureEditorPage({
   ) {
     return (
       <Box sx={{ maxHeight: 420, minWidth: 260, overflowY: "auto", p: 0.5 }}>
-        <Typography sx={{ fontSize: "0.8rem", fontWeight: 800, mb: 0.5 }}>
+        <Typography sx={{ fontSize: "1rem", fontWeight: 800, mb: 0.5 }}>
           {t("calculation_details", "Calculation details")}
         </Typography>
-        <Typography sx={{ fontSize: "0.72rem", lineHeight: 1.4, mb: 1, opacity: 0.9 }}>
+        <Typography sx={{ fontSize: "0.875rem", lineHeight: 1.4, mb: 1, opacity: 0.9 }}>
           {strLogic}
         </Typography>
         {lstComponents.length > 0 ? (
           <Stack spacing={0.45}>
             {lstComponents.map((dicComponent, intIndex) => (
               <Stack key={`${dicComponent.strName}-${intIndex}`} direction="row" justifyContent="space-between" spacing={2}>
-                <Typography sx={{ fontSize: "0.72rem", overflowWrap: "anywhere" }}>{dicComponent.strName}</Typography>
-                <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, whiteSpace: "nowrap" }}>
+                <Typography sx={{ fontSize: "0.875rem", overflowWrap: "anywhere" }}>{dicComponent.strName}</Typography>
+                <Typography sx={{ fontSize: "0.875rem", fontWeight: 700, whiteSpace: "nowrap" }}>
                   ₹ {formatSummaryAmount(dicComponent.fltAnnualAmount / intAnnualDivisor)}
                 </Typography>
               </Stack>
             ))}
           </Stack>
         ) : (
-          <Typography sx={{ fontSize: "0.72rem", fontStyle: "italic", opacity: 0.85 }}>
+          <Typography sx={{ fontSize: "0.875rem", fontStyle: "italic", opacity: 0.85 }}>
             {t("no_contributing_components", "No contributing components")}
           </Typography>
         )}
-        <Stack direction="row" justifyContent="space-between" spacing={2} sx={{ borderTop: "1px solid rgba(255,255,255,0.35)", mt: 1, pt: 0.75 }}>
-          <Typography sx={{ fontSize: "0.74rem", fontWeight: 800 }}>{t("calculated_total", "Calculated total")}</Typography>
-          <Typography sx={{ fontSize: "0.74rem", fontWeight: 800, whiteSpace: "nowrap" }}>
+        <Stack direction="row" justifyContent="space-between" spacing={2} sx={{ borderTop: "1px solid #dce8f3", mt: 1, pt: 0.75 }}>
+          <Typography sx={{ fontSize: "0.9375rem", fontWeight: 800 }}>{t("calculated_total", "Calculated total")}</Typography>
+          <Typography sx={{ fontSize: "0.9375rem", fontWeight: 800, whiteSpace: "nowrap" }}>
             ₹ {formatSummaryAmount(fltResult)}
           </Typography>
         </Stack>
@@ -2227,26 +2227,26 @@ export default function SalaryStructureEditorPage({
                   ].filter(Boolean) : [];
                   const strPolicyNotConfigured = t("not_configured", "Not configured");
                   const objPolicyTooltip = (
-                    <Stack spacing={0.45}>
-                      <Typography sx={{ fontSize: "0.72rem", fontWeight: 800 }}>
+                    <Stack spacing={0.45} sx={{ p: 0.5 }}>
+                      <Typography sx={{ fontSize: "1rem", fontWeight: 800 }}>
                         {t("component_policy_snapshot", "Component Policy Snapshot")}
                       </Typography>
-                      <Typography sx={{ fontSize: "0.7rem" }}>
+                      <Typography sx={{ fontSize: "0.875rem" }}>
                         {t("payslip_section", "Payslip Section")}: {dicLine.strPayslipSection || dicLine.strPayslipSectionSnapshotCode || strPolicyNotConfigured}
                       </Typography>
-                      <Typography sx={{ fontSize: "0.7rem" }}>
+                      <Typography sx={{ fontSize: "0.875rem" }}>
                         {t("lwp_treatment", "LWP Treatment")}: {dicLine.strLwpTreatment || dicLine.strLwpTreatmentSnapshotCode || strPolicyNotConfigured}
                       </Typography>
-                      <Typography sx={{ fontSize: "0.7rem" }}>
+                      <Typography sx={{ fontSize: "0.875rem" }}>
                         {t("lwp_reduced_amount_handling", "Reduced Amount Handling")}: {dicLine.strLwpReducedAmountHandling || dicLine.strLwpReducedAmountHandlingSnapshotCode || strPolicyNotConfigured}
                       </Typography>
                       {dicLine.strLwpProrationFormulaSnapshot ? (
-                        <Typography sx={{ fontSize: "0.7rem" }}>
+                        <Typography sx={{ fontSize: "0.875rem", overflowWrap: "anywhere" }}>
                           {t("custom_proration_formula", "Custom Proration Formula")}: {dicLine.strLwpProrationFormulaSnapshot}
                         </Typography>
                       ) : null}
                       {isFlexiBasketLine(dicLine) ? (
-                        <Typography sx={{ fontSize: "0.68rem", color: "#cbd5e1" }}>
+                        <Typography sx={{ fontSize: "0.875rem", color: "#526581" }}>
                           {t(
                             "flexi_basket_lwp_not_directly_prorated",
                             "Flexi Basket is not directly prorated. Individual declared options follow their component policy."
@@ -2300,20 +2300,6 @@ export default function SalaryStructureEditorPage({
                               title={objPolicyTooltip}
                               arrow
                               enterTouchDelay={0}
-                              slotProps={{
-                                tooltip: {
-                                  sx: {
-                                    borderRadius: 0
-                                  }
-                                },
-                                arrow: {
-                                  sx: {
-                                    "&::before": {
-                                      borderRadius: 0
-                                    }
-                                  }
-                                }
-                              }}
                             >
                               <IconButton
                                 size="small"
@@ -2651,7 +2637,6 @@ export default function SalaryStructureEditorPage({
                       arrow
                       placement="left"
                       enterTouchDelay={0}
-                      slotProps={{ tooltip: { sx: { maxWidth: 420 } } }}
                       title={renderCompensationCalculationTooltip(dicSummaryItem.strLogic, dicSummaryItem.lstComponents, dicSummaryItem.fltValue, dicSummaryItem.intAnnualDivisor)}
                     >
                       <Typography

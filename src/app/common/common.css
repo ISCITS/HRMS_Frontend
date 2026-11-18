@@ -202,6 +202,20 @@
   background: var(--app-grid-row-hover-background);
 }
 
+.MuiTooltip-popper .MuiTooltip-tooltip {
+  background-color: #fff;
+  color: #172b4d;
+  box-shadow: 0 4px 16px rgb(23 43 77 / 18%);
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 6px 10px;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.MuiTooltip-popper .MuiTooltip-arrow {
+  color: #fff;
+}
+
 .app-breadcrumbs {
   color: #697586;
   font-size: 13px;
