@@ -150,6 +150,9 @@ export function resolveRouteModuleName(strPathname: string) {
   if (strLowerPath.startsWith("/payroll/fnf-settlements")) {
     return "fnf-settlements";
   }
+  if (strLowerPath.startsWith("/employee-separations")) {
+    return "employee-separations";
+  }
   if (strLowerPath.startsWith("/ess/calendar")) {
     return "calendar";
   }

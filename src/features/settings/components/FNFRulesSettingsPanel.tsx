@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { DottedLoader } from "@/components/shared/BlockingLoader";
 import { useFNFRights } from "@/features/payroll/hooks/useFNFRights";
+import RegularPayrollPolicySection from "@/features/settings/components/RegularPayrollPolicySection";
 import { fnfSettlementService } from "@/features/payroll/services/fnfSettlementService";
 import type { FNFPolicy, FNFPolicySection } from "@/features/payroll/types";
 
@@ -255,6 +256,9 @@ export default function FNFRulesSettingsPanel({ onMessage }: Props) {
           </Button>
         </Stack>
       ) : null}
+
+      {/* Effective-dated and versioned on its own, so it has its own Save. */}
+      <RegularPayrollPolicySection blnReadOnly={blnReadOnly} onMessage={onMessage} />
     </>
   );
 }

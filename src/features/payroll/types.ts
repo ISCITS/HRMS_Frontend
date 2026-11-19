@@ -270,10 +270,13 @@ export type FNFEmployeeOption = {
   strEmployeeCode: string;
   strEmployeeName: string;
   strLabel: string;
-  /** Date of exit from the employee master; used as the settlement's last working date. */
+  /** For a new settlement: the Employee Separation's last working date; otherwise the master's date of exit. */
   dtDateOfExit?: string | null;
   /** Notice period from the employee master (bulk creation default). */
   intNoticePeriodDays?: number | null;
+  /** Activated Employee Separation this employee's new settlement will settle. */
+  intSeparationActionID?: number | null;
+  strSeparationRecordUUID?: string | null;
 };
 
 /** One employee in a bulk F&F creation. */
@@ -465,6 +468,9 @@ export type FNFEmployeePrefill = {
   intEmployeeID: number;
   strEmployeeCode: string;
   strEmployeeName: string;
+  /** Set when the exit comes from an Employee Separation (its last working date cannot be changed here). */
+  intSeparationActionID?: number | null;
+  strSeparationRecordUUID?: string | null;
   strExitType: string | null;
   strExitReason: string | null;
   dtResignationDate: string | null;

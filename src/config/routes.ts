@@ -16,6 +16,7 @@ export const appRoutes = {
   leave: "/leave",
   payroll: "/payroll",
   payrollFNFSettlements: "/payroll/fnf-settlements",
+  employeeSeparations: "/employee-separations",
   payrollReimbursements: "/payroll/reimbursements",
   reports: "/reports",
   payrollRegisterReport: "/reports/payroll-register",
