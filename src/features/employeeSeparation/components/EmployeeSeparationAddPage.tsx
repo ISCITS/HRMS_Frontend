@@ -1,12 +1,11 @@
 "use client";
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
-import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Autocomplete, Box, Button, Checkbox, FormControlLabel, MenuItem, Stack, Step, StepLabel, Stepper, TextField, Typography } from "@mui/material";
+import { Alert, Autocomplete, Box, Button, Checkbox, CircularProgress, FormControlLabel, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { ApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { DetailPageHeader } from "@/components/master/MasterListUi";
@@ -18,13 +17,6 @@ import type { CodeLabel, SeparationEmployeeOption, SeparationPreview, Separation
 import { formatDisplayDate, todayText } from "@/features/employeeSeparation/utils";
 
 const STR_ROUTE = "/employee-separations";
-const lstSteps = ["Employee", "Separation Details", "Payroll Impact", "Confirm"];
-const lstStepHeaders = [
-  { strTitle: "Select employee", strSubtitle: "Active employees without an open separation." },
-  { strTitle: "Separation details", strSubtitle: "Type, reason and dates. The activation date is today's date, set by the server." },
-  { strTitle: "Payroll impact", strSubtitle: "From which month regular payroll leaves this employee out, under the F&F rules." },
-  { strTitle: "Confirm", strSubtitle: "Review and activate. No F&F settlement is created; you can create it afterwards." },
-];
 
 type FormState = {
   objEmployee: SeparationEmployeeOption | null;
@@ -37,10 +29,25 @@ type FormState = {
   strOverrideReason: string;
 };
 
+type FieldErrors = Partial<Record<keyof FormState, string>>;
+
 const dicInitialForm: FormState = {
   objEmployee: null, strSeparationType: "resignation", strSeparationReason: "", dtResignationDate: "", dtLastWorkingDate: "",
   strRemarks: "", strOverridePolicyCode: "", strOverrideReason: "",
 };
+
+/** Same chronology checks the server makes, so mistakes show next to the field straight away. */
+function validateForm(dicForm: FormState): FieldErrors {
+  const dicErrors: FieldErrors = {};
+  const strToday = todayText();
+  if (!dicForm.objEmployee) dicErrors.objEmployee = "Select an employee.";
+  if (!dicForm.strSeparationType) dicErrors.strSeparationType = "Select the separation type.";
+  if (!dicForm.dtLastWorkingDate) dicErrors.dtLastWorkingDate = "Last working date is required.";
+  if (dicForm.objEmployee?.dtDateOfJoining && dicForm.dtLastWorkingDate && dicForm.dtLastWorkingDate < dicForm.objEmployee.dtDateOfJoining) dicErrors.dtLastWorkingDate = "Last working date is before the date of joining.";
+  if (dicForm.dtResignationDate && dicForm.dtLastWorkingDate && dicForm.dtResignationDate > dicForm.dtLastWorkingDate) dicErrors.dtResignationDate = "Resignation date cannot be after the last working date.";
+  if (dicForm.dtResignationDate && dicForm.dtResignationDate > strToday) dicErrors.dtResignationDate = "Resignation date cannot be in the future.";
+  return dicErrors;
+}
 
 function SummaryRow({ strLabel, strValue }: { strLabel: string; strValue: string }) {
   return (
@@ -51,12 +58,29 @@ function SummaryRow({ strLabel, strValue }: { strLabel: string; strValue: string
   );
 }
 
+function Section({ intNumber, strTitle, strSubtitle, blnDone, children, strControlId }: { intNumber: number; strTitle: string; strSubtitle: string; blnDone?: boolean; children: ReactNode; strControlId: string }) {
+  return (
+    <Box component="section" data-controlid={strControlId} sx={{ border: "1px solid #e2e8f0", borderRadius: "10px", p: { xs: 2, md: 2.5 }, backgroundColor: "#fff" }}>
+      <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ mb: 2 }}>
+        <Box sx={{ width: 28, height: 28, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", fontWeight: 800, color: "#fff", backgroundColor: blnDone ? "#16a34a" : "#1e4e8c" }}>
+          {blnDone ? <CheckCircleRoundedIcon sx={{ fontSize: 18 }} /> : intNumber}
+        </Box>
+        <Box>
+          <Typography component="h3" sx={{ fontWeight: 800, color: "#0f172a", fontSize: "1rem", lineHeight: 1.3 }}>{strTitle}</Typography>
+          <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{strSubtitle}</Typography>
+        </Box>
+      </Stack>
+      {children}
+    </Box>
+  );
+}
+
 export default function EmployeeSeparationAddPage() {
   const objRouter = useRouter();
   const { blnLoading: blnRightsLoading, can } = useSeparationRights();
-  const [intStep, setIntStep] = useState(0);
   const [dicForm, setDicForm] = useState<FormState>(dicInitialForm);
-  const [dicErrors, setDicErrors] = useState<Partial<Record<keyof FormState, string>>>({});
+  const [dicTouched, setDicTouched] = useState<Partial<Record<keyof FormState, boolean>>>({});
+  const [blnSubmitAttempted, setBlnSubmitAttempted] = useState(false);
   const [strError, setStrError] = useState("");
   const [lstTypes, setLstTypes] = useState<CodeLabel[]>([]);
   const [lstPolicyOptions, setLstPolicyOptions] = useState<CodeLabel[]>([]);
@@ -68,7 +92,15 @@ export default function EmployeeSeparationAddPage() {
   const [blnAcknowledged, setBlnAcknowledged] = useState(false);
   const [blnSaving, setBlnSaving] = useState(false);
   const blnSubmitLock = useRef(false);
+  const intPreviewSeq = useRef(0);
   const blnCanAdd = can("add");
+
+  const dicAllErrors = useMemo(() => validateForm(dicForm), [dicForm]);
+  const blnFormValid = Object.keys(dicAllErrors).length === 0;
+  // Show a field's error once it was edited, or after Activate was pressed.
+  function fieldError(strKey: keyof FormState) {
+    return blnSubmitAttempted || dicTouched[strKey] ? dicAllErrors[strKey] : undefined;
+  }
 
   useEffect(() => {
     employeeSeparationService.getLookups()
@@ -89,22 +121,7 @@ export default function EmployeeSeparationAddPage() {
     return () => clearTimeout(intTimer);
   }, [strSearch, blnRightsLoading, blnCanAdd]);
 
-  function update<TKey extends keyof FormState>(strKey: TKey, objValue: FormState[TKey]) {
-    setDicForm((dicCurrent) => ({ ...dicCurrent, [strKey]: objValue }));
-    setDicErrors((dicCurrent) => ({ ...dicCurrent, [strKey]: undefined }));
-    setBlnAcknowledged(false);
-    // Anything that changes the payroll impact invalidates the preview; the override fields sit on the
-    // preview panel itself and re-run it instead (effect below).
-    if (strKey !== "strOverridePolicyCode" && strKey !== "strOverrideReason") setObjPreview(null);
-  }
-
-  useEffect(() => {
-    if (intStep !== 2 || !dicForm.objEmployee || !dicForm.dtLastWorkingDate) return;
-    const intTimer = setTimeout(() => { void loadPreview(); }, 400);
-    return () => clearTimeout(intTimer);
-  }, [dicForm.strOverridePolicyCode, dicForm.strOverrideReason]);
-
-  function buildRequest(): SeparationRequest {
+  function buildRequest(blnAcknowledge: boolean): SeparationRequest {
     return {
       intEmployeeID: dicForm.objEmployee?.intID ?? 0,
       strSeparationType: dicForm.strSeparationType,
@@ -114,45 +131,36 @@ export default function EmployeeSeparationAddPage() {
       strRemarks: dicForm.strRemarks.trim() || null,
       strOverridePolicyCode: dicForm.strOverridePolicyCode || null,
       strOverrideReason: dicForm.strOverrideReason.trim() || null,
-      blnAcknowledgeWarnings: blnAcknowledged,
+      blnAcknowledgeWarnings: blnAcknowledge,
     };
   }
 
-  function validateStep(intCurrent: number): boolean {
-    const dicNext: Partial<Record<keyof FormState, string>> = {};
-    if (intCurrent === 0 && !dicForm.objEmployee) dicNext.objEmployee = "Select an employee.";
-    if (intCurrent === 1) {
-      const strToday = todayText();
-      if (!dicForm.strSeparationType) dicNext.strSeparationType = "Select the separation type.";
-      if (!dicForm.dtLastWorkingDate) dicNext.dtLastWorkingDate = "Last working date is required.";
-      if (dicForm.objEmployee?.dtDateOfJoining && dicForm.dtLastWorkingDate && dicForm.dtLastWorkingDate < dicForm.objEmployee.dtDateOfJoining) dicNext.dtLastWorkingDate = "Last working date is before the date of joining.";
-      if (dicForm.dtResignationDate && dicForm.dtLastWorkingDate && dicForm.dtResignationDate > dicForm.dtLastWorkingDate) dicNext.dtResignationDate = "Resignation date cannot be after the last working date.";
-      if (dicForm.dtResignationDate && dicForm.dtResignationDate > strToday) dicNext.dtResignationDate = "Resignation date cannot be in the future.";
+  // Payroll impact refreshes by itself whenever the inputs that affect it change and are valid.
+  useEffect(() => {
+    setBlnAcknowledged(false);
+    if (!blnFormValid) {
+      setObjPreview(null);
+      return;
     }
-    setDicErrors(dicNext);
-    return Object.keys(dicNext).length === 0;
-  }
+    const intSeq = ++intPreviewSeq.current;
+    const intTimer = setTimeout(() => {
+      setBlnPreviewLoading(true);
+      employeeSeparationService.preview(buildRequest(false))
+        .then((objResult) => { if (intSeq === intPreviewSeq.current) setObjPreview(objResult); })
+        .catch((objError) => { if (intSeq === intPreviewSeq.current) { setObjPreview(null); setStrError(objError instanceof Error ? objError.message : "Unable to work out the payroll impact."); } })
+        .finally(() => { if (intSeq === intPreviewSeq.current) setBlnPreviewLoading(false); });
+    }, 450);
+    return () => clearTimeout(intTimer);
+  }, [blnFormValid, dicForm.objEmployee?.intID, dicForm.strSeparationType, dicForm.dtResignationDate, dicForm.dtLastWorkingDate, dicForm.strOverridePolicyCode, dicForm.strOverrideReason]);
 
-  async function loadPreview() {
-    setBlnPreviewLoading(true);
-    setStrError("");
-    try {
-      setObjPreview(await employeeSeparationService.preview(buildRequest()));
-    } catch (objError) {
-      setStrError(objError instanceof Error ? objError.message : "Unable to work out the payroll impact.");
-    } finally {
-      setBlnPreviewLoading(false);
-    }
-  }
-
-  async function handleNext() {
-    if (!validateStep(intStep)) return;
-    if (intStep === 1 || (intStep === 2 && !objPreview)) await loadPreview();
-    setIntStep((intCurrent) => Math.min(intCurrent + 1, lstSteps.length - 1));
+  function update<TKey extends keyof FormState>(strKey: TKey, objValue: FormState[TKey]) {
+    setDicForm((dicCurrent) => ({ ...dicCurrent, [strKey]: objValue }));
+    setDicTouched((dicCurrent) => ({ ...dicCurrent, [strKey]: true }));
   }
 
   async function handleActivate() {
-    if (blnSubmitLock.current || !objPreview?.blnCanActivate) return;
+    setBlnSubmitAttempted(true);
+    if (blnSubmitLock.current || !blnFormValid || !objPreview?.blnCanActivate) return;
     if (objPreview.lstWarnings.length && !blnAcknowledged) {
       setStrError("Tick the acknowledgement to confirm you have reviewed the warnings.");
       return;
@@ -161,7 +169,7 @@ export default function EmployeeSeparationAddPage() {
     setBlnSaving(true);
     setStrError("");
     try {
-      const objCreated = await employeeSeparationService.activate(buildRequest());
+      const objCreated = await employeeSeparationService.activate(buildRequest(blnAcknowledged));
       objRouter.push(`${STR_ROUTE}?created=${encodeURIComponent(objCreated.strRecordUUID)}`);
     } catch (objError) {
       const objData = objError instanceof ApiRequestError ? (objError.objData as { objPreview?: SeparationPreview } | undefined) : undefined;
@@ -177,11 +185,13 @@ export default function EmployeeSeparationAddPage() {
 
   const strTypeLabel = lstTypes.find((objType) => objType.strCode === dicForm.strSeparationType)?.strLabel || dicForm.strSeparationType;
   const objPolicy = objPreview?.dicPolicy;
+  const blnDetailsDone = Boolean(dicForm.objEmployee) && !dicAllErrors.strSeparationType && !dicAllErrors.dtLastWorkingDate && !dicAllErrors.dtResignationDate && Boolean(dicForm.dtLastWorkingDate);
+  const blnCanActivate = blnFormValid && Boolean(objPreview?.blnCanActivate) && !blnPreviewLoading && !blnSaving && (!objPreview?.lstWarnings.length || blnAcknowledged);
 
   if (!blnRightsLoading && !blnCanAdd) {
     return (
       <Box className={styles.page}>
-        <DetailPageHeader strSection="Employee Services" strListTitle="Employee Separation" strListHref={STR_ROUTE} strCurrent="Add" />
+        <DetailPageHeader strSection="Employee Services" strListTitle="Employee Separation" strListHref={STR_ROUTE} strCurrent="Add Separation" />
         <Alert severity="warning">Adding separations is not available for your user group.</Alert>
       </Box>
     );
@@ -199,132 +209,116 @@ export default function EmployeeSeparationAddPage() {
         <Button className={styles.secondaryButton} variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push(STR_ROUTE)} controlId="employee-separations.add.back-top.button">Back</Button>
       </DetailPageHeader>
 
-      <Box className={`${styles.tableCard} ${styles.fnfCreateCard}`}>
+      <Box className={styles.tableCard}>
         <Box className={styles.detailScrollCard}>
-          <Box className={styles.fnfWizardBody}>
-            <Box className={styles.fnfStepperShell}>
-              <Stepper activeStep={intStep} alternativeLabel>
-                {lstSteps.map((strStep) => <Step key={strStep}><StepLabel>{strStep}</StepLabel></Step>)}
-              </Stepper>
-            </Box>
-
-            <Box className={styles.fnfStepPanel}>
-              <Box className={styles.fnfStepHeader}>
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography component="h3" className={styles.fnfStepTitle}>{lstStepHeaders[intStep].strTitle}</Typography>
-                  <Typography className={styles.fnfStepSubtitle}>{lstStepHeaders[intStep].strSubtitle}</Typography>
-                </Box>
-              </Box>
-
-              {intStep === 0 ? (
-                <Stack spacing={2}>
-                  <Autocomplete
-                    options={lstOptions}
-                    value={dicForm.objEmployee}
-                    loading={blnOptionsLoading}
-                    filterOptions={(lstAll) => lstAll}
-                    getOptionLabel={(objOption) => objOption?.strLabel || ""}
-                    isOptionEqualToValue={(objOption, objValue) => objOption.intID === objValue.intID}
-                    onInputChange={(_, strValue, strReason) => { if (strReason === "input") setStrSearch(strValue); }}
-                    onChange={(_, objValue) => update("objEmployee", objValue)}
-                    noOptionsText={strSearch ? "No active employee without an open separation matches." : "Type a code or name to search."}
-                    renderInput={(params) => <TextField {...params} label="Employee" placeholder="Search by code or name..." required error={Boolean(dicErrors.objEmployee)} helperText={dicErrors.objEmployee} fullWidth controlId="employee-separations.add.employee.input"
-                      InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />}
-                  />
-                  {dicForm.objEmployee ? (
-                    <Box sx={{ border: "1px solid #e2e8f0", borderRadius: 2, p: 2 }} data-controlid="employee-separations.add.employee.card">
-                      <SummaryRow strLabel="Employee" strValue={`${dicForm.objEmployee.strEmployeeCode} - ${dicForm.objEmployee.strEmployeeName}`} />
-                      <SummaryRow strLabel="Department" strValue={dicForm.objEmployee.strDepartmentName || "-"} />
-                      <SummaryRow strLabel="Unit" strValue={dicForm.objEmployee.strLocationName || "-"} />
-                      <SummaryRow strLabel="Date of joining" strValue={formatDisplayDate(dicForm.objEmployee.dtDateOfJoining)} />
-                      <SummaryRow strLabel="Notice period" strValue={dicForm.objEmployee.intNoticePeriodDays != null ? `${dicForm.objEmployee.intNoticePeriodDays} days` : "-"} />
-                    </Box>
-                  ) : null}
-                </Stack>
-              ) : null}
-
-              {intStep === 1 ? (
-                <Box className={styles.fnfWizardGrid}>
-                  <TextField select label="Separation type" required value={dicForm.strSeparationType} onChange={(e) => update("strSeparationType", e.target.value)} error={Boolean(dicErrors.strSeparationType)} helperText={dicErrors.strSeparationType} fullWidth controlId="employee-separations.add.type.select">
-                    {lstTypes.map((objType) => <MenuItem key={objType.strCode} value={objType.strCode}>{objType.strLabel}</MenuItem>)}
-                  </TextField>
-                  <TextField label="Resignation / notice date" type="date" InputLabelProps={{ shrink: true }} value={dicForm.dtResignationDate} onChange={(e) => update("dtResignationDate", e.target.value)} error={Boolean(dicErrors.dtResignationDate)} helperText={dicErrors.dtResignationDate} fullWidth controlId="employee-separations.add.resignation-date.input" />
-                  <TextField label="Last working date" required type="date" InputLabelProps={{ shrink: true }} value={dicForm.dtLastWorkingDate} onChange={(e) => update("dtLastWorkingDate", e.target.value)} error={Boolean(dicErrors.dtLastWorkingDate)} helperText={dicErrors.dtLastWorkingDate} fullWidth controlId="employee-separations.add.lwd.input" />
-                  <TextField label="Activation date" type="date" InputLabelProps={{ shrink: true }} value={todayText()} InputProps={{ readOnly: true }} helperText="Set by the server when you confirm." fullWidth controlId="employee-separations.add.activation-date.input" />
-                  <TextField label="Separation reason" value={dicForm.strSeparationReason} onChange={(e) => update("strSeparationReason", e.target.value)} inputProps={{ maxLength: 300 }} fullWidth className={styles.fnfSpanTwo} controlId="employee-separations.add.reason.input" />
-                  <TextField label="Remarks" placeholder="Optional" value={dicForm.strRemarks} onChange={(e) => update("strRemarks", e.target.value)} inputProps={{ maxLength: 1000 }} fullWidth multiline minRows={3} className={styles.fnfSpanTwo} controlId="employee-separations.add.remarks.input" />
-                </Box>
-              ) : null}
-
-              {intStep === 2 && objPreview ? (
-                <Stack spacing={2} data-controlid="employee-separations.add.impact.panel">
-                  <Alert severity={objPreview.blnCanActivate ? "info" : "error"} icon={false} sx={{ fontWeight: 600 }}>{objPreview.strSummary}</Alert>
-                  <Box sx={{ border: "1px solid #e2e8f0", borderRadius: 2, p: 2 }}>
-                    <SummaryRow strLabel="Policy in force" strValue={`${objPolicy?.strPolicyLabel ?? ""} (${objPolicy?.strSource === "DEFAULT" ? "built-in default" : objPolicy?.strSource === "COMPANY" ? "company rule" : "tenant rule"})`} />
-                    <SummaryRow strLabel="Activation date" strValue={formatDisplayDate(objPreview.dtActivationDate)} />
-                    <SummaryRow strLabel="Last working date" strValue={formatDisplayDate(objPreview.dtLastWorkingDate)} />
-                    <SummaryRow strLabel="Regular payroll excluded from" strValue={objPreview.strExclusionFromMonthLabel} />
+          <Stack spacing={2} sx={{ p: { xs: 1.5, md: 2 } }}>
+            {/* 1. Employee */}
+            <Section intNumber={1} strTitle="Employee" strSubtitle="Active employees without an open separation." blnDone={Boolean(dicForm.objEmployee)} strControlId="employee-separations.add.employee.section">
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "minmax(320px, 1fr) minmax(320px, 1fr)" }, gap: 2, alignItems: "start" }}>
+                <Autocomplete
+                  options={lstOptions}
+                  value={dicForm.objEmployee}
+                  loading={blnOptionsLoading}
+                  filterOptions={(lstAll) => lstAll}
+                  getOptionLabel={(objOption) => objOption?.strLabel || ""}
+                  isOptionEqualToValue={(objOption, objValue) => objOption.intID === objValue.intID}
+                  onInputChange={(_, strValue, strReason) => { if (strReason === "input") setStrSearch(strValue); }}
+                  onChange={(_, objValue) => update("objEmployee", objValue)}
+                  noOptionsText={strSearch ? "No active employee without an open separation matches." : "Type a code or name to search."}
+                  renderInput={(params) => <TextField {...params} label="Employee" placeholder="Search by code or name..." required error={Boolean(fieldError("objEmployee"))} helperText={fieldError("objEmployee")} fullWidth controlId="employee-separations.add.employee.input"
+                    InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />}
+                />
+                {dicForm.objEmployee ? (
+                  <Box sx={{ border: "1px solid #e2e8f0", borderRadius: 2, px: 2, py: 1 }} data-controlid="employee-separations.add.employee.card">
+                    <SummaryRow strLabel="Department" strValue={dicForm.objEmployee.strDepartmentName || "-"} />
+                    <SummaryRow strLabel="Unit" strValue={dicForm.objEmployee.strLocationName || "-"} />
+                    <SummaryRow strLabel="Date of joining" strValue={formatDisplayDate(dicForm.objEmployee.dtDateOfJoining)} />
+                    <SummaryRow strLabel="Notice period" strValue={dicForm.objEmployee.intNoticePeriodDays != null ? `${dicForm.objEmployee.intNoticePeriodDays} days` : "-"} />
                   </Box>
-                  {objPolicy?.blnAllowHrOverride ? (
-                    <Box className={styles.fnfWizardGrid}>
-                      <TextField select label="Override policy (optional)" value={dicForm.strOverridePolicyCode} onChange={(e) => update("strOverridePolicyCode", e.target.value)} SelectProps={{ displayEmpty: true }} InputLabelProps={{ shrink: true }} fullWidth controlId="employee-separations.add.override.select">
-                        <MenuItem value="">No override</MenuItem>
-                        {lstPolicyOptions.map((objOption) => <MenuItem key={objOption.strCode} value={objOption.strCode}>{objOption.strLabel}</MenuItem>)}
-                      </TextField>
-                      <TextField label="Override reason" required={Boolean(dicForm.strOverridePolicyCode)} value={dicForm.strOverrideReason} onChange={(e) => update("strOverrideReason", e.target.value)} fullWidth controlId="employee-separations.add.override-reason.input" />
+                ) : null}
+              </Box>
+            </Section>
+
+            {/* 2. Separation details */}
+            <Section intNumber={2} strTitle="Separation Details" strSubtitle="Type, reason and dates. The activation date is today's date, set by the server." blnDone={blnDetailsDone} strControlId="employee-separations.add.details.section">
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, 1fr)", xl: "repeat(4, 1fr)" }, gap: 2 }}>
+                <TextField select label="Separation type" required value={dicForm.strSeparationType} onChange={(e) => update("strSeparationType", e.target.value)} error={Boolean(fieldError("strSeparationType"))} helperText={fieldError("strSeparationType")} fullWidth controlId="employee-separations.add.type.select">
+                  {lstTypes.map((objType) => <MenuItem key={objType.strCode} value={objType.strCode}>{objType.strLabel}</MenuItem>)}
+                </TextField>
+                <TextField label="Resignation / notice date" type="date" InputLabelProps={{ shrink: true }} value={dicForm.dtResignationDate} onChange={(e) => update("dtResignationDate", e.target.value)} error={Boolean(fieldError("dtResignationDate"))} helperText={fieldError("dtResignationDate")} fullWidth controlId="employee-separations.add.resignation-date.input" />
+                <TextField label="Last working date" required type="date" InputLabelProps={{ shrink: true }} value={dicForm.dtLastWorkingDate} onChange={(e) => update("dtLastWorkingDate", e.target.value)} error={Boolean(fieldError("dtLastWorkingDate"))} helperText={fieldError("dtLastWorkingDate")} fullWidth controlId="employee-separations.add.lwd.input" />
+                <TextField label="Activation date" type="date" InputLabelProps={{ shrink: true }} value={todayText()} InputProps={{ readOnly: true }} helperText="Set by the server on activation." fullWidth controlId="employee-separations.add.activation-date.input" />
+                <TextField label="Separation reason" value={dicForm.strSeparationReason} onChange={(e) => update("strSeparationReason", e.target.value)} inputProps={{ maxLength: 300 }} fullWidth sx={{ gridColumn: { md: "span 2" } }} controlId="employee-separations.add.reason.input" />
+                <TextField label="Remarks" placeholder="Optional" value={dicForm.strRemarks} onChange={(e) => update("strRemarks", e.target.value)} inputProps={{ maxLength: 1000 }} fullWidth sx={{ gridColumn: { md: "span 2" } }} controlId="employee-separations.add.remarks.input" />
+              </Box>
+            </Section>
+
+            {/* 3. Payroll impact */}
+            <Section intNumber={3} strTitle="Payroll Impact" strSubtitle="From which month regular payroll leaves this employee out, under the F&F rules. Updates as you fill the form." blnDone={Boolean(objPreview?.blnCanActivate)} strControlId="employee-separations.add.impact.section">
+              {!blnFormValid ? (
+                <Typography sx={{ color: "#64748b", fontSize: "0.9rem" }}>Select the employee and enter the last working date to see the payroll impact.</Typography>
+              ) : blnPreviewLoading && !objPreview ? (
+                <Stack direction="row" spacing={1} alignItems="center"><CircularProgress size={18} /><Typography sx={{ color: "#64748b" }}>Working out payroll impact...</Typography></Stack>
+              ) : objPreview ? (
+                <Stack spacing={2} sx={{ opacity: blnPreviewLoading ? 0.6 : 1 }}>
+                  <Alert severity={objPreview.blnCanActivate ? "info" : "error"} icon={false} sx={{ fontWeight: 600 }}>{objPreview.strSummary}</Alert>
+                  <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "repeat(2, 1fr)" }, gap: 2 }}>
+                    <Box sx={{ border: "1px solid #e2e8f0", borderRadius: 2, px: 2, py: 1 }}>
+                      <SummaryRow strLabel="Policy in force" strValue={`${objPolicy?.strPolicyLabel ?? ""} (${objPolicy?.strSource === "DEFAULT" ? "built-in default" : objPolicy?.strSource === "COMPANY" ? "company rule" : "tenant rule"})`} />
+                      <SummaryRow strLabel="Activation date" strValue={formatDisplayDate(objPreview.dtActivationDate)} />
+                      <SummaryRow strLabel="Last working date" strValue={formatDisplayDate(objPreview.dtLastWorkingDate)} />
+                      <SummaryRow strLabel="Regular payroll excluded from" strValue={objPreview.strExclusionFromMonthLabel} />
                     </Box>
-                  ) : null}
+                    {objPolicy?.blnAllowHrOverride ? (
+                      <Stack spacing={2}>
+                        <TextField select label="Override policy (optional)" value={dicForm.strOverridePolicyCode} onChange={(e) => update("strOverridePolicyCode", e.target.value)} SelectProps={{ displayEmpty: true }} InputLabelProps={{ shrink: true }} fullWidth controlId="employee-separations.add.override.select">
+                          <MenuItem value="">No override</MenuItem>
+                          {lstPolicyOptions.map((objOption) => <MenuItem key={objOption.strCode} value={objOption.strCode}>{objOption.strLabel}</MenuItem>)}
+                        </TextField>
+                        <TextField label="Override reason" required={Boolean(dicForm.strOverridePolicyCode)} value={dicForm.strOverrideReason} onChange={(e) => update("strOverrideReason", e.target.value)} fullWidth controlId="employee-separations.add.override-reason.input" />
+                      </Stack>
+                    ) : null}
+                  </Box>
                   {objPreview.lstErrors.length ? <Alert severity="error"><ul style={{ margin: 0, paddingLeft: 18 }}>{objPreview.lstErrors.map((objIssue) => <li key={objIssue.strCode}>{objIssue.strMessage}</li>)}</ul></Alert> : null}
                   {objPreview.lstWarnings.length ? <Alert severity="warning"><ul style={{ margin: 0, paddingLeft: 18 }}>{objPreview.lstWarnings.map((objIssue) => <li key={`${objIssue.strCode}-${objIssue.strMessage}`}>{objIssue.strMessage}</li>)}</ul></Alert> : null}
                 </Stack>
               ) : null}
-              {intStep === 2 && !objPreview ? (
-                <Button variant="outlined" onClick={() => void loadPreview()} disabled={blnPreviewLoading} controlId="employee-separations.add.preview.button">Work out payroll impact</Button>
-              ) : null}
+            </Section>
 
-              {intStep === 3 && objPreview ? (
-                <Stack spacing={2} data-controlid="employee-separations.add.confirm.panel">
-                  <Box sx={{ border: "1px solid #e2e8f0", borderRadius: 2, p: 2 }}>
+            {/* 4. Confirm */}
+            <Section intNumber={4} strTitle="Confirm" strSubtitle="Review and activate. No F&F settlement is created; you can create it afterwards from the list." strControlId="employee-separations.add.confirm.section">
+              {objPreview && blnFormValid ? (
+                <Stack spacing={1.5}>
+                  <Box sx={{ border: "1px solid #e2e8f0", borderRadius: 2, px: 2, py: 1 }}>
                     <SummaryRow strLabel="Employee" strValue={`${objPreview.objEmployee.strEmployeeCode} - ${objPreview.objEmployee.strEmployeeName}`} />
-                    <SummaryRow strLabel="Unit / Department" strValue={`${objPreview.objEmployee.strLocationName || "-"} / ${objPreview.objEmployee.strDepartmentName || "-"}`} />
                     <SummaryRow strLabel="Separation type" strValue={strTypeLabel} />
-                    <SummaryRow strLabel="Reason" strValue={dicForm.strSeparationReason} />
                     <SummaryRow strLabel="Resignation date" strValue={formatDisplayDate(dicForm.dtResignationDate)} />
                     <SummaryRow strLabel="Last working date" strValue={formatDisplayDate(objPreview.dtLastWorkingDate)} />
-                    <SummaryRow strLabel="Activation date" strValue={formatDisplayDate(objPreview.dtActivationDate)} />
                     <SummaryRow strLabel="Policy applied" strValue={`${objPreview.strAppliedPolicyLabel}${objPreview.blnPolicyOverridden ? " (HR override)" : ""}`} />
                     <SummaryRow strLabel="Regular payroll excluded from" strValue={objPreview.strExclusionFromMonthLabel} />
                   </Box>
-                  <Alert severity={objPreview.blnCanActivate ? "info" : "error"} icon={false}>{objPreview.strSummary}</Alert>
-                  {objPreview.lstErrors.length ? <Alert severity="error">{objPreview.lstErrors.map((objIssue) => objIssue.strMessage).join(" ")}</Alert> : null}
                   {objPreview.lstWarnings.length ? (
-                    <Box>
-                      <Alert severity="warning"><ul style={{ margin: 0, paddingLeft: 18 }}>{objPreview.lstWarnings.map((objIssue) => <li key={`${objIssue.strCode}-${objIssue.strMessage}`}>{objIssue.strMessage}</li>)}</ul></Alert>
-                      <FormControlLabel control={<Checkbox checked={blnAcknowledged} onChange={(e) => setBlnAcknowledged(e.target.checked)} controlId="employee-separations.add.acknowledge.checkbox" />} label="I have reviewed these warnings." />
-                    </Box>
+                    <FormControlLabel control={<Checkbox checked={blnAcknowledged} onChange={(e) => setBlnAcknowledged(e.target.checked)} controlId="employee-separations.add.acknowledge.checkbox" />} label="I have reviewed the payroll impact warnings above." />
                   ) : null}
                   <Typography variant="body2" sx={{ color: "#475569" }}>
-                    Employment status and date of exit are not changed. The employee&apos;s F&amp;F settlement can be created from the list after activation.
+                    Employment status and date of exit are not changed by this separation.
                   </Typography>
                 </Stack>
-              ) : null}
-            </Box>
-          </Box>
+              ) : (
+                <Typography sx={{ color: "#64748b", fontSize: "0.9rem" }}>The summary appears here once the payroll impact is worked out.</Typography>
+              )}
+            </Section>
+          </Stack>
         </Box>
         <Box className={styles.fnfWizardActions}>
-          {intStep > 0 ? <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => setIntStep((intCurrent) => intCurrent - 1)} disabled={blnSaving} controlId="employee-separations.add.previous.button">Previous</Button> : null}
           <Box sx={{ flex: 1 }} />
           <Button className={styles.secondaryButton} onClick={() => objRouter.push(STR_ROUTE)} disabled={blnSaving} controlId="employee-separations.add.cancel.button">Cancel</Button>
-          {intStep < lstSteps.length - 1 ? (
-            <Button className={styles.primaryButton} endIcon={<ArrowForwardRoundedIcon />} onClick={() => void handleNext()} disabled={blnPreviewLoading || (intStep === 2 && !objPreview?.blnCanActivate)} controlId="employee-separations.add.next.button">Next</Button>
-          ) : (
-            <Button className={styles.primaryButton} startIcon={<CheckCircleRoundedIcon />} onClick={() => void handleActivate()} disabled={blnSaving || !objPreview?.blnCanActivate || (Boolean(objPreview?.lstWarnings.length) && !blnAcknowledged)} controlId="employee-separations.add.activate.button">
-              Activate Separation
-            </Button>
-          )}
+          <Button className={styles.primaryButton} startIcon={<CheckCircleRoundedIcon />} onClick={() => void handleActivate()} disabled={!blnCanActivate} controlId="employee-separations.add.activate.button">
+            Activate Separation
+          </Button>
         </Box>
       </Box>
-      <BlockingLoader blnOpen={blnSaving || (blnPreviewLoading && !objPreview)} strLabel={blnSaving ? "Activating separation..." : "Working out payroll impact..."} />
+      <BlockingLoader blnOpen={blnSaving} strLabel="Activating separation..." />
     </Box>
   );
 }

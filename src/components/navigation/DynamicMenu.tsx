@@ -1453,6 +1453,11 @@ export default function DynamicMenu({
       );
     }
 
+    // Must come before the generic "employee" rule below, which would label it "Employee".
+    if (strRoute.includes("/employee-separations") || strModuleCode.includes("employee_separation")) {
+      return resolveKnownMenuLabel(strModuleName, "Employee Separation", "कर्मचारी पृथक्करण");
+    }
+
     if (strRoute.includes("/payroll/reimbursements") || strModuleCode.includes("reimbursement")) {
       return resolveKnownMenuLabel(strModuleName, "Employee Reimbursements", "कर्मचारी प्रतिपूर्ति");
     }
