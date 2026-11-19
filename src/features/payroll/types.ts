@@ -537,8 +537,25 @@ export type FNFRegisterRow = {
   decTds: number;
   decNetPayable: number;
   decNetRecoverable: number;
+  strDepartmentName?: string | null;
+  strDesignationName?: string | null;
+  dtDateOfJoining?: string | null;
+  strServicePeriod?: string | null;
+  decNoticePeriodDays?: number;
+  decNoticeServedDays?: number;
+  decNoticeShortfallDays?: number;
+  decLeaveEncashedDays?: number;
+  /** Amount per component column key (FNFRegisterComponentColumn.strKey). */
+  dicComponents?: Record<string, number>;
 };
-export type FNFRegisterResponse = { lstRows: FNFRegisterRow[]; dicTotals: Record<string, number> };
+/** A component column of the F&F register (Basic, HRA, Leave Encashment, ...). */
+export type FNFRegisterComponentColumn = { strKey: string; strLabel: string; strSection: "earning" | "recovery" | "deduction" };
+export type FNFRegisterResponse = {
+  lstRows: FNFRegisterRow[];
+  dicTotals: Record<string, number>;
+  lstComponentColumns?: FNFRegisterComponentColumn[];
+  dicComponentTotals?: Record<string, number>;
+};
 
 /** Leaver whose F&F is finalized and given (settlement paid or recovered). */
 export type FNFLeaverRow = {

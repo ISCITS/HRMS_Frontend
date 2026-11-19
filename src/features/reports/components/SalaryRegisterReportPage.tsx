@@ -21,6 +21,8 @@ import { salaryRegisterReportService, type SalaryRegisterRow } from "@/features/
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
 import ArrearRegisterReport from "@/features/reports/components/ArrearRegisterReport";
+import { buildSalaryRegisterArrearLayout, type SalaryRegisterArrearLayout } from "@/features/reports/utils/salaryRegisterArrearLayout";
+import { buildSalaryRegisterWorkbook } from "@/features/reports/utils/salaryRegisterExcel";
 
 const ARREAR_REGISTER_RIGHT = "report_arrear_register";
 // Per-user browser preference for the "Arrear columns separately" toggle.
@@ -81,171 +83,14 @@ function formatBodyAmount(decValue: number | null | undefined) {
   return Number.isInteger(decNumber) ? String(decNumber) : decNumber.toFixed(2);
 }
 
-
-function collapseValues(lstRows: SalaryRegisterRow[], fnGetValue: (dicRow: SalaryRegisterRow) => string | null | undefined, strFallback: string) {
-  const setValues = new Set(lstRows.map((dicRow) => (fnGetValue(dicRow) || "").trim()).filter(Boolean));
-  if (setValues.size === 1) return Array.from(setValues)[0];
-  return strFallback;
-}
-
-function formatExportTimestamp(objDate: Date) {
-  const fnPad = (intValue: number) => String(intValue).padStart(2, "0");
-  let intHours = objDate.getHours();
-  const strMeridiem = intHours >= 12 ? "PM" : "AM";
-  intHours = intHours % 12 || 12;
-  return `${fnPad(objDate.getMonth() + 1)}/${fnPad(objDate.getDate())}/${objDate.getFullYear()} ${fnPad(intHours)}:${fnPad(objDate.getMinutes())}:${fnPad(objDate.getSeconds())} ${strMeridiem}`;
-}
-
-// Numeric export cell: null = explicitly unknown ("-"), missing/zero = blank, otherwise a real number
-// so Excel can sum/format it.
-function toExportNumber(decValue: number | null | undefined): number | string | null {
-  if (decValue === null) return "-";
-  const decNumber = Number(decValue ?? 0);
-  if (!decNumber) return null;
-  return Math.round(decNumber * 100) / 100;
-}
-
 async function downloadSalaryRegisterExcel(
   strFileName: string,
   lstRows: SalaryRegisterRow[],
-  lstPaymentColumns: string[],
-  lstRecoveryColumns: string[],
+  objLayout: SalaryRegisterArrearLayout,
   strCompanyName: string,
   strMonthLabel: string
 ) {
-  const { Workbook } = await import("exceljs");
-  const strState = collapseValues(lstRows, (dicRow) => dicRow.strState, "All");
-  const strAllocationEntity = collapseValues(lstRows, (dicRow) => dicRow.strAllocationEntity, "All");
-  const strPayCycle = collapseValues(lstRows, (dicRow) => dicRow.strPayCycle, "Monthly");
-  const strEmployeeCategory = collapseValues(lstRows, (dicRow) => dicRow.strEmployeeCategory, "All");
-
-  // Excel layout mirrors the client's salary register sheet (Employee No before Employee Name).
-  // Component columns keep our configured names. The on-screen grid is unchanged.
-  const lstLeadingLabels = [
-    "Sl No", "Employee No", "Employee Name", "Status", "Site", "Cost Center", "Grade", "Department",
-    "Designation", "Location", "Category", "Payment Mode", "Bank Name", "Branch Name", "Bank Account No",
-    "IFSC Code", "PAN No",
-  ];
-  const lstTrailingLabels = ["Salary Released For", "Employee UAN", "WorkGroup Name"];
-  const lstColumnLabels = [
-    ...lstLeadingLabels, "Payable Days", "Negative Salary Dtl",
-    ...lstPaymentColumns, "Gross Earning",
-    ...lstRecoveryColumns, "Gross Deduction", "Net Earning",
-    ...lstTrailingLabels,
-  ];
-  const intColumnCount = lstColumnLabels.length;
-  const intFirstNumericColumn = lstLeadingLabels.length + 1; // 1-based: Payable Days
-  const intLastNumericColumn = intColumnCount - lstTrailingLabels.length;
-
-  const objWorkbook = new Workbook();
-  const objSheet = objWorkbook.addWorksheet("Salary Register");
-  objSheet.columns = lstColumnLabels.map((_, intIndex) => ({
-    width: intIndex === 0 ? 8 : intIndex === 2 ? 30 : intIndex < intFirstNumericColumn - 1 ? 22 : intIndex >= intLastNumericColumn ? 22 : 18,
-  }));
-  const objThinBorder = { top: { style: "thin" as const }, left: { style: "thin" as const }, bottom: { style: "thin" as const }, right: { style: "thin" as const } };
-
-  const fnTitleRow = (strText: string, intSize: number) => {
-    const objRow = objSheet.addRow([strText]);
-    objSheet.mergeCells(objRow.number, 1, objRow.number, intColumnCount);
-    objRow.getCell(1).font = { bold: true, size: intSize };
-    objRow.getCell(1).alignment = { horizontal: "center", vertical: "middle" };
-  };
-  fnTitleRow(strCompanyName, 14);
-  fnTitleRow(`Salary register for the month ${strMonthLabel}`, 12);
-
-  const fnMetaRow = (strLabel: string, strValue: string) => {
-    const objRow = objSheet.addRow([strLabel, "", "", strValue]);
-    objSheet.mergeCells(objRow.number, 1, objRow.number, 3);
-    objSheet.mergeCells(objRow.number, 4, objRow.number, Math.max(4, intColumnCount));
-    objRow.getCell(1).font = { bold: true };
-    objRow.getCell(1).alignment = { horizontal: "left" };
-    objRow.getCell(4).alignment = { horizontal: "left" };
-  };
-  fnMetaRow("Date And Time:", formatExportTimestamp(new Date()));
-  fnMetaRow("State Name:", strState);
-  fnMetaRow("Payroll Month:", strMonthLabel);
-  fnMetaRow("Allocation Entity:", strAllocationEntity);
-  fnMetaRow("Pay Cycle:", strPayCycle);
-  fnMetaRow("Employee Category:", strEmployeeCategory);
-  objSheet.addRow([]);
-
-  const objHeaderRow = objSheet.addRow(lstColumnLabels);
-  objHeaderRow.eachCell((objCell) => {
-    objCell.font = { bold: true };
-    objCell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
-    objCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F4F6" } };
-    objCell.border = objThinBorder;
-  });
-
-  const fnStyleDataRow = (objRow: ReturnType<typeof objSheet.addRow>, blnBold: boolean) => {
-    for (let intColumn = 1; intColumn <= intColumnCount; intColumn += 1) {
-      const objCell = objRow.getCell(intColumn);
-      objCell.border = objThinBorder;
-      objCell.font = { bold: blnBold };
-      if (intColumn === 1) objCell.alignment = { horizontal: "center" };
-      else if (intColumn < intFirstNumericColumn || intColumn > intLastNumericColumn) objCell.alignment = { horizontal: "left" };
-      else {
-        objCell.alignment = { horizontal: "right" };
-        objCell.numFmt = "#,##0.00";
-      }
-    }
-  };
-
-  // Excel rows are listed alphabetically by Employee Name (Employee No breaks ties).
-  const lstSortedRows = [...lstRows].sort((dicLeft, dicRight) =>
-    dicLeft.strEmployeeName.trim().localeCompare(dicRight.strEmployeeName.trim(), undefined, { sensitivity: "base" })
-    || dicLeft.strEmployeeCode.localeCompare(dicRight.strEmployeeCode, undefined, { numeric: true }));
-
-  lstSortedRows.forEach((dicRow, intIndex) => {
-    const objRow = objSheet.addRow([
-      intIndex + 1,
-      dicRow.strEmployeeCode,
-      dicRow.strEmployeeName,
-      dicRow.strEmploymentStatus ?? "",
-      dicRow.strAllocationEntity ?? "",
-      dicRow.strCostCenter ?? "",
-      dicRow.strGrade ?? "",
-      dicRow.strDepartment ?? "-",
-      dicRow.strDesignation ?? "-",
-      dicRow.strLocation ?? "-",
-      dicRow.strEmployeeCategory ?? "",
-      dicRow.strPaymentMode ?? "",
-      dicRow.strBankName ?? "",
-      dicRow.strBranchName ?? "",
-      dicRow.strAccountNumber ?? "",
-      dicRow.strIfscCode ?? "",
-      dicRow.strPanNumber ?? "",
-      toExportNumber(dicRow.decTotalPresentDays),
-      // Only a processed, fully-computed negative net shows here; projected rows have no final net.
-      !dicRow.blnStatutoryPending && dicRow.decNetEarning < 0 ? Math.round(dicRow.decNetEarning * 100) / 100 : null,
-      ...lstPaymentColumns.map((strColumn) => toExportNumber(dicRow.dicPayments[strColumn])),
-      toExportNumber(dicRow.decGrossEarning),
-      ...lstRecoveryColumns.map((strColumn) => toExportNumber(dicRow.dicRecoveries[strColumn])),
-      dicRow.blnStatutoryPending ? "Not yet computed" : toExportNumber(dicRow.decGrossDeduction),
-      dicRow.blnStatutoryPending ? "Not yet computed" : toExportNumber(dicRow.decNetEarning),
-      "", // Salary Released For: no source data yet
-      dicRow.strUanNumber ?? "",
-      dicRow.strWorkgroup ?? "",
-    ]);
-    fnStyleDataRow(objRow, false);
-  });
-
-  const fnSum = (fnValue: (dicRow: SalaryRegisterRow) => number | null) => lstRows.reduce((decTotal, dicRow) => decTotal + (fnValue(dicRow) || 0), 0);
-  const objTotalRow = objSheet.addRow([
-    "Grand Total", ...lstLeadingLabels.slice(1).map(() => ""),
-    fnSum((dicRow) => dicRow.decTotalPresentDays),
-    fnSum((dicRow) => (!dicRow.blnStatutoryPending && dicRow.decNetEarning < 0 ? dicRow.decNetEarning : 0)),
-    ...lstPaymentColumns.map((strColumn) => fnSum((dicRow) => dicRow.dicPayments[strColumn] || 0)),
-    fnSum((dicRow) => dicRow.decGrossEarning),
-    ...lstRecoveryColumns.map((strColumn) => fnSum((dicRow) => dicRow.dicRecoveries[strColumn] || 0)),
-    fnSum((dicRow) => dicRow.decGrossDeduction),
-    fnSum((dicRow) => dicRow.decNetEarning),
-    ...lstTrailingLabels.map(() => ""),
-  ]);
-  objSheet.mergeCells(objTotalRow.number, 1, objTotalRow.number, lstLeadingLabels.length);
-  fnStyleDataRow(objTotalRow, true);
-  objTotalRow.getCell(1).alignment = { horizontal: "center" };
-
+  const objWorkbook = await buildSalaryRegisterWorkbook(lstRows, objLayout, strCompanyName, strMonthLabel);
   const objBuffer = await objWorkbook.xlsx.writeBuffer();
   const objBlob = new Blob([objBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
   const strUrl = URL.createObjectURL(objBlob);
@@ -377,18 +222,16 @@ export default function SalaryRegisterReportPage() {
   const [lstAllPaymentColumns, setLstPaymentColumns] = useState<string[]>([]);
   const [lstAllRecoveryColumns, setLstRecoveryColumns] = useState<string[]>([]);
   const [lstArrearColumns, setLstArrearColumns] = useState<string[]>([]);
-  // On: arrear lines get their own columns. Off: those columns are hidden and the arrear
-  // amounts are only part of Gross Earning / Gross Deduction (which always include them).
+  // On: arrear lines get their own columns and Gross excludes them. Off: those columns are
+  // hidden and the arrear amounts are added into Gross Earning / Gross Deduction.
   const [blnShowArrearColumns, setBlnShowArrearColumns] = useState(true);
   useEffect(() => { setBlnShowArrearColumns(readShowArrearColumnsPreference()); }, []);
-  const lstPaymentColumns = useMemo(
-    () => (blnShowArrearColumns ? lstAllPaymentColumns : lstAllPaymentColumns.filter((strColumn) => !lstArrearColumns.includes(strColumn))),
-    [blnShowArrearColumns, lstAllPaymentColumns, lstArrearColumns],
+  // ON: arrear columns after Gross, Gross = regular salary only. OFF: arrears folded into Gross.
+  const objArrearLayout = useMemo(
+    () => buildSalaryRegisterArrearLayout(lstAllPaymentColumns, lstAllRecoveryColumns, lstArrearColumns, blnShowArrearColumns),
+    [blnShowArrearColumns, lstAllPaymentColumns, lstAllRecoveryColumns, lstArrearColumns],
   );
-  const lstRecoveryColumns = useMemo(
-    () => (blnShowArrearColumns ? lstAllRecoveryColumns : lstAllRecoveryColumns.filter((strColumn) => !lstArrearColumns.includes(strColumn))),
-    [blnShowArrearColumns, lstAllRecoveryColumns, lstArrearColumns],
-  );
+  const { lstPaymentColumns, lstArrearPaymentColumns, lstRecoveryColumns, lstArrearRecoveryColumns } = objArrearLayout;
   const [strCompanyName, setStrCompanyName] = useState("");
   const [strMonthLabel, setStrMonthLabel] = useState("");
   const blnPageLoading = blnRightsLoading || blnLoadingMasters || blnLoadingReport;
@@ -476,12 +319,14 @@ export default function SalaryRegisterReportPage() {
     { field: "decTotalPresentDays", headerName: "Payable Days", width: 130, align: "right" },
     ...lstPaymentColumns.map((strColumn): CommonTableColumn<Record<string, ReactNode>> => ({ field: strColumn, headerName: strColumn, width: 150, align: "right" })),
     { field: "decGrossEarning", headerName: "Gross Earning", width: 140, align: "right" },
+    ...lstArrearPaymentColumns.map((strColumn): CommonTableColumn<Record<string, ReactNode>> => ({ field: strColumn, headerName: strColumn, width: 150, align: "right" })),
     ...lstRecoveryColumns.map((strColumn): CommonTableColumn<Record<string, ReactNode>> => ({ field: strColumn, headerName: strColumn, width: 150, align: "right" })),
     { field: "decGrossDeduction", headerName: "Gross Deduction", width: 140, align: "right" },
+    ...lstArrearRecoveryColumns.map((strColumn): CommonTableColumn<Record<string, ReactNode>> => ({ field: strColumn, headerName: strColumn, width: 150, align: "right" })),
     { field: "decNetEarning", headerName: "Net Earning", width: 140, align: "right" },
     { field: "decSystemTds", headerName: "System TDS", width: 130, align: "right" },
     { field: "strTdsSource", headerName: "TDS Source", width: 170 },
-  ], [lstPaymentColumns, lstRecoveryColumns]);
+  ], [lstPaymentColumns, lstArrearPaymentColumns, lstRecoveryColumns, lstArrearRecoveryColumns]);
 
   const lstDisplayRows = useMemo(() => lstRows.map((dicRow, intIndex) => {
     const dicMapped: Record<string, ReactNode> = {
@@ -492,19 +337,19 @@ export default function SalaryRegisterReportPage() {
       strDesignation: dicRow.strDesignation ?? "-",
       strLocation: dicRow.strLocation ?? "-",
       decTotalPresentDays: formatBodyAmount(dicRow.decTotalPresentDays),
-      decGrossEarning: formatBodyAmount(dicRow.decGrossEarning),
-      decGrossDeduction: dicRow.blnStatutoryPending ? "Not yet computed" : formatBodyAmount(dicRow.decGrossDeduction),
+      decGrossEarning: formatBodyAmount(objArrearLayout.fnGrossEarning(dicRow)),
+      decGrossDeduction: dicRow.blnStatutoryPending ? "Not yet computed" : formatBodyAmount(objArrearLayout.fnGrossDeduction(dicRow)),
       decNetEarning: dicRow.blnStatutoryPending ? "Not yet computed" : formatBodyAmount(dicRow.decNetEarning),
       decSystemTds: dicRow.decSystemTds === null || dicRow.decSystemTds === undefined ? "-" : formatBodyAmount(dicRow.decSystemTds),
       strTdsSource: dicRow.strTdsSource ?? "-",
     };
-    lstPaymentColumns.forEach((strColumn) => { dicMapped[strColumn] = formatBodyAmount(dicRow.dicPayments[strColumn]); });
-    lstRecoveryColumns.forEach((strColumn) => { dicMapped[strColumn] = formatBodyAmount(dicRow.dicRecoveries[strColumn]); });
+    [...lstPaymentColumns, ...lstArrearPaymentColumns].forEach((strColumn) => { dicMapped[strColumn] = formatBodyAmount(dicRow.dicPayments[strColumn]); });
+    [...lstRecoveryColumns, ...lstArrearRecoveryColumns].forEach((strColumn) => { dicMapped[strColumn] = formatBodyAmount(dicRow.dicRecoveries[strColumn]); });
     return dicMapped;
-  }), [lstRows, lstPaymentColumns, lstRecoveryColumns]);
+  }), [lstRows, objArrearLayout, lstPaymentColumns, lstArrearPaymentColumns, lstRecoveryColumns, lstArrearRecoveryColumns]);
 
   function exportExcel() {
-    downloadSalaryRegisterExcel(`salary-register-${dicSearch.strPeriod}.xlsx`, lstRows, lstPaymentColumns, lstRecoveryColumns, strCompanyName, strMonthLabel)
+    downloadSalaryRegisterExcel(`salary-register-${dicSearch.strPeriod}.xlsx`, lstRows, objArrearLayout, strCompanyName, strMonthLabel)
       .catch((objError) => setStrError(objError instanceof Error ? objError.message : "Unable to export the salary register."));
   }
 
