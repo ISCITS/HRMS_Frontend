@@ -5,7 +5,6 @@ import { usePayrollDataFreshness } from "@/features/payroll/hooks/usePayrollData
 
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { Box, Breadcrumbs, Button, Checkbox, Stack, Typography } from "@mui/material";
@@ -533,25 +532,6 @@ export default function PayrollRegisterReportPage() {
             <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} disabled={blnPageLoading} data-controlid="reports.payroll-register.clear.button">Clear</Button>
           </Box>
         </Box>
-      </Box>
-
-      <Box
-        sx={{
-          alignItems: "center",
-          backgroundColor: "#f8fbff",
-          border: "1px solid rgba(191,219,254,0.7)",
-          borderRadius: "16px",
-          color: "#1f2937",
-          display: "flex",
-          gap: 1,
-          px: 1.5,
-          py: 1.25,
-        }}
-      >
-        <InfoOutlinedIcon sx={{ color: "#2b6cb0", fontSize: 20 }} />
-        <Typography sx={{ color: "inherit", lineHeight: 1.5 }}>
-          Employee-wise earnings, deductions, regime, taxable income, annual tax, monthly TDS, gross pay, and net pay from processed payroll results.
-        </Typography>
       </Box>
 
       <Box className={styles.tableCard} sx={{ p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>

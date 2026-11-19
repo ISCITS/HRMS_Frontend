@@ -7,9 +7,8 @@ import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import FilterListRoundedIcon from "@mui/icons-material/FilterListRounded";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Box, Button, Checkbox, Divider, IconButton, ListItemText, ListSubheader, MenuItem, Popover, Tab, Tabs, TextField, Typography } from "@mui/material";
+import { Box, Button, Checkbox, Divider, FormControlLabel, IconButton, ListItemText, ListSubheader, MenuItem, Popover, Switch, Tab, Tabs, TextField, Typography } from "@mui/material";
 import type { SelectChangeEvent } from "@mui/material";
 import { useEffect, useMemo, useState, type ChangeEventHandler, type ReactNode } from "react";
 
@@ -24,6 +23,24 @@ import { useActionRights } from "@/features/security/hooks/useActionRights";
 import ArrearRegisterReport from "@/features/reports/components/ArrearRegisterReport";
 
 const ARREAR_REGISTER_RIGHT = "report_arrear_register";
+// Per-user browser preference for the "Arrear columns separately" toggle.
+const SHOW_ARREAR_COLUMNS_STORAGE_KEY = "hrms.salaryRegister.showArrearColumns";
+
+function readShowArrearColumnsPreference() {
+  try {
+    return window.localStorage.getItem(SHOW_ARREAR_COLUMNS_STORAGE_KEY) !== "false";
+  } catch {
+    return true;
+  }
+}
+
+function writeShowArrearColumnsPreference(blnValue: boolean) {
+  try {
+    window.localStorage.setItem(SHOW_ARREAR_COLUMNS_STORAGE_KEY, String(blnValue));
+  } catch {
+    // Storage unavailable: the toggle still works for this visit.
+  }
+}
 
 type SelectOption = { strValue: string; strLabel: string };
 
@@ -357,8 +374,21 @@ export default function SalaryRegisterReportPage() {
   const [strError, setStrError] = useState("");
 
   const [lstRows, setLstRows] = useState<SalaryRegisterRow[]>([]);
-  const [lstPaymentColumns, setLstPaymentColumns] = useState<string[]>([]);
-  const [lstRecoveryColumns, setLstRecoveryColumns] = useState<string[]>([]);
+  const [lstAllPaymentColumns, setLstPaymentColumns] = useState<string[]>([]);
+  const [lstAllRecoveryColumns, setLstRecoveryColumns] = useState<string[]>([]);
+  const [lstArrearColumns, setLstArrearColumns] = useState<string[]>([]);
+  // On: arrear lines get their own columns. Off: those columns are hidden and the arrear
+  // amounts are only part of Gross Earning / Gross Deduction (which always include them).
+  const [blnShowArrearColumns, setBlnShowArrearColumns] = useState(true);
+  useEffect(() => { setBlnShowArrearColumns(readShowArrearColumnsPreference()); }, []);
+  const lstPaymentColumns = useMemo(
+    () => (blnShowArrearColumns ? lstAllPaymentColumns : lstAllPaymentColumns.filter((strColumn) => !lstArrearColumns.includes(strColumn))),
+    [blnShowArrearColumns, lstAllPaymentColumns, lstArrearColumns],
+  );
+  const lstRecoveryColumns = useMemo(
+    () => (blnShowArrearColumns ? lstAllRecoveryColumns : lstAllRecoveryColumns.filter((strColumn) => !lstArrearColumns.includes(strColumn))),
+    [blnShowArrearColumns, lstAllRecoveryColumns, lstArrearColumns],
+  );
   const [strCompanyName, setStrCompanyName] = useState("");
   const [strMonthLabel, setStrMonthLabel] = useState("");
   const blnPageLoading = blnRightsLoading || blnLoadingMasters || blnLoadingReport;
@@ -407,6 +437,7 @@ export default function SalaryRegisterReportPage() {
       setLstRows(objEnvelope.lstItems);
       setLstPaymentColumns(objEnvelope.lstPaymentColumns);
       setLstRecoveryColumns(objEnvelope.lstRecoveryColumns);
+      setLstArrearColumns(objEnvelope.lstArrearColumns ?? []);
       setStrCompanyName(objEnvelope.strCompanyName);
       setStrMonthLabel(objEnvelope.strMonthLabel);
       setBlnHasSearched(true);
@@ -551,6 +582,14 @@ export default function SalaryRegisterReportPage() {
             </Button>
             <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={loadReport} disabled={blnPageLoading} sx={{ whiteSpace: "nowrap" }}>Search</Button>
             <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} disabled={blnPageLoading} sx={{ whiteSpace: "nowrap" }}>Clear</Button>
+            {/* Page title is hidden on this screen, so the notices icon sits with the search actions. */}
+            <PageNotices
+              strControlId="reports.salary-register.notices"
+              lstNotices={[
+                !blnCanView && !strError ? { strKey: "rights", strSeverity: "warning", objMessage: "Salary register view access is not available for your user group." } : null,
+                { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+              ]}
+            />
           </Box>
         </Box>
         <Popover
@@ -598,21 +637,6 @@ export default function SalaryRegisterReportPage() {
         </Popover>
       </Box>
 
-      <Box sx={{ alignItems: "center", backgroundColor: "#f8fbff", border: "1px solid rgba(191,219,254,0.7)", borderRadius: "16px", color: "#1f2937", display: "flex", gap: 1, px: 1.5, py: 1.25 }}>
-        <InfoOutlinedIcon sx={{ color: "#2b6cb0", fontSize: 20 }} />
-        <Typography sx={{ color: "inherit", lineHeight: 1.5 }}>
-          Shows actual processed payroll figures when payroll has been run for the selected month; otherwise falls back to the employee's configured CTC/salary structure so a figure is always available.
-        </Typography>
-        {/* Page title is hidden on this screen, so the notices icon sits in the info strip. */}
-        <PageNotices
-          strControlId="reports.salary-register.notices"
-          lstNotices={[
-            !blnCanView && !strError ? { strKey: "rights", strSeverity: "warning", objMessage: "Salary register view access is not available for your user group." } : null,
-            { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
-          ]}
-        />
-      </Box>
-
       <PayrollDataChangedNotice objFreshness={objPayrollFreshness} blnRefreshing={blnLoadingReport} />
 
       <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
@@ -631,9 +655,28 @@ export default function SalaryRegisterReportPage() {
           skeletonRowCount={10}
           hideRowClickHint
           onRowClick={() => undefined}
-          toolbarLeft={canDoAny("export") ? (
-            <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={exportExcel} disabled={!lstRows.length} sx={{ whiteSpace: "nowrap" }}>Export Excel</Button>
-          ) : null}
+          toolbarLeft={(
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
+              {canDoAny("export") ? (
+                <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={exportExcel} disabled={!lstRows.length} sx={{ whiteSpace: "nowrap" }}>Export Excel</Button>
+              ) : null}
+              <FormControlLabel
+                data-controlid="reports.salary-register.arrear-columns.toggle"
+                control={(
+                  <Switch
+                    size="small"
+                    checked={blnShowArrearColumns}
+                    onChange={(objEvent) => {
+                      setBlnShowArrearColumns(objEvent.target.checked);
+                      writeShowArrearColumnsPreference(objEvent.target.checked);
+                    }}
+                  />
+                )}
+                label="Show arrear columns separately"
+                sx={{ m: 0, gap: 0.75, "& .MuiFormControlLabel-label": { fontSize: 14, fontWeight: 600, whiteSpace: "nowrap" } }}
+              />
+            </Box>
+          )}
           sx={{ p: 0, boxShadow: "none", background: "transparent" }}
         />
       </Box>

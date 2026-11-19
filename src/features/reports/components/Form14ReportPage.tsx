@@ -1,7 +1,6 @@
 "use client";
 
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
@@ -355,12 +354,6 @@ export default function Form14ReportPage() {
         </Box>
       </Box>
 
-      <Box sx={{ alignItems: "center", backgroundColor: "#f8fbff", border: "1px solid rgba(191,219,254,0.7)", borderRadius: "16px", color: "#1f2937", display: "flex", gap: 1, px: 1.5, py: 1.25 }}>
-        <InfoOutlinedIcon sx={{ color: "#2b6cb0", fontSize: 20 }} />
-        <Typography sx={{ color: "inherit", lineHeight: 1.5 }}>
-          This register is derived from attendance, leave and payroll. Make corrections in those modules.
-        </Typography>
-      </Box>
 
       {lstTiles.length > 0 ? (
         <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr 1fr", md: "repeat(4, 1fr)" } }}>
