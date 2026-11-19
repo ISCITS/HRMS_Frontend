@@ -109,7 +109,7 @@ export default function FNFSettlementListPage() {
   const lstFiltered = useMemo(() => lstRows.filter((row) => {
     const strLwd = row.dtLastWorkingDate || "";
     return (!dicFilters.exit_type || row.strExitType.toLowerCase().includes(dicFilters.exit_type.toLowerCase()))
-      && (!dicFilters.settlement_month || (row.dtSettlementMonth || "").startsWith(dicFilters.settlement_month))
+      && (!dicFilters.settlement_month || (row.dtSettlementMonth || row.dtSettlementDate || "").startsWith(dicFilters.settlement_month))
       && (!dicFilters.lwd_from || strLwd >= dicFilters.lwd_from)
       && (!dicFilters.lwd_to || strLwd <= dicFilters.lwd_to);
   }), [lstRows, dicFilters]);

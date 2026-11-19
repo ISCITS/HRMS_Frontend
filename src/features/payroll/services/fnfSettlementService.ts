@@ -40,8 +40,16 @@ async function requestApi<TData>(objOptions: {
   });
 }
 
+/** Local date as yyyy-mm-dd (toISOString is UTC and gives yesterday before 05:30 IST). */
+function toLocalDateText(dtValue: Date): string {
+  return `${dtValue.getFullYear()}-${String(dtValue.getMonth() + 1).padStart(2, "0")}-${String(dtValue.getDate()).padStart(2, "0")}`;
+}
+
 export function createInitialFNFSettlementForm(): FNFSettlementFormValues {
-  const strToday = new Date().toISOString().slice(0, 10);
+  const dtNow = new Date();
+  const strToday = toLocalDateText(dtNow);
+  // Settlement date = last day of the month in which the F&F is made.
+  const strMonthEnd = toLocalDateText(new Date(dtNow.getFullYear(), dtNow.getMonth() + 1, 0));
   return {
     strEmployeeCode: "",
     strSettlementNumber: "",
@@ -49,8 +57,8 @@ export function createInitialFNFSettlementForm(): FNFSettlementFormValues {
     strExitReason: "",
     dtResignationDate: "",
     dtLastWorkingDate: strToday,
-    dtSettlementDate: strToday,
-    dtSettlementMonth: strToday.slice(0, 8) + "01",
+    dtSettlementDate: strMonthEnd,
+    dtSettlementMonth: strMonthEnd.slice(0, 8) + "01",
     decNoticePeriodDays: "0",
     decNoticeServedDays: "0",
     decNoticeShortfallDays: "0",
