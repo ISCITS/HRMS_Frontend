@@ -1,12 +1,12 @@
 "use client";
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
-import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import ErrorOutlineRoundedIcon from "@mui/icons-material/ErrorOutlineRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
-import { Alert, Autocomplete, Box, Button, IconButton, InputAdornment, Stack, Step, StepLabel, Stepper, TextField, Tooltip, Typography } from "@mui/material";
+import { Alert, Autocomplete, Box, Button, IconButton, InputAdornment, Stack, TextField, Tooltip, Typography } from "@mui/material";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import PageNotices, { type PageNoticeInput } from "@/Common/components/PageNotices";
@@ -19,8 +19,7 @@ import type { FNFEmployeeOption, FNFEmployeePrefill, FNFSettlementFormValues } f
 
 // Everything the system already holds for the employee (employee master, an earlier cancelled
 // settlement, leave balances on the last working date) is filled in when the employee is picked;
-// salary days come from attendance when the settlement is calculated.
-const lstWizardSteps = ["Employee", "Resignation Details", "Notice Pay", "Leave Encashment", "Remarks"];
+// salary days come from attendance when the settlement is calculated. All sections are on one page.
 const lstExitTypes = ["resignation", "termination", "retirement", "death", "absconding", "dismissal", "retrenchment", "layoff", "contract_end", "permanent_disablement"];
 // Manual entry used only when the employee has no leave plan / balances on the last working date.
 const lstFallbackLeaveFields = [
@@ -33,13 +32,30 @@ const lstFallbackLeaveFields = [
 // How long the "filled in from existing records" note stays on screen after an employee is picked.
 const PREFILL_NOTE_VISIBLE_MS = 2000;
 
-const lstStepHeaders = [
-  { strTitle: "Select employee", strSubtitle: "Pick the exiting employee. Exit details, notice period and leave balances are filled in automatically." },
-  { strTitle: "Resignation details", strSubtitle: "Exit type and the key dates used for this settlement." },
-  { strTitle: "Notice pay", strSubtitle: "Served and shortfall days follow the exit submitted date and the leaving date." },
-  { strTitle: "Leave encashment", strSubtitle: "Encashable leave days on the leaving date, as per each leave policy." },
-  { strTitle: "Remarks", strSubtitle: "Any notes to keep with this settlement." },
-];
+// Same column grid in every section so fields line up down the page.
+const dicGridSx = { display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(5, 1fr)" }, gap: 1.5 };
+const dicFieldsetSx = { border: 0, p: 0, m: 0, minWidth: 0, "&:disabled": { opacity: 0.55 } };
+
+/** Numbered, bordered section; the badge turns green when filled and red when a field needs attention. */
+function FormSection({ intNumber, strTitle, blnDone, blnError, objNotices, objInfo, children, strControlId }: {
+  intNumber: number; strTitle: string; blnDone?: boolean; blnError?: boolean; objNotices?: ReactNode; objInfo?: ReactNode; children: ReactNode; strControlId: string;
+}) {
+  const strBadgeColor = blnError ? "#dc2626" : blnDone ? "#16a34a" : "#1e4e8c";
+  return (
+    <Box component="section" data-controlid={strControlId} sx={{ border: "1px solid #e2e8f0", borderRadius: "10px", px: { xs: 1.5, md: 2 }, py: 1.5, backgroundColor: "#fff", minWidth: 0 }}>
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.25, minHeight: 28 }}>
+        <Box sx={{ width: 22, height: 22, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: 800, color: "#fff", backgroundColor: strBadgeColor }}>
+          {blnDone && !blnError ? <CheckCircleRoundedIcon sx={{ fontSize: 16 }} /> : intNumber}
+        </Box>
+        <Typography component="h3" sx={{ fontWeight: 800, color: "#0f172a", fontSize: "0.95rem" }}>{strTitle}</Typography>
+        {objNotices}
+        <Box sx={{ flex: 1 }} />
+        {objInfo}
+      </Stack>
+      {children}
+    </Box>
+  );
+}
 
 // Validation messages and source hints live in an icon at the end of the field (message on hover)
 // instead of helper text, so every field keeps the same height and the grid stays aligned.
@@ -86,7 +102,6 @@ function computeNotice(strResignationDate: string, strLastWorkingDate: string, s
 export default function FNFSettlementCreatePage() {
   const objRouter = useRouter();
   const [dicForm, setDicForm] = useState<FNFSettlementFormValues>(buildInitialWizardForm());
-  const [intActiveStep, setIntActiveStep] = useState(0);
   const [strError, setStrError] = useState("");
   const [lstEmployeeOptions, setLstEmployeeOptions] = useState<FNFEmployeeOption[]>([]);
   const [dicErrors, setDicErrors] = useState<Partial<Record<keyof FNFSettlementFormValues, string>>>({});
@@ -211,45 +226,30 @@ export default function FNFSettlementCreatePage() {
     return statusAdornment(dicErrors[strKey], strHint);
   }
 
-  function validateStep(intStep: number) {
+  /** Validates every section at once; errors show as icons on the fields (message on hover). */
+  function validateForm() {
     const dicNextErrors: Partial<Record<keyof FNFSettlementFormValues, string>> = {};
-    if (intStep === 0 && !dicForm.strEmployeeCode.trim()) dicNextErrors.strEmployeeCode = "Employee is required.";
-    if (intStep === 1) {
-      if (!dicForm.strExitType.trim()) dicNextErrors.strExitType = "Exit type is required.";
-      if (!dicForm.dtResignationDate) dicNextErrors.dtResignationDate = "Exit submitted date is required.";
-      if (!dicForm.dtLastWorkingDate) dicNextErrors.dtLastWorkingDate = "Leaving date is required.";
-      if (!dicForm.dtSettlementDate) dicNextErrors.dtSettlementDate = "Settlement date is required.";
-      if (dicForm.dtResignationDate && dicForm.dtLastWorkingDate && dicForm.dtResignationDate > dicForm.dtLastWorkingDate) dicNextErrors.dtResignationDate = "Exit submitted date cannot be after the leaving date.";
-    }
-    if (intStep === 2) {
-      if (!isNonNegativeNumber(dicForm.decNoticePeriodDays)) dicNextErrors.decNoticePeriodDays = "Enter a valid non-negative number.";
-      if (!isNonNegativeNumber(dicForm.decNoticeServedDays)) dicNextErrors.decNoticeServedDays = "Enter a valid non-negative number.";
-      if (!isNonNegativeNumber(dicForm.decNoticeShortfallDays)) dicNextErrors.decNoticeShortfallDays = "Enter a valid non-negative number.";
-    }
+    if (!dicForm.strEmployeeCode.trim()) dicNextErrors.strEmployeeCode = "Employee is required.";
+    if (!dicForm.strExitType.trim()) dicNextErrors.strExitType = "Exit type is required.";
+    if (!dicForm.dtResignationDate) dicNextErrors.dtResignationDate = "Exit submitted date is required.";
+    if (!dicForm.dtLastWorkingDate) dicNextErrors.dtLastWorkingDate = "Leaving date is required.";
+    if (!dicForm.dtSettlementDate) dicNextErrors.dtSettlementDate = "Settlement date is required.";
+    if (dicForm.dtResignationDate && dicForm.dtLastWorkingDate && dicForm.dtResignationDate > dicForm.dtLastWorkingDate) dicNextErrors.dtResignationDate = "Exit submitted date cannot be after the leaving date.";
+    if (!isNonNegativeNumber(dicForm.decNoticePeriodDays)) dicNextErrors.decNoticePeriodDays = "Enter a valid non-negative number.";
+    if (!isNonNegativeNumber(dicForm.decNoticeServedDays)) dicNextErrors.decNoticeServedDays = "Enter a valid non-negative number.";
+    if (!isNonNegativeNumber(dicForm.decNoticeShortfallDays)) dicNextErrors.decNoticeShortfallDays = "Enter a valid non-negative number.";
     const dicNextLeaveErrors: Record<string, string> = {};
-    if (intStep === 3) {
-      (dicForm.lstLeaveEncashments || []).forEach((dicLeave) => {
-        if (!isNonNegativeNumber(dicLeave.decEncashableDays)) dicNextLeaveErrors[dicLeave.strLeaveTypeCode] = "Enter a valid non-negative number of days.";
-      });
-    }
-    // Errors are shown only as icons on the fields themselves (message on hover), not as a banner.
+    (dicForm.lstLeaveEncashments || []).forEach((dicLeave) => {
+      if (!isNonNegativeNumber(dicLeave.decEncashableDays)) dicNextLeaveErrors[dicLeave.strLeaveTypeCode] = "Enter a valid non-negative number of days.";
+    });
     setDicErrors(dicNextErrors);
     setDicLeaveErrors(dicNextLeaveErrors);
-    if (Object.keys(dicNextErrors).length || Object.keys(dicNextLeaveErrors).length) return false;
+    if (Object.keys(dicNextErrors).length || Object.keys(dicNextLeaveErrors).length) {
+      setStrError("Some fields need attention. Hover the red icons to see what to fix.");
+      return false;
+    }
     setStrError("");
     return true;
-  }
-
-  function handleNext() {
-    if (!validateStep(intActiveStep)) return;
-    setIntActiveStep((intCurrent) => Math.min(intCurrent + 1, lstWizardSteps.length - 1));
-  }
-
-  function handlePrevious() {
-    setStrError("");
-    setDicErrors({});
-    setDicLeaveErrors({});
-    setIntActiveStep((intCurrent) => Math.max(intCurrent - 1, 0));
   }
 
   function handleCancel() {
@@ -258,7 +258,7 @@ export default function FNFSettlementCreatePage() {
   }
 
   async function handleSubmit() {
-    if (!validateStep(4)) return;
+    if (!validateForm()) return;
     setBlnSaving(true);
     setStrError("");
     try {
@@ -285,10 +285,14 @@ export default function FNFSettlementCreatePage() {
     !objPrefill.strExitType ? "exit type" : "",
     objPrefill.decNoticePeriodDays === null ? "notice period" : "",
   ].filter(Boolean) : [];
-  const blnStepHasErrors = Object.values(dicErrors).some(Boolean) || Object.values(dicLeaveErrors).some(Boolean);
   const blnNoticeAutoCalculated = Boolean(dicForm.dtResignationDate && dicForm.dtLastWorkingDate);
-  const lstStepNotices: PageNoticeInput[] = [
-    intActiveStep === 0 && objPrefill && blnShowPrefillNote
+  const blnEmployeeChosen = Boolean(dicForm.strEmployeeCode);
+  const blnResignationError = Boolean(dicErrors.strExitType || dicErrors.dtResignationDate || dicErrors.dtLastWorkingDate || dicErrors.dtSettlementDate);
+  const blnResignationDone = blnEmployeeChosen && !blnResignationError && Boolean(dicForm.strExitType && dicForm.dtResignationDate && dicForm.dtLastWorkingDate && dicForm.dtSettlementDate);
+  const blnNoticeError = Boolean(dicErrors.decNoticePeriodDays || dicErrors.decNoticeServedDays || dicErrors.decNoticeShortfallDays);
+  const blnNoticeDone = blnEmployeeChosen && !blnNoticeError && dicForm.decNoticePeriodDays !== "";
+  const lstEmployeeNotices: PageNoticeInput[] = [
+    objPrefill && blnShowPrefillNote
       ? {
           strKey: "prefill-note",
           strSeverity: lstMissing.length ? "warning" : "success",
@@ -296,10 +300,12 @@ export default function FNFSettlementCreatePage() {
           blnToast: false,
         }
       : null,
-    intActiveStep === 3 && blnHasSystemLeave
+  ];
+  const lstLeaveNotices: PageNoticeInput[] = [
+    blnHasSystemLeave
       ? { strKey: "leave-system-info", strSeverity: "info", objMessage: "Balances are read from leave records. Encashable days are used automatically; type days in Override only to change them.", blnToast: false }
       : null,
-    intActiveStep === 3 && !blnHasSystemLeave && !blnPrefillLoading
+    blnEmployeeChosen && objPrefill && !blnHasSystemLeave && !blnPrefillLoading
       ? { strKey: "leave-manual-warning", strSeverity: "warning", objMessage: `${objPrefill?.strLeaveMessage || "No leave balances were found."} Enter encashable days manually if any are due; otherwise leave them blank.`, blnToast: false }
       : null,
   ];
@@ -317,38 +323,25 @@ export default function FNFSettlementCreatePage() {
       </DetailPageHeader>
       <Box className={`${styles.tableCard} ${styles.fnfCreateCard}`}>
         <Box className={styles.detailScrollCard}>
-          <Box className={styles.fnfWizardBody}>
-            <Box className={styles.fnfStepperShell}>
-              <Stepper activeStep={intActiveStep} alternativeLabel>
-                {lstWizardSteps.map((strStep, intIndex) => <Step key={strStep}><StepLabel error={intIndex === intActiveStep && blnStepHasErrors}>{strStep}</StepLabel></Step>)}
-              </Stepper>
-            </Box>
-
-            <Box className={styles.fnfStepPanel}>
-              <Box className={styles.fnfStepHeader}>
-                <Box sx={{ minWidth: 0 }}>
-                  <Stack direction="row" alignItems="center" spacing={1}>
-                    <Typography component="h3" className={styles.fnfStepTitle}>{lstStepHeaders[intActiveStep].strTitle}</Typography>
-                    <PageNotices blnSmall strControlId="payroll.fnf-settlement-create.step.notices" lstNotices={lstStepNotices} />
-                  </Stack>
-                  <Typography className={styles.fnfStepSubtitle}>{lstStepHeaders[intActiveStep].strSubtitle}</Typography>
-                </Box>
-                {intActiveStep === 0 ? (
-                  <Tooltip title="Only employees with an active Employee Separation (and no settlement yet) are listed. Add the separation under Employee Services > Employee Separation first. Exit details, notice period and leave balances are filled in automatically." placement="left" arrow>
-                    <IconButton size="small" color="info" aria-label="Which employees are listed" controlId="payroll.fnf-settlement-create.employee-info.button"><InfoOutlinedIcon fontSize="small" /></IconButton>
-                  </Tooltip>
-                ) : null}
-                {intActiveStep === 2 ? (
-                  <Tooltip title="Notice pay or recovery is calculated from these days, the exit type and the F&F rules." placement="left" arrow>
-                    <IconButton size="small" color="info" aria-label="How notice pay is calculated" controlId="payroll.fnf-settlement-create.notice-info.button"><InfoOutlinedIcon fontSize="small" /></IconButton>
-                  </Tooltip>
-                ) : null}
-              </Box>
-
-            {intActiveStep === 0 ? (
-              <Box className={styles.fnfWizardGrid}>
+          <Stack spacing={1.5} sx={{ p: { xs: 1.5, md: 2 } }}>
+            {/* 1. Employee */}
+            <FormSection
+              intNumber={1}
+              strTitle="Employee"
+              blnDone={Boolean(objPrefill)}
+              blnError={Boolean(dicErrors.strEmployeeCode)}
+              strControlId="payroll.fnf-settlement-create.employee.section"
+              objNotices={<PageNotices blnSmall strControlId="payroll.fnf-settlement-create.employee.notices" lstNotices={lstEmployeeNotices} />}
+              objInfo={
+                <Tooltip title="Only employees with an active Employee Separation (and no settlement yet) are listed. Add the separation under Employee Services > Employee Separation first. Exit details, notice period and leave balances are filled in automatically." placement="left" arrow>
+                  <IconButton size="small" color="info" aria-label="Which employees are listed" controlId="payroll.fnf-settlement-create.employee-info.button"><InfoOutlinedIcon fontSize="small" /></IconButton>
+                </Tooltip>
+              }
+            >
+              <Box sx={{ display: "flex", flexDirection: { xs: "column", lg: "row" }, gap: 2, alignItems: { xs: "stretch", lg: "center" } }}>
                 <Autocomplete
-                  sx={dicAutocompleteSx}
+                  size="small"
+                  sx={{ ...dicAutocompleteSx, width: { xs: "100%", lg: 420 }, flexShrink: 0 }}
                   noOptionsText="No employees are ready for a settlement. Add an Employee Separation first (Employee Services > Employee Separation); employees who already have a settlement are not listed."
                   options={lstEmployeeOptions}
                   value={objSelectedEmployee}
@@ -363,13 +356,22 @@ export default function FNFSettlementCreatePage() {
                       endAdornment: (<><FieldStatusIcon strError={dicErrors.strEmployeeCode} />{params.InputProps.endAdornment}</>),
                     }} />}
                 />
+                <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>
+                  {objPrefill
+                    ? `${objPrefill.intSeparationActionID ? "Settles the active Employee Separation. " : ""}Exit details, notice period and leave balances below are filled in from existing records.`
+                    : "Pick the exiting employee. Exit details, notice period and leave balances are filled in automatically."}
+                </Typography>
               </Box>
-            ) : null}
+            </FormSection>
 
-            {intActiveStep === 1 ? (
-              <Box className={styles.fnfWizardGrid}>
+            {/* 2. Resignation details */}
+            <FormSection intNumber={2} strTitle="Resignation Details" blnDone={blnResignationDone} blnError={blnResignationError} strControlId="payroll.fnf-settlement-create.resignation.section">
+              <Box component="fieldset" disabled={!blnEmployeeChosen} sx={dicFieldsetSx}>
+              <Box sx={dicGridSx}>
                 <Autocomplete
+                  size="small"
                   sx={dicAutocompleteSx}
+                  disabled={!blnEmployeeChosen}
                   freeSolo
                   options={lstExitTypes}
                   value={dicForm.strExitType}
@@ -378,24 +380,54 @@ export default function FNFSettlementCreatePage() {
                   renderInput={(params) => <TextField {...params} label="Exit type" required error={Boolean(dicErrors.strExitType)} fullWidth controlId="payroll.fnf-settlement-create.exit-type.input"
                     InputProps={{ ...params.InputProps, endAdornment: (<><FieldStatusIcon strError={dicErrors.strExitType} strHint={sourceHint("strExitType")} />{params.InputProps.endAdornment}</>) }} />}
                 />
-                <TextField label="Exit submitted on" required type="date" InputLabelProps={{ shrink: true }} InputProps={{ endAdornment: fieldStatus("dtResignationDate", sourceHint("dtResignationDate")) }} value={dicForm.dtResignationDate} onChange={(e) => updateField("dtResignationDate", e.target.value)} error={Boolean(dicErrors.dtResignationDate)} fullWidth controlId="payroll.fnf-settlement-create.resignation-date.input" />
-                <TextField label="Leaving Date" required type="date" InputLabelProps={{ shrink: true }} InputProps={{ readOnly: Boolean(objPrefill?.intSeparationActionID), endAdornment: fieldStatus("dtLastWorkingDate", objPrefill?.intSeparationActionID ? "From the Employee Separation. Cancel and re-add the separation to change it." : sourceHint("dtLastWorkingDate")) }} value={dicForm.dtLastWorkingDate} onChange={(e) => updateField("dtLastWorkingDate", e.target.value)} error={Boolean(dicErrors.dtLastWorkingDate)} fullWidth controlId="payroll.fnf-settlement-create.last-working-date.input" />
-                <TextField label="Settlement Date" required type="date" InputLabelProps={{ shrink: true }} InputProps={{ endAdornment: fieldStatus("dtSettlementDate") }} value={dicForm.dtSettlementDate} onChange={(e) => updateField("dtSettlementDate", e.target.value)} error={Boolean(dicErrors.dtSettlementDate)} fullWidth controlId="payroll.fnf-settlement-create.settlement-date.input" />
-                <TextField label="Exit reason" value={dicForm.strExitReason} onChange={(e) => updateField("strExitReason", e.target.value)} InputProps={{ endAdornment: fieldStatus("strExitReason", sourceHint("strExitReason")) }} fullWidth className={styles.fnfSpanTwo} controlId="payroll.fnf-settlement-create.exit-reason.input" />
+                <TextField size="small" label="Exit submitted on" required type="date" InputLabelProps={{ shrink: true }} InputProps={{ endAdornment: fieldStatus("dtResignationDate", sourceHint("dtResignationDate")) }} value={dicForm.dtResignationDate} onChange={(e) => updateField("dtResignationDate", e.target.value)} error={Boolean(dicErrors.dtResignationDate)} fullWidth controlId="payroll.fnf-settlement-create.resignation-date.input" />
+                <TextField size="small" label="Leaving Date" required type="date" InputLabelProps={{ shrink: true }} InputProps={{ readOnly: Boolean(objPrefill?.intSeparationActionID), endAdornment: fieldStatus("dtLastWorkingDate", objPrefill?.intSeparationActionID ? "From the Employee Separation. Cancel and re-add the separation to change it." : sourceHint("dtLastWorkingDate")) }} value={dicForm.dtLastWorkingDate} onChange={(e) => updateField("dtLastWorkingDate", e.target.value)} error={Boolean(dicErrors.dtLastWorkingDate)} fullWidth controlId="payroll.fnf-settlement-create.last-working-date.input" />
+                <TextField size="small" label="Settlement Date" required type="date" InputLabelProps={{ shrink: true }} InputProps={{ endAdornment: fieldStatus("dtSettlementDate") }} value={dicForm.dtSettlementDate} onChange={(e) => updateField("dtSettlementDate", e.target.value)} error={Boolean(dicErrors.dtSettlementDate)} fullWidth controlId="payroll.fnf-settlement-create.settlement-date.input" />
+                <TextField size="small" label="Exit reason" value={dicForm.strExitReason} onChange={(e) => updateField("strExitReason", e.target.value)} InputProps={{ endAdornment: fieldStatus("strExitReason", sourceHint("strExitReason")) }} fullWidth controlId="payroll.fnf-settlement-create.exit-reason.input" />
               </Box>
-            ) : null}
-
-            {intActiveStep === 2 ? (
-              <Box className={`${styles.fnfWizardGrid} ${styles.fnfWizardGridThree}`}>
-                <TextField label="Notice Period Days" type="number" value={dicForm.decNoticePeriodDays} onChange={(e) => updateField("decNoticePeriodDays", e.target.value)} error={Boolean(dicErrors.decNoticePeriodDays)} InputProps={{ endAdornment: fieldStatus("decNoticePeriodDays", sourceHint("decNoticePeriodDays")) }} fullWidth controlId="payroll.fnf-settlement-create.notice-period-days.input" />
-                <TextField label="Notice Served Days" type="number" value={dicForm.decNoticeServedDays} onChange={(e) => updateField("decNoticeServedDays", e.target.value)} error={Boolean(dicErrors.decNoticeServedDays)} InputProps={{ endAdornment: fieldStatus("decNoticeServedDays", blnNoticeAutoCalculated ? "Auto-calculated from the exit submitted date and the leaving date" : undefined) }} fullWidth controlId="payroll.fnf-settlement-create.notice-served-days.input" />
-                <TextField label="Notice Shortfall Days" type="number" value={dicForm.decNoticeShortfallDays} onChange={(e) => updateField("decNoticeShortfallDays", e.target.value)} error={Boolean(dicErrors.decNoticeShortfallDays)} InputProps={{ endAdornment: fieldStatus("decNoticeShortfallDays", blnNoticeAutoCalculated ? "Notice period days - served days" : undefined) }} fullWidth controlId="payroll.fnf-settlement-create.notice-shortfall-days.input" />
               </Box>
-            ) : null}
+            </FormSection>
 
-            {intActiveStep === 3 ? (
-              <Box>
-                {blnHasSystemLeave ? (
+            {/* 3. Notice pay and 4. Remarks side by side */}
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "3fr 2fr" }, gap: 1.5, alignItems: "stretch" }}>
+            <FormSection
+              intNumber={3}
+              strTitle="Notice Pay"
+              blnDone={blnNoticeDone}
+              blnError={blnNoticeError}
+              strControlId="payroll.fnf-settlement-create.notice.section"
+              objInfo={
+                <Tooltip title="Notice pay or recovery is calculated from these days, the exit type and the F&F rules. Served and shortfall days follow the exit submitted date and the leaving date." placement="left" arrow>
+                  <IconButton size="small" color="info" aria-label="How notice pay is calculated" controlId="payroll.fnf-settlement-create.notice-info.button"><InfoOutlinedIcon fontSize="small" /></IconButton>
+                </Tooltip>
+              }
+            >
+              <Box component="fieldset" disabled={!blnEmployeeChosen} sx={dicFieldsetSx}>
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(3, 1fr)" }, gap: 1.5 }}>
+                <TextField size="small" label="Notice Period Days" type="number" value={dicForm.decNoticePeriodDays} onChange={(e) => updateField("decNoticePeriodDays", e.target.value)} error={Boolean(dicErrors.decNoticePeriodDays)} InputProps={{ endAdornment: fieldStatus("decNoticePeriodDays", sourceHint("decNoticePeriodDays")) }} fullWidth controlId="payroll.fnf-settlement-create.notice-period-days.input" />
+                <TextField size="small" label="Notice Served Days" type="number" value={dicForm.decNoticeServedDays} onChange={(e) => updateField("decNoticeServedDays", e.target.value)} error={Boolean(dicErrors.decNoticeServedDays)} InputProps={{ endAdornment: fieldStatus("decNoticeServedDays", blnNoticeAutoCalculated ? "Auto-calculated from the exit submitted date and the leaving date" : undefined) }} fullWidth controlId="payroll.fnf-settlement-create.notice-served-days.input" />
+                <TextField size="small" label="Notice Shortfall Days" type="number" value={dicForm.decNoticeShortfallDays} onChange={(e) => updateField("decNoticeShortfallDays", e.target.value)} error={Boolean(dicErrors.decNoticeShortfallDays)} InputProps={{ endAdornment: fieldStatus("decNoticeShortfallDays", blnNoticeAutoCalculated ? "Notice period days - served days" : undefined) }} fullWidth controlId="payroll.fnf-settlement-create.notice-shortfall-days.input" />
+              </Box>
+              </Box>
+            </FormSection>
+
+            <FormSection intNumber={4} strTitle="Remarks" blnDone={Boolean(dicForm.strRemarks.trim())} strControlId="payroll.fnf-settlement-create.remarks.section">
+              <TextField size="small" label="Remarks" placeholder="Optional" value={dicForm.strRemarks} onChange={(e) => updateField("strRemarks", e.target.value)} fullWidth disabled={!blnEmployeeChosen} controlId="payroll.fnf-settlement-create.remarks.input" />
+            </FormSection>
+            </Box>
+
+            {/* 5. Leave encashment */}
+            <FormSection
+              intNumber={5}
+              strTitle="Leave Encashment"
+              blnDone={blnEmployeeChosen && !blnPrefillLoading}
+              blnError={Object.values(dicLeaveErrors).some(Boolean)}
+              strControlId="payroll.fnf-settlement-create.leave.section"
+              objNotices={<PageNotices blnSmall strControlId="payroll.fnf-settlement-create.leave.notices" lstNotices={lstLeaveNotices} />}
+            >
+              {!blnEmployeeChosen ? (
+                <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>Select the employee to read encashable leave days on the leaving date.</Typography>
+              ) : blnHasSystemLeave ? (
                   <>
                     <Box component="table" className={styles.table} sx={{ width: "100%" }}>
                       <thead><tr><th>Leave Type</th><th>Balance on Leaving Date</th><th>Encashable (system)</th><th>Override Days</th></tr></thead>
@@ -416,33 +448,25 @@ export default function FNFSettlementCreatePage() {
                     </Box>
                   </>
                 ) : (
-                  <Box className={styles.fnfWizardGrid}>
+                  <Box sx={dicGridSx}>
                     {blnPrefillLoading ? <Alert severity="warning" sx={{ gridColumn: "1 / -1" }}>Reading leave balances...</Alert> : null}
                     {(dicForm.lstLeaveEncashments || []).map((dicLeave) => {
                       const dicField = lstFallbackLeaveFields.find((dicCurrent) => dicCurrent.strCode === dicLeave.strLeaveTypeCode);
                       return (
                         <Tooltip key={dicLeave.strLeaveTypeCode} title={dicField?.strTooltip || dicLeave.strLeaveTypeName} placement="top">
-                          <TextField label={dicLeave.strLeaveTypeName} type="number" value={dicLeave.decEncashableDays} onChange={(e) => updateLeaveOverride(dicLeave.strLeaveTypeCode, e.target.value)} error={Boolean(dicLeaveErrors[dicLeave.strLeaveTypeCode])} InputProps={{ endAdornment: statusAdornment(dicLeaveErrors[dicLeave.strLeaveTypeCode]) }} fullWidth controlId={`payroll.fnf-settlement-create.leave-${dicLeave.strLeaveTypeCode.toLowerCase()}.input`} />
+                          <TextField size="small" label={dicLeave.strLeaveTypeName} type="number" value={dicLeave.decEncashableDays} onChange={(e) => updateLeaveOverride(dicLeave.strLeaveTypeCode, e.target.value)} error={Boolean(dicLeaveErrors[dicLeave.strLeaveTypeCode])} InputProps={{ endAdornment: statusAdornment(dicLeaveErrors[dicLeave.strLeaveTypeCode]) }} fullWidth controlId={`payroll.fnf-settlement-create.leave-${dicLeave.strLeaveTypeCode.toLowerCase()}.input`} />
                         </Tooltip>
                       );
                     })}
                   </Box>
                 )}
-              </Box>
-            ) : null}
-
-            {intActiveStep === 4 ? (
-              <TextField label="Remarks" placeholder="Optional" value={dicForm.strRemarks} onChange={(e) => updateField("strRemarks", e.target.value)} fullWidth multiline minRows={5} controlId="payroll.fnf-settlement-create.remarks.input" />
-            ) : null}
-            </Box>
-          </Box>
+            </FormSection>
+          </Stack>
         </Box>
         <Box className={styles.fnfWizardActions}>
-          {intActiveStep > 0 ? <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={handlePrevious} controlId="payroll.fnf-settlement-create.previous.button">Previous</Button> : null}
           <Box sx={{ flex: 1 }} />
-          <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={handleCancel} controlId="payroll.fnf-settlement-create.back.button">Back</Button>
-          {intActiveStep < lstWizardSteps.length - 1 ? <Button className={styles.primaryButton} endIcon={<ArrowForwardRoundedIcon />} onClick={handleNext} disabled={blnPrefillLoading} controlId="payroll.fnf-settlement-create.next.button">Next</Button> : null}
-          {intActiveStep === lstWizardSteps.length - 1 ? <Button className={styles.primaryButton} startIcon={<SendRoundedIcon />} onClick={handleSubmit} disabled={blnSaving} controlId="payroll.fnf-settlement-create.submit.button">Submit</Button> : null}
+          <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={handleCancel} controlId="payroll.fnf-settlement-create.back.button">Cancel</Button>
+          <Button className={styles.primaryButton} startIcon={<SendRoundedIcon />} onClick={handleSubmit} disabled={blnSaving || blnPrefillLoading || !blnEmployeeChosen} controlId="payroll.fnf-settlement-create.submit.button">Submit</Button>
         </Box>
       </Box>
       <BlockingLoader blnOpen={blnSaving || blnPrefillLoading} strLabel={blnSaving ? "Saving settlement..." : "Reading employee exit data..."} />

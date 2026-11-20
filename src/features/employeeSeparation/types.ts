@@ -105,6 +105,8 @@ export type SeparationEmployeeOption = {
   strLabel: string;
   strDepartmentName: string | null;
   strLocationName: string | null;
+  strEntityName?: string | null;
+  strDesignationName?: string | null;
   dtDateOfJoining: string | null;
   strEmploymentStatus: string;
   intNoticePeriodDays: number | null;

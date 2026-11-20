@@ -49,26 +49,24 @@ function validateForm(dicForm: FormState): FieldErrors {
   return dicErrors;
 }
 
-function SummaryRow({ strLabel, strValue }: { strLabel: string; strValue: string }) {
+/** One "Label: value" item in the horizontal employee strip. */
+function Fact({ strLabel, strValue }: { strLabel: string; strValue: string | null | undefined }) {
   return (
-    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "220px 1fr" }, gap: 1, py: 0.75, borderBottom: "1px solid #f1f5f9" }}>
-      <Typography sx={{ color: "#64748b", fontSize: "0.9rem" }}>{strLabel}</Typography>
-      <Typography sx={{ color: "#0f172a", fontWeight: 600, fontSize: "0.9rem" }}>{strValue || "-"}</Typography>
+    <Box sx={{ minWidth: 0 }}>
+      <Typography sx={{ color: "#64748b", fontSize: "0.72rem", lineHeight: 1.2, textTransform: "uppercase", letterSpacing: "0.02em" }}>{strLabel}</Typography>
+      <Typography sx={{ color: "#0f172a", fontWeight: 700, fontSize: "0.88rem", lineHeight: 1.4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={strValue || "-"}>{strValue || "-"}</Typography>
     </Box>
   );
 }
 
-function Section({ intNumber, strTitle, strSubtitle, blnDone, children, strControlId }: { intNumber: number; strTitle: string; strSubtitle: string; blnDone?: boolean; children: ReactNode; strControlId: string }) {
+function Section({ intNumber, strTitle, blnDone, children, strControlId }: { intNumber: number; strTitle: string; blnDone?: boolean; children: ReactNode; strControlId: string }) {
   return (
-    <Box component="section" data-controlid={strControlId} sx={{ border: "1px solid #e2e8f0", borderRadius: "10px", p: { xs: 2, md: 2.5 }, backgroundColor: "#fff" }}>
-      <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ mb: 2 }}>
-        <Box sx={{ width: 28, height: 28, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", fontWeight: 800, color: "#fff", backgroundColor: blnDone ? "#16a34a" : "#1e4e8c" }}>
-          {blnDone ? <CheckCircleRoundedIcon sx={{ fontSize: 18 }} /> : intNumber}
+    <Box component="section" data-controlid={strControlId} sx={{ border: "1px solid #e2e8f0", borderRadius: "10px", px: { xs: 1.5, md: 2 }, py: 1.5, backgroundColor: "#fff" }}>
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.25 }}>
+        <Box sx={{ width: 22, height: 22, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: 800, color: "#fff", backgroundColor: blnDone ? "#16a34a" : "#1e4e8c" }}>
+          {blnDone ? <CheckCircleRoundedIcon sx={{ fontSize: 16 }} /> : intNumber}
         </Box>
-        <Box>
-          <Typography component="h3" sx={{ fontWeight: 800, color: "#0f172a", fontSize: "1rem", lineHeight: 1.3 }}>{strTitle}</Typography>
-          <Typography sx={{ color: "#64748b", fontSize: "0.82rem" }}>{strSubtitle}</Typography>
-        </Box>
+        <Typography component="h3" sx={{ fontWeight: 800, color: "#0f172a", fontSize: "0.95rem" }}>{strTitle}</Typography>
       </Stack>
       {children}
     </Box>
@@ -183,10 +181,20 @@ export default function EmployeeSeparationAddPage() {
     }
   }
 
-  const strTypeLabel = lstTypes.find((objType) => objType.strCode === dicForm.strSeparationType)?.strLabel || dicForm.strSeparationType;
+  const objEmployee = dicForm.objEmployee;
   const objPolicy = objPreview?.dicPolicy;
-  const blnDetailsDone = Boolean(dicForm.objEmployee) && !dicAllErrors.strSeparationType && !dicAllErrors.dtLastWorkingDate && !dicAllErrors.dtResignationDate && Boolean(dicForm.dtLastWorkingDate);
+  const blnDetailsDone = Boolean(objEmployee) && !dicAllErrors.strSeparationType && !dicAllErrors.dtLastWorkingDate && !dicAllErrors.dtResignationDate && Boolean(dicForm.dtLastWorkingDate);
   const blnCanActivate = blnFormValid && Boolean(objPreview?.blnCanActivate) && !blnPreviewLoading && !blnSaving && (!objPreview?.lstWarnings.length || blnAcknowledged);
+
+  // "<code> - <name> (<entity>, <department>, <unit>) will be excluded from Regular Payroll starting <Month YYYY> ..."
+  function buildImpactMessage(objResult: SeparationPreview): string {
+    const strCode = objResult.objEmployee?.strEmployeeCode || objEmployee?.strEmployeeCode || "";
+    const strName = objResult.objEmployee?.strEmployeeName || objEmployee?.strEmployeeName || "";
+    const lstPlace = [objEmployee?.strEntityName, objEmployee?.strDepartmentName, objEmployee?.strLocationName].filter(Boolean);
+    const strWho = `${strCode} - ${strName}${lstPlace.length ? ` (${lstPlace.join(", ")})` : ""}`;
+    const strPolicy = `${objResult.strAppliedPolicyLabel}${objResult.blnPolicyOverridden ? " - HR override" : ""}`;
+    return `${strWho} will be excluded from Regular Payroll starting ${objResult.strExclusionFromMonthLabel} under ${strPolicy} (last working date ${formatDisplayDate(objResult.dtLastWorkingDate)}). F&F settlement may be created separately.`;
+  }
 
   if (!blnRightsLoading && !blnCanAdd) {
     return (
@@ -211,13 +219,15 @@ export default function EmployeeSeparationAddPage() {
 
       <Box className={styles.tableCard}>
         <Box className={styles.detailScrollCard}>
-          <Stack spacing={2} sx={{ p: { xs: 1.5, md: 2 } }}>
-            {/* 1. Employee */}
-            <Section intNumber={1} strTitle="Employee" strSubtitle="Active employees without an open separation." blnDone={Boolean(dicForm.objEmployee)} strControlId="employee-separations.add.employee.section">
-              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "minmax(320px, 1fr) minmax(320px, 1fr)" }, gap: 2, alignItems: "start" }}>
+          <Stack spacing={1.5} sx={{ p: { xs: 1.5, md: 2 } }}>
+            {/* 1. Employee: search box and the selected employee's facts on one row */}
+            <Section intNumber={1} strTitle="Employee" blnDone={Boolean(objEmployee)} strControlId="employee-separations.add.employee.section">
+              <Box sx={{ display: "flex", flexDirection: { xs: "column", lg: "row" }, gap: 2, alignItems: { xs: "stretch", lg: "center" } }}>
                 <Autocomplete
+                  sx={{ width: { xs: "100%", lg: 380 }, flexShrink: 0 }}
+                  size="small"
                   options={lstOptions}
-                  value={dicForm.objEmployee}
+                  value={objEmployee}
                   loading={blnOptionsLoading}
                   filterOptions={(lstAll) => lstAll}
                   getOptionLabel={(objOption) => objOption?.strLabel || ""}
@@ -228,85 +238,70 @@ export default function EmployeeSeparationAddPage() {
                   renderInput={(params) => <TextField {...params} label="Employee" placeholder="Search by code or name..." required error={Boolean(fieldError("objEmployee"))} helperText={fieldError("objEmployee")} fullWidth controlId="employee-separations.add.employee.input"
                     InputProps={{ ...params.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{params.InputProps.startAdornment}</>) }} />}
                 />
-                {dicForm.objEmployee ? (
-                  <Box sx={{ border: "1px solid #e2e8f0", borderRadius: 2, px: 2, py: 1 }} data-controlid="employee-separations.add.employee.card">
-                    <SummaryRow strLabel="Department" strValue={dicForm.objEmployee.strDepartmentName || "-"} />
-                    <SummaryRow strLabel="Unit" strValue={dicForm.objEmployee.strLocationName || "-"} />
-                    <SummaryRow strLabel="Date of joining" strValue={formatDisplayDate(dicForm.objEmployee.dtDateOfJoining)} />
-                    <SummaryRow strLabel="Notice period" strValue={dicForm.objEmployee.intNoticePeriodDays != null ? `${dicForm.objEmployee.intNoticePeriodDays} days` : "-"} />
+                {objEmployee ? (
+                  <Box
+                    data-controlid="employee-separations.add.employee.card"
+                    sx={{ flex: 1, minWidth: 0, display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "repeat(3, minmax(0, 1fr))", xl: "repeat(6, minmax(0, 1fr))" }, gap: 1.5, px: 1.5, py: 0.75, border: "1px solid #e2e8f0", borderRadius: 2, backgroundColor: "#f8fafc" }}
+                  >
+                    <Fact strLabel="Entity" strValue={objEmployee.strEntityName} />
+                    <Fact strLabel="Department" strValue={objEmployee.strDepartmentName} />
+                    <Fact strLabel="Unit" strValue={objEmployee.strLocationName} />
+                    <Fact strLabel="Designation" strValue={objEmployee.strDesignationName} />
+                    <Fact strLabel="Date of joining" strValue={formatDisplayDate(objEmployee.dtDateOfJoining)} />
+                    <Fact strLabel="Notice period" strValue={objEmployee.intNoticePeriodDays != null ? `${objEmployee.intNoticePeriodDays} days` : "-"} />
                   </Box>
-                ) : null}
+                ) : (
+                  <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>Active employees without an open separation.</Typography>
+                )}
               </Box>
             </Section>
 
-            {/* 2. Separation details */}
-            <Section intNumber={2} strTitle="Separation Details" strSubtitle="Type, reason and dates. The activation date is today's date, set by the server." blnDone={blnDetailsDone} strControlId="employee-separations.add.details.section">
-              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, 1fr)", xl: "repeat(4, 1fr)" }, gap: 2 }}>
-                <TextField select label="Separation type" required value={dicForm.strSeparationType} onChange={(e) => update("strSeparationType", e.target.value)} error={Boolean(fieldError("strSeparationType"))} helperText={fieldError("strSeparationType")} fullWidth controlId="employee-separations.add.type.select">
+            {/* 2. Separation details: dates on one row, reason and remarks on the next */}
+            <Section intNumber={2} strTitle="Separation Details" blnDone={blnDetailsDone} strControlId="employee-separations.add.details.section">
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(4, 1fr)" }, gap: 1.5 }}>
+                <TextField select size="small" label="Separation type" required value={dicForm.strSeparationType} onChange={(e) => update("strSeparationType", e.target.value)} error={Boolean(fieldError("strSeparationType"))} helperText={fieldError("strSeparationType")} fullWidth controlId="employee-separations.add.type.select">
                   {lstTypes.map((objType) => <MenuItem key={objType.strCode} value={objType.strCode}>{objType.strLabel}</MenuItem>)}
                 </TextField>
-                <TextField label="Resignation / notice date" type="date" InputLabelProps={{ shrink: true }} value={dicForm.dtResignationDate} onChange={(e) => update("dtResignationDate", e.target.value)} error={Boolean(fieldError("dtResignationDate"))} helperText={fieldError("dtResignationDate")} fullWidth controlId="employee-separations.add.resignation-date.input" />
-                <TextField label="Last working date" required type="date" InputLabelProps={{ shrink: true }} value={dicForm.dtLastWorkingDate} onChange={(e) => update("dtLastWorkingDate", e.target.value)} error={Boolean(fieldError("dtLastWorkingDate"))} helperText={fieldError("dtLastWorkingDate")} fullWidth controlId="employee-separations.add.lwd.input" />
-                <TextField label="Activation date" type="date" InputLabelProps={{ shrink: true }} value={todayText()} InputProps={{ readOnly: true }} helperText="Set by the server on activation." fullWidth controlId="employee-separations.add.activation-date.input" />
-                <TextField label="Separation reason" value={dicForm.strSeparationReason} onChange={(e) => update("strSeparationReason", e.target.value)} inputProps={{ maxLength: 300 }} fullWidth sx={{ gridColumn: { md: "span 2" } }} controlId="employee-separations.add.reason.input" />
-                <TextField label="Remarks" placeholder="Optional" value={dicForm.strRemarks} onChange={(e) => update("strRemarks", e.target.value)} inputProps={{ maxLength: 1000 }} fullWidth sx={{ gridColumn: { md: "span 2" } }} controlId="employee-separations.add.remarks.input" />
+                <TextField size="small" label="Resignation / notice date" type="date" InputLabelProps={{ shrink: true }} value={dicForm.dtResignationDate} onChange={(e) => update("dtResignationDate", e.target.value)} error={Boolean(fieldError("dtResignationDate"))} helperText={fieldError("dtResignationDate")} fullWidth controlId="employee-separations.add.resignation-date.input" />
+                <TextField size="small" label="Last working date" required type="date" InputLabelProps={{ shrink: true }} value={dicForm.dtLastWorkingDate} onChange={(e) => update("dtLastWorkingDate", e.target.value)} error={Boolean(fieldError("dtLastWorkingDate"))} helperText={fieldError("dtLastWorkingDate")} fullWidth controlId="employee-separations.add.lwd.input" />
+                <TextField size="small" label="Activation date (today)" type="date" InputLabelProps={{ shrink: true }} value={todayText()} InputProps={{ readOnly: true }} fullWidth controlId="employee-separations.add.activation-date.input" />
+                <TextField size="small" label="Separation reason" value={dicForm.strSeparationReason} onChange={(e) => update("strSeparationReason", e.target.value)} inputProps={{ maxLength: 300 }} fullWidth sx={{ gridColumn: { sm: "span 2" } }} controlId="employee-separations.add.reason.input" />
+                <TextField size="small" label="Remarks" placeholder="Optional" value={dicForm.strRemarks} onChange={(e) => update("strRemarks", e.target.value)} inputProps={{ maxLength: 1000 }} fullWidth sx={{ gridColumn: { sm: "span 2" } }} controlId="employee-separations.add.remarks.input" />
               </Box>
             </Section>
 
-            {/* 3. Payroll impact */}
-            <Section intNumber={3} strTitle="Payroll Impact" strSubtitle="From which month regular payroll leaves this employee out, under the F&F rules. Updates as you fill the form." blnDone={Boolean(objPreview?.blnCanActivate)} strControlId="employee-separations.add.impact.section">
+            {/* 3. Payroll impact: one message; errors/warnings only when the server reports them */}
+            <Section intNumber={3} strTitle="Payroll Impact" blnDone={Boolean(objPreview?.blnCanActivate)} strControlId="employee-separations.add.impact.section">
               {!blnFormValid ? (
-                <Typography sx={{ color: "#64748b", fontSize: "0.9rem" }}>Select the employee and enter the last working date to see the payroll impact.</Typography>
+                <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>Select the employee and enter the last working date to see the payroll impact.</Typography>
               ) : blnPreviewLoading && !objPreview ? (
-                <Stack direction="row" spacing={1} alignItems="center"><CircularProgress size={18} /><Typography sx={{ color: "#64748b" }}>Working out payroll impact...</Typography></Stack>
+                <Stack direction="row" spacing={1} alignItems="center"><CircularProgress size={16} /><Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>Working out payroll impact...</Typography></Stack>
               ) : objPreview ? (
-                <Stack spacing={2} sx={{ opacity: blnPreviewLoading ? 0.6 : 1 }}>
-                  <Alert severity={objPreview.blnCanActivate ? "info" : "error"} icon={false} sx={{ fontWeight: 600 }}>{objPreview.strSummary}</Alert>
-                  <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "repeat(2, 1fr)" }, gap: 2 }}>
-                    <Box sx={{ border: "1px solid #e2e8f0", borderRadius: 2, px: 2, py: 1 }}>
-                      <SummaryRow strLabel="Policy in force" strValue={`${objPolicy?.strPolicyLabel ?? ""} (${objPolicy?.strSource === "DEFAULT" ? "built-in default" : objPolicy?.strSource === "COMPANY" ? "company rule" : "tenant rule"})`} />
-                      <SummaryRow strLabel="Activation date" strValue={formatDisplayDate(objPreview.dtActivationDate)} />
-                      <SummaryRow strLabel="Last working date" strValue={formatDisplayDate(objPreview.dtLastWorkingDate)} />
-                      <SummaryRow strLabel="Regular payroll excluded from" strValue={objPreview.strExclusionFromMonthLabel} />
+                <Stack spacing={1} sx={{ opacity: blnPreviewLoading ? 0.6 : 1 }}>
+                  {objPreview.lstErrors.length ? (
+                    <Alert severity="error" sx={{ py: 0.25 }}><ul style={{ margin: 0, paddingLeft: 18 }}>{objPreview.lstErrors.map((objIssue) => <li key={objIssue.strCode}>{objIssue.strMessage}</li>)}</ul></Alert>
+                  ) : (
+                    <Alert severity="info" icon={false} sx={{ fontWeight: 600, py: 0.25 }} data-controlid="employee-separations.add.impact.message">{buildImpactMessage(objPreview)}</Alert>
+                  )}
+                  {objPreview.lstWarnings.length ? (
+                    <Alert severity="warning" sx={{ py: 0.25 }}>
+                      <ul style={{ margin: 0, paddingLeft: 18 }}>{objPreview.lstWarnings.map((objIssue) => <li key={`${objIssue.strCode}-${objIssue.strMessage}`}>{objIssue.strMessage}</li>)}</ul>
+                      <FormControlLabel sx={{ mt: 0.5 }} control={<Checkbox size="small" checked={blnAcknowledged} onChange={(e) => setBlnAcknowledged(e.target.checked)} controlId="employee-separations.add.acknowledge.checkbox" />} label="I have reviewed these warnings." />
+                    </Alert>
+                  ) : null}
+                  {objPolicy?.blnAllowHrOverride ? (
+                    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "260px 1fr" }, gap: 1.5 }}>
+                      <TextField select size="small" label="Override policy (optional)" value={dicForm.strOverridePolicyCode} onChange={(e) => update("strOverridePolicyCode", e.target.value)} SelectProps={{ displayEmpty: true }} InputLabelProps={{ shrink: true }} fullWidth controlId="employee-separations.add.override.select">
+                        <MenuItem value="">No override</MenuItem>
+                        {lstPolicyOptions.map((objOption) => <MenuItem key={objOption.strCode} value={objOption.strCode}>{objOption.strLabel}</MenuItem>)}
+                      </TextField>
+                      {dicForm.strOverridePolicyCode ? (
+                        <TextField size="small" label="Override reason" required value={dicForm.strOverrideReason} onChange={(e) => update("strOverrideReason", e.target.value)} fullWidth controlId="employee-separations.add.override-reason.input" />
+                      ) : null}
                     </Box>
-                    {objPolicy?.blnAllowHrOverride ? (
-                      <Stack spacing={2}>
-                        <TextField select label="Override policy (optional)" value={dicForm.strOverridePolicyCode} onChange={(e) => update("strOverridePolicyCode", e.target.value)} SelectProps={{ displayEmpty: true }} InputLabelProps={{ shrink: true }} fullWidth controlId="employee-separations.add.override.select">
-                          <MenuItem value="">No override</MenuItem>
-                          {lstPolicyOptions.map((objOption) => <MenuItem key={objOption.strCode} value={objOption.strCode}>{objOption.strLabel}</MenuItem>)}
-                        </TextField>
-                        <TextField label="Override reason" required={Boolean(dicForm.strOverridePolicyCode)} value={dicForm.strOverrideReason} onChange={(e) => update("strOverrideReason", e.target.value)} fullWidth controlId="employee-separations.add.override-reason.input" />
-                      </Stack>
-                    ) : null}
-                  </Box>
-                  {objPreview.lstErrors.length ? <Alert severity="error"><ul style={{ margin: 0, paddingLeft: 18 }}>{objPreview.lstErrors.map((objIssue) => <li key={objIssue.strCode}>{objIssue.strMessage}</li>)}</ul></Alert> : null}
-                  {objPreview.lstWarnings.length ? <Alert severity="warning"><ul style={{ margin: 0, paddingLeft: 18 }}>{objPreview.lstWarnings.map((objIssue) => <li key={`${objIssue.strCode}-${objIssue.strMessage}`}>{objIssue.strMessage}</li>)}</ul></Alert> : null}
+                  ) : null}
                 </Stack>
               ) : null}
-            </Section>
-
-            {/* 4. Confirm */}
-            <Section intNumber={4} strTitle="Confirm" strSubtitle="Review and activate. No F&F settlement is created; you can create it afterwards from the list." strControlId="employee-separations.add.confirm.section">
-              {objPreview && blnFormValid ? (
-                <Stack spacing={1.5}>
-                  <Box sx={{ border: "1px solid #e2e8f0", borderRadius: 2, px: 2, py: 1 }}>
-                    <SummaryRow strLabel="Employee" strValue={`${objPreview.objEmployee.strEmployeeCode} - ${objPreview.objEmployee.strEmployeeName}`} />
-                    <SummaryRow strLabel="Separation type" strValue={strTypeLabel} />
-                    <SummaryRow strLabel="Resignation date" strValue={formatDisplayDate(dicForm.dtResignationDate)} />
-                    <SummaryRow strLabel="Last working date" strValue={formatDisplayDate(objPreview.dtLastWorkingDate)} />
-                    <SummaryRow strLabel="Policy applied" strValue={`${objPreview.strAppliedPolicyLabel}${objPreview.blnPolicyOverridden ? " (HR override)" : ""}`} />
-                    <SummaryRow strLabel="Regular payroll excluded from" strValue={objPreview.strExclusionFromMonthLabel} />
-                  </Box>
-                  {objPreview.lstWarnings.length ? (
-                    <FormControlLabel control={<Checkbox checked={blnAcknowledged} onChange={(e) => setBlnAcknowledged(e.target.checked)} controlId="employee-separations.add.acknowledge.checkbox" />} label="I have reviewed the payroll impact warnings above." />
-                  ) : null}
-                  <Typography variant="body2" sx={{ color: "#475569" }}>
-                    Employment status and date of exit are not changed by this separation.
-                  </Typography>
-                </Stack>
-              ) : (
-                <Typography sx={{ color: "#64748b", fontSize: "0.9rem" }}>The summary appears here once the payroll impact is worked out.</Typography>
-              )}
             </Section>
           </Stack>
         </Box>
