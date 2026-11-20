@@ -7,10 +7,8 @@ import {
   Box,
   Button,
   Chip,
-  CircularProgress,
   FormControlLabel,
   Grid,
-  MenuItem,
   Paper,
   Stack,
   TextField,
@@ -19,7 +17,9 @@ import {
 import { alpha } from "@mui/material/styles";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import FileUploadPanel from "@/components/shared/files/FileUploadPanel";
 import { employeeService } from "@/features/employee/services/employeeService";
@@ -191,7 +191,7 @@ export default function EssMyBankDetailsPage() {
     return (
       <Box sx={{ minHeight: "50vh", display: "grid", placeItems: "center" }}>
         <Stack spacing={1.5} alignItems="center">
-          <CircularProgress />
+          <DottedLoader />
           <Typography color="text.secondary">{t("loading_bank_details", "Loading bank details...")}</Typography>
         </Stack>
       </Box>
@@ -244,23 +244,19 @@ export default function EssMyBankDetailsPage() {
 
         <Grid container spacing={1.5}>
           <Grid item xs={12} md={6}>
-            <TextField
+            <CommonSearchableSelect
               controlId="ess.my-bank-details.bank.select"
               fullWidth
-              select
               required
               label={t("field_bank", "Bank")}
+              placeholder={t("select_bank", "Select bank")}
               value={dicForm.intBankID}
-              onChange={(objEvent) => {
-                setDicForm((dicPrevious) => ({ ...dicPrevious, intBankID: Number(objEvent.target.value) || "" }));
+              options={objFormOptions?.lstBanks ?? []}
+              onChange={(intValue) => {
+                setDicForm((dicPrevious) => ({ ...dicPrevious, intBankID: intValue }));
               }}
               disabled={!blnCanModify}
-            >
-              <MenuItem value="">{t("select_bank", "Select bank")}</MenuItem>
-              {(objFormOptions?.lstBanks ?? []).map((dicBank) => (
-                <MenuItem key={dicBank.intID} value={dicBank.intID}>{dicBank.strLabel}</MenuItem>
-              ))}
-            </TextField>
+            />
           </Grid>
           <Grid item xs={12} md={6}>
             <TextField
@@ -373,23 +369,19 @@ export default function EssMyBankDetailsPage() {
           {dicForm.blnSecondaryIsActive ? (
             <Grid container spacing={1.5}>
               <Grid item xs={12} md={6}>
-                <TextField
+                <CommonSearchableSelect
                   controlId="ess.my-bank-details.secondary-bank.select"
                   fullWidth
-                  select
                   required
                   label={t("field_bank", "Bank")}
+                  placeholder={t("select_secondary_bank", "Select secondary bank")}
                   value={dicForm.intSecondaryBankID}
-                  onChange={(objEvent) => {
-                    setDicForm((dicPrevious) => ({ ...dicPrevious, intSecondaryBankID: Number(objEvent.target.value) || "" }));
+                  options={objFormOptions?.lstBanks ?? []}
+                  onChange={(intValue) => {
+                    setDicForm((dicPrevious) => ({ ...dicPrevious, intSecondaryBankID: intValue }));
                   }}
                   disabled={!blnCanModify}
-                >
-                  <MenuItem value="">{t("select_secondary_bank", "Select secondary bank")}</MenuItem>
-                  {(objFormOptions?.lstBanks ?? []).map((dicBank) => (
-                    <MenuItem key={dicBank.intID} value={dicBank.intID}>{dicBank.strLabel}</MenuItem>
-                  ))}
-                </TextField>
+                />
               </Grid>
               <Grid item xs={12} md={6}>
                 <TextField

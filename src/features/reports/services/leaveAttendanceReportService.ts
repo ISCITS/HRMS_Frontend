@@ -110,9 +110,19 @@ async function getReport<TRow>(strPath: string, strMenuAction: string): Promise<
 const REPORT_PAGE_SIZE = 100;
 
 export const leaveAttendanceReportService = {
+  // Fetches every page (backend caps page_size at 100) so the grid and the export hold all matching rows.
   async getLeaveBalance(dicFilters: Record<string, string | number | undefined>): Promise<ReportEnvelope<LeaveBalanceRow>> {
-    const strQuery = buildQuery({ ...dicFilters, page: 1, page_size: REPORT_PAGE_SIZE });
-    return getReport<LeaveBalanceRow>(`/reports/leave/balance${strQuery}`, "REPORTS_LEAVE_BALANCE");
+    const fnFetchPage = (intPage: number) => getReport<LeaveBalanceRow>(
+      `/reports/leave/balance${buildQuery({ ...dicFilters, page: intPage, page_size: REPORT_PAGE_SIZE })}`,
+      "REPORTS_LEAVE_BALANCE",
+    );
+    const objFirst = await fnFetchPage(1);
+    const lstItems = [...objFirst.lstItems];
+    const intPages = Math.ceil(objFirst.intTotal / REPORT_PAGE_SIZE);
+    for (let intPage = 2; intPage <= intPages; intPage += 1) {
+      lstItems.push(...(await fnFetchPage(intPage)).lstItems);
+    }
+    return { ...objFirst, lstItems, intPage: 1, intPageSize: lstItems.length };
   },
   async getLeaveRegister(dicFilters: Record<string, string | number | undefined>): Promise<ReportEnvelope<LeaveRegisterRow>> {
     const strQuery = buildQuery({ ...dicFilters, page: 1, page_size: REPORT_PAGE_SIZE });

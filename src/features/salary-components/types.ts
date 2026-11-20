@@ -17,6 +17,7 @@ export type SalaryComponentListRecord = {
   blnIncludedInCtc: boolean;
   blnIncludeInPayslip: boolean;
   strPayslipSection: string | null;
+  strPayslipDisplayName?: string | null;
   intDisplayOrder: number;
   intLwpTreatmentID?: number | null;
   strLwpTreatmentCode?: string | null;
@@ -51,6 +52,19 @@ export type SalaryComponentListRecord = {
   intDependencyCount: number;
   /** Public identifier used in URLs and API paths; the internal id stays server-side. */
   strRecordUUID: string;
+  blnVariablePayCalculationEnabled?: boolean;
+  strVariablePayCalculationMethodCode?: string;
+  intAllocationEntityTypeID?: number | null;
+  strVariablePayBaseSourceCode?: string;
+  blnMonthlyAdjustmentApplicable?: boolean;
+  decMonthlyAdjustmentMinPercent?: number | null;
+  decMonthlyAdjustmentMaxPercent?: number | null;
+  blnAttendanceEligibilityApplicable?: boolean;
+  decAttendanceEligibilityPercent?: number | null;
+  blnAttendanceProrationApplicable?: boolean;
+  blnEligibilityOverrideAllowed?: boolean;
+  strTdsRecoveryModeCode?: string;
+  strTaxProjectionBehavior?: string | null;
 };
 
 export type SalaryComponentOption = {
@@ -146,6 +160,7 @@ export type SalaryComponentFormValues = {
   blnIncludeInPayslip: boolean;
   intPayslipSectionID: number | "";
   strPayslipSection: string;
+  strPayslipDisplayName: string;
   strDisplayOrder: string;
   intLwpTreatmentID: number | "";
   strLwpTreatmentCode: string;
@@ -184,6 +199,22 @@ export type SalaryComponentFormValues = {
   lstDependencyComponentIDs: number[];
   lstFlexiEligibilityRules: SalaryComponentFlexiEligibilityRuleFormValue[];
   lstTexts: SalaryComponentTextFormValue[];
+  // Variable Pay Calculation (Generic Variable Pay / Allocation-Based Calculation).
+  // Independent of strPayrollProcessingMode: that answers WHERE/HOW the component is
+  // processed (Regular/Separate/Both); this answers HOW the amount is derived.
+  blnVariablePayCalculationEnabled: boolean;
+  strVariablePayCalculationMethodCode: "DIRECT_AMOUNT" | "ALLOCATION_BASED" | "FORMULA_BASED";
+  intAllocationEntityTypeID: number | "";
+  strVariablePayBaseSourceCode: "EMPLOYEE_COMPONENT" | "FIXED_AMOUNT" | "FORMULA";
+  blnMonthlyAdjustmentApplicable: boolean;
+  strMonthlyAdjustmentMinPercent: string;
+  strMonthlyAdjustmentMaxPercent: string;
+  blnAttendanceEligibilityApplicable: boolean;
+  strAttendanceEligibilityPercent: string;
+  blnAttendanceProrationApplicable: boolean;
+  blnEligibilityOverrideAllowed: boolean;
+  strTdsRecoveryModeCode: "SAME_RUN" | "REGULAR_PAYROLL";
+  strTaxProjectionBehavior: "" | "PROJECT" | "ACTUAL_ONLY";
 };
 
 export type SalaryComponentDetailRecord = SalaryComponentListRecord & {

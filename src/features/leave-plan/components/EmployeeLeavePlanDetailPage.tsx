@@ -4,19 +4,41 @@ import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
-import { yupResolver } from "@hookform/resolvers/yup";
 import {
-  Alert, Box, Button, Chip, CircularProgress, Collapse, Dialog,
-  DialogActions, DialogContent, DialogTitle, Divider, MenuItem, Paper, Snackbar, Stack, Table, TableBody,
-  TableCell, TableContainer, TableHead, TableRow, TextField, Typography,
+  yupResolver } from "@hookform/resolvers/yup";
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Collapse,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  Paper,
+  Snackbar,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography
 } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type PropsWithChildren, type ReactNode } from "react";
 import { Controller, useForm, useWatch, type Resolver } from "react-hook-form";
 import * as yup from "yup";
+import { DetailPageHeader } from "@/components/master/MasterListUi";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import CommonEditModeBanner from "@/Common/components/CommonEditModeBanner";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import styles from "@/components/master/MasterScreen.module.css";
 import { useEmployeeLeavePlan } from "@/features/leave-plan/hooks/useEmployeeLeavePlan";
 import type { EmployeeLeaveBalance, EmployeePlanAssignRequest, LeavePlan, ReplacementImpact } from "@/features/leave-plan/types/LeavePlanTypes";
@@ -154,6 +176,11 @@ export default function EmployeeLeavePlanDetailPage({ strEmployeeID }: { strEmpl
   const objAssignmentForm = useForm<AssignmentForm>({ resolver: yupResolver(objAssignmentSchema) as Resolver<AssignmentForm>, defaultValues: { intLeavePlanID: 0, dtEffectiveFrom: new Date().toISOString().slice(0, 10), dtEffectiveTo: "", strAssignmentReason: "" } });
   const objMovementForm = useForm<MovementForm>({ resolver: yupResolver(objMovementSchema) as Resolver<MovementForm>, defaultValues: { decValue: 0, dtTransactionDate: new Date().toISOString().slice(0, 10), strRemarks: "" } });
   const dicPlanNames = useMemo(() => Object.fromEntries(lstPlans.map((objPlan) => [objPlan.intID, objPlan.strDisplayName || objPlan.strPlanName])), [lstPlans]);
+  // CommonSearchableSelect expects {intID, strLabel, strCode?}; LeavePlan carries strPlanCode/strPlanName instead.
+  const lstActivePlanSelectOptions = useMemo(
+    () => lstPlans.filter((objPlan) => objPlan.blnIsActive).map((objPlan) => ({ ...objPlan, strLabel: objPlan.strDisplayName || objPlan.strPlanName, strCode: objPlan.strPlanCode })),
+    [lstPlans],
+  );
   const dicTypeNames = useMemo(() => Object.fromEntries(lstLeaveTypes.map((objType) => [objType.intID, `${objType.strTypeCode} - ${objType.strTypeName}`])), [lstLeaveTypes]);
   const objCurrent = objOverview?.objCurrentAssignment ?? null;
 
@@ -264,31 +291,24 @@ export default function EmployeeLeavePlanDetailPage({ strEmployeeID }: { strEmpl
     setObjMovement(null);
   }
 
-  if (blnLoading || blnRightsLoading) return <Box sx={{ py: 10, textAlign: "center" }}><CircularProgress /><Typography>{t("loading_detail", "Loading employee Leave Plan...")}</Typography></Box>;
+  if (blnLoading || blnRightsLoading) return <Box sx={{ py: 10, textAlign: "center" }}><DottedLoader /><Typography>{t("loading_detail", "Loading employee Leave Plan...")}</Typography></Box>;
   if (!blnCanView) return <Box sx={{ p: 3 }}><Alert severity="warning">{t("access_denied", "Leave assignment access is not available for your user group.")}</Alert></Box>;
 
   // 12px between every card, matching the gap between the app header and the toolbar below it.
   return <Stack spacing={1.5} sx={{ height: "100%", overflow: "auto", pr: 0.5, pb: 4 }}>
-    <Paper sx={{ borderRadius: "28px", px: { xs: 2, md: 3 }, py: { xs: 1.5, md: 2 }, border: "1px solid rgba(148,163,184,0.18)", background: "linear-gradient(135deg, #f9fbff 0%, #eef4ff 50%, #f8fafc 100%)" }}>
-      <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={1.5}>
-        {/* The page title lives here rather than in the app-shell header (see blnLeaveAssignmentEditorRoute). */}
-        <Typography component="h1" sx={{ fontWeight: 800, fontSize: { xs: "1.1rem", md: "1.28rem" }, color: "#0f172a" }}>
-          {blnCanManage
-            ? t("detail_title_edit", "Edit Employee Leave Assignment")
-            : t("detail_title_view", "View Employee Leave Assignment")}
-        </Typography>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ width: { xs: "100%", sm: "auto" } }}>
-          <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/leave/plan-assignments")} sx={{ borderRadius: "14px", height: 38, minHeight: 38, py: 0, px: 2.25, minWidth: 100, fontSize: "0.9rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }} data-control-id="employee-leave-plan.detail.back.button">{t("back_button", "Back")}</Button>
-          {blnCanManage ? <Button onClick={() => { setBlnReplaceOpen(true); void objAssignmentForm.handleSubmit(submitAssignment)(); }} className={styles.primaryButton} startIcon={<SaveRoundedIcon />} disabled={blnSaving} sx={{ borderRadius: "14px", height: 38, minHeight: 38, py: 0, px: 2.25, minWidth: 168, fontSize: "0.9rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }} data-control-id="employee-leave-plan.detail.save.button">{blnSaving ? t("saving", "Saving...") : t("save_leave_plan", "Save Leave Plan")}</Button> : null}
-        </Stack>
-      </Stack>
-      <Box sx={{ mt: 1.5 }}>
-        <CommonEditModeBanner
-          blnReadOnly={!blnCanManage}
-          strReadOnlyMessage={t("assignment_read_only", "You are viewing this leave assignment.")}
-        />
-      </Box>
-    </Paper>
+    <DetailPageHeader
+      strSection={t("breadcrumb_leave", "Leave Management")}
+      strListTitle={t("breadcrumb_plan_assignments", "Employee Leave Assignment")}
+      strListHref="/leave/plan-assignments"
+      strCurrent={blnCanManage ? t("breadcrumb_edit", "Edit") : t("breadcrumb_view", "View")}
+    >
+      <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.push("/leave/plan-assignments")} sx={{ height: 32, minHeight: 32, py: 0, px: 1.5, fontSize: "0.8125rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }} data-control-id="employee-leave-plan.detail.back.button">{t("back_button", "Back")}</Button>
+      {blnCanManage ? <Button onClick={() => { setBlnReplaceOpen(true); void objAssignmentForm.handleSubmit(submitAssignment)(); }} className={styles.primaryButton} startIcon={<SaveRoundedIcon />} disabled={blnSaving} sx={{ height: 32, minHeight: 32, py: 0, px: 1.75, fontSize: "0.8125rem", whiteSpace: "nowrap", flexShrink: 0, "& .MuiButton-startIcon": { mr: 0.75, "& svg": { fontSize: "1rem" } } }} data-control-id="employee-leave-plan.detail.save.button">{blnSaving ? t("saving", "Saving...") : t("save_leave_plan", "Save Leave Plan")}</Button> : null}
+    </DetailPageHeader>
+    <CommonEditModeBanner
+      blnReadOnly={!blnCanManage}
+      strReadOnlyMessage={t("assignment_read_only", "You are viewing this leave assignment.")}
+    />
     {(strError || strActionError) ? <Alert severity="error">{strError || strActionError}</Alert> : null}
     {/* 1. Compact Employee Summary + Current Leave Plan (merged). */}
     <SectionCard strTitle={t("section_employee_account", "Employee Leave Account")}>
@@ -311,7 +331,7 @@ export default function EmployeeLeavePlanDetailPage({ strEmployeeID }: { strEmpl
     <SectionCard strTitle={t("section_yearly_balances", "Yearly Leave Balances")} objAction={
       <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
         <TextField type="number" size="small" label={t("leave_year", "Leave Year")} value={intLeaveYear} onChange={(objEvent) => setIntLeaveYear(Number(objEvent.target.value))} inputProps={{ "data-control-id": "employee-leave-plan.balance.year.input", min: 2001, max: 2999 }} />
-        {blnRefreshing ? <CircularProgress size={22} sx={{ alignSelf: "center" }} data-control-id="employee-leave-plan.balance.year.spinner" /> : null}
+        {blnRefreshing ? <DottedLoader intSize={22} sx={{ alignSelf: "center" }} data-control-id="employee-leave-plan.balance.year.spinner" /> : null}
         {blnCanManage && objCurrent ? <Button startIcon={<AddRoundedIcon />} onClick={() => void executeAction(initializeBalances)} disabled={blnSaving} data-control-id="employee-leave-plan.balance.initialize.button">{t("initialize_balances", "Initialize Balances")}</Button> : null}
       </Box>
     }>
@@ -322,13 +342,13 @@ export default function EmployeeLeavePlanDetailPage({ strEmployeeID }: { strEmpl
     {blnCanManage ? <CollapsibleCard strTitle={objCurrent ? t("section_replace_plan", "Replace Leave Plan") : t("section_assign_plan", "Assign Leave Plan")} blnOpen={blnReplaceOpen} fnOnOpenChange={setBlnReplaceOpen} blnKeepMounted>
       {objCurrent ? <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>{t("replace_hint", "Select a plan to assign it for its validity period. Effective From / To are auto-filled from the plan. The current assignment is superseded automatically and kept in Leave Plan History.")}</Typography> : null}
       <Box id="employee-leave-plan-assignment-form" component="form" onSubmit={objAssignmentForm.handleSubmit(submitAssignment)}><Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "2fr 1fr 1fr 2fr" }, gap: 1 }}>
-      <Controller name="intLeavePlanID" control={objAssignmentForm.control} render={({ field }) => <TextField select {...field} value={field.value || ""} label={t("select_plan", "Leave Plan")} error={Boolean(objAssignmentForm.formState.errors.intLeavePlanID)} helperText={objAssignmentForm.formState.errors.intLeavePlanID?.message} inputProps={{ "data-control-id": "employee-leave-plan.assignment.plan.select" }} onChange={(objEvent) => { const intNewPlanID = Number(objEvent.target.value); field.onChange(intNewPlanID); applyPlanDefaults(intNewPlanID); }}><MenuItem value="" data-control-id="employee-leave-plan.assignment.plan.empty.option">{t("select_plan_placeholder", "Select Plan")}</MenuItem>{lstPlans.filter((objPlan) => objPlan.blnIsActive).map((objPlan) => <MenuItem key={objPlan.intID} value={objPlan.intID} data-control-id={`employee-leave-plan.assignment.plan.${objPlan.intID}.option`}>{objPlan.strPlanCode} - {objPlan.strDisplayName || objPlan.strPlanName}</MenuItem>)}</TextField>} />
+      <Controller name="intLeavePlanID" control={objAssignmentForm.control} render={({ field }) => <CommonSearchableSelect label={t("select_plan", "Leave Plan")} placeholder={t("select_plan_placeholder", "Select Plan")} value={field.value || ""} options={lstActivePlanSelectOptions} error={Boolean(objAssignmentForm.formState.errors.intLeavePlanID)} helperText={objAssignmentForm.formState.errors.intLeavePlanID?.message} controlId="employee-leave-plan.assignment.plan.select" onChange={(intOption) => { const intNewPlanID = intOption === "" ? 0 : Number(intOption); field.onChange(intNewPlanID); applyPlanDefaults(intNewPlanID); }} />} />
       <Controller name="dtEffectiveFrom" control={objAssignmentForm.control} render={({ field }) => <TextField {...field} type="date" label={t("effective_from", "Effective From")} InputLabelProps={{ shrink: true }} disabled={!intSelectedPlanID} error={Boolean(objAssignmentForm.formState.errors.dtEffectiveFrom)} helperText={objAssignmentForm.formState.errors.dtEffectiveFrom?.message} inputProps={{ "data-control-id": "employee-leave-plan.assignment.effective-from.input", min: strPlanEffectiveFrom || undefined, max: strPlanEffectiveTo || undefined }} />} />
       <Controller name="dtEffectiveTo" control={objAssignmentForm.control} render={({ field }) => <TextField {...field} type="date" label={t("effective_to", "Effective To")} InputLabelProps={{ shrink: true }} disabled={!intSelectedPlanID} error={Boolean(objAssignmentForm.formState.errors.dtEffectiveTo)} helperText={objAssignmentForm.formState.errors.dtEffectiveTo?.message} inputProps={{ "data-control-id": "employee-leave-plan.assignment.effective-to.input", min: strPlanEffectiveFrom || undefined, max: strPlanEffectiveTo || undefined }} />} />
       <Controller name="strAssignmentReason" control={objAssignmentForm.control} render={({ field }) => <TextField {...field} label={t("assignment_reason", "Assignment Reason")} error={Boolean(objAssignmentForm.formState.errors.strAssignmentReason)} helperText={objAssignmentForm.formState.errors.strAssignmentReason?.message} inputProps={{ "data-control-id": "employee-leave-plan.assignment.reason.input", maxLength: 500 }} />} />
     </Box>
       {objSelectedPlanSummary ? <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>{t("plan_validity_hint", "Selected plan validity: {from} – {to}").replace("{from}", formatDate(strPlanEffectiveFrom || null)).replace("{to}", formatDate(strPlanEffectiveTo || null))}{strJoiningDate ? ` · ${t("joining_date_hint", "Employee joining date: {date}").replace("{date}", formatDate(strJoiningDate))}` : ""}</Typography> : null}
-      {blnPreviewLoading ? <Box sx={{ mt: 2, textAlign: "center" }}><CircularProgress size={22} /></Box> : lstPreviewItems.length ? <Box sx={{ mt: 2 }}>
+      {blnPreviewLoading ? <Box sx={{ mt: 2, textAlign: "center" }}><DottedLoader intSize={22} /></Box> : lstPreviewItems.length ? <Box sx={{ mt: 2 }}>
         <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1 }}>{t("preview_title", "Plan Entitlement Preview")}</Typography>
         <TableContainer><Table size="small"><TableHead><TableRow>{["leave_type", "annual_entitlement", "opening_allowed", "negative_limit", "opening_balance"].map((strKey) => <TableCell key={strKey} sx={{ fontWeight: 800 }}>{t(`preview_${strKey}`, strKey.replaceAll("_", " "))}</TableCell>)}</TableRow></TableHead><TableBody>
           {lstPreviewItems.map((objItem) => <TableRow key={objItem.intLeaveTypeID}>

@@ -3,14 +3,19 @@ import { Box, Paper, Typography } from "@mui/material";
 
 const lstReports = [
   {
-    strTitle: "Payroll Register",
-    strDescription: "Employee-wise earnings, deductions, tax, gross pay, and net pay.",
-    strHref: "/reports/payroll-register",
-  },
-  {
     strTitle: "Salary Register",
     strDescription: "Employee-wise, component-wise monthly salary register from the CTC/salary structure, with filters and a grand total per employee.",
     strHref: "/reports/salary-register",
+  },
+  {
+    strTitle: "Payslips",
+    strDescription: "View, generate, download, and print employee payslips.",
+    strHref: "/reports/payslips",
+  },
+  {
+    strTitle: "Payroll Register",
+    strDescription: "Employee-wise earnings, deductions, tax, gross pay, and net pay.",
+    strHref: "/reports/payroll-register",
   },
   {
     strTitle: "Salary Statement",
@@ -23,14 +28,24 @@ const lstReports = [
     strHref: "/reports/bank-file",
   },
   {
-    strTitle: "Payslips",
-    strDescription: "View, generate, download, and print employee payslips.",
-    strHref: "/reports/payslips",
-  },
-  {
     strTitle: "Statutory Reports",
     strDescription: "PF, ESI, professional tax, labour welfare fund, summary, challan, payment, and returns.",
     strHref: "/reports/statutory",
+  },
+  {
+    strTitle: "PF ECR Report",
+    strDescription: "Employee-wise EPFO ECR values per unit and payroll run, with Excel export and validation.",
+    strHref: "/reports/pf-ecr",
+  },
+  {
+    strTitle: "Form 14 – Leave with Wages Register",
+    strDescription: "Statutory leave with wages register per worker (Factories Act), with print, Excel export and year-end close.",
+    strHref: "/reports/form14",
+  },
+  {
+    strTitle: "Form 12 – Register of Adult Workers",
+    strDescription: "Monthly daily-attendance register and payable days per worker (Factories Act), with print and Excel export.",
+    strHref: "/reports/form12",
   },
   {
     strTitle: "TDS Register",

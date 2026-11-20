@@ -12,6 +12,7 @@ import type {
   ActionRightsResponse,
   AuthSuccessData,
   ChangePasswordResponse,
+  ForgotPasswordResponse,
   GoogleMfaChallengeData,
   CurrentUserContext,
   MenuResponse,
@@ -247,6 +248,14 @@ export async function proxyChangePassword(
     method: "POST",
     objJsonBody: objBody,
     headers: buildProtectedProxyHeaders(strAccessToken, "AUTH_CHANGE_PASSWORD", objRequestHeaders)
+  });
+}
+
+export async function proxyForgotPassword(objBody: unknown) {
+  return callBackendApi<ApiEnvelope<ForgotPasswordResponse>>("/api/v1/auth/forgot-password", {
+    method: "POST",
+    objJsonBody: objBody,
+    headers: buildPublicProxyHeaders("AUTH_FORGOT_PASSWORD")
   });
 }
 

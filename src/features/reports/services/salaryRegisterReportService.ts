@@ -10,10 +10,21 @@ export type SalaryRegisterRow = {
   strDepartment: string | null;
   strDesignation: string | null;
   strLocation: string | null;
-  strCostCenter: string | null;
+  strAllocationEntity: string | null;
   strEmployeeCategory: string | null;
   strState: string | null;
   strPayCycle: string | null;
+  strEmploymentStatus: string | null;
+  strCostCenter: string | null;
+  strGrade: string | null;
+  strPaymentMode: string | null;
+  strWorkgroup: string | null;
+  strBankName: string | null;
+  strBranchName: string | null;
+  strAccountNumber: string | null;
+  strIfscCode: string | null;
+  strPanNumber: string | null;
+  strUanNumber: string | null;
   strDataSource: "Processed" | "Configured";
   decTotalPresentDays: number | null;
   dicPayments: Record<string, number>;
@@ -22,6 +33,9 @@ export type SalaryRegisterRow = {
   decGrossDeduction: number;
   decNetEarning: number;
   blnStatutoryPending: boolean;
+  // System-calculated TDS and the source of the deducted TDS (processed rows only).
+  decSystemTds?: number | null;
+  strTdsSource?: string | null;
 };
 
 export type SalaryRegisterEnvelope = {
@@ -35,6 +49,8 @@ export type SalaryRegisterEnvelope = {
   strCompanyName: string;
   lstPaymentColumns: string[];
   lstRecoveryColumns: string[];
+  // Payment/Recovery column labels that come from arrear lines (subset of the two lists above).
+  lstArrearColumns?: string[];
 };
 
 function buildQuery(dicFilters: Record<string, string | number | undefined | null>): string {

@@ -3,9 +3,10 @@
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
-import { Alert, Box, Button, FormControlLabel, MenuItem, Pagination, Radio, RadioGroup, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, TextField, Typography } from "@mui/material";
+import { Box, Button, FormControlLabel, MenuItem, Pagination, Radio, RadioGroup, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, TextField, Typography } from "@mui/material";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
+import { DetailPageHeader } from "@/components/master/MasterListUi";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
@@ -316,9 +317,33 @@ export default function LoanBudgetDetailPage({
 
   return (
     <Box className={styles.page}>
-      {/* Fixed header: compact inline summary on the left (edit mode only), Back + Save grouped
-          on the right -- one row, never scrolls. No page title here by design; the sidebar/menu
-          already names the screen. */}
+      <DetailPageHeader
+        strSection={t("breadcrumb_loan_management", "Loan Management")}
+        strListTitle={t("breadcrumb_loan_budget", "Loan Budget")}
+        strListHref="/payroll/loan-budget"
+        fnListClick={onBack}
+        strCurrent={blnEditMode ? (blnCanEdit ? t("breadcrumb_edit", "Edit") : t("breadcrumb_view", "View")) : t("breadcrumb_add", "Add")}
+        lstNotices={[
+          { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+          { strKey: "success", strSeverity: "success", objMessage: strSuccess, fnDismiss: () => setStrSuccess("") },
+          !blnCanEdit ? { strKey: "read-only", strSeverity: "warning", objMessage: t("read_only", "You have view-only access to loan budgets.") } : null,
+        ]}
+      >
+            <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={onBack} controlId="loan-budget.detail.back.button">
+              {t("back_button", "Back")}
+            </Button>
+            {blnCanEdit ? (
+              <Button
+                className={styles.primaryButton}
+                startIcon={<SaveRoundedIcon />}
+                onClick={handleSave}
+                disabled={blnSaving || !blnBudgetStarted}
+                controlId="loan-budget.detail.save.button"
+              >
+                {t("save_button", "Save")}
+              </Button>
+            ) : null}
+      </DetailPageHeader>
       <Box className={styles.controlsCard} sx={{ py: 1, minHeight: 0 }}>
         <Box className={`${styles.controlsHeader} ${styles.detailHeader}`} sx={{ alignItems: "center", minHeight: 0 }}>
           <Box sx={{ display: "flex", alignItems: "center", flex: "1 1 auto", flexWrap: "wrap", gap: 3, pl: 2 }}>
@@ -363,28 +388,8 @@ export default function LoanBudgetDetailPage({
               </Box>
             ) : null}
           </Box>
-          <Box className={styles.detailHeaderActions} sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-            <Button className={styles.secondaryButton} startIcon={<ArrowBackRoundedIcon />} onClick={onBack} controlId="loan-budget.detail.back.button">
-              {t("back_button", "Back")}
-            </Button>
-            {blnCanEdit ? (
-              <Button
-                className={styles.primaryButton}
-                startIcon={<SaveRoundedIcon />}
-                onClick={handleSave}
-                disabled={blnSaving || !blnBudgetStarted}
-                controlId="loan-budget.detail.save.button"
-              >
-                {t("save_button", "Save")}
-              </Button>
-            ) : null}
-          </Box>
         </Box>
       </Box>
-
-      {strError ? <Alert severity="error" sx={{ flex: "0 0 auto" }} onClose={() => setStrError("")}>{strError}</Alert> : null}
-      {strSuccess ? <Alert severity="success" sx={{ flex: "0 0 auto" }} onClose={() => setStrSuccess("")}>{strSuccess}</Alert> : null}
-      {!blnCanEdit ? <Alert severity="warning" sx={{ flex: "0 0 auto" }}>{t("read_only", "You have view-only access to loan budgets.")}</Alert> : null}
 
       {/* Company budget: fixed, small form */}
       <Box className={styles.controlsCard}>

@@ -8,16 +8,16 @@ import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   IconButton,
   MenuItem,
   Stack,
   TextField,
   Tooltip,
-  Typography,
+  Typography
 } from "@mui/material";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
 import styles from "@/components/master/MasterScreen.module.css";
@@ -164,7 +164,7 @@ export default function TaxSlabMaintenancePage({ strTaxRegimeID, blnEmbedded, on
     { field: "fixedTax", headerName: t("fixed_tax_amount", "Fixed Tax Amount"), width: 120, align: "right", sortable: false },
     { field: "displayOrder", headerName: t("display_order", "Display Order"), width: 95, align: "right", sortable: false },
     { field: "active", headerName: t("active", "Active"), width: 75, align: "center", sortable: false },
-    { field: "action", headerName: t("action", "Action"), width: 60, align: "center", sortable: false, exportable: false },
+    { field: "action", headerName: t("action", "Action"), width: 60, sortable: false, exportable: false },
   ];
 
   const lstTableRows: Record<string, ReactNode>[] = lstSlabs.map((dicLine) => ({
@@ -199,7 +199,7 @@ export default function TaxSlabMaintenancePage({ strTaxRegimeID, blnEmbedded, on
     return (
       <Box sx={{ minHeight: 360, display: "grid", placeItems: "center" }}>
         <Stack spacing={1.5} alignItems="center">
-          <CircularProgress />
+          <DottedLoader />
           <Typography sx={{ color: "#64748b" }}>{t("loading_slabs_workspace", "Loading tax slab workspace...")}</Typography>
         </Stack>
       </Box>

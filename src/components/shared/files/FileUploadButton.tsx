@@ -2,8 +2,9 @@
 
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
-import { Box, Button, CircularProgress, LinearProgress, Typography, type ButtonProps } from "@mui/material";
+import { Box, Button, LinearProgress, Typography, type ButtonProps } from "@mui/material";
 import { useRef, type ChangeEvent, type DragEvent, type ReactNode } from "react";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import { validateFileForUpload } from "@/hooks/useFileUpload";
 import { ALLOWED_DOCUMENT_ACCEPT } from "@/lib/fileUploadConstants";
@@ -114,7 +115,7 @@ export default function FileUploadButton({
         variant={variant}
         color={color}
         disabled={disabled || isUploading}
-        startIcon={isUploading ? <CircularProgress size={14} color="inherit" /> : startIcon ?? (presentation === "dropzone" ? <CloudUploadOutlinedIcon /> : <UploadFileRoundedIcon />)}
+        startIcon={isUploading ? <DottedLoader intSize={14} color="inherit" /> : startIcon ?? (presentation === "dropzone" ? <CloudUploadOutlinedIcon /> : <UploadFileRoundedIcon />)}
         onDragOver={presentation === "dropzone" ? (objEvent) => objEvent.preventDefault() : undefined}
         onDrop={presentation === "dropzone" ? handleDrop : undefined}
         sx={{

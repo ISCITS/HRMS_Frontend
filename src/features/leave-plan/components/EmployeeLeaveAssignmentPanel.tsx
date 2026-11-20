@@ -3,15 +3,16 @@
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
-  Alert, Box, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
-  FormControlLabel, MenuItem, Snackbar, TextField, Typography,
+  Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle,
+  FormControlLabel, InputAdornment, Link, Snackbar, TextField, Typography,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
 
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
-import CommonRowActions from "@/components/master/CommonRowActions";
+import { dicMasterNameLinkSx, dicMasterRowSxAnyColumn, MasterBreadcrumbs, MasterGridSkeleton } from "@/components/master/MasterListUi";
 import styles from "@/components/master/MasterScreen.module.css";
 import { useEmployeeOptions } from "@/features/leave-plan/hooks/useEmployeeLeavePlan";
 import { leavePlanService } from "@/features/leave-plan/services/leavePlanService";
@@ -30,7 +31,7 @@ const dicEmptySearch: SearchForm = { code: "", name: "", planCode: "", departmen
 
 function StatusPill({ strStatus }: { strStatus: string }) {
   const blnActive = (strStatus || "").trim().toLowerCase() === "active";
-  return <span className={`${styles.statusPill} ${blnActive ? styles.statusActive : styles.statusInactive}`}>{strStatus || "—"}</span>;
+  return <span className={`app-master-status-pill ${blnActive ? "app-master-status-active" : "app-master-status-inactive"}`}>{strStatus || "—"}</span>;
 }
 
 export default function EmployeeLeaveAssignmentPanel() {
@@ -91,11 +92,23 @@ export default function EmployeeLeaveAssignmentPanel() {
     [lstCurrentPlans],
   );
 
+  // CommonSearchableSelect expects {intID, strLabel, strCode?}; LeavePlan carries strPlanCode/strPlanName instead.
+  const lstBulkPlanSelectOptions = useMemo(
+    () => lstPlans.filter((objPlan) => objPlan.blnIsActive).map((objPlan) => ({ ...objPlan, strLabel: objPlan.strDisplayName || objPlan.strPlanName, strCode: objPlan.strPlanCode })),
+    [lstPlans],
+  );
+
   // Department options come from the loaded employees, so the dropdown only ever offers departments
   // that can actually match a row.
   const lstDepartmentOptions = useMemo(
     () => Array.from(new Set(lstEmployees.map((objEmployee) => objEmployee.strDepartmentName).filter((strName): strName is string => Boolean(strName)))).sort((strA, strB) => strA.localeCompare(strB)),
     [lstEmployees],
+  );
+  // CommonSearchableSelect options need {intID, strLabel}; "all" is kept as a real selectable option
+  // (rather than the component's own "" sentinel) since it is this filter's actual default value.
+  const lstDepartmentSelectOptions = useMemo(
+    () => [{ intID: "all", strLabel: t("filter_all_departments", "All Departments") }, ...lstDepartmentOptions.map((strDepartment) => ({ intID: strDepartment, strLabel: strDepartment }))],
+    [lstDepartmentOptions, t],
   );
 
   const lstFiltered = useMemo(() => {
@@ -207,18 +220,26 @@ export default function EmployeeLeaveAssignmentPanel() {
             inputProps={{ "data-control-id": "employee-leave-plan.list.row.select.checkbox", "data-row-key": String(objEmployee.intID) } as InputHTMLAttributes<HTMLInputElement>}
           />
         ),
-        action: (
-          <CommonRowActions
-            testIdPrefix={`employee-leave-plan.list.row.${objEmployee.intID}`}
-            rowKey={objEmployee.intID}
-            blnCanView
-            blnCanEdit={blnCanManage}
-            onView={() => objRouter.push(`/leave/plan-assignments/${objEmployee.strRecordUUID}`)}
-            onEdit={() => objRouter.push(`/leave/plan-assignments/${objEmployee.strRecordUUID}`)}
-          />
+        strFullNameText: objEmployee.strFullName,
+        strFullName: (
+          <Link
+            component="button"
+            type="button"
+            underline="none"
+            className="app-master-first-column-link"
+            data-control-id="employee-leave-plan.list.row.name.button"
+            onClick={(objEvent) => {
+              if (window.getSelection()?.toString()) { objEvent.stopPropagation(); return; }
+              objRouter.push(`/leave/plan-assignments/${objEmployee.strRecordUUID}`);
+            }}
+            sx={dicMasterNameLinkSx}
+          >
+            {objEmployee.strFullName}
+          </Link>
         ),
+        strRecordUUID: objEmployee.strRecordUUID,
         strEmployeeCode: objEmployee.strEmployeeCode,
-        strFullName: objEmployee.strFullName,
+        strStatusText: objEmployee.strEmploymentStatus || "",
         strDepartmentName: objEmployee.strDepartmentName ?? "—",
         strDesignationName: objEmployee.strDesignationName ?? "—",
         // "?" (not "—") while the lookup is unavailable, so an unassigned employee is never confused
@@ -248,13 +269,12 @@ export default function EmployeeLeaveAssignmentPanel() {
         exportable: false,
         width: 56,
       },
-      { field: "action", headerName: t("table_actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 110 },
+      { field: "strFullName", headerName: t("table_employee_name", "Employee Name"), width: 200, sortAccessor: (dicRow) => String(dicRow.strFullNameText) },
       { field: "strEmployeeCode", headerName: t("table_employee_code", "Employee Code"), width: 140 },
-      { field: "strFullName", headerName: t("table_employee_name", "Employee Name"), width: 200 },
       { field: "strDepartmentName", headerName: t("table_department", "Department"), width: 180 },
       { field: "strDesignationName", headerName: t("table_designation", "Designation"), width: 170 },
       { field: "strPlanCode", headerName: t("table_leave_plan_code", "Leave Plan Code"), width: 160 },
-      { field: "blnStatus", headerName: t("table_employee_status", "Employee Status"), sortable: false, width: 140 },
+      { field: "blnStatus", headerName: t("table_employee_status", "Employee Status"), filterable: false, width: 140, sortAccessor: (dicRow) => String(dicRow.strStatusText) },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [t, blnAllSelected, blnSomeSelected, lstFiltered.length],
@@ -263,62 +283,78 @@ export default function EmployeeLeaveAssignmentPanel() {
   const objTransparentTableSx = { p: 0, boxShadow: "none", background: "transparent" } as const;
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 1, pb: 2 }}>
+    <Box className={styles.page} sx={{ position: "relative" }}>
+      <MasterBreadcrumbs strSection={t("breadcrumb_leave", "Leave Management")} strTitle={t("breadcrumb_plan_assignments", "Employee Leave Assignment")} />
       {/* Search / filter card */}
-      <Box className={styles.controlsCard}>
-        {/* Employee Code, Employee Name, Leave Plan Code and Department share one row with the buttons. */}
-        <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(4, minmax(0, 1fr)) auto" }, alignItems: "center", mt: 1 }}>
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        {/* Employee Name, Employee Code, Leave Plan Code and Department share one row with the buttons. */}
+        <Box
+          className={styles.searchRow}
+          aria-busy={blnLoading || blnRightsLoading}
+          sx={{
+            alignItems: "center",
+            "&&": { gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "minmax(180px, 1.2fr) minmax(150px, 1fr) minmax(150px, 1fr) minmax(170px, 1fr) auto auto 1fr" } },
+            "& .MuiButton-root": { alignSelf: "center" },
+          }}
+        >
           <TextField
+            className="app-mui-text-field"
             size="small"
-            value={dicSearchDraft.code}
-            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, code: objEvent.target.value }))}
-            onKeyDown={(objEvent) => objEvent.key === "Enter" && applySearch(dicSearchDraft)}
-            placeholder={t("employee_code_search", "Search employee code")}
-            inputProps={{ "data-control-id": "employee-leave-plan.list.search-code.input" }}
-            fullWidth
-          />
-          <TextField
-            size="small"
+            label={t("table_employee_name", "Employee Name")}
             value={dicSearchDraft.name}
             onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, name: objEvent.target.value }))}
-            onKeyDown={(objEvent) => objEvent.key === "Enter" && applySearch(dicSearchDraft)}
             placeholder={t("employee_name_search", "Search employee name")}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }}
             inputProps={{ "data-control-id": "employee-leave-plan.list.search-name.input" }}
+            disabled={blnLoading || blnRightsLoading}
             fullWidth
           />
           <TextField
+            className="app-mui-text-field"
             size="small"
+            label={t("table_employee_code", "Employee Code")}
+            value={dicSearchDraft.code}
+            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, code: objEvent.target.value }))}
+            placeholder={t("employee_code_search", "Search employee code")}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }}
+            inputProps={{ "data-control-id": "employee-leave-plan.list.search-code.input" }}
+            disabled={blnLoading || blnRightsLoading}
+            fullWidth
+          />
+          <TextField
+            className="app-mui-text-field"
+            size="small"
+            label={t("table_leave_plan_code", "Leave Plan Code")}
             value={dicSearchDraft.planCode}
             onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, planCode: objEvent.target.value }))}
-            onKeyDown={(objEvent) => objEvent.key === "Enter" && applySearch(dicSearchDraft)}
             placeholder={t("leave_plan_code_search", "Search leave plan code")}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }}
             inputProps={{ "data-control-id": "employee-leave-plan.list.search-plan-code.input" }}
+            disabled={blnLoading || blnRightsLoading}
             fullWidth
           />
-          <TextField
-            select
-            size="small"
+          <CommonSearchableSelect
+            className="app-mui-text-field"
+            showSearchIcon={false}
             label={t("filter_department", "Department")}
             value={dicSearchDraft.department}
-            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, department: objEvent.target.value }))}
-            inputProps={{ "data-control-id": "employee-leave-plan.list.department.select" }}
+            options={lstDepartmentSelectOptions}
+            onChange={(intValue) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, department: intValue === "" ? "all" : String(intValue) }))}
+            controlId="employee-leave-plan.list.department.select"
+            disabled={blnLoading || blnRightsLoading}
             fullWidth
-          >
-            <MenuItem value="all">{t("filter_all_departments", "All Departments")}</MenuItem>
-            {lstDepartmentOptions.map((strDepartment) => (
-              <MenuItem key={strDepartment} value={strDepartment}>{strDepartment}</MenuItem>
-            ))}
-          </TextField>
-          <Box sx={{ display: "flex", gap: 1, gridColumn: { xs: "auto", sm: "1 / -1", lg: "auto" }, justifyContent: { sm: "flex-end" }, whiteSpace: "nowrap" }}>
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applySearch(dicSearchDraft)} disabled={blnLoading} data-control-id="employee-leave-plan.list.search.button">
+          />
+          <Box className={styles.searchActions}>
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applySearch(dicSearchDraft)} disabled={blnLoading || blnRightsLoading} data-control-id="employee-leave-plan.list.search.button">
               {t("search", "Search")}
             </Button>
-            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading} data-control-id="employee-leave-plan.list.clear.button">
+          </Box>
+          <Box className={styles.searchActions}>
+            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnLoading || blnRightsLoading} data-control-id="employee-leave-plan.list.clear.button">
               {t("clear", "Clear")}
             </Button>
           </Box>
-        </Box>
-        {blnCanManage && lstSelectedIds.length > 0 ? (
+        </Box>        {blnCanManage && lstSelectedIds.length > 0 ? (
           <Box className={styles.bulkBar} data-control-id="employee-leave-plan.list.bulk-actions.bar">
             <Typography className={styles.bulkCount}>{`${lstSelectedIds.length} ${t("bulk_rows_selected", "rows selected")}`}</Typography>
             <Button className={styles.bulkActivate} onClick={() => setObjBulk({ ...objBulkDefaults, blnOpen: true })} disabled={blnSubmitting} data-control-id="employee-leave-plan.list.bulk-assign.button">
@@ -340,13 +376,11 @@ export default function EmployeeLeaveAssignmentPanel() {
       ) : null}
 
       {blnLoading || blnRightsLoading ? (
-        <Box sx={{ display: "grid", placeItems: "center", py: 6 }}>
-          <CircularProgress />
-        </Box>
+        <MasterGridSkeleton strControlId="employee-leave-plan.list.skeleton" intColumns={7} />
       ) : !blnCanView ? (
         <Alert severity="warning">{t("access_denied", "Leave assignment access is not available for your user group.")}</Alert>
       ) : (
-        <Box className={styles.tableCard} sx={{ flex: "0 0 auto" }}>
+        <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
           <CommonTable
             columns={lstColumns}
             rows={lstRows}
@@ -355,7 +389,12 @@ export default function EmployeeLeaveAssignmentPanel() {
             showExportOptions
             showPaginationSummary
             minTableWidth={1116}
-            getRowSx={(dicRow) => (lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : {})}
+            hideRowClickHint
+            onRowClick={(dicRow) => {
+              const strUUID = String(dicRow.strRecordUUID ?? "");
+              if (strUUID) objRouter.push(`/leave/plan-assignments/${strUUID}`);
+            }}
+            getRowSx={(dicRow) => ({ ...dicMasterRowSxAnyColumn, ...(lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : {}) })}
             emptyMessage={t("empty_message", "No employees found.")}
             testIdPrefix="employee-leave-plan.list"
             sx={objTransparentTableSx}
@@ -373,12 +412,14 @@ export default function EmployeeLeaveAssignmentPanel() {
           {lstSelectedIds.length === 0 ? (
             <Alert severity="info" data-control-id="employee-leave-plan.bulk-assign.no-selection">{t("bulk_assign_no_selection", "Select one or more employees from the list first, then choose a plan to assign.")}</Alert>
           ) : null}
-          <TextField select size="small" label={t("select_plan", "Leave Plan")} value={objBulk.intLeavePlanID || ""} onChange={(objEvent) => { const intPlanID = Number(objEvent.target.value); const objSelectedPlan = lstPlans.find((objPlan) => objPlan.intID === intPlanID); setObjBulk((objPrev) => ({ ...objPrev, intLeavePlanID: intPlanID, dtEffectiveFrom: objSelectedPlan?.dtEffectiveFrom ? String(objSelectedPlan.dtEffectiveFrom).slice(0, 10) : objPrev.dtEffectiveFrom, intLeaveYear: objSelectedPlan?.dtEffectiveFrom ? new Date(objSelectedPlan.dtEffectiveFrom).getFullYear() : objPrev.intLeaveYear })); }} inputProps={{ "data-control-id": "employee-leave-plan.bulk-assign.plan.select" }}>
-            <MenuItem value="">{t("select_plan_placeholder", "Select Plan")}</MenuItem>
-            {lstPlans.filter((objPlan) => objPlan.blnIsActive).map((objPlan) => (
-              <MenuItem key={objPlan.intID} value={objPlan.intID}>{objPlan.strPlanCode} - {objPlan.strDisplayName || objPlan.strPlanName}</MenuItem>
-            ))}
-          </TextField>
+          <CommonSearchableSelect
+            label={t("select_plan", "Leave Plan")}
+            placeholder={t("select_plan_placeholder", "Select Plan")}
+            value={objBulk.intLeavePlanID || ""}
+            options={lstBulkPlanSelectOptions}
+            onChange={(intOption) => { const intPlanID = intOption === "" ? 0 : Number(intOption); const objSelectedPlan = lstPlans.find((objPlan) => objPlan.intID === intPlanID); setObjBulk((objPrev) => ({ ...objPrev, intLeavePlanID: intPlanID, dtEffectiveFrom: objSelectedPlan?.dtEffectiveFrom ? String(objSelectedPlan.dtEffectiveFrom).slice(0, 10) : objPrev.dtEffectiveFrom, intLeaveYear: objSelectedPlan?.dtEffectiveFrom ? new Date(objSelectedPlan.dtEffectiveFrom).getFullYear() : objPrev.intLeaveYear })); }}
+            controlId="employee-leave-plan.bulk-assign.plan.select"
+          />
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}>
             <TextField type="date" size="small" label={t("effective_from", "Effective From")} value={objBulk.dtEffectiveFrom} onChange={(objEvent) => setObjBulk((objPrev) => ({ ...objPrev, dtEffectiveFrom: objEvent.target.value }))} InputLabelProps={{ shrink: true }} inputProps={{ "data-control-id": "employee-leave-plan.bulk-assign.effective-from.input" }} />
             <TextField type="number" size="small" label={t("leave_year", "Leave Year")} value={objBulk.intLeaveYear} onChange={(objEvent) => setObjBulk((objPrev) => ({ ...objPrev, intLeaveYear: Number(objEvent.target.value) }))} inputProps={{ "data-control-id": "employee-leave-plan.bulk-assign.year.input", min: 2001, max: 2999 }} />

@@ -5,6 +5,8 @@ export type MyAttendancePunch = {
   dtPunchAt: string;
   strDirection: "in" | "out";
   strSource: string;
+  decGeoLat?: number | null;
+  decGeoLng?: number | null;
 };
 
 export type MyAttendancePolicy = {
