@@ -43,6 +43,11 @@ const lstReports = [
     strHref: "/reports/form14",
   },
   {
+    strTitle: "Form 12 – Register of Adult Workers",
+    strDescription: "Monthly daily-attendance register and payable days per worker (Factories Act), with print and Excel export.",
+    strHref: "/reports/form12",
+  },
+  {
     strTitle: "TDS Register",
     strDescription: "Employee-wise monthly TDS deducted, year-to-date TDS, and total tax liability.",
     strHref: "/reports/tds-register",

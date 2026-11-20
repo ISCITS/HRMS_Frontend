@@ -1096,6 +1096,16 @@ const objGeneratedForm14ReportMenu: MenuItem = {
   lstChildren: [],
 };
 
+const objGeneratedForm12ReportMenu: MenuItem = {
+  strModuleCode: "FORM12_REPORT",
+  strModuleName: "Form 12 – Register of Adult Workers",
+  strRoute: "/reports/form12",
+  strIconName: "Source",
+  lstPermissionCodes: ["FORM12_VIEW", "FORM12_EXPORT"],
+  blnIsHome: false,
+  lstChildren: [],
+};
+
 const objGeneratedSalaryRegisterMenu: MenuItem = {
   strModuleCode: "SALARY_REGISTER",
   strModuleName: "Salary Register",
@@ -1168,6 +1178,9 @@ function appendGeneratedReportsMenu(lstItems: MenuItem[]): MenuItem[] {
     }
     if (!hasRoute(lstGeneratedChildren, "/reports/form14")) {
       lstGeneratedChildren.push(objGeneratedForm14ReportMenu);
+    }
+    if (!hasRoute(lstGeneratedChildren, "/reports/form12")) {
+      lstGeneratedChildren.push(objGeneratedForm12ReportMenu);
     }
     return {
       ...objItem,

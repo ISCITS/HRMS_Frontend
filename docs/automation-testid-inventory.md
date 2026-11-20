@@ -249,6 +249,12 @@ These components define reusable selector patterns used across the application.
   - prefix: `reports.form14.close.*` (dialog, cancel, confirm)
 - `src/features/reports/components/Form14ConfigDialog.tsx`
   - prefix: `reports.form14.config.*` (dialog, cancel, save, one input/select/switch per setting key, e.g. `reports.form14.config.eligibility-days.input`)
+- `src/features/reports/components/Form12ReportPage.tsx`
+  - prefix: `reports.form12.*` (generate, export-pdf, export-xlsx, config, year/month/department/group selects, employee input, page-size select, tabs `reports.form12.tab.register` / `reports.form12.tab.payable`)
+- `src/features/reports/components/Form12Grids.tsx`
+  - test ids: `reports.form12.register.table`, `reports.form12.payable.table`
+- `src/features/reports/components/Form12ConfigDialog.tsx`
+  - prefix: `reports.form12.config.*` (dialog, cancel, save, one input/switch per setting key, e.g. `reports.form12.config.el-leave-type-codes.input`)
 
 ## Salary Components and Structures
 

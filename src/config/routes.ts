@@ -27,6 +27,7 @@ export const appRoutes = {
   statutoryReport: "/reports/statutory",
   pfEcrReport: "/reports/pf-ecr",
   form14Report: "/reports/form14",
+  form12Report: "/reports/form12",
   tenantAdminBase: "/HRMS/Administrator",
   tenantAdminLogin: "/HRMS/Administrator/login",
   tenantAdminDashboard: "/HRMS/Administrator/dashboard",

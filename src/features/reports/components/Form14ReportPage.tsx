@@ -25,6 +25,7 @@ import PageNotices from "@/Common/components/PageNotices";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import Form14CloseDialog from "@/features/reports/components/Form14CloseDialog";
 import Form14ConfigDialog from "@/features/reports/components/Form14ConfigDialog";
+import Form14IssueSummary from "@/features/reports/components/Form14IssueSummary";
 import Form14PreviewDialog from "@/features/reports/components/Form14PreviewDialog";
 import {
   form14ReportService,
@@ -373,26 +374,14 @@ export default function Form14ReportPage() {
         </Box>
       ) : null}
 
-      {lstIssueGroups.length > 0 ? (
-        <Box sx={{ border: "1px solid #fde68a", backgroundColor: "#fffbeb", borderRadius: "10px", px: 1.5, py: 1 }}>
-          <Typography sx={{ fontWeight: 700 }}>Validation issues</Typography>
-          <Typography variant="body2" sx={{ color: "text.secondary", mb: 0.5 }}>These never block the register or the exports.</Typography>
-          <Box sx={{ maxHeight: 220, overflowY: "auto" }}>
-            {lstIssueGroups.map(([intEmployeeID, dicGroup]) => (
-              <Box key={intEmployeeID} sx={{ mb: 0.75 }}>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>{dicGroup.strEmployeeCode} {dicGroup.strName}</Typography>
-                <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
-                  {dicGroup.lstItems.map((dicIssue, intIndex) => (
-                    <Typography component="li" variant="body2" key={`${dicIssue.strCode}-${intIndex}`}>
-                      [{dicIssue.strCode}] {dicIssue.strSeverity}: {dicIssue.strMessage}{dicIssue.intMonth ? ` (${form14Months[dicIssue.intMonth - 1]})` : ""}
-                    </Typography>
-                  ))}
-                </Box>
-              </Box>
-            ))}
-          </Box>
-        </Box>
-      ) : null}
+      <Form14IssueSummary
+        lstGroups={lstIssueGroups.map(([intEmployeeID, dicGroup]) => ({
+          strKey: String(intEmployeeID),
+          strLabel: `${dicGroup.strEmployeeCode} ${dicGroup.strName}`,
+          lstItems: dicGroup.lstItems,
+        }))}
+        strControlId="reports.form14.validations"
+      />
 
       <Box className={styles.tableCard} sx={{ p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <CommonTable

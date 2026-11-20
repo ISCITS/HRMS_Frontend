@@ -18,9 +18,9 @@ import {
 } from "@mui/material";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import Form14IssueSummary from "@/features/reports/components/Form14IssueSummary";
 import Form14RegisterSheet from "@/features/reports/components/Form14RegisterSheet";
 import { form14ReportService, type Form14Register } from "@/features/reports/services/form14ReportService";
-import { form14Months } from "@/features/reports/utils/form14Grid";
 
 type Form14PreviewDialogProps = {
   intEmployeeID: number;
@@ -179,17 +179,7 @@ export default function Form14PreviewDialog({
 
           {dicRegister ? (
             <>
-              {lstIssues.length > 0 ? (
-                <Alert severity="warning">
-                  <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
-                    {lstIssues.map((dicIssue, intIndex) => (
-                      <Typography component="li" variant="body2" key={`${dicIssue.strCode}-${intIndex}`}>
-                        {dicIssue.intMonth ? `${form14Months[dicIssue.intMonth - 1]}: ` : ""}{dicIssue.strMessage}
-                      </Typography>
-                    ))}
-                  </Box>
-                </Alert>
-              ) : null}
+              <Form14IssueSummary lstGroups={[{ strKey: "register", lstItems: lstIssues }]} strControlId="reports.form14.preview.validations" />
               <Form14RegisterSheet dicRegister={dicRegister} blnShowAdditional={blnShowAdditional} />
 
               {blnCanClose ? (
