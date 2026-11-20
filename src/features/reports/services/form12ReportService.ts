@@ -20,6 +20,7 @@ export type Form12Options = {
   intDefaultMonth: number;
   lstYears: number[];
   lstDepartments: Array<{ intID: number; strName: string }>;
+  lstEmployees: Array<{ intID: number; strEmployeeCode: string; strName: string }>;
   lstGroups: Array<{ strCode: Form12Group; strLabel: string }>;
   dicConfig: {
     strFactoryName: string;
@@ -102,6 +103,12 @@ export type Form12Register = {
     lstCommencementLines: string[];
     lstCompletionLines: string[];
     lstRestPeriodLines: string[];
+    // Pre-split for the printed header tables: [label, time] and [from, to].
+    lstCommencementRows: string[][];
+    lstRestRows: string[][];
+    strRuleTitle: string;
+    strActLine: string;
+    strMonthLabel: string;
   };
   lstGroups: Form12GroupBlock[];
   lstIssues: Form12Issue[];

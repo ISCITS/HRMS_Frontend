@@ -1,7 +1,6 @@
 "use client";
 
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
@@ -41,7 +40,7 @@ export default function Form12ReportPage() {
   const [strMonth, setStrMonth] = useState("");
   const [strDepartmentID, setStrDepartmentID] = useState("");
   const [strGroup, setStrGroup] = useState<Form12Group | "">("");
-  const [strSearch, setStrSearch] = useState("");
+  const [strEmployeeID, setStrEmployeeID] = useState("");
   const [strPageSize, setStrPageSize] = useState<Form12PageSize>("A3");
 
   const [strTab, setStrTab] = useState<TabKey>("register");
@@ -87,8 +86,8 @@ export default function Form12ReportPage() {
       intYear: Number(strYear),
       intMonth: Number(strMonth),
       intDepartmentID: strDepartmentID ? Number(strDepartmentID) : null,
+      intEmployeeID: strEmployeeID ? Number(strEmployeeID) : null,
       strGroup,
-      strSearch,
     };
   }
 
@@ -217,9 +216,15 @@ export default function Form12ReportPage() {
             </TextField>
           </Box>
           <Box className={styles.reportSearchField} sx={{ flex: "1 1 200px", minWidth: 180 }}>
-            <TextField className="app-mui-text-field" size="small" label="Employee" placeholder="Name or code" value={strSearch} fullWidth InputLabelProps={{ shrink: true }}
-              inputProps={{ maxLength: 100 }} onChange={(objEvent) => { setStrSearch(objEvent.target.value); clearReport(); }}
-              disabled={blnBusy || !blnCanView} controlId="reports.form12.employee.input" />
+            <TextField className="app-mui-text-field" size="small" select label="Employee" value={strEmployeeID} fullWidth InputLabelProps={{ shrink: true }}
+              SelectProps={{ displayEmpty: true }}
+              onChange={(objEvent) => { setStrEmployeeID(objEvent.target.value); clearReport(); }}
+              disabled={blnBusy || !blnCanView} controlId="reports.form12.employee.select">
+              <MenuItem value="">All employees</MenuItem>
+              {(objOptions?.lstEmployees ?? []).map((dicEmployee) => (
+                <MenuItem key={dicEmployee.intID} value={String(dicEmployee.intID)}>{`${dicEmployee.strEmployeeCode} - ${dicEmployee.strName}`}</MenuItem>
+              ))}
+            </TextField>
           </Box>
           <Box className={styles.searchActions}>
             <Button className={styles.primaryButton} startIcon={<PlayArrowRoundedIcon />} onClick={() => generate().catch(() => undefined)}
@@ -228,13 +233,6 @@ export default function Form12ReportPage() {
             </Button>
           </Box>
         </Box>
-      </Box>
-
-      <Box sx={{ alignItems: "center", backgroundColor: "#f8fbff", border: "1px solid rgba(191,219,254,0.7)", borderRadius: "16px", color: "#1f2937", display: "flex", gap: 1, px: 1.5, py: 1.25 }}>
-        <InfoOutlinedIcon sx={{ color: "#2b6cb0", fontSize: 20 }} />
-        <Typography sx={{ color: "inherit", lineHeight: 1.5 }}>
-          This register is derived from attendance, leave and holiday data. Make corrections in those modules.
-        </Typography>
       </Box>
 
       {lstTiles.length > 0 ? (

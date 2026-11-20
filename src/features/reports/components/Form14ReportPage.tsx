@@ -10,7 +10,6 @@ import {
   Breadcrumbs,
   Button,
   Checkbox,
-  Chip,
   FormControlLabel,
   MenuItem,
   Stack,
@@ -62,7 +61,6 @@ export default function Form14ReportPage() {
   const [objOptions, setObjOptions] = useState<Form14Options | null>(null);
   const [strYear, setStrYear] = useState("");
   const [strDepartmentID, setStrDepartmentID] = useState("");
-  const [strSearch, setStrSearch] = useState("");
   const [objPickedEmployee, setObjPickedEmployee] = useState<{ intEmployeeID: number; strLabel: string } | null>(null);
   const [strStatus, setStrStatus] = useState<Form14Status>("both");
   const [blnShowAdditional, setBlnShowAdditional] = useState(true);
@@ -113,7 +111,7 @@ export default function Form14ReportPage() {
       intDepartmentID: strDepartmentID ? Number(strDepartmentID) : null,
       intEmployeeID: objPickedEmployee?.intEmployeeID ?? null,
       strStatus,
-      strSearch: objPickedEmployee ? "" : strSearch,
+      strSearch: "",
     };
   }
 
@@ -303,27 +301,28 @@ export default function Form14ReportPage() {
             </TextField>
           </Box>
           <Box className={styles.reportSearchField} sx={{ flex: "1 1 220px", minWidth: 200 }}>
-            {objPickedEmployee ? (
-              <Chip
-                label={`Worker: ${objPickedEmployee.strLabel}`}
-                onDelete={() => { setObjPickedEmployee(null); clearReport(); }}
-                sx={{ maxWidth: "100%" }}
-              />
-            ) : (
-              <TextField
-                className="app-mui-text-field"
-                size="small"
-                label="Employee"
-                placeholder="Name or code"
-                value={strSearch}
-                onChange={(objEvent) => { setStrSearch(objEvent.target.value); clearReport(); }}
-                disabled={blnBusy || !blnCanView}
-                inputProps={{ maxLength: 100 }}
-                fullWidth
-                InputLabelProps={{ shrink: true }}
-                controlId="reports.form14.employee.input"
-              />
-            )}
+            <TextField
+              className="app-mui-text-field"
+              size="small"
+              select
+              label="Employee"
+              value={objPickedEmployee ? String(objPickedEmployee.intEmployeeID) : ""}
+              onChange={(objEvent) => {
+                const dicEmployee = (objOptions?.lstEmployees ?? []).find((dicItem) => String(dicItem.intID) === objEvent.target.value);
+                setObjPickedEmployee(dicEmployee ? { intEmployeeID: dicEmployee.intID, strLabel: `${dicEmployee.strEmployeeCode} ${dicEmployee.strName}` } : null);
+                clearReport();
+              }}
+              disabled={blnBusy || !blnCanView}
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+              SelectProps={{ displayEmpty: true }}
+              controlId="reports.form14.employee.select"
+            >
+              <MenuItem value="">All employees</MenuItem>
+              {(objOptions?.lstEmployees ?? []).map((dicEmployee) => (
+                <MenuItem key={dicEmployee.intID} value={String(dicEmployee.intID)}>{`${dicEmployee.strEmployeeCode} - ${dicEmployee.strName}`}</MenuItem>
+              ))}
+            </TextField>
           </Box>
           <Box className={styles.reportSearchField} sx={{ flexBasis: 150, minWidth: 140 }}>
             <TextField

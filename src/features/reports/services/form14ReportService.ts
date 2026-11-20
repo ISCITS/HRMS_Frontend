@@ -18,6 +18,7 @@ export type Form14Options = {
   intDefaultYear: number;
   lstYears: number[];
   lstDepartments: Array<{ intID: number; strName: string }>;
+  lstEmployees: Array<{ intID: number; strEmployeeCode: string; strName: string }>;
   dicConfig: {
     strState: string;
     strRegime: string;

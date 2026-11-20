@@ -35,6 +35,29 @@ export function getLeaveTotal(dicTotals: Form12Totals, strKey: (typeof lstLeaveK
   return dicTotals[`dec${strKey}` as keyof Form12Totals];
 }
 
+// 1 -> "1st", 12 -> "12th", 22 -> "22nd" (day headings of the printed register).
+export function ordinal(intDay: number): string {
+  if (intDay % 100 >= 10 && intDay % 100 <= 20) {
+    return `${intDay}th`;
+  }
+  const strSuffix = ({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[intDay % 10] ?? "th";
+  return `${intDay}${strSuffix}`;
+}
+
+// How many summary columns each printed column number covers (P..ACTUAL P share one number, EL+CL and SL+RH share one).
+const lstSummaryNumberSpans = [5, 1, 1, 1, 1, 2, 2, 1, 1];
+
+// Column-number row under the headings: S.No blank, Emp Code..Department 1-5, Shift 7, days 8.., then the summary numbers.
+export function buildNumberRow(intDays: number): { lstFixed: string[]; lstDays: string[]; lstSummary: Array<{ strText: string; intSpan: number }>; lstTail: string[] } {
+  const intNext = 8 + intDays;
+  return {
+    lstFixed: ["", "1", "2", "3", "4", "5", "7"],
+    lstDays: Array.from({ length: intDays }, (_, intIndex) => String(8 + intIndex)),
+    lstSummary: lstSummaryNumberSpans.map((intSpan, intIndex) => ({ strText: String(intNext + intIndex), intSpan })),
+    lstTail: [String(intNext + 9), String(intNext + 10), String(intNext + 11)],
+  };
+}
+
 export function isSundayIndex(intYear: number, intMonth: number, intDayIndex: number): boolean {
   return new Date(intYear, intMonth - 1, intDayIndex + 1).getDay() === 0;
 }
