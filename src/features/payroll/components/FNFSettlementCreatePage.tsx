@@ -117,8 +117,21 @@ export default function FNFSettlementCreatePage() {
 
   useEffect(() => {
     setBlnOptionsLoading(true);
+    // Opened from Employee Separation ("Create F&F"): ?employee_id=<id> preselects that employee when
+    // they are eligible. Read from the URL directly so the page needs no Suspense boundary.
+    const strPreselectID = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("employee_id") : null;
     fnfSettlementService.listEmployeeOptions(true)
-      .then(setLstEmployeeOptions)
+      .then((lstOptions) => {
+        setLstEmployeeOptions(lstOptions);
+        if (!strPreselectID) return;
+        const objPreselected = lstOptions.find((objOption) => String(objOption.intID) === strPreselectID);
+        if (objPreselected) {
+          setDicForm((dicCurrent) => ({ ...dicCurrent, strEmployeeCode: objPreselected.strEmployeeCode }));
+          void handleEmployeeChange(objPreselected);
+        } else {
+          setStrError("This employee is not eligible for a new F&F settlement: there is no active Employee Separation, or a settlement already exists.");
+        }
+      })
       .catch((objError) => setStrError(objError instanceof Error ? objError.message : "Unable to load FNF wizard options."))
       .finally(() => setBlnOptionsLoading(false));
   }, []);
@@ -321,7 +334,7 @@ export default function FNFSettlementCreatePage() {
                   <Typography className={styles.fnfStepSubtitle}>{lstStepHeaders[intActiveStep].strSubtitle}</Typography>
                 </Box>
                 {intActiveStep === 0 ? (
-                  <Tooltip title="Only employees with a date of exit in the employee master (and no settlement yet) are listed. Their exit details, notice period and leave balances are filled in automatically." placement="left" arrow>
+                  <Tooltip title="Only employees with an active Employee Separation (and no settlement yet) are listed. Add the separation under Employee Services > Employee Separation first. Exit details, notice period and leave balances are filled in automatically." placement="left" arrow>
                     <IconButton size="small" color="info" aria-label="Which employees are listed" controlId="payroll.fnf-settlement-create.employee-info.button"><InfoOutlinedIcon fontSize="small" /></IconButton>
                   </Tooltip>
                 ) : null}
@@ -336,7 +349,7 @@ export default function FNFSettlementCreatePage() {
               <Box className={styles.fnfWizardGrid}>
                 <Autocomplete
                   sx={dicAutocompleteSx}
-                  noOptionsText="No employees are ready for a settlement. Set the date of exit in the employee master first; employees who already have a settlement are not listed."
+                  noOptionsText="No employees are ready for a settlement. Add an Employee Separation first (Employee Services > Employee Separation); employees who already have a settlement are not listed."
                   options={lstEmployeeOptions}
                   value={objSelectedEmployee}
                   loading={blnOptionsLoading}
@@ -366,7 +379,7 @@ export default function FNFSettlementCreatePage() {
                     InputProps={{ ...params.InputProps, endAdornment: (<><FieldStatusIcon strError={dicErrors.strExitType} strHint={sourceHint("strExitType")} />{params.InputProps.endAdornment}</>) }} />}
                 />
                 <TextField label="Exit submitted on" required type="date" InputLabelProps={{ shrink: true }} InputProps={{ endAdornment: fieldStatus("dtResignationDate", sourceHint("dtResignationDate")) }} value={dicForm.dtResignationDate} onChange={(e) => updateField("dtResignationDate", e.target.value)} error={Boolean(dicErrors.dtResignationDate)} fullWidth controlId="payroll.fnf-settlement-create.resignation-date.input" />
-                <TextField label="Leaving Date" required type="date" InputLabelProps={{ shrink: true }} InputProps={{ endAdornment: fieldStatus("dtLastWorkingDate", sourceHint("dtLastWorkingDate")) }} value={dicForm.dtLastWorkingDate} onChange={(e) => updateField("dtLastWorkingDate", e.target.value)} error={Boolean(dicErrors.dtLastWorkingDate)} fullWidth controlId="payroll.fnf-settlement-create.last-working-date.input" />
+                <TextField label="Leaving Date" required type="date" InputLabelProps={{ shrink: true }} InputProps={{ readOnly: Boolean(objPrefill?.intSeparationActionID), endAdornment: fieldStatus("dtLastWorkingDate", objPrefill?.intSeparationActionID ? "From the Employee Separation. Cancel and re-add the separation to change it." : sourceHint("dtLastWorkingDate")) }} value={dicForm.dtLastWorkingDate} onChange={(e) => updateField("dtLastWorkingDate", e.target.value)} error={Boolean(dicErrors.dtLastWorkingDate)} fullWidth controlId="payroll.fnf-settlement-create.last-working-date.input" />
                 <TextField label="Settlement Date" required type="date" InputLabelProps={{ shrink: true }} InputProps={{ endAdornment: fieldStatus("dtSettlementDate") }} value={dicForm.dtSettlementDate} onChange={(e) => updateField("dtSettlementDate", e.target.value)} error={Boolean(dicErrors.dtSettlementDate)} fullWidth controlId="payroll.fnf-settlement-create.settlement-date.input" />
                 <TextField label="Exit reason" value={dicForm.strExitReason} onChange={(e) => updateField("strExitReason", e.target.value)} InputProps={{ endAdornment: fieldStatus("strExitReason", sourceHint("strExitReason")) }} fullWidth className={styles.fnfSpanTwo} controlId="payroll.fnf-settlement-create.exit-reason.input" />
               </Box>

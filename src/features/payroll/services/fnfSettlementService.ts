@@ -6,6 +6,8 @@ import type {
   FNFBulkCreateResponse,
   FNFEmployeeOption,
   FNFEmployeePrefill,
+  FNFLeaverInactiveResult,
+  FNFLeaversResponse,
   FNFReportResponse,
   FNFLineFormValues,
   FNFPaymentAdviceResponse,
@@ -38,8 +40,16 @@ async function requestApi<TData>(objOptions: {
   });
 }
 
+/** Local date as yyyy-mm-dd (toISOString is UTC and gives yesterday before 05:30 IST). */
+function toLocalDateText(dtValue: Date): string {
+  return `${dtValue.getFullYear()}-${String(dtValue.getMonth() + 1).padStart(2, "0")}-${String(dtValue.getDate()).padStart(2, "0")}`;
+}
+
 export function createInitialFNFSettlementForm(): FNFSettlementFormValues {
-  const strToday = new Date().toISOString().slice(0, 10);
+  const dtNow = new Date();
+  const strToday = toLocalDateText(dtNow);
+  // Settlement date = last day of the month in which the F&F is made.
+  const strMonthEnd = toLocalDateText(new Date(dtNow.getFullYear(), dtNow.getMonth() + 1, 0));
   return {
     strEmployeeCode: "",
     strSettlementNumber: "",
@@ -47,8 +57,8 @@ export function createInitialFNFSettlementForm(): FNFSettlementFormValues {
     strExitReason: "",
     dtResignationDate: "",
     dtLastWorkingDate: strToday,
-    dtSettlementDate: strToday,
-    dtSettlementMonth: strToday.slice(0, 8) + "01",
+    dtSettlementDate: strMonthEnd,
+    dtSettlementMonth: strMonthEnd.slice(0, 8) + "01",
     decNoticePeriodDays: "0",
     decNoticeServedDays: "0",
     decNoticeShortfallDays: "0",
@@ -235,6 +245,29 @@ export const fnfSettlementService = {
       strPath: `/payroll/fnf-settlements/register${strQuery ? `?${strQuery}` : ""}`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_FNF_VIEW",
+    });
+    return objResult.Data;
+  },
+  /** Leavers whose F&F is finalized and given (paid/recovered); employee_status: All / active / inactive. */
+  async getLeavers(objFilters: { lwd_from?: string; lwd_to?: string; employee_status?: string }): Promise<FNFLeaversResponse> {
+    const objParams = new URLSearchParams();
+    Object.entries(objFilters).forEach(([strKey, strValue]) => {
+      if (strValue && strValue !== "All") objParams.set(strKey, strValue);
+    });
+    const strQuery = objParams.toString();
+    const objResult = await requestApi<FNFLeaversResponse>({
+      strPath: `/payroll/fnf-settlements/leavers${strQuery ? `?${strQuery}` : ""}`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_FNF_VIEW",
+    });
+    return objResult.Data;
+  },
+  async setLeaversInactive(lstSettlementIDs: number[]): Promise<FNFLeaverInactiveResult> {
+    const objResult = await requestApi<FNFLeaverInactiveResult>({
+      strPath: "/payroll/fnf-settlements/leavers/set-inactive",
+      strMethod: "POST",
+      objBody: { lstSettlementIDs },
+      strMenuAction: "PAYROLL_FNF_SET_INACTIVE",
     });
     return objResult.Data;
   },

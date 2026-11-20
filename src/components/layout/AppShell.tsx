@@ -467,10 +467,22 @@ function getLocalizedHeaderTitle(
     if (strLowerPath === "/payroll/fnf-settlements/report") {
       return tHeader("register_report_title", "F&F Register Report");
     }
+    if (strLowerPath === "/payroll/fnf-settlements/leavers") {
+      return tHeader("leavers_title", "F&F Leavers");
+    }
     if (Boolean(strLowerPath.match(/^\/payroll\/fnf-settlements\/\d+$/))) {
       return tHeader("detail_title", "Full & Final Settlement");
     }
     return tHeader("header_title", "Full & Final Settlements");
+  }
+  if (strHeaderModuleName === "employee-separations") {
+    if (strLowerPath === "/employee-separations/new") {
+      return tHeader("new_title", "Add Separation");
+    }
+    if (strLowerPath.startsWith("/employee-separations/")) {
+      return tHeader("detail_title", "Employee Separation");
+    }
+    return tHeader("header_title", "Employee Separation");
   }
   if (strHeaderModuleName === "calendar") {
     return tHeader("header_title", "Ess / Calendar");
@@ -1133,6 +1145,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     "/payroll/it-declaration-review",
     "/payroll/employee-reimbursement",
     "/payroll/reimbursements",
+    "/employee-separations",
     "/payroll/fnf-settlements",
     "/payroll/runs",
     "/payroll/run",
@@ -1201,6 +1214,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     /^\/payroll\/statutory-rules\/(?:new|[\w-]+\/edit)$/,
     /^\/(?:payroll\/|masters\/)?tax-regimes\/(?:add|edit\/[\w-]+(?:\/slabs)?)$/,
     /^\/payroll\/fnf-settlements\/(?:new|[\w-]+)$/,
+    /^\/employee-separations\/(?:new|[\w-]+)$/,
     /^\/payroll\/(?:it|flexi)-declaration-review\/[\w-]+$/,
     /^\/salary\/flexi-pay-declaration$/,
     /^\/payroll\/reimbursements\/[\w-]+$/,
@@ -1702,7 +1716,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               width: blnDashboardRoute
                 ? { xs: "calc(100% + 12px)", xl: "calc(100% + 16px)" }
                 : { xs: "calc(100% + 16px)", xl: "calc(100% + 24px)" },
-              mb: { xs: 1, xl: 1.5 },
+              mb: strNormalizedLowerPathname === "/ess/my-profile" ? 0 : { xs: 1, xl: 1.5 },
               background: "#ffffff",
               border: 0,
               borderBottom: "1px solid var(--app-banner-border-color)",

@@ -750,6 +750,9 @@ function removeHrOnlyMenusFromEss(lstItems: MenuItem[]): MenuItem[] {
       strRoute.startsWith("/leave/approvals/") ||
       strRoute === "/payroll/fnf-settlements" ||
       strRoute.startsWith("/payroll/fnf-settlements/") ||
+      strRoute === "/employee-separations" ||
+      strRoute.startsWith("/employee-separations/") ||
+      strModuleCode === "employee_separations" ||
       strModuleCode === "leave_approvals" ||
       strModuleCode === "leave_approval" ||
       strModuleCode === "payroll_fnf_settlements" ||
@@ -788,6 +791,8 @@ function groupHrEmployeeServicesMenus(lstItems: MenuItem[]): MenuItem[] {
     "/payroll/it-declaration-review",
     "/payroll/employee-reimbursement",
     "/payroll/reimbursements",
+    // Employee Separation sits directly above Full & Final Settlement.
+    "/employee-separations",
     "/payroll/fnf-settlements",
   ];
   const setEmployeeServiceRoutes = new Set(lstEmployeeServiceRoutes);
@@ -803,6 +808,7 @@ function groupHrEmployeeServicesMenus(lstItems: MenuItem[]): MenuItem[] {
     "reimbursement_review",
     "reimbursements_review",
     "payroll_reimbursement",
+    "employee_separations",
     "payroll_fnf_settlements",
     "fnf_settlements",
     "payroll_fnf",
@@ -825,9 +831,10 @@ function groupHrEmployeeServicesMenus(lstItems: MenuItem[]): MenuItem[] {
     ["reimbursement_review", 3],
     ["reimbursements_review", 3],
     ["payroll_reimbursement", 3],
-    ["payroll_fnf_settlements", 4],
-    ["fnf_settlements", 4],
-    ["payroll_fnf", 4],
+    ["employee_separations", 4],
+    ["payroll_fnf_settlements", 5],
+    ["fnf_settlements", 5],
+    ["payroll_fnf", 5],
   ]);
 
   function isHrEmployeeServiceItem(objItem: MenuItem): boolean {
@@ -1457,6 +1464,11 @@ export default function DynamicMenu({
         strModuleName,
         "Tax Declaration Component"
       );
+    }
+
+    // Must come before the generic "employee" rule below, which would label it "Employee".
+    if (strRoute.includes("/employee-separations") || strModuleCode.includes("employee_separation")) {
+      return resolveKnownMenuLabel(strModuleName, "Employee Separation", "कर्मचारी पृथक्करण");
     }
 
     if (strRoute.includes("/payroll/reimbursements") || strModuleCode.includes("reimbursement")) {

@@ -139,6 +139,17 @@ export default function EssMyProfilePage() {
     return strValue?.trim() || strNotAvailable;
   }
 
+  function resolveProfileLookup(
+    lstOptions: EmployeeFormOptions["lstJobTypes"] | undefined,
+    strValue: string | null | undefined
+  ) {
+    const strStoredValue = strValue?.trim();
+    if (strStoredValue && /^\d+$/.test(strStoredValue)) {
+      return resolveLookupLabel(lstOptions, Number(strStoredValue), strNotAvailable);
+    }
+    return valueOrNotAvailable(strStoredValue);
+  }
+
   function translateKnownValue(strValue: string | null | undefined) {
     const strResolvedValue = valueOrNotAvailable(strValue);
     const strNormalizedValue = strResolvedValue.toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
@@ -361,7 +372,6 @@ export default function EssMyProfilePage() {
   const strDesignation = resolveLookupLabel(objFormOptions?.lstDesignations, objEmployee?.intDesignationID ?? null, strNotAvailable);
   const strLineManager = resolveLookupLabel(objFormOptions?.lstManagers, objEmployee?.intLineManagerEmployeeID ?? null, strNotAvailable);
   const strPayrollGroup = resolveLookupLabel(objFormOptions?.lstPayrollGroups, objEmployee?.intPayrollGroupID ?? null, strNotAvailable);
-  const strPreferredLanguage = resolveLookupLabel(objFormOptions?.lstLanguages, objEmployee?.intPreferredLanguageID ?? null, strNotAvailable);
   const strNationality = resolveLookupLabel(objFormOptions?.lstNationalities, objEmployee?.intNationalityCountryID ?? null, strNotAvailable);
   const strMotherTongue = resolveLookupLabel(objFormOptions?.lstMotherTongues, objEmployee?.intMotherTongueLanguageID ?? null, strNotAvailable);
   const strRelatedEmployee = resolveLookupLabel(objFormOptions?.lstManagers, objEmployee?.intRelatedEmployeeID ?? null, strNotAvailable);
@@ -376,15 +386,18 @@ export default function EssMyProfilePage() {
         <div className="my-profile-banner-employee">
           <Avatar src={strAuthenticatedAvatarUrl || undefined} className="my-profile-avatar">{strInitial}</Avatar>
           <div className="my-profile-identity-text"><Typography component="h2" className="my-profile-name">{strFullName}</Typography>
-            <div className="my-profile-identity-meta"><Typography>{valueOrNotAvailable(objEmployee?.strEmployeeCode)}</Typography>
-              <Chip size="small" label={translateKnownValue(objEmployee?.strEmploymentStatus)} className="my-profile-status" />
+            <div className="my-profile-identity-meta">
+              <div className="my-profile-employee-status">
+                <Typography>{valueOrNotAvailable(objEmployee?.strEmployeeCode)}</Typography>
+                <Chip size="small" label={translateKnownValue(objEmployee?.strEmploymentStatus)} className="my-profile-status" />
+              </div>
+              <div className="my-profile-identity-details">
+                <IdentityItem objIcon={<ApartmentOutlinedIcon />} strLabel={t("field_department", "Department")} strValue={strDepartment} />
+                <IdentityItem objIcon={<BadgeRoundedIcon />} strLabel={t("field_designation", "Designation")} strValue={strDesignation} />
+                <IdentityItem objIcon={<LocationOnOutlinedIcon />} strLabel={t("field_location", "Location")} strValue={strLocation} />
+              </div>
             </div>
           </div>
-        <div className="my-profile-identity-details">
-          <IdentityItem objIcon={<ApartmentOutlinedIcon />} strLabel={t("field_department", "Department")} strValue={strDepartment} />
-          <IdentityItem objIcon={<BadgeRoundedIcon />} strLabel={t("field_designation", "Designation")} strValue={strDesignation} />
-          <IdentityItem objIcon={<LocationOnOutlinedIcon />} strLabel={t("field_location", "Location")} strValue={strLocation} />
-        </div>
         <div className="my-profile-photo-actions">
           <Button component="label" variant="outlined" startIcon={blnAvatarUpdating ? <DottedLoader intSize={13} /> : <PhotoCameraRoundedIcon />} disabled={blnAvatarUpdating || !blnCanEditProfile}>
             {t("change_photo", "Change Photo")}
@@ -433,16 +446,14 @@ export default function EssMyProfilePage() {
                     { strLabel: t("field_grade", "Grade"), strValue: resolveLookupLabel(objFormOptions?.lstGrades, objEmployee?.intGradeID ?? null, strNotAvailable) },
                   ]} />
                   <ReadOnlyCard objIcon={<CalendarMonthRoundedIcon />} strIconTone="green" strTitle={t("section_work_arrangement", "Work Arrangement")} lstRows={[
-                    { strLabel: t("field_job_type", "Job Type"), strValue: valueOrNotAvailable(objEmployee?.strJobType) },
+                    { strLabel: t("field_job_type", "Job Type"), strValue: resolveProfileLookup(objFormOptions?.lstJobTypes, objEmployee?.strJobType) },
                     { strLabel: t("field_rest_day", "Rest Day"), strValue: valueOrNotAvailable(objEmployee?.strRestDay) },
-                    { strLabel: t("field_payment_type", "Payment Type"), strValue: valueOrNotAvailable(objEmployee?.strPaymentType) },
+                    { strLabel: t("field_payment_type", "Payment Type"), strValue: resolveProfileLookup(objFormOptions?.lstPaymentTypes, objEmployee?.strPaymentType) },
                   ]} />
                   <ReadOnlyCard objIcon={<InfoOutlinedIcon />} strIconTone="orange" strTitle={t("section_additional_information", "Additional Information")} lstRows={[
-                    { strLabel: t("field_ess_enabled", "ESS Enabled"), strValue: yesNoOrNotAvailable(objEmployee?.blnIsEssEnabled) },
-                    { strLabel: t("field_preferred_language", "Preferred Language"), strValue: strPreferredLanguage },
-                    { strLabel: t("field_employee_function", "Employee Function"), strValue: valueOrNotAvailable(objEmployee?.strEmployeeFunction) },
+                    { strLabel: t("field_employee_function", "Employee Function"), strValue: resolveProfileLookup(objFormOptions?.lstEmployeeFunctions, objEmployee?.strEmployeeFunction) },
                     { strLabel: t("field_functional_area", "Functional Area"), strValue: valueOrNotAvailable(objEmployee?.strFunctionalArea) },
-                    { strLabel: t("field_employee_category", "Employee Category"), strValue: valueOrNotAvailable(objEmployee?.strEmployeeCategory) },
+                    { strLabel: t("field_employee_category", "Employee Category"), strValue: resolveProfileLookup(objFormOptions?.lstEmployeeCategories, objEmployee?.strEmployeeCategory) },
                   ]} />
                 </div>
               ) : null}
@@ -458,8 +469,8 @@ export default function EssMyProfilePage() {
                     { strLabel: t("field_worker_category", "Worker Category"), strValue: objEmployee?.blnIsWorker ? t("worker", "Worker") : t("non_worker", "Non-Worker") },
                     { strLabel: t("field_nationality", "Nationality"), strValue: strNationality },
                     { strLabel: t("field_mother_tongue", "Mother Tongue"), strValue: strMotherTongue },
-                    { strLabel: t("field_marital_status", "Marital Status"), strValue: valueOrNotAvailable(objEmployee?.strMaritalStatus) },
-                    { strLabel: t("field_blood_group", "Blood Group"), strValue: valueOrNotAvailable(objEmployee?.strBloodGroup) },
+                    { strLabel: t("field_marital_status", "Marital Status"), strValue: resolveProfileLookup(objFormOptions?.lstMaritalStatuses, objEmployee?.strMaritalStatus) },
+                    { strLabel: t("field_blood_group", "Blood Group"), strValue: resolveProfileLookup(objFormOptions?.lstBloodGroups, objEmployee?.strBloodGroup) },
                     { strLabel: t("field_religion", "Religion"), strValue: valueOrNotAvailable(objEmployee?.strReligion) },
                     { strLabel: t("field_place_of_birth", "Place of Birth"), strValue: valueOrNotAvailable(objEmployee?.strPlaceOfBirth) },
                     { strLabel: t("field_identification_marks", "Identification Marks"), strValue: valueOrNotAvailable(objEmployee?.strIdentificationMarks) },

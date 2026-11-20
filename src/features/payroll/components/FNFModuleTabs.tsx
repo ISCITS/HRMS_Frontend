@@ -8,6 +8,7 @@ const lstTabs = [
   { strCode: "register", strLabel: "F&F Register", strRoute: "/payroll/fnf-settlements/register" },
   { strCode: "payslips", strLabel: "F&F Reports", strRoute: "/payroll/fnf-settlements/payslips" },
   { strCode: "report", strLabel: "F&F Register Report", strRoute: "/payroll/fnf-settlements/report" },
+  { strCode: "leavers", strLabel: "Leavers", strRoute: "/payroll/fnf-settlements/leavers" },
 ] as const;
 
 export type FNFModuleTabCode = (typeof lstTabs)[number]["strCode"];

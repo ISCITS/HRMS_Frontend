@@ -7,6 +7,8 @@ import MoreHorizRoundedIcon from "@mui/icons-material/MoreHorizRounded";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import ViewColumnRoundedIcon from "@mui/icons-material/ViewColumnRounded";
+import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
+import EmployeeImportDialog from "@/features/employee/components/EmployeeImportDialog";
 import { Box, Breadcrumbs, Button, Checkbox, Drawer, IconButton, InputAdornment, Link, Menu, MenuItem, Popover, Skeleton, TextField, Typography } from "@mui/material";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -129,6 +131,7 @@ function EmployeeGridSkeleton() {
 }
 
 export default function EmployeeMasterListPanel() {
+  const [blnImportOpen, setBlnImportOpen] = useState(false);
   const objRouter = useRouter();
   const { strLabelError, t } = useEmployeeLabels();
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDo, canViewModule, isReadOnlyModule } = useActionRights();
@@ -200,6 +203,9 @@ export default function EmployeeMasterListPanel() {
   const blnCanEdit = canDo("EMPLOYEE", "edit");
   const blnCanExport = canDo("EMPLOYEE", "export");
   const blnReadOnly = isReadOnlyModule("EMPLOYEE");
+  const blnCanImport = !blnRightsLoading && !strRightsError && !blnReadOnly &&
+    (blnCanAdd || blnCanEdit) &&
+    ["EMPLOYEE", "EMPLOYEES", "MASTER_EMPLOYEE"].some((strModuleCode) => canDo(strModuleCode, "import"));
 
   const lstDesignationOptions = useMemo(() => Array.from(new Set(
     lstEmployees
@@ -367,7 +373,10 @@ export default function EmployeeMasterListPanel() {
                 ) : null}
               </Box>
             )}
-            toolbarAfterExport={<Button data-control-id="employee.master-list.columns.button" className={styles.secondaryButton} startIcon={<ViewColumnRoundedIcon />} onClick={(objEvent) => setObjColumnsAnchor(objEvent.currentTarget)}>{t("add_columns", "Add columns")}</Button>}
+            toolbarAfterExport={<>
+              {blnCanImport && <Button data-control-id="employee.master-list.import.button" className={styles.secondaryButton} sx={{ mr: 1 }} startIcon={<UploadFileRoundedIcon />} onClick={() => setBlnImportOpen(true)}>Import Employees</Button>}
+              <Button data-control-id="employee.master-list.columns.button" className={styles.secondaryButton} startIcon={<ViewColumnRoundedIcon />} onClick={(objEvent) => setObjColumnsAnchor(objEvent.currentTarget)}>{t("add_columns", "Add columns")}</Button>
+            </>}
             onRowClick={(dicRow) => {
               const dicEmployee = lstFilteredEmployees.find((objEmployee) => objEmployee.intID === Number(dicRow.id));
               if (!dicEmployee) return;
@@ -404,6 +413,7 @@ export default function EmployeeMasterListPanel() {
         </> : null}
       </Drawer>
 
+      {blnCanImport && blnImportOpen && <EmployeeImportDialog open={blnImportOpen} onClose={() => setBlnImportOpen(false)} onImported={loadModuleData} canAdd={blnCanAdd} canEdit={blnCanEdit} />}
       <AlertDialog
         blnOpen={objAlertDialog.blnOpen}
         strMessage={objAlertDialog.strMessage}

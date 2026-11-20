@@ -20,6 +20,7 @@ import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import BlockingLoader, { DottedLoader } from "@/components/shared/BlockingLoader";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
 import ArrearSettingsPanel from "@/features/settings/components/ArrearSettingsPanel";
+import FNFRulesSettingsPanel from "@/features/settings/components/FNFRulesSettingsPanel";
 import PayrollDocumentFormatSettings from "@/features/settings/components/PayrollDocumentFormatSettings";
 import { settingsService } from "@/features/settings/services/settingsService";
 import type { ApproverEmployeeDto, ApproverSnapshotDto, DefaultApproverSource, LeaveSettingsConfigDto } from "@/features/settings/types";
@@ -484,6 +485,7 @@ export default function LeaveSettingsPanel() {
         <>
           <PayrollDocumentFormatSettings onMessage={showToast} />
           <ArrearSettingsPanel onMessage={showToast} />
+          <FNFRulesSettingsPanel onMessage={showToast} />
         </>
       ) : (
         <Paper id="settings-section-placeholder" variant="outlined" sx={{ ...sxCard, py: 5, textAlign: "center" }}>

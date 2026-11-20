@@ -6,7 +6,7 @@ const lstFNFModuleCodes = ["PAYROLL_FNF_SETTLEMENTS", "PAYROLL_FNF", "FNF_SETTLE
 
 /** F&F actions granted in User Group Rights on the Full and Final Settlement menu. They match the
  * backend checks in FNFSettlementRoutes.ensureFNFActionAllowed. */
-export type FNFAction = "view" | "add" | "edit" | "calculate" | "approve" | "release" | "lock" | "mark_paid" | "cancel" | "export";
+export type FNFAction = "view" | "add" | "edit" | "calculate" | "approve" | "release" | "lock" | "mark_paid" | "cancel" | "export" | "set_inactive";
 
 const dicActionAliases: Partial<Record<FNFAction, string[]>> = {
   add: ["add", "create"],

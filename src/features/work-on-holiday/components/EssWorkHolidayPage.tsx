@@ -400,7 +400,6 @@ export default function EssWorkHolidayPage() {
               {t("back_to_my_requests", "Back to My Requests")}
             </Button>
           ) : null}
-          <Alert data-control-id="work-on-holiday.ess.policy-guidance.alert" severity="info" sx={{ mb: 2 }}>{t("policy_guidance", "Select a Saturday, Sunday, or an active Holiday Master date. Eligibility is validated for approval.")}</Alert>
           {objEditingRequest ? (
             <Alert
               data-control-id="work-on-holiday.ess.editing.alert"

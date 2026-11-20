@@ -15,18 +15,12 @@ import { formatCurrency } from "@/features/payroll/components/FNFSettlementPanel
 import { fnfSettlementService } from "@/features/payroll/services/fnfSettlementService";
 import type { FNFPaymentAdviceRow, FNFRegisterResponse, FNFRegisterRow } from "@/features/payroll/types";
 import { useFNFRights } from "@/features/payroll/hooks/useFNFRights";
+import { buildFNFRegisterColumns, buildFNFRegisterRows, type FNFRegisterGridRow } from "@/features/payroll/utils/fnfRegisterGrid";
 
 const lstStatuses = ["All", "calculated", "under_review", "approved", "locked", "paid", "recovered"];
-const lstAmountColumns: { field: keyof FNFRegisterRow; headerName: string }[] = [
+// Summary figures above the grid.
+const lstSummaryColumns: { field: keyof FNFRegisterRow; headerName: string }[] = [
   { field: "decTotalEarnings", headerName: "Earnings" },
-  { field: "decTotalRecoveries", headerName: "Recoveries" },
-  { field: "decTotalDeductions", headerName: "Deductions" },
-  { field: "decPfEmployee", headerName: "PF (Employee)" },
-  { field: "decPfEmployer", headerName: "PF (Employer)" },
-  { field: "decEsiEmployee", headerName: "ESI (Employee)" },
-  { field: "decEsiEmployer", headerName: "ESI (Employer)" },
-  { field: "decPt", headerName: "PT" },
-  { field: "decLwf", headerName: "LWF" },
   { field: "decTds", headerName: "TDS" },
   { field: "decNetPayable", headerName: "Net Payable" },
   { field: "decNetRecoverable", headerName: "Net Recoverable" },
@@ -98,18 +92,15 @@ export default function FNFRegisterPage() {
 
   useEffect(() => { if (!blnRightsLoading && blnCanView) loadRegister().catch(() => undefined); }, [blnRightsLoading, blnCanView]);
 
-  const lstColumns = useMemo<CommonTableColumn<FNFRegisterRow & { id: string }>[]>(() => [
-    { field: "strSettlementNumber", headerName: "Settlement #", width: 120 },
-    { field: "strEmployeeCode", headerName: "Employee Code", width: 120 },
-    { field: "strEmployeeName", headerName: "Employee", width: 170 },
-    { field: "strExitType", headerName: "Exit Type", width: 120 },
-    { field: "dtLastWorkingDate", headerName: "LWD", width: 110 },
-    { field: "strSettlementStatus", headerName: "Status", width: 110 },
-    ...lstAmountColumns.map((objColumn) => ({ field: objColumn.field, headerName: objColumn.headerName, width: 120 })),
-    { field: "dtPaidOn", headerName: "Paid On", width: 110 },
-    { field: "strPaymentReferenceNo", headerName: "Reference", width: 130 },
-  ], []);
-  const lstRows = useMemo(() => (objRegister?.lstRows || []).map((objRow, intIndex) => ({ ...objRow, id: `${objRow.strSettlementNumber}-${intIndex}`, dtPaidOn: objRow.dtPaidOn ? objRow.dtPaidOn.slice(0, 10) : "" })), [objRegister]);
+  // Component columns (Basic, HRA, Leave Encashment, ...) come from the settlements' lines, so the
+  // grid - and the Excel export, which writes the same columns - shows every component paid.
+  const lstColumns = useMemo<CommonTableColumn<FNFRegisterGridRow>[]>(
+    () => buildFNFRegisterColumns(objRegister?.lstComponentColumns).map((objColumn) => ({
+      field: objColumn.field, headerName: objColumn.headerName, width: objColumn.width, ...(objColumn.blnAmount ? { align: "right" as const } : {}),
+    })),
+    [objRegister],
+  );
+  const lstRows = useMemo(() => buildFNFRegisterRows(objRegister), [objRegister]);
 
   if (!blnRightsLoading && !blnCanView) return <Alert severity="error">You do not have access to the F&amp;F register.</Alert>;
 
@@ -137,7 +128,7 @@ export default function FNFRegisterPage() {
       </Box>
       {objRegister && lstRows.length ? (
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3, mb: 2 }}>
-          {lstAmountColumns.filter((objColumn) => ["decTotalEarnings", "decTds", "decNetPayable", "decNetRecoverable"].includes(objColumn.field)).map((objColumn) => (
+          {lstSummaryColumns.map((objColumn) => (
             <Box key={objColumn.field}><Typography sx={{ color: "#64748b", fontSize: "0.8rem" }}>Total {objColumn.headerName}</Typography><Typography sx={{ fontWeight: 800 }}>{formatCurrency(objRegister.dicTotals[objColumn.field] || 0)}</Typography></Box>
           ))}
         </Box>
@@ -152,7 +143,7 @@ export default function FNFRegisterPage() {
         testIdPrefix="payroll.fnf-register"
         showPaginationSummary
         onRowClick={(objRow) => { if (objRow.strRecordUUID) objRouter.push(`/payroll/fnf-settlements/${objRow.strRecordUUID}`); }}
-        minTableWidth={1900}
+        minTableWidth={Math.max(1900, lstColumns.length * 125)}
       />
     </Box>
   );

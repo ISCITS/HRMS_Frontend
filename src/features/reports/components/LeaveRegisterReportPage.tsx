@@ -98,7 +98,6 @@ export default function LeaveRegisterReportPage() {
       strBreadcrumbSection={t("leave_reports", "Leave Reports")}
       strBreadcrumbTitle={t("leave_register", "Leave Application Register")}
       intInlineFilterCount={4}
-      strInfo={t("leave_register_info", "Leave applications with reference, dates, days, status, current approver, ageing and reason.")}
       lstColumns={lstColumns}
       lstFilters={lstFilters}
       strRowIdField="intID"

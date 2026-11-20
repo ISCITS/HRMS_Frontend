@@ -2052,7 +2052,7 @@ export default function EmployeeEditorScreen({
             >
               {t("back_button", "Back")}
             </Button>
-            {objPageActionConfig ? (
+            {objPageActionConfig && (strMode === "add" || dicBasicForm.blnIsPartialSave) ? (
               <Button
                 data-controlid="employee.editor.partial-save.button"
                 className={styles.secondaryButton}

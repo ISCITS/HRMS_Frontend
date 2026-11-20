@@ -4,7 +4,6 @@ import PayrollDataChangedNotice from "@/features/payroll/components/PayrollDataC
 import { usePayrollDataFreshness } from "@/features/payroll/hooks/usePayrollDataFreshness";
 
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import {
@@ -410,13 +409,6 @@ export default function PfEcrReportPage() {
             </Button>
           </Box>
         </Box>
-      </Box>
-
-      <Box sx={{ alignItems: "center", backgroundColor: "#f8fbff", border: "1px solid rgba(191,219,254,0.7)", borderRadius: "16px", color: "#1f2937", display: "flex", gap: 1, px: 1.5, py: 1.25 }}>
-        <InfoOutlinedIcon sx={{ color: "#2b6cb0", fontSize: 20 }} />
-        <Typography sx={{ color: "inherit", lineHeight: 1.5 }}>
-          Employee-wise PF (EPFO) or ESIC return values for one entity and one processed payroll run, in the upload-file layouts. Values come from the frozen payroll results; nothing is recalculated or saved.
-        </Typography>
       </Box>
 
       <PayrollDataChangedNotice objFreshness={objPayrollFreshness} blnRefreshing={blnReportLoading} />

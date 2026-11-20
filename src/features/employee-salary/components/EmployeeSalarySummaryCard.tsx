@@ -6,7 +6,6 @@ import {
 import CurrencyRupeeRoundedIcon from "@mui/icons-material/CurrencyRupeeRounded";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import AccountBalanceWalletRoundedIcon from "@mui/icons-material/AccountBalanceWalletRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
@@ -83,9 +82,24 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
   const blnHasAssignedSalary = Boolean(objSalaryDetail?.objAssignedStructure);
   const strAssignSalaryLabel = t("salary_summary_card_assign_salary", "Assign Salary");
   const lstSummaryRows = [
-    { strLabel: t("salary_summary_card_ctc_annual", "CTC Annual"), decValue: blnHasAssignedSalary ? dicBaseSummaryMetrics.decAnnualCtc : null },
-    { strLabel: t("salary_summary_card_gross_annual", "Gross Annual"), decValue: blnHasAssignedSalary ? decGrossAnnual : null },
-    { strLabel: t("salary_summary_card_net_annual", "Net Annual"), decValue: blnHasAssignedSalary ? decNetAnnual : null }
+    {
+      strLabel: t("salary_summary_card_ctc_annual", "CTC Annual"),
+      decValue: blnHasAssignedSalary ? dicBaseSummaryMetrics.decAnnualCtc : null,
+      lstCalculationRows: dicCalculationRows.ctcAnnual,
+      strCalculation: t("salary_summary_card_ctc_annual_calculation", "CTC Annual = annual CTC-included earnings + annual employer contributions included in CTC + annual Flexi Bucket. Flexi allocations and residual taxable amounts are not added again.")
+    },
+    {
+      strLabel: t("salary_summary_card_gross_annual", "Gross Annual"),
+      decValue: blnHasAssignedSalary ? decGrossAnnual : null,
+      lstCalculationRows: dicCalculationRows.grossAnnual,
+      strCalculation: t("salary_summary_card_gross_annual_calculation", "Gross Annual = Gross Monthly * 12. Gross Monthly is monthly CTC-included earnings plus the monthly Flexi Bucket, excluding employer contributions and deductions.")
+    },
+    {
+      strLabel: t("salary_summary_card_net_annual", "Net Annual"),
+      decValue: blnHasAssignedSalary ? decNetAnnual : null,
+      lstCalculationRows: lstFixedCalculationRows,
+      strCalculation: t("salary_summary_card_net_annual_calculation", "Net Annual = the salary summary's fixed monthly amount * 12. The fixed amount excludes deduction/recovery, employer contribution and flexi components. Gross Monthly is used if the fixed monthly amount is unavailable.")
+    }
   ];
   const dicCompactValueSx = {
     fontSize: "0.875rem",
@@ -155,9 +169,18 @@ export default function EmployeeSalarySummaryCard({ intEmployeeID, blnHideOpenPa
           <Typography className="my-profile-salary-message">{t("salary_summary_card_unavailable", "Salary details are not available.")}</Typography>
         ) : (
           <dl className="my-profile-salary-rows">
-            {lstSummaryRows.map(({ strLabel, decValue }) => (
+            {lstSummaryRows.map(({ strLabel, decValue, strCalculation, lstCalculationRows }) => (
               <div key={strLabel} className="my-profile-salary-row">
-                <dt>{strLabel}<InfoOutlinedIcon aria-hidden="true" /></dt>
+                <dt>
+                  <SalaryCalculationTooltip
+                    title={strCalculation}
+                    rows={decValue === null ? [] : lstCalculationRows}
+                    total={decValue ?? undefined}
+                    maskAmounts={!blnSalaryVisible}
+                  >
+                    {strLabel}
+                  </SalaryCalculationTooltip>
+                </dt>
                 <dd>{blnSalaryVisible ? formatCurrency(decValue) : <span aria-label={t("salary_summary_amount_hidden", "Amount hidden")}>₹••••••</span>}</dd>
               </div>
             ))}

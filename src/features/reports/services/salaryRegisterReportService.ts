@@ -49,6 +49,8 @@ export type SalaryRegisterEnvelope = {
   strCompanyName: string;
   lstPaymentColumns: string[];
   lstRecoveryColumns: string[];
+  // Payment/Recovery column labels that come from arrear lines (subset of the two lists above).
+  lstArrearColumns?: string[];
 };
 
 function buildQuery(dicFilters: Record<string, string | number | undefined | null>): string {
