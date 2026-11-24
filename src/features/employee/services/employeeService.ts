@@ -290,7 +290,7 @@ export const employeeService = {
       blnPfApplicable: dicValues.blnPfApplicable,
       blnEsiApplicable: dicValues.blnEsiApplicable,
       blnPtApplicable: dicValues.blnPtApplicable,
-      blnEpsEligible: dicValues.strEpsEligible === "yes" ? true : dicValues.strEpsEligible === "no" ? false : null
+      blnEpsEligible: dicValues.blnEpsEligible
     }, objOptions?.strMenuAction);
     return objResult.Data;
   },
