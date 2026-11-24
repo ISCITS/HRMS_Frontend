@@ -693,6 +693,25 @@ export default function EmployeeEditorScreen({
   }
 
   function renderOptionalEmployeeField(strField: keyof EmployeeFormValues, strLabel: string, strType = "text") {
+    if (strField === "strInitialPostingLocation") {
+      const strSavedLocation = dicBasicForm.strInitialPostingLocation;
+      const setLocationNames = new Set(objFormOptions?.lstLocations?.map((objLocation) => objLocation.strLabel));
+      if (strSavedLocation) {
+        setLocationNames.add(strSavedLocation);
+      }
+      return (
+        <Box key={strField}>
+          {renderStringListSearchableField(
+            strLabel,
+            strSavedLocation,
+            (strValue) => updateBasicField("strInitialPostingLocation", strValue),
+            [...setLocationNames],
+            blnViewOnly,
+          )}
+        </Box>
+      );
+    }
+
     const dicLookupOptions: Partial<Record<keyof EmployeeFormValues, Array<{ intID: number; strLabel: string; strCode?: string }>>> = {
       strBloodGroup: objFormOptions?.lstBloodGroups ?? [],
       strReligion: objFormOptions?.lstReligions ?? [],
