@@ -27,7 +27,8 @@ export type AllocationEntityApiRecord = {
   strEntityCode: string;
   strEntityName: string;
   strDescription: string | null;
-  strExternalReference: string | null;
+  strAddressLine1: string | null;
+  strAddressLine2: string | null;
   dtEffectiveFrom: string | null;
   dtEffectiveTo: string | null;
   blnIsActive: boolean;
@@ -47,7 +48,8 @@ export type AllocationEntityFormValues = {
   strEntityCode: string;
   strEntityName: string;
   strDescription: string;
-  strExternalReference: string;
+  strAddressLine1: string;
+  strAddressLine2: string;
   dtEffectiveFrom: string;
   dtEffectiveTo: string;
   blnIsActive: boolean;
@@ -70,7 +72,8 @@ export function createInitialAllocationEntityForm(): AllocationEntityFormValues 
     strEntityCode: "",
     strEntityName: "",
     strDescription: "",
-    strExternalReference: "",
+    strAddressLine1: "",
+    strAddressLine2: "",
     dtEffectiveFrom: "",
     dtEffectiveTo: "",
     blnIsActive: true,
@@ -96,7 +99,8 @@ export function toAllocationEntityFormValues(dicRecord: AllocationEntityApiRecor
     strEntityCode: dicRecord.strEntityCode,
     strEntityName: dicRecord.strEntityName,
     strDescription: dicRecord.strDescription ?? "",
-    strExternalReference: dicRecord.strExternalReference ?? "",
+    strAddressLine1: dicRecord.strAddressLine1 ?? "",
+    strAddressLine2: dicRecord.strAddressLine2 ?? "",
     dtEffectiveFrom: dicRecord.dtEffectiveFrom ?? "",
     dtEffectiveTo: dicRecord.dtEffectiveTo ?? "",
     blnIsActive: Boolean(dicRecord.blnIsActive),
@@ -127,7 +131,8 @@ function toEntityPayload(dicValues: AllocationEntityFormValues) {
     strEntityCode: dicValues.strEntityCode.trim().toUpperCase(),
     strEntityName: dicValues.strEntityName.trim(),
     strDescription: formatOptionalText(dicValues.strDescription),
-    strExternalReference: formatOptionalText(dicValues.strExternalReference),
+    strAddressLine1: formatOptionalText(dicValues.strAddressLine1),
+    strAddressLine2: formatOptionalText(dicValues.strAddressLine2),
     dtEffectiveFrom: formatOptionalText(dicValues.dtEffectiveFrom),
     dtEffectiveTo: formatOptionalText(dicValues.dtEffectiveTo),
     blnIsActive: dicValues.blnIsActive,

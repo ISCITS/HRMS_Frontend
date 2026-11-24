@@ -278,7 +278,6 @@ export default function AllocationEntityMasterPanel() {
         strEntityCode: dicRecord.strEntityCode,
         strStatusText: dicRecord.blnIsActive ? "Active" : "Inactive",
         strEntityTypeName: dicEntityTypeNameByID[dicRecord.intAllocationEntityTypeID] ?? "-",
-        strExternalReference: dicRecord.strExternalReference ?? "-",
         dtEffectiveFrom: dicRecord.dtEffectiveFrom ?? "-",
         dtEffectiveTo: dicRecord.dtEffectiveTo ?? "-",
         strStatus: (
@@ -297,7 +296,6 @@ export default function AllocationEntityMasterPanel() {
       { field: "strEntityName", headerName: t("table_name", "Entity Name"), sortAccessor: (row) => row.strEntityNameText },
       { field: "strEntityCode", headerName: t("table_code", "Entity Code") },
       { field: "strEntityTypeName", headerName: t("table_entity_type", "Entity Type") },
-      { field: "strExternalReference", headerName: t("table_external_reference", "External Reference") },
       { field: "dtEffectiveFrom", headerName: t("table_effective_from", "Effective From"), width: 140 },
       { field: "dtEffectiveTo", headerName: t("table_effective_to", "Effective To"), width: 140 },
       { field: "strStatus", headerName: t("table_status", "Status"), filterable: false, width: 130, sortAccessor: (row) => row.strStatusText },
@@ -571,6 +569,7 @@ export default function AllocationEntityMasterPanel() {
                 }}
                 error={Boolean(dicErrors.intAllocationEntityTypeID)}
                 helperText={dicErrors.intAllocationEntityTypeID}
+                sx={{ gridColumn: "1 / -1" }}
                 fullWidth
               >
                 {lstActiveEntityTypes.map((dicType) => (
@@ -579,19 +578,6 @@ export default function AllocationEntityMasterPanel() {
                   </MenuItem>
                 ))}
               </TextField>
-              <TextField
-                className="app-mui-text-field"
-                label={t("field_external_reference", "External Reference")}
-                placeholder={t("dialog_external_reference_placeholder", "Enter external reference")}
-                size="small"
-                value={dicForm.strExternalReference}
-                inputProps={{ controlId: "allocation-entity.dialog.external-reference.input" }}
-                disabled={strMode === "view"}
-                onChange={(objEvent) =>
-                  setDicForm((dicPrevious) => ({ ...dicPrevious, strExternalReference: objEvent.target.value }))
-                }
-                fullWidth
-              />
               <TextField
                 className="app-mui-text-field"
                 ref={objNameRef}
@@ -661,6 +647,34 @@ export default function AllocationEntityMasterPanel() {
                 }}
                 error={Boolean(dicErrors.dtEffectiveTo)}
                 helperText={dicErrors.dtEffectiveTo}
+                fullWidth
+              />
+              <TextField
+                className="app-mui-text-field"
+                label={t("field_address_line_1", "Address 1")}
+                placeholder={t("dialog_address_line_1_placeholder", "Building, street, area")}
+                size="small"
+                value={dicForm.strAddressLine1}
+                inputProps={{ controlId: "allocation-entity.dialog.address-line-1.input", maxLength: 250 }}
+                disabled={strMode === "view"}
+                onChange={(objEvent) =>
+                  setDicForm((dicPrevious) => ({ ...dicPrevious, strAddressLine1: objEvent.target.value }))
+                }
+                sx={{ gridColumn: "1 / -1" }}
+                fullWidth
+              />
+              <TextField
+                className="app-mui-text-field"
+                label={t("field_address_line_2", "Address 2")}
+                placeholder={t("dialog_address_line_2_placeholder", "City, state, PIN code")}
+                size="small"
+                value={dicForm.strAddressLine2}
+                inputProps={{ controlId: "allocation-entity.dialog.address-line-2.input", maxLength: 250 }}
+                disabled={strMode === "view"}
+                onChange={(objEvent) =>
+                  setDicForm((dicPrevious) => ({ ...dicPrevious, strAddressLine2: objEvent.target.value }))
+                }
+                sx={{ gridColumn: "1 / -1" }}
                 fullWidth
               />
               <Box sx={{ gridColumn: "1 / -1" }}>

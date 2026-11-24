@@ -4,6 +4,7 @@ import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import CurrencyRupeeRoundedIcon from "@mui/icons-material/CurrencyRupeeRounded";
 import DescriptionRoundedIcon from "@mui/icons-material/DescriptionRounded";
 import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded";
 import ErrorOutlineRoundedIcon from "@mui/icons-material/ErrorOutlineRounded";
@@ -60,6 +61,7 @@ import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payrollResultService } from "@/features/payroll/services/payrollResultService";
 import { payslipService, type PayslipDocumentView, type PayslipView } from "@/features/payroll/services/payslipService";
 import { getPayslipSwitchView, getPayslipTabRequestView } from "@/features/payroll/utils/payslipViewChoice";
+import { shouldShowArrearsTab } from "@/features/payroll/utils/runArrearsTab";
 import { payrollRunService } from "@/features/payroll/services/payrollRunService";
 import { attendancePayrollService } from "@/features/payroll/services/attendancePayrollService";
 import { variablePayService } from "@/features/variable-pay/services/variablePayService";
@@ -448,7 +450,8 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
   const [objActionsAnchor, setObjActionsAnchor] = useState<null | HTMLElement>(null);
   const [objAttendanceValidationResult, setObjAttendanceValidationResult] = useState<AttendanceValidateRunResult | null>(null);
   const [blnAttendanceBlockedFilterActive, setBlnAttendanceBlockedFilterActive] = useState(false);
-  const [strActiveTab, setStrActiveTab] = useState<"run" | "valid" | "review" | "payslips" | "variablePay" | "declaration">("run");
+  const [strActiveTab, setStrActiveTab] = useState<"run" | "valid" | "arrears" | "review" | "payslips" | "variablePay" | "declaration">("run");
+  const [dicArrearSummary, setDicArrearSummary] = useState<{ intEmployeeCount: number; blnReviewPending: boolean }>({ intEmployeeCount: 0, blnReviewPending: false });
   const refDefaultedTabForRunID = useRef<number | null>(null);
   const [lstRunResults, setLstRunResults] = useState<PayrollResultListRecord[]>([]);
   const [lstVariablePayValidationIssues, setLstVariablePayValidationIssues] = useState<PayrollValidationResultRecord[]>([]);
@@ -521,7 +524,11 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
   }, [strRunID, blnRightsLoading, blnCanView]);
 
   useEffect(() => {
-    if (strActiveTab === "review" && objRun && !["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus)) {
+    if (
+      (strActiveTab === "review" || strActiveTab === "arrears") &&
+      objRun &&
+      (!["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus) || (strActiveTab === "arrears" && objRun.strRunTypeCode === "VARIABLE_PAY"))
+    ) {
       setStrActiveTab("run");
     }
     // The Validation Summary tab is hidden once a run is processed (see blnHideValidationIssues).
@@ -1069,6 +1076,8 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
     : (objRun.strPayrollGroupName ?? t("scope_payroll_group", "Payroll Group"));
   const lstWorkflowSteps = getWorkflowSteps(objRun.strRunStatus);
   const blnShowReviewResults = ["PROCESSED", "FINALIZED"].includes(objRun.strRunStatus);
+  // Arrears get their own step between Run Summary and Review Results (salary runs only).
+  const blnShowArrearsTab = shouldShowArrearsTab(objRun.strRunStatus, objRun.strRunTypeCode);
   const blnShowPayslipsTab = blnShowReviewResults && objRun.strRunTypeCode !== "VARIABLE_PAY";
 
   const objCardSx = {
@@ -1448,6 +1457,7 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
         <Tabs
           value={
             (strActiveTab === "review" && !blnShowReviewResults) ||
+            (strActiveTab === "arrears" && !blnShowArrearsTab) ||
             (strActiveTab === "payslips" && !blnShowPayslipsTab) ||
             (strActiveTab === "valid" && blnHideValidationIssues)
               ? "run"
@@ -1485,6 +1495,36 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
             iconPosition="start"
             data-controlid="payroll.run-detail.tab.run.button"
           />
+          {blnShowArrearsTab ? (
+            <Tab
+              value="arrears"
+              label={
+                <Box component="span" className="app-employee-tab-label" sx={{ gap: 0.6 }}>
+                  <span>{t("workflow_review_arrears", "Review Arrears")}</span>
+                  {dicArrearSummary.intEmployeeCount ? (
+                    <Box
+                      component="span"
+                      title={dicArrearSummary.blnReviewPending ? t("arrears_review_pending", "Arrears not yet marked reviewed") : undefined}
+                      sx={{
+                        background: dicArrearSummary.blnReviewPending ? "#fff7ed" : "#eff6ff",
+                        borderRadius: "999px",
+                        color: dicArrearSummary.blnReviewPending ? "#c2410c" : "#1d4ed8",
+                        fontSize: "0.68rem",
+                        fontWeight: 800,
+                        px: 0.9,
+                        py: 0.15,
+                      }}
+                    >
+                      {dicArrearSummary.intEmployeeCount}
+                    </Box>
+                  ) : null}
+                </Box>
+              }
+              icon={<CurrencyRupeeRoundedIcon sx={{ fontSize: 18 }} />}
+              iconPosition="start"
+              data-controlid="payroll.run-detail.tab.arrears.button"
+            />
+          ) : null}
           {blnShowReviewResults ? (
             <Tab
               value="review"
@@ -1836,21 +1876,30 @@ export default function PayrollRunDetailDashboardPage({ strRunID }: PayrollRunDe
         </Box>
         ) : null}
 
+        {blnShowArrearsTab ? (
+        // Kept mounted (hidden) while the run is processed so the tab badge shows the arrear
+        // count and a pending "Mark arrears reviewed" without opening the tab first.
+        <Box
+          className={masterStyles.controlsCard}
+          sx={{ display: strActiveTab === "arrears" ? "flex" : "none", flexDirection: "column", minWidth: 0, p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}
+        >
+          <PayrollRunArrearsPanel
+            key={`${objRun.intID}-${objRun.dtLastModifiedOn ?? ""}`}
+            strRunID={strRunID}
+            strRunStatus={objRun.strRunStatus}
+            strRunLabel={objRun.strRunName || objRun.strRunCode || ""}
+            onReprocessEmployee={async (intEmployeeID, strReason) => {
+              await payrollRunService.reprocessPayrollRun(strRunID, strReason, [intEmployeeID]);
+              await loadRun(false);
+            }}
+            onMessage={(strMessage, strSeverity) => (strSeverity === "success" ? setStrSuccess(strMessage) : setStrError(strMessage))}
+            onSummaryChange={setDicArrearSummary}
+          />
+        </Box>
+        ) : null}
+
         {strActiveTab === "review" ? (
         <Box className={masterStyles.controlsCard} sx={{ display: "flex", flexDirection: "column", minWidth: 0, p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
-          {objRun.strRunTypeCode !== "VARIABLE_PAY" ? (
-            <PayrollRunArrearsPanel
-              key={`${objRun.intID}-${objRun.dtLastModifiedOn ?? ""}`}
-              strRunID={strRunID}
-              strRunStatus={objRun.strRunStatus}
-              strRunLabel={objRun.strRunName || objRun.strRunCode || ""}
-              onReprocessEmployee={async (intEmployeeID, strReason) => {
-                await payrollRunService.reprocessPayrollRun(strRunID, strReason, [intEmployeeID]);
-                await loadRun(false);
-              }}
-              onMessage={(strMessage, strSeverity) => (strSeverity === "success" ? setStrSuccess(strMessage) : setStrError(strMessage))}
-            />
-          ) : null}
           <TextField
             className="app-mui-text-field"
             label={t("review_results_search_label", "Employee name or code")}

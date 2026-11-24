@@ -29,6 +29,7 @@ import { DottedLoader } from "@/components/shared/BlockingLoader";
 import PayrollRunArrearImportDialog from "@/features/payroll/components/PayrollRunArrearImportDialog";
 import { payrollRunService } from "@/features/payroll/services/payrollRunService";
 import type { ArrearLineRecord, RunArrearEmployeeRecord, RunArrearsRecord } from "@/features/payroll/types";
+import { getArrearTabSummary, getArrearTotals, isArrearPreview, isRunFinalizedForArrears } from "@/features/payroll/utils/runArrearsTab";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
 
 const ARREAR_HOLD_RIGHT = "payroll_arrear_hold";
@@ -42,6 +43,8 @@ type Props = {
   /** Reprocess one employee after Hold / Release (the run screen's own reprocess). */
   onReprocessEmployee: (intEmployeeID: number, strReason: string) => Promise<void>;
   onMessage: (strMessage: string, strSeverity: "success" | "error") => void;
+  /** Reports the employee count and whether "Mark arrears reviewed" is still pending (tab badge). */
+  onSummaryChange?: (dicSummary: { intEmployeeCount: number; blnReviewPending: boolean }) => void;
 };
 
 function money(decValue: number | null | undefined): string {
@@ -55,9 +58,9 @@ function monthLabel(strIsoDate: string): string {
 
 /**
  * Arrears of this run (arrear automation): summary, employees with arrears, month x component
- * detail and Hold / Release. Shows nothing when the run has no arrears or arrears are off.
+ * detail and Hold / Release. Shown on the run's "Review Arrears" tab; says so when there are none.
  */
-export default function PayrollRunArrearsPanel({ strRunID, strRunStatus, strRunLabel, onReprocessEmployee, onMessage }: Props) {
+export default function PayrollRunArrearsPanel({ strRunID, strRunStatus, strRunLabel, onReprocessEmployee, onMessage, onSummaryChange }: Props) {
   const { canDo } = useActionRights();
   const blnCanHold = canDo("payroll_runs", ARREAR_HOLD_RIGHT);
   const blnCanImport = canDo("payroll_runs", ARREAR_IMPORT_RIGHT);
@@ -76,7 +79,7 @@ export default function PayrollRunArrearsPanel({ strRunID, strRunStatus, strRunL
   const [objDetailEmployee, setObjDetailEmployee] = useState<RunArrearEmployeeRecord | null>(null);
   const [lstDetailLines, setLstDetailLines] = useState<ArrearLineRecord[]>([]);
   const [blnBusy, setBlnBusy] = useState(false);
-  const blnFinalized = ["FINALIZED", "CANCELLED"].includes(strRunStatus);
+  const blnFinalized = isRunFinalizedForArrears(strRunStatus);
 
   const load = useCallback(async () => {
     try {
@@ -92,6 +95,11 @@ export default function PayrollRunArrearsPanel({ strRunID, strRunStatus, strRunL
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    onSummaryChange?.(getArrearTabSummary(objData, blnFinalized));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [objData, blnFinalized]);
 
   async function openDetail(objEmployee: RunArrearEmployeeRecord) {
     setObjDetailEmployee(objEmployee);
@@ -157,18 +165,18 @@ export default function PayrollRunArrearsPanel({ strRunID, strRunStatus, strRunL
     </Button>
   ) : null;
   if (!objData?.blnAvailable || (!objData.lstEmployees.length && !(objData.dicSummary?.lstFailures?.length))) {
-    return objImportButton ? (
-      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 1 }}>
+    return (
+      <Box sx={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 1, justifyContent: "space-between", py: 1 }} data-testid="payroll.run-detail.arrears.empty">
+        <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>No arrears in this run.</Typography>
         {objImportButton}
         {objImportDialog}
       </Box>
-    ) : null;
+    );
   }
   // Imported arrears are paid even while automatic arrears are in preview.
-  const blnPreview = !objData.lstEmployees.some((objItem) => ["PAYABLE", "PAID"].includes(objItem.strStatus));
+  const blnPreview = isArrearPreview(objData);
   const objSummary = objData.dicSummary;
-  const decTotal = objData.lstEmployees.reduce((decSum, objItem) => decSum + (objItem.blnHeld ? 0 : objItem.decArrearAmount), 0);
-  const decRecovery = objData.lstEmployees.reduce((decSum, objItem) => decSum + (objItem.blnHeld ? 0 : objItem.decRecoveryAmount), 0);
+  const { decArrearTotal: decTotal, decRecoveryTotal: decRecovery } = getArrearTotals(objData);
 
   return (
     <Box
