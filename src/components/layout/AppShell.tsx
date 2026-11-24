@@ -1249,6 +1249,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
       ));
   const blnHideShellHeading = blnEssMyProfileRoute || strPageTitle.trim().toLowerCase() === "my profile";
   const blnDashboardRoute = (strPathname || "").toLowerCase() === "/dashboard";
+  const blnCompactEssDashboard = blnDashboardRoute && blnEssDashboardActive;
+  const intActiveBannerHeight = blnCompactEssDashboard ? 48 : intBannerHeight;
+  const intToolbarHeight = blnCompactEssDashboard ? intActiveBannerHeight - 1 : intActiveBannerHeight;
   const strCompanyName = objUserContext?.objCompany?.strCompanyName?.trim() || "";
   const strCompanyLogoUrl = objUserContext?.objCompany?.strLogoUrl?.trim() || "";
   const blnProfileMenuOpen = Boolean(objProfileAnchorEl);
@@ -1555,7 +1558,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         <Box
           sx={{
             width: "100%",
-            height: intBannerHeight,
+            height: intActiveBannerHeight,
             // mt: "7px",
             display: "grid",
             placeItems: "center",
@@ -1695,7 +1698,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             minWidth: 0,
             minHeight: 0,
             overflow: "hidden",
-              p: blnDashboardRoute ? { xs: 0.75, xl: 1 } : { xs: 1, xl: 1.5 }
+            p: blnCompactEssDashboard ? 0 : blnDashboardRoute ? { xs: 0.75, xl: 1 } : { xs: 1, xl: 1.5 }
           }}
         >
           <AppBar
@@ -1711,19 +1714,19 @@ export default function AppShell({ children }: { children: ReactNode }) {
               "--app-banner-text-color": "#172b4d",
               "--app-banner-border-color": "#e5edf5",
               borderRadius: 0,
-              mt: blnDashboardRoute ? { xs: -0.75, xl: -1 } : { xs: -1, xl: -1.5 },
-              mx: blnDashboardRoute ? { xs: -0.75, xl: -1 } : { xs: -1, xl: -1.5 },
-              width: blnDashboardRoute
+              mt: blnCompactEssDashboard ? 0 : blnDashboardRoute ? { xs: -0.75, xl: -1 } : { xs: -1, xl: -1.5 },
+              mx: blnCompactEssDashboard ? 0 : blnDashboardRoute ? { xs: -0.75, xl: -1 } : { xs: -1, xl: -1.5 },
+              width: blnCompactEssDashboard ? "100%" : blnDashboardRoute
                 ? { xs: "calc(100% + 12px)", xl: "calc(100% + 16px)" }
                 : { xs: "calc(100% + 16px)", xl: "calc(100% + 24px)" },
-              mb: strNormalizedLowerPathname === "/ess/my-profile" ? 0 : { xs: 1, xl: 1.5 },
+              mb: blnCompactEssDashboard || strNormalizedLowerPathname === "/ess/my-profile" ? 0 : { xs: 1, xl: 1.5 },
               background: "#ffffff",
               border: 0,
               borderBottom: "1px solid var(--app-banner-border-color)",
               boxShadow: "none"
             }}
           >
-            <Toolbar sx={{ gap: { xs: 0.5, sm: 1, xl: 1.5 }, height: { xs: "auto", lg: intBannerHeight }, minHeight: `${intBannerHeight}px !important`, flexWrap: { xs: "wrap", lg: "nowrap" }, py: { xs: 1, lg: 0 }, boxSizing: "border-box", alignItems: "center", px: { xs: 1, sm: 2 }, position: "relative" }}>
+            <Toolbar sx={{ gap: { xs: 0.5, sm: 1, xl: 1.5 }, height: { xs: "auto", lg: intToolbarHeight }, minHeight: `${intToolbarHeight}px !important`, flexWrap: { xs: "wrap", lg: "nowrap" }, py: { xs: 1, lg: 0 }, boxSizing: "border-box", alignItems: "center", px: { xs: 1, sm: 2 }, position: "relative" }}>
               <IconButton
                 aria-label="Open navigation menu"
                 onClick={handleMenuToggle}
@@ -1883,7 +1886,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
               minHeight: 0,
               overflowY: "auto",
               overflowX: "hidden",
-              pr: blnDashboardRoute ? 0 : 0.5
+              pl: blnCompactEssDashboard ? "10px" : undefined,
+              pr: blnCompactEssDashboard ? "10px" : blnDashboardRoute ? 0 : 0.5
             }}
           >
             <DashboardHeaderModeContext.Provider value={setBlnEssDashboardActive}>
