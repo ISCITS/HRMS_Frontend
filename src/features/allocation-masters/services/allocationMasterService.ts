@@ -29,6 +29,10 @@ export type AllocationEntityApiRecord = {
   strDescription: string | null;
   strAddressLine1: string | null;
   strAddressLine2: string | null;
+  /** The logo image itself is fetched with getEntityLogo. */
+  blnHasLogo?: boolean;
+  strLogoFileName?: string | null;
+  dtLogoUploadedOn?: string | null;
   dtEffectiveFrom: string | null;
   dtEffectiveTo: string | null;
   blnIsActive: boolean;
@@ -265,4 +269,47 @@ export const allocationMasterService = {
       strMenuAction: ALLOCATION_ENTITY_EDIT,
     });
   },
+
+  /** The entity's logo as a data URI (null when it has none). */
+  async getEntityLogo(intAllocationEntityID: number): Promise<string | null> {
+    const objResult = await requestApi<{ strDataUri: string | null }>({
+      strPath: `/allocation-masters/entities/${intAllocationEntityID}/logo`,
+      strMethod: ApiRequestMethod.Get,
+      strMenuAction: ALLOCATION_ENTITY_VIEW,
+    });
+    return objResult.Data?.strDataUri ?? null;
+  },
+
+  async uploadEntityLogo(intAllocationEntityID: number, objFile: File): Promise<AllocationEntityApiRecord> {
+    const objFormData = new FormData();
+    objFormData.append("objFile", objFile);
+    const objResult = await requestApi<AllocationEntityApiRecord>({
+      strPath: `/allocation-masters/entities/${intAllocationEntityID}/logo`,
+      strMethod: ApiRequestMethod.Put,
+      objBody: objFormData,
+      strMenuAction: ALLOCATION_ENTITY_EDIT,
+    });
+    return objResult.Data;
+  },
+
+  async deleteEntityLogo(intAllocationEntityID: number): Promise<AllocationEntityApiRecord> {
+    const objResult = await requestApi<AllocationEntityApiRecord>({
+      strPath: `/allocation-masters/entities/${intAllocationEntityID}/logo`,
+      strMethod: ApiRequestMethod.Delete,
+      strMenuAction: ALLOCATION_ENTITY_EDIT,
+    });
+    return objResult.Data;
+  },
 };
+
+export const LOGO_MAX_BYTES = 512 * 1024;
+export const LOGO_ACCEPT = "image/png,image/jpeg,image/webp";
+const SET_LOGO_TYPES = new Set(["image/png", "image/jpeg", "image/jpg", "image/webp"]);
+
+/** The same checks the server makes, so a wrong file is refused before uploading; null = fine. */
+export function checkLogoFile(objFile: Pick<File, "type" | "size">): string | null {
+  if (!SET_LOGO_TYPES.has(String(objFile.type).toLowerCase())) return "Choose a PNG, JPG or WEBP image.";
+  if (objFile.size === 0) return "The selected logo file is empty.";
+  if (objFile.size > LOGO_MAX_BYTES) return "The logo must be 512 KB or smaller.";
+  return null;
+}
