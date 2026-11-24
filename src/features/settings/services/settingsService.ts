@@ -98,7 +98,7 @@ export const settingsService = {
   /** A template filled with sample figures. */
   async previewPayrollDocumentFormat(
     strDocument: "payslip" | "fnf" | "ctc",
-    strFormat: "default" | "client",
+    strFormat: "default" | "client" | "format3",
     strView: "monthly" | "detailed" | "annual" = "monthly",
   ): Promise<string> {
     const objResult = await requestApi<{ strHtml: string }>({

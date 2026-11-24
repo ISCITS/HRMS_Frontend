@@ -132,6 +132,7 @@ export default function AttendanceImportPanel() {
         strStatus: objRow.strStatus,
         tmFirstIn: objRow.strFirstIn,
         tmLastOut: objRow.strLastOut,
+        intShiftID: objRow.intShiftID,
       }));
     if (lstRowsToCommit.length === 0) {
       setStrError(t("import_no_rows_selected", "Select at least one valid row to import."));
@@ -170,9 +171,19 @@ export default function AttendanceImportPanel() {
     status: objRow.strStatus,
     firstIn: objRow.strFirstIn ?? "-",
     lastOut: objRow.strLastOut ?? "-",
+    shift: objRow.strRawShift ?? "-",
+    lateMinutes: objRow.intLateMinutes > 0 ? `${objRow.intLateMinutes} min` : "-",
+    earlyMinutes: objRow.intEarlyMinutes > 0 ? `${objRow.intEarlyMinutes} min` : "-",
     resultText: objRow.blnValid ? (objRow.blnWillOverwrite ? "Overwrite" : "New") : "Error",
     result: objRow.blnValid ? (
-      <Chip size="small" color={objRow.blnWillOverwrite ? "warning" : "success"} label={objRow.blnWillOverwrite ? t("overwrite", "Overwrite") : t("new", "New")} />
+      <Tooltip title={objRow.strWarning ?? ""}>
+        <Chip
+          size="small"
+          color={objRow.strWarning ? "warning" : objRow.blnWillOverwrite ? "warning" : "success"}
+          label={objRow.blnWillOverwrite ? t("overwrite", "Overwrite") : t("new", "New")}
+          variant={objRow.strWarning ? "outlined" : "filled"}
+        />
+      </Tooltip>
     ) : (
       <Tooltip title={objRow.strErrorMessage ?? ""}>
         <Chip size="small" color="error" label={t("error", "Error")} />
@@ -188,6 +199,9 @@ export default function AttendanceImportPanel() {
     { field: "status", headerName: t("status", "Status"), width: 120 },
     { field: "firstIn", headerName: t("in_time", "In Time"), width: 110 },
     { field: "lastOut", headerName: t("out_time", "Out Time"), width: 110 },
+    { field: "shift", headerName: t("shift", "Shift"), width: 150 },
+    { field: "lateMinutes", headerName: t("late_by", "Late By"), width: 100 },
+    { field: "earlyMinutes", headerName: t("early_by", "Early By"), width: 100 },
     { field: "result", headerName: t("result", "Result"), filterable: false, width: 120, sortAccessor: (row) => row.resultText },
   ];
 
@@ -315,7 +329,7 @@ export default function AttendanceImportPanel() {
             rowIdField="id"
             showPaginationSummary
             hideRowClickHint
-            minTableWidth={950}
+            minTableWidth={1250}
             emptyMessage={t("import_no_rows", "No rows found in the uploaded file.")}
             testIdPrefix="attendance.import.preview"
             toolbarLeft={

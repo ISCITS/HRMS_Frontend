@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildPayslipFilterOptions,
+  buildPayslipFilterOptionsFromLookup,
   filterPayslipRows,
   formatPayslipMonthOption,
   getPayslipMonthKeys,
+  hasPayslipSearchCriteria,
   type PayslipFilterRow,
   type PayslipFilterValues,
 } from "./payslipListFilters";
@@ -62,5 +64,31 @@ describe("payslip list filters", () => {
   it("reads month options back as month keys", () => {
     expect(getPayslipMonthKeys("Sep 2026, 2026-04, September 2025")).toEqual(["2026-09", "2026-04", "2025-09"]);
     expect(formatPayslipMonthOption("2026-12")).toBe("Dec 2026");
+  });
+});
+
+describe("payslip search-first screen", () => {
+  it("needs an employee or a month before loading", () => {
+    expect(hasPayslipSearchCriteria({ strSearchEmployee: "", strPayrollMonth: "" })).toBe(false);
+    expect(hasPayslipSearchCriteria({ strSearchEmployee: "E001", strPayrollMonth: "" })).toBe(true);
+    expect(hasPayslipSearchCriteria({ strSearchEmployee: "", strPayrollMonth: "Sep 2026" })).toBe(true);
+  });
+
+  it("builds dropdowns from the light lookup", () => {
+    const dicOptions = buildPayslipFilterOptionsFromLookup(
+      {
+        lstEmployees: [{ intEmployeeID: 1, strEmployeeCode: "E001", strEmployeeName: "Asha", strDepartmentName: "HR", strLocationName: "Pune" }],
+        lstRuns: [
+          { strRunCode: "R1", strRunName: "Aug Payroll", dtPayrollMonth: "2026-08-01", strPayslipStatus: "Finalized" },
+          { strRunCode: "R2", strRunName: "Sep Payroll", dtPayrollMonth: "2026-09-01", strPayslipStatus: "Processed" },
+        ],
+      },
+      { strSearchRun: "", strPayrollMonth: "Sep 2026" }
+    );
+    expect(dicOptions.lstEmployees).toContain("E001 - Asha");
+    expect(dicOptions.lstMonths).toEqual(["Sep 2026", "Aug 2026"]);
+    expect(dicOptions.lstRuns).toEqual(["Sep Payroll (R2)"]);
+    expect(dicOptions.lstDepartments).toEqual(["HR"]);
+    expect(dicOptions.lstStatuses).toEqual(["Finalized", "Processed"]);
   });
 });

@@ -16,8 +16,7 @@ import { useFNFRights } from "@/features/payroll/hooks/useFNFRights";
 import { fnfSettlementService } from "@/features/payroll/services/fnfSettlementService";
 import type { FNFPayslipDocument, FNFPayslipEmployeeOption, FNFPayslipRecord, FNFRegularPayslipRecord } from "@/features/payroll/types";
 import { downloadPayslipHtml, printPayslipHtml } from "@/features/payroll/utils/payslipDocument";
-import { useReportFormatChooser } from "@/features/payroll/components/ReportFormatChooser";
-import type { PayslipFormat } from "@/features/payroll/services/payslipService";
+import { useReportFormatChooser, type FNFDocumentFormats } from "@/features/payroll/components/ReportFormatChooser";
 
 type PeriodPreset = "1" | "3" | "6" | "custom";
 const dicEmptySearch = { intEmployeeID: 0, strVersion: "latest", strGeneratedFrom: "", strGeneratedTo: "" };
@@ -48,7 +47,7 @@ function statusPill(strStatus: string) {
 
 export default function FNFPayslipsPage() {
   const { blnLoading: blnRightsLoading, can, canView } = useFNFRights();
-  const { chooseFormat, objFormatChooser } = useReportFormatChooser();
+  const { chooseFormats, objFormatChooser } = useReportFormatChooser();
   const blnCanView = canView();
   const blnCanExport = can("export");
   const [lstEmployees, setLstEmployees] = useState<FNFPayslipEmployeeOption[]>([]);
@@ -117,16 +116,15 @@ export default function FNFPayslipsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [objSelectedEmployee, strFromMonth, strToMonth]);
 
-  // Every open / download uses the format set in Settings > Payroll: ours, or the client's (F&F
-  // report and client-format payslip; Download then saves a PDF).
-  async function runDocument(fnLoad: (strFormat: PayslipFormat) => Promise<FNFPayslipDocument>, blnDownload: boolean) {
-    const strFormat = await chooseFormat();
-    if (!strFormat) return;
+  // Every open / download uses the formats set in Settings > Payroll: F&F reports in the F&F Report
+  // Format, regular payslips in the Payslip Format (Format 1 / Format 3 download as a PDF).
+  async function runDocument(fnLoad: (objFormats: FNFDocumentFormats) => Promise<FNFPayslipDocument>, blnDownload: boolean) {
+    const objFormats = await chooseFormats();
     setBlnBusy(true);
     setStrError("");
     setStrInfo("");
     try {
-      const objDocument = await fnLoad(strFormat);
+      const objDocument = await fnLoad(objFormats);
       if (blnDownload) downloadPayslipHtml(objDocument.strHtml, objDocument.strFileName);
       else printPayslipHtml(objDocument.strHtml, objDocument.strFileName);
     } catch (objError) {
@@ -137,7 +135,7 @@ export default function FNFPayslipsPage() {
   }
 
   function downloadSelection(lstFNF: string[], lstRegularIDs: string[]) {
-    runDocument((strFormat) => fnfSettlementService.getPayslipBundle(lstFNF, lstRegularIDs, strFormat), true).catch(() => undefined);
+    runDocument((objFormats) => fnfSettlementService.getPayslipBundle(lstFNF, lstRegularIDs, objFormats.strFNFReportFormat, objFormats.strPayslipFormat), true).catch(() => undefined);
   }
 
   function toggle(lstCurrent: string[], strID: string) {
@@ -157,7 +155,7 @@ export default function FNFPayslipsPage() {
         onClick={(objEvent) => {
           objEvent.stopPropagation();
           if (window.getSelection()?.toString()) return;
-          runDocument((strFormat) => fnfSettlementService.getPayslipDocument(objRow.strRecordUUID, strFormat), false).catch(() => undefined);
+          runDocument((objFormats) => fnfSettlementService.getPayslipDocument(objRow.strRecordUUID, objFormats.strFNFReportFormat), false).catch(() => undefined);
         }}>
         {objRow.strPayslipNumber}
       </Link>
@@ -204,7 +202,7 @@ export default function FNFPayslipsPage() {
         onClick={(objEvent) => {
           objEvent.stopPropagation();
           if (window.getSelection()?.toString()) return;
-          runDocument((strFormat) => fnfSettlementService.getRegularPayslipDocument(objRow.strRecordUUID, strFormat), false).catch(() => undefined);
+          runDocument((objFormats) => fnfSettlementService.getRegularPayslipDocument(objRow.strRecordUUID, objFormats.strPayslipFormat), false).catch(() => undefined);
         }}>
         {objRow.strPayslipNumber}
       </Link>

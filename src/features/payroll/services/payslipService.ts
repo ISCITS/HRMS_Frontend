@@ -61,17 +61,27 @@ function extractHtmlPayload(objData: unknown): string {
 /** Monthly: this month only. Detailed: adds year-to-date and annual tax figures. */
 export type PayslipView = "monthly" | "detailed";
 
-/** Default: the application's payslip page. Client: the client's payslip layout (monthly figures). */
-export type PayslipFormat = "default" | "client";
+/**
+ * Default: the application's payslip page. Client: Format 1 (the client's layout). Format3: the
+ * redesigned layout. Both layouts are monthly payslips shown on screen and downloaded as a PDF.
+ */
+export type PayslipFormat = "default" | "client" | "format3";
+/** A payslip layout other than our own (no Monthly / Detailed views; Download saves a PDF). */
+export type PayslipLayoutFormat = Exclude<PayslipFormat, "default">;
+export const PAYSLIP_LAYOUT_FORMATS: readonly PayslipLayoutFormat[] = ["client", "format3"];
 
 /**
- * Which payslip page to open: the default format's Monthly / Detailed view, or "client" - the
- * client format, shown on screen like the default one and downloaded as a PDF.
+ * Which payslip page to open: the default format's Monthly / Detailed view, or a layout format
+ * ("client" = Format 1, "format3" = Format 3).
  */
-export type PayslipDocumentView = PayslipView | "client";
+export type PayslipDocumentView = PayslipView | PayslipLayoutFormat;
+
+export function isPayslipLayoutView(strView: unknown): strView is PayslipLayoutFormat {
+  return PAYSLIP_LAYOUT_FORMATS.includes(strView as PayslipLayoutFormat);
+}
 
 function buildViewQuery(strView: PayslipDocumentView) {
-  return strView === "client" ? "view=monthly&format=client" : `view=${strView}`;
+  return isPayslipLayoutView(strView) ? `view=monthly&format=${strView}` : `view=${strView}`;
 }
 
 async function getHtml(strPath: string, strCsrfMenuAction: string): Promise<string> {

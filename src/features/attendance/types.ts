@@ -184,6 +184,13 @@ export type AttendanceImportRow = {
   strStatus: string;
   strFirstIn: string | null;
   strLastOut: string | null;
+  strRawShift: string | null;
+  intShiftID: number | null;
+  intLateMinutes: number;
+  intEarlyMinutes: number;
+  blnClientLate: boolean | null;
+  blnClientEarly: boolean | null;
+  strWarning: string | null;
   blnValid: boolean;
   strErrorMessage: string | null;
   blnWillOverwrite: boolean;
@@ -215,6 +222,7 @@ export type AttendanceImportCommitRow = {
   strStatus: string;
   tmFirstIn: string | null;
   tmLastOut: string | null;
+  intShiftID: number | null;
 };
 
 export type AttendanceImportCommitFailure = {

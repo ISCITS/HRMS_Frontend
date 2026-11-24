@@ -49,6 +49,16 @@ import { normalizeMenuResponse } from "@/lib/menu";
 import { getPostLoginRoute } from "@/lib/RouteGuard";
 import { getLogoutUrl } from "@/lib/urlHelpers";
 import {
+  getHeaderBorderColor,
+  getReadableTextColor,
+  normalizeTenantHeaderColor,
+  normalizeTenantHeaderLabel,
+  objEmptyTenantHeaderTheme,
+  readCachedTenantHeaderTheme,
+  writeCachedTenantHeaderTheme,
+  type TenantHeaderTheme
+} from "@/lib/tenantHeaderTheme";
+import {
   isAuthenticatedAppRoute,
   readAuthenticatedRouteHistory,
   writeAuthenticatedRouteHistory
@@ -95,7 +105,14 @@ function AppMenuLogo() {
   );
 }
 
-function AppBrandName({ objFontSize = objAppBarHeadingFontSize }: { objFontSize?: typeof objAppBarHeadingFontSize | string }) {
+function AppBrandName({
+  objFontSize = objAppBarHeadingFontSize,
+  blnOnDark = false
+}: {
+  objFontSize?: typeof objAppBarHeadingFontSize | string;
+  /** True when the tenant header colour is dark, so the brand switches to light colours. */
+  blnOnDark?: boolean;
+}) {
   const strBrandName = appConfig.appName;
   const intHrStartIndex = strBrandName.toUpperCase().lastIndexOf("HR");
   const strNavText = intHrStartIndex >= 0 ? strBrandName.slice(0, intHrStartIndex) : strBrandName;
@@ -103,9 +120,38 @@ function AppBrandName({ objFontSize = objAppBarHeadingFontSize }: { objFontSize?
 
   return (
     <Typography variant="h5" sx={{ fontSize: objFontSize, fontWeight: 800, letterSpacing: 0, lineHeight: 1.1, whiteSpace: "nowrap" }}>
-      <Box component="span" sx={{ color: "#07063f" }}>{strNavText}</Box>
-      {strHrText ? <Box component="span" sx={{ color: "#0577f8" }}>{strHrText}</Box> : null}
+      <Box component="span" sx={{ color: blnOnDark ? "#ffffff" : "#07063f" }}>{strNavText}</Box>
+      {strHrText ? <Box component="span" sx={{ color: blnOnDark ? "#bfdbfe" : "#0577f8" }}>{strHrText}</Box> : null}
     </Typography>
+  );
+}
+
+function TenantHeaderBadge({ strLabel, strTextColor }: { strLabel: string; strTextColor: string }) {
+  return (
+    <Box
+      component="span"
+      title={strLabel}
+      {...getAutomationProps("app-shell.tenant-header-label")}
+      sx={{
+        flexShrink: 0,
+        px: 1,
+        py: 0.25,
+        borderRadius: "6px",
+        border: `1.5px solid ${strTextColor}`,
+        color: strTextColor,
+        fontSize: { xs: "0.62rem", md: "0.7rem" },
+        fontWeight: 800,
+        letterSpacing: "0.06em",
+        lineHeight: 1.4,
+        textTransform: "uppercase",
+        whiteSpace: "nowrap",
+        maxWidth: { xs: 120, md: 200 },
+        overflow: "hidden",
+        textOverflow: "ellipsis"
+      }}
+    >
+      {strLabel}
+    </Box>
   );
 }
 
@@ -649,6 +695,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [strBootstrapError, setStrBootstrapError] = useState("");
   const [blnLanguageSwitching, setBlnLanguageSwitching] = useState(false);
   const [objTenantLanguageDetails, setObjTenantLanguageDetails] = useState<TenantAuthDetails | null>(null);
+  const [objTenantHeaderTheme, setObjTenantHeaderTheme] = useState<TenantHeaderTheme>(objEmptyTenantHeaderTheme);
   const [dicLanguageLabelByID, setDicLanguageLabelByID] = useState<Record<number, string>>({});
   const [strActiveLanguageSwitchToken, setStrActiveLanguageSwitchToken] = useState("");
   const [strPendingExpandedMenuIdentity, setStrPendingExpandedMenuIdentity] = useState<string | null>(null);
@@ -659,6 +706,17 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [strResolvedEmployeeName, setStrResolvedEmployeeName] = useState("");
   const objShellContentRef = useRef<HTMLDivElement | null>(null);
   useSearchOnEnter();
+
+  // Paint the last-known tenant header theme immediately (read after mount to avoid an SSR
+  // hydration mismatch); loadWorkspaceContext then refreshes it from the tenant auth-details API.
+  useEffect(() => {
+    setObjTenantHeaderTheme(readCachedTenantHeaderTheme(authHelpers.getTenantUUID()));
+  }, []);
+  const strTenantHeaderColor = objTenantHeaderTheme.strHeaderColor;
+  const strHeaderBackground = strTenantHeaderColor ?? "#ffffff";
+  const strHeaderTextColor = strTenantHeaderColor ? getReadableTextColor(strTenantHeaderColor) : "#172b4d";
+  const blnHeaderOnDark = strHeaderTextColor === "#FFFFFF";
+  const strHeaderBorderColor = strTenantHeaderColor ? getHeaderBorderColor(strHeaderTextColor) : "#e5edf5";
   const objMainContentRef = useRef<HTMLElement | null>(null);
   const strHeaderModuleName = resolveRouteModuleName(strPathname);
   const { t: tCommon } = useModuleLabels("common");
@@ -784,6 +842,17 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
     const [objUserResult, objTenantDetailsResult] = await Promise.all(lstRequests);
     const objTenantDetails = objTenantDetailsResult.Data;
+
+    if (objTenantDetails) {
+      // Only refresh the header theme on a successful lookup; a failed call keeps the cached theme
+      // so a test tenant never briefly looks like production.
+      const objNextHeaderTheme: TenantHeaderTheme = {
+        strHeaderColor: normalizeTenantHeaderColor(objTenantDetails.header_color),
+        strHeaderLabel: normalizeTenantHeaderLabel(objTenantDetails.header_label)
+      };
+      setObjTenantHeaderTheme(objNextHeaderTheme);
+      writeCachedTenantHeaderTheme(strTenantUUID, objNextHeaderTheme);
+    }
 
     authHelpers.setTenantContext(
       objUserResult.Data.objTenant.intTenantID,
@@ -1333,8 +1402,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
             px: 2.25,
             height: `${intTopBarHeight}px`,
             flexShrink: 0,
-            backgroundColor: "#ffffff",
-            color: "var(--app-banner-text-color)",
+            backgroundColor: strHeaderBackground,
+            color: strHeaderTextColor,
             display: "flex",
             alignItems: "center",
             boxSizing: "border-box"
@@ -1356,9 +1425,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
               <AppMenuLogo />
             </Box>
             <Box sx={{ minWidth: 0 }}>
-              <AppBrandName objFontSize="1.5rem" />
+              <AppBrandName objFontSize="1.5rem" blnOnDark={blnHeaderOnDark} />
               {strCompanyName ? (
-                <Typography title={strCompanyName} noWrap sx={{ mt: 0.25, color: "#64748b", fontSize: "0.78rem", lineHeight: 1.1, fontWeight: 500, letterSpacing: 0 }}>
+                <Typography title={strCompanyName} noWrap sx={{ mt: 0.25, color: blnHeaderOnDark ? "rgba(255,255,255,0.82)" : "#64748b", fontSize: "0.78rem", lineHeight: 1.1, fontWeight: 500, letterSpacing: 0 }}>
                   {strCompanyName}
                 </Typography>
               ) : null}
@@ -1711,8 +1780,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
             sx={{
               position: "relative",
               flexShrink: 0,
-              "--app-banner-text-color": "#172b4d",
-              "--app-banner-border-color": "#e5edf5",
+              "--app-banner-text-color": strHeaderTextColor,
+              "--app-banner-border-color": strHeaderBorderColor,
               borderRadius: 0,
               mt: blnCompactEssDashboard ? 0 : blnDashboardRoute ? { xs: -0.75, xl: -1 } : { xs: -1, xl: -1.5 },
               mx: blnCompactEssDashboard ? 0 : blnDashboardRoute ? { xs: -0.75, xl: -1 } : { xs: -1, xl: -1.5 },
@@ -1762,13 +1831,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 }}
               >
                 <Box sx={{ flexShrink: 0 }}>
-                  <AppBrandName />
+                  <AppBrandName blnOnDark={blnHeaderOnDark} />
                 </Box>
                 {strCompanyName ? (
                   <Divider orientation="vertical" flexItem sx={{ borderColor: "var(--app-banner-border-color)", my: 0.5, flexShrink: 0 }} />
                 ) : null}
                 {strCompanyName ? (
-                  <Typography title={strCompanyName} noWrap sx={{ minWidth: 0, flex: "1 1 auto", fontSize: { xs: "0.78rem", md: "0.9rem", lg: "0.95rem" }, lineHeight: 1, fontWeight: 400, color: "#334155", letterSpacing: 0 }}>
+                  <Typography title={strCompanyName} noWrap sx={{ minWidth: 0, flex: "1 1 auto", fontSize: { xs: "0.78rem", md: "0.9rem", lg: "0.95rem" }, lineHeight: 1, fontWeight: 400, color: blnHeaderOnDark ? strHeaderTextColor : "#334155", letterSpacing: 0 }}>
                     {strCompanyName}
                   </Typography>
                 ) : null}
@@ -1780,6 +1849,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
                     onError={() => setStrFailedCompanyLogoUrl(strCompanyLogoUrl)}
                     sx={{ height: { xs: 20, md: 24 }, maxWidth: { xs: 32, md: 48 }, objectFit: "contain", flexShrink: 0 }}
                   />
+                ) : null}
+                {objTenantHeaderTheme.strHeaderLabel ? (
+                  <TenantHeaderBadge strLabel={objTenantHeaderTheme.strHeaderLabel} strTextColor={strHeaderTextColor} />
                 ) : null}
               </Stack>
 
@@ -1804,7 +1876,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                     sx={{
                       fontSize: objAppBarHeadingFontSize,
                       fontWeight: 700,
-                      color: "#0f172a",
+                      color: blnHeaderOnDark ? strHeaderTextColor : "#0f172a",
                       letterSpacing: "-0.03em",
                       whiteSpace: "nowrap",
                       overflow: "hidden",

@@ -48,8 +48,11 @@ import {
 } from "@/features/payroll/utils/payslipDocument";
 import {
   buildPayslipFilterOptions,
+  buildPayslipFilterOptionsFromLookup,
   filterPayslipRows,
   getPayslipMonthKeys,
+  hasPayslipSearchCriteria,
+  type PayslipFilterLookup,
 } from "@/features/payroll/utils/payslipListFilters";
 
 type PayrollResultListPageProps = {
@@ -290,29 +293,46 @@ export default function PayrollResultListPage({
     canDoAny("PAYROLL_RESULT_LIST");
   const strEssBackRoute = encodeURIComponent("/ess/my-payslips");
   const strLatestPayrollMonth = useMemo(() => getLatestPayrollMonth(lstResults), [lstResults]);
+  // Payslips report: nothing loads on open - the user picks an employee and/or month and searches.
+  // The dropdowns come from a light lookup instead of the full list. ESS (own payslips) still auto-loads.
+  const blnSearchFirst = blnPayslipScreen && !blnEssMode;
+  const [objFilterLookup, setObjFilterLookup] = useState<PayslipFilterLookup | null>(null);
+  const [blnShowCriteriaHint, setBlnShowCriteriaHint] = useState(false);
   const dicPayslipFilterOptions = useMemo(
-    () => buildPayslipFilterOptions(lstResults, dicSearchDraft),
-    [lstResults, dicSearchDraft]
+    () => blnSearchFirst
+      ? buildPayslipFilterOptionsFromLookup(objFilterLookup, dicSearchDraft)
+      : buildPayslipFilterOptions(lstResults, dicSearchDraft),
+    [blnSearchFirst, objFilterLookup, lstResults, dicSearchDraft]
   );
 
   async function loadResults(objFilters: SearchForm = dicSearchApplied) {
+    if (blnSearchFirst && !hasPayslipSearchCriteria(objFilters)) {
+      setLstResults([]);
+      setBlnHasLoadedRows(false);
+      setBlnLoading(false);
+      return;
+    }
     setBlnLoading(true);
     setStrError("");
     try {
+      const lstMonthKeys = getPayslipMonthKeys(objFilters.strPayrollMonth);
       setLstResults(
         await objPayrollFreshness.trackLoad(() => payrollResultService.getPayrollResults(
           blnPayslipScreen
             ? {
-                // Every payslip is loaded and filtered on screen, so the run and month dropdowns
-                // keep every option after a search. Every employee with a payslip (Processed or
-                // Finalized run) - no Generate step needed.
+                // Every employee with a payslip (Processed or Finalized run) - no Generate step.
+                // The report screen narrows by employee and month on the server; run, status,
+                // department and location are filtered on screen.
                 strStatus: "All",
                 blnGeneratedPayslipsOnly: true,
                 blnEssReleasedOnly: blnEssMode,
                 blnExcludeCalculationDetails: true,
+                ...(blnSearchFirst
+                  ? { strSearchEmployee: objFilters.strSearchEmployee, strPayrollMonth: lstMonthKeys.join(",") }
+                  : {}),
               }
             : objFilters
-        ), blnPayslipScreen ? getPayslipMonthKeys(objFilters.strPayrollMonth) : objFilters.strPayrollMonth)
+        ), blnPayslipScreen ? lstMonthKeys : objFilters.strPayrollMonth)
       );
       setBlnHasLoadedRows(true);
     } catch (objError) {
@@ -345,6 +365,19 @@ export default function PayrollResultListPage({
           } catch {
             if (!blnCancelled) {
               setIntSelfEmployeeID(null);
+            }
+          }
+        }
+
+        if (blnSearchFirst) {
+          try {
+            const objLookup = await payrollResultService.getPayslipFilterOptions(false);
+            if (!blnCancelled) {
+              setObjFilterLookup(objLookup);
+            }
+          } catch (objError) {
+            if (!blnCancelled) {
+              setStrError(objError instanceof Error ? objError.message : "Unable to load payslip filters.");
             }
           }
         }
@@ -477,6 +510,7 @@ export default function PayrollResultListPage({
   }
 
   function clearFilters() {
+    setBlnShowCriteriaHint(false);
     setDicSearchDraft(dicEmptySearch);
     setDicSearchApplied(dicEmptySearch);
     loadResults(dicEmptySearch).catch(() => undefined);
@@ -613,6 +647,11 @@ export default function PayrollResultListPage({
 
   function applySearch() {
     if (blnBusy) return;
+    if (blnSearchFirst && !hasPayslipSearchCriteria(dicSearchDraft)) {
+      setBlnShowCriteriaHint(true);
+      return;
+    }
+    setBlnShowCriteriaHint(false);
     applyFilters(dicSearchDraft);
   }
 
@@ -796,6 +835,16 @@ export default function PayrollResultListPage({
       <Box className={masterStyles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {blnBusy ? (
           <MasterGridSkeleton strControlId="payroll-results.list.skeleton" intColumns={8} />
+        ) : blnSearchFirst && !blnHasLoadedRows ? (
+          <Box
+            data-controlid="payroll-results.list.select-criteria"
+            sx={{ py: 8, px: 2, textAlign: "center" }}
+          >
+            <SearchRoundedIcon sx={{ fontSize: 40, color: blnShowCriteriaHint ? "#d97706" : "#94a3b8", mb: 1 }} />
+            <Typography sx={{ fontWeight: 600, color: blnShowCriteriaHint ? "#b45309" : "#334155" }}>
+              {t("select_employee_month_prompt", "Select an employee and/or payroll month, then click Search to view payslips.")}
+            </Typography>
+          </Box>
         ) : (
         <CommonTable
           columns={lstTableColumns}
@@ -804,7 +853,9 @@ export default function PayrollResultListPage({
           exportFileName={blnPayslipScreen ? "payslips" : "payroll-results"}
           showExportOptions={canDoAny("export")}
           showPaginationSummary
-          emptyMessage={blnPayslipScreen
+          emptyMessage={blnSearchFirst
+            ? t("no_payslips_for_selection", "No payslips found for the selected employee / month.")
+            : blnPayslipScreen
             ? t(
                 "empty_generated_payslip_message",
                 "No generated payslips found. Generate payslips from a processed payroll run first."

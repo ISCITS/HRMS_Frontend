@@ -22,12 +22,13 @@ import { useActionRights } from "@/features/security/hooks/useActionRights";
 import ArrearSettingsPanel from "@/features/settings/components/ArrearSettingsPanel";
 import FNFRulesSettingsPanel from "@/features/settings/components/FNFRulesSettingsPanel";
 import PayrollDocumentFormatSettings from "@/features/settings/components/PayrollDocumentFormatSettings";
+import PayrollSettingsTabs, { LST_PAYROLL_SETTINGS_TABS, type PayrollSettingsTabCode } from "@/features/settings/components/PayrollSettingsTabs";
 import { settingsService } from "@/features/settings/services/settingsService";
 import type { ApproverEmployeeDto, ApproverSnapshotDto, DefaultApproverSource, LeaveSettingsConfigDto } from "@/features/settings/types";
 
 type ToastState = { blnOpen: boolean; strMessage: string; strSeverity: "success" | "error" };
 type SettingsCategoryKey = "leave" | "attendance" | "payroll" | "employee" | "security" | "notifications";
-type SearchOption = { strLabel: string; strCategory: SettingsCategoryKey; strAnchor: string };
+type SearchOption = { strLabel: string; strCategory: SettingsCategoryKey; strAnchor: string; strPayrollTab?: PayrollSettingsTabCode };
 
 const lstMonths = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const lstApproverSourceOptions: { strValue: DefaultApproverSource; strLabel: string }[] = [
@@ -39,7 +40,7 @@ const lstDaysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 const lstCategories: { strKey: SettingsCategoryKey; strLabel: string; objIcon: ReactNode; strSubtitle: string }[] = [
   { strKey: "leave", strLabel: "Leave", objIcon: <SpaRoundedIcon />, strSubtitle: "Configure leave calendar and default approval behaviour." },
   { strKey: "attendance", strLabel: "Attendance", objIcon: <CalendarMonthRoundedIcon />, strSubtitle: "Configure default approval behaviour for attendance related requests." },
-  { strKey: "payroll", strLabel: "Payroll", objIcon: <PaymentsRoundedIcon />, strSubtitle: "Choose the payslip, F&F report and CTC statement formats used across the application." },
+  { strKey: "payroll", strLabel: "Payroll", objIcon: <PaymentsRoundedIcon />, strSubtitle: "Payslip, F&F report and CTC formats, payslip header, arrears and F&F rules." },
   { strKey: "employee", strLabel: "Employee", objIcon: <GroupsRoundedIcon />, strSubtitle: "Employee settings will appear here when enabled." },
   { strKey: "security", strLabel: "Security", objIcon: <SecurityRoundedIcon />, strSubtitle: "Security settings will appear here when enabled." },
   { strKey: "notifications", strLabel: "Notifications", objIcon: <NotificationsRoundedIcon />, strSubtitle: "Notification settings will appear here when enabled." },
@@ -51,9 +52,7 @@ const lstSearchOptions: SearchOption[] = [
   { strLabel: "Regularization", strCategory: "attendance", strAnchor: "settings-section-regularization" },
   { strLabel: "Attendance Approver", strCategory: "attendance", strAnchor: "settings-section-regularization" },
   { strLabel: "Work on Holiday Approver", strCategory: "attendance", strAnchor: "settings-section-work-holiday" },
-  { strLabel: "Payslip Format", strCategory: "payroll", strAnchor: "settings-section-payslip-format" },
-  { strLabel: "F&F Report Format", strCategory: "payroll", strAnchor: "settings-section-fnf-format" },
-  { strLabel: "CTC Format", strCategory: "payroll", strAnchor: "settings-section-ctc-format" },
+  ...LST_PAYROLL_SETTINGS_TABS.map((objTab) => ({ strLabel: objTab.strLabel, strCategory: "payroll" as const, strAnchor: `settings-payroll-panel-${objTab.strCode}`, strPayrollTab: objTab.strCode })),
 ];
 
 function snapshotToOption(objSnapshot: ApproverSnapshotDto | null): ApproverEmployeeDto | null {
@@ -75,6 +74,7 @@ export default function LeaveSettingsPanel() {
   const blnCanEdit = canDo("settings", "EDIT");
   const blnReadOnly = !blnCanEdit;
   const [strActiveCategory, setStrActiveCategory] = useState<SettingsCategoryKey>("leave");
+  const [strPayrollTab, setStrPayrollTab] = useState<PayrollSettingsTabCode>("payslip-format");
   const [elMoreAnchor, setElMoreAnchor] = useState<HTMLElement | null>(null);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSaving, setBlnSaving] = useState(false);
@@ -220,6 +220,7 @@ export default function LeaveSettingsPanel() {
   function handleSearchSelect(objOption: SearchOption | null) {
     if (!objOption) return;
     setStrActiveCategory(objOption.strCategory);
+    if (objOption.strPayrollTab) setStrPayrollTab(objOption.strPayrollTab);
     window.setTimeout(() => document.getElementById(objOption.strAnchor)?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
   }
 
@@ -483,9 +484,23 @@ export default function LeaveSettingsPanel() {
         </>
       ) : strActiveCategory === "payroll" ? (
         <>
-          <PayrollDocumentFormatSettings onMessage={showToast} />
-          <ArrearSettingsPanel onMessage={showToast} />
-          <FNFRulesSettingsPanel onMessage={showToast} />
+          <PayrollSettingsTabs strActive={strPayrollTab} onChange={setStrPayrollTab} />
+          {/* Only the open tab is mounted, so each tab loads the saved values when opened. */}
+          <Box
+            key={strPayrollTab}
+            id={`settings-payroll-panel-${strPayrollTab}`}
+            role="tabpanel"
+            aria-labelledby={`settings-payroll-tab-${strPayrollTab}`}
+            sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}
+          >
+            {strPayrollTab === "arrears" ? (
+              <ArrearSettingsPanel onMessage={showToast} />
+            ) : strPayrollTab === "fnf-rules" ? (
+              <FNFRulesSettingsPanel onMessage={showToast} />
+            ) : (
+              <PayrollDocumentFormatSettings strSection={strPayrollTab} onMessage={showToast} />
+            )}
+          </Box>
         </>
       ) : (
         <Paper id="settings-section-placeholder" variant="outlined" sx={{ ...sxCard, py: 5, textAlign: "center" }}>

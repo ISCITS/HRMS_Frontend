@@ -14,11 +14,13 @@ describe("payslip view choice", () => {
     expect(getPayslipTabRequestView("monthly", true)).toBe("detailed");
     expect(getPayslipTabRequestView("monthly", false)).toBe("monthly");
     expect(getPayslipTabRequestView("client", true)).toBe("client");
+    expect(getPayslipTabRequestView("format3", true)).toBe("format3");
   });
 
   it("shows the Monthly / Detailed switch for the default format only", () => {
     expect(getPayslipSwitchView("monthly", true)).toBe("monthly");
     expect(getPayslipSwitchView("client", true)).toBeUndefined();
+    expect(getPayslipSwitchView("format3", true)).toBeUndefined();
     expect(getPayslipSwitchView("detailed", false)).toBeUndefined();
   });
 

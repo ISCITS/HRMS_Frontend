@@ -608,7 +608,6 @@ export default function AllocationEntityMasterPanel() {
                 }}
                 error={Boolean(dicErrors.intAllocationEntityTypeID)}
                 helperText={dicErrors.intAllocationEntityTypeID}
-                sx={{ gridColumn: "1 / -1" }}
                 fullWidth
               >
                 {lstActiveEntityTypes.map((dicType) => (
@@ -617,25 +616,6 @@ export default function AllocationEntityMasterPanel() {
                   </MenuItem>
                 ))}
               </TextField>
-              <TextField
-                className="app-mui-text-field"
-                ref={objNameRef}
-                label={t("field_name", "Entity Name")}
-                placeholder={t("dialog_name_placeholder", "Enter entity name")}
-                size="small"
-                required
-                value={dicForm.strEntityName}
-                inputProps={{ controlId: "allocation-entity.dialog.name.input" }}
-                disabled={strMode === "view"}
-                onChange={(objEvent) => {
-                  const strValue = objEvent.target.value;
-                  setDicErrors((dicPrevious) => ({ ...dicPrevious, strEntityName: undefined }));
-                  setDicForm((dicPrevious) => ({ ...dicPrevious, strEntityName: strValue }));
-                }}
-                error={Boolean(dicErrors.strEntityName)}
-                helperText={dicErrors.strEntityName}
-                fullWidth
-              />
               <TextField
                 className="app-mui-text-field"
                 ref={objCodeRef}
@@ -653,6 +633,54 @@ export default function AllocationEntityMasterPanel() {
                 }}
                 error={Boolean(dicErrors.strEntityCode)}
                 helperText={dicErrors.strEntityCode}
+                fullWidth
+              />
+              <TextField
+                className="app-mui-text-field"
+                ref={objNameRef}
+                label={t("field_name", "Entity Name")}
+                placeholder={t("dialog_name_placeholder", "Enter entity name")}
+                size="small"
+                required
+                value={dicForm.strEntityName}
+                inputProps={{ controlId: "allocation-entity.dialog.name.input" }}
+                disabled={strMode === "view"}
+                onChange={(objEvent) => {
+                  const strValue = objEvent.target.value;
+                  setDicErrors((dicPrevious) => ({ ...dicPrevious, strEntityName: undefined }));
+                  setDicForm((dicPrevious) => ({ ...dicPrevious, strEntityName: strValue }));
+                }}
+                error={Boolean(dicErrors.strEntityName)}
+                helperText={dicErrors.strEntityName}
+                sx={{ gridColumn: "1 / -1" }}
+                fullWidth
+              />
+              <TextField
+                className="app-mui-text-field"
+                label={t("field_address_line_1", "Address 1")}
+                placeholder={t("dialog_address_line_1_placeholder", "Building, street, area")}
+                size="small"
+                value={dicForm.strAddressLine1}
+                inputProps={{ controlId: "allocation-entity.dialog.address-line-1.input", maxLength: 250 }}
+                disabled={strMode === "view"}
+                onChange={(objEvent) =>
+                  setDicForm((dicPrevious) => ({ ...dicPrevious, strAddressLine1: objEvent.target.value }))
+                }
+                sx={{ gridColumn: "1 / -1" }}
+                fullWidth
+              />
+              <TextField
+                className="app-mui-text-field"
+                label={t("field_address_line_2", "Address 2")}
+                placeholder={t("dialog_address_line_2_placeholder", "City, state, PIN code")}
+                size="small"
+                value={dicForm.strAddressLine2}
+                inputProps={{ controlId: "allocation-entity.dialog.address-line-2.input", maxLength: 250 }}
+                disabled={strMode === "view"}
+                onChange={(objEvent) =>
+                  setDicForm((dicPrevious) => ({ ...dicPrevious, strAddressLine2: objEvent.target.value }))
+                }
+                sx={{ gridColumn: "1 / -1" }}
                 fullWidth
               />
               <TextField
@@ -688,43 +716,7 @@ export default function AllocationEntityMasterPanel() {
                 helperText={dicErrors.dtEffectiveTo}
                 fullWidth
               />
-              <TextField
-                className="app-mui-text-field"
-                label={t("field_address_line_1", "Address 1")}
-                placeholder={t("dialog_address_line_1_placeholder", "Building, street, area")}
-                size="small"
-                value={dicForm.strAddressLine1}
-                inputProps={{ controlId: "allocation-entity.dialog.address-line-1.input", maxLength: 250 }}
-                disabled={strMode === "view"}
-                onChange={(objEvent) =>
-                  setDicForm((dicPrevious) => ({ ...dicPrevious, strAddressLine1: objEvent.target.value }))
-                }
-                sx={{ gridColumn: "1 / -1" }}
-                fullWidth
-              />
-              <TextField
-                className="app-mui-text-field"
-                label={t("field_address_line_2", "Address 2")}
-                placeholder={t("dialog_address_line_2_placeholder", "City, state, PIN code")}
-                size="small"
-                value={dicForm.strAddressLine2}
-                inputProps={{ controlId: "allocation-entity.dialog.address-line-2.input", maxLength: 250 }}
-                disabled={strMode === "view"}
-                onChange={(objEvent) =>
-                  setDicForm((dicPrevious) => ({ ...dicPrevious, strAddressLine2: objEvent.target.value }))
-                }
-                sx={{ gridColumn: "1 / -1" }}
-                fullWidth
-              />
-              <EntityLogoField
-                strSavedLogo={strSavedLogo}
-                blnLoadingSaved={blnLogoLoading}
-                objChange={objLogoChange}
-                blnReadOnly={strMode === "view"}
-                onChange={setObjLogoChange}
-                onError={(strMessage) => showToast(strMessage, "error")}
-              />
-              <Box sx={{ gridColumn: "1 / -1" }}>
+              <Box>
                 <TextField
                   className="app-mui-text-field"
                   label={t("field_description", "Description")}
@@ -735,8 +727,6 @@ export default function AllocationEntityMasterPanel() {
                   onChange={(objEvent) =>
                     setDicForm((dicPrevious) => ({ ...dicPrevious, strDescription: objEvent.target.value }))
                   }
-                  multiline
-                  minRows={2}
                   fullWidth
                 />
               </Box>
@@ -752,6 +742,14 @@ export default function AllocationEntityMasterPanel() {
                   setDicForm((dicPrevious) => ({ ...dicPrevious, strDisplayOrder: objEvent.target.value }))
                 }
                 fullWidth
+              />
+              <EntityLogoField
+                strSavedLogo={strSavedLogo}
+                blnLoadingSaved={blnLogoLoading}
+                objChange={objLogoChange}
+                blnReadOnly={strMode === "view"}
+                onChange={setObjLogoChange}
+                onError={(strMessage) => showToast(strMessage, "error")}
               />
             </Box>
           </Box>

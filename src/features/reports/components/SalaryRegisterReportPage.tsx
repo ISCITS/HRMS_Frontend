@@ -22,7 +22,7 @@ import { useModuleActionAccess } from "@/features/security/hooks/useModuleAction
 import { useActionRights } from "@/features/security/hooks/useActionRights";
 import ArrearRegisterReport from "@/features/reports/components/ArrearRegisterReport";
 import { buildSalaryRegisterArrearLayout, type SalaryRegisterArrearLayout } from "@/features/reports/utils/salaryRegisterArrearLayout";
-import { buildSalaryRegisterWorkbook } from "@/features/reports/utils/salaryRegisterExcel";
+import { buildSalaryRegisterWorkbook, formatDateOfJoining } from "@/features/reports/utils/salaryRegisterExcel";
 
 const ARREAR_REGISTER_RIGHT = "report_arrear_register";
 // Per-user browser preference for the "Arrear columns separately" toggle.
@@ -53,6 +53,7 @@ type SearchForm = {
   strDesignationIDs: string;
   strLocationIDs: string;
   strAllocationEntityIDs: string;
+  strEmployeeCategoryIDs: string;
   strEmploymentStatus: string;
 };
 
@@ -72,6 +73,7 @@ function getDefaultSearch(): SearchForm {
     strDesignationIDs: "",
     strLocationIDs: "",
     strAllocationEntityIDs: "",
+    strEmployeeCategoryIDs: "",
     strEmploymentStatus: "Active",
   };
 }
@@ -210,6 +212,7 @@ export default function SalaryRegisterReportPage() {
   const [lstDesignationOptions, setLstDesignationOptions] = useState<SelectOption[]>([]);
   const [lstLocationOptions, setLstLocationOptions] = useState<SelectOption[]>([]);
   const [lstAllocationEntityOptions, setLstAllocationEntityOptions] = useState<SelectOption[]>([]);
+  const [lstEmployeeCategoryOptions, setLstEmployeeCategoryOptions] = useState<SelectOption[]>([]);
   const [blnLoadingMasters, setBlnLoadingMasters] = useState(true);
   const [blnLoadingReport, setBlnLoadingReport] = useState(false);
   const objPayrollFreshness = usePayrollDataFreshness(blnCanView);
@@ -255,6 +258,7 @@ export default function SalaryRegisterReportPage() {
         setLstDesignationOptions(dicOptions.lstDesignations.map((objDesignation) => ({ strValue: String(objDesignation.intID), strLabel: objDesignation.strLabel })));
         setLstLocationOptions(dicOptions.lstLocations.map((objLocation) => ({ strValue: String(objLocation.intID), strLabel: objLocation.strLabel })));
         setLstAllocationEntityOptions((dicOptions.lstAllocationEntities ?? []).map((objEntity) => ({ strValue: String(objEntity.intID), strLabel: objEntity.strLabel })));
+        setLstEmployeeCategoryOptions((dicOptions.lstEmployeeCategories ?? []).map((objCategory) => ({ strValue: String(objCategory.intID), strLabel: objCategory.strLabel })));
       })
       .catch((objError) => setStrError(objError instanceof Error ? objError.message : "Unable to load salary register filters."))
       .finally(() => { if (blnActive) setBlnLoadingMasters(false); });
@@ -275,6 +279,7 @@ export default function SalaryRegisterReportPage() {
         designation_id: dicSearch.strDesignationIDs,
         location_id: dicSearch.strLocationIDs,
         allocation_entity_id: dicSearch.strAllocationEntityIDs,
+        employee_category_id: dicSearch.strEmployeeCategoryIDs,
         employment_status: dicSearch.strEmploymentStatus,
       }), dicSearch.strPeriod, loadReport);
       setLstRows(objEnvelope.lstItems);
@@ -313,6 +318,7 @@ export default function SalaryRegisterReportPage() {
   const lstColumns = useMemo<CommonTableColumn<Record<string, ReactNode>>[]>(() => [
     { field: "strEmployeeName", headerName: "Employee Name", width: 190 },
     { field: "strEmployeeCode", headerName: "Employee No", width: 120 },
+    { field: "strDateOfJoining", headerName: "Date of Joining", width: 130 },
     { field: "strDepartment", headerName: "Department", width: 150 },
     { field: "strDesignation", headerName: "Designation", width: 230 },
     { field: "strLocation", headerName: "Location", width: 140 },
@@ -333,6 +339,7 @@ export default function SalaryRegisterReportPage() {
       __rowid: String(dicRow.intEmployeeID || intIndex),
       strEmployeeCode: dicRow.strEmployeeCode,
       strEmployeeName: dicRow.strEmployeeName,
+      strDateOfJoining: formatDateOfJoining(dicRow.dtDateOfJoining) || "-",
       strDepartment: dicRow.strDepartment ?? "-",
       strDesignation: dicRow.strDesignation ?? "-",
       strLocation: dicRow.strLocation ?? "-",
@@ -401,6 +408,9 @@ export default function SalaryRegisterReportPage() {
           </Box>
           <Box className={styles.reportSearchField} sx={{ flex: "1 1 200px", minWidth: 180 }}>
             <CheckboxMultiSelectFilter strLabel="Allocation Entity" strValue={dicSearch.strAllocationEntityIDs} lstOptions={lstAllocationEntityOptions} fnOnChange={(strValue) => setDicSearch((dicPrevious) => ({ ...dicPrevious, strAllocationEntityIDs: strValue }))} blnDisabled={blnPageLoading} />
+          </Box>
+          <Box className={styles.reportSearchField} sx={{ flex: "1 1 200px", minWidth: 180 }}>
+            <CheckboxMultiSelectFilter strLabel="Employee Category" strValue={dicSearch.strEmployeeCategoryIDs} lstOptions={lstEmployeeCategoryOptions} fnOnChange={(strValue) => setDicSearch((dicPrevious) => ({ ...dicPrevious, strEmployeeCategoryIDs: strValue }))} blnDisabled={blnPageLoading} />
           </Box>
           <Box className={styles.reportSearchField} sx={{ flex: "0 1 160px", minWidth: 150 }}>
             <TextField className="app-mui-text-field" select label="Employment Status" value={dicSearch.strEmploymentStatus} onChange={(objEvent) => setDicSearch((dicPrevious) => ({ ...dicPrevious, strEmploymentStatus: objEvent.target.value }))} disabled={blnPageLoading} fullWidth>

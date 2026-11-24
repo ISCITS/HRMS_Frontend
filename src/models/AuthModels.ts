@@ -38,6 +38,10 @@ export type TenantAuthDetails = {
   mfa_mode?: string | null;
   login_method?: string | null;
   labels?: Record<string, string>;
+  /** Optional tenant header colour (#RRGGBB). Null/absent keeps the default white header. */
+  header_color?: string | null;
+  /** Optional header badge text, e.g. "TEST ENVIRONMENT". */
+  header_label?: string | null;
 };
 
 export type NormalizedTenantAuthMode = "local" | "sso" | "otp" | "otp_mandatory" | "unknown";

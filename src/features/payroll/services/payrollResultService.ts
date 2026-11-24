@@ -9,6 +9,7 @@ import type {
   TdsReportRow,
   VariablePayRegisterRow,
 } from "@/features/payroll/types";
+import type { PayslipFilterLookup } from "@/features/payroll/utils/payslipListFilters";
 
 async function requestApi<TData>(objOptions: {
   strPath: string;
@@ -77,6 +78,16 @@ export const payrollResultService = {
     const strQuery = objParams.toString();
     const objResult = await requestApi<PayrollResultListRecord[]>({
       strPath: `/payroll/results${strQuery ? `?${strQuery}` : ""}`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_RESULT_LIST",
+    });
+    return objResult.Data;
+  },
+
+  /** Payslips screen dropdown choices (employees and runs with payslips) - no payroll figures. */
+  async getPayslipFilterOptions(blnEssReleasedOnly = false): Promise<PayslipFilterLookup> {
+    const objResult = await requestApi<PayslipFilterLookup>({
+      strPath: `/payroll/results/payslip-filter-options${blnEssReleasedOnly ? "?blnEssReleasedOnly=true" : ""}`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_RESULT_LIST",
     });

@@ -16,7 +16,7 @@ import {
   TextField,
   Typography
 } from "@mui/material";
-import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent, type InputHTMLAttributes } from "react";
 import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import CommonSearchableMultiSelect from "@/Common/components/CommonSearchableMultiSelect";
@@ -28,6 +28,7 @@ import type {
   TenantInformationSummary,
 } from "@/models/TenantAdministrationModels";
 import { tenantAdministrationService, tenantOnboardingService } from "@/services";
+import { getReadableTextColor } from "@/lib/tenantHeaderTheme";
 
 type WizardStep = 0 | 1 | 2 | 3;
 
@@ -42,6 +43,8 @@ type TenantEditorFormState = {
     strContactPersonName: string;
     strContactEmailAddress: string;
     strContactMobileNumber: string;
+    strHeaderColor: string;
+    strHeaderLabel: string;
     intDefaultLanguageID: number | "";
     intSecondaryLanguageID: number | "";
     intDefaultCountryID: number | "";
@@ -110,6 +113,8 @@ const dicEmptyForm: TenantEditorFormState = {
     strContactPersonName: "",
     strContactEmailAddress: "",
     strContactMobileNumber: "",
+    strHeaderColor: "",
+    strHeaderLabel: "",
     intDefaultLanguageID: "",
     intSecondaryLanguageID: "",
     intDefaultCountryID: "",
@@ -222,6 +227,8 @@ export default function TenantAdminTenantEditorPage({ intTenantID }: TenantEdito
         strContactPersonName: objPayload.objForm.strContactPersonName ?? "",
         strContactEmailAddress: objPayload.objForm.strContactEmailAddress ?? "",
         strContactMobileNumber: objPayload.objForm.strContactMobileNumber ?? "",
+        strHeaderColor: objPayload.objForm.strHeaderColor ?? "",
+        strHeaderLabel: objPayload.objForm.strHeaderLabel ?? "",
         intDefaultLanguageID: objPayload.objForm.intDefaultLanguageID,
         intSecondaryLanguageID: objPayload.objForm.intSecondaryLanguageID ?? "",
         intDefaultCountryID: objPayload.objForm.intDefaultCountryID ?? "",
@@ -446,6 +453,74 @@ export default function TenantAdminTenantEditorPage({ intTenantID }: TenantEdito
             fullWidth
           />
         </Box>
+        <Typography variant="subtitle1" sx={{ fontWeight: 600, pt: 1 }}>Application Header</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: "-8px !important" }}>
+          Use a colour and label to mark non-production tenants (e.g. a test copy of a client). Leave both blank for the default white header.
+        </Typography>
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2, alignItems: "start" }}>
+          <Stack direction="row" spacing={1.5} alignItems="flex-start">
+            <Box
+              component="input"
+              type="color"
+              aria-label="Pick header colour"
+              value={isValidHeaderColor(objForm.basic.strHeaderColor) ? normalizeHeaderColor(objForm.basic.strHeaderColor) : "#FFFFFF"}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setField("basic.strHeaderColor", e.target.value.toUpperCase())}
+              sx={{ width: 56, height: 56, p: 0.5, border: "1px solid", borderColor: "divider", borderRadius: 1, cursor: "pointer", backgroundColor: "transparent", flexShrink: 0 }}
+              {...({ "data-control-id": "tenant-admin.editor.header-color.picker" } as Record<string, string>)}
+            />
+            <TextField
+              label="Header Colour"
+              placeholder="#FFE0B2"
+              inputProps={{ "controlId": "tenant-admin.editor.header-color.input", maxLength: 7 }}
+              value={objForm.basic.strHeaderColor}
+              onChange={(e) => setField("basic.strHeaderColor", e.target.value.trim().toUpperCase())}
+              error={Boolean(dicErrors["basic.strHeaderColor"])}
+              helperText={dicErrors["basic.strHeaderColor"] ?? "Hex colour, e.g. #FFE0B2. Blank = default white."}
+              fullWidth
+            />
+            <Button
+              variant="outlined"
+              onClick={() => setField("basic.strHeaderColor", "")}
+              disabled={!objForm.basic.strHeaderColor}
+              sx={{ mt: 1, whiteSpace: "nowrap", flexShrink: 0 }}
+            >
+              Reset
+            </Button>
+          </Stack>
+          <TextField
+            label="Header Label"
+            placeholder="TEST ENVIRONMENT"
+            inputProps={{ "controlId": "tenant-admin.editor.header-label.input", maxLength: 40 }}
+            value={objForm.basic.strHeaderLabel}
+            onChange={(e) => setField("basic.strHeaderLabel", e.target.value)}
+            error={Boolean(dicErrors["basic.strHeaderLabel"])}
+            helperText={dicErrors["basic.strHeaderLabel"] ?? "Optional badge shown in the header. Max 40 characters."}
+            fullWidth
+          />
+        </Box>
+        {objForm.basic.strHeaderColor || objForm.basic.strHeaderLabel.trim() ? (
+          <Box
+            sx={{
+              px: 2,
+              py: 1.25,
+              borderRadius: 1,
+              border: "1px solid",
+              borderColor: "divider",
+              display: "flex",
+              alignItems: "center",
+              gap: 1.5,
+              backgroundColor: isValidHeaderColor(objForm.basic.strHeaderColor) ? normalizeHeaderColor(objForm.basic.strHeaderColor) : "#FFFFFF",
+              color: getReadableTextColor(isValidHeaderColor(objForm.basic.strHeaderColor) ? normalizeHeaderColor(objForm.basic.strHeaderColor) : "#FFFFFF")
+            }}
+          >
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>Header preview</Typography>
+            {objForm.basic.strHeaderLabel.trim() ? (
+              <Box component="span" sx={{ px: 1, py: 0.25, borderRadius: 1, fontSize: 12, fontWeight: 700, letterSpacing: 0.5, border: "1px solid currentColor" }}>
+                {objForm.basic.strHeaderLabel.trim()}
+              </Box>
+            ) : null}
+          </Box>
+        ) : null}
       </Stack>
     );
   }
@@ -626,6 +701,15 @@ function toNullableText(strValue: string) {
   return strTrimmed ? strTrimmed : null;
 }
 
+function normalizeHeaderColor(strValue: string) {
+  const strTrimmed = strValue.trim().toUpperCase();
+  return strTrimmed.startsWith("#") ? strTrimmed : `#${strTrimmed}`;
+}
+
+function isValidHeaderColor(strValue: string) {
+  return /^#[0-9A-F]{6}$/.test(normalizeHeaderColor(strValue));
+}
+
 function isValidEmail(strValue: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(strValue.trim());
 }
@@ -640,6 +724,8 @@ function buildUpdatePayload(
     strContactPersonName: toNullableText(objForm.basic.strContactPersonName),
     strContactEmailAddress: toNullableText(objForm.basic.strContactEmailAddress),
     strContactMobileNumber: toNullableText(objForm.basic.strContactMobileNumber),
+    strHeaderColor: objForm.basic.strHeaderColor.trim() ? normalizeHeaderColor(objForm.basic.strHeaderColor) : null,
+    strHeaderLabel: toNullableText(objForm.basic.strHeaderLabel),
     intDefaultLanguageID: Number(objForm.basic.intDefaultLanguageID),
     intSecondaryLanguageID: objForm.basic.intSecondaryLanguageID === "" ? null : Number(objForm.basic.intSecondaryLanguageID),
     intDefaultCountryID: objForm.basic.intDefaultCountryID === "" ? null : Number(objForm.basic.intDefaultCountryID),
@@ -704,6 +790,8 @@ function validateStep(
     else if (!/^[A-Z0-9_-]+$/.test(objForm.basic.strTenantCode.trim().toUpperCase())) dicErrors["basic.strTenantCode"] = "Use uppercase letters, numbers, hyphen, or underscore only.";
     if (objForm.basic.strContactEmailAddress.trim() && !isValidEmail(objForm.basic.strContactEmailAddress)) dicErrors["basic.strContactEmailAddress"] = "Enter a valid contact email.";
     if (objForm.basic.intDefaultLanguageID === "") dicErrors["basic.intDefaultLanguageID"] = "Default language is required.";
+    if (objForm.basic.strHeaderColor.trim() && !isValidHeaderColor(objForm.basic.strHeaderColor)) dicErrors["basic.strHeaderColor"] = "Enter a hex colour like #FFE0B2, or leave blank.";
+    if (objForm.basic.strHeaderLabel.trim().length > 40) dicErrors["basic.strHeaderLabel"] = "Header label must be 40 characters or fewer.";
   }
   if (intStep === 2) {
     if (objForm.auth.intAuthModeTypeID === "") dicErrors["auth.intAuthModeTypeID"] = "Authentication mode is required.";
