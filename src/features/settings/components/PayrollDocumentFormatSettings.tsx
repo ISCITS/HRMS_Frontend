@@ -4,14 +4,13 @@ import CancelRoundedIcon from "@mui/icons-material/CancelRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
-import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Paper, Stack, Switch, TextField, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
+import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Paper, Stack, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { DottedLoader } from "@/components/shared/BlockingLoader";
 import { resetPayrollDocumentFormats } from "@/features/payroll/utils/payrollDocumentFormat";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
-import PayslipHeaderEditor from "@/features/settings/components/PayslipHeaderEditor";
 import { settingsService } from "@/features/settings/services/settingsService";
 import type { PayrollDocumentFormatConfigDto, PayrollDocumentFormatSaveRequest, PayrollDocumentTemplateDto, PayslipHeaderLine } from "@/features/settings/types";
 import { cloneHeaderLines, sameHeaderLines, toSaveHeaderLines, validateHeaderLines } from "@/features/settings/utils/payslipHeader";
@@ -40,11 +39,12 @@ type CtcFormat = PayrollDocumentFormatSaveRequest["strCtcFormat"];
 type FNFFormat = PayrollDocumentFormatSaveRequest["strFNFReportFormat"];
 type CtcSingleFormat = Exclude<CtcFormat, "both">;
 
-/** The Settings > Payroll tab this component shows (one section per tab). */
-export type PayrollDocumentFormatSection = "payslip-format" | "payslip-header" | "fnf-format" | "ctc-format";
+/** The Settings > Payroll tab this component shows (one section per tab). The payslip header,
+ * logo and leave switch are edited on Salary Component > Payslip Configuration
+ * (PayslipHeaderSettingsSection); saves from here send them back unchanged. */
+export type PayrollDocumentFormatSection = "payslip-format" | "fnf-format" | "ctc-format";
 const DIC_SAVED_MESSAGE: Record<PayrollDocumentFormatSection, string> = {
   "payslip-format": "Payslip format saved. Every screen, including employee self-service, now opens payslips in this format.",
-  "payslip-header": "Payslip header and leave balance saved.",
   "fnf-format": "F&F report format saved.",
   "ctc-format": "CTC statement format saved.",
 };
@@ -307,58 +307,6 @@ export default function PayrollDocumentFormatSettings({ strSection, onMessage }:
             {objSelectedPayslipTemplate?.strName ?? "This format"} is a monthly payslip (needs the &quot;Payslip - Monthly&quot; right; others get our Detailed payslip).
           </Typography>
         )}
-      </Paper>
-      ) : null}
-
-      {strSection === "payslip-header" ? (
-      <Paper id="settings-section-payslip-header" variant="outlined" sx={sxCard}>
-        <Typography sx={sxSubHeading}>Payslip Header &amp; Leave</Typography>
-        <Typography sx={sxSubCaption}>
-          The lines above the title of every payslip and F&amp;F report, in every format. Allocation entity fields use the employee&apos;s entity (as of the payroll run).
-        </Typography>
-        <TextField
-          select
-          size="small"
-          className="app-mui-text-field"
-          label="Logo"
-          value={objDraft.strLogoSource}
-          disabled={blnReadOnly}
-          onChange={(objEvent) => setObjDraft({ ...objDraft, strLogoSource: objEvent.target.value })}
-          inputProps={{ controlId: "settings.payslip-header.logo.select" }}
-          sx={{ mb: 1.5, width: { xs: "100%", sm: 420 } }}
-        >
-          {(objConfig.lstLogoSources ?? [{ strKey: "none", strLabel: "No logo" }]).map((objSource) => (
-            <MenuItem key={objSource.strKey} value={objSource.strKey}>{objSource.strLabel}</MenuItem>
-          ))}
-        </TextField>
-        <PayslipHeaderEditor
-          blnShowLogo={objDraft.strLogoSource !== "none"}
-          lstLines={objDraft.lstHeaderLines}
-          lstFields={objConfig.lstHeaderFields ?? []}
-          lstStyles={objConfig.lstHeaderStyles ?? ["heading", "bold", "normal"]}
-          lstDefaultLines={objConfig.lstDefaultHeaderLines ?? []}
-          objLimits={objConfig.dicHeaderLimits}
-          blnReadOnly={blnReadOnly}
-          strError={blnDirty ? strHeaderError : null}
-          onChange={(lstHeaderLines) => setObjDraft({ ...objDraft, lstHeaderLines })}
-        />
-        <Box sx={{ mt: 2 }}>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={objDraft.blnShowLeaveBalance}
-                disabled={blnReadOnly}
-                onChange={(objEvent) => setObjDraft({ ...objDraft, blnShowLeaveBalance: objEvent.target.checked })}
-                inputProps={{ "aria-label": "Show leave balance on payslip" }}
-                data-controlid="settings.payslip-header.show-leave.switch"
-              />
-            }
-            label={<Typography sx={{ fontWeight: 700, color: "#172033", fontSize: "0.9rem" }}>Show leave balance on payslip</Typography>}
-          />
-          <Typography sx={{ color: "#60749b", fontSize: "0.75rem" }}>
-            The leave availed and balance per leave type on Format 1 (Leave Balance row) and Format 3 (Leave Balance panel) payslips. Our format has no leave section.
-          </Typography>
-        </Box>
       </Paper>
       ) : null}
 

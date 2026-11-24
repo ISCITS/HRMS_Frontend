@@ -4,7 +4,7 @@ import CancelRoundedIcon from "@mui/icons-material/CancelRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button, FormControlLabel, MenuItem, Snackbar, Stack, Switch, TextField, Typography } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { DottedLoader } from "@/components/shared/BlockingLoader";
@@ -57,26 +57,18 @@ export default function PayslipHeaderSettingsSection({ blnReadOnly: blnPageReadO
     setObjDraft(toDraft(objNext));
   }
 
-  useEffect(() => {
-    if (!blnExpanded || objConfig || blnRightsLoading || !blnCanView) return;
-    let blnCancelled = false;
+  /** Opens or closes the panel; the saved settings load on the first open (and after a failed load). */
+  function handleExpand(blnNext: boolean) {
+    setBlnExpanded(blnNext);
+    if (!blnNext || objConfig || blnLoading) return;
     setBlnLoading(true);
     setStrLoadError(null);
     settingsService
       .getPayrollDocumentFormat()
-      .then((objResult) => {
-        if (!blnCancelled) applyConfig(objResult);
-      })
-      .catch(async (objError) => {
-        if (!blnCancelled) setStrLoadError((await createApiRequestError(objError)).message);
-      })
-      .finally(() => {
-        if (!blnCancelled) setBlnLoading(false);
-      });
-    return () => {
-      blnCancelled = true;
-    };
-  }, [blnExpanded, objConfig, blnRightsLoading, blnCanView]);
+      .then((objResult) => applyConfig(objResult))
+      .catch(async (objError) => setStrLoadError((await createApiRequestError(objError)).message))
+      .finally(() => setBlnLoading(false));
+  }
 
   if (blnRightsLoading || !blnCanView) return null;
 
@@ -120,7 +112,7 @@ export default function PayslipHeaderSettingsSection({ blnReadOnly: blnPageReadO
       <Accordion
         disableGutters
         expanded={blnExpanded}
-        onChange={(_objEvent, blnNext) => setBlnExpanded(blnNext)}
+        onChange={(_objEvent, blnNext) => handleExpand(blnNext)}
         sx={{ mt: 1, border: "1px solid #dfe9f5", borderRadius: "12px !important", boxShadow: "none", "&:before": { display: "none" } }}
         data-testid="salary-components.editor.payslip-header.section"
       >
