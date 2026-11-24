@@ -48,6 +48,15 @@ describe("payroll document formats", () => {
     expect(resolveConfiguredPayslipView(CLIENT, ["monthly", "detailed"], false)).toBe("detailed");
   });
 
+  it("opens Format 3 like Format 1 (a monthly payslip); F&F reports have no Format 3", () => {
+    const FORMAT3: PayrollDocumentFormats = { ...OURS_DETAILED, strPayslipFormat: "format3" };
+    expect(normalizePayrollDocumentFormats(FORMAT3)).toEqual(FORMAT3);
+    expect(normalizePayrollDocumentFormats({ ...FORMAT3, strFNFReportFormat: "format3" }).strFNFReportFormat).toBe("default");
+    expect(resolveConfiguredPayslipView(FORMAT3, ["monthly", "detailed"])).toBe("format3");
+    expect(resolveConfiguredPayslipView(FORMAT3, ["detailed"])).toBe("detailed");
+    expect(resolveConfiguredPayslipView(FORMAT3, ["monthly"], false)).toBe("monthly");
+  });
+
   it("refuses when the user holds no payslip view", () => {
     expect(resolveConfiguredPayslipView(OURS_MONTHLY, [])).toBe("none");
     expect(resolveConfiguredPayslipView(CLIENT, [])).toBe("none");

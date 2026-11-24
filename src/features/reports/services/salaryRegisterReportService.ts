@@ -7,6 +7,8 @@ export type SalaryRegisterRow = {
   intEmployeeID: number;
   strEmployeeCode: string;
   strEmployeeName: string;
+  // ISO "YYYY-MM-DD" (null when not recorded).
+  dtDateOfJoining?: string | null;
   strDepartment: string | null;
   strDesignation: string | null;
   strLocation: string | null;

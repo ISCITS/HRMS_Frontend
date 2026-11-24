@@ -1,4 +1,7 @@
-import type { PayslipDocumentView, PayslipFormat, PayslipView } from "@/features/payroll/services/payslipService";
+import { isPayslipLayoutView, type PayslipDocumentView, type PayslipFormat, type PayslipView } from "@/features/payroll/services/payslipService";
+
+/** F&F reports have our format and Format 1 only. */
+export type FNFReportFormat = "default" | "client";
 
 /**
  * Settings > Payroll: the formats every screen opens a payslip / F&F report in, set once instead of
@@ -7,7 +10,7 @@ import type { PayslipDocumentView, PayslipFormat, PayslipView } from "@/features
 export type PayrollDocumentFormats = {
   strPayslipFormat: PayslipFormat;
   strPayslipView: PayslipView;
-  strFNFReportFormat: PayslipFormat;
+  strFNFReportFormat: FNFReportFormat;
 };
 
 export const DEFAULT_PAYROLL_DOCUMENT_FORMATS: PayrollDocumentFormats = {
@@ -16,16 +19,13 @@ export const DEFAULT_PAYROLL_DOCUMENT_FORMATS: PayrollDocumentFormats = {
   strFNFReportFormat: "default",
 };
 
-function pickFormat(objValue: unknown): PayslipFormat {
-  return objValue === "client" ? "client" : "default";
-}
-
 /** Anything not recognised falls back to our format / Monthly. */
 export function normalizePayrollDocumentFormats(objValue: Partial<Record<keyof PayrollDocumentFormats, unknown>> | null | undefined): PayrollDocumentFormats {
+  const objPayslipFormat = objValue?.strPayslipFormat;
   return {
-    strPayslipFormat: pickFormat(objValue?.strPayslipFormat),
+    strPayslipFormat: isPayslipLayoutView(objPayslipFormat) ? objPayslipFormat : "default",
     strPayslipView: objValue?.strPayslipView === "detailed" ? "detailed" : "monthly",
-    strFNFReportFormat: pickFormat(objValue?.strFNFReportFormat),
+    strFNFReportFormat: objValue?.strFNFReportFormat === "client" ? "client" : "default",
   };
 }
 
@@ -33,7 +33,8 @@ export function normalizePayrollDocumentFormats(objValue: Partial<Record<keyof P
  * The payslip a screen opens, from the configured format and view and the views the user's group
  * holds ("Payslip - Monthly" / "Payslip - Detailed"):
  * - no view allowed -> "none";
- * - client format (the screen offers it, and Monthly is allowed - it is a monthly payslip) -> "client";
+ * - Format 1 / Format 3 (the screen offers layouts, and Monthly is allowed - they are monthly
+ *   payslips) -> "client" / "format3";
  * - otherwise the configured view when allowed, else the view the user does hold.
  */
 export function resolveConfiguredPayslipView(
@@ -45,8 +46,8 @@ export function resolveConfiguredPayslipView(
   if (lstAllowed.length === 0) {
     return "none";
   }
-  if (blnClientFormat && objFormats.strPayslipFormat === "client" && lstAllowed.includes("monthly")) {
-    return "client";
+  if (blnClientFormat && isPayslipLayoutView(objFormats.strPayslipFormat) && lstAllowed.includes("monthly")) {
+    return objFormats.strPayslipFormat;
   }
   return lstAllowed.includes(objFormats.strPayslipView) ? objFormats.strPayslipView : lstAllowed[0];
 }

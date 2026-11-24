@@ -36,7 +36,8 @@ export type LeaveSettingsConfigDto = {
 
 // ---- Payroll: payslip & F&F report formats ----
 export type PayrollDocumentTemplateDto = {
-  strFormat: "default" | "client";
+  /** "format3" (Format 3) is offered for payslips only. */
+  strFormat: "default" | "client" | "format3";
   strName: string;
   strDescription: string;
   blnIsDefault: boolean;
@@ -45,7 +46,7 @@ export type PayrollDocumentTemplateDto = {
 };
 
 export type PayrollDocumentFormatConfigDto = {
-  strPayslipFormat: "default" | "client";
+  strPayslipFormat: "default" | "client" | "format3";
   strPayslipView: "monthly" | "detailed";
   strFNFReportFormat: "default" | "client";
   /** CTC Statement: our format ("default"), Format 1 ("client") or both (the screen switches between

@@ -22,7 +22,7 @@ import { useModuleActionAccess } from "@/features/security/hooks/useModuleAction
 import { useActionRights } from "@/features/security/hooks/useActionRights";
 import ArrearRegisterReport from "@/features/reports/components/ArrearRegisterReport";
 import { buildSalaryRegisterArrearLayout, type SalaryRegisterArrearLayout } from "@/features/reports/utils/salaryRegisterArrearLayout";
-import { buildSalaryRegisterWorkbook } from "@/features/reports/utils/salaryRegisterExcel";
+import { buildSalaryRegisterWorkbook, formatDateOfJoining } from "@/features/reports/utils/salaryRegisterExcel";
 
 const ARREAR_REGISTER_RIGHT = "report_arrear_register";
 // Per-user browser preference for the "Arrear columns separately" toggle.
@@ -313,6 +313,7 @@ export default function SalaryRegisterReportPage() {
   const lstColumns = useMemo<CommonTableColumn<Record<string, ReactNode>>[]>(() => [
     { field: "strEmployeeName", headerName: "Employee Name", width: 190 },
     { field: "strEmployeeCode", headerName: "Employee No", width: 120 },
+    { field: "strDateOfJoining", headerName: "Date of Joining", width: 130 },
     { field: "strDepartment", headerName: "Department", width: 150 },
     { field: "strDesignation", headerName: "Designation", width: 230 },
     { field: "strLocation", headerName: "Location", width: 140 },
@@ -333,6 +334,7 @@ export default function SalaryRegisterReportPage() {
       __rowid: String(dicRow.intEmployeeID || intIndex),
       strEmployeeCode: dicRow.strEmployeeCode,
       strEmployeeName: dicRow.strEmployeeName,
+      strDateOfJoining: formatDateOfJoining(dicRow.dtDateOfJoining) || "-",
       strDepartment: dicRow.strDepartment ?? "-",
       strDesignation: dicRow.strDesignation ?? "-",
       strLocation: dicRow.strLocation ?? "-",

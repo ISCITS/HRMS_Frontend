@@ -24,6 +24,7 @@ import type {
   FNFStatementRecord,
 } from "@/features/payroll/types";
 import type { PayslipFormat } from "@/features/payroll/services/payslipService";
+import type { FNFReportFormat } from "@/features/payroll/utils/payrollDocumentFormat";
 
 async function requestApi<TData>(objOptions: {
   strPath: string;
@@ -155,7 +156,7 @@ export const fnfSettlementService = {
     return objResult.Data;
   },
   /** Generates a new F&F report version; returns it in the chosen format (both are kept with the version). */
-  async generatePayslip(strRecordUUID: string, strFormat: PayslipFormat = "default"): Promise<FNFPayslipDocument> {
+  async generatePayslip(strRecordUUID: string, strFormat: FNFReportFormat = "default"): Promise<FNFPayslipDocument> {
     const objResult = await requestApi<FNFPayslipDocument>({
       strPath: `/payroll/fnf-settlements/${strRecordUUID}/payslip?format=${strFormat}`,
       strMethod: "POST",
@@ -193,7 +194,7 @@ export const fnfSettlementService = {
     return objResult.Data;
   },
   /** An F&F report: our format, or the client format (shown as a page, downloaded as a PDF). */
-  async getPayslipDocument(strRecordUUID: string, strFormat: PayslipFormat = "default"): Promise<FNFPayslipDocument> {
+  async getPayslipDocument(strRecordUUID: string, strFormat: FNFReportFormat = "default"): Promise<FNFPayslipDocument> {
     const objResult = await requestApi<FNFPayslipDocument>({
       strPath: `/payroll/fnf-settlements/payslips/${strRecordUUID}/document?format=${strFormat}`,
       strMethod: "GET",
@@ -209,11 +210,12 @@ export const fnfSettlementService = {
     });
     return objResult.Data;
   },
-  async getPayslipBundle(lstFNFPayslipIDs: string[], lstRegularPayslipIDs: string[], strFormat: PayslipFormat = "default"): Promise<FNFPayslipDocument> {
+  /** strFormat: the F&F reports' format; strPayslipFormat: the regular payslips' (strFormat when not given). */
+  async getPayslipBundle(lstFNFPayslipIDs: string[], lstRegularPayslipIDs: string[], strFormat: FNFReportFormat = "default", strPayslipFormat?: PayslipFormat): Promise<FNFPayslipDocument> {
     const objResult = await requestApi<FNFPayslipDocument>({
       strPath: "/payroll/fnf-settlements/payslips/bundle",
       strMethod: "POST",
-      objBody: { lstFNFPayslipIDs, lstRegularPayslipIDs, strFormat },
+      objBody: { lstFNFPayslipIDs, lstRegularPayslipIDs, strFormat, ...(strPayslipFormat ? { strPayslipFormat } : {}) },
       strMenuAction: "PAYROLL_FNF_EXPORT",
     });
     return objResult.Data;

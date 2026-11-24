@@ -37,30 +37,49 @@ const lstCtcPeriodOptions: { strView: CtcPeriod; strLabel: string }[] = [
 ];
 const DIC_DOCUMENT_LABEL: Record<DocumentKind, string> = { payslip: "Payslip", fnf: "F&F report", ctc: "CTC statement" };
 type CtcFormat = PayrollDocumentFormatSaveRequest["strCtcFormat"];
+type FNFFormat = PayrollDocumentFormatSaveRequest["strFNFReportFormat"];
+type CtcSingleFormat = Exclude<CtcFormat, "both">;
+
+/** The Settings > Payroll tab this component shows (one section per tab). */
+export type PayrollDocumentFormatSection = "payslip-format" | "payslip-header" | "fnf-format" | "ctc-format";
+const DIC_SAVED_MESSAGE: Record<PayrollDocumentFormatSection, string> = {
+  "payslip-format": "Payslip format saved. Every screen, including employee self-service, now opens payslips in this format.",
+  "payslip-header": "Payslip header and leave balance saved.",
+  "fnf-format": "F&F report format saved.",
+  "ctc-format": "CTC statement format saved.",
+};
 
 /** The CTC formats a setting offers: one of them, or both ("both"). */
-function ctcFormats(strCtcFormat: CtcFormat): DocumentFormat[] {
+function ctcFormats(strCtcFormat: CtcFormat): CtcSingleFormat[] {
   return strCtcFormat === "both" ? ["default", "client"] : [strCtcFormat];
 }
 
 /** Ticks or unticks one CTC format; at least one always stays offered. */
 function toggleCtcFormat(strCtcFormat: CtcFormat, strFormat: DocumentFormat): CtcFormat {
+  if (strFormat !== "default" && strFormat !== "client") return strCtcFormat;
   const lstCurrent = ctcFormats(strCtcFormat);
   const lstNext = lstCurrent.includes(strFormat) ? lstCurrent.filter((strItem) => strItem !== strFormat) : [...lstCurrent, strFormat];
   if (lstNext.length === 0) return strCtcFormat;
   return lstNext.length === 2 ? "both" : lstNext[0];
 }
 
+/** F&F reports have our format and Format 1 only. */
+function toFNFFormat(strFormat: DocumentFormat, strCurrent: FNFFormat): FNFFormat {
+  return strFormat === "default" || strFormat === "client" ? strFormat : strCurrent;
+}
+
 type Props = {
+  strSection: PayrollDocumentFormatSection;
   onMessage: (strMessage: string, strSeverity: "success" | "error") => void;
 };
 
 /**
- * Settings > Payroll: the payslip, F&F report and CTC statement formats every screen opens (payroll
- * run, results, payslips, ESS, F&F, Reports > CTC Statement). Rights: "Payslip & F&F Format - View"
- * to see, "- Edit" to change.
+ * Settings > Payroll: one of the payslip format, payslip header, F&F report format and CTC format
+ * tabs. Every screen opens these formats (payroll run, results, payslips, ESS, F&F, Reports > CTC
+ * Statement). Each tab loads the saved settings when opened, so a save never overwrites another
+ * tab's saved values. Rights: "Payslip & F&F Format - View" to see, "- Edit" to change.
  */
-export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
+export default function PayrollDocumentFormatSettings({ strSection, onMessage }: Props) {
   const { canDo, blnLoading: blnRightsLoading } = useActionRights();
   const blnCanView = canDo("settings", PAYROLL_FORMAT_VIEW);
   const blnCanEdit = canDo("settings", PAYROLL_FORMAT_EDIT);
@@ -139,7 +158,7 @@ export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
       applyConfig(await settingsService.savePayrollDocumentFormat({ ...objDraft, lstHeaderLines: toSaveHeaderLines(objDraft.lstHeaderLines) }));
       // Screens opened from here on use the new formats.
       resetPayrollDocumentFormats();
-      onMessage("Payslip, F&F report and CTC statement formats saved. Every screen now opens these formats.", "success");
+      onMessage(DIC_SAVED_MESSAGE[strSection], "success");
     } catch (objError) {
       onMessage((await createApiRequestError(objError)).message, "error");
     } finally {
@@ -192,7 +211,7 @@ export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
 
   function renderTemplates(strDocument: DocumentKind, lstTemplates: PayrollDocumentTemplateDto[], lstSelected: DocumentFormat[], fnSelect: (strFormat: DocumentFormat) => void, blnMultiple = false) {
     return (
-      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(260px, 1fr))" }, gap: 1.5 }}>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(260px, 1fr))", lg: `repeat(${Math.min(lstTemplates.length, 3)}, minmax(260px, 1fr))` }, gap: 1.5 }}>
         {lstTemplates.map((objTemplate) => {
           const blnSelected = lstSelected.includes(objTemplate.strFormat);
           return (
@@ -256,6 +275,7 @@ export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
         <Alert severity="info">You can view these formats. Changing them needs the &quot;Payslip &amp; F&amp;F Format - Edit&quot; right.</Alert>
       ) : null}
 
+      {strSection === "payslip-format" ? (
       <Paper id="settings-section-payslip-format" variant="outlined" sx={sxCard}>
         <Typography sx={sxSubHeading}>Payslip Format</Typography>
         <Typography sx={sxSubCaption}>Every payslip opens in this format - payroll run, results, payslips and employee self-service. Nothing is asked on open.</Typography>
@@ -284,15 +304,17 @@ export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
           </Box>
         ) : (
           <Typography sx={{ color: "#60749b", fontSize: "0.75rem", mt: 1.5 }}>
-            Format 1 is a monthly payslip (needs the &quot;Payslip - Monthly&quot; right; others get our Detailed payslip).
+            {objSelectedPayslipTemplate?.strName ?? "This format"} is a monthly payslip (needs the &quot;Payslip - Monthly&quot; right; others get our Detailed payslip).
           </Typography>
         )}
       </Paper>
+      ) : null}
 
+      {strSection === "payslip-header" ? (
       <Paper id="settings-section-payslip-header" variant="outlined" sx={sxCard}>
         <Typography sx={sxSubHeading}>Payslip Header &amp; Leave</Typography>
         <Typography sx={sxSubCaption}>
-          The lines above the title of every payslip and F&amp;F report, in both formats. Allocation entity fields use the employee&apos;s entity (as of the payroll run).
+          The lines above the title of every payslip and F&amp;F report, in every format. Allocation entity fields use the employee&apos;s entity (as of the payroll run).
         </Typography>
         <TextField
           select
@@ -334,21 +356,25 @@ export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
             label={<Typography sx={{ fontWeight: 700, color: "#172033", fontSize: "0.9rem" }}>Show leave balance on payslip</Typography>}
           />
           <Typography sx={{ color: "#60749b", fontSize: "0.75rem" }}>
-            The Leave Balance row (leave availed and balance per leave type) on Format 1 payslips. Our format has no leave section.
+            The leave availed and balance per leave type on Format 1 (Leave Balance row) and Format 3 (Leave Balance panel) payslips. Our format has no leave section.
           </Typography>
         </Box>
       </Paper>
+      ) : null}
 
+      {strSection === "fnf-format" ? (
       <Paper id="settings-section-fnf-format" variant="outlined" sx={sxCard}>
         <Typography sx={sxSubHeading}>F&amp;F Report Format</Typography>
-        <Typography sx={sxSubCaption}>F&amp;F reports - Generate FNF Report, F&amp;F Reports tab and its downloads - open in this format.</Typography>
-        {renderTemplates("fnf", objConfig.lstFNFTemplates, [objDraft.strFNFReportFormat], (strFormat) => setObjDraft({ ...objDraft, strFNFReportFormat: strFormat }))}
+        <Typography sx={sxSubCaption}>F&amp;F reports - Generate FNF Report, F&amp;F Reports tab and its downloads - open in this format. Regular payslips in the F&amp;F module follow the Payslip Format.</Typography>
+        {renderTemplates("fnf", objConfig.lstFNFTemplates, [objDraft.strFNFReportFormat], (strFormat) => setObjDraft({ ...objDraft, strFNFReportFormat: toFNFFormat(strFormat, objDraft.strFNFReportFormat) }))}
       </Paper>
+      ) : null}
 
+      {strSection === "ctc-format" ? (
       <Paper id="settings-section-ctc-format" variant="outlined" sx={sxCard}>
         <Typography sx={sxSubHeading}>CTC Format</Typography>
         <Typography sx={sxSubCaption}>Reports - CTC Statement, its Excel and PDF downloads - offer the formats ticked here. Tick both to switch between them on the CTC Statement screen.</Typography>
-        {renderTemplates("ctc", objConfig.lstCtcTemplates, ctcFormats(objDraft.strCtcFormat), (strFormat) => setObjDraft({ ...objDraft, strCtcFormat: toggleCtcFormat(objDraft.strCtcFormat, strFormat) }), true)}
+        {renderTemplates("ctc", objConfig.lstCtcTemplates, ctcFormats(objDraft.strCtcFormat) as DocumentFormat[], (strFormat) => setObjDraft({ ...objDraft, strCtcFormat: toggleCtcFormat(objDraft.strCtcFormat, strFormat) }), true)}
         <Box sx={{ mt: 2 }}>
           <Typography sx={{ ...sxSubCaption, mb: 0.75 }}>Open CTC statements as</Typography>
           <ToggleButtonGroup
@@ -371,6 +397,7 @@ export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
           </Typography>
         </Box>
       </Paper>
+      ) : null}
 
       {!blnReadOnly ? (
         <Stack direction="row" spacing={1} justifyContent="flex-end">
@@ -429,14 +456,14 @@ export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
                 if (objPreview.strDocument === "payslip") {
                   setObjDraft({ ...objDraft, strPayslipFormat: objPreview.objTemplate.strFormat, ...(objPreview.objTemplate.blnHasViews ? { strPayslipView: objPreview.strView as PayslipView } : {}) });
                 } else if (objPreview.strDocument === "ctc") {
-                  const lstOffered = ctcFormats(objDraft.strCtcFormat);
+                  const lstOffered: DocumentFormat[] = ctcFormats(objDraft.strCtcFormat);
                   setObjDraft({
                     ...objDraft,
                     strCtcFormat: lstOffered.includes(objPreview.objTemplate.strFormat) ? objDraft.strCtcFormat : toggleCtcFormat(objDraft.strCtcFormat, objPreview.objTemplate.strFormat),
                     strCtcPeriod: objPreview.strView as CtcPeriod,
                   });
                 } else {
-                  setObjDraft({ ...objDraft, strFNFReportFormat: objPreview.objTemplate.strFormat });
+                  setObjDraft({ ...objDraft, strFNFReportFormat: toFNFFormat(objPreview.objTemplate.strFormat, objDraft.strFNFReportFormat) });
                 }
                 setObjPreview(null);
               }}

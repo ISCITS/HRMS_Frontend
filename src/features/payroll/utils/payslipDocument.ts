@@ -1,4 +1,6 @@
-﻿function createPayslipUrl(strHtml: string) {
+﻿import type { PayslipDocumentView } from "@/features/payroll/services/payslipService";
+
+function createPayslipUrl(strHtml: string) {
   const objBlob = new Blob([strHtml], { type: "text/html;charset=utf-8" });
   return URL.createObjectURL(objBlob);
 }
@@ -164,7 +166,7 @@ export function withPayslipToolbar(
   strHtml: string,
   strFileName: string,
   strTaxInformationUrl?: string,
-  strInitialView: "monthly" | "detailed" | "client" = "detailed",
+  strInitialView: PayslipDocumentView = "detailed",
   blnAllowViewSwitch = true,
 ) {
   // Only offered when the user holds both views (see usePayslipViewChooser).
@@ -190,7 +192,7 @@ export function printPayslipHtml(
   strHtml: string,
   strFileName = "payslip.html",
   strTaxInformationUrl?: string,
-  strInitialView: "monthly" | "detailed" | "client" = "detailed",
+  strInitialView: PayslipDocumentView = "detailed",
   blnAllowViewSwitch = true,
 ) {
   const strUrl = createPayslipUrl(

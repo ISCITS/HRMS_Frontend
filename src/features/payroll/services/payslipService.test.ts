@@ -56,6 +56,13 @@ describe("payslip service", () => {
     expect(objGet.mock.calls[1][0]).toMatch(/\/payslips\/payslip-uuid\/download\?view=monthly&format=client$/);
   });
 
+  it("opens Format 3 the same way (ESS and saved-payslip links included)", async () => {
+    await payslipService.getPayslipDocument("run-uuid", 7, "format3", "view");
+    expect(objGet.mock.calls[0][0]).toMatch(/\/payslip\/document\?view=monthly&format=format3&purpose=view$/);
+    await payslipService.getDownloadHtml("payslip-uuid", "format3");
+    expect(objGet.mock.calls[1][0]).toMatch(/\/payslips\/payslip-uuid\/download\?view=monthly&format=format3$/);
+  });
+
   it("rejects an empty document", async () => {
     objGet.mockResolvedValue({ data: "   " });
     await expect(payslipService.getPayslipDocument("run-uuid", 7, "monthly")).rejects.toThrow("Payslip document is empty.");

@@ -1,16 +1,16 @@
-import type { PayslipDocumentView, PayslipView } from "@/features/payroll/services/payslipService";
+import { isPayslipLayoutView, type PayslipDocumentView, type PayslipView } from "@/features/payroll/services/payslipService";
 
 /**
  * The page to fetch for the payslip tab: with both views allowed the default format comes as the
- * detailed payslip, so the tab's own Monthly / Detailed switch works; the client format as chosen.
+ * detailed payslip, so the tab's own Monthly / Detailed switch works; Format 1 / Format 3 as chosen.
  */
 export function getPayslipTabRequestView(strView: PayslipDocumentView, blnCanSwitchView: boolean): PayslipDocumentView {
-  return strView !== "client" && blnCanSwitchView ? "detailed" : strView;
+  return !isPayslipLayoutView(strView) && blnCanSwitchView ? "detailed" : strView;
 }
 
 /** The Monthly / Detailed switch above an on-screen payslip: the default format's views only. */
 export function getPayslipSwitchView(strView: PayslipDocumentView | null | undefined, blnCanSwitchView: boolean): PayslipView | undefined {
-  return blnCanSwitchView && strView && strView !== "client" ? strView : undefined;
+  return blnCanSwitchView && strView && !isPayslipLayoutView(strView) ? strView : undefined;
 }
 
 export const NO_PAYSLIP_VIEW_MESSAGE =

@@ -24,6 +24,24 @@ function toExportNumber(decValue: number | null | undefined): number | string | 
   return Math.round(decNumber * 100) / 100;
 }
 
+const LST_MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// "2007-09-01" -> "01-Sep-2007" (the payslip style); anything unreadable -> "".
+export function formatDateOfJoining(strValue: string | null | undefined): string {
+  const objMatch = /^(\d{4})-(\d{2})-(\d{2})/.exec((strValue || "").trim());
+  if (!objMatch) return "";
+  const intMonth = Number(objMatch[2]);
+  if (intMonth < 1 || intMonth > 12) return "";
+  return `${objMatch[3]}-${LST_MONTH_NAMES[intMonth - 1]}-${objMatch[1]}`;
+}
+
+// A real Excel date (UTC midnight, so no timezone shift) that sorts and filters as a date.
+function toExportDate(strValue: string | null | undefined): Date | null {
+  const objMatch = /^(\d{4})-(\d{2})-(\d{2})/.exec((strValue || "").trim());
+  if (!objMatch) return null;
+  return new Date(Date.UTC(Number(objMatch[1]), Number(objMatch[2]) - 1, Number(objMatch[3])));
+}
+
 // Builds the Salary Register Excel workbook (column layout follows the arrear toggle).
 export async function buildSalaryRegisterWorkbook(
   lstRows: SalaryRegisterRow[],
@@ -41,11 +59,12 @@ export async function buildSalaryRegisterWorkbook(
   // Excel layout mirrors the client's salary register sheet (Employee No before Employee Name).
   // Component columns keep our configured names. The on-screen grid is unchanged.
   const lstLeadingLabels = [
-    "Sl No", "Employee No", "Employee Name", "Status", "Site", "Cost Center", "Grade", "Department",
+    "Sl No", "Employee No", "Employee Name", "Date of Joining", "Status", "Site", "Cost Center", "Grade", "Department",
     "Designation", "Location", "Category", "Payment Mode", "Bank Name", "Branch Name", "Bank Account No",
     "IFSC Code", "PAN No",
   ];
-  const lstTrailingLabels = ["Salary Released For", "Employee UAN", "WorkGroup Name"];
+  const INT_DATE_OF_JOINING_COLUMN = lstLeadingLabels.indexOf("Date of Joining") + 1; // 1-based
+  const lstTrailingLabels =["Salary Released For", "Employee UAN", "WorkGroup Name"];
   const lstColumnLabels = [
     ...lstLeadingLabels, "Payable Days", "Negative Salary Dtl",
     ...lstPaymentColumns, "Gross Earning", ...lstArrearPaymentColumns,
@@ -120,6 +139,7 @@ export async function buildSalaryRegisterWorkbook(
       intIndex + 1,
       dicRow.strEmployeeCode,
       dicRow.strEmployeeName,
+      toExportDate(dicRow.dtDateOfJoining),
       dicRow.strEmploymentStatus ?? "",
       dicRow.strAllocationEntity ?? "",
       dicRow.strCostCenter ?? "",
@@ -149,6 +169,9 @@ export async function buildSalaryRegisterWorkbook(
       dicRow.strWorkgroup ?? "",
     ]);
     fnStyleDataRow(objRow, false);
+    const objJoiningCell = objRow.getCell(INT_DATE_OF_JOINING_COLUMN);
+    objJoiningCell.numFmt = "dd-mmm-yyyy";
+    objJoiningCell.alignment = { horizontal: "center" };
   });
 
   const fnSum = (fnValue: (dicRow: SalaryRegisterRow) => number | null) => lstRows.reduce((decTotal, dicRow) => decTotal + (fnValue(dicRow) || 0), 0);
