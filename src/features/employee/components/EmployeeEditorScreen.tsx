@@ -694,20 +694,34 @@ export default function EmployeeEditorScreen({
 
   function renderOptionalEmployeeField(strField: keyof EmployeeFormValues, strLabel: string, strType = "text") {
     if (strField === "strInitialPostingLocation") {
-      const strSavedLocation = dicBasicForm.strInitialPostingLocation;
-      const setLocationNames = new Set(objFormOptions?.lstLocations?.map((objLocation) => objLocation.strLabel));
-      if (strSavedLocation) {
-        setLocationNames.add(strSavedLocation);
+      const lstLocations = objFormOptions?.lstLocations ?? [];
+      const objSavedValue = dicBasicForm.intInitialPostingLocationID ||
+        (dicBasicForm.strInitialPostingLocation ? "saved-location" : "");
+      const lstOptions: Array<{ intID: number | string; strLabel: string; strCode?: string }> = [...lstLocations];
+      if (objSavedValue !== "" && !lstLocations.some((objLocation) => objLocation.intID === objSavedValue)) {
+        lstOptions.push({
+          intID: objSavedValue,
+          strLabel: dicBasicForm.strInitialPostingLocation || t("selected_option_unavailable", "Selected option is unavailable"),
+        });
       }
       return (
         <Box key={strField}>
-          {renderStringListSearchableField(
-            strLabel,
-            strSavedLocation,
-            (strValue) => updateBasicField("strInitialPostingLocation", strValue),
-            [...setLocationNames],
-            blnViewOnly,
-          )}
+          <CommonSearchableSelect
+            label={strLabel}
+            controlId="employee.editor.initial-posting-location.select"
+            size="small"
+            showSearchIcon={false}
+            value={objSavedValue}
+            options={lstOptions}
+            onChange={(objValue) => {
+              const objLocation = lstLocations.find((objOption) => objOption.intID === objValue);
+              if (objLocation || objValue === "") {
+                updateBasicField("intInitialPostingLocationID", objLocation?.intID ?? "");
+                updateBasicField("strInitialPostingLocation", objLocation?.strLabel ?? "");
+              }
+            }}
+            disabled={blnViewOnly}
+          />
         </Box>
       );
     }
@@ -1882,25 +1896,6 @@ export default function EmployeeEditorScreen({
         onChange={(objSelected) => fnOnChange(objSelected === "" ? "" : String(objSelected))}
         disabled={blnDisabled}
         getOptionLabel={(objOption) => objOption.strLabel}
-        fullWidth
-      />
-    );
-  }
-
-  function renderStringListSearchableField(
-    strLabel: string,
-    strValue: string,
-    fnOnChange: (strValue: string) => void,
-    lstOptions: string[],
-    blnDisabled = false
-  ) {
-    return (
-      <CommonSearchableSelect
-        label={strLabel}
-        value={strValue}
-        options={lstOptions.map((strOption) => ({ intID: strOption, strLabel: strOption }))}
-        onChange={(objSelected) => fnOnChange(objSelected === "" ? "" : String(objSelected))}
-        disabled={blnDisabled}
         fullWidth
       />
     );

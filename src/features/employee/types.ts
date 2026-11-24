@@ -119,6 +119,7 @@ export type EmployeeDetailRecord = {
   strEmergencyEmail: string | null;
   strEmployeeRemark: string | null;
   strInitialPostingLocation: string | null;
+  intInitialPostingLocationID: number | null;
   dtProbationStartDate: string | null;
   dtProbationEndDate: string | null;
   strEmployeeWorkgroup: string | null;
@@ -214,6 +215,7 @@ export type EmployeeFormValues = {
   strEmergencyEmail: string;
   strEmployeeRemark: string;
   strInitialPostingLocation: string;
+  intInitialPostingLocationID: number | "";
   dtProbationStartDate: string;
   dtProbationEndDate: string;
   strEmployeeWorkgroup: string;

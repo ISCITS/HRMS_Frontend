@@ -59,7 +59,7 @@ export const dicEmptyEmployeeForm: EmployeeFormValues = {
   strWhatsappNumber: "", strReferredBy: "", strAccommodationType: "", decHousingAllowance: "",
   intNoticePeriodDays: "", strEmergencyContactPerson: "", strEmergencyCountryCode: "",
   strEmergencyMobileNumber: "", strEmergencyEmail: "", strEmployeeRemark: "",
-  strInitialPostingLocation: "", dtProbationStartDate: "", dtProbationEndDate: "",
+  strInitialPostingLocation: "", intInitialPostingLocationID: "", dtProbationStartDate: "", dtProbationEndDate: "",
   strEmployeeWorkgroup: "", strEmployeeReservation: "", strSwon: "",
   dtFromDate: "", dtToDate: "", strPrefixLogic: ""
 };
@@ -206,6 +206,7 @@ export function toEmployeeFormValues(dicRecord: EmployeeDetailRecord): EmployeeF
     strEmergencyContactPerson: dicRecord.strEmergencyContactPerson ?? "", strEmergencyCountryCode: dicRecord.strEmergencyCountryCode ?? "",
     strEmergencyMobileNumber: dicRecord.strEmergencyMobileNumber ?? "", strEmergencyEmail: dicRecord.strEmergencyEmail ?? "",
     strEmployeeRemark: dicRecord.strEmployeeRemark ?? "", strInitialPostingLocation: dicRecord.strInitialPostingLocation ?? "",
+    intInitialPostingLocationID: dicRecord.intInitialPostingLocationID ?? "",
     dtProbationStartDate: dicRecord.dtProbationStartDate ?? "", dtProbationEndDate: dicRecord.dtProbationEndDate ?? "",
     strEmployeeWorkgroup: dicRecord.strEmployeeWorkgroup ?? "", strEmployeeReservation: dicRecord.strEmployeeReservation ?? "",
     strSwon: dicRecord.strSwon ?? "", dtFromDate: dicRecord.dtFromDate ?? "",
