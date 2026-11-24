@@ -5,6 +5,7 @@ import { Paper, Tab, Tabs } from "@mui/material";
 /** The Payroll settings, each in its own tab (one opens at a time). */
 export const LST_PAYROLL_SETTINGS_TABS = [
   { strCode: "payslip-format", strLabel: "Payslip Format" },
+  { strCode: "payslip-header", strLabel: "Payslip / FNF Header" },
   { strCode: "fnf-format", strLabel: "F&F Report Format" },
   { strCode: "ctc-format", strLabel: "CTC Format" },
   { strCode: "arrears", strLabel: "Arrears" },

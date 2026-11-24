@@ -39,7 +39,6 @@ import { DottedLoader } from "@/components/shared/BlockingLoader";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useSalaryComponentLabels } from "@/features/salary-components/hooks/useSalaryComponentLabels";
 import TdsModeSection from "@/features/salary-components/components/TdsModeSection";
-import PayslipHeaderSettingsSection from "@/features/settings/components/PayslipHeaderSettingsSection";
 import { allocationMasterService } from "@/features/allocation-masters/services/allocationMasterService";
 import {
   createEmptySalaryComponentFlexiEligibilityRuleRow,
@@ -2211,7 +2210,6 @@ export default function SalaryComponentEditorPage({
             inputProps={{ maxLength: 100, ...buildInputTestIdProps("salary-components.editor.payslip-display-name.input") }}
           />
         </Box>
-        <PayslipHeaderSettingsSection blnReadOnly={blnExplicitViewMode} />
       </Paper>
 
       <Paper sx={{ borderRadius: "24px", p: 2.5, border: "1px solid rgba(148,163,184,0.18)" }}>

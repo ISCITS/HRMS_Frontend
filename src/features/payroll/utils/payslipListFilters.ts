@@ -1,5 +1,6 @@
-// Payslips screen filters. Every payslip is loaded once and filtered here, so the Payroll Run and
-// Payroll Month dropdowns always offer every run and month instead of only those of the last search.
+// Payslips screen filters. The dropdowns come from a light server lookup (every employee, run and
+// month with payslips); the list itself loads only after the user picks an employee or month and
+// searches - the server narrows by employee and month, the rest is filtered here.
 // Run names repeat across months ("Sept 2026 Payroll" is used by several runs), so a run option
 // carries its code and a selected option matches only that run.
 
@@ -71,7 +72,26 @@ function matchesText(lstNeedles: string[], ...lstHaystacks: Array<string | null 
   return lstNeedles.some((strNeedle) => strHaystack.includes(strNeedle));
 }
 
-function matchesRun(lstNeedles: string[], dicRow: PayslipFilterRow) {
+/** Dropdown choices from the server (employees and runs that have payslips), loaded without any figures. */
+export type PayslipFilterLookup = {
+  lstEmployees: Array<{
+    intEmployeeID: number;
+    strEmployeeCode: string;
+    strEmployeeName: string;
+    strDepartmentName?: string | null;
+    strLocationName?: string | null;
+  }>;
+  lstRuns: Array<{
+    strRunCode: string;
+    strRunName: string;
+    dtPayrollMonth: string | null;
+    strPayslipStatus?: string | null;
+  }>;
+};
+
+type PayslipRunLike = Pick<PayslipFilterRow, "strRunCode" | "strRunName" | "dtPayrollMonth">;
+
+function matchesRun(lstNeedles: string[], dicRow: PayslipRunLike) {
   if (lstNeedles.length === 0) return true;
   const strOption = formatPayslipRunOption(dicRow).toLowerCase();
   const strCode = String(dicRow.strRunCode ?? "").trim().toLowerCase();
@@ -82,7 +102,7 @@ function matchesRun(lstNeedles: string[], dicRow: PayslipFilterRow) {
   );
 }
 
-function matchesMonth(strValue: string, dicRow: PayslipFilterRow) {
+function matchesMonth(strValue: string, dicRow: Pick<PayslipFilterRow, "dtPayrollMonth">) {
   if (splitPayslipFilterValue(strValue).length === 0) return true;
   return getPayslipMonthKeys(strValue).includes(getPayslipMonthKey(dicRow.dtPayrollMonth));
 }
@@ -133,4 +153,38 @@ export function buildPayslipFilterOptions(lstRows: PayslipFilterRow[], dicDraft:
     lstLocations: getUniqueSorted(lstRows.map((dicRow) => dicRow.strLocationName)),
     lstStatuses: getUniqueSorted(lstRows.map((dicRow) => dicRow.strPayslipStatus || "Processed")),
   };
+}
+
+/** Same dropdown options as buildPayslipFilterOptions, from the light server lookup. */
+export function buildPayslipFilterOptionsFromLookup(
+  objLookup: PayslipFilterLookup | null,
+  dicDraft: Pick<PayslipFilterValues, "strSearchRun" | "strPayrollMonth">
+) {
+  const lstEmployees = objLookup?.lstEmployees ?? [];
+  const lstNewestFirst = [...(objLookup?.lstRuns ?? [])].sort((dicLeft, dicRight) =>
+    getPayslipMonthKey(dicRight.dtPayrollMonth).localeCompare(getPayslipMonthKey(dicLeft.dtPayrollMonth))
+    || String(dicRight.strRunCode ?? "").localeCompare(String(dicLeft.strRunCode ?? ""))
+  );
+  const lstRunRows = lstNewestFirst.filter((dicRun) => matchesMonth(dicDraft.strPayrollMonth, dicRun));
+  const lstMonthRows = lstNewestFirst.filter((dicRun) => matchesRun(splitPayslipFilterValue(dicDraft.strSearchRun), dicRun));
+  return {
+    lstEmployees: getUniqueSorted(lstEmployees.flatMap((dicEmployee) => [
+      dicEmployee.strEmployeeCode,
+      dicEmployee.strEmployeeName,
+      `${dicEmployee.strEmployeeCode} - ${dicEmployee.strEmployeeName}`,
+    ])),
+    lstRuns: Array.from(new Set(lstRunRows.map(formatPayslipRunOption).filter(Boolean))),
+    lstMonths: Array.from(new Set(
+      lstMonthRows.map((dicRun) => getPayslipMonthKey(dicRun.dtPayrollMonth)).filter(Boolean).map(formatPayslipMonthOption)
+    )),
+    lstDepartments: getUniqueSorted(lstEmployees.map((dicEmployee) => dicEmployee.strDepartmentName)),
+    lstLocations: getUniqueSorted(lstEmployees.map((dicEmployee) => dicEmployee.strLocationName)),
+    lstStatuses: getUniqueSorted(lstNewestFirst.map((dicRun) => dicRun.strPayslipStatus || "Processed")),
+  };
+}
+
+/** The payslip list loads only once an employee or a month is chosen. */
+export function hasPayslipSearchCriteria(dicFilters: Pick<PayslipFilterValues, "strSearchEmployee" | "strPayrollMonth">) {
+  return splitPayslipFilterValue(dicFilters.strSearchEmployee).length > 0
+    || getPayslipMonthKeys(dicFilters.strPayrollMonth).length > 0;
 }
