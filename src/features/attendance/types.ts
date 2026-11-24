@@ -189,7 +189,18 @@ export type AttendanceImportRow = {
   blnWillOverwrite: boolean;
 };
 
+export type AttendanceImportSourceColumn = { intIndex: number; strName: string };
+export type AttendanceImportField = { strKey: string; strLabel: string; blnRequired: boolean };
+export type AttendanceImportMapping = Record<string, number | null>;
+export type AttendanceImportMappingIssue = { strFieldKey: string; strMessage: string };
+
 export type AttendanceImportPreviewResult = {
+  lstSourceColumns: AttendanceImportSourceColumn[];
+  lstFields: AttendanceImportField[];
+  dicMapping: AttendanceImportMapping;
+  intHeaderRowNumber: number;
+  lstMappingIssues: AttendanceImportMappingIssue[];
+  blnNeedsMapping: boolean;
   lstRows: AttendanceImportRow[];
   intTotal: number;
   intValid: number;

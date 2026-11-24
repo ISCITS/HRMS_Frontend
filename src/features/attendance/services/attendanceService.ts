@@ -14,6 +14,7 @@ import type {
 import type {
   AttendanceImportCommitResult,
   AttendanceImportCommitRow,
+  AttendanceImportMapping,
   AttendanceImportPreviewResult,
   AttendancePolicy,
   AttendancePolicyAssignmentEmployee,
@@ -428,9 +429,10 @@ export const attendanceService = {
   // FormData bodies skip JSON payload-encryption automatically (see axiosInstance.ts),
   // so this bypasses requestEncryptedApi and calls axiosInstance directly - same pattern
   // as fileUploadService.uploadFile/reimbursementService.
-  async previewImport(objFile: File): Promise<AttendanceImportPreviewResult> {
+  async previewImport(objFile: File, dicMapping?: AttendanceImportMapping): Promise<AttendanceImportPreviewResult> {
     const objFormData = new FormData();
     objFormData.append("objFile", objFile);
+    if (dicMapping) objFormData.append("strMapping", JSON.stringify(dicMapping));
     try {
       const objResponse = await axiosInstance.request<{ Data: AttendanceImportPreviewResult }>({
         method: ApiRequestMethod.Post,

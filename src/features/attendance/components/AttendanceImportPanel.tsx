@@ -10,7 +10,9 @@ import {
   Button,
   Checkbox,
   Chip,
+  MenuItem,
   Snackbar,
+  TextField,
   Tooltip,
   Typography,
 } from "@mui/material";
@@ -19,6 +21,7 @@ import { attendanceService } from "@/features/attendance/services/attendanceServ
 import type {
   AttendanceImportCommitResult,
   AttendanceImportCommitRow,
+  AttendanceImportMapping,
   AttendanceImportPreviewResult,
   AttendanceImportRow,
 } from "@/features/attendance/types";
@@ -52,6 +55,8 @@ export default function AttendanceImportPanel() {
   const [setSelectedRows, setSetSelectedRows] = useState<Set<number>>(new Set());
   const [strError, setStrError] = useState<string | null>(null);
   const [objCommitResult, setObjCommitResult] = useState<AttendanceImportCommitResult | null>(null);
+  const [objFile, setObjFile] = useState<File | null>(null);
+  const [dicMappingDraft, setDicMappingDraft] = useState<AttendanceImportMapping>({});
 
   if (objAccess.blnLoading) return <Box className={styles.page}><MasterBreadcrumbs strSection={t("breadcrumb_attendance", "Attendance")} strTitle={t("import_attendance_title", "Import Attendance")} /><MasterGridSkeleton strControlId="attendance.import.skeleton" intColumns={7} /></Box>;
   if (!objAccess.canViewAny())
@@ -77,23 +82,34 @@ export default function AttendanceImportPanel() {
   }
 
   async function handleFileSelected(objEvent: ChangeEvent<HTMLInputElement>) {
-    const objFile = objEvent.target.files?.[0];
+    const objPicked = objEvent.target.files?.[0];
     objEvent.target.value = "";
-    if (!objFile) return;
-    setStrFileName(objFile.name);
+    if (!objPicked) return;
+    setStrFileName(objPicked.name);
+    setObjFile(objPicked);
     setObjPreview(null);
     setObjCommitResult(null);
     setStrError(null);
+    await runPreview(objPicked);
+  }
+
+  // Auto-maps when no mapping is given; re-runs with the user's chosen mapping otherwise.
+  async function runPreview(objSource: File, dicMapping?: AttendanceImportMapping) {
     try {
       setBlnBusy(true);
-      const objResult = await attendanceService.previewImport(objFile);
+      const objResult = await attendanceService.previewImport(objSource, dicMapping);
       setObjPreview(objResult);
+      setDicMappingDraft(objResult.dicMapping);
       setSetSelectedRows(new Set(objResult.lstRows.filter((objRow) => objRow.blnValid).map((objRow) => objRow.intExcelRowNumber)));
     } catch (objErr) {
       setStrError((objErr as Error)?.message || t("import_preview_failed", "Failed to read the uploaded file."));
     } finally {
       setBlnBusy(false);
     }
+  }
+
+  function handleMappingChange(strFieldKey: string, strValue: string) {
+    setDicMappingDraft((objPrev) => ({ ...objPrev, [strFieldKey]: strValue === "" ? null : Number(strValue) }));
   }
 
   function toggleRow(intExcelRowNumber: number, blnChecked: boolean) {
@@ -127,6 +143,7 @@ export default function AttendanceImportPanel() {
       setObjCommitResult(objResult);
       setObjPreview(null);
       setStrFileName(null);
+      setObjFile(null);
     } catch (objErr) {
       setStrError((objErr as Error)?.message || t("import_commit_failed", "Failed to import attendance data."));
     } finally {
@@ -208,7 +225,7 @@ export default function AttendanceImportPanel() {
               <input
                 ref={objFileInputRef}
                 type="file"
-                accept=".xlsx"
+                accept=".xlsx,.xlsm,.xls,.csv"
                 hidden
                 onChange={handleFileSelected}
                 data-control-id="attendance.import.file-input"
@@ -239,6 +256,58 @@ export default function AttendanceImportPanel() {
       )}
 
       {objPreview && (
+        <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+          {objPreview.blnNeedsMapping ? (
+            <Alert severity="error" sx={{ mb: 1.5 }}>
+              {t("import_columns_mismatch", "The columns in this file do not match the expected fields. Align them below and apply.")}
+              <Box component="ul" sx={{ mt: 0.5, mb: 0, pl: 2 }}>
+                {objPreview.lstMappingIssues.map((objIssue) => (
+                  <li key={`${objIssue.strFieldKey}-${objIssue.strMessage}`}>{objIssue.strMessage}</li>
+                ))}
+              </Box>
+            </Alert>
+          ) : (
+            <Typography sx={{ fontSize: "11px", color: "#64748b", mb: 1 }}>
+              {t("import_columns_matched", "Columns were matched automatically. Change any mapping below if it is wrong.")}
+            </Typography>
+          )}
+          <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap", alignItems: "center" }}>
+            {objPreview.lstFields.map((objField) => {
+              const blnMissing = objPreview.lstMappingIssues.some((objIssue) => objIssue.strFieldKey === objField.strKey);
+              return (
+                <TextField
+                  key={objField.strKey}
+                  select
+                  size="small"
+                  sx={{ minWidth: 190 }}
+                  label={`${objField.strLabel}${objField.blnRequired ? " *" : ""}`}
+                  error={blnMissing}
+                  value={dicMappingDraft[objField.strKey] ?? ""}
+                  onChange={(objEvent) => handleMappingChange(objField.strKey, objEvent.target.value)}
+                  inputProps={{ "data-control-id": `attendance.import.mapping.${objField.strKey}` }}
+                >
+                  <MenuItem value="">{t("not_mapped", "— Not mapped —")}</MenuItem>
+                  {objPreview.lstSourceColumns.map((objColumn) => (
+                    <MenuItem key={objColumn.intIndex} value={objColumn.intIndex}>
+                      {objColumn.strName}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              );
+            })}
+            <Button
+              data-control-id="attendance.import.apply-mapping.button"
+              className={styles.primaryButton}
+              disabled={!objFile}
+              onClick={() => objFile && runPreview(objFile, dicMappingDraft)}
+            >
+              {t("apply_mapping", "Apply Mapping")}
+            </Button>
+          </Box>
+        </Box>
+      )}
+
+      {objPreview && !objPreview.blnNeedsMapping && (
         <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
           <CommonTable
             columns={lstPreviewColumns}
