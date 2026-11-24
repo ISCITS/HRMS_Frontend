@@ -644,6 +644,7 @@ export type EmployeeDetailApiRecord = {
   strEmergencyEmail: string | null;
   strEmployeeRemark: string | null;
   strInitialPostingLocation: string | null;
+  intInitialPostingLocationID?: number | null;
   dtProbationStartDate: string | null;
   dtProbationEndDate: string | null;
   strEmployeeWorkgroup: string | null;
