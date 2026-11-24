@@ -39,6 +39,7 @@ import type {
   TenantLookupData
 } from "@/models/AuthModels";
 import { getPostLoginRoute } from "@/lib/RouteGuard";
+import { getReadableTextColor, normalizeTenantHeaderColor, normalizeTenantHeaderLabel } from "@/lib/tenantHeaderTheme";
 import { authApiService } from "@/services";
 import { clsApiRequestError, isGoogleMfaChallengeData, isOtpChallengeData, resolveErrorMessage } from "@/services/auth/AuthApiService";
 import type { AuthSuccessData, PortalCode } from "@/models/AuthModels";
@@ -549,6 +550,8 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
   const strTitle = strMode === "tenant" ? getLoginLabel("tenantTitle") : enMessages.auth.genericTitle;
   const strSubtitle = strMode === "tenant" ? getLoginLabel("tenantSubtitle") : enMessages.auth.genericSubtitle;
   const strTenantName = resolveTenantDisplayName(objTenantAuthDetails);
+  const strTenantHeaderColor = normalizeTenantHeaderColor(objTenantAuthDetails?.header_color);
+  const strTenantHeaderLabel = normalizeTenantHeaderLabel(objTenantAuthDetails?.header_label);
   const strWorkspaceName = strMode === "tenant"
     ? strTenantName || (strTitle !== enMessages.auth.tenantTitle ? strTitle : appConfig.appName)
     : appConfig.appName;
@@ -782,6 +785,28 @@ export default function AuthLoginExperience({ strMode, strTenantUUID }: AuthLogi
               </Box>
             ) : null}
             <Box className="login-form-intro">
+              {strMode === "tenant" && (strTenantHeaderLabel || strTenantHeaderColor) ? (
+                <Box
+                  component="span"
+                  data-controlid="login.tenant-header-label"
+                  sx={{
+                    display: "inline-block",
+                    mb: 1.25,
+                    px: 1.25,
+                    py: 0.4,
+                    borderRadius: "6px",
+                    fontSize: "0.72rem",
+                    fontWeight: 800,
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                    backgroundColor: strTenantHeaderColor ?? "#FFE0B2",
+                    color: getReadableTextColor(strTenantHeaderColor ?? "#FFE0B2"),
+                    border: "1px solid rgba(15, 23, 42, 0.12)"
+                  }}
+                >
+                  {strTenantHeaderLabel || "Non-production tenant"}
+                </Box>
+              ) : null}
               <Typography className="login-welcome-title">
                 {getLoginLabel("signInTo")}<br />
                 <span>{strLoginWelcomeTarget}</span>

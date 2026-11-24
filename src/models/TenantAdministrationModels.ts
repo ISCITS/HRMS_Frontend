@@ -86,6 +86,8 @@ export type TenantEditFormPayload = {
   strContactPersonName: string | null;
   strContactEmailAddress: string | null;
   strContactMobileNumber: string | null;
+  strHeaderColor?: string | null;
+  strHeaderLabel?: string | null;
   intDefaultLanguageID: number;
   intSecondaryLanguageID: number | null;
   intDefaultCountryID: number | null;
