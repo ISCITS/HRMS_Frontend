@@ -55,6 +55,44 @@ export type PayrollDocumentFormatConfigDto = {
   lstPayslipTemplates: PayrollDocumentTemplateDto[];
   lstFNFTemplates: PayrollDocumentTemplateDto[];
   lstCtcTemplates: PayrollDocumentTemplateDto[];
+  /** Payslip / F&F report header lines and the leave-balance switch (Settings > Payroll). */
+  lstHeaderLines: PayslipHeaderLine[];
+  blnShowLeaveBalance: boolean;
+  /** The fields a header line can print, from the backend catalogue (new sources appear here). */
+  lstHeaderFields: PayslipHeaderFieldDto[];
+  lstHeaderStyles: PayslipHeaderStyle[];
+  lstDefaultHeaderLines: PayslipHeaderLine[];
+  dicHeaderLimits: PayslipHeaderLimits;
+  /** The logo printed above the header lines: a key of lstLogoSources ("none", "entity", ...). */
+  strLogoSource: string;
+  lstLogoSources: { strKey: string; strLabel: string }[];
+};
+
+export type PayslipHeaderStyle = "heading" | "bold" | "normal";
+
+export type PayslipHeaderLine = {
+  /** Printed joined with ", "; empty fields are skipped. */
+  lstFields: string[];
+  /** Used when every field of the line is empty for an employee (e.g. no allocation entity). */
+  lstFallbackFields: string[];
+  /** The text of the "custom.text" field. */
+  strCustomText: string;
+  strStyle: PayslipHeaderStyle;
+};
+
+export type PayslipHeaderFieldDto = {
+  strKey: string;
+  strLabel: string;
+  strGroup: string;
+  /** Sample value for the screen's preview (already carries any prefix, e.g. "PAN: "). */
+  strSample: string;
+  strPrefix?: string;
+};
+
+export type PayslipHeaderLimits = {
+  intMaxLines: number;
+  intMaxFieldsPerLine: number;
+  intMaxCustomTextLength: number;
 };
 
 /** Settings > Payroll > Arrears (keys match the backend ArrearConstants.ARREAR_SETTING_DEFINITIONS). */
@@ -134,7 +172,12 @@ export type ArrearSettingsConfigDto = {
 export type PayrollDocumentFormatSaveRequest = Pick<
   PayrollDocumentFormatConfigDto,
   "strPayslipFormat" | "strPayslipView" | "strFNFReportFormat" | "strCtcFormat" | "strCtcPeriod"
->;
+> & {
+  /** Optional: not sent = the saved header / leave switch stay as they are. */
+  lstHeaderLines?: PayslipHeaderLine[];
+  blnShowLeaveBalance?: boolean;
+  strLogoSource?: string;
+};
 
 export type LeaveSettingsSaveRequest = {
   intLeaveYearStartDay: number;

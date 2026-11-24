@@ -29,6 +29,7 @@ import {
   type AllocationEntityFormValues,
   type AllocationEntityTypeApiRecord,
 } from "@/features/allocation-masters/services/allocationMasterService";
+import EntityLogoField, { type EntityLogoChange } from "@/features/allocation-masters/components/EntityLogoField";
 
 type PanelMode = "add" | "edit" | "view";
 
@@ -77,6 +78,9 @@ export default function AllocationEntityMasterPanel() {
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSubmitting, setBlnSubmitting] = useState(false);
+  const [strSavedLogo, setStrSavedLogo] = useState<string | null>(null);
+  const [blnLogoLoading, setBlnLogoLoading] = useState(false);
+  const [objLogoChange, setObjLogoChange] = useState<EntityLogoChange>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
 
   const blnCanView = objAccess.canViewAny();
@@ -161,7 +165,26 @@ export default function AllocationEntityMasterPanel() {
     setDicErrors({});
     setIntEditingID(dicRecord?.intID ?? null);
     setDicForm(dicRecord ? toAllocationEntityFormValues(dicRecord) : createInitialAllocationEntityForm());
+    setObjLogoChange(null);
+    setStrSavedLogo(null);
     setBlnDialogOpen(true);
+    if (dicRecord?.blnHasLogo) {
+      setBlnLogoLoading(true);
+      allocationMasterService
+        .getEntityLogo(dicRecord.intID)
+        .then((strLogo) => setStrSavedLogo(strLogo))
+        .catch(() => setStrSavedLogo(null))
+        .finally(() => setBlnLogoLoading(false));
+    }
+  }
+
+  /** Uploads / removes the logo after the entity itself is saved. */
+  async function applyLogoChange(intEntityID: number) {
+    if (objLogoChange?.strKind === "upload") {
+      await allocationMasterService.uploadEntityLogo(intEntityID, objLogoChange.objFile);
+    } else if (objLogoChange?.strKind === "remove") {
+      await allocationMasterService.deleteEntityLogo(intEntityID);
+    }
   }
 
   function validateForm() {
@@ -233,10 +256,26 @@ export default function AllocationEntityMasterPanel() {
     }
     setBlnSubmitting(true);
     try {
+      let intSavedID: number | null = intEditingID;
       if (strMode === "add") {
-        await allocationMasterService.createEntity(dicForm);
+        intSavedID = (await allocationMasterService.createEntity(dicForm)).intID;
       } else if (intEditingID) {
         await allocationMasterService.updateEntity(intEditingID, dicForm);
+      }
+      if (intSavedID && objLogoChange) {
+        try {
+          await applyLogoChange(intSavedID);
+        } catch (objLogoError) {
+          // The entity is saved; keep the dialog open on it so the logo can be tried again.
+          await loadEntities();
+          setStrMode("edit");
+          setIntEditingID(intSavedID);
+          showToast(
+            `${t("logo_failed", "Allocation Entity saved, but the logo was not saved")}: ${objLogoError instanceof Error ? objLogoError.message : ""}`,
+            "error",
+          );
+          return;
+        }
       }
       await loadEntities();
       setBlnDialogOpen(false);
@@ -676,6 +715,14 @@ export default function AllocationEntityMasterPanel() {
                 }
                 sx={{ gridColumn: "1 / -1" }}
                 fullWidth
+              />
+              <EntityLogoField
+                strSavedLogo={strSavedLogo}
+                blnLoadingSaved={blnLogoLoading}
+                objChange={objLogoChange}
+                blnReadOnly={strMode === "view"}
+                onChange={setObjLogoChange}
+                onError={(strMessage) => showToast(strMessage, "error")}
               />
               <Box sx={{ gridColumn: "1 / -1" }}>
                 <TextField

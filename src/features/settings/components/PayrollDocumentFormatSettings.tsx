@@ -4,15 +4,19 @@ import CancelRoundedIcon from "@mui/icons-material/CancelRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
-import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Paper, Stack, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
+import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Paper, Stack, Switch, TextField, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { DottedLoader } from "@/components/shared/BlockingLoader";
 import { resetPayrollDocumentFormats } from "@/features/payroll/utils/payrollDocumentFormat";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
+import PayslipHeaderEditor from "@/features/settings/components/PayslipHeaderEditor";
 import { settingsService } from "@/features/settings/services/settingsService";
-import type { PayrollDocumentFormatConfigDto, PayrollDocumentFormatSaveRequest, PayrollDocumentTemplateDto } from "@/features/settings/types";
+import type { PayrollDocumentFormatConfigDto, PayrollDocumentFormatSaveRequest, PayrollDocumentTemplateDto, PayslipHeaderLine } from "@/features/settings/types";
+import { cloneHeaderLines, sameHeaderLines, toSaveHeaderLines, validateHeaderLines } from "@/features/settings/utils/payslipHeader";
+
+type FormatDraft = Required<PayrollDocumentFormatSaveRequest> & { lstHeaderLines: PayslipHeaderLine[] };
 
 type DocumentKind = "payslip" | "fnf" | "ctc";
 type DocumentFormat = PayrollDocumentTemplateDto["strFormat"];
@@ -61,7 +65,7 @@ export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
   const blnCanView = canDo("settings", PAYROLL_FORMAT_VIEW);
   const blnCanEdit = canDo("settings", PAYROLL_FORMAT_EDIT);
   const [objConfig, setObjConfig] = useState<PayrollDocumentFormatConfigDto | null>(null);
-  const [objDraft, setObjDraft] = useState<PayrollDocumentFormatSaveRequest | null>(null);
+  const [objDraft, setObjDraft] = useState<FormatDraft | null>(null);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSaving, setBlnSaving] = useState(false);
   const [objPreview, setObjPreview] = useState<PreviewState>(null);
@@ -76,6 +80,9 @@ export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
       strFNFReportFormat: objNext.strFNFReportFormat,
       strCtcFormat: objNext.strCtcFormat,
       strCtcPeriod: objNext.strCtcPeriod,
+      lstHeaderLines: cloneHeaderLines(objNext.lstHeaderLines ?? []),
+      blnShowLeaveBalance: objNext.blnShowLeaveBalance ?? true,
+      strLogoSource: objNext.strLogoSource ?? "none",
     });
   }
 
@@ -121,10 +128,15 @@ export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
   }, [objPreview]);
 
   async function handleSave() {
-    if (!objDraft) return;
+    if (!objDraft || !objConfig) return;
+    const strHeaderError = validateHeaderLines(objDraft.lstHeaderLines, objConfig.dicHeaderLimits);
+    if (strHeaderError) {
+      onMessage(strHeaderError, "error");
+      return;
+    }
     setBlnSaving(true);
     try {
-      applyConfig(await settingsService.savePayrollDocumentFormat(objDraft));
+      applyConfig(await settingsService.savePayrollDocumentFormat({ ...objDraft, lstHeaderLines: toSaveHeaderLines(objDraft.lstHeaderLines) }));
       // Screens opened from here on use the new formats.
       resetPayrollDocumentFormats();
       onMessage("Payslip, F&F report and CTC statement formats saved. Every screen now opens these formats.", "success");
@@ -168,7 +180,11 @@ export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
     objDraft.strPayslipView !== objConfig.strPayslipView ||
     objDraft.strFNFReportFormat !== objConfig.strFNFReportFormat ||
     objDraft.strCtcFormat !== objConfig.strCtcFormat ||
-    objDraft.strCtcPeriod !== objConfig.strCtcPeriod;
+    objDraft.strCtcPeriod !== objConfig.strCtcPeriod ||
+    objDraft.blnShowLeaveBalance !== objConfig.blnShowLeaveBalance ||
+    objDraft.strLogoSource !== (objConfig.strLogoSource ?? "none") ||
+    !sameHeaderLines(objDraft.lstHeaderLines, objConfig.lstHeaderLines ?? []);
+  const strHeaderError = validateHeaderLines(objDraft.lstHeaderLines, objConfig.dicHeaderLimits);
   const objSelectedPayslipTemplate = objConfig.lstPayslipTemplates.find((objTemplate) => objTemplate.strFormat === objDraft.strPayslipFormat);
   const sxCard = { p: { xs: 2, md: 2.25 }, borderRadius: "8px", border: "1px solid #dfe9f5", boxShadow: "0 8px 24px rgba(15, 23, 42, 0.04)", backgroundColor: "#fff" } as const;
   const sxSubHeading = { fontWeight: 800, color: "#172033", fontSize: "0.98rem", lineHeight: 1.2 } as const;
@@ -273,6 +289,56 @@ export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
         )}
       </Paper>
 
+      <Paper id="settings-section-payslip-header" variant="outlined" sx={sxCard}>
+        <Typography sx={sxSubHeading}>Payslip Header &amp; Leave</Typography>
+        <Typography sx={sxSubCaption}>
+          The lines above the title of every payslip and F&amp;F report, in both formats. Allocation entity fields use the employee&apos;s entity (as of the payroll run).
+        </Typography>
+        <TextField
+          select
+          size="small"
+          className="app-mui-text-field"
+          label="Logo"
+          value={objDraft.strLogoSource}
+          disabled={blnReadOnly}
+          onChange={(objEvent) => setObjDraft({ ...objDraft, strLogoSource: objEvent.target.value })}
+          inputProps={{ controlId: "settings.payslip-header.logo.select" }}
+          sx={{ mb: 1.5, width: { xs: "100%", sm: 420 } }}
+        >
+          {(objConfig.lstLogoSources ?? [{ strKey: "none", strLabel: "No logo" }]).map((objSource) => (
+            <MenuItem key={objSource.strKey} value={objSource.strKey}>{objSource.strLabel}</MenuItem>
+          ))}
+        </TextField>
+        <PayslipHeaderEditor
+          blnShowLogo={objDraft.strLogoSource !== "none"}
+          lstLines={objDraft.lstHeaderLines}
+          lstFields={objConfig.lstHeaderFields ?? []}
+          lstStyles={objConfig.lstHeaderStyles ?? ["heading", "bold", "normal"]}
+          lstDefaultLines={objConfig.lstDefaultHeaderLines ?? []}
+          objLimits={objConfig.dicHeaderLimits}
+          blnReadOnly={blnReadOnly}
+          strError={blnDirty ? strHeaderError : null}
+          onChange={(lstHeaderLines) => setObjDraft({ ...objDraft, lstHeaderLines })}
+        />
+        <Box sx={{ mt: 2 }}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={objDraft.blnShowLeaveBalance}
+                disabled={blnReadOnly}
+                onChange={(objEvent) => setObjDraft({ ...objDraft, blnShowLeaveBalance: objEvent.target.checked })}
+                inputProps={{ "aria-label": "Show leave balance on payslip" }}
+                data-controlid="settings.payslip-header.show-leave.switch"
+              />
+            }
+            label={<Typography sx={{ fontWeight: 700, color: "#172033", fontSize: "0.9rem" }}>Show leave balance on payslip</Typography>}
+          />
+          <Typography sx={{ color: "#60749b", fontSize: "0.75rem" }}>
+            The Leave Balance row (leave availed and balance per leave type) on Format 1 payslips. Our format has no leave section.
+          </Typography>
+        </Box>
+      </Paper>
+
       <Paper id="settings-section-fnf-format" variant="outlined" sx={sxCard}>
         <Typography sx={sxSubHeading}>F&amp;F Report Format</Typography>
         <Typography sx={sxSubCaption}>F&amp;F reports - Generate FNF Report, F&amp;F Reports tab and its downloads - open in this format.</Typography>
@@ -309,7 +375,7 @@ export default function PayrollDocumentFormatSettings({ onMessage }: Props) {
       {!blnReadOnly ? (
         <Stack direction="row" spacing={1} justifyContent="flex-end">
           <Button className="app-btn app-btn-outline" startIcon={<CancelRoundedIcon />} onClick={handleCancel} disabled={blnSaving || !blnDirty} controlId="settings.payroll-format.cancel.button">Cancel</Button>
-          <Button className="app-btn app-btn-primary" startIcon={<SaveRoundedIcon />} onClick={() => void handleSave()} disabled={blnSaving || !blnDirty} controlId="settings.payroll-format.save.button">
+          <Button className="app-btn app-btn-primary" startIcon={<SaveRoundedIcon />} onClick={() => void handleSave()} disabled={blnSaving || !blnDirty || Boolean(strHeaderError)} controlId="settings.payroll-format.save.button">
             {blnSaving ? "Saving..." : "Save"}
           </Button>
         </Stack>
