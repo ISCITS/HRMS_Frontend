@@ -18,7 +18,8 @@ import {
 } from "@mui/material";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
-import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
+import CommonTable,{ type CommonTableColumn } from "@/Common/components/CommonTable";
 import PageNotices from "@/Common/components/PageNotices";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import Form14CloseDialog from "@/features/reports/components/Form14CloseDialog";
@@ -301,28 +302,23 @@ export default function Form14ReportPage() {
             </TextField>
           </Box>
           <Box className={styles.reportSearchField} sx={{ flex: "1 1 220px", minWidth: 200 }}>
-            <TextField
+            <CommonSearchableSelect
               className="app-mui-text-field"
-              size="small"
-              select
               label="Employee"
-              value={objPickedEmployee ? String(objPickedEmployee.intEmployeeID) : ""}
-              onChange={(objEvent) => {
-                const dicEmployee = (objOptions?.lstEmployees ?? []).find((dicItem) => String(dicItem.intID) === objEvent.target.value);
+              placeholder="All employees"
+              value={objPickedEmployee ? objPickedEmployee.intEmployeeID : ""}
+              options={(objOptions?.lstEmployees ?? []).map((dicEmployee) => ({
+                intID: dicEmployee.intID,
+                strLabel: `${dicEmployee.strEmployeeCode} - ${dicEmployee.strName}`,
+              }))}
+              onChange={(intValue) => {
+                const dicEmployee = (objOptions?.lstEmployees ?? []).find((dicItem) => dicItem.intID === intValue);
                 setObjPickedEmployee(dicEmployee ? { intEmployeeID: dicEmployee.intID, strLabel: `${dicEmployee.strEmployeeCode} ${dicEmployee.strName}` } : null);
                 clearReport();
               }}
               disabled={blnBusy || !blnCanView}
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-              SelectProps={{ displayEmpty: true }}
               controlId="reports.form14.employee.select"
-            >
-              <MenuItem value="">All employees</MenuItem>
-              {(objOptions?.lstEmployees ?? []).map((dicEmployee) => (
-                <MenuItem key={dicEmployee.intID} value={String(dicEmployee.intID)}>{`${dicEmployee.strEmployeeCode} - ${dicEmployee.strName}`}</MenuItem>
-              ))}
-            </TextField>
+            />
           </Box>
           <Box className={styles.reportSearchField} sx={{ flexBasis: 150, minWidth: 140 }}>
             <TextField

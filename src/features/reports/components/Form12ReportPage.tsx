@@ -8,7 +8,8 @@ import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import { Box, Breadcrumbs, Button, MenuItem, Stack, Tab, Tabs, TextField, Typography } from "@mui/material";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import PageNotices from "@/Common/components/PageNotices";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
+import PageNoticesfrom "@/Common/components/PageNotices";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import Form12ConfigDialog from "@/features/reports/components/Form12ConfigDialog";
 import { Form12PayableGrid, Form12RegisterGrid } from "@/features/reports/components/Form12Grids";
@@ -216,15 +217,11 @@ export default function Form12ReportPage() {
             </TextField>
           </Box>
           <Box className={styles.reportSearchField} sx={{ flex: "1 1 200px", minWidth: 180 }}>
-            <TextField className="app-mui-text-field" size="small" select label="Employee" value={strEmployeeID} fullWidth InputLabelProps={{ shrink: true }}
-              SelectProps={{ displayEmpty: true }}
-              onChange={(objEvent) => { setStrEmployeeID(objEvent.target.value); clearReport(); }}
-              disabled={blnBusy || !blnCanView} controlId="reports.form12.employee.select">
-              <MenuItem value="">All employees</MenuItem>
-              {(objOptions?.lstEmployees ?? []).map((dicEmployee) => (
-                <MenuItem key={dicEmployee.intID} value={String(dicEmployee.intID)}>{`${dicEmployee.strEmployeeCode} - ${dicEmployee.strName}`}</MenuItem>
-              ))}
-            </TextField>
+            <CommonSearchableSelect className="app-mui-text-field" label="Employee" placeholder="All employees"
+              value={strEmployeeID === "" ? "" : Number(strEmployeeID)}
+              options={(objOptions?.lstEmployees ?? []).map((dicEmployee) => ({ intID: dicEmployee.intID, strLabel: `${dicEmployee.strEmployeeCode} - ${dicEmployee.strName}` }))}
+              onChange={(intValue) => { setStrEmployeeID(intValue === "" ? "" : String(intValue)); clearReport(); }}
+              disabled={blnBusy || !blnCanView} controlId="reports.form12.employee.select" />
           </Box>
           <Box className={styles.searchActions}>
             <Button className={styles.primaryButton} startIcon={<PlayArrowRoundedIcon />} onClick={() => generate().catch(() => undefined)}
