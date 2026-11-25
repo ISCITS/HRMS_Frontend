@@ -69,6 +69,8 @@ const lstSections: { strKey: SectionKey; strTitle: string; lstFields: FieldSpec[
       { strKey: "enabled", strLabel: "Calculate gratuity", strKind: "switch" },
       { strKey: "basis", strLabel: "Last drawn wages basis", strKind: "select", lstOptions: lstBasisOptions },
       { strKey: "component_codes", strLabel: "Component codes (comma separated)", strKind: "list" },
+      { strKey: "service_start_date", strLabel: "Count years of service from", strKind: "select", lstOptions: [{ strValue: "DATE_OF_JOINING", strLabel: "Date of joining" }, { strValue: "DATE_OF_CONFIRMATION", strLabel: "Date of confirmation" }], strHelp: "Service is counted from this date up to the last working date." },
+      { strKey: "confirmation_date_missing", strLabel: "If the employee has no confirmation date", strKind: "select", lstOptions: [{ strValue: "JOINING_DATE", strLabel: "Count from the date of joining (with a warning)" }, { strValue: "NO_GRATUITY", strLabel: "Pay no gratuity and block until the date is entered" }] },
       { strKey: "min_service_years", strLabel: "Minimum years of service", strKind: "number" },
       { strKey: "round_up_after_months", strLabel: "Part-year counts as a full year above (months)", strKind: "number" },
       { strKey: "days_factor", strLabel: "Days of wages per year", strKind: "number" },
@@ -206,6 +208,7 @@ export default function FNFRulesSettingsPanel({ onMessage }: Props) {
       );
     }
     if (objField.strKind === "select") {
+      if (objField.strKey === "confirmation_date_missing" && String(objDraft?.[strSection]?.service_start_date) !== "DATE_OF_CONFIRMATION") return null;
       return (
         <TextField key={objField.strKey} select size="small" label={objField.strLabel} value={String(objValue ?? "")} disabled={blnReadOnly} onChange={(e) => updateValue(strSection, objField.strKey, e.target.value)} helperText={objField.strHelp} fullWidth inputProps={{ "data-controlid": strControlId }}>
           {objField.lstOptions.map((objOption) => <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>)}

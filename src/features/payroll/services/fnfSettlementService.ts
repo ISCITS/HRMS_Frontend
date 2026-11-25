@@ -1,6 +1,8 @@
 ﻿import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { requestEncryptedApi, type ApiEnvelope } from "@/Common/utils/apiErrorHandler";
 import type {
+  FNFAdjustmentFormRow,
+  FNFAdjustmentsResponse,
   FNFAuditRecord,
   FNFBulkCreateItem,
   FNFBulkCreateResponse,
@@ -25,6 +27,7 @@ import type {
 } from "@/features/payroll/types";
 import type { PayslipFormat } from "@/features/payroll/services/payslipService";
 import type { FNFReportFormat } from "@/features/payroll/utils/payrollDocumentFormat";
+import { buildFNFAdjustmentPayload } from "@/features/payroll/utils/fnfAdjustments";
 
 async function requestApi<TData>(objOptions: {
   strPath: string;
@@ -379,5 +382,24 @@ export const fnfSettlementService = {
       strMethod: "DELETE",
       strMenuAction: "PAYROLL_FNF_EDIT",
     });
+  },
+  /** F&F adjustments (component-wise amounts entered by HR) and the components to choose from. */
+  async getAdjustments(strRecordUUID: string): Promise<FNFAdjustmentsResponse> {
+    const objResult = await requestApi<FNFAdjustmentsResponse>({
+      strPath: `/payroll/fnf-settlements/${strRecordUUID}/adjustments`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_FNF_VIEW",
+    });
+    return objResult.Data;
+  },
+  /** Replaces the settlement's adjustments; the settlement then needs Calculate. */
+  async saveAdjustments(strRecordUUID: string, lstRows: FNFAdjustmentFormRow[]): Promise<FNFAdjustmentsResponse> {
+    const objResult = await requestApi<FNFAdjustmentsResponse>({
+      strPath: `/payroll/fnf-settlements/${strRecordUUID}/adjustments`,
+      strMethod: "PUT",
+      objBody: buildFNFAdjustmentPayload(lstRows),
+      strMenuAction: "PAYROLL_FNF_EDIT",
+    });
+    return objResult.Data;
   },
 };

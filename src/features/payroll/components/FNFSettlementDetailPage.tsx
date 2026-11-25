@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { DetailPageHeader } from "@/components/master/MasterListUi";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import FNFActionBar from "@/features/payroll/components/FNFActionBar";
+import FNFAdjustmentsPanel from "@/features/payroll/components/FNFAdjustmentsPanel";
 import FNFSettlementLineEditor from "@/features/payroll/components/FNFSettlementLineEditor";
 import {
   FNFAuditTimeline,
@@ -289,6 +290,13 @@ export default function FNFSettlementDetailPage({ strSettlementID }: { /** recor
               ) : null}
 
               <FNFSettlementCalculationPanel objSettlement={objSettlement} blnReadOnly={blnLinesReadOnly} onAdd={() => { setObjEditingLine(null); setBlnLineDialogOpen(true); }} onEdit={(line) => { setObjEditingLine(line); setBlnLineDialogOpen(true); }} onDelete={setObjLineToDelete} />
+              <FNFAdjustmentsPanel
+                strSettlementID={strSettlementID}
+                strSettlementStatus={objSettlement.strSettlementStatus}
+                blnCanEdit={blnCanEditDetails}
+                onSaved={async (strMessage) => { await loadSettlement(false); setStrSuccess(strMessage); }}
+                onError={setStrError}
+              />
               <FNFLeaveEncashmentPanel objSettlement={objSettlement} blnReadOnly={blnLinesReadOnly} onAdd={() => { setObjEditingLine(null); setBlnLineDialogOpen(true); }} onEdit={(line) => { setObjEditingLine(line); setBlnLineDialogOpen(true); }} onDelete={setObjLineToDelete} />
               <FNFNoticePayPanel objSettlement={objSettlement} />
               <FNFGratuityPanel objSettlement={objSettlement} />

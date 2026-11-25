@@ -341,6 +341,9 @@ export type FNFReportRow = {
   decLwf: number;
   decOtherStatutory: number;
   decTds: number;
+  /** F&F adjustments: additions, and deductions + recoveries. */
+  decAdjustmentEarnings: number;
+  decAdjustmentDeductions: number;
   decTotalEarnings: number;
   decTotalRecoveries: number;
   decTotalDeductions: number;
@@ -490,6 +493,50 @@ export type FNFLeaveEncashmentFormValue = {
   strLeaveTypeName: string;
   decBalanceDays: string;
   decEncashableDays: string;
+};
+
+/** F&F adjustment category, as in Payroll Input: addition pays the employee, deduction / recovery takes from the settlement. */
+export type FNFAdjustmentCategory = "addition" | "deduction" | "recovery";
+
+/** A saved F&F adjustment (an HR-entered amount against a salary component). */
+export type FNFAdjustmentRecord = {
+  intID: number;
+  intSalaryComponentID: number;
+  strComponentCode: string;
+  strComponentName: string;
+  strCategory: FNFAdjustmentCategory;
+  strLineType: FNFLineType;
+  decAmount: number;
+  blnTaxable: boolean;
+  strRemarks?: string | null;
+};
+
+export type FNFAdjustmentComponentOption = {
+  intID: number;
+  strCode: string;
+  strLabel: string;
+  strPayslipName?: string | null;
+  strComponentCategory?: string | null;
+  /** The component's "include in taxable income" setting: the default for an addition. */
+  blnTaxable: boolean;
+};
+
+export type FNFAdjustmentsResponse = {
+  lstAdjustments: FNFAdjustmentRecord[];
+  lstComponents: FNFAdjustmentComponentOption[];
+  lstCategories: { strCode: FNFAdjustmentCategory; strLabel: string }[];
+  blnEditable: boolean;
+  strSettlementStatus: string;
+};
+
+/** One editable row of the Adjustments section. */
+export type FNFAdjustmentFormRow = {
+  strRowKey: string;
+  intSalaryComponentID: number | "";
+  strCategory: FNFAdjustmentCategory;
+  strAmount: string;
+  blnTaxable: boolean;
+  strRemarks: string;
 };
 
 export type FNFLineFormValues = {

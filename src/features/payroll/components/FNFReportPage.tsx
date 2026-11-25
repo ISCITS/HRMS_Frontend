@@ -55,6 +55,8 @@ const lstAmountColumns: { strKey: AmountKey; strLabel: string }[] = [
   { strKey: "decExcessLeaveRecovery", strLabel: "Excess Leave Recovery" },
   { strKey: "decOtherRecoveries", strLabel: "Other Recoveries" },
   { strKey: "decOtherDeductions", strLabel: "Other Deductions" },
+  { strKey: "decAdjustmentEarnings", strLabel: "Adjustments (Additions)" },
+  { strKey: "decAdjustmentDeductions", strLabel: "Adjustments (Deductions)" },
   { strKey: "decPf", strLabel: "PF" },
   { strKey: "decEsi", strLabel: "ESI" },
   { strKey: "decPt", strLabel: "PT" },

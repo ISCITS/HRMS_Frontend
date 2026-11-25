@@ -8,6 +8,7 @@ import WorkHistoryRoundedIcon from "@mui/icons-material/WorkHistoryRounded";
 import { Box, Button, Stack, Typography } from "@mui/material";
 import type { FNFAuditRecord, FNFSettlementLineRecord, FNFSettlementRecord, FNFStatementRecord } from "@/features/payroll/types";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
+import { isFNFAdjustmentLine } from "@/features/payroll/utils/fnfAdjustments";
 
 export function formatCurrency(decValue?: number) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2 }).format(decValue || 0);
@@ -61,7 +62,7 @@ function LineTable({ lstLines, blnReadOnly, onEdit, onDelete }: { lstLines: FNFS
             <tr key={line.intID}>
               <td>{line.strLineType}{line.strRecoveryType ? ` / ${line.strRecoveryType}` : ""}</td><td>{line.strLineCode}</td><td>{line.strLineName}</td><td>{line.strCalculationBasis || "-"}</td><td>{formatCurrency(line.decActualAmount ?? line.decAmount)}</td><td>{formatCurrency(line.decAmount)}</td><td>{line.strSourceType || (line.blnIsSystemCalculated ? "system" : "manual")}</td>
               <td className={styles.actionsColumn}>
-                {!blnReadOnly && !line.blnIsSystemCalculated ? <Box className={styles.actionCell}><Button size="small" startIcon={<EditRoundedIcon />} onClick={() => onEdit?.(line)} controlId="payroll.fnf-settlement.line.edit.button" data-row-key={line.intID}>Edit</Button><Button color="error" size="small" startIcon={<DeleteRoundedIcon />} onClick={() => onDelete?.(line)} controlId="payroll.fnf-settlement.line.delete.button" data-row-key={line.intID}>Delete</Button></Box> : "-"}
+                {isFNFAdjustmentLine(line) ? <Box component="span" sx={{ color: "#64748b", fontSize: "0.78rem" }}>In Adjustments</Box> : !blnReadOnly && !line.blnIsSystemCalculated ? <Box className={styles.actionCell}><Button size="small" startIcon={<EditRoundedIcon />} onClick={() => onEdit?.(line)} controlId="payroll.fnf-settlement.line.edit.button" data-row-key={line.intID}>Edit</Button><Button color="error" size="small" startIcon={<DeleteRoundedIcon />} onClick={() => onDelete?.(line)} controlId="payroll.fnf-settlement.line.delete.button" data-row-key={line.intID}>Delete</Button></Box> : "-"}
               </td>
             </tr>
           )) : <tr><td colSpan={8} className={styles.emptyState}>No settlement lines yet.</td></tr>}
