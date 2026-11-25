@@ -9,7 +9,7 @@ import { Box, Breadcrumbs, Button, MenuItem, Stack, Tab, Tabs, TextField, Typogr
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
-import PageNoticesfrom "@/Common/components/PageNotices";
+import PageNotices from "@/Common/components/PageNotices";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import Form12ConfigDialog from "@/features/reports/components/Form12ConfigDialog";
 import { Form12PayableGrid, Form12RegisterGrid } from "@/features/reports/components/Form12Grids";
