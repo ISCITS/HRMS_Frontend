@@ -16,6 +16,7 @@ import type {
   AttendanceImportCommitRow,
   AttendanceImportMapping,
   AttendanceImportPreviewResult,
+  ScheduledImportRunResult,
   AttendancePolicy,
   AttendancePolicyAssignmentEmployee,
   AttendancePolicyAssignmentHistory,
@@ -451,6 +452,16 @@ export const attendanceService = {
       strPath: "/attendance/import/commit",
       strMethod: ApiRequestMethod.Post,
       objBody: { lstRows },
+      strMenuAction: ATTENDANCE_MANAGE,
+    });
+    return objResult.Data;
+  },
+
+  // Runs the same folder-import job the daily scheduler runs, on demand.
+  async runScheduledImport(): Promise<ScheduledImportRunResult> {
+    const objResult = await requestApi<ScheduledImportRunResult>({
+      strPath: "/attendance/import/scheduled/run",
+      strMethod: ApiRequestMethod.Post,
       strMenuAction: ATTENDANCE_MANAGE,
     });
     return objResult.Data;

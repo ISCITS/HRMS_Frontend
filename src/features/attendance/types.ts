@@ -238,6 +238,28 @@ export type AttendanceImportCommitResult = {
   lstFailures: AttendanceImportCommitFailure[];
 };
 
+export type ScheduledImportFileResult = {
+  strFile: string;
+  strOutcome: "processed" | "failed" | "deferred";
+  strMessage?: string;
+  intTotal?: number;
+  intCreated?: number;
+  intUpdated?: number;
+  intSkipped?: number;
+};
+
+export type ScheduledImportRunResult = {
+  intFilesFound: number;
+  intFilesProcessed: number;
+  intFilesFailed: number;
+  intFilesDeferred: number;
+  intCreated: number;
+  intUpdated: number;
+  intSkipped: number;
+  strNote?: string;
+  lstFiles: ScheduledImportFileResult[];
+};
+
 export type DailyAttendanceFinalizeResult = {
   dtWorkDate: string;
   intProcessed: number;

@@ -4,6 +4,7 @@ import { useRef, useState, type ChangeEvent } from "react";
 
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import DownloadIcon from "@mui/icons-material/Download";
+import FolderOpenIcon from "@mui/icons-material/FolderOpen";
 import {
   Alert,
   Box,
@@ -33,6 +34,7 @@ import type {
   AttendanceImportMapping,
   AttendanceImportPreviewResult,
   AttendanceImportRow,
+  ScheduledImportRunResult,
 } from "@/features/attendance/types";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
@@ -67,6 +69,7 @@ export default function AttendanceImportPanel() {
   const [objFile, setObjFile] = useState<File | null>(null);
   const [dicMappingDraft, setDicMappingDraft] = useState<AttendanceImportMapping>({});
   const [blnErrorsOpen, setBlnErrorsOpen] = useState(false);
+  const [objScheduledResult, setObjScheduledResult] = useState<ScheduledImportRunResult | null>(null);
 
   if (objAccess.blnLoading) return <Box className={styles.page}><MasterBreadcrumbs strSection={t("breadcrumb_attendance", "Attendance")} strTitle={t("import_attendance_title", "Import Attendance")} /><MasterGridSkeleton strControlId="attendance.import.skeleton" intColumns={7} /></Box>;
   if (!objAccess.canViewAny())
@@ -82,6 +85,18 @@ export default function AttendanceImportPanel() {
       await attendanceService.downloadImportTemplate();
     } catch (objErr) {
       setStrError((objErr as Error)?.message || t("import_template_download_failed", "Failed to download the import template."));
+    } finally {
+      setBlnBusy(false);
+    }
+  }
+
+  async function handleRunScheduledImport() {
+    try {
+      setBlnBusy(true);
+      setStrError(null);
+      setObjScheduledResult(await attendanceService.runScheduledImport());
+    } catch (objErr) {
+      setStrError((objErr as Error)?.message || t("scheduled_import_failed", "Failed to run the folder import."));
     } finally {
       setBlnBusy(false);
     }
@@ -255,6 +270,19 @@ export default function AttendanceImportPanel() {
                 onChange={handleFileSelected}
                 data-control-id="attendance.import.file-input"
               />
+              <Tooltip title={t("run_folder_import_hint", "Imports the files waiting in the configured inbox folder now - the same job that runs automatically every day at 11:00 AM.")}>
+                <span>
+                  <Button
+                    data-control-id="attendance.import.run-folder-import.button"
+                    className={styles.secondaryButton}
+                    startIcon={<FolderOpenIcon />}
+                    onClick={handleRunScheduledImport}
+                    disabled={blnBusy}
+                  >
+                    {t("run_folder_import", "Run Folder Import Now")}
+                  </Button>
+                </span>
+              </Tooltip>
             </>
           )}
           {strFileName && (
@@ -273,6 +301,34 @@ export default function AttendanceImportPanel() {
               {objCommitResult.lstFailures.map((objFailure) => (
                 <li key={objFailure.intExcelRowNumber}>
                   {t("row", "Row")} {objFailure.intExcelRowNumber}: {objFailure.strMessage}
+                </li>
+              ))}
+            </Box>
+          )}
+        </Alert>
+      )}
+
+      {objScheduledResult && (
+        <Alert
+          severity={objScheduledResult.intFilesFailed > 0 ? "warning" : objScheduledResult.intFilesFound === 0 ? "info" : "success"}
+          onClose={() => setObjScheduledResult(null)}
+          data-control-id="attendance.import.scheduled-result"
+        >
+          {objScheduledResult.strNote
+            ? objScheduledResult.strNote
+            : objScheduledResult.intFilesFound === 0
+              ? t("scheduled_no_files", "No files were waiting in the inbox folder.")
+              : `${t("folder_import_complete", "Folder import complete")}: ${objScheduledResult.intFilesProcessed} ${t("files_processed", "file(s) processed")}, ${objScheduledResult.intFilesFailed} ${t("files_failed", "failed")}, ${objScheduledResult.intFilesDeferred} ${t("files_deferred", "deferred")}; ${objScheduledResult.intCreated} ${t("created", "created")}, ${objScheduledResult.intUpdated} ${t("updated", "updated")}, ${objScheduledResult.intSkipped} ${t("skipped", "skipped")}.`}
+          {objScheduledResult.lstFiles.length > 0 && (
+            <Box component="ul" sx={{ mt: 1, mb: 0, pl: 2 }}>
+              {objScheduledResult.lstFiles.map((objFile) => (
+                <li key={objFile.strFile}>
+                  {objFile.strFile}: {objFile.strOutcome}
+                  {objFile.strOutcome === "processed"
+                    ? ` (${objFile.intCreated ?? 0} ${t("created", "created")}, ${objFile.intUpdated ?? 0} ${t("updated", "updated")}, ${objFile.intSkipped ?? 0} ${t("skipped", "skipped")}) - ${t("see_report", "row-level report saved in the processed folder")}`
+                    : objFile.strMessage
+                      ? ` - ${objFile.strMessage}`
+                      : ""}
                 </li>
               ))}
             </Box>
