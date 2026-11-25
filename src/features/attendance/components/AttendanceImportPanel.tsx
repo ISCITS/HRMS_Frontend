@@ -10,8 +10,17 @@ import {
   Button,
   Checkbox,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   MenuItem,
   Snackbar,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
   TextField,
   Tooltip,
   Typography,
@@ -57,6 +66,7 @@ export default function AttendanceImportPanel() {
   const [objCommitResult, setObjCommitResult] = useState<AttendanceImportCommitResult | null>(null);
   const [objFile, setObjFile] = useState<File | null>(null);
   const [dicMappingDraft, setDicMappingDraft] = useState<AttendanceImportMapping>({});
+  const [blnErrorsOpen, setBlnErrorsOpen] = useState(false);
 
   if (objAccess.blnLoading) return <Box className={styles.page}><MasterBreadcrumbs strSection={t("breadcrumb_attendance", "Attendance")} strTitle={t("import_attendance_title", "Import Attendance")} /><MasterGridSkeleton strControlId="attendance.import.skeleton" intColumns={7} /></Box>;
   if (!objAccess.canViewAny())
@@ -153,6 +163,7 @@ export default function AttendanceImportPanel() {
   }
 
   const lstRows: AttendanceImportRow[] = objPreview?.lstRows ?? [];
+  const lstErrorRows = lstRows.filter((objRow) => !objRow.blnValid);
 
   const lstPreviewRows = lstRows.map((objRow) => ({
     id: objRow.intExcelRowNumber,
@@ -346,7 +357,14 @@ export default function AttendanceImportPanel() {
                 )}
                 <Chip size="small" label={`${t("total", "Total")}: ${objPreview.intTotal}`} />
                 <Chip size="small" color="success" label={`${t("valid", "Valid")}: ${objPreview.intValid}`} />
-                <Chip size="small" color="error" label={`${t("errors", "Errors")}: ${objPreview.intErrors}`} />
+                <Chip
+                  size="small"
+                  color="error"
+                  clickable={objPreview.intErrors > 0}
+                  onClick={objPreview.intErrors > 0 ? () => setBlnErrorsOpen(true) : undefined}
+                  data-control-id="attendance.import.errors.chip"
+                  label={`${t("errors", "Errors")}: ${objPreview.intErrors}`}
+                />
                 <Chip size="small" color="warning" label={`${t("will_overwrite", "Will overwrite")}: ${objPreview.intWillOverwrite}`} />
               </Box>
             }
@@ -355,6 +373,37 @@ export default function AttendanceImportPanel() {
           />
         </Box>
       )}
+
+      <Dialog open={blnErrorsOpen} onClose={() => setBlnErrorsOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>{`${t("errors", "Errors")}: ${lstErrorRows.length}`}</DialogTitle>
+        <DialogContent dividers>
+          <Table size="small" stickyHeader>
+            <TableHead>
+              <TableRow>
+                <TableCell>{t("row", "Row")}</TableCell>
+                <TableCell>{t("employee_code", "Employee Code")}</TableCell>
+                <TableCell>{t("employee_name", "Employee Name")}</TableCell>
+                <TableCell>{t("date", "Date")}</TableCell>
+                <TableCell>{t("error", "Error")}</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {lstErrorRows.map((objRow) => (
+                <TableRow key={objRow.intExcelRowNumber}>
+                  <TableCell>{objRow.intExcelRowNumber}</TableCell>
+                  <TableCell>{objRow.strEmployeeCode}</TableCell>
+                  <TableCell>{objRow.strEmployeeName ?? "-"}</TableCell>
+                  <TableCell>{objRow.dtWorkDate ?? objRow.strRawDate}</TableCell>
+                  <TableCell>{objRow.strErrorMessage ?? "-"}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBlnErrorsOpen(false)}>{t("close", "Close")}</Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar open={Boolean(strError)} autoHideDuration={6000} onClose={() => setStrError(null)}>
         <Alert severity="error" onClose={() => setStrError(null)}>
