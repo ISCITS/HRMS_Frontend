@@ -163,8 +163,10 @@ export default function ReimbursementReviewListPage() {
   const [blnCreateDialogOpen, setBlnCreateDialogOpen] = useState(false);
   const [strCreateEmployeeID, setStrCreateEmployeeID] = useState("");
   const [strCreateError, setStrCreateError] = useState("");
-  const [blnLoading, setBlnLoading] = useState(true);
+  const [blnLoading, setBlnLoading] = useState(false);
   const [strError, setStrError] = useState("");
+  // Search-first: the grid stays empty until the user clicks Search.
+  const [blnHasSearched, setBlnHasSearched] = useState(false);
   const [lstVisibleOptionalColumns, setLstVisibleOptionalColumns] = useState<OptionalColumnKey[]>([]);
   const [dicMoreFiltersSnapshot, setDicMoreFiltersSnapshot] = useState<PayrollReimbursementFilters | null>(null);
   const blnEmployeeReimbursementContext =
@@ -194,6 +196,7 @@ export default function ReimbursementReviewListPage() {
     // Purpose: Loads the HR reimbursement queue using API-backed filters, then applies UI-only filters locally.
     setBlnLoading(true);
     setStrError("");
+    setBlnHasSearched(true);
     try {
       setLstClaims(await payrollReimbursementService.listClaims(dicNextFilters));
     } catch (objError) {
@@ -202,14 +205,6 @@ export default function ReimbursementReviewListPage() {
       setBlnLoading(false);
     }
   }
-
-  useEffect(() => {
-    if (blnRightsLoading) {
-      return;
-    }
-
-    void loadClaims();
-  }, [blnRightsLoading, blnCanView]);
 
   useEffect(() => {
     if (blnRightsLoading || !blnCanView) {
@@ -351,7 +346,9 @@ export default function ReimbursementReviewListPage() {
   function clearFilters() {
     const dicReset = buildDefaultFilters();
     setDicFilters(dicReset);
-    void loadClaims(dicReset);
+    setLstClaims([]);
+    setBlnHasSearched(false);
+    setStrError("");
   }
 
   function proceedToCreateForEmployee() {
@@ -525,7 +522,7 @@ export default function ReimbursementReviewListPage() {
             hideRowClickHint
             getRowSx={() => dicMasterRowSx}
             minTableWidth={1100}
-            emptyMessage="No reimbursement claims found."
+            emptyMessage={blnHasSearched ? "No reimbursement claims found." : "Select filters and click Search to view claims."}
             testIdPrefix="reimbursements.review-list"
             withPaper={false}
             sx={{ p: 0, boxShadow: "none", background: "transparent" }}

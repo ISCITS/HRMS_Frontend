@@ -65,7 +65,9 @@ export default function FNFSettlementListPage() {
   const { blnLoading: blnRightsLoading, can, canView } = useFNFRights();
   const [lstRows, setLstRows] = useState<FNFSettlementRecord[]>([]);
   const [lstEmployeeOptions, setLstEmployeeOptions] = useState<FNFEmployeeOption[]>([]);
-  const [blnLoading, setBlnLoading] = useState(true);
+  const [blnLoading, setBlnLoading] = useState(false);
+  // Search-first: the grid stays empty until the user clicks Search.
+  const [blnHasSearched, setBlnHasSearched] = useState(false);
   const [blnEmployeeOptionsLoading, setBlnEmployeeOptionsLoading] = useState(true);
   const [strError, setStrError] = useState("");
   const [dicFilters, setDicFilters] = useState(dicEmptyFilters);
@@ -85,6 +87,7 @@ export default function FNFSettlementListPage() {
     }
     setBlnLoading(true);
     setStrError("");
+    setBlnHasSearched(true);
     try {
       setLstRows(await fnfSettlementService.listSettlements({ status: dicFilters.status, employee_code: dicFilters.employee_code, department: dicFilters.department, settlement_month: dicFilters.settlement_month, lwd_from: dicFilters.lwd_from, lwd_to: dicFilters.lwd_to, payable_type: dicFilters.payable_type }));
     } catch (objError) {
@@ -94,7 +97,6 @@ export default function FNFSettlementListPage() {
     }
   }
 
-  useEffect(() => { if (!blnRightsLoading) loadRows().catch(() => undefined); }, [blnRightsLoading, blnCanView]);
   useEffect(() => {
     if (blnRightsLoading || !blnCanView) return;
     setBlnEmployeeOptionsLoading(true);
@@ -224,7 +226,7 @@ export default function FNFSettlementListPage() {
             <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => loadRows()} disabled={blnBusy} controlId="payroll.fnf-settlements.search.button">Search</Button>
           </Box>
           <Box className={styles.searchActions}>
-            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => setDicFilters(dicEmptyFilters)} disabled={blnBusy} controlId="payroll.fnf-settlements.clear.button">Clear</Button>
+            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => { setDicFilters(dicEmptyFilters); setLstRows([]); setBlnHasSearched(false); setStrError(""); }} disabled={blnBusy} controlId="payroll.fnf-settlements.clear.button">Clear</Button>
           </Box>
         </Box>
       </Box>
@@ -253,7 +255,7 @@ export default function FNFSettlementListPage() {
             rowIdField="id"
             exportFileName="fnf_settlements"
             showExportOptions={blnCanExport}
-            emptyMessage="No FNF settlements found."
+            emptyMessage={blnHasSearched ? "No FNF settlements found." : "Select filters and click Search to view settlements."}
             testIdPrefix="payroll.fnf-settlements.list"
             showPaginationSummary
             onRowClick={(row) => openSettlement(row.strRecordUUID)}
@@ -264,7 +266,7 @@ export default function FNFSettlementListPage() {
           />
         )}
       </Box>
-      <FNFBulkCreateDialog blnOpen={blnBulkOpen} blnCanCalculate={can("calculate")} onClose={(blnChanged) => { setBlnBulkOpen(false); if (blnChanged) loadRows().catch(() => undefined); }} />
+      <FNFBulkCreateDialog blnOpen={blnBulkOpen} blnCanCalculate={can("calculate")} onClose={(blnChanged) => { setBlnBulkOpen(false); if (blnChanged && blnHasSearched) loadRows().catch(() => undefined); }} />
     </Box>
   );
 }

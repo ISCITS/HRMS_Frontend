@@ -37,6 +37,8 @@ export type ReportGridPageProps = {
   lstColumns: CommonTableColumn<ReportDisplayRow>[];
   lstFilters: ReportFilterField[];
   dicDefaultFilters?: Record<string, string>;
+  /** Load straight away with dicDefaultFilters (e.g. opened from a deep link). Default: wait for Search. */
+  blnAutoLoad?: boolean;
   fnLoad: (dicFilters: Record<string, string>) => Promise<ReportDisplayRow[]>;
   strRowIdField: string;
   strCsvFileName: string;
@@ -221,8 +223,24 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [objProps.fnLoad]);
 
+  // Search-first: nothing loads on open; the user picks at least one filter and clicks Search.
+  const [blnShowCriteriaHint, setBlnShowCriteriaHint] = useState(false);
+
+  function hasCriteria(dicValues: Record<string, string>) {
+    return objProps.lstFilters.some((objFilter) => String(dicValues[objFilter.strKey] ?? "").trim() !== "");
+  }
+
+  function searchRows(dicValues: Record<string, string>) {
+    if (!hasCriteria(dicValues)) {
+      setBlnShowCriteriaHint(true);
+      return;
+    }
+    setBlnShowCriteriaHint(false);
+    loadRows(dicValues).catch(() => undefined);
+  }
+
   useEffect(() => {
-    if (!blnCanView) return;
+    if (!blnCanView || !objProps.blnAutoLoad) return;
     loadRows(objProps.dicDefaultFilters ?? {}).catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blnCanView]);
@@ -232,11 +250,15 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
   }
 
   function clearFilters() {
-    const dicReset = objProps.dicDefaultFilters ?? {};
-    setDicFilters(dicReset);
+    intRequestSeqRef.current += 1; // drop any request still in flight
+    setDicFilters(objProps.dicDefaultFilters ?? {});
     setDicMoreDraft({});
     setLstSelectedIds([]);
-    loadRows(dicReset).catch(() => undefined);
+    setLstRows([]);
+    setBlnHasLoaded(false);
+    setBlnLoading(false);
+    setBlnShowCriteriaHint(false);
+    setStrError("");
   }
 
   // ---- Row selection (over the full loaded result set; persists across client-side pages) ----
@@ -317,7 +339,7 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
   function applyMoreFilters() {
     const dicNext = { ...dicFilters, ...dicMoreDraft };
     setDicFilters(dicNext);
-    loadRows(dicNext).catch(() => undefined);
+    searchRows(dicNext);
   }
 
   function renderFilterControl(objFilter: ReportFilterField, dicValues: Record<string, string>, fnSetValue: (strKey: string, strValue: string) => void) {
@@ -382,6 +404,7 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
   const blnShowBreadcrumbs = Boolean(objProps.strBreadcrumbSection || objProps.strBreadcrumbTitle);
   const lstPageNotices: PageNoticeInput[] = [
     !blnRightsLoading && !blnCanView && !strError ? { strKey: "rights", strSeverity: "warning", objMessage: "This report is not available for your user group." } : null,
+    blnShowCriteriaHint ? { strKey: "criteria", strSeverity: "warning", objMessage: "Select at least one filter, then click Search.", fnDismiss: () => setBlnShowCriteriaHint(false) } : null,
     { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
   ];
 
@@ -440,7 +463,7 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
                 ))}
               </ReportMoreFilters>
             ) : null}
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => loadRows(dicFilters)} disabled={blnPageLoading} data-controlid={`reports.${objProps.strCsvFileName}.search.button`}>Search</Button>
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => searchRows(dicFilters)} disabled={blnPageLoading} data-controlid={`reports.${objProps.strCsvFileName}.search.button`}>Search</Button>
             <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} disabled={blnPageLoading} data-controlid={`reports.${objProps.strCsvFileName}.clear.button`}>Clear</Button>
           </Box>
         </Box>
@@ -461,7 +484,7 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
           rowIdField={objProps.strRowIdField}
           defaultPageSize={lstRowsPerPageOptions[0]}
           pageSizeOptions={lstRowsPerPageOptions}
-          emptyMessage={objProps.strEmptyMessage ?? "No records found for the current filters."}
+          emptyMessage={blnHasLoaded ? (objProps.strEmptyMessage ?? "No records found for the current filters.") : "Select filters and click Search to view records."}
           showPaginationSummary
           withPaper={false}
           testIdPrefix={`reports.${objProps.strCsvFileName}`}

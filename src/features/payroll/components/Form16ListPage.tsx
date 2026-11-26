@@ -73,7 +73,9 @@ export default function Form16ListPage({ blnAdminMode = false }: Form16ListPageP
   const [strSelectedFinancialYear, setStrSelectedFinancialYear] = useState(lstFinancialYearOptions[0] ?? "");
   const [lstRows, setLstRows] = useState<Form16ListRecord[]>([]);
   const [lstEmployees, setLstEmployees] = useState<EmployeeListRecord[]>([]);
-  const [blnLoading, setBlnLoading] = useState(true);
+  // Admin list is search-first (empty until Search); "My Form 16" shows the employee's own on open.
+  const [blnLoading, setBlnLoading] = useState(!blnAdminMode);
+  const [blnHasSearched, setBlnHasSearched] = useState(!blnAdminMode);
   const [strError, setStrError] = useState("");
   const [strActionError, setStrActionError] = useState("");
   const [strDownloadingKey, setStrDownloadingKey] = useState<string | null>(null);
@@ -103,6 +105,7 @@ export default function Form16ListPage({ blnAdminMode = false }: Form16ListPageP
     }
     setBlnLoading(true);
     setStrError("");
+    setBlnHasSearched(true);
     try {
       const lstResult = blnAdminMode
         ? await form16Service.listForCompany(strFinancialYearCode)
@@ -118,10 +121,10 @@ export default function Form16ListPage({ blnAdminMode = false }: Form16ListPageP
   }
 
   useEffect(() => {
-    if (blnRightsLoading) return;
+    if (blnRightsLoading || blnAdminMode) return;
     void loadRows();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blnRightsLoading, blnCanView, strSelectedFinancialYear]);
+  }, [blnRightsLoading, blnCanView]);
 
   useEffect(() => {
     if (blnRightsLoading || !blnCanGenerate) return;
@@ -195,6 +198,7 @@ export default function Form16ListPage({ blnAdminMode = false }: Form16ListPageP
           ],
         });
       }
+      setStrSelectedFinancialYear(strGenerateFinancialYear);
       await loadRows(strGenerateFinancialYear);
     } catch (objError) {
       setStrActionError(
@@ -308,14 +312,21 @@ export default function Form16ListPage({ blnAdminMode = false }: Form16ListPageP
         ]}
       />
       <Box className={masterStyles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
-        <Box className={masterStyles.searchRow} aria-busy={blnBusy} sx={{ gridTemplateColumns: "minmax(180px, 240px)", alignItems: "center" }}>
+        <Box className={masterStyles.searchRow} aria-busy={blnBusy} sx={{ "&&": { gridTemplateColumns: blnAdminMode ? "minmax(180px, 240px) max-content" : "minmax(180px, 240px)" }, alignItems: "center" }}>
           <TextField
             className="app-mui-text-field"
             select
             size="small"
             label={t("filter_financial_year", "Financial Year")}
             value={strSelectedFinancialYear}
-            onChange={(e) => setStrSelectedFinancialYear(e.target.value)}
+            onChange={(e) => {
+              setStrSelectedFinancialYear(e.target.value);
+              // ESS lists every year of the employee's own; the admin list waits for Search.
+              if (blnAdminMode) {
+                setLstRows([]);
+                setBlnHasSearched(false);
+              }
+            }}
             disabled={blnBusy}
             fullWidth
             inputProps={{ "data-controlid": "form16.list.financial-year.select" }}
@@ -326,6 +337,17 @@ export default function Form16ListPage({ blnAdminMode = false }: Form16ListPageP
               </MenuItem>
             ))}
           </TextField>
+          {blnAdminMode ? (
+            <Button
+              className={masterStyles.primaryButton}
+              startIcon={<SearchRoundedIcon />}
+              onClick={() => void loadRows(strSelectedFinancialYear)}
+              disabled={blnBusy || !strSelectedFinancialYear}
+              data-controlid="form16.list.search.button"
+            >
+              {t("search", "Search")}
+            </Button>
+          ) : null}
         </Box>
       </Box>
 
@@ -345,7 +367,7 @@ export default function Form16ListPage({ blnAdminMode = false }: Form16ListPageP
             rowIdField="id"
             exportFileName={blnAdminMode ? "form16-company" : "my-form16"}
             showPaginationSummary
-            emptyMessage={t("empty_message", "No Form 16 records found for this selection.")}
+            emptyMessage={blnHasSearched ? t("empty_message", "No Form 16 records found for this selection.") : "Select the financial year and click Search to view Form 16 records."}
             testIdPrefix="form16.list"
             toolbarLeft={blnCanGenerate ? (
               <Button className={masterStyles.primaryButton} startIcon={<AutorenewRoundedIcon />} onClick={openGenerateDialog} data-controlid="form16.list.generate.button">

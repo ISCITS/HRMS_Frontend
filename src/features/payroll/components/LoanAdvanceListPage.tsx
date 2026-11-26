@@ -126,7 +126,9 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
   const [lstRows, setLstRows] = useState<LoanAdvanceRecord[]>([]);
   const [lstEmployees, setLstEmployees] = useState<EmployeeListRecord[]>([]);
   const [lstCategories, setLstCategories] = useState<LoanAdvanceCategoryRecord[]>([]);
-  const [blnLoading, setBlnLoading] = useState(true);
+  // HR list is search-first (empty until Search); ESS shows the employee's own few requests on open.
+  const [blnLoading, setBlnLoading] = useState(strMode === "ess");
+  const [blnHasSearched, setBlnHasSearched] = useState(strMode === "ess");
   const [blnHasMenuFallbackAccess, setBlnHasMenuFallbackAccess] = useState(false);
   const [strError, setStrError] = useState("");
   const [objMoreFiltersAnchor, setObjMoreFiltersAnchor] = useState<HTMLElement | null>(null);
@@ -189,6 +191,7 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
     }
     setBlnLoading(true);
     setStrError("");
+    setBlnHasSearched(true);
     try {
       setLstRows(await (blnIsEssMode ? loanAdvanceService.listEssLoans(dicNextFilters) : loanAdvanceService.listLoans(dicNextFilters)));
     } catch (objError) {
@@ -199,7 +202,7 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
   }
 
   useEffect(() => {
-    if (blnRightsLoading) return;
+    if (blnRightsLoading || !blnIsEssMode) return;
     void loadRows();
   }, [blnRightsLoading, blnCanView]);
 
@@ -337,7 +340,13 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
   function clearFilters() {
     const dicReset = { employee_code: "", department: "", request_type: "All", category_id: "", status: strDefaultStatus, date_from: "", date_to: "" };
     setDicFilters(dicReset);
-    void loadRows(dicReset);
+    if (blnIsEssMode) {
+      void loadRows(dicReset);
+      return;
+    }
+    setLstRows([]);
+    setBlnHasSearched(false);
+    setStrError("");
   }
 
   function applyFilters() {
@@ -512,7 +521,7 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
             exportFileName={blnIsEssMode ? "ess-loans-advances" : "payroll-loans-advances"}
             showExportOptions={blnCanExport}
             showPaginationSummary
-            emptyMessage={t("empty_message", "No loans or advances found.")}
+            emptyMessage={blnHasSearched ? t("empty_message", "No loans or advances found.") : "Select filters and click Search to view loans and advances."}
             testIdPrefix="loan-advance.list"
             toolbarLeft={blnCanCreate ? (
               <Button

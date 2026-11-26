@@ -5,7 +5,7 @@ import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { Alert, Box, Button, MenuItem, TextField, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { MasterBreadcrumbs } from "@/components/master/MasterListUi";
@@ -90,7 +90,7 @@ export default function FNFRegisterPage() {
     }
   }
 
-  useEffect(() => { if (!blnRightsLoading && blnCanView) loadRegister().catch(() => undefined); }, [blnRightsLoading, blnCanView]);
+  // Search-first: the register loads only when the user clicks Show.
 
   // Component columns (Basic, HRA, Leave Encashment, ...) come from the settlements' lines, so the
   // grid - and the Excel export, which writes the same columns - shows every component paid.
@@ -139,7 +139,7 @@ export default function FNFRegisterPage() {
         rowIdField="id"
         exportFileName="fnf_register"
         showExportOptions={blnCanExport}
-        emptyMessage={blnLoading ? "Loading..." : "No settlements for the selected period."}
+        emptyMessage={blnLoading ? "Loading..." : objRegister ? "No settlements for the selected period." : "Select the period and click Show to view the register."}
         testIdPrefix="payroll.fnf-register"
         showPaginationSummary
         onRowClick={(objRow) => { if (objRow.strRecordUUID) objRouter.push(`/payroll/fnf-settlements/${objRow.strRecordUUID}`); }}

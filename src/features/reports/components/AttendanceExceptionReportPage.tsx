@@ -7,7 +7,7 @@ import FilterListRoundedIcon from "@mui/icons-material/FilterListRounded";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { Autocomplete, Box, Breadcrumbs, Button, Divider, IconButton, Popover, Stack, TextField, Typography } from "@mui/material";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import PageNotices from "@/Common/components/PageNotices";
@@ -139,6 +139,8 @@ export default function AttendanceExceptionReportPage() {
   const [lstRows, setLstRows] = useState<AttendanceExceptionRow[]>([]);
   const [blnLoading, setBlnLoading] = useState(false);
   const [strError, setStrError] = useState("");
+  // Search-first: nothing loads until the user clicks Search.
+  const [blnHasSearched, setBlnHasSearched] = useState(false);
 
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
   const blnMoreFiltersOpen = Boolean(objMoreFiltersAnchor);
@@ -192,6 +194,7 @@ export default function AttendanceExceptionReportPage() {
   async function loadRows(dicFilters: SearchForm) {
     setBlnLoading(true);
     setStrError("");
+    setBlnHasSearched(true);
     try {
       const objEnvelope = await leaveAttendanceReportService.getAttendanceExceptions({
         from_date: dicFilters.strFromDate,
@@ -215,7 +218,9 @@ export default function AttendanceExceptionReportPage() {
     setDicSearch(dicDefaultSearch);
     setDicMoreFiltersDraft({ strExceptionType: "", strEmployeeID: "", strDepartmentID: "" });
     setObjMoreFiltersAnchor(null);
-    loadRows(dicDefaultSearch).catch(() => undefined);
+    setLstRows([]);
+    setBlnHasSearched(false);
+    setStrError("");
   }
 
   function clearMoreFilters() {
@@ -226,12 +231,6 @@ export default function AttendanceExceptionReportPage() {
     setDicSearch((dicPrevious) => ({ ...dicPrevious, ...dicMoreFiltersDraft }));
     setObjMoreFiltersAnchor(null);
   }
-
-  useEffect(() => {
-    if (!blnCanView) return;
-    loadRows(dicDefaultSearch).catch(() => undefined);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blnCanView]);
 
   return (
     <Box className={styles.page}>
@@ -340,7 +339,7 @@ export default function AttendanceExceptionReportPage() {
           rowIdField="intID"
           defaultPageSize={lstRowsPerPageOptions[0]}
           pageSizeOptions={lstRowsPerPageOptions}
-          emptyMessage={t("attendance_exceptions_empty", "No attendance exceptions found for the current filters.")}
+          emptyMessage={blnHasSearched ? t("attendance_exceptions_empty", "No attendance exceptions found for the current filters.") : "Select filters and click Search to view records."}
           showPaginationSummary
           withPaper={false}
           testIdPrefix="reports.attendance-exceptions"

@@ -215,7 +215,8 @@ export default function FNFReportPage() {
   const blnCanExport = can("export");
   const [lstEmployees, setLstEmployees] = useState<FNFPayslipEmployeeOption[]>([]);
   const [dicSearchDraft, setDicSearchDraft] = useState(dicEmptySearch);
-  const [dicSearchApplied, setDicSearchApplied] = useState(dicEmptySearch);
+  // Search-first: null until the user clicks Search, so nothing loads on open.
+  const [dicSearchApplied, setDicSearchApplied] = useState<typeof dicEmptySearch | null>(null);
   const [lstRows, setLstRows] = useState<FNFReportRow[]>([]);
   const [dicTotals, setDicTotals] = useState<Record<string, number>>({});
   const [lstVisibleOptional, setLstVisibleOptional] = useState<OptionalKey[]>([]);
@@ -231,6 +232,11 @@ export default function FNFReportPage() {
 
   useEffect(() => {
     if (blnRightsLoading || !blnCanView) return;
+    if (!dicSearchApplied) {
+      setLstRows([]);
+      setDicTotals({});
+      return;
+    }
     setBlnLoading(true);
     setStrError("");
     fnfSettlementService.getReport({
@@ -345,8 +351,8 @@ export default function FNFReportPage() {
             sx={{ minWidth: 240 }}
           />
           <TextField className="app-mui-text-field" label="Department" value={dicSearchDraft.strDepartment} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: objEvent.target.value }))} size="small" fullWidth controlId="payroll.fnf-report.search-department.input" />
-          <Box className={styles.searchActions}><Button data-control-id="payroll.fnf-report.search.button" className="app-btn app-btn-primary" size="small" startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied(dicSearchDraft)}>Search</Button></Box>
-          <Box className={styles.searchActions}><Button data-control-id="payroll.fnf-report.clear.button" className="app-btn app-btn-outline" size="small" startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }}>Clear</Button></Box>
+          <Box className={styles.searchActions}><Button data-control-id="payroll.fnf-report.search.button" className="app-btn app-btn-primary" size="small" startIcon={<SearchRoundedIcon />} onClick={() => setDicSearchApplied({ ...dicSearchDraft })}>Search</Button></Box>
+          <Box className={styles.searchActions}><Button data-control-id="payroll.fnf-report.clear.button" className="app-btn app-btn-outline" size="small" startIcon={<ClearRoundedIcon />} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(null); setStrError(""); }}>Clear</Button></Box>
         </Box>
         {lstRows.length ? (
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "repeat(7, minmax(0, 1fr))" }, gap: 1, mt: 1.5 }}>
@@ -371,7 +377,7 @@ export default function FNFReportPage() {
             showPaginationSummary
             hideRowClickHint
             minTableWidth={1300}
-            emptyMessage="No F&F settlements match the filters."
+            emptyMessage={dicSearchApplied ? "No F&F settlements match the filters." : "Select filters and click Search to view settlements."}
             className="app-master-common-table-reset"
             toolbarAfterExport={<MasterAddColumnsControl strControlPrefix="payroll.fnf-report.list" lstColumns={lstOptionalColumns} lstVisibleKeys={lstVisibleOptional} onChange={setLstVisibleOptional} />}
           />

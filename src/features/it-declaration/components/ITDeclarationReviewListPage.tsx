@@ -11,7 +11,7 @@ import {
   MenuItem,
   TextField,
 } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
@@ -60,8 +60,10 @@ export default function ITDeclarationReviewListPage() {
   const { blnLoading: blnRightsLoading, canDoAny, canViewAny, objRights } =
     useModuleActionAccess(["it_declaration_review", "PAYROLL_IT_DECLARATION_REVIEW", "PAYROLL_IT_DECLARATION"]);
   const [lstRows, setLstRows] = useState<HrItDeclarationListRecord[]>([]);
-  const [blnLoading, setBlnLoading] = useState(true);
+  const [blnLoading, setBlnLoading] = useState(false);
   const [strError, setStrError] = useState("");
+  // Search-first: the grid stays empty until the user clicks Search.
+  const [blnHasSearched, setBlnHasSearched] = useState(false);
   const [blnDismissNoPermission, setBlnDismissNoPermission] = useState(false);
   const [dicFiltersDraft, setDicFiltersDraft] = useState<ItDeclarationFilters>(dicEmptyFilters);
   const [lstVisibleOptionalColumns, setLstVisibleOptionalColumns] = useState<OptionalColumnKey[]>([]);
@@ -78,6 +80,7 @@ export default function ITDeclarationReviewListPage() {
   async function loadData(objFilters: ItDeclarationFilters = dicFiltersDraft) {
     setBlnLoading(true);
     setStrError("");
+    setBlnHasSearched(true);
     try {
       const objData = await hrItDeclarationReviewService.getList(objFilters);
       setLstRows(objData.lstRows || []);
@@ -87,11 +90,6 @@ export default function ITDeclarationReviewListPage() {
       setBlnLoading(false);
     }
   }
-
-  useEffect(() => {
-    if (blnRightsLoading) return;
-    void loadData(dicEmptyFilters);
-  }, [blnRightsLoading]);
 
   const blnCanView =
     canViewAny() ||
@@ -241,7 +239,9 @@ export default function ITDeclarationReviewListPage() {
               startIcon={<ClearRoundedIcon />}
               onClick={() => {
                 setDicFiltersDraft(dicEmptyFilters);
-                void loadData(dicEmptyFilters);
+                setLstRows([]);
+                setBlnHasSearched(false);
+                setStrError("");
               }}
               disabled={blnBusy}
               controlId="it-declaration.review-list.clear.button"
@@ -263,7 +263,7 @@ export default function ITDeclarationReviewListPage() {
             exportFileName="it_declaration_review"
             showExportOptions={blnCanExport}
             showPaginationSummary
-            emptyMessage={t("IT_DECLARATION_REVIEW_NO_RECORDS_FOUND", "No records found.")}
+            emptyMessage={blnHasSearched ? t("IT_DECLARATION_REVIEW_NO_RECORDS_FOUND", "No records found.") : "Select filters and click Search to view declarations."}
             testIdPrefix="it-declaration.review-list"
             toolbarAfterExport={(
               <MasterAddColumnsControl

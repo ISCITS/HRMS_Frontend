@@ -12,7 +12,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
@@ -94,8 +94,10 @@ export default function PayrollRunListPage() {
   const { t } = useModuleLabels("payroll-runs");
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstPayrollRunModuleCodes);
   const [lstRuns, setLstRuns] = useState<PayrollRunListRecord[]>([]);
-  const [blnLoading, setBlnLoading] = useState(true);
+  const [blnLoading, setBlnLoading] = useState(false);
   const [strError, setStrError] = useState("");
+  // Search-first: the grid stays empty until the user clicks Search.
+  const [blnHasSearched, setBlnHasSearched] = useState(false);
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
   const blnCanView = canViewAny() || canDoAny("list");
@@ -128,6 +130,7 @@ export default function PayrollRunListPage() {
 
     setBlnLoading(true);
     setStrError("");
+    setBlnHasSearched(true);
     try {
       setLstRuns(await payrollRunService.getPayrollRuns(objFilters));
     } catch (objError) {
@@ -140,14 +143,6 @@ export default function PayrollRunListPage() {
       setBlnLoading(false);
     }
   }
-
-  useEffect(() => {
-    if (blnRightsLoading) {
-      return;
-    }
-
-    loadRuns().catch(() => undefined);
-  }, [blnRightsLoading, blnCanView]);
 
   const lstFilteredRows = useMemo(() => {
     const strSearch = dicSearchApplied.strSearch.trim().toLowerCase();
@@ -330,7 +325,9 @@ export default function PayrollRunListPage() {
               onClick={() => {
                 setDicSearchDraft(dicEmptySearch);
                 setDicSearchApplied(dicEmptySearch);
-                loadRuns(dicEmptySearch).catch(() => undefined);
+                setLstRuns([]);
+                setBlnHasSearched(false);
+                setStrError("");
               }}
               disabled={blnBusy}
             >
@@ -356,7 +353,7 @@ export default function PayrollRunListPage() {
             exportFileName="payroll-runs"
             showExportOptions={blnCanExport}
             showPaginationSummary
-            emptyMessage={t("empty_message", "No payroll runs found for the current filters.")}
+            emptyMessage={blnHasSearched ? t("empty_message", "No payroll runs found for the current filters.") : "Select filters and click Search to view payroll runs."}
             testIdPrefix="payroll-runs.list"
             toolbarLeft={blnCanAdd ? (
               <Button

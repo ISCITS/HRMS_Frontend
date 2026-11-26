@@ -41,6 +41,8 @@ export default function LeaveRegisterReportPage() {
   const { t } = useModuleLabels("reports");
   const { lstEmployees, lstDepartments, lstLeaveTypes } = useReportFilterOptions();
   const dicDefaultFilters = useMemo(() => buildLeaveDefaultFilters(objSearchParams), [objSearchParams]);
+  // Opened from payroll with ?month= / ?status=: show it straight away; otherwise wait for Search.
+  const blnAutoLoad = Boolean(objSearchParams.get("month") || objSearchParams.get("status"));
 
   const lstColumns = useMemo<CommonTableColumn<ReportDisplayRow>[]>(() => [
     { field: "strEmployeeName", headerName: t("employee_name", "Employee"), width: 200 },
@@ -107,6 +109,7 @@ export default function LeaveRegisterReportPage() {
       strCsvFileName="leave-register"
       lstRightsHints={["REPORTS_LEAVE_REGISTER", "REPORTS"]}
       dicDefaultFilters={dicDefaultFilters}
+      blnAutoLoad={blnAutoLoad}
       strEmptyMessage={t("leave_register_empty", "No leave applications found for the current filters.")}
       fnLoad={async (dicFilters) => {
         const objEnvelope = await leaveAttendanceReportService.getLeaveRegister(dicFilters);
