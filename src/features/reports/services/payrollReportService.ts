@@ -21,7 +21,8 @@ export const payrollReportService = {
   async getPayrollRegisterRows(
     objFilters?: PayrollReportFilters,
   ): Promise<PayrollResultListRecord[]> {
-    return payrollResultService.getPayrollResults(objFilters);
+    // The calculation snapshot/trace (~7 KB per row) is never shown on the register.
+    return payrollResultService.getPayrollResults({ ...objFilters, blnExcludeCalculationDetails: true });
   },
 
   async getBankFileRows(
@@ -30,7 +31,7 @@ export const payrollReportService = {
     const objApiFilters = objFilters?.strStatus === "Approved"
       ? { ...objFilters, strStatus: "All" }
       : objFilters;
-    const lstRows = await payrollResultService.getPayrollResults(objApiFilters);
+    const lstRows = await payrollResultService.getPayrollResults({ ...objApiFilters, blnExcludeCalculationDetails: true });
     return lstRows.filter((dicRow) => setBankFileEligibleStatuses.has(dicRow.strStatus));
   },
 

@@ -8,14 +8,18 @@ import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { Box, Breadcrumbs, Button, Checkbox, Stack, Typography } from "@mui/material";
-import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
+import { useMemo, useState, type InputHTMLAttributes } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import PageNotices from "@/Common/components/PageNotices";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { ReportMoreFilters, SingleSelectFilter } from "@/features/reports/components/ReportFilterUi";
-import { getUniqueOptions } from "@/features/reports/components/ReportMultiSelectField";
+import {
+  hasPayrollReportCriteria,
+  strPayrollReportCriteriaMessage,
+  usePayrollReportFilterOptions,
+} from "@/features/reports/hooks/usePayrollReportFilterOptions";
 import { payrollReportService } from "@/features/reports/services/payrollReportService";
 import type { PayrollResultListRecord } from "@/features/payroll/types";
 
@@ -172,14 +176,26 @@ export default function BankFileReportPage() {
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
   const blnPageLoading = blnRightsLoading || blnLoading;
   const objPayrollFreshness = usePayrollDataFreshness(blnCanView);
+  // Search-first: nothing loads on open; dropdowns come from a light lookup.
+  const { dicFilterOptions: dicLookupOptions, strLookupError, setStrLookupError } = usePayrollReportFilterOptions(blnCanView);
+  const [blnHasSearched, setBlnHasSearched] = useState(false);
+  const [blnShowCriteriaHint, setBlnShowCriteriaHint] = useState(false);
 
   async function loadRows(objFilters: SearchForm) {
+    if (!hasPayrollReportCriteria(objFilters)) {
+      setLstRows([]);
+      setSetSelectedRowIDs(new Set());
+      setBlnHasSearched(false);
+      return;
+    }
+    setBlnShowCriteriaHint(false);
     setBlnLoading(true);
     setStrError("");
     try {
       // Remembers the figures' version so a later reprocess shows the Refresh notice.
       setLstRows(await objPayrollFreshness.trackLoad(() => payrollReportService.getBankFileRows(objFilters), objFilters.strPayrollMonth, () => loadRows(objFilters)));
       setSetSelectedRowIDs(new Set());
+      setBlnHasSearched(true);
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to load bank file rows.");
     } finally {
@@ -188,18 +204,11 @@ export default function BankFileReportPage() {
   }
   const lstFilteredRows = useMemo(() => lstRows.filter((dicRow) => dicRow.decNetPayAmount > 0), [lstRows]);
   const dicFilterOptions = useMemo(() => ({
-    lstEmployees: getUniqueOptions(lstRows.flatMap((dicRow) => [
-      dicRow.strEmployeeCode,
-      dicRow.strEmployeeName,
-      `${dicRow.strEmployeeCode} - ${dicRow.strEmployeeName}`,
-    ])),
-    lstRuns: getUniqueOptions(lstRows.flatMap((dicRow) => [dicRow.strRunCode, dicRow.strRunName])),
-    lstMonths: getUniqueOptions(lstRows.map((dicRow) => dicRow.dtPayrollMonth?.slice(0, 7))),
-    lstDepartments: getUniqueOptions(lstRows.map((dicRow) => dicRow.strDepartmentName)),
-    lstLocations: getUniqueOptions(lstRows.map((dicRow) => dicRow.strLocationName)),
-    lstAllocationEntities: getUniqueOptions(lstRows.map((dicRow) => dicRow.strAllocationEntityName)),
-    lstStatuses: getUniqueOptions(lstRows.map((dicRow) => dicRow.strStatus)),
-  }), [lstRows]);
+    ...dicLookupOptions,
+    // Only statuses a bank file is built from.
+    lstStatuses: dicLookupOptions.lstStatuses.filter((strStatus) =>
+      ["Approved", "Published", "Paid", "Generated", "Calculated"].includes(strStatus)),
+  }), [dicLookupOptions]);
   const decNetTotal = lstFilteredRows.reduce((decTotal, dicRow) => decTotal + (dicRow.decNetPayAmount || 0), 0);
   const lstExportRows = setSelectedRowIDs.size > 0
     ? lstFilteredRows.filter((dicRow) => setSelectedRowIDs.has(dicRow.intID))
@@ -236,25 +245,23 @@ export default function BankFileReportPage() {
   function applyFilters(dicFilters: SearchForm) {
     setDicSearchDraft(dicFilters);
     setStrError("");
+    if (!hasPayrollReportCriteria(dicFilters)) {
+      setBlnShowCriteriaHint(true);
+      return;
+    }
     loadRows(dicFilters).catch(() => undefined);
   }
 
   function clearFilters() {
     setDicSearchDraft(dicEmptySearch);
     setDicMoreFiltersDraft(dicEmptyMoreFilters);
+    setBlnShowCriteriaHint(false);
     loadRows(dicEmptySearch).catch(() => undefined);
   }
 
   function applyMoreFilters() {
     applyFilters({ ...dicSearchDraft, ...dicMoreFiltersDraft });
   }
-
-  useEffect(() => {
-    if (!blnCanView) {
-      return;
-    }
-    loadRows(dicEmptySearch).catch(() => undefined);
-  }, [blnCanView]);
 
   const lstTableRows = useMemo(
     () =>
@@ -324,7 +331,9 @@ export default function BankFileReportPage() {
           strControlId="reports.bank-file.notices"
           lstNotices={[
             !blnRightsLoading && !blnCanView && !strError ? { strKey: "rights", strSeverity: "warning", objMessage: "Bank file view access is not available for your user group." } : null,
+            { strKey: "criteria", strSeverity: "warning", objMessage: blnShowCriteriaHint ? strPayrollReportCriteriaMessage : "", fnDismiss: () => setBlnShowCriteriaHint(false) },
             { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+            { strKey: "lookup-error", strSeverity: "error", objMessage: strLookupError, fnDismiss: () => setStrLookupError("") },
           ]}
         />
       </Stack>
@@ -369,7 +378,7 @@ export default function BankFileReportPage() {
           rowIdField="intID"
           defaultPageSize={lstRowsPerPageOptions[0]}
           pageSizeOptions={lstRowsPerPageOptions}
-          emptyMessage="No eligible bank file rows found for the current filters."
+          emptyMessage={blnHasSearched ? "No eligible bank file rows found for the current filters." : strPayrollReportCriteriaMessage}
           showPaginationSummary
           withPaper={false}
           testIdPrefix="reports.bank-file"

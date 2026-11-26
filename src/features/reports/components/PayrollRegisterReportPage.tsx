@@ -17,7 +17,11 @@ import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { ReportMoreFilters, SingleSelectFilter } from "@/features/reports/components/ReportFilterUi";
-import { getUniqueOptions } from "@/features/reports/components/ReportMultiSelectField";
+import {
+  hasPayrollReportCriteria,
+  strPayrollReportCriteriaMessage,
+  usePayrollReportFilterOptions,
+} from "@/features/reports/hooks/usePayrollReportFilterOptions";
 import { payrollReportService } from "@/features/reports/services/payrollReportService";
 import type { PayrollResultListRecord } from "@/features/payroll/types";
 
@@ -302,14 +306,26 @@ export default function PayrollRegisterReportPage() {
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
   const blnPageLoading = blnRightsLoading || blnLoading;
   const objPayrollFreshness = usePayrollDataFreshness(blnCanView);
+  // Search-first: nothing loads on open; dropdowns come from a light lookup.
+  const { dicFilterOptions, strLookupError, setStrLookupError } = usePayrollReportFilterOptions(blnCanView);
+  const [blnHasSearched, setBlnHasSearched] = useState(false);
+  const [blnShowCriteriaHint, setBlnShowCriteriaHint] = useState(false);
 
   async function loadRows(objFilters: SearchForm) {
+    if (!hasPayrollReportCriteria(objFilters)) {
+      setLstRows([]);
+      setSetSelectedRowIDs(new Set());
+      setBlnHasSearched(false);
+      return;
+    }
+    setBlnShowCriteriaHint(false);
     setBlnLoading(true);
     setStrError("");
     try {
       // Remembers the figures' version so a later reprocess shows the Refresh notice.
       setLstRows(await objPayrollFreshness.trackLoad(() => payrollReportService.getPayrollRegisterRows(objFilters), objFilters.strPayrollMonth, () => loadRows(objFilters)));
       setSetSelectedRowIDs(new Set());
+      setBlnHasSearched(true);
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to load payroll register.");
     } finally {
@@ -318,19 +334,6 @@ export default function PayrollRegisterReportPage() {
   }
 
   const lstFilteredRows = useMemo(() => lstRows, [lstRows]);
-  const dicFilterOptions = useMemo(() => ({
-    lstEmployees: getUniqueOptions(lstRows.flatMap((dicRow) => [
-      dicRow.strEmployeeCode,
-      dicRow.strEmployeeName,
-      `${dicRow.strEmployeeCode} - ${dicRow.strEmployeeName}`,
-    ])),
-    lstRuns: getUniqueOptions(lstRows.flatMap((dicRow) => [dicRow.strRunCode, dicRow.strRunName])),
-    lstMonths: getUniqueOptions(lstRows.map((dicRow) => dicRow.dtPayrollMonth?.slice(0, 7))),
-    lstDepartments: getUniqueOptions(lstRows.map((dicRow) => dicRow.strDepartmentName)),
-    lstLocations: getUniqueOptions(lstRows.map((dicRow) => dicRow.strLocationName)),
-    lstAllocationEntities: getUniqueOptions(lstRows.map((dicRow) => dicRow.strAllocationEntityName)),
-    lstStatuses: getUniqueOptions(lstRows.map((dicRow) => dicRow.strStatus)),
-  }), [lstRows]);
 
   const dicTotals = useMemo(() => lstFilteredRows.reduce(
     (dicAccumulator, dicRow) => ({
@@ -378,12 +381,17 @@ export default function PayrollRegisterReportPage() {
 
   function applyFilters(dicFilters: SearchForm) {
     setDicSearchDraft(dicFilters);
+    if (!hasPayrollReportCriteria(dicFilters)) {
+      setBlnShowCriteriaHint(true);
+      return;
+    }
     loadRows(dicFilters).catch(() => undefined);
   }
 
   function clearFilters() {
     setDicSearchDraft(dicEmptySearch);
     setDicMoreFiltersDraft(dicEmptyMoreFilters);
+    setBlnShowCriteriaHint(false);
     loadRows(dicEmptySearch).catch(() => undefined);
   }
 
@@ -497,7 +505,9 @@ export default function PayrollRegisterReportPage() {
           strControlId="reports.payroll-register.notices"
           lstNotices={[
             !blnRightsLoading && !blnCanView && !strError ? { strKey: "rights", strSeverity: "warning", objMessage: "Payroll register view access is not available for your user group." } : null,
+            { strKey: "criteria", strSeverity: "warning", objMessage: blnShowCriteriaHint ? strPayrollReportCriteriaMessage : "", fnDismiss: () => setBlnShowCriteriaHint(false) },
             { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+            { strKey: "lookup-error", strSeverity: "error", objMessage: strLookupError, fnDismiss: () => setStrLookupError("") },
           ]}
         />
       </Stack>
@@ -542,7 +552,7 @@ export default function PayrollRegisterReportPage() {
           rowIdField="intID"
           defaultPageSize={lstRowsPerPageOptions[0]}
           pageSizeOptions={lstRowsPerPageOptions}
-          emptyMessage="No payroll register rows found for the current filters."
+          emptyMessage={blnHasSearched ? "No payroll register rows found for the current filters." : strPayrollReportCriteriaMessage}
           showPaginationSummary
           withPaper={false}
           testIdPrefix="reports.payroll-register"

@@ -5,7 +5,7 @@ import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { Box, Breadcrumbs, Button, Checkbox, Stack, Typography } from "@mui/material";
-import { useEffect, useMemo, useState, type InputHTMLAttributes, type ReactNode } from "react";
+import { useMemo, useState, type InputHTMLAttributes, type ReactNode } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import PageNotices from "@/Common/components/PageNotices";
@@ -13,9 +13,14 @@ import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { ReportMoreFilters, SingleSelectFilter } from "@/features/reports/components/ReportFilterUi";
-import { getUniqueOptions } from "@/features/reports/components/ReportMultiSelectField";
+import {
+  hasPayrollReportCriteria,
+  usePayrollReportFilterOptions,
+} from "@/features/reports/hooks/usePayrollReportFilterOptions";
 import { payrollReportService } from "@/features/reports/services/payrollReportService";
 import type { VariablePayRegisterRow } from "@/features/payroll/types";
+
+const strVariablePayCriteriaMessage = "Select an employee, payroll month, run or variable pay type, then search.";
 
 type SearchForm = {
   strSearchEmployee: string;
@@ -263,12 +268,27 @@ export default function VariablePayRegisterReportPage() {
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
   const blnPageLoading = blnRightsLoading || blnLoading;
 
+  // Search-first: nothing loads on open; dropdowns come from a light lookup (Variable Pay runs only).
+  const { dicFilterOptions, strLookupError, setStrLookupError } = usePayrollReportFilterOptions(blnCanView, true);
+  const [blnHasSearched, setBlnHasSearched] = useState(false);
+  const [blnShowCriteriaHint, setBlnShowCriteriaHint] = useState(false);
+  const hasCriteria = (objFilters: SearchForm) =>
+    hasPayrollReportCriteria(objFilters) || Boolean(objFilters.strVariablePayType.trim());
+
   async function loadRows(objFilters: SearchForm) {
+    if (!hasCriteria(objFilters)) {
+      setLstRows([]);
+      setSetSelectedRowIDs(new Set());
+      setBlnHasSearched(false);
+      return;
+    }
+    setBlnShowCriteriaHint(false);
     setBlnLoading(true);
     setStrError("");
     try {
       setLstRows(await payrollReportService.getVariablePayRegisterRows(objFilters));
       setSetSelectedRowIDs(new Set());
+      setBlnHasSearched(true);
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to load Variable Pay register.");
     } finally {
@@ -277,18 +297,6 @@ export default function VariablePayRegisterReportPage() {
   }
 
   const lstFilteredRows = useMemo(() => lstRows, [lstRows]);
-  const dicFilterOptions = useMemo(() => ({
-    lstEmployees: getUniqueOptions(lstRows.flatMap((dicRow) => [
-      dicRow.strEmployeeCode,
-      dicRow.strEmployeeName,
-      `${dicRow.strEmployeeCode} - ${dicRow.strEmployeeName}`,
-    ])),
-    lstRuns: getUniqueOptions(lstRows.flatMap((dicRow) => [dicRow.strRunCode, dicRow.strRunName])),
-    lstMonths: getUniqueOptions(lstRows.map((dicRow) => dicRow.dtPayrollMonth?.slice(0, 7))),
-    lstVariablePayTypes: getUniqueOptions(lstRows.map((dicRow) => dicRow.strVariablePayTypeName)),
-    lstAllocationEntities: getUniqueOptions(lstRows.map((dicRow) => dicRow.strAllocationEntityName)),
-    lstStatuses: getUniqueOptions(lstRows.map((dicRow) => dicRow.strPayrollRunStatus)),
-  }), [lstRows]);
 
   const lstEntityNames = useMemo(() => getEntityColumnNames(lstFilteredRows), [lstFilteredRows]);
   const lstEntityTotals = useMemo(
@@ -340,26 +348,23 @@ export default function VariablePayRegisterReportPage() {
 
   function applyFilters(dicFilters: SearchForm) {
     setDicSearchDraft(dicFilters);
+    if (!hasCriteria(dicFilters)) {
+      setBlnShowCriteriaHint(true);
+      return;
+    }
     loadRows(dicFilters).catch(() => undefined);
   }
 
   function clearFilters() {
     setDicSearchDraft(dicEmptySearch);
     setDicMoreFiltersDraft(dicEmptyMoreFilters);
+    setBlnShowCriteriaHint(false);
     loadRows(dicEmptySearch).catch(() => undefined);
   }
 
   function applyMoreFilters() {
     applyFilters({ ...dicSearchDraft, ...dicMoreFiltersDraft });
   }
-
-  useEffect(() => {
-    if (!blnCanView) {
-      return;
-    }
-    loadRows(dicEmptySearch).catch(() => undefined);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blnCanView]);
 
   const lstTableRows = useMemo(
     () =>
@@ -466,7 +471,9 @@ export default function VariablePayRegisterReportPage() {
           strControlId="reports.variable-pay-register.notices"
           lstNotices={[
             !blnRightsLoading && !blnCanView && !strError ? { strKey: "rights", strSeverity: "warning", objMessage: "Variable Pay register view access is not available for your user group." } : null,
+            { strKey: "criteria", strSeverity: "warning", objMessage: blnShowCriteriaHint ? strVariablePayCriteriaMessage : "", fnDismiss: () => setBlnShowCriteriaHint(false) },
             { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+            { strKey: "lookup-error", strSeverity: "error", objMessage: strLookupError, fnDismiss: () => setStrLookupError("") },
           ]}
         />
       </Stack>
@@ -509,7 +516,7 @@ export default function VariablePayRegisterReportPage() {
           rowIdField="intID"
           defaultPageSize={lstRowsPerPageOptions[0]}
           pageSizeOptions={lstRowsPerPageOptions}
-          emptyMessage="No Variable Pay register rows found for the current filters."
+          emptyMessage={blnHasSearched ? "No Variable Pay register rows found for the current filters." : strVariablePayCriteriaMessage}
           showPaginationSummary
           withPaper={false}
           testIdPrefix="reports.variable-pay-register"

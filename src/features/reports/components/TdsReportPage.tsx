@@ -10,13 +10,17 @@ import FilterListRoundedIcon from "@mui/icons-material/FilterListRounded";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { Autocomplete, Box, Breadcrumbs, Button, Checkbox, Divider, FormControlLabel, IconButton, Popover, Stack, TextField, Typography } from "@mui/material";
-import { type InputHTMLAttributes, type ReactNode, useEffect, useMemo, useState } from "react";
+import { type InputHTMLAttributes, type ReactNode, useMemo, useState } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import PageNotices from "@/Common/components/PageNotices";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import type { TdsReportRow } from "@/features/payroll/types";
-import { getUniqueOptions } from "@/features/reports/components/ReportMultiSelectField";
+import {
+  hasPayrollReportCriteria,
+  strPayrollReportCriteriaMessage,
+  usePayrollReportFilterOptions,
+} from "@/features/reports/hooks/usePayrollReportFilterOptions";
 import { payrollReportService } from "@/features/reports/services/payrollReportService";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
@@ -170,33 +174,30 @@ export default function TdsReportPage() {
   const blnMoreFiltersOpen = Boolean(objMoreFiltersAnchor);
   const blnPageLoading = blnRightsLoading || blnLoading;
   const objPayrollFreshness = usePayrollDataFreshness(blnCanView);
+  // Search-first: nothing loads on open; dropdowns come from a light lookup.
+  const { dicFilterOptions, strLookupError, setStrLookupError } = usePayrollReportFilterOptions(blnCanView);
+  const [blnHasSearched, setBlnHasSearched] = useState(false);
+  const [blnShowCriteriaHint, setBlnShowCriteriaHint] = useState(false);
 
   async function loadRows(objFilters: SearchForm) {
+    if (!hasPayrollReportCriteria(objFilters)) {
+      setLstRows([]);
+      setBlnHasSearched(false);
+      return;
+    }
+    setBlnShowCriteriaHint(false);
     setBlnLoading(true);
     setStrError("");
     try {
       // Remembers the figures' version so a later reprocess shows the Refresh notice.
       setLstRows(await objPayrollFreshness.trackLoad(() => payrollReportService.getTdsReportRows(objFilters), objFilters.strPayrollMonth, () => loadRows(objFilters)));
+      setBlnHasSearched(true);
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to load TDS report.");
     } finally {
       setBlnLoading(false);
     }
   }
-
-  const dicFilterOptions = useMemo(() => ({
-    lstEmployees: getUniqueOptions(lstRows.flatMap((dicRow) => [
-      dicRow.strEmployeeCode,
-      dicRow.strEmployeeName,
-      `${dicRow.strEmployeeCode} - ${dicRow.strEmployeeName}`,
-    ])),
-    lstRuns: getUniqueOptions(lstRows.flatMap((dicRow) => [dicRow.strRunCode, dicRow.strRunName])),
-    lstMonths: getUniqueOptions(lstRows.map((dicRow) => dicRow.dtPayrollMonth?.slice(0, 7))),
-    lstDepartments: getUniqueOptions(lstRows.map((dicRow) => dicRow.strDepartmentName)),
-    lstLocations: getUniqueOptions(lstRows.map((dicRow) => dicRow.strLocationName)),
-    lstAllocationEntities: getUniqueOptions(lstRows.map((dicRow) => dicRow.strAllocationEntityName)),
-    lstStatuses: getUniqueOptions(lstRows.map((dicRow) => dicRow.strStatus)),
-  }), [lstRows]);
 
   const lstVisibleRows = useMemo(
     () => (blnOnlyDifferences ? lstRows.filter((dicRow) => Math.abs(dicRow.decTdsDifference ?? 0) >= 0.005) : lstRows),
@@ -214,6 +215,10 @@ export default function TdsReportPage() {
 
   function applyFilters(dicFilters: SearchForm) {
     setDicSearchDraft(dicFilters);
+    if (!hasPayrollReportCriteria(dicFilters)) {
+      setBlnShowCriteriaHint(true);
+      return;
+    }
     loadRows(dicFilters).catch(() => undefined);
   }
 
@@ -221,6 +226,7 @@ export default function TdsReportPage() {
     setDicSearchDraft(dicEmptySearch);
     setDicMoreFiltersDraft(dicEmptyMoreFilters);
     setObjMoreFiltersAnchor(null);
+    setBlnShowCriteriaHint(false);
     loadRows(dicEmptySearch).catch(() => undefined);
   }
 
@@ -234,14 +240,6 @@ export default function TdsReportPage() {
     setObjMoreFiltersAnchor(null);
     applyFilters(dicNextFilters);
   }
-
-  useEffect(() => {
-    if (!blnCanView) {
-      return;
-    }
-    loadRows(dicEmptySearch).catch(() => undefined);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blnCanView]);
 
   const lstTableRows = useMemo(
     () =>
@@ -301,7 +299,9 @@ export default function TdsReportPage() {
           strControlId="reports.tds.notices"
           lstNotices={[
             !blnRightsLoading && !blnCanView && !strError ? { strKey: "rights", strSeverity: "warning", objMessage: "TDS report view access is not available for your user group." } : null,
+            { strKey: "criteria", strSeverity: "warning", objMessage: blnShowCriteriaHint ? strPayrollReportCriteriaMessage : "", fnDismiss: () => setBlnShowCriteriaHint(false) },
             { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+            { strKey: "lookup-error", strSeverity: "error", objMessage: strLookupError, fnDismiss: () => setStrLookupError("") },
           ]}
         />
       </Stack>
@@ -391,7 +391,7 @@ export default function TdsReportPage() {
           rowIdField="intID"
           defaultPageSize={lstRowsPerPageOptions[0]}
           pageSizeOptions={lstRowsPerPageOptions}
-          emptyMessage="No TDS report rows found for the current filters."
+          emptyMessage={blnHasSearched ? "No TDS report rows found for the current filters." : strPayrollReportCriteriaMessage}
           showPaginationSummary
           withPaper={false}
           testIdPrefix="reports.tds"

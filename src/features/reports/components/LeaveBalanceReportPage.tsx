@@ -70,6 +70,9 @@ export default function LeaveBalanceReportPage() {
     ];
   }, [t]);
 
+  // Opens on the current leave year (it loaded every year before); Clear returns to it.
+  const dicDefaultFilters = useMemo(() => ({ leave_year: String(new Date().getFullYear()) }), []);
+
   function mapRow(dicRow: LeaveBalanceRow): ReportDisplayRow {
     return {
       __rowid: `${dicRow.intEmployeeID}-${dicRow.intLeaveTypeID}-${dicRow.intLeaveYear}`,
@@ -113,6 +116,7 @@ export default function LeaveBalanceReportPage() {
       intInlineFilterCount={3}
       lstColumns={lstColumns}
       lstFilters={lstFilters}
+      dicDefaultFilters={dicDefaultFilters}
       strRowIdField="__rowid"
       strCsvFileName="Leave_Balance_Report"
       lstRightsHints={["REPORTS_LEAVE_BALANCE", "REPORTS"]}

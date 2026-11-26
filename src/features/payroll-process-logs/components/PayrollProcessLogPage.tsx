@@ -51,6 +51,18 @@ const dicEmptyOptions: PayrollProcessLogFormOptions = {
   lstProcessStatuses: []
 };
 
+const strLogCriteriaMessage = "Select an employee, process stage or status, or enter search text, then search.";
+
+function hasLogSearchCriteria(dicFilters: PayrollProcessLogFilters) {
+  return Boolean(
+    dicFilters.strPayrollRunRecordUUID
+    || dicFilters.intEmployeeID
+    || dicFilters.strProcessStage
+    || dicFilters.strProcessStatus
+    || dicFilters.strSearchText.trim()
+  );
+}
+
 function formatDateTime(strValue: string | null | undefined) {
   if (!strValue) {
     return "-";
@@ -102,16 +114,24 @@ export default function PayrollProcessLogPage({ strInitialPayrollRunRecordUUID }
     }
   }
 
+  // Search-first: the log table grows with every run x employee x stage and has no paging, so the
+  // full list no longer loads on open. A run-scoped page (from a payroll run) still loads directly.
+  const [blnHasSearched, setBlnHasSearched] = useState(false);
+  const [blnShowCriteriaHint, setBlnShowCriteriaHint] = useState(false);
+
   async function loadLogs(dicFilters: PayrollProcessLogFilters) {
-    if (!blnCanView) {
+    if (!blnCanView || !hasLogSearchCriteria(dicFilters)) {
       setLstLogs([]);
+      setBlnHasSearched(false);
       setBlnLoading(false);
       return;
     }
 
+    setBlnShowCriteriaHint(false);
     setBlnLoading(true);
     try {
       setLstLogs(await payrollProcessLogService.getPayrollProcessLogs(dicFilters));
+      setBlnHasSearched(true);
     } catch (objError) {
       showToast(objError instanceof Error ? objError.message : t("load_logs_failed", "Unable to load payroll process logs."), "error");
     } finally {
@@ -188,12 +208,17 @@ export default function PayrollProcessLogPage({ strInitialPayrollRunRecordUUID }
   }
 
   function applySearch() {
+    if (!hasLogSearchCriteria(dicFiltersDraft)) {
+      setBlnShowCriteriaHint(true);
+      return;
+    }
     loadLogs(dicFiltersDraft).catch(() => undefined);
   }
 
   function clearFilters() {
     const dicReset = dicInitialFilters;
     setDicFiltersDraft(dicReset);
+    setBlnShowCriteriaHint(false);
     loadLogs(dicReset).catch(() => undefined);
   }
 
@@ -209,6 +234,7 @@ export default function PayrollProcessLogPage({ strInitialPayrollRunRecordUUID }
             blnRunScoped ? { strKey: "run-scoped", strSeverity: "info", objMessage: t("run_scoped_message", "Showing payroll process logs for the selected payroll run only.") } : null,
             blnReadOnly ? { strKey: "read-only", strSeverity: "info", objMessage: t("read_only_mode", "You have view-only access for Payroll Process Logs.") } : null,
             strRightsError && !blnCanView && !blnBusy ? { strKey: "rights", strSeverity: "warning", objMessage: strRightsError } : null,
+            blnShowCriteriaHint ? { strKey: "criteria", strSeverity: "warning", objMessage: strLogCriteriaMessage, fnDismiss: () => setBlnShowCriteriaHint(false) } : null,
           ]}
         />
         {blnRunScoped ? (
@@ -320,7 +346,9 @@ export default function PayrollProcessLogPage({ strInitialPayrollRunRecordUUID }
             exportFileName="payroll_process_logs"
             showExportOptions={blnCanExport}
             showPaginationSummary
-            emptyMessage={t("empty_message", "No payroll process logs found for the selected filters.")}
+            emptyMessage={blnHasSearched
+              ? t("empty_message", "No payroll process logs found for the selected filters.")
+              : t("select_criteria_message", strLogCriteriaMessage)}
             testIdPrefix="payroll-process-logs.list"
             onRowClick={(dicRow) => openLog(dicRow.strPayrollRunRecordUUID)}
             minTableWidth={1300}

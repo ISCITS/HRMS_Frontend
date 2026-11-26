@@ -16,7 +16,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
@@ -305,6 +305,19 @@ export default function PayrollResultListPage({
     [blnSearchFirst, objFilterLookup, lstResults, dicSearchDraft]
   );
 
+  // Payroll Results (not payslips): the "Latest month" scope is resolved from a light lookup and
+  // sent to the server, instead of loading every month's results and filtering on screen.
+  const objLatestLookupMonthRef = useRef("");
+
+  function getResultsServerFilters(objFilters: SearchForm) {
+    const strEffectiveMonth = objFilters.strMonthScope === "All"
+      ? ""
+      : objFilters.strMonthScope === "Custom"
+        ? objFilters.strPayrollMonth
+        : objLatestLookupMonthRef.current;
+    return { ...objFilters, strPayrollMonth: strEffectiveMonth, blnExcludeCalculationDetails: true };
+  }
+
   async function loadResults(objFilters: SearchForm = dicSearchApplied) {
     if (blnSearchFirst && !hasPayslipSearchCriteria(objFilters)) {
       setLstResults([]);
@@ -331,8 +344,8 @@ export default function PayrollResultListPage({
                   ? { strSearchEmployee: objFilters.strSearchEmployee, strPayrollMonth: lstMonthKeys.join(",") }
                   : {}),
               }
-            : objFilters
-        ), blnPayslipScreen ? lstMonthKeys : objFilters.strPayrollMonth)
+            : getResultsServerFilters(objFilters)
+        ), blnPayslipScreen ? lstMonthKeys : getResultsServerFilters(objFilters).strPayrollMonth)
       );
       setBlnHasLoadedRows(true);
     } catch (objError) {
@@ -379,6 +392,20 @@ export default function PayrollResultListPage({
             if (!blnCancelled) {
               setStrError(objError instanceof Error ? objError.message : "Unable to load payslip filters.");
             }
+          }
+        }
+
+        if (!blnPayslipScreen) {
+          try {
+            const objLookup = await payrollResultService.getPayrollReportFilterOptions(false);
+            const lstLookupMonths = objLookup.lstRuns
+              .map((dicRun) => String(dicRun.dtPayrollMonth ?? "").slice(0, 7))
+              .filter(Boolean)
+              .sort();
+            objLatestLookupMonthRef.current = lstLookupMonths[lstLookupMonths.length - 1] ?? "";
+          } catch {
+            // Without the lookup "Latest month" falls back to loading all months and filtering on screen.
+            objLatestLookupMonthRef.current = "";
           }
         }
 

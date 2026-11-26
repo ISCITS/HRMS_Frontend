@@ -23,6 +23,7 @@ import {
   type HrItDeclarationListRecord,
 } from "@/features/it-declaration/services/itDeclarationService";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { buildFinancialYearOptions } from "@/features/payroll/utils/form16Document";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 const objInrFormatter = new Intl.NumberFormat("en-IN");
@@ -36,8 +37,11 @@ type ItDeclarationFilters = {
   strStatus: string;
 };
 
+// Opens on the current financial year (it loaded every year before); "All" is still a choice.
+const lstFinancialYearOptions = buildFinancialYearOptions(6);
+
 const dicEmptyFilters: ItDeclarationFilters = {
-  strFinancialYearCode: "",
+  strFinancialYearCode: lstFinancialYearOptions[0],
   strEmployee: "",
   strTaxRegime: "",
   strStatus: "",
@@ -211,7 +215,10 @@ export default function ITDeclarationReviewListPage() {
             fullWidth
             controlId="it-declaration.review-list.employee.input"
           />
-          <TextField className="app-mui-text-field" size="small" label={t("IT_DECLARATION_REVIEW_FINANCIAL_YEAR", "Financial Year")} value={dicFiltersDraft.strFinancialYearCode} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strFinancialYearCode: e.target.value }))} disabled={blnBusy} fullWidth controlId="it-declaration.review-list.financial-year.input" />
+          <TextField className="app-mui-text-field" select size="small" label={t("IT_DECLARATION_REVIEW_FINANCIAL_YEAR", "Financial Year")} value={dicFiltersDraft.strFinancialYearCode} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strFinancialYearCode: e.target.value }))} disabled={blnBusy} fullWidth controlId="it-declaration.review-list.financial-year.input">
+            <MenuItem value="">{t("IT_DECLARATION_REVIEW_ALL", "All")}</MenuItem>
+            {lstFinancialYearOptions.map((strYear) => <MenuItem key={strYear} value={strYear}>{strYear}</MenuItem>)}
+          </TextField>
           <TextField className="app-mui-text-field" select size="small" label={t("IT_DECLARATION_REVIEW_TAX_REGIME", "Tax Regime")} value={dicFiltersDraft.strTaxRegime} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strTaxRegime: e.target.value }))} disabled={blnBusy} fullWidth controlId="it-declaration.review-list.tax-regime.select">
             <MenuItem value="">{t("IT_DECLARATION_REVIEW_ALL", "All")}</MenuItem>
             <MenuItem value="old">{t("IT_DECLARATION_REVIEW_OLD", "Old")}</MenuItem>

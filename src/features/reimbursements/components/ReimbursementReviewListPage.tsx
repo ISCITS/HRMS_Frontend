@@ -21,7 +21,9 @@ import type { ReimbursementClaimDto } from "@/features/reimbursements/types";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 const lstClaimStatuses = ["submitted", "resubmitted", "under_review", "approved", "partially_approved", "rejected", "released", "locked", "pushed_to_payroll", "paid"];
-const lstReimbursementReviewModuleCodes = ["REIMBURSEMENT_REVIEW", "REIMBURSEMENTS_REVIEW", "PAYROLL_REIMBURSEMENT", "PAYROLL_REIMBURSEMENTS"];
+// Claims waiting for HR (sent to the API as one comma-separated status filter).
+const strPendingReviewStatuses = "submitted,resubmitted,under_review";
+const lstReimbursementReviewModuleCodes =["REIMBURSEMENT_REVIEW", "REIMBURSEMENTS_REVIEW", "PAYROLL_REIMBURSEMENT", "PAYROLL_REIMBURSEMENTS"];
 const lstEssReimbursementModuleCodes = ["ESS_REIMBURSEMENT", "ESS_REIMBURSEMENTS", "REIMBURSEMENT", "REIMBURSEMENTS"];
 const lstCreateEssReimbursementModuleCodes = [...lstEssReimbursementModuleCodes, ...lstReimbursementReviewModuleCodes];
 type OptionalColumnKey = "department" | "location" | "paymentStatus";
@@ -145,7 +147,16 @@ export default function ReimbursementReviewListPage() {
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstReimbursementReviewModuleCodes);
   const { blnLoading: blnCreateRightsLoading, canDoAny: canCreateEssAny } = useModuleActionAccess(lstCreateEssReimbursementModuleCodes);
   const { blnLoading: blnEssRightsLoading, objRights: objEssRights, canDoAny: canDoEssAny, canViewAny: canViewEssAny } = useModuleActionAccess(lstEssReimbursementModuleCodes);
-  const [dicFilters, setDicFilters] = useState<PayrollReimbursementFilters>(createInitialPayrollReimbursementFilters());
+  // The HR review queue opens on claims waiting for review (it loaded every claim ever before);
+  // the Employee Reimbursements screen keeps showing all statuses.
+  const blnEmployeeContextAtOpen =
+    strPathname?.toLowerCase() === "/payroll/employee-reimbursement" ||
+    objSearchParams.get("source") === "employee-reimbursement";
+  const buildDefaultFilters = (): PayrollReimbursementFilters => ({
+    ...createInitialPayrollReimbursementFilters(),
+    strStatus: blnEmployeeContextAtOpen ? "" : strPendingReviewStatuses,
+  });
+  const [dicFilters, setDicFilters] = useState<PayrollReimbursementFilters>(buildDefaultFilters);
   const [lstClaims, setLstClaims] = useState<ReimbursementClaimDto[]>([]);
   const [lstEmployees, setLstEmployees] = useState<EmployeeListRecord[]>([]);
   const [objEmployeeOptions, setObjEmployeeOptions] = useState<EmployeeFormOptions>(objEmptyEmployeeOptions);
@@ -338,7 +349,7 @@ export default function ReimbursementReviewListPage() {
   );
 
   function clearFilters() {
-    const dicReset = createInitialPayrollReimbursementFilters();
+    const dicReset = buildDefaultFilters();
     setDicFilters(dicReset);
     void loadClaims(dicReset);
   }
@@ -424,6 +435,7 @@ export default function ReimbursementReviewListPage() {
           />
           <TextField className="app-mui-text-field" select size="small" label="Status" value={dicFilters.strStatus} onChange={(objEvent) => setDicFilters({ ...dicFilters, strStatus: objEvent.target.value })} disabled={blnBusy} controlId="reimbursements.review-list.status.select">
             <MenuItem value="">All statuses</MenuItem>
+            <MenuItem value={strPendingReviewStatuses}>Pending review</MenuItem>
             {lstClaimStatuses.map((strStatus) => <MenuItem key={strStatus} value={strStatus}>{strStatus.replaceAll("_", " ")}</MenuItem>)}
           </TextField>
           <MasterMoreFilters

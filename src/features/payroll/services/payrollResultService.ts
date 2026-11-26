@@ -11,6 +11,16 @@ import type {
 } from "@/features/payroll/types";
 import type { PayslipFilterLookup } from "@/features/payroll/utils/payslipListFilters";
 
+export type PayrollReportFilterLookup = {
+  lstEmployees: Array<{ intEmployeeID: number; strEmployeeCode: string; strEmployeeName: string }>;
+  lstRuns: Array<{ strRunCode: string; strRunName: string; dtPayrollMonth: string | null }>;
+  lstDepartments: string[];
+  lstLocations: string[];
+  lstAllocationEntities: string[];
+  lstStatuses: string[];
+  lstVariablePayTypes: string[];
+};
+
 async function requestApi<TData>(objOptions: {
   strPath: string;
   strMethod: ApiRequestMethod | "GET";
@@ -88,6 +98,16 @@ export const payrollResultService = {
   async getPayslipFilterOptions(blnEssReleasedOnly = false): Promise<PayslipFilterLookup> {
     const objResult = await requestApi<PayslipFilterLookup>({
       strPath: `/payroll/results/payslip-filter-options${blnEssReleasedOnly ? "?blnEssReleasedOnly=true" : ""}`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_RESULT_LIST",
+    });
+    return objResult.Data;
+  },
+
+  /** Payroll report screens' dropdown choices (employees, runs, months, departments, ...) - no figures. */
+  async getPayrollReportFilterOptions(blnVariablePayRunsOnly = false): Promise<PayrollReportFilterLookup> {
+    const objResult = await requestApi<PayrollReportFilterLookup>({
+      strPath: `/payroll/results/report-filter-options${blnVariablePayRunsOnly ? "?blnVariablePayRunsOnly=true" : ""}`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_RESULT_LIST",
     });

@@ -16,7 +16,10 @@ function normalizeQueryMonth(strValue: string | null) {
 }
 
 function buildLeaveDefaultFilters(objSearchParams: { get: (strKey: string) => string | null }) {
-  const strPayrollMonth = normalizeQueryMonth(objSearchParams.get("month"));
+  // Opens on the current month (it loaded every application ever before); ?month= overrides.
+  const objToday = new Date();
+  const strCurrentMonth = `${objToday.getFullYear()}-${String(objToday.getMonth() + 1).padStart(2, "0")}`;
+  const strPayrollMonth = normalizeQueryMonth(objSearchParams.get("month")) || strCurrentMonth;
   const strStatus = String(objSearchParams.get("status") ?? "").trim();
   const dicFilters: Record<string, string> = {};
   if (strStatus) {

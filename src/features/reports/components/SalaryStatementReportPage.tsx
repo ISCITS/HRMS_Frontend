@@ -17,6 +17,7 @@ import screen from "@/components/master/MasterScreen.module.css";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payrollReportService } from "@/features/reports/services/payrollReportService";
 import { getUniqueOptions } from "@/features/reports/components/ReportMultiSelectField";
+import { usePayrollReportFilterOptions } from "@/features/reports/hooks/usePayrollReportFilterOptions";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import type { PayrollResultDetailRecord, PayrollResultLineRecord, PayrollResultListRecord } from "@/features/payroll/types";
 
@@ -180,7 +181,6 @@ export default function SalaryStatementReportPage() {
   ]);
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
   const [lstEmployees, setLstEmployees] = useState<EmployeeListRecord[]>([]);
-  const [lstPayrollRows, setLstPayrollRows] = useState<PayrollResultListRecord[]>([]);
   const [lstDetails, setLstDetails] = useState<PayrollResultDetailRecord[]>([]);
   const [blnLoadingMasters, setBlnLoadingMasters] = useState(true);
   const [blnLoadingReport, setBlnLoadingReport] = useState(false);
@@ -191,22 +191,19 @@ export default function SalaryStatementReportPage() {
     strStatus: "All",
   });
 
+  // The financial-year choices come from a light lookup of payroll months; the employee's results
+  // load only on Generate (previously every payroll result was fetched on open just for this list).
+  const { dicFilterOptions, strLookupError, setStrLookupError } = usePayrollReportFilterOptions(blnCanView);
+  const [blnFinancialYearDefaulted, setBlnFinancialYearDefaulted] = useState(false);
+
   useEffect(() => {
     if (!blnCanView) return;
     let blnActive = true;
     setBlnLoadingMasters(true);
-    Promise.all([employeeService.getEmployees(), payrollReportService.getPayrollRegisterRows({})])
-      .then(([lstEmployeeRows, lstResultRows]) => {
+    employeeService.getEmployees()
+      .then((lstEmployeeRows) => {
         if (!blnActive) return;
         setLstEmployees(lstEmployeeRows.filter((dicEmployee) => !dicEmployee.blnIsPartialSave));
-        setLstPayrollRows(lstResultRows);
-        const intLatestFinancialYear = lstResultRows
-          .map((dicRow) => getFinancialYearStart(dicRow.dtPayrollMonth))
-          .filter((intYear): intYear is number => intYear !== null)
-          .sort((intLeft, intRight) => intRight - intLeft)[0];
-        if (intLatestFinancialYear) {
-          setDicSearch((dicPrevious) => ({ ...dicPrevious, intFinancialYearStart: intLatestFinancialYear }));
-        }
       })
       .catch((objError) => setStrError(objError instanceof Error ? objError.message : "Unable to load salary statement filters."))
       .finally(() => {
@@ -217,27 +214,43 @@ export default function SalaryStatementReportPage() {
     };
   }, [blnCanView]);
 
+  const lstResultFinancialYears = useMemo(
+    () => dicFilterOptions.lstMonths
+      .map((strMonth) => getFinancialYearStart(`${strMonth}-01`))
+      .filter((intYear): intYear is number => intYear !== null),
+    [dicFilterOptions.lstMonths],
+  );
+
+  useEffect(() => {
+    // Default once to the latest financial year that has payroll results.
+    if (blnFinancialYearDefaulted || !lstResultFinancialYears.length) return;
+    setBlnFinancialYearDefaulted(true);
+    setDicSearch((dicPrevious) => ({ ...dicPrevious, intFinancialYearStart: Math.max(...lstResultFinancialYears) }));
+  }, [blnFinancialYearDefaulted, lstResultFinancialYears]);
+
   const mapEmployeeByID = useMemo(() => new Map(lstEmployees.map((dicEmployee) => [dicEmployee.intID, dicEmployee])), [lstEmployees]);
   const lstMonths = useMemo(() => buildMonthColumns(dicSearch.intFinancialYearStart), [dicSearch.intFinancialYearStart]);
   const lstFinancialYears = useMemo(() => {
     const lstYears = getUniqueOptions([
-      ...lstPayrollRows.map((dicRow) => String(getFinancialYearStart(dicRow.dtPayrollMonth) ?? "")),
+      ...lstResultFinancialYears.map(String),
       String(getCurrentFinancialYearStart()),
     ]).map(Number).filter(Boolean);
     return lstYears.sort((intLeft, intRight) => intRight - intLeft);
-  }, [lstPayrollRows]);
+  }, [lstResultFinancialYears]);
   const dicSelectedEmployee = dicSearch.intEmployeeID ? mapEmployeeByID.get(dicSearch.intEmployeeID) : null;
   const lstStatementLines = useMemo(() => buildSalaryStatementLines(lstDetails, lstMonths), [lstDetails, lstMonths]);
 
-  function getFilteredPayrollRows() {
-    return lstPayrollRows.filter((dicRow) => {
-      const dicEmployee = mapEmployeeByID.get(dicRow.intEmployeeID);
-      const blnMatchesEmployee = dicSearch.intEmployeeID ? dicRow.intEmployeeID === dicSearch.intEmployeeID : false;
-      return blnMatchesEmployee
-        && getFinancialYearStart(dicRow.dtPayrollMonth) === dicSearch.intFinancialYearStart
-        && Boolean(dicEmployee)
-        && (dicSearch.strStatus === "All" || dicRow.strStatus === dicSearch.strStatus);
+  async function loadEmployeePayrollRows(): Promise<PayrollResultListRecord[]> {
+    // Server-side: only this employee's results for the 12 months of the selected financial year.
+    const strEmployeeCode = dicSelectedEmployee?.strEmployeeCode ?? "";
+    const lstRows = await payrollReportService.getPayrollRegisterRows({
+      strSearchEmployee: strEmployeeCode,
+      strPayrollMonth: lstMonths.map((dicMonth) => dicMonth.strKey).join(","),
     });
+    return lstRows.filter((dicRow) =>
+      dicRow.intEmployeeID === dicSearch.intEmployeeID
+      && getFinancialYearStart(dicRow.dtPayrollMonth) === dicSearch.intFinancialYearStart
+      && (dicSearch.strStatus === "All" || dicRow.strStatus === dicSearch.strStatus));
   }
 
   async function loadReport() {
@@ -247,13 +260,13 @@ export default function SalaryStatementReportPage() {
       setStrError("Select an employee to generate the Salary statement.");
       return;
     }
-    const lstRows = getFilteredPayrollRows();
-    if (!lstRows.length) {
-      setStrError("No payroll results found for the selected employee and filters.");
-      return;
-    }
     setBlnLoadingReport(true);
     try {
+      const lstRows = await loadEmployeePayrollRows();
+      if (!lstRows.length) {
+        setStrError("No payroll results found for the selected employee and filters.");
+        return;
+      }
       const lstDetailRows = await Promise.all(lstRows.map((dicRow) => payrollResultService.getPayrollResultById(dicRow.strRecordUUID)));
       setLstDetails(lstDetailRows);
     } catch (objError) {
@@ -339,6 +352,7 @@ export default function SalaryStatementReportPage() {
           lstNotices={[
             !blnCanView && !strError ? { strKey: "rights", strSeverity: "warning", objMessage: "Salary statement view access is not available for your user group." } : null,
             { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+            { strKey: "lookup-error", strSeverity: "error", objMessage: strLookupError, fnDismiss: () => setStrLookupError("") },
           ]}
         />
       </Stack>

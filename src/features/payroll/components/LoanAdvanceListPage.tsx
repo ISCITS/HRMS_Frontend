@@ -26,7 +26,10 @@ import { authApiService } from "@/services/auth/AuthApiService";
 
 const lstModuleCodes = ["PAYROLL_LOANS_ADVANCES", "LOANS_ADVANCES", "LOANS_AND_ADVANCES"];
 const lstEssModuleCodes = ["ESS_LOANS_ADVANCES", "ESS_LOANS_AND_ADVANCES", "LOANS_ADVANCES", "LOANS_AND_ADVANCES"];
-const lstStatuses = ["All", "draft", "sent_back", "pending_approval", "approved", "disbursed", "active", "closed", "rejected", "cancelled"];
+// "Open" = every status still in progress (sent to the API as one comma-separated filter); the
+// payroll list opens on it instead of loading closed/rejected/cancelled history too.
+const strOpenStatuses = "draft,sent_back,pending_approval,approved,disbursed,active";
+const lstStatuses = ["All", strOpenStatuses, "draft", "sent_back", "pending_approval", "approved", "disbursed", "active", "closed", "rejected", "cancelled"];
 const intLoanAdvanceSkeletonRows = 8;
 const strLoanAdvanceSkeletonColumns = "170px 130px 180px 150px 180px 160px 160px 150px";
 const lstOptionalColumnKeys = ["outstandingAmount", "installmentAmount", "recoveryStartMonth", "perquisiteTax"] as const;
@@ -129,12 +132,14 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
   const [objMoreFiltersAnchor, setObjMoreFiltersAnchor] = useState<HTMLElement | null>(null);
   const [objColumnsAnchor, setObjColumnsAnchor] = useState<HTMLElement | null>(null);
   const [lstVisibleOptionalColumns, setLstVisibleOptionalColumns] = useState<OptionalColumnKey[]>([]);
+  // ESS shows the employee's own requests, so it keeps every status.
+  const strDefaultStatus = strMode === "ess" ? "All" : strOpenStatuses;
   const [dicFilters, setDicFilters] = useState({
     employee_code: "",
     department: "",
     request_type: "All",
     category_id: "",
-    status: "All",
+    status: strDefaultStatus,
     date_from: "",
     date_to: "",
   });
@@ -330,7 +335,7 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
   };
 
   function clearFilters() {
-    const dicReset = { employee_code: "", department: "", request_type: "All", category_id: "", status: "All", date_from: "", date_to: "" };
+    const dicReset = { employee_code: "", department: "", request_type: "All", category_id: "", status: strDefaultStatus, date_from: "", date_to: "" };
     setDicFilters(dicReset);
     void loadRows(dicReset);
   }
@@ -424,7 +429,11 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
         size="small"
         options={lstStatuses}
         value={dicFilters.status}
-        getOptionLabel={(strStatus) => strStatus === "All" ? t("all", "All") : t(`status_${strStatus}`, strStatus.replaceAll("_", " "))}
+        getOptionLabel={(strStatus) => strStatus === "All"
+          ? t("all", "All")
+          : strStatus === strOpenStatuses
+            ? t("status_open", "Open (not closed)")
+            : t(`status_${strStatus}`, strStatus.replaceAll("_", " "))}
         onChange={(_, strValue) => setDicFilters((d) => ({ ...d, status: strValue || "All" }))}
         slotProps={{ popper: { sx: { zIndex: 1802 } } }}
         disabled={blnSearchPanelFrozen}

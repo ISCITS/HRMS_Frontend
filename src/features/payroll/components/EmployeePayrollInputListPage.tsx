@@ -53,7 +53,13 @@ const dicEmptySearch: SearchForm = {
   intPayrollRunID: null,
   strStatus: "All",
 };
-const lstEmployeePayrollInputModuleCodes = ["EMPLOYEE_PAYROLL_INPUT", "EMPLOYEE_PAYROLL_INPUTS", "PAYROLL_INPUT", "PAYROLL_INPUTS"];
+const strInputCriteriaMessage = "Select a payroll run and/or enter an employee, then search.";
+
+function hasInputSearchCriteria(objFilters: SearchForm) {
+  return Boolean(objFilters.intPayrollRunID || objFilters.strSearchEmployee.trim());
+}
+
+const lstEmployeePayrollInputModuleCodes =["EMPLOYEE_PAYROLL_INPUT", "EMPLOYEE_PAYROLL_INPUTS", "PAYROLL_INPUT", "PAYROLL_INPUTS"];
 function formatDate(strDate: string | null) {
   if (!strDate) {
     return "-";
@@ -161,19 +167,27 @@ function EmployeePayrollInputList({ intInitialRunID }: { intInitialRunID: number
     return objRun ? `${objRun.strLabel} (${objRun.strCode})` : `#${intSelectedRunID ?? ""}`;
   }, [lstPayrollRuns, intSelectedRunID]);
 
+  // Search-first: nothing loads on open (every run x every employee was fetched before); the user
+  // picks a payroll run and/or employee and searches. A ?runId= link still opens that run directly.
+  const [blnHasSearched, setBlnHasSearched] = useState(false);
+  const [blnShowCriteriaHint, setBlnShowCriteriaHint] = useState(false);
+
   const loadInputs = useCallback(async (objFilters: SearchForm) => {
-    if (!blnCanView) {
+    if (!blnCanView || !hasInputSearchCriteria(objFilters)) {
       setLstInputs([]);
+      setBlnHasSearched(false);
       setBlnLoading(false);
       return;
     }
 
+    setBlnShowCriteriaHint(false);
     setBlnLoading(true);
     setStrError("");
     try {
       setLstInputs(
         await employeePayrollInputService.getEmployeePayrollInputs(objFilters)
       );
+      setBlnHasSearched(true);
     } catch (objError) {
       setStrError(
         objError instanceof Error
@@ -310,6 +324,10 @@ function EmployeePayrollInputList({ intInitialRunID }: { intInitialRunID: number
 
   function applySearch() {
     if (blnBusy) return;
+    if (!hasInputSearchCriteria(dicSearchDraft)) {
+      setBlnShowCriteriaHint(true);
+      return;
+    }
     setDicSearchApplied(dicSearchDraft);
     loadInputs(dicSearchDraft).catch(() => undefined);
   }
@@ -321,6 +339,7 @@ function EmployeePayrollInputList({ intInitialRunID }: { intInitialRunID: number
         strTitle={t("breadcrumb_title", "Payroll Input")}
         lstNotices={[
           { strKey: "rights", strSeverity: "warning", objMessage: strRightsError },
+          { strKey: "criteria", strSeverity: "warning", objMessage: blnShowCriteriaHint ? strInputCriteriaMessage : "", fnDismiss: () => setBlnShowCriteriaHint(false) },
           { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
           { strKey: "run-options-error", strSeverity: "error", objMessage: strRunOptionsError, fnDismiss: () => setStrRunOptionsError("") },
         ]}
@@ -424,6 +443,7 @@ function EmployeePayrollInputList({ intInitialRunID }: { intInitialRunID: number
               onClick={() => {
                 setDicSearchDraft(dicEmptySearch);
                 setDicSearchApplied(dicEmptySearch);
+                setBlnShowCriteriaHint(false);
                 loadInputs(dicEmptySearch).catch(() => undefined);
               }}
               disabled={blnBusy}
@@ -450,7 +470,9 @@ function EmployeePayrollInputList({ intInitialRunID }: { intInitialRunID: number
             exportFileName="employee-payroll-inputs"
             showExportOptions={blnCanExport}
             showPaginationSummary
-            emptyMessage={t("empty_message", "No payroll inputs found for the current filters.")}
+            emptyMessage={blnHasSearched
+              ? t("empty_message", "No payroll inputs found for the current filters.")
+              : t("select_criteria_message", strInputCriteriaMessage)}
             testIdPrefix="employee-payroll-input.list"
             toolbarLeft={blnCanAdd || (blnCanImportTds && intSelectedRunID) ? (
               <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap" }}>

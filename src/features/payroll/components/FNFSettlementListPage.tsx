@@ -47,6 +47,7 @@ type FNFSettlementGridRow = {
   strSettlementNumber: ReactNode;
   strSettlementNumberSort: string;
   strEmployee: ReactNode;
+  strEmployeeName: string;
   strDepartment: ReactNode;
   dtLastWorkingDate: ReactNode;
   dtSettlementMonth: ReactNode;
@@ -117,7 +118,8 @@ export default function FNFSettlementListPage() {
 
   const lstTableColumns = useMemo<CommonTableColumn<FNFSettlementGridRow>[]>(() => {
     const lstColumns: CommonTableColumn<FNFSettlementGridRow>[] = [
-      { field: "strEmployee", headerName: "Employee", width: 170 },
+      { field: "strEmployee", headerName: "Employee Code", width: 140 },
+      { field: "strEmployeeName", headerName: "Employee Name", width: 220 },
       { field: "strSettlementNumber", headerName: "Settlement #", width: 160, sortAccessor: (row) => row.strSettlementNumberSort },
       { field: "strDepartment", headerName: "Department", width: 160 },
       { field: "dtLastWorkingDate", headerName: "LWD", width: 130 },
@@ -152,6 +154,7 @@ export default function FNFSettlementListPage() {
       ),
       strSettlementNumberSort: strSettlementNumber,
       strEmployee: row.strEmployeeCode || row.intEmployeeID,
+      strEmployeeName: row.strEmployeeName || "-",
       strDepartment: row.strDepartmentName || "-",
       dtLastWorkingDate: row.dtLastWorkingDate || "-",
       dtSettlementMonth: row.dtSettlementMonth || "-",
