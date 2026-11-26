@@ -9,6 +9,7 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -67,6 +68,8 @@ export default function AttendanceImportPanel({ blnCanManage, onImported }: Atte
   const [objSummary, setObjSummary] = useState<ImportSummary | null>(null);
   const [strError, setStrError] = useState<string | null>(null);
   const [blnSkippedOpen, setBlnSkippedOpen] = useState(false);
+  const [objReview, setObjReview] = useState<{ objPreview: AttendanceImportPreviewResult; strFileName: string } | null>(null);
+  const [strReviewRows, setStrReviewRows] = useState<"valid" | "invalid" | null>(null);
   const [objScheduledResult, setObjScheduledResult] = useState<ScheduledImportRunResult | null>(null);
 
   async function handleDownloadTemplate() {
@@ -101,11 +104,12 @@ export default function AttendanceImportPanel({ blnCanManage, onImported }: Atte
     setObjFile(objPicked);
     setObjSummary(null);
     setObjMappingPreview(null);
+    setObjReview(null);
     setStrError(null);
     await runImport(objPicked);
   }
 
-  // Auto-maps when no mapping is given; re-runs with the user's chosen mapping otherwise.
+  // Step 1: validate only. Auto-maps when no mapping is given; re-runs with the user's mapping otherwise.
   async function runImport(objSource: File, dicMapping?: AttendanceImportMapping) {
     try {
       setBlnBusy(true);
@@ -113,10 +117,30 @@ export default function AttendanceImportPanel({ blnCanManage, onImported }: Atte
       setDicMappingDraft(objPreview.dicMapping);
       if (objPreview.blnNeedsMapping) {
         setObjMappingPreview(objPreview);
+        setObjReview(null);
         return;
       }
       setObjMappingPreview(null);
+      setObjReview({ objPreview, strFileName: objSource.name });
+    } catch (objErr) {
+      setStrError((objErr as Error)?.message || t("import_preview_failed", "Failed to read the uploaded file."));
+    } finally {
+      setBlnBusy(false);
+    }
+  }
 
+  function handleCancelReview() {
+    setObjReview(null);
+    setObjFile(null);
+  }
+
+  // Step 2: import the valid rows only; invalid rows are reported.
+  async function handleImportValidRows() {
+    if (!objReview) return;
+    const objPreview = objReview.objPreview;
+    const objSource = { name: objReview.strFileName };
+    try {
+      setBlnBusy(true);
       const lstSkipped: SkippedRow[] = objPreview.lstRows
         .filter((objRow) => !objRow.blnValid)
         .map((objRow) => ({
@@ -155,6 +179,7 @@ export default function AttendanceImportPanel({ blnCanManage, onImported }: Atte
       }
       lstSkipped.sort((objA, objB) => objA.intRow - objB.intRow);
       setObjSummary({ strFileName: objSource.name, intTotal: objPreview.intTotal, intCreated, intUpdated, lstSkipped });
+      setObjReview(null);
       setObjFile(null);
       if (intCreated + intUpdated > 0) {
         const lstDates = lstValid.map((objRow) => objRow.dtWorkDate as string).sort();
@@ -211,7 +236,7 @@ export default function AttendanceImportPanel({ blnCanManage, onImported }: Atte
                   onClick={handleRunScheduledImport}
                   disabled={blnBusy}
                 >
-                  {t("run_folder_import", "Run Folder Import Now")}
+                  {t("schedule_now", "Schedule Now")}
                 </Button>
               </span>
             </Tooltip>
@@ -223,6 +248,47 @@ export default function AttendanceImportPanel({ blnCanManage, onImported }: Atte
         <Alert severity="error" onClose={() => setStrError(null)}>
           {strError}
         </Alert>
+      )}
+
+      {objReview && (
+        <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }} data-control-id="attendance.daily.import.review">
+          <Typography sx={{ fontSize: "12px", color: "#475569", mb: 1 }}>
+            {objReview.strFileName}: {t("import_review_hint", "File checked. Click Valid or Invalid to see those rows, then import the valid rows.")}
+          </Typography>
+          <Box sx={{ display: "flex", gap: 1.25, flexWrap: "wrap", alignItems: "center" }}>
+            <Chip size="small" label={`${t("total", "Total")}: ${objReview.objPreview.intTotal}`} />
+            <Chip
+              size="small"
+              color="success"
+              clickable={objReview.objPreview.intValid > 0}
+              onClick={objReview.objPreview.intValid > 0 ? () => setStrReviewRows("valid") : undefined}
+              data-control-id="attendance.daily.import.valid.chip"
+              label={`${t("valid_rows", "Valid rows")}: ${objReview.objPreview.intValid}`}
+            />
+            <Chip
+              size="small"
+              color="error"
+              clickable={objReview.objPreview.intErrors > 0}
+              onClick={objReview.objPreview.intErrors > 0 ? () => setStrReviewRows("invalid") : undefined}
+              data-control-id="attendance.daily.import.invalid.chip"
+              label={`${t("invalid_rows", "Invalid rows")}: ${objReview.objPreview.intErrors}`}
+            />
+            {objReview.objPreview.intWillOverwrite > 0 && (
+              <Chip size="small" color="warning" label={`${t("will_overwrite", "Will overwrite")}: ${objReview.objPreview.intWillOverwrite}`} />
+            )}
+            <Button
+              data-control-id="attendance.daily.import.import-valid.button"
+              className={styles.primaryButton}
+              disabled={objReview.objPreview.intValid === 0}
+              onClick={handleImportValidRows}
+            >
+              {t("import_valid_rows", "Import Valid Rows")}
+            </Button>
+            <Button className={styles.secondaryButton} onClick={handleCancelReview} data-control-id="attendance.daily.import.cancel-review.button">
+              {t("cancel", "Cancel")}
+            </Button>
+          </Box>
+        </Box>
       )}
 
       {objSummary && (
@@ -315,6 +381,61 @@ export default function AttendanceImportPanel({ blnCanManage, onImported }: Atte
           </Box>
         </Box>
       )}
+
+      <Dialog open={strReviewRows !== null} onClose={() => setStrReviewRows(null)} maxWidth="lg" fullWidth>
+        <DialogTitle>
+          {strReviewRows === "valid"
+            ? `${t("valid_rows", "Valid rows")}: ${objReview?.objPreview.intValid ?? 0}`
+            : `${t("invalid_rows", "Invalid rows")}: ${objReview?.objPreview.intErrors ?? 0}`}
+        </DialogTitle>
+        <DialogContent dividers>
+          <Table size="small" stickyHeader>
+            <TableHead>
+              <TableRow>
+                <TableCell>{t("row", "Row")}</TableCell>
+                <TableCell>{t("employee_code", "Employee Code")}</TableCell>
+                <TableCell>{t("employee_name", "Employee Name")}</TableCell>
+                <TableCell>{t("date", "Date")}</TableCell>
+                {strReviewRows === "valid" ? (
+                  <>
+                    <TableCell>{t("status", "Status")}</TableCell>
+                    <TableCell>{t("in_time", "In Time")}</TableCell>
+                    <TableCell>{t("out_time", "Out Time")}</TableCell>
+                    <TableCell>{t("result", "Result")}</TableCell>
+                  </>
+                ) : (
+                  <TableCell>{t("error", "Error")}</TableCell>
+                )}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {(objReview?.objPreview.lstRows ?? [])
+                .filter((objRow) => (strReviewRows === "valid" ? objRow.blnValid : !objRow.blnValid))
+                .map((objRow) => (
+                  <TableRow key={objRow.intExcelRowNumber}>
+                    <TableCell>{objRow.intExcelRowNumber}</TableCell>
+                    <TableCell>{objRow.strEmployeeCode}</TableCell>
+                    <TableCell>{objRow.strEmployeeName ?? "-"}</TableCell>
+                    <TableCell>{objRow.dtWorkDate ?? objRow.strRawDate}</TableCell>
+                    {strReviewRows === "valid" ? (
+                      <>
+                        <TableCell>{objRow.strStatus}</TableCell>
+                        <TableCell>{objRow.strFirstIn?.slice(0, 5) ?? "-"}</TableCell>
+                        <TableCell>{objRow.strLastOut?.slice(0, 5) ?? "-"}</TableCell>
+                        <TableCell>{objRow.blnWillOverwrite ? t("overwrite", "Overwrite") : t("new", "New")}{objRow.strWarning ? ` - ${objRow.strWarning}` : ""}</TableCell>
+                      </>
+                    ) : (
+                      <TableCell>{objRow.strErrorMessage ?? "-"}</TableCell>
+                    )}
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setStrReviewRows(null)}>{t("close", "Close")}</Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={blnSkippedOpen} onClose={() => setBlnSkippedOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>{`${t("skipped_rows", "Skipped rows")}: ${objSummary?.lstSkipped.length ?? 0}`}</DialogTitle>

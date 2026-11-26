@@ -714,7 +714,7 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
   ];
   const nodeDailyAttendanceActions = (
     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-      <Button data-control-id="attendance.daily.fill-month.button" className={styles.secondaryButton} startIcon={<AddRoundedIcon />} disabled={blnReadOnly || blnSaving} onClick={openFillDialog}>{t("generate_attendance","Generate Attendance")}</Button>
+      {blnCanManage ? <Button data-control-id="attendance.daily.fill-month.button" className={styles.secondaryButton} startIcon={<AddRoundedIcon />} disabled={blnSaving} onClick={openFillDialog}>{t("generate_attendance","Generate Attendance")}</Button> : null}
       <Button data-control-id="attendance.daily.finalize.button" className={styles.primaryButton} startIcon={<SaveRoundedIcon />} disabled={blnReadOnly || blnSaving} onClick={() => setBlnFinalizeConfirmOpen(true)}>{t("finalize_attendance","Finalize Attendance")}</Button>
     </Stack>
   );
