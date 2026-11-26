@@ -140,10 +140,18 @@ export default function EmployeeMonthlyTaxPage({
     }
   }
 
+  // Search-first: the matrix loads when the user clicks Search. A deep link to one employee
+  // (intInitialEmployeeID) still opens with that employee loaded.
   useEffect(() => {
+    if (!intInitialEmployeeID) return;
     loadMatrix();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [strNormalizedFinancialYearCode, intFilterEmployeeID]);
+  }, []);
+
+  function clearLoadedMatrix() {
+    setObjMatrix(null);
+    setStrError("");
+  }
 
   const lstVisibleMonths = useMemo(() => resolveVisibleMonths(objMatrix?.lstMonths ?? []), [objMatrix]);
 
@@ -174,6 +182,7 @@ export default function EmployeeMonthlyTaxPage({
     setBlnHideZeroTds(true);
     setIntFilterEmployeeID(undefined);
     setIntPage(0);
+    clearLoadedMatrix();
   }
 
   const lstPaginatedRows = useMemo(
@@ -192,7 +201,10 @@ export default function EmployeeMonthlyTaxPage({
         size="small"
         sx={{ minWidth: 160 }}
         value={strFinancialYearCode}
-        onChange={(objEvent) => setStrFinancialYearCode(objEvent.target.value)}
+        onChange={(objEvent) => {
+          setStrFinancialYearCode(objEvent.target.value);
+          clearLoadedMatrix();
+        }}
       >
         {lstFinancialYearOptions.map((strCode) => (
           <option key={strCode} value={strCode}>
@@ -233,10 +245,20 @@ export default function EmployeeMonthlyTaxPage({
         label={<Typography variant="body2">{t("hide_zero_tds_label", "Hide employees with zero TDS")}</Typography>}
       />
       <Button
+        className={payrollStyles.primaryButton}
+        variant="contained"
+        startIcon={<SearchRoundedIcon />}
+        disabled={blnLoading || !strNormalizedFinancialYearCode}
+        onClick={() => void loadMatrix()}
+        controlId="employee-monthly-tax.search.button"
+      >
+        {t("search", "Search")}
+      </Button>
+      <Button
         className={payrollStyles.secondaryButton}
         variant="outlined"
         startIcon={<ClearRoundedIcon />}
-        disabled={blnFiltersAtDefault}
+        disabled={blnFiltersAtDefault && !objMatrix}
         onClick={handleClearFilters}
         controlId="employee-monthly-tax.clear-filters.button"
       >
@@ -262,6 +284,19 @@ export default function EmployeeMonthlyTaxPage({
       {blnLoading && (
         <Box className={styles.tableCard} sx={{ p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
           <MasterGridSkeleton strControlId="employee-monthly-tax.list.skeleton" intColumns={8} />
+        </Box>
+      )}
+
+      {!blnLoading && !strError && !objMatrix && (
+        <Box
+          className={styles.tableCard}
+          data-control-id="employee-monthly-tax.select-criteria"
+          sx={{ py: 8, px: 2, textAlign: "center", borderRadius: "10px !important", boxShadow: "none" }}
+        >
+          <SearchRoundedIcon sx={{ fontSize: 40, color: "#94a3b8", mb: 1 }} />
+          <Typography sx={{ fontWeight: 600, color: "#334155" }}>
+            Select the financial year and click Search to view monthly tax.
+          </Typography>
         </Box>
       )}
 
