@@ -3,7 +3,7 @@
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { Alert, Box, Button, Chip, Link, MenuItem, Stack, TextField } from "@mui/material";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
@@ -40,14 +40,17 @@ function getStatusColor(strStatus?: string | null): "default" | "warning" | "suc
 
 export default function FlexiDeclarationReviewListPage() {
   const objRouter = useRouter();
-  const [blnLoading, setBlnLoading] = useState(true);
+  const [blnLoading, setBlnLoading] = useState(false);
   const [strError, setStrError] = useState("");
+  // Search-first: the grid stays empty until the user clicks Search.
+  const [blnHasSearched, setBlnHasSearched] = useState(false);
   const [strWorkflowStatus, setStrWorkflowStatus] = useState("submitted");
   const [lstRows, setLstRows] = useState<FlexiDeclarationHistoryRecord[]>([]);
 
   const loadData = useCallback(async function loadData(strStatus = strWorkflowStatus) {
     setBlnLoading(true);
     setStrError("");
+    setBlnHasSearched(true);
     try {
       const lstData = await hrFlexiDeclarationReviewService.getList(strStatus);
       setLstRows(lstData || []);
@@ -57,10 +60,6 @@ export default function FlexiDeclarationReviewListPage() {
       setBlnLoading(false);
     }
   }, [strWorkflowStatus]);
-
-  useEffect(() => {
-    void loadData("submitted");
-  }, [loadData]);
 
   const objSummary = useMemo(
     () =>
@@ -158,7 +157,7 @@ export default function FlexiDeclarationReviewListPage() {
             <Button
               className={styles.secondaryButton}
               startIcon={<ClearRoundedIcon />}
-              onClick={() => { setStrWorkflowStatus("submitted"); void loadData("submitted"); }}
+              onClick={() => { setStrWorkflowStatus("submitted"); setLstRows([]); setBlnHasSearched(false); setStrError(""); }}
               disabled={blnLoading}
             >
               Clear
@@ -169,7 +168,7 @@ export default function FlexiDeclarationReviewListPage() {
 
       {strError ? <Alert severity="error">{strError}</Alert> : null}
 
-      {!blnLoading ? (
+      {!blnLoading && blnHasSearched ? (
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           <Chip size="small" label={`Submitted ${objSummary.submitted || 0}`} />
           <Chip size="small" label={`Approved ${objSummary.approved || 0}`} />
@@ -192,7 +191,7 @@ export default function FlexiDeclarationReviewListPage() {
             showPaginationSummary
             minTableWidth={1140}
             hideRowClickHint
-            emptyMessage="No declarations found."
+            emptyMessage={blnHasSearched ? "No declarations found." : "Select a status and click Search to view declarations."}
             testIdPrefix="flexi-declaration-review.list"
             onRowClick={(objRow) => openDeclaration(objRow.id)}
             getRowSx={() => dicMasterRowSx}

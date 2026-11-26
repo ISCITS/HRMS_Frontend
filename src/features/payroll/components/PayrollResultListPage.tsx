@@ -308,6 +308,10 @@ export default function PayrollResultListPage({
   // Payroll Results (not payslips): the "Latest month" scope is resolved from a light lookup and
   // sent to the server, instead of loading every month's results and filtering on screen.
   const objLatestLookupMonthRef = useRef("");
+  // Payroll Results is search-first too: the grid stays empty until the user clicks Search.
+  // Opened with ?month= (a link from another payroll screen) it still loads that month straight away.
+  const blnResultsSearchFirst = !blnPayslipScreen;
+  const blnResultsDeepLink = blnResultsSearchFirst && Boolean(normalizeQueryMonth(objSearchParams.get("month")));
 
   function getResultsServerFilters(objFilters: SearchForm) {
     const strEffectiveMonth = objFilters.strMonthScope === "All"
@@ -409,7 +413,11 @@ export default function PayrollResultListPage({
           }
         }
 
-        await loadResults();
+        if (blnResultsSearchFirst && !blnResultsDeepLink) {
+          if (!blnCancelled) setBlnLoading(false);
+        } else {
+          await loadResults();
+        }
       } finally {
         if (!blnCancelled) {
           setBlnPageInitializing(false);
@@ -540,6 +548,12 @@ export default function PayrollResultListPage({
     setBlnShowCriteriaHint(false);
     setDicSearchDraft(dicEmptySearch);
     setDicSearchApplied(dicEmptySearch);
+    if (blnResultsSearchFirst) {
+      setLstResults([]);
+      setBlnHasLoadedRows(false);
+      setStrError("");
+      return;
+    }
     loadResults(dicEmptySearch).catch(() => undefined);
   }
 
@@ -855,21 +869,23 @@ export default function PayrollResultListPage({
         )}
       </Box>
 
-      <PayrollDataChangedNotice objFreshness={objPayrollFreshness} onRefresh={() => void loadResults()} blnRefreshing={blnBusy} />
+      <PayrollDataChangedNotice objFreshness={objPayrollFreshness} onRefresh={() => { if (!blnResultsSearchFirst || blnHasLoadedRows) void loadResults(); }} blnRefreshing={blnBusy} />
 
       {objPayslipViewChooser}
 
       <Box className={masterStyles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {blnBusy ? (
           <MasterGridSkeleton strControlId="payroll-results.list.skeleton" intColumns={8} />
-        ) : blnSearchFirst && !blnHasLoadedRows ? (
+        ) : (blnSearchFirst || blnResultsSearchFirst) && !blnHasLoadedRows ? (
           <Box
             data-controlid="payroll-results.list.select-criteria"
             sx={{ py: 8, px: 2, textAlign: "center" }}
           >
             <SearchRoundedIcon sx={{ fontSize: 40, color: blnShowCriteriaHint ? "#d97706" : "#94a3b8", mb: 1 }} />
             <Typography sx={{ fontWeight: 600, color: blnShowCriteriaHint ? "#b45309" : "#334155" }}>
-              {t("select_employee_month_prompt", "Select an employee and/or payroll month, then click Search to view payslips.")}
+              {blnResultsSearchFirst
+                ? "Select filters (month, run, employee or status), then click Search to view payroll results."
+                : t("select_employee_month_prompt", "Select an employee and/or payroll month, then click Search to view payslips.")}
             </Typography>
           </Box>
         ) : (
