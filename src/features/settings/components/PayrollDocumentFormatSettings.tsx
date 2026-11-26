@@ -102,6 +102,8 @@ export default function PayrollDocumentFormatSettings({ strSection, onMessage }:
       strCtcPeriod: objNext.strCtcPeriod,
       lstHeaderLines: cloneHeaderLines(objNext.lstHeaderLines ?? []),
       blnShowLeaveBalance: objNext.blnShowLeaveBalance ?? true,
+      blnShowYtdSummary: objNext.blnShowYtdSummary ?? true,
+      blnShowAnnualTaxSummary: objNext.blnShowAnnualTaxSummary ?? true,
       strLogoSource: objNext.strLogoSource ?? "none",
     });
   }
@@ -202,6 +204,8 @@ export default function PayrollDocumentFormatSettings({ strSection, onMessage }:
     objDraft.strCtcFormat !== objConfig.strCtcFormat ||
     objDraft.strCtcPeriod !== objConfig.strCtcPeriod ||
     objDraft.blnShowLeaveBalance !== (objConfig.blnShowLeaveBalance ?? true) ||
+    objDraft.blnShowYtdSummary !== (objConfig.blnShowYtdSummary ?? true) ||
+    objDraft.blnShowAnnualTaxSummary !== (objConfig.blnShowAnnualTaxSummary ?? true) ||
     objDraft.strLogoSource !== (objConfig.strLogoSource ?? "none") ||
     !sameHeaderLines(objDraft.lstHeaderLines, objConfig.lstHeaderLines ?? []);
   const strHeaderError = validateHeaderLines(objDraft.lstHeaderLines, objConfig.dicHeaderLimits);
@@ -314,7 +318,7 @@ export default function PayrollDocumentFormatSettings({ strSection, onMessage }:
       {strSection === "payslip-header" ? (
       <Paper id="settings-section-payslip-header" variant="outlined" sx={sxCard}>
         <Typography sx={sxSubHeading}>Payslip / F&amp;F Header</Typography>
-        <Typography sx={sxSubCaption}>Header lines and logo printed on every payslip and F&amp;F report of the company, in every format.</Typography>
+        <Typography sx={sxSubCaption}>Header lines and logo printed on every payslip and F&amp;F report of the company, in every format, and which sections they show.</Typography>
         <Stack spacing={1.5}>
           <TextField
             select
@@ -356,6 +360,40 @@ export default function PayrollDocumentFormatSettings({ strSection, onMessage }:
             />
             <Typography sx={{ color: "#60749b", fontSize: "0.75rem" }}>
               Leave availed and balance per leave type on Format 1 (Leave Balance row) and Format 3 (Leave Balance panel) payslips. Our format has no leave section.
+            </Typography>
+          </Box>
+          <Box>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={objDraft.blnShowYtdSummary}
+                  disabled={blnReadOnly}
+                  onChange={(objEvent) => setObjDraft({ ...objDraft, blnShowYtdSummary: objEvent.target.checked })}
+                  inputProps={{ "aria-label": "Show Year To Date summary on payslip" }}
+                  data-controlid="settings.payroll-format.header.show-ytd.switch"
+                />
+              }
+              label={<Typography sx={{ fontWeight: 700, color: "#172033", fontSize: "0.9rem" }}>Show Year To Date (YTD) summary</Typography>}
+            />
+            <Typography sx={{ color: "#60749b", fontSize: "0.75rem" }}>
+              Total earnings, deductions, taxable income and TDS from April to the payslip month, on the Detailed payslip in our format and on our F&amp;F report.
+            </Typography>
+          </Box>
+          <Box>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={objDraft.blnShowAnnualTaxSummary}
+                  disabled={blnReadOnly}
+                  onChange={(objEvent) => setObjDraft({ ...objDraft, blnShowAnnualTaxSummary: objEvent.target.checked })}
+                  inputProps={{ "aria-label": "Show annual tax summary on payslip" }}
+                  data-controlid="settings.payroll-format.header.show-annual.switch"
+                />
+              }
+              label={<Typography sx={{ fontWeight: 700, color: "#172033", fontSize: "0.9rem" }}>Show annual tax summary</Typography>}
+            />
+            <Typography sx={{ color: "#60749b", fontSize: "0.75rem" }}>
+              Projected taxable income, total tax for the year, balance tax and payroll months left, on the Detailed payslip in our format and on our F&amp;F report.
             </Typography>
           </Box>
         </Stack>

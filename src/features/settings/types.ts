@@ -59,6 +59,9 @@ export type PayrollDocumentFormatConfigDto = {
   /** Payslip / F&F report header lines and the leave-balance switch (Settings > Payroll). */
   lstHeaderLines: PayslipHeaderLine[];
   blnShowLeaveBalance: boolean;
+  /** Year To Date Summary / Annual Tax Summary blocks on the Detailed payslip and our F&F report. */
+  blnShowYtdSummary: boolean;
+  blnShowAnnualTaxSummary: boolean;
   /** The fields a header line can print, from the backend catalogue (new sources appear here). */
   lstHeaderFields: PayslipHeaderFieldDto[];
   lstHeaderStyles: PayslipHeaderStyle[];
@@ -177,6 +180,8 @@ export type PayrollDocumentFormatSaveRequest = Pick<
   /** Optional: not sent = the saved header / leave switch stay as they are. */
   lstHeaderLines?: PayslipHeaderLine[];
   blnShowLeaveBalance?: boolean;
+  blnShowYtdSummary?: boolean;
+  blnShowAnnualTaxSummary?: boolean;
   strLogoSource?: string;
 };
 

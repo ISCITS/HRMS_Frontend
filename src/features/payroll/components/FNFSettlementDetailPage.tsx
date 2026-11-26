@@ -11,6 +11,7 @@ import BlockingLoader from "@/components/shared/BlockingLoader";
 import FNFActionBar from "@/features/payroll/components/FNFActionBar";
 import FNFAdjustmentsPanel from "@/features/payroll/components/FNFAdjustmentsPanel";
 import FNFBonusPanel from "@/features/payroll/components/FNFBonusPanel";
+import FNFPayableDaysPanel from "@/features/payroll/components/FNFPayableDaysPanel";
 import FNFSettlementLineEditor from "@/features/payroll/components/FNFSettlementLineEditor";
 import {
   FNFAuditTimeline,
@@ -291,6 +292,13 @@ export default function FNFSettlementDetailPage({ strSettlementID }: { /** recor
               ) : null}
 
               <FNFSettlementCalculationPanel objSettlement={objSettlement} blnReadOnly={blnLinesReadOnly} onAdd={() => { setObjEditingLine(null); setBlnLineDialogOpen(true); }} onEdit={(line) => { setObjEditingLine(line); setBlnLineDialogOpen(true); }} onDelete={setObjLineToDelete} />
+              <FNFPayableDaysPanel
+                strSettlementID={strSettlementID}
+                strSettlementStatus={objSettlement.strSettlementStatus}
+                blnCanEdit={blnCanEditDetails}
+                onSaved={async (strMessage) => { await loadSettlement(false); setStrSuccess(strMessage); }}
+                onError={setStrError}
+              />
               <FNFAdjustmentsPanel
                 strSettlementID={strSettlementID}
                 strSettlementStatus={objSettlement.strSettlementStatus}

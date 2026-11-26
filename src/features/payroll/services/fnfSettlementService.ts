@@ -7,6 +7,8 @@ import type {
   FNFBonusOverrideResponse,
   FNFBonusOverrideValues,
   FNFBulkCreateItem,
+  FNFPayableDaysResponse,
+  FNFPayableDaysRow,
   FNFBulkCreateResponse,
   FNFEmployeeOption,
   FNFEmployeePrefill,
@@ -410,6 +412,25 @@ export const fnfSettlementService = {
       strPath: `/payroll/fnf-settlements/${strRecordUUID}/bonus-override`,
       strMethod: "PUT",
       objBody: { decAmount: objValues.decAmount, strReason: objValues.strReason.trim(), blnTaxable: objValues.blnTaxable },
+      strMenuAction: "PAYROLL_FNF_EDIT",
+    });
+    return objResult.Data;
+  },
+  /** Payable days entered on the settlement and the days its last calculation used. */
+  async getPayableDays(strRecordUUID: string): Promise<FNFPayableDaysResponse> {
+    const objResult = await requestApi<FNFPayableDaysResponse>({
+      strPath: `/payroll/fnf-settlements/${strRecordUUID}/payable-days`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_FNF_VIEW",
+    });
+    return objResult.Data;
+  },
+  /** Replaces the settlement's payable days (empty = use attendance); the settlement then needs Calculate. */
+  async savePayableDays(strRecordUUID: string, lstRows: FNFPayableDaysRow[]): Promise<FNFPayableDaysResponse> {
+    const objResult = await requestApi<FNFPayableDaysResponse>({
+      strPath: `/payroll/fnf-settlements/${strRecordUUID}/payable-days`,
+      strMethod: "PUT",
+      objBody: { lstPayableDays: lstRows.map((objRow) => ({ dtMonth: objRow.dtMonth, decPayableDays: objRow.decPayableDays, strRemarks: objRow.strRemarks?.trim() || null })) },
       strMenuAction: "PAYROLL_FNF_EDIT",
     });
     return objResult.Data;

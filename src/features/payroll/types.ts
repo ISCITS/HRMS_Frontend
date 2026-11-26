@@ -601,6 +601,24 @@ export type FNFBonusOverrideResponse = {
   strSettlementStatus: string;
 };
 
+/** Payable days HR entered for one salary month of an F&F (used instead of attendance). */
+export type FNFPayableDaysRow = {
+  /** First day of the month, YYYY-MM-DD. */
+  dtMonth: string;
+  decPayableDays: number;
+  strSource?: string;
+  strRemarks?: string | null;
+};
+
+export type FNFPayableDaysResponse = {
+  lstPayableDays: FNFPayableDaysRow[];
+  /** Salary months of the last calculation with the days used and where they came from. */
+  lstSalaryMonths: { dtMonth: string; decPayableDays: number | null; decLopDays: number | null; strSource: string | null }[];
+  dtLastWorkingDate: string | null;
+  blnEditable: boolean;
+  strSettlementStatus: string;
+};
+
 /** One row of the F&F register (kept separate from the payroll salary register). */
 export type FNFRegisterRow = {
   strRecordUUID: string | null;
