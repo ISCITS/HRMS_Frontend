@@ -4,6 +4,7 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import {
   Alert,
   Box,
@@ -24,7 +25,9 @@ import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonT
 import styles from "@/components/master/MasterScreen.module.css";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useEmployeeSalaryLabels } from "@/features/employee-salary/hooks/useEmployeeSalaryLabels";
+import EmployeeSalaryImportDialog from "@/features/employee-salary/components/EmployeeSalaryImportDialog";
 import { employeeSalaryService } from "@/features/employee-salary/services/employeeSalaryService";
+import { employeeSalaryImportService, type SalaryImportStatus } from "@/features/employee-salary/services/employeeSalaryImportService";
 import type { EmployeeSalaryListRecord } from "@/features/employee-salary/types";
 
 type SearchForm = {
@@ -126,6 +129,8 @@ export default function EmployeeSalaryListPage() {
   const [dicSearch, setDicSearch] = useState<SearchForm>(dicEmptySearch);
   const [dicAppliedSearch, setDicAppliedSearch] = useState(dicSearch);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
+  const [objImportStatus, setObjImportStatus] = useState<SalaryImportStatus | null>(null);
+  const [blnImportOpen, setBlnImportOpen] = useState(false);
 
   const blnCanView = canViewAny() || canDoAny("list");
   const blnCanExport = canDoAny("export");
@@ -178,6 +183,22 @@ export default function EmployeeSalaryListPage() {
     }
     loadEmployeeSalaries().catch(() => undefined);
   }, [blnRightsLoading, blnCanView]);
+
+  async function loadImportStatus() {
+    try {
+      setObjImportStatus(await employeeSalaryImportService.getStatus());
+    } catch {
+      // Import is optional per tenant: without a status the button simply stays hidden.
+      setObjImportStatus(null);
+    }
+  }
+
+  useEffect(() => {
+    if (blnRightsLoading || !blnCanMutate) {
+      return;
+    }
+    loadImportStatus().catch(() => undefined);
+  }, [blnRightsLoading, blnCanMutate]);
 
   const lstFilteredRows = useMemo(() => {
     return lstEmployeeSalaries.filter((dicRow) => {
@@ -378,6 +399,16 @@ export default function EmployeeSalaryListPage() {
                     {t("employee_salary_open_employee", "Open Employee")}
                   </Button>
                 ) : null}
+                {blnCanMutate && objImportStatus?.blnEnabled ? (
+                  <Button
+                    data-controlid="employee-salary.list.import.button"
+                    className={styles.secondaryButton}
+                    startIcon={<UploadFileRoundedIcon />}
+                    onClick={() => setBlnImportOpen(true)}
+                  >
+                    {t("employee_salary_import_button", "Import Salary")}
+                  </Button>
+                ) : null}
               </Box>
             )}
             testIdPrefix="employee-salary.list"
@@ -395,6 +426,21 @@ export default function EmployeeSalaryListPage() {
           />
         )}
       </Box>
+
+      {blnImportOpen ? (
+        <EmployeeSalaryImportDialog
+          blnOpen={blnImportOpen}
+          objStatus={objImportStatus}
+          t={t}
+          onClose={() => setBlnImportOpen(false)}
+          onImported={(strMessage) => {
+            setBlnImportOpen(false);
+            showToast(strMessage);
+            loadEmployeeSalaries().catch(() => undefined);
+            loadImportStatus().catch(() => undefined);
+          }}
+        />
+      ) : null}
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>
