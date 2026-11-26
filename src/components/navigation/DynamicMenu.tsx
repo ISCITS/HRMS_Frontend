@@ -395,6 +395,15 @@ function isReportMenuItem(objItem: MenuItem): boolean {
   );
 }
 
+// Screens that were merged into another screen but may still be configured in the menu master.
+const SET_RETIRED_MENU_ROUTES = new Set(["/attendance/import"]);
+
+function removeRetiredMenus(lstItems: MenuItem[]): MenuItem[] {
+  return lstItems
+    .filter((objItem) => !SET_RETIRED_MENU_ROUTES.has(resolveMenuRoute(objItem)?.trim().toLowerCase() ?? ""))
+    .map((objItem) => ({ ...objItem, lstChildren: removeRetiredMenus(objItem.lstChildren) }));
+}
+
 function removeReportsFromPayrollBranches(lstItems: MenuItem[], blnInsidePayroll = false): MenuItem[] {
   return lstItems.reduce<MenuItem[]>((lstUpdatedItems, objItem) => {
     if (blnInsidePayroll && isReportMenuItem(objItem)) {
@@ -988,7 +997,7 @@ function prepareMenuItems(lstItems: MenuItem[], blnEssOnly: boolean, canViewCtc:
           appendGeneratedPayslipMenu(
             appendGeneratedEssLoansAdvancesMenu(
               removeReportsFromPayrollBranches(
-                promoteDashboardMenu(lstItems),
+                promoteDashboardMenu(removeRetiredMenus(lstItems)),
               ),
             ),
           ),
