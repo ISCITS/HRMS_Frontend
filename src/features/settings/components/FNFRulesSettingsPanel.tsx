@@ -13,7 +13,7 @@ import RegularPayrollPolicySection from "@/features/settings/components/RegularP
 import { fnfSettlementService } from "@/features/payroll/services/fnfSettlementService";
 import type { FNFPolicy, FNFPolicySection } from "@/features/payroll/types";
 
-type SectionKey = "salary" | "leave_encashment" | "notice" | "gratuity" | "rounding" | "approval" | "closure";
+type SectionKey = "salary" | "leave_encashment" | "notice" | "gratuity" | "bonus" | "rounding" | "approval" | "closure";
 type FieldSpec =
   | { strKey: string; strLabel: string; strKind: "number"; strHelp?: string }
   | { strKey: string; strLabel: string; strKind: "switch"; strHelp?: string }
@@ -82,10 +82,29 @@ const lstSections: { strKey: SectionKey; strTitle: string; lstFields: FieldSpec[
     ],
   },
   {
+    strKey: "bonus",
+    strTitle: "Bonus",
+    lstFields: [
+      { strKey: "enabled", strLabel: "Calculate bonus in the F&F", strKind: "switch" },
+      { strKey: "basis", strLabel: "Monthly bonus", strKind: "select", lstOptions: [{ strValue: "STRUCTURE_COMPONENT", strLabel: "Bonus component in the salary structure" }, { strValue: "PERCENT_OF_WAGES", strLabel: "Percentage of bonus wages" }], strHelp: "Bonus = monthly bonus × days paid ÷ days in the month, from the start of the bonus year to the last working date." },
+      { strKey: "bonus_component_codes", strLabel: "Bonus component codes (comma separated)", strKind: "list", strHelp: "Blank = every component whose code or name contains \"Bonus\"." },
+      { strKey: "rate_percent", strLabel: "Bonus rate (%)", strKind: "number", strHelp: "Used with Percentage of bonus wages, e.g. 8.33." },
+      { strKey: "wage_component_codes", strLabel: "Bonus wage component codes (comma separated)", strKind: "list", strHelp: "Blank = Basic + DA." },
+      { strKey: "wage_ceiling", strLabel: "Monthly wage ceiling (₹)", strKind: "number", strHelp: "Bonus wages are capped at this (0 = no cap), e.g. 7,000 or the minimum wage." },
+      { strKey: "eligibility_wage_limit", strLabel: "Eligibility wage limit (₹)", strKind: "number", strHelp: "No bonus above these monthly bonus wages (0 = no limit)." },
+      { strKey: "bonus_year_start_month", strLabel: "Bonus year starts in", strKind: "select", lstOptions: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map((strMonth, intIndex) => ({ strValue: String(intIndex + 1), strLabel: strMonth })) },
+      { strKey: "min_working_days", strLabel: "Minimum days worked in the bonus year", strKind: "number" },
+      { strKey: "excluded_exit_types", strLabel: "Exit types that forfeit bonus", strKind: "list" },
+      { strKey: "less_already_paid", strLabel: "Deduct bonus already paid by payroll in the bonus year", strKind: "switch" },
+      { strKey: "taxable", strLabel: "Bonus is taxable", strKind: "switch" },
+      { strKey: "require_statutory_flag", strLabel: "Only employees marked bonus applicable", strKind: "switch" },
+    ],
+  },
+  {
     strKey: "rounding",
     strTitle: "Rounding",
     lstFields: [
-      { strKey: "component_rounding", strLabel: "Leave encashment, notice and gratuity amounts", strKind: "select", lstOptions: [{ strValue: "NEAREST", strLabel: "Nearest rupee" }, { strValue: "CEIL", strLabel: "Round up to the rupee" }, { strValue: "FLOOR", strLabel: "Round down to the rupee" }, { strValue: "NONE", strLabel: "No rounding (keep paise)" }], strHelp: "Salary and statutory lines follow each salary component's own rounding rule." },
+      { strKey: "component_rounding", strLabel: "Leave encashment, notice, gratuity and bonus amounts", strKind: "select", lstOptions: [{ strValue: "NEAREST", strLabel: "Nearest rupee" }, { strValue: "CEIL", strLabel: "Round up to the rupee" }, { strValue: "FLOOR", strLabel: "Round down to the rupee" }, { strValue: "NONE", strLabel: "No rounding (keep paise)" }], strHelp: "Salary and statutory lines follow each salary component's own rounding rule." },
     ],
   },
   {
@@ -210,7 +229,7 @@ export default function FNFRulesSettingsPanel({ onMessage }: Props) {
     if (objField.strKind === "select") {
       if (objField.strKey === "confirmation_date_missing" && String(objDraft?.[strSection]?.service_start_date) !== "DATE_OF_CONFIRMATION") return null;
       return (
-        <TextField key={objField.strKey} select size="small" label={objField.strLabel} value={String(objValue ?? "")} disabled={blnReadOnly} onChange={(e) => updateValue(strSection, objField.strKey, e.target.value)} helperText={objField.strHelp} fullWidth inputProps={{ "data-controlid": strControlId }}>
+        <TextField key={objField.strKey} select size="small" label={objField.strLabel} value={String(objValue ?? "")} disabled={blnReadOnly} onChange={(e) => updateValue(strSection, objField.strKey, objField.strKey === "bonus_year_start_month" ? Number(e.target.value) : e.target.value)} helperText={objField.strHelp} fullWidth inputProps={{ "data-controlid": strControlId }}>
           {objField.lstOptions.map((objOption) => <MenuItem key={objOption.strValue} value={objOption.strValue}>{objOption.strLabel}</MenuItem>)}
         </TextField>
       );

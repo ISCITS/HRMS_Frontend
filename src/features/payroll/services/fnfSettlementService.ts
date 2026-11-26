@@ -4,6 +4,8 @@ import type {
   FNFAdjustmentFormRow,
   FNFAdjustmentsResponse,
   FNFAuditRecord,
+  FNFBonusOverrideResponse,
+  FNFBonusOverrideValues,
   FNFBulkCreateItem,
   FNFBulkCreateResponse,
   FNFEmployeeOption,
@@ -398,6 +400,25 @@ export const fnfSettlementService = {
       strPath: `/payroll/fnf-settlements/${strRecordUUID}/adjustments`,
       strMethod: "PUT",
       objBody: buildFNFAdjustmentPayload(lstRows),
+      strMenuAction: "PAYROLL_FNF_EDIT",
+    });
+    return objResult.Data;
+  },
+  /** HR's own bonus amount, paid instead of the calculated Bonus FNF; the settlement then needs Calculate. */
+  async saveBonusOverride(strRecordUUID: string, objValues: FNFBonusOverrideValues): Promise<FNFBonusOverrideResponse> {
+    const objResult = await requestApi<FNFBonusOverrideResponse>({
+      strPath: `/payroll/fnf-settlements/${strRecordUUID}/bonus-override`,
+      strMethod: "PUT",
+      objBody: { decAmount: objValues.decAmount, strReason: objValues.strReason.trim(), blnTaxable: objValues.blnTaxable },
+      strMenuAction: "PAYROLL_FNF_EDIT",
+    });
+    return objResult.Data;
+  },
+  /** Removes the bonus override; the calculated bonus applies after Calculate. */
+  async removeBonusOverride(strRecordUUID: string): Promise<FNFBonusOverrideResponse> {
+    const objResult = await requestApi<FNFBonusOverrideResponse>({
+      strPath: `/payroll/fnf-settlements/${strRecordUUID}/bonus-override`,
+      strMethod: "DELETE",
       strMenuAction: "PAYROLL_FNF_EDIT",
     });
     return objResult.Data;

@@ -47,6 +47,7 @@ const lstAmountColumns: { strKey: AmountKey; strLabel: string }[] = [
   { strKey: "decLeaveEncashment", strLabel: "Leave Encashment" },
   { strKey: "decNoticePay", strLabel: "Notice Pay" },
   { strKey: "decGratuity", strLabel: "Gratuity" },
+  { strKey: "decBonus", strLabel: "Bonus" },
   { strKey: "decReimbursement", strLabel: "Reimbursement" },
   { strKey: "decOtherEarnings", strLabel: "Other Earnings" },
   { strKey: "decNoticeRecovery", strLabel: "Notice Recovery" },
@@ -192,6 +193,7 @@ function FNFReportDetailDialog({ objRow, onClose }: { objRow: FNFReportRow | nul
             <SnapshotSection strTitle="Leave encashment" objValue={dicSnapshot.leave_detail} />
             <SnapshotSection strTitle="Notice pay / recovery" objValue={dicSnapshot.notice_detail} />
             <SnapshotSection strTitle="Gratuity" objValue={dicSnapshot.gratuity_detail} />
+            <SnapshotSection strTitle="Bonus" objValue={dicSnapshot.bonus_detail} />
             <SnapshotSection strTitle="Nominees" objValue={dicSnapshot.nominees} />
             <SnapshotSection strTitle="Validations" objValue={dicSnapshot.validations} />
             <SnapshotSection strTitle="Audit trail" objValue={(objSettlement.lstAudit || []).map((objAudit) => ({

@@ -10,6 +10,7 @@ import { DetailPageHeader } from "@/components/master/MasterListUi";
 import BlockingLoader from "@/components/shared/BlockingLoader";
 import FNFActionBar from "@/features/payroll/components/FNFActionBar";
 import FNFAdjustmentsPanel from "@/features/payroll/components/FNFAdjustmentsPanel";
+import FNFBonusPanel from "@/features/payroll/components/FNFBonusPanel";
 import FNFSettlementLineEditor from "@/features/payroll/components/FNFSettlementLineEditor";
 import {
   FNFAuditTimeline,
@@ -293,6 +294,13 @@ export default function FNFSettlementDetailPage({ strSettlementID }: { /** recor
               <FNFAdjustmentsPanel
                 strSettlementID={strSettlementID}
                 strSettlementStatus={objSettlement.strSettlementStatus}
+                blnCanEdit={blnCanEditDetails}
+                onSaved={async (strMessage) => { await loadSettlement(false); setStrSuccess(strMessage); }}
+                onError={setStrError}
+              />
+              <FNFBonusPanel
+                objSettlement={objSettlement}
+                strSettlementID={strSettlementID}
                 blnCanEdit={blnCanEditDetails}
                 onSaved={async (strMessage) => { await loadSettlement(false); setStrSuccess(strMessage); }}
                 onError={setStrError}

@@ -327,6 +327,7 @@ export type FNFReportRow = {
   decLeaveEncashment: number;
   decNoticePay: number;
   decGratuity: number;
+  decBonus: number;
   decReimbursement: number;
   decOtherEarnings: number;
   decNoticeRecovery: number;
@@ -561,10 +562,43 @@ export type FNFPolicy = {
   leave_encashment: FNFPolicySection;
   notice: FNFPolicySection;
   gratuity: FNFPolicySection;
+  bonus: FNFPolicySection;
   rounding: FNFPolicySection;
   death_exit_types: string[];
   approval: FNFPolicySection;
   closure: FNFPolicySection;
+};
+
+/** Bonus FNF working stored in the calculation snapshot (bonus_detail). */
+export type FNFBonusMonth = {
+  month: string;
+  monthly_bonus: number;
+  paid_days: number;
+  calendar_days: number;
+  days_source: string;
+  bonus: number;
+};
+export type FNFBonusDetail = {
+  eligible?: boolean;
+  reason?: string;
+  basis?: string;
+  bonus_year_start?: string;
+  period_from?: string;
+  period_to?: string;
+  rate_percent?: number;
+  wage_ceiling?: number;
+  bonus_components?: string[];
+  total_paid_days?: number;
+  gross_bonus?: number;
+  already_paid?: number;
+  amount?: number;
+  months?: FNFBonusMonth[];
+  override?: { amount: number; reason?: string | null; calculated_amount?: number };
+};
+export type FNFBonusOverrideValues = { decAmount: number; strReason: string; blnTaxable: boolean };
+export type FNFBonusOverrideResponse = {
+  objOverride: FNFBonusOverrideValues | null;
+  strSettlementStatus: string;
 };
 
 /** One row of the F&F register (kept separate from the payroll salary register). */
