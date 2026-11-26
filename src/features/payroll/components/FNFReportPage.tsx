@@ -377,7 +377,8 @@ export default function FNFReportPage() {
             showPaginationSummary
             hideRowClickHint
             minTableWidth={1300}
-            emptyMessage={dicSearchApplied ? "No F&F settlements match the filters." : "Select filters and click Search to view settlements."}
+            emptyMessage="No F&F settlements match the filters."
+            searchPromptMessage={dicSearchApplied ? undefined : "Select filters and click Search to view settlements."}
             className="app-master-common-table-reset"
             toolbarAfterExport={<MasterAddColumnsControl strControlPrefix="payroll.fnf-report.list" lstColumns={lstOptionalColumns} lstVisibleKeys={lstVisibleOptional} onChange={setLstVisibleOptional} />}
           />

@@ -378,7 +378,8 @@ export default function Form14ReportPage() {
           rowIdField="intID"
           defaultPageSize={lstRowsPerPageOptions[0]}
           pageSizeOptions={lstRowsPerPageOptions}
-          emptyMessage={objReport ? "No workers match the selected filters." : "Select the calendar year and filters, then Generate register."}
+          emptyMessage="No workers match the selected filters."
+          searchPromptMessage={objReport ? undefined : "Select the calendar year and filters, then Generate register."}
           showPaginationSummary
           withPaper={false}
           testIdPrefix="reports.form14"

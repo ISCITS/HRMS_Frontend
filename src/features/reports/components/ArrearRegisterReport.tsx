@@ -186,7 +186,8 @@ export default function ArrearRegisterReport() {
           rowIdField="__rowid"
           defaultPageSize={20}
           pageSizeOptions={[20, 50, 100]}
-          emptyMessage={blnHasSearched ? "No arrears in the payroll runs of the selected months." : "Select the months and search to see the arrear register."}
+          emptyMessage="No arrears in the payroll runs of the selected months."
+          searchPromptMessage={blnHasSearched ? undefined : "Select the months and search to see the arrear register."}
           showPaginationSummary
           withPaper={false}
           wrapColumnHeaders

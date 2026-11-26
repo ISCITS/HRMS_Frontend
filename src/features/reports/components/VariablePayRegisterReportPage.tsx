@@ -516,7 +516,8 @@ export default function VariablePayRegisterReportPage() {
           rowIdField="intID"
           defaultPageSize={lstRowsPerPageOptions[0]}
           pageSizeOptions={lstRowsPerPageOptions}
-          emptyMessage={blnHasSearched ? "No Variable Pay register rows found for the current filters." : strVariablePayCriteriaMessage}
+          emptyMessage="No Variable Pay register rows found for the current filters."
+          searchPromptMessage={blnHasSearched ? undefined : strVariablePayCriteriaMessage}
           showPaginationSummary
           withPaper={false}
           testIdPrefix="reports.variable-pay-register"

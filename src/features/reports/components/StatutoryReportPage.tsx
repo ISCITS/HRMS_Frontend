@@ -491,7 +491,8 @@ export default function StatutoryReportPage() {
           rowIdField="intID"
           defaultPageSize={lstRowsPerPageOptions[0]}
           pageSizeOptions={lstRowsPerPageOptions}
-          emptyMessage={blnHasSearched ? "No statutory report rows found for the current filters." : strPayrollReportCriteriaMessage}
+          emptyMessage="No statutory report rows found for the current filters."
+          searchPromptMessage={blnHasSearched ? undefined : strPayrollReportCriteriaMessage}
           showPaginationSummary
           withPaper={false}
           testIdPrefix="reports.statutory"

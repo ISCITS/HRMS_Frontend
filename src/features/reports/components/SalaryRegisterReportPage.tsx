@@ -501,7 +501,8 @@ export default function SalaryRegisterReportPage() {
           rowIdField="__rowid"
           defaultPageSize={20}
           pageSizeOptions={[20, 50, 100]}
-          emptyMessage={blnHasSearched ? "No employees with a processed payroll result or a configured salary structure found for the selected month and filters." : "Select filters and search to generate the salary register."}
+          emptyMessage="No employees with a processed payroll result or a configured salary structure found for the selected month and filters."
+          searchPromptMessage={blnHasSearched ? undefined : "Select filters and search to generate the salary register."}
           showPaginationSummary
           withPaper={false}
           wrapColumnHeaders

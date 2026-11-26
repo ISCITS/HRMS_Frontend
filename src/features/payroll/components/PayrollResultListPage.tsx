@@ -311,6 +311,8 @@ export default function PayrollResultListPage({
   // Payroll Results is search-first too: the grid stays empty until the user clicks Search.
   // Opened with ?month= (a link from another payroll screen) it still loads that month straight away.
   const blnResultsSearchFirst = !blnPayslipScreen;
+  // Employee dropdown (searchable) for Payroll Results, from the same light lookup.
+  const [lstResultsEmployeeOptions, setLstResultsEmployeeOptions] = useState<string[]>([]);
   const blnResultsDeepLink = blnResultsSearchFirst && Boolean(normalizeQueryMonth(objSearchParams.get("month")));
 
   function getResultsServerFilters(objFilters: SearchForm) {
@@ -407,6 +409,11 @@ export default function PayrollResultListPage({
               .filter(Boolean)
               .sort();
             objLatestLookupMonthRef.current = lstLookupMonths[lstLookupMonths.length - 1] ?? "";
+            if (!blnCancelled) {
+              setLstResultsEmployeeOptions(objLookup.lstEmployees
+                .map((dicEmployee) => `${dicEmployee.strEmployeeCode} - ${dicEmployee.strEmployeeName}`)
+                .sort((strLeft, strRight) => strLeft.localeCompare(strRight)));
+            }
           } catch {
             // Without the lookup "Latest month" falls back to loading all months and filtering on screen.
             objLatestLookupMonthRef.current = "";
@@ -785,17 +792,15 @@ export default function PayrollResultListPage({
               "& .MuiButton-root": { alignSelf: "center", whiteSpace: "nowrap" },
             }}
           >
-            <TextField
-              className="app-mui-text-field"
-              size="small"
-              controlId="payroll-results.list.employee-search.input"
-              value={dicSearchDraft.strSearchEmployee}
-              onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: objEvent.target.value }))}
-              label={t("employee", "Employee")}
-              placeholder={t("employee_search_placeholder", "Search by employee code or name")}
-              InputProps={dicSearchIcon}
+            <ReportMultiSelectField
+              blnCompact
               disabled={blnBusy}
-              fullWidth
+              label={t("employee", "Employee")}
+              value={dicSearchDraft.strSearchEmployee}
+              onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: strValue }))}
+              options={lstResultsEmployeeOptions}
+              placeholder={t("employee_search_placeholder", "Search by employee code or name")}
+              controlId="payroll-results.list.employee-search.input"
             />
             <TextField
               className="app-mui-text-field"

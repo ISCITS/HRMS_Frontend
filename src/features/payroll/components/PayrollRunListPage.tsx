@@ -353,7 +353,8 @@ export default function PayrollRunListPage() {
             exportFileName="payroll-runs"
             showExportOptions={blnCanExport}
             showPaginationSummary
-            emptyMessage={blnHasSearched ? t("empty_message", "No payroll runs found for the current filters.") : "Select filters and click Search to view payroll runs."}
+            emptyMessage={t("empty_message", "No payroll runs found for the current filters.")}
+            searchPromptMessage={blnHasSearched ? undefined : "Select filters and click Search to view payroll runs."}
             testIdPrefix="payroll-runs.list"
             toolbarLeft={blnCanAdd ? (
               <Button

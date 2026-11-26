@@ -10,6 +10,8 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
 import { MasterBreadcrumbs, MasterGridSkeleton } from "@/components/master/MasterListUi";
+import EmployeeFilterSelect, { type EmployeeFilterOption } from "@/components/shared/EmployeeFilterSelect";
+import { employeeService } from "@/features/employee/services/employeeService";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import styles from "@/features/payroll/components/EmployeeMonthlyTaxPage.module.css";
 import payrollStyles from "@/features/payroll/components/PayrollScreen.module.css";
@@ -92,6 +94,24 @@ export default function EmployeeMonthlyTaxPage({
   const [blnHideZeroTds, setBlnHideZeroTds] = useState(true);
   const [intFilterEmployeeID, setIntFilterEmployeeID] = useState<number | undefined>(intInitialEmployeeID);
   const [objMatrix, setObjMatrix] = useState<MonthlyTaxMatrixResult | null>(null);
+  const [lstEmployeeFilterOptions, setLstEmployeeFilterOptions] = useState<EmployeeFilterOption[]>([]);
+
+  useEffect(() => {
+    let blnActive = true;
+    employeeService.getEmployees()
+      .then((lstEmployees) => {
+        if (!blnActive) return;
+        setLstEmployeeFilterOptions(lstEmployees
+          .filter((objEmployee) => !objEmployee.blnIsPartialSave)
+          .map((objEmployee) => ({
+            strValue: String(objEmployee.intID),
+            strEmployeeCode: objEmployee.strEmployeeCode,
+            strEmployeeName: objEmployee.strFullName,
+          })));
+      })
+      .catch(() => { if (blnActive) setLstEmployeeFilterOptions([]); });
+    return () => { blnActive = false; };
+  }, []);
   const [blnLoading, setBlnLoading] = useState(false);
   const [strError, setStrError] = useState("");
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
@@ -118,7 +138,7 @@ export default function EmployeeMonthlyTaxPage({
     return () => objObserver.disconnect();
   }, [objMatrix, blnLoading, strError]);
 
-  const lstFinancialYearOptions = useMemo(buildFinancialYearOptions, []);
+  const lstFinancialYearOptions = useMemo(() => buildFinancialYearOptions(), []);
   const strNormalizedFinancialYearCode = useMemo(() => normalizeFinancialYearCode(strFinancialYearCode), [strFinancialYearCode]);
 
   function showToast(strMessage: string, strSeverity: ToastState["strSeverity"] = "success") {
@@ -212,25 +232,19 @@ export default function EmployeeMonthlyTaxPage({
           </option>
         ))}
       </TextField>
-      <TextField
-        className="app-mui-text-field"
-        controlId="employee-monthly-tax.employee-search.input"
-        label={t("employee_search_label", "Employee search")}
-        placeholder={t("employee_search_placeholder", "Search by code or name")}
-        size="small"
-        value={strEmployeeSearch}
-        onChange={(objEvent) => {
-          setStrEmployeeSearch(objEvent.target.value);
-          if (intFilterEmployeeID) setIntFilterEmployeeID(undefined);
+      <EmployeeFilterSelect
+        lstOptions={lstEmployeeFilterOptions}
+        strValue={intFilterEmployeeID ? String(intFilterEmployeeID) : ""}
+        fnOnChange={(strValue) => {
+          // One employee is fetched on its own from the server; blank = every employee.
+          setIntFilterEmployeeID(strValue ? Number(strValue) : undefined);
+          setStrEmployeeSearch("");
+          clearLoadedMatrix();
         }}
-        sx={{ minWidth: 240 }}
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <SearchRoundedIcon fontSize="small" sx={{ color: "text.secondary" }} />
-            </InputAdornment>
-          ),
-        }}
+        strLabel={t("employee_search_label", "Employee")}
+        strPlaceholder={t("employee_search_placeholder", "Search by code or name")}
+        strControlId="employee-monthly-tax.employee-search.input"
+        intMinWidth={260}
       />
       <FormControlLabel
         sx={{ ml: 0, mr: 0 }}
@@ -295,7 +309,7 @@ export default function EmployeeMonthlyTaxPage({
         >
           <SearchRoundedIcon sx={{ fontSize: 40, color: "#94a3b8", mb: 1 }} />
           <Typography sx={{ fontWeight: 600, color: "#334155" }}>
-            Select the financial year and click Search to view monthly tax.
+            Select the financial year (and an employee, if you want one person), then click Search to view monthly tax.
           </Typography>
         </Box>
       )}

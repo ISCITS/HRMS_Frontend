@@ -378,7 +378,8 @@ export default function BankFileReportPage() {
           rowIdField="intID"
           defaultPageSize={lstRowsPerPageOptions[0]}
           pageSizeOptions={lstRowsPerPageOptions}
-          emptyMessage={blnHasSearched ? "No eligible bank file rows found for the current filters." : strPayrollReportCriteriaMessage}
+          emptyMessage="No eligible bank file rows found for the current filters."
+          searchPromptMessage={blnHasSearched ? undefined : strPayrollReportCriteriaMessage}
           showPaginationSummary
           withPaper={false}
           testIdPrefix="reports.bank-file"

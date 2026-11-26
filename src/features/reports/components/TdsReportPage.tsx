@@ -391,7 +391,8 @@ export default function TdsReportPage() {
           rowIdField="intID"
           defaultPageSize={lstRowsPerPageOptions[0]}
           pageSizeOptions={lstRowsPerPageOptions}
-          emptyMessage={blnHasSearched ? "No TDS report rows found for the current filters." : strPayrollReportCriteriaMessage}
+          emptyMessage="No TDS report rows found for the current filters."
+          searchPromptMessage={blnHasSearched ? undefined : strPayrollReportCriteriaMessage}
           showPaginationSummary
           withPaper={false}
           testIdPrefix="reports.tds"

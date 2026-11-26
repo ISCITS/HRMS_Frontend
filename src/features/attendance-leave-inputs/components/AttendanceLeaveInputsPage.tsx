@@ -468,6 +468,7 @@ export default function AttendanceLeaveInputsPage() {
               }}
               getRowSx={() => dicMasterRowSx}
               emptyMessage={t("no_records", "No payroll input records found for this run.")}
+              searchPromptMessage={strSelectedRunKey ? undefined : "Select a payroll run to view attendance and leave inputs."}
               sx={{ p: 0, boxShadow: "none", background: "transparent" }}
             />
           </Box>

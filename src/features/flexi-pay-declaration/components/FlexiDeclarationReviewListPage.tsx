@@ -191,7 +191,8 @@ export default function FlexiDeclarationReviewListPage() {
             showPaginationSummary
             minTableWidth={1140}
             hideRowClickHint
-            emptyMessage={blnHasSearched ? "No declarations found." : "Select a status and click Search to view declarations."}
+            emptyMessage="No declarations found."
+            searchPromptMessage={blnHasSearched ? undefined : "Select a status and click Search to view declarations."}
             testIdPrefix="flexi-declaration-review.list"
             onRowClick={(objRow) => openDeclaration(objRow.id)}
             getRowSx={() => dicMasterRowSx}

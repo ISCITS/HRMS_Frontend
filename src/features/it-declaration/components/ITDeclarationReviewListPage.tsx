@@ -11,9 +11,11 @@ import {
   MenuItem,
   TextField,
 } from "@mui/material";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import EmployeeFilterSelect, { type EmployeeFilterOption } from "@/components/shared/EmployeeFilterSelect";
+import { employeeService } from "@/features/employee/services/employeeService";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
 import { MasterAddColumnsControl, MasterBreadcrumbs, MasterGridSkeleton, dicMasterRowSx, onSearchEnter, type MasterOptionalColumn } from "@/components/master/MasterListUi";
 import styles from "@/components/master/MasterScreen.module.css";
@@ -66,6 +68,27 @@ export default function ITDeclarationReviewListPage() {
   const [blnHasSearched, setBlnHasSearched] = useState(false);
   const [blnDismissNoPermission, setBlnDismissNoPermission] = useState(false);
   const [dicFiltersDraft, setDicFiltersDraft] = useState<ItDeclarationFilters>(dicEmptyFilters);
+  const [dicFiltersApplied, setDicFiltersApplied] = useState<ItDeclarationFilters>(dicEmptyFilters);
+  const [lstEmployeeFilterOptions, setLstEmployeeFilterOptions] = useState<EmployeeFilterOption[]>([]);
+
+  // Employee dropdown (searchable) - the light employee lookup, not the declarations.
+  useEffect(() => {
+    if (blnRightsLoading) return;
+    let blnActive = true;
+    employeeService.getEmployees()
+      .then((lstEmployees) => {
+        if (!blnActive) return;
+        setLstEmployeeFilterOptions(lstEmployees
+          .filter((objEmployee) => !objEmployee.blnIsPartialSave && objEmployee.strEmployeeCode)
+          .map((objEmployee) => ({
+            strValue: objEmployee.strEmployeeCode,
+            strEmployeeCode: objEmployee.strEmployeeCode,
+            strEmployeeName: objEmployee.strFullName,
+          })));
+      })
+      .catch(() => { if (blnActive) setLstEmployeeFilterOptions([]); });
+    return () => { blnActive = false; };
+  }, [blnRightsLoading]);
   const [lstVisibleOptionalColumns, setLstVisibleOptionalColumns] = useState<OptionalColumnKey[]>([]);
 
   function hasPermissionCode(strCode: string) {
@@ -81,6 +104,7 @@ export default function ITDeclarationReviewListPage() {
     setBlnLoading(true);
     setStrError("");
     setBlnHasSearched(true);
+    setDicFiltersApplied(objFilters);
     try {
       const objData = await hrItDeclarationReviewService.getList(objFilters);
       setLstRows(objData.lstRows || []);
@@ -133,8 +157,14 @@ export default function ITDeclarationReviewListPage() {
     }
     return formatDisplayLabel(strRegime);
   }
+  // The employee filter holds the picked employee's code: match it exactly (E1 must not match E10).
+  const lstShownRows = useMemo(() => {
+    const strEmployeeCode = dicFiltersApplied.strEmployee.trim().toLowerCase();
+    return strEmployeeCode ? lstRows.filter((objRow) => String(objRow.strEmployeeCode || "").toLowerCase() === strEmployeeCode) : lstRows;
+  }, [dicFiltersApplied.strEmployee, lstRows]);
+
   const lstTableRows = useMemo(
-    () => lstRows.map((objRow) => ({
+    () => lstShownRows.map((objRow) => ({
       id: objRow.strRecordUUID,
       strEmployeeCode: (
         <Link
@@ -166,7 +196,7 @@ export default function ITDeclarationReviewListPage() {
       strSubmittedOn: objRow.strSubmittedOn || "-",
       strLastUpdated: objRow.strLastUpdated || "-",
     })),
-    [blnCanView, lstRows, objRouter, t],
+    [blnCanView, lstShownRows, objRouter, t],
   );
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
@@ -201,17 +231,15 @@ export default function ITDeclarationReviewListPage() {
             "& .MuiButton-root": { alignSelf: "center" },
           }}
         >
-          <TextField
-            className="app-mui-text-field"
-            size="small"
-            label={t("IT_DECLARATION_REVIEW_EMPLOYEE_CODE_NAME", "Employee Code/Name")}
-            placeholder={t("IT_DECLARATION_REVIEW_EMPLOYEE_CODE_NAME", "Employee Code/Name")}
-            value={dicFiltersDraft.strEmployee}
-            onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strEmployee: e.target.value }))}
-            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }}
-            disabled={blnBusy}
-            fullWidth
-            controlId="it-declaration.review-list.employee.input"
+          <EmployeeFilterSelect
+            lstOptions={lstEmployeeFilterOptions}
+            strValue={dicFiltersDraft.strEmployee}
+            fnOnChange={(strValue) => setDicFiltersDraft((d) => ({ ...d, strEmployee: strValue }))}
+            strLabel={t("IT_DECLARATION_REVIEW_EMPLOYEE", "Employee")}
+            strPlaceholder="Search by employee code or name"
+            strControlId="it-declaration.review-list.employee.input"
+            blnDisabled={blnBusy}
+            intMinWidth={0}
           />
           <TextField className="app-mui-text-field" select size="small" label={t("IT_DECLARATION_REVIEW_FINANCIAL_YEAR", "Financial Year")} value={dicFiltersDraft.strFinancialYearCode} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strFinancialYearCode: e.target.value }))} disabled={blnBusy} fullWidth controlId="it-declaration.review-list.financial-year.input">
             <MenuItem value="">{t("IT_DECLARATION_REVIEW_ALL", "All")}</MenuItem>
@@ -263,7 +291,8 @@ export default function ITDeclarationReviewListPage() {
             exportFileName="it_declaration_review"
             showExportOptions={blnCanExport}
             showPaginationSummary
-            emptyMessage={blnHasSearched ? t("IT_DECLARATION_REVIEW_NO_RECORDS_FOUND", "No records found.") : "Select filters and click Search to view declarations."}
+            emptyMessage={t("IT_DECLARATION_REVIEW_NO_RECORDS_FOUND", "No records found.")}
+            searchPromptMessage={blnHasSearched ? undefined : "Select filters and click Search to view declarations."}
             testIdPrefix="it-declaration.review-list"
             toolbarAfterExport={(
               <MasterAddColumnsControl

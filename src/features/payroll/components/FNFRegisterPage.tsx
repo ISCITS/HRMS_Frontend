@@ -139,7 +139,8 @@ export default function FNFRegisterPage() {
         rowIdField="id"
         exportFileName="fnf_register"
         showExportOptions={blnCanExport}
-        emptyMessage={blnLoading ? "Loading..." : objRegister ? "No settlements for the selected period." : "Select the period and click Show to view the register."}
+        emptyMessage={blnLoading ? "Loading..." : "No settlements for the selected period."}
+        searchPromptMessage={blnLoading || objRegister ? undefined : "Select the period and click Show to view the register."}
         testIdPrefix="payroll.fnf-register"
         showPaginationSummary
         onRowClick={(objRow) => { if (objRow.strRecordUUID) objRouter.push(`/payroll/fnf-settlements/${objRow.strRecordUUID}`); }}

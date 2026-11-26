@@ -255,7 +255,8 @@ export default function FNFSettlementListPage() {
             rowIdField="id"
             exportFileName="fnf_settlements"
             showExportOptions={blnCanExport}
-            emptyMessage={blnHasSearched ? "No FNF settlements found." : "Select filters and click Search to view settlements."}
+            emptyMessage="No FNF settlements found."
+            searchPromptMessage={blnHasSearched ? undefined : "Select filters and click Search to view settlements."}
             testIdPrefix="payroll.fnf-settlements.list"
             showPaginationSummary
             onRowClick={(row) => openSettlement(row.strRecordUUID)}

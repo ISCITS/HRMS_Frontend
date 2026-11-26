@@ -401,6 +401,11 @@ export default function SalaryStatementReportPage() {
               <DottedLoader />
               <Typography>Building salary statement...</Typography>
             </Box>
+          ) : lstDetails.length === 0 ? (
+            <Box data-controlid="reports.salary-statement.select-criteria" sx={{ alignItems: "center", display: "flex", flexDirection: "column", gap: 1, justifyContent: "center", minHeight: 220, textAlign: "center" }}>
+              <SearchRoundedIcon sx={{ fontSize: 40, color: "#94a3b8" }} />
+              <Typography sx={{ fontWeight: 600, color: "#334155" }}>Select an employee and financial year, then click Search to view the salary statement.</Typography>
+            </Box>
           ) : (
             <Box sx={{ border: "1px solid #4b5563", minWidth: 1280 }}>
               <Typography sx={{ fontSize: 24, fontWeight: 800, textAlign: "center", py: 1 }}>Salary Statement</Typography>

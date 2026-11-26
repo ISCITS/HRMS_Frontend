@@ -3,6 +3,7 @@
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Box,
   Button,
@@ -73,6 +74,8 @@ export type CommonDataGridProps<T extends Record<string, ReactNode>> = {
   showExportOptions?: boolean;
   showPaginationSummary?: boolean;
   emptyMessage?: string;
+  /** Search-first screens: shown (with a search icon) instead of emptyMessage until the user has searched. */
+  searchPromptMessage?: string;
   withPaper?: boolean;
   className?: string;
   sx?: SxProps<Theme>;
@@ -105,6 +108,7 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
   showExportOptions = false,
   showPaginationSummary = false,
   emptyMessage = dicConstant.commonDataGrid.emptyMessage,
+  searchPromptMessage,
   withPaper = true,
   className,
   sx,
@@ -597,9 +601,14 @@ export default function CommonDataGrid<T extends Record<string, ReactNode>>({
                   data-controlid={`${testIdPrefix}.table.empty-state`}
                   colSpan={orderedColumns.length}
                   align="center"
-                  sx={{ py: 4, color: "#697586", textDecoration: "none !important" }}
+                  sx={{ py: searchPromptMessage ? 7 : 4, color: "#697586", textDecoration: "none !important" }}
                 >
-                  {strResolvedEmptyMessage}
+                  {searchPromptMessage ? (
+                    <Box data-controlid={`${testIdPrefix}.table.search-prompt`} sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+                      <SearchRoundedIcon sx={{ fontSize: 40, color: "#94a3b8" }} />
+                      <Typography sx={{ fontWeight: 600, color: "#334155", fontSize: "0.95rem" }}>{searchPromptMessage}</Typography>
+                    </Box>
+                  ) : strResolvedEmptyMessage}
                 </TableCell>
               </TableRow>
             ) : (

@@ -420,7 +420,8 @@ export default function PfEcrReportPage() {
           rowIdField="intID"
           defaultPageSize={lstRowsPerPageOptions[0]}
           pageSizeOptions={lstRowsPerPageOptions}
-          emptyMessage={objReport ? `No ${strShownReturnType} members for this entity in the selected run.` : "Select return, payroll month, entity and payroll run, then Generate."}
+          emptyMessage={`No ${strShownReturnType} members for this entity in the selected run.`}
+          searchPromptMessage={objReport ? undefined : "Select return, payroll month, entity and payroll run, then Generate."}
           showPaginationSummary
           withPaper={false}
           testIdPrefix="reports.pf-ecr"

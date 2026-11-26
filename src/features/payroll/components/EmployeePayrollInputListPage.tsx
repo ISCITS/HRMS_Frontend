@@ -24,6 +24,7 @@ import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonT
 import { MasterBreadcrumbs, MasterGridSkeleton, MasterStatusPill, dicMasterRowSx, onSearchEnter } from "@/components/master/MasterListUi";
 import styles from "@/components/master/MasterScreen.module.css";
 import { withBasePath } from "@/lib/basePath";
+import EmployeeFilterSelect, { type EmployeeFilterOption } from "@/components/shared/EmployeeFilterSelect";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
 import PayrollInputPayableDaysImportDialog from "@/features/payroll/components/PayrollInputPayableDaysImportDialog";
 import PayrollInputTdsImportDialog from "@/features/payroll/components/PayrollInputTdsImportDialog";
@@ -53,7 +54,7 @@ const dicEmptySearch: SearchForm = {
   intPayrollRunID: null,
   strStatus: "All",
 };
-const strInputCriteriaMessage = "Select a payroll run and/or enter an employee, then search.";
+const strInputCriteriaMessage = "Select a payroll run and/or an employee, then click Search.";
 
 function hasInputSearchCriteria(objFilters: SearchForm) {
   return Boolean(objFilters.intPayrollRunID || objFilters.strSearchEmployee.trim());
@@ -107,6 +108,7 @@ function EmployeePayrollInputList({ intInitialRunID }: { intInitialRunID: number
   const [strError, setStrError] = useState("");
   const [lstPayrollRuns, setLstPayrollRuns] = useState<PayrollRunOption[]>([]);
   const [blnRunsLoading, setBlnRunsLoading] = useState(true);
+  const [lstEmployeeFilterOptions, setLstEmployeeFilterOptions] = useState<EmployeeFilterOption[]>([]);
   const [strRunOptionsError, setStrRunOptionsError] = useState("");
   const [dicSearchDraft, setDicSearchDraft] =
     useState<SearchForm>(dicInitialSearch);
@@ -214,6 +216,11 @@ function EmployeePayrollInputList({ intInitialRunID }: { intInitialRunID: number
       .then((dicOptions) => {
         if (!blnCancelled) {
           setLstPayrollRuns(dicOptions.lstPayrollRuns);
+          setLstEmployeeFilterOptions((dicOptions.lstEmployees ?? []).map((dicEmployee) => ({
+            strValue: dicEmployee.strCode,
+            strEmployeeCode: dicEmployee.strCode,
+            strEmployeeName: dicEmployee.strLabel,
+          })));
           setStrRunOptionsError("");
         }
       })
@@ -228,11 +235,11 @@ function EmployeePayrollInputList({ intInitialRunID }: { intInitialRunID: number
 
   const lstFilteredRows = useMemo(() => {
     return lstInputs.filter((dicRow) => {
+      // The employee filter holds the picked employee's code: match it exactly (E1 must not match E10).
       const strEmployeeSearch = dicSearchApplied.strSearchEmployee.trim().toLowerCase();
       const blnEmployeeMatch =
         !strEmployeeSearch ||
-        dicRow.strEmployeeCode.toLowerCase().includes(strEmployeeSearch) ||
-        dicRow.strEmployeeName.toLowerCase().includes(strEmployeeSearch);
+        dicRow.strEmployeeCode.toLowerCase() === strEmployeeSearch;
       const blnRunMatch =
         !dicSearchApplied.intPayrollRunID ||
         dicRow.intPayrollRunID === dicSearchApplied.intPayrollRunID;
@@ -356,25 +363,21 @@ function EmployeePayrollInputList({ intInitialRunID }: { intInitialRunID: number
             "& .MuiButton-root": { alignSelf: "center", whiteSpace: "nowrap" },
           }}
         >
-          <TextField
-            className="app-mui-text-field"
-            size="small"
-            controlId="employee-payroll-input.list.employee-search.input"
-            label={t("employee", "Employee")}
-            value={dicSearchDraft.strSearchEmployee}
-            onChange={(objEvent) =>
+          <EmployeeFilterSelect
+            lstOptions={lstEmployeeFilterOptions}
+            strValue={dicSearchDraft.strSearchEmployee}
+            fnOnChange={(strValue) =>
               setDicSearchDraft((dicPrevious) => ({
                 ...dicPrevious,
-                strSearchEmployee: objEvent.target.value,
+                strSearchEmployee: strValue,
               }))
             }
-            placeholder={t(
-              "employee_search_placeholder",
-              "Search by employee code or name"
-            )}
-            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }}
-            disabled={blnBusy}
-            fullWidth
+            strLabel={t("employee", "Employee")}
+            strPlaceholder={t("employee_search_placeholder", "Search by employee code or name")}
+            strControlId="employee-payroll-input.list.employee-search.input"
+            blnDisabled={blnBusy}
+            blnLoading={blnRunsLoading}
+            intMinWidth={0}
           />
           <TextField
             className="app-mui-text-field"
@@ -470,9 +473,8 @@ function EmployeePayrollInputList({ intInitialRunID }: { intInitialRunID: number
             exportFileName="employee-payroll-inputs"
             showExportOptions={blnCanExport}
             showPaginationSummary
-            emptyMessage={blnHasSearched
-              ? t("empty_message", "No payroll inputs found for the current filters.")
-              : t("select_criteria_message", strInputCriteriaMessage)}
+            emptyMessage={t("empty_message", "No payroll inputs found for the current filters.")}
+            searchPromptMessage={blnHasSearched ? undefined : t("select_criteria_message", strInputCriteriaMessage)}
             testIdPrefix="employee-payroll-input.list"
             toolbarLeft={blnCanAdd || (blnCanImportTds && intSelectedRunID) ? (
               <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap" }}>

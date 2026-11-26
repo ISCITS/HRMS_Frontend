@@ -552,7 +552,8 @@ export default function PayrollRegisterReportPage() {
           rowIdField="intID"
           defaultPageSize={lstRowsPerPageOptions[0]}
           pageSizeOptions={lstRowsPerPageOptions}
-          emptyMessage={blnHasSearched ? "No payroll register rows found for the current filters." : strPayrollReportCriteriaMessage}
+          emptyMessage="No payroll register rows found for the current filters."
+          searchPromptMessage={blnHasSearched ? undefined : strPayrollReportCriteriaMessage}
           showPaginationSummary
           withPaper={false}
           testIdPrefix="reports.payroll-register"

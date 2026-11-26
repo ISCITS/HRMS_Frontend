@@ -414,6 +414,7 @@ export default function LoanFinalizationPage() {
             exportFileName="loan-recovery"
             showPaginationSummary
             emptyMessage={t("empty_message", "No loan/advance installments due for this payroll run.")}
+            searchPromptMessage={strSelectedRunUUID ? undefined : "Select a payroll run to view the installments due."}
             testIdPrefix="loan-recovery.list"
             loading={blnLoading || blnRightsLoading || blnLoadingLabels || blnActionLoading}
             skeletonRowCount={8}

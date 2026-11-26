@@ -484,7 +484,8 @@ export default function ReportGridPage(objProps: ReportGridPageProps) {
           rowIdField={objProps.strRowIdField}
           defaultPageSize={lstRowsPerPageOptions[0]}
           pageSizeOptions={lstRowsPerPageOptions}
-          emptyMessage={blnHasLoaded ? (objProps.strEmptyMessage ?? "No records found for the current filters.") : "Select filters and click Search to view records."}
+          emptyMessage={objProps.strEmptyMessage ?? "No records found for the current filters."}
+          searchPromptMessage={blnHasLoaded ? undefined : "Select filters and click Search to view records."}
           showPaginationSummary
           withPaper={false}
           testIdPrefix={`reports.${objProps.strCsvFileName}`}

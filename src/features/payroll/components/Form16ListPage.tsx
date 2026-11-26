@@ -367,7 +367,8 @@ export default function Form16ListPage({ blnAdminMode = false }: Form16ListPageP
             rowIdField="id"
             exportFileName={blnAdminMode ? "form16-company" : "my-form16"}
             showPaginationSummary
-            emptyMessage={blnHasSearched ? t("empty_message", "No Form 16 records found for this selection.") : "Select the financial year and click Search to view Form 16 records."}
+            emptyMessage={t("empty_message", "No Form 16 records found for this selection.")}
+            searchPromptMessage={blnHasSearched ? undefined : "Select the financial year and click Search to view Form 16 records."}
             testIdPrefix="form16.list"
             toolbarLeft={blnCanGenerate ? (
               <Button className={masterStyles.primaryButton} startIcon={<AutorenewRoundedIcon />} onClick={openGenerateDialog} data-controlid="form16.list.generate.button">

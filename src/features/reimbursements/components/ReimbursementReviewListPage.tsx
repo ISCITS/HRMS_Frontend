@@ -522,7 +522,8 @@ export default function ReimbursementReviewListPage() {
             hideRowClickHint
             getRowSx={() => dicMasterRowSx}
             minTableWidth={1100}
-            emptyMessage={blnHasSearched ? "No reimbursement claims found." : "Select filters and click Search to view claims."}
+            emptyMessage="No reimbursement claims found."
+            searchPromptMessage={blnHasSearched ? undefined : "Select filters and click Search to view claims."}
             testIdPrefix="reimbursements.review-list"
             withPaper={false}
             sx={{ p: 0, boxShadow: "none", background: "transparent" }}

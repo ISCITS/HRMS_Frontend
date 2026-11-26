@@ -346,9 +346,8 @@ export default function PayrollProcessLogPage({ strInitialPayrollRunRecordUUID }
             exportFileName="payroll_process_logs"
             showExportOptions={blnCanExport}
             showPaginationSummary
-            emptyMessage={blnHasSearched
-              ? t("empty_message", "No payroll process logs found for the selected filters.")
-              : t("select_criteria_message", strLogCriteriaMessage)}
+            emptyMessage={t("empty_message", "No payroll process logs found for the selected filters.")}
+            searchPromptMessage={blnHasSearched ? undefined : t("select_criteria_message", strLogCriteriaMessage)}
             testIdPrefix="payroll-process-logs.list"
             onRowClick={(dicRow) => openLog(dicRow.strPayrollRunRecordUUID)}
             minTableWidth={1300}

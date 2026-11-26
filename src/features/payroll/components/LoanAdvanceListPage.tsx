@@ -521,7 +521,8 @@ export default function LoanAdvanceListPage({ strMode = "payroll" }: { strMode?:
             exportFileName={blnIsEssMode ? "ess-loans-advances" : "payroll-loans-advances"}
             showExportOptions={blnCanExport}
             showPaginationSummary
-            emptyMessage={blnHasSearched ? t("empty_message", "No loans or advances found.") : "Select filters and click Search to view loans and advances."}
+            emptyMessage={t("empty_message", "No loans or advances found.")}
+            searchPromptMessage={blnHasSearched ? undefined : "Select filters and click Search to view loans and advances."}
             testIdPrefix="loan-advance.list"
             toolbarLeft={blnCanCreate ? (
               <Button

@@ -339,7 +339,8 @@ export default function AttendanceExceptionReportPage() {
           rowIdField="intID"
           defaultPageSize={lstRowsPerPageOptions[0]}
           pageSizeOptions={lstRowsPerPageOptions}
-          emptyMessage={blnHasSearched ? t("attendance_exceptions_empty", "No attendance exceptions found for the current filters.") : "Select filters and click Search to view records."}
+          emptyMessage={t("attendance_exceptions_empty", "No attendance exceptions found for the current filters.")}
+          searchPromptMessage={blnHasSearched ? undefined : "Select filters and click Search to view records."}
           showPaginationSummary
           withPaper={false}
           testIdPrefix="reports.attendance-exceptions"
