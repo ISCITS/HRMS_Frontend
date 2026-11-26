@@ -44,6 +44,7 @@ import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonT
 import BlockingLoader, { DottedLoader } from "@/components/shared/BlockingLoader";
 import styles from "@/components/master/MasterScreen.module.css";
 import { onSearchEnter, dicMasterNameLinkSx, dicMasterRowSx, MasterBreadcrumbs, MasterGridSkeleton, MasterStatusPill } from "@/components/master/MasterListUi";
+import AttendanceImportPanel from "@/features/attendance/components/AttendanceImportPanel";
 import { LATE_ARRIVAL_BADGE_COLOR } from "@/features/attendance/dto";
 import { useAttendancePoc } from "@/features/attendance/hooks/useAttendancePoc";
 import type { AttendancePolicyAssignmentEmployee, AttendancePolicyAssignmentHistory, AttendancePolicyFormValues, DailyAttendanceFinalizeResult, DailyAttendanceRow, DailyAttendanceSaveRow } from "@/features/attendance/types";
@@ -724,6 +725,15 @@ export default function AttendancePocPanel({ strView }: AttendancePocPanelProps)
     {strError ? <Alert severity="error">{strError}</Alert> : null}
     <>
       <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}><Box className={styles.searchRow} onKeyDown={onSearchEnter(() => void searchDaily())} sx={{ alignItems: "center", "&&": { gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "165px minmax(170px,.65fr) minmax(170px,.65fr) minmax(220px,1fr) auto auto 1fr" } }, "& .MuiButton-root": { alignSelf: "center" } }}><TextField className="app-mui-text-field" data-control-id="attendance.daily.date.input" type="date" size="small" InputLabelProps={{ shrink: true }} label={t("date","Date")} value={strDate} onChange={(objEvent) => setStrDate(objEvent.target.value)} fullWidth /><CommonSearchableSelect className="app-mui-text-field" controlId="attendance.daily.department.select" label={t("department","Department")} value={intDepartment} onChange={(intValue) => setIntDepartment(intValue)} placeholder={t("all","All")} showSearchIcon={false} fullWidth options={lstDepartments.map(([intID,strName]) => ({ intID, strLabel: strName }))} /><CommonSearchableSelect className="app-mui-text-field" controlId="attendance.daily.location.select" label={t("location","Location")} value={intLocation} onChange={(intValue) => setIntLocation(intValue)} placeholder={t("all","All")} showSearchIcon={false} fullWidth options={lstLocations.map(([intID,strName]) => ({ intID, strLabel: strName }))} /><TextField className="app-mui-text-field" data-control-id="attendance.daily.employee-search.input" label={t("employee_search_label","Employee")} placeholder={t("employee_search","Employee Code or Name")} size="small" InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }} value={strEmployeeSearch} onChange={(objEvent) => setStrEmployeeSearch(objEvent.target.value)} fullWidth /><Box className={styles.searchActions}><Button data-control-id="attendance.daily.search.button" className={styles.primaryButton} size="small" startIcon={<SearchRoundedIcon />} onClick={() => void searchDaily()}>{t("search","Search")}</Button></Box><Box className={styles.searchActions}><Button data-control-id="attendance.daily.clear.button" className={styles.secondaryButton} size="small" startIcon={<ClearRoundedIcon />} onClick={() => void clearDailySearch()}>{t("clear","Clear")}</Button></Box></Box>
+        <Box sx={{ mt: 1.25 }}>
+          <AttendanceImportPanel
+            blnCanManage={blnCanManage}
+            onImported={(strLatestDate) => {
+              if (strLatestDate && strLatestDate !== strDate) setStrDate(strLatestDate);
+              else void searchDaily();
+            }}
+          />
+        </Box>
         <Stack direction={{ xs: "column", lg: "row" }} spacing={1.5} alignItems={{ xs: "stretch", lg: "flex-end" }} justifyContent="space-between" sx={{ mt: 1, px: 0.5 }}>
           <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
             {([

@@ -1,5 +1,6 @@
-import AttendanceImportPanel from "@/features/attendance/components/AttendanceImportPanel";
+import { redirect } from "next/navigation";
 
+// Import and "Run Folder Import Now" now live on the Daily Attendance screen.
 export default function AttendanceImportPage() {
-  return <AttendanceImportPanel />;
+  redirect("/attendance/daily");
 }
