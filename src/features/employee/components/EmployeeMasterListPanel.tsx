@@ -11,7 +11,7 @@ import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import EmployeeImportDialog from "@/features/employee/components/EmployeeImportDialog";
 import { Box, Breadcrumbs, Button, Checkbox, Drawer, IconButton, InputAdornment, Link, Menu, MenuItem, Popover, Skeleton, TextField, Typography } from "@mui/material";
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -24,6 +24,8 @@ import { useEmployeeLabels } from "@/features/employee/hooks/useEmployeeLabels";
 import { useActionRights } from "@/features/security/hooks/useActionRights";
 import { employeeService } from "@/features/employee/services/employeeService";
 import type { EmployeeListRecord, EmployeeStatus } from "@/features/employee/types";
+import { authHelpers } from "@/lib/auth";
+import { masterApiService } from "@/services/master/MasterApiService";
 
 type SearchForm = {
   name: string;
@@ -39,6 +41,15 @@ const dicEmptySearch: SearchForm = {
   status: "All",
 };
 const intEmployeeSkeletonRows = 8;
+
+// Keep results in memory for the return from an employee details route.
+let objEmployeeSearchOnReturn: {
+  strSessionToken: string;
+  intCompanyID: ReturnType<typeof authHelpers.getCompanyID>;
+  lstEmployees: EmployeeListRecord[];
+  dicSearchDraft: SearchForm;
+  dicSearchApplied: SearchForm;
+} | null = null;
 
 type EmployeeTableRow = {
   id: string;
@@ -136,19 +147,45 @@ export default function EmployeeMasterListPanel() {
   const { strLabelError, t } = useEmployeeLabels();
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDo, canViewModule, isReadOnlyModule } = useActionRights();
   const [lstEmployees, setLstEmployees] = useState<EmployeeListRecord[]>([]);
+  const [lstDepartmentNames, setLstDepartmentNames] = useState<string[]>([]);
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
+  const [blnHasSearched, setBlnHasSearched] = useState(false);
   const [objMoreFiltersAnchor, setObjMoreFiltersAnchor] = useState<HTMLElement | null>(null);
   const [objColumnsAnchor, setObjColumnsAnchor] = useState<HTMLElement | null>(null);
   const [lstExtraColumns, setLstExtraColumns] = useState<string[]>([]);
   const [dicDrawerEmployee, setDicDrawerEmployee] = useState<EmployeeListRecord | null>(null);
-  const [blnLoading, setBlnLoading] = useState(true);
+  const [blnLoading, setBlnLoading] = useState(false);
   const [objAlertDialog, setObjAlertDialog] = useState({
     blnOpen: false,
     strMessage: "",
     strSeverity: "success" as "success" | "error",
   });
   const blnSearchPanelFrozen = blnLoading || blnRightsLoading;
+
+  useEffect(() => {
+    const objSavedSearch = objEmployeeSearchOnReturn;
+    if (!objSavedSearch) return;
+
+    objEmployeeSearchOnReturn = null;
+    if (objSavedSearch.strSessionToken !== authHelpers.getAccessToken() ||
+        objSavedSearch.intCompanyID !== authHelpers.getCompanyID()) return;
+
+    setLstEmployees(objSavedSearch.lstEmployees);
+    setDicSearchDraft(objSavedSearch.dicSearchDraft);
+    setDicSearchApplied(objSavedSearch.dicSearchApplied);
+    setBlnHasSearched(true);
+  }, []);
+
+  const saveSearchForReturn = useCallback(() => {
+    objEmployeeSearchOnReturn = {
+      strSessionToken: authHelpers.getAccessToken(),
+      intCompanyID: authHelpers.getCompanyID(),
+      lstEmployees,
+      dicSearchDraft,
+      dicSearchApplied,
+    };
+  }, [lstEmployees, dicSearchDraft, dicSearchApplied]);
 
   function closeMoreFilters() {
     setDicSearchDraft((dicPrevious) => ({
@@ -166,17 +203,15 @@ export default function EmployeeMasterListPanel() {
     });
   }
 
-  async function loadModuleData() {
-    if (!canViewModule("EMPLOYEE")) {
-      setLstEmployees([]);
-      setBlnLoading(false);
-      return;
-    }
+  async function searchEmployees() {
+    if (blnSearchPanelFrozen || !blnCanView) return;
 
     setBlnLoading(true);
     try {
       const lstEmployeeData = await employeeService.getEmployees();
       setLstEmployees(lstEmployeeData);
+      setDicSearchApplied(dicSearchDraft);
+      setBlnHasSearched(true);
     } catch (objError) {
       openAlertDialog("error", objError instanceof Error ? objError.message : t("error_load_list", "Unable to load employee data."));
     } finally {
@@ -184,21 +219,22 @@ export default function EmployeeMasterListPanel() {
     }
   }
 
-  useEffect(() => {
-    if (blnRightsLoading) {
-      return;
-    }
-
-    if (!canViewModule("EMPLOYEE")) {
-      setLstEmployees([]);
-      setBlnLoading(false);
-      return;
-    }
-
-    loadModuleData().catch(() => undefined);
-  }, [blnRightsLoading]);
-
   const blnCanView = canViewModule("EMPLOYEE");
+  useEffect(() => {
+    if (blnRightsLoading || !blnCanView) return;
+
+    let blnActive = true;
+    masterApiService.getDepartments()
+      .then(({ Data }) => {
+        if (blnActive) setLstDepartmentNames(Data.map((dicDepartment) => dicDepartment.strDepartmentName.trim()));
+      })
+      .catch(() => {
+        if (blnActive) setLstDepartmentNames([]);
+      });
+
+    return () => { blnActive = false; };
+  }, [blnCanView, blnRightsLoading]);
+
   const blnCanAdd = canDo("EMPLOYEE", "add");
   const blnCanEdit = canDo("EMPLOYEE", "edit");
   const blnCanExport = canDo("EMPLOYEE", "export");
@@ -218,27 +254,27 @@ export default function EmployeeMasterListPanel() {
     [lstDesignationOptions]
   );
 
-  const lstDepartmentSelectOptions = useMemo(() => Array.from(new Set(
-    lstEmployees
-      .map((dicEmployee) => dicEmployee.strDepartmentName?.trim())
-      .filter((strDepartment): strDepartment is string => Boolean(strDepartment))
-  )).sort((strFirst, strSecond) => strFirst.localeCompare(strSecond))
-    .map((strDepartment) => ({ intID: strDepartment, strLabel: strDepartment })), [lstEmployees]);
+  const lstDepartmentSelectOptions = useMemo(() => Array.from(new Set([
+    ...lstDepartmentNames,
+    ...lstEmployees.map((dicEmployee) => dicEmployee.strDepartmentName?.trim()),
+  ].filter((strDepartment): strDepartment is string => Boolean(strDepartment))))
+    .sort((strFirst, strSecond) => strFirst.localeCompare(strSecond))
+    .map((strDepartment) => ({ intID: strDepartment, strLabel: strDepartment })), [lstDepartmentNames, lstEmployees]);
 
-  const lstFilteredEmployees = useMemo(() => lstEmployees.filter((dicEmployee) => {
+  const lstFilteredEmployees = useMemo(() => blnHasSearched ? lstEmployees.filter((dicEmployee) => {
     const strSearch = dicSearchApplied.name.trim().toLowerCase();
     const blnNameMatch = !strSearch || dicEmployee.strFullName.toLowerCase().includes(strSearch) || dicEmployee.strEmployeeCode.toLowerCase().includes(strSearch);
     const blnDepartmentMatch = dicSearchApplied.department === "All" || dicEmployee.strDepartmentName?.trim() === dicSearchApplied.department;
     const blnDesignationMatch = dicSearchApplied.designation === "All" || dicEmployee.strDesignationName?.trim() === dicSearchApplied.designation;
     const blnStatusMatch = dicSearchApplied.status === "All" || dicEmployee.strEmploymentStatus === dicSearchApplied.status;
     return blnNameMatch && blnDepartmentMatch && blnDesignationMatch && blnStatusMatch;
-  }), [dicSearchApplied, lstEmployees]);
+  }) : [], [blnHasSearched, dicSearchApplied, lstEmployees]);
   const lstTableRows = useMemo<EmployeeTableRow[]>(() => lstFilteredEmployees.map((dicEmployee) => {
     return {
       id: String(dicEmployee.intID),
       details: <IconButton data-control-id={`employee.master-list.row.${dicEmployee.intID}.details.button`} aria-label={`${t("more_details", "More details")} ${dicEmployee.strFullName}`} size="small" onClick={() => setDicDrawerEmployee(dicEmployee)}><MoreHorizRoundedIcon fontSize="small" /></IconButton>,
       employeeCode: dicEmployee.strEmployeeCode,
-      fullName: <Link component={NextLink} href={`/employees/${blnCanEdit ? "edit" : "view"}/${dicEmployee.strRecordUUID}`} data-control-id={`employee.master-list.row.${dicEmployee.intID}.name.link`} underline="none" sx={{ color: "inherit", cursor: "pointer", font: "inherit", fontWeight: 500, textAlign: "left", "&:hover": { color: "#0066df", textDecoration: "underline" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}>{dicEmployee.strFullName}</Link>,
+      fullName: <Link component={NextLink} onNavigate={saveSearchForReturn} href={`/employees/${blnCanEdit ? "edit" : "view"}/${dicEmployee.strRecordUUID}`} data-control-id={`employee.master-list.row.${dicEmployee.intID}.name.link`} underline="none" sx={{ color: "inherit", cursor: "pointer", font: "inherit", fontWeight: 500, textAlign: "left", "&:hover": { color: "#0066df", textDecoration: "underline" }, "&:focus-visible": { outline: "2px solid #0066df", outlineOffset: 3 } }}>{dicEmployee.strFullName}</Link>,
       fullNameSortValue: dicEmployee.strFullName,
       workEmail: dicEmployee.strWorkEmail || "-",
       mobileNumber: dicEmployee.strMobileNumber || "-",
@@ -252,7 +288,7 @@ export default function EmployeeMasterListPanel() {
       status: <span className={`${styles.statusPill} ${dicEmployee.strEmploymentStatus === "Active" ? styles.employeeStatusActive : styles.employeeStatusInactive}`}>{dicEmployee.strEmploymentStatus === "Active" ? dicConstant.common.statusActive : dicConstant.common.statusInactive}</span>,
       statusSortValue: dicEmployee.strEmploymentStatus
     };
-  }), [blnCanEdit, lstFilteredEmployees, t]);
+  }), [blnCanEdit, lstFilteredEmployees, saveSearchForReturn, t]);
 
   const lstTableColumns = useMemo<CommonTableColumn<EmployeeTableRow>[]>(() => [
     { field: "fullName", headerName: t("grid_employee_name", "Employee Name"), width: 200, sortAccessor: (dicRow) => dicRow.fullNameSortValue },
@@ -312,12 +348,12 @@ export default function EmployeeMasterListPanel() {
           </Box>
           <Button data-control-id="employee.master-list.more-filters.button" className={styles.secondaryButton} startIcon={<FilterListRoundedIcon />} onClick={(objEvent) => setObjMoreFiltersAnchor(objEvent.currentTarget)} aria-expanded={Boolean(objMoreFiltersAnchor)} disabled={blnSearchPanelFrozen}>{t("more_filters", "More filters")}{dicSearchDraft.designation !== "All" ? " •" : ""}</Button>
           <Box className={styles.searchActions}>
-            <Button controlId="employee.master-list.search.button" data-control-id="employee.master-list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => { setDicSearchApplied(dicSearchDraft); }} disabled={blnSearchPanelFrozen}>
+            <Button controlId="employee.master-list.search.button" data-control-id="employee.master-list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={searchEmployees} disabled={blnSearchPanelFrozen || !blnCanView}>
               {t("search_button", dicConstant.common.search)}
             </Button>
           </Box>
           <Box className={styles.searchActions}>
-            <Button controlId="employee.master-list.clear.button" data-control-id="employee.master-list.clear.button" className={styles.secondaryButton} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); }} disabled={blnSearchPanelFrozen}>
+            <Button controlId="employee.master-list.clear.button" data-control-id="employee.master-list.clear.button" className={styles.secondaryButton} onClick={() => { setDicSearchDraft(dicEmptySearch); setDicSearchApplied(dicEmptySearch); setBlnHasSearched(false); }} disabled={blnSearchPanelFrozen}>
               {t("clear_button", dicConstant.common.clear)}
             </Button>
           </Box>
@@ -363,7 +399,7 @@ export default function EmployeeMasterListPanel() {
             testIdPrefix="employee.master-list"
             showPaginationSummary
             hideRowClickHint
-            emptyMessage={t("empty_message", dicConstant.employeeMaster.emptyMessage)}
+            emptyMessage={blnHasSearched ? t("empty_message", dicConstant.employeeMaster.emptyMessage) : t("employee_search_prompt", "Select Search to show employees.")}
             toolbarLeft={(
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
                 {blnCanAdd ? (
@@ -380,6 +416,7 @@ export default function EmployeeMasterListPanel() {
             onRowClick={(dicRow) => {
               const dicEmployee = lstFilteredEmployees.find((objEmployee) => objEmployee.intID === Number(dicRow.id));
               if (!dicEmployee) return;
+              saveSearchForReturn();
               objRouter.push(`/employees/${blnCanEdit ? "edit" : "view"}/${dicEmployee.strRecordUUID}`);
             }}
             getRowSx={() => ({
@@ -413,7 +450,7 @@ export default function EmployeeMasterListPanel() {
         </> : null}
       </Drawer>
 
-      {blnCanImport && blnImportOpen && <EmployeeImportDialog open={blnImportOpen} onClose={() => setBlnImportOpen(false)} onImported={loadModuleData} canAdd={blnCanAdd} canEdit={blnCanEdit} />}
+      {blnCanImport && blnImportOpen && <EmployeeImportDialog open={blnImportOpen} onClose={() => setBlnImportOpen(false)} onImported={async () => setBlnHasSearched(false)} canAdd={blnCanAdd} canEdit={blnCanEdit} />}
       <AlertDialog
         blnOpen={objAlertDialog.blnOpen}
         strMessage={objAlertDialog.strMessage}
