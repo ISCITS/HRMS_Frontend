@@ -9,6 +9,17 @@ import type {
   TdsReportRow,
   VariablePayRegisterRow,
 } from "@/features/payroll/types";
+import type { PayslipFilterLookup } from "@/features/payroll/utils/payslipListFilters";
+
+export type PayrollReportFilterLookup = {
+  lstEmployees: Array<{ intEmployeeID: number; strEmployeeCode: string; strEmployeeName: string }>;
+  lstRuns: Array<{ strRunCode: string; strRunName: string; dtPayrollMonth: string | null }>;
+  lstDepartments: string[];
+  lstLocations: string[];
+  lstAllocationEntities: string[];
+  lstStatuses: string[];
+  lstVariablePayTypes: string[];
+};
 
 async function requestApi<TData>(objOptions: {
   strPath: string;
@@ -30,10 +41,23 @@ export const payrollResultService = {
     strStatus?: string;
     strDepartment?: string;
     strLocation?: string;
+    strAllocationEntity?: string;
     strPayrollMonth?: string;
+    /** Payslip screens: every employee whose run has payslips (Processed or Finalized). */
     blnGeneratedPayslipsOnly?: boolean;
+    /** ESS: only runs released to employees by the payslip template's release policy. */
+    blnEssReleasedOnly?: boolean;
+    strPayrollRunID?: string;
+    /** Skip the per-employee calculation snapshot/trace (~7 KB each); list screens never show them. */
+    blnExcludeCalculationDetails?: boolean;
   }): Promise<PayrollResultListRecord[]> {
     const objParams = new URLSearchParams();
+    if (objFilters?.blnExcludeCalculationDetails) {
+      objParams.set("blnExcludeCalculationDetails", "true");
+    }
+    if (objFilters?.strPayrollRunID?.trim()) {
+      objParams.set("strPayrollRunID", objFilters.strPayrollRunID.trim());
+    }
     if (objFilters?.strSearchEmployee?.trim()) {
       objParams.set("strSearchEmployee", objFilters.strSearchEmployee.trim());
     }
@@ -49,15 +73,41 @@ export const payrollResultService = {
     if (objFilters?.strLocation?.trim()) {
       objParams.set("strLocation", objFilters.strLocation.trim());
     }
+    if (objFilters?.strAllocationEntity?.trim()) {
+      objParams.set("strAllocationEntity", objFilters.strAllocationEntity.trim());
+    }
     if (objFilters?.strPayrollMonth?.trim()) {
       objParams.set("strPayrollMonth", objFilters.strPayrollMonth.trim());
     }
     if (objFilters?.blnGeneratedPayslipsOnly) {
       objParams.set("blnGeneratedPayslipsOnly", "true");
     }
+    if (objFilters?.blnEssReleasedOnly) {
+      objParams.set("blnEssReleasedOnly", "true");
+    }
     const strQuery = objParams.toString();
     const objResult = await requestApi<PayrollResultListRecord[]>({
       strPath: `/payroll/results${strQuery ? `?${strQuery}` : ""}`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_RESULT_LIST",
+    });
+    return objResult.Data;
+  },
+
+  /** Payslips screen dropdown choices (employees and runs with payslips) - no payroll figures. */
+  async getPayslipFilterOptions(blnEssReleasedOnly = false): Promise<PayslipFilterLookup> {
+    const objResult = await requestApi<PayslipFilterLookup>({
+      strPath: `/payroll/results/payslip-filter-options${blnEssReleasedOnly ? "?blnEssReleasedOnly=true" : ""}`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_RESULT_LIST",
+    });
+    return objResult.Data;
+  },
+
+  /** Payroll report screens' dropdown choices (employees, runs, months, departments, ...) - no figures. */
+  async getPayrollReportFilterOptions(blnVariablePayRunsOnly = false): Promise<PayrollReportFilterLookup> {
+    const objResult = await requestApi<PayrollReportFilterLookup>({
+      strPath: `/payroll/results/report-filter-options${blnVariablePayRunsOnly ? "?blnVariablePayRunsOnly=true" : ""}`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_RESULT_LIST",
     });
@@ -81,6 +131,7 @@ export const payrollResultService = {
     strStatus?: string;
     strDepartment?: string;
     strLocation?: string;
+    strAllocationEntity?: string;
     strPayrollMonth?: string;
     strStatutoryCode?: StatutoryReportCode;
   }): Promise<StatutoryReportRow[]> {
@@ -99,6 +150,9 @@ export const payrollResultService = {
     }
     if (objFilters?.strLocation?.trim()) {
       objParams.set("strLocation", objFilters.strLocation.trim());
+    }
+    if (objFilters?.strAllocationEntity?.trim()) {
+      objParams.set("strAllocationEntity", objFilters.strAllocationEntity.trim());
     }
     if (objFilters?.strPayrollMonth?.trim()) {
       objParams.set("strPayrollMonth", objFilters.strPayrollMonth.trim());
@@ -121,6 +175,7 @@ export const payrollResultService = {
     strStatus?: string;
     strDepartment?: string;
     strLocation?: string;
+    strAllocationEntity?: string;
     strPayrollMonth?: string;
   }): Promise<TdsReportRow[]> {
     const objParams = new URLSearchParams();
@@ -138,6 +193,9 @@ export const payrollResultService = {
     }
     if (objFilters?.strLocation?.trim()) {
       objParams.set("strLocation", objFilters.strLocation.trim());
+    }
+    if (objFilters?.strAllocationEntity?.trim()) {
+      objParams.set("strAllocationEntity", objFilters.strAllocationEntity.trim());
     }
     if (objFilters?.strPayrollMonth?.trim()) {
       objParams.set("strPayrollMonth", objFilters.strPayrollMonth.trim());
@@ -157,6 +215,7 @@ export const payrollResultService = {
     strStatus?: string;
     strPayrollMonth?: string;
     strVariablePayType?: string;
+    strAllocationEntity?: string;
   }): Promise<VariablePayRegisterRow[]> {
     const objParams = new URLSearchParams();
     if (objFilters?.strSearchEmployee?.trim()) {
@@ -173,6 +232,9 @@ export const payrollResultService = {
     }
     if (objFilters?.strVariablePayType?.trim()) {
       objParams.set("strVariablePayType", objFilters.strVariablePayType.trim());
+    }
+    if (objFilters?.strAllocationEntity?.trim()) {
+      objParams.set("strAllocationEntity", objFilters.strAllocationEntity.trim());
     }
     const strQuery = objParams.toString();
     const objResult = await requestApi<VariablePayRegisterRow[]>({

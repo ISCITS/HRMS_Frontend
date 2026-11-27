@@ -7,7 +7,6 @@ import {
   Avatar,
   Box,
   Button,
-  CircularProgress,
   Grid,
   IconButton,
   Stack,
@@ -16,6 +15,7 @@ import {
 } from "@mui/material";
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import ProfileSection from "@/components/shared/profile/ProfileSection";
 import dicConstant from "@/constants/Constant.json";
@@ -28,7 +28,7 @@ const dicInputSx = {
   "& .MuiInputLabel-root": {
     fontSize: 14,
     fontWeight: 500,
-    color: "#64748b"
+    color: "#334155"
   },
   "& .MuiOutlinedInput-root": {
     minHeight: 52,
@@ -37,13 +37,6 @@ const dicInputSx = {
     "& .MuiOutlinedInput-notchedOutline": {
       borderColor: "#e2e8f0"
     },
-    "&.Mui-focused": {
-      backgroundColor: "#f8fafc",
-      boxShadow: "0 0 0 3px rgba(37,99,235,0.2)"
-    },
-    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-      borderColor: "#2563eb"
-    }
   }
 };
 
@@ -200,12 +193,12 @@ export default function ProfileForm() {
                   "&.Mui-disabled": { bgcolor: "#94a3b8", color: "#e2e8f0" }
                 }}
               >
-                {blnAvatarUpdating ? <CircularProgress size={14} color="inherit" /> : <CameraAltOutlinedIcon sx={{ fontSize: 16 }} />}
+                {blnAvatarUpdating ? <DottedLoader intSize={14} color="inherit" /> : <CameraAltOutlinedIcon sx={{ fontSize: 16 }} />}
                 <input hidden type="file" accept="image/png,image/jpeg,image/webp" onChange={handleAvatarUpload} />
               </IconButton>
           </Box>
           <Typography sx={{ fontSize: 12, color: "#64748b" }}>{t("profile_photo", "Profile photo")}</Typography>
-          <Button component="label" size="small" variant="outlined" disabled={blnAvatarUpdating} startIcon={blnAvatarUpdating ? <CircularProgress size={14} color="inherit" /> : <CameraAltOutlinedIcon />}>
+          <Button component="label" size="small" variant="outlined" disabled={blnAvatarUpdating} startIcon={blnAvatarUpdating ? <DottedLoader intSize={14} color="inherit" /> : <CameraAltOutlinedIcon />}>
             {t("upload", "Upload")}
             <input hidden type="file" accept="image/png,image/jpeg,image/webp" onChange={handleAvatarUpload} />
           </Button>
@@ -288,7 +281,7 @@ export default function ProfileForm() {
           }
         }}
       >
-        {intIsSaving === 1 ? <CircularProgress size={20} color="inherit" /> : t("update_button", dicConstant.profile.updateButton)}
+        {intIsSaving === 1 ? <DottedLoader intSize={20} color="inherit" /> : t("update_button", dicConstant.profile.updateButton)}
       </Button>
     </Stack>
   );

@@ -48,6 +48,10 @@ export type EmployeeDetailRecord = {
   intPayrollGroupID: number | null;
   intManagerEmployeeID: number | null;
   intLineManagerEmployeeID: number | null;
+  intAllocationEntityID: number | null;
+  strAllocationEntityCode?: string | null;
+  strAllocationEntityName?: string | null;
+  strAllocationEntityLabel?: string | null;
   strWorkEmail: string | null;
   strPersonalEmail: string | null;
   strMobileNumber: string | null;
@@ -115,6 +119,7 @@ export type EmployeeDetailRecord = {
   strEmergencyEmail: string | null;
   strEmployeeRemark: string | null;
   strInitialPostingLocation: string | null;
+  intInitialPostingLocationID: number | null;
   dtProbationStartDate: string | null;
   dtProbationEndDate: string | null;
   strEmployeeWorkgroup: string | null;
@@ -143,6 +148,7 @@ export type EmployeeFormValues = {
   intPayrollGroupID: number | "";
   intManagerEmployeeID: number | "";
   intLineManagerEmployeeID: number | "";
+  intAllocationEntityID: number | "";
   strWorkEmail: string;
   strPersonalEmail: string;
   strMobileNumber: string;
@@ -209,6 +215,7 @@ export type EmployeeFormValues = {
   strEmergencyEmail: string;
   strEmployeeRemark: string;
   strInitialPostingLocation: string;
+  intInitialPostingLocationID: number | "";
   dtProbationStartDate: string;
   dtProbationEndDate: string;
   strEmployeeWorkgroup: string;
@@ -232,6 +239,7 @@ export type EmployeeFormOptions = {
   lstStates: EmployeeLookupOption[];
   lstBanks: EmployeeLookupOption[];
   lstManagers: EmployeeLookupOption[];
+  lstAllocationEntities: EmployeeLookupOption[];
   lstTitles: string[];
   lstGenders: string[];
   lstEmploymentStatuses: EmployeeStatus[];
@@ -323,9 +331,11 @@ export type EmployeeStatutoryRecord = {
   strEsiCode: string | null;
   strSsnNumber: string | null;
   strPranNumber: string | null;
+  strPtRegistrationNumber: string | null;
   blnPfApplicable: boolean;
   blnEsiApplicable: boolean;
   blnPtApplicable: boolean;
+  blnEpsEligible?: boolean | null;
 };
 
 export type EmployeeStatutoryFormValues = {
@@ -338,9 +348,12 @@ export type EmployeeStatutoryFormValues = {
   strEsiCode: string;
   strSsnNumber: string;
   strPranNumber: string;
+  strPtRegistrationNumber: string;
   blnPfApplicable: boolean;
   blnEsiApplicable: boolean;
   blnPtApplicable: boolean;
+  // EPS (pension) membership: "" = not recorded, "yes" / "no" = set by HR.
+  blnEpsEligible: boolean;
 };
 
 export type EmployeeExperienceRecord = {

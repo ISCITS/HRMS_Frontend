@@ -119,6 +119,15 @@ function resolveMenuRoute(objItem: MenuItem): string | null {
   const strModuleName = objItem.strModuleName.trim().toLowerCase();
   const strRoute = objItem.strRoute?.trim() ?? "";
 
+  // These masters were historically seeded with menu-code-like route values.
+  // Resolve by stable module identity so both old and corrected menu rows work.
+  if (strModuleCode === "employee_function") {
+    return "/employee-function";
+  }
+  if (strModuleCode === "employee_type") {
+    return "/employment-type";
+  }
+
   // Work on Holiday had multiple legacy seed routes. The module identity is the
   // stable contract, so cached menu data must always resolve to the live route.
   if (strModuleCode === "ess_work_on_holiday" || strModuleName === "work on holiday") {
@@ -384,6 +393,15 @@ function isReportMenuItem(objItem: MenuItem): boolean {
     strModuleCode.includes("report") ||
     strModuleName.includes("report")
   );
+}
+
+// Screens that were merged into another screen but may still be configured in the menu master.
+const SET_RETIRED_MENU_ROUTES = new Set(["/attendance/import"]);
+
+function removeRetiredMenus(lstItems: MenuItem[]): MenuItem[] {
+  return lstItems
+    .filter((objItem) => !SET_RETIRED_MENU_ROUTES.has(resolveMenuRoute(objItem)?.trim().toLowerCase() ?? ""))
+    .map((objItem) => ({ ...objItem, lstChildren: removeRetiredMenus(objItem.lstChildren) }));
 }
 
 function removeReportsFromPayrollBranches(lstItems: MenuItem[], blnInsidePayroll = false): MenuItem[] {
@@ -741,6 +759,9 @@ function removeHrOnlyMenusFromEss(lstItems: MenuItem[]): MenuItem[] {
       strRoute.startsWith("/leave/approvals/") ||
       strRoute === "/payroll/fnf-settlements" ||
       strRoute.startsWith("/payroll/fnf-settlements/") ||
+      strRoute === "/employee-separations" ||
+      strRoute.startsWith("/employee-separations/") ||
+      strModuleCode === "employee_separations" ||
       strModuleCode === "leave_approvals" ||
       strModuleCode === "leave_approval" ||
       strModuleCode === "payroll_fnf_settlements" ||
@@ -779,6 +800,8 @@ function groupHrEmployeeServicesMenus(lstItems: MenuItem[]): MenuItem[] {
     "/payroll/it-declaration-review",
     "/payroll/employee-reimbursement",
     "/payroll/reimbursements",
+    // Employee Separation sits directly above Full & Final Settlement.
+    "/employee-separations",
     "/payroll/fnf-settlements",
   ];
   const setEmployeeServiceRoutes = new Set(lstEmployeeServiceRoutes);
@@ -794,6 +817,7 @@ function groupHrEmployeeServicesMenus(lstItems: MenuItem[]): MenuItem[] {
     "reimbursement_review",
     "reimbursements_review",
     "payroll_reimbursement",
+    "employee_separations",
     "payroll_fnf_settlements",
     "fnf_settlements",
     "payroll_fnf",
@@ -816,9 +840,10 @@ function groupHrEmployeeServicesMenus(lstItems: MenuItem[]): MenuItem[] {
     ["reimbursement_review", 3],
     ["reimbursements_review", 3],
     ["payroll_reimbursement", 3],
-    ["payroll_fnf_settlements", 4],
-    ["fnf_settlements", 4],
-    ["payroll_fnf", 4],
+    ["employee_separations", 4],
+    ["payroll_fnf_settlements", 5],
+    ["fnf_settlements", 5],
+    ["payroll_fnf", 5],
   ]);
 
   function isHrEmployeeServiceItem(objItem: MenuItem): boolean {
@@ -942,27 +967,63 @@ function groupHrEmployeeServicesMenus(lstItems: MenuItem[]): MenuItem[] {
   ];
 }
 
+// Reports module order: Salary Register first, then Payslips, then everything else in its
+// existing order.
+function getReportsMenuPriority(objItem: MenuItem): number {
+  const strRoute = resolveMenuRoute(objItem)?.toLowerCase() ?? "";
+  if (strRoute === "/reports/salary-register") return 0;
+  if (strRoute === "/reports/payslips" || strRoute === "/reports/payslip") return 1;
+  return 2;
+}
+
+function orderReportsMenu(lstItems: MenuItem[]): MenuItem[] {
+  return lstItems.map((objItem) => {
+    const lstChildren = orderReportsMenu(objItem.lstChildren);
+    const lstOrderedChildren = isDirectReportsMenu(objItem)
+      ? lstChildren
+          .map((objChild, intIndex) => ({ objChild, intIndex }))
+          .sort((dicA, dicB) => getReportsMenuPriority(dicA.objChild) - getReportsMenuPriority(dicB.objChild) || dicA.intIndex - dicB.intIndex)
+          .map((dicEntry) => dicEntry.objChild)
+      : lstChildren;
+    return { ...objItem, lstChildren: lstOrderedChildren };
+  });
+}
+
 function prepareMenuItems(lstItems: MenuItem[], blnEssOnly: boolean, canViewCtc: boolean): MenuItem[] {
   const lstPreparedItems = promoteEssWorkOnHolidayMenu(
-    collapseDuplicateMenuBranches(
-      appendGeneratedReportsMenu(
-        appendGeneratedPayslipMenu(
-          appendGeneratedEssLoansAdvancesMenu(
-            removeReportsFromPayrollBranches(
-              promoteDashboardMenu(lstItems),
+    orderReportsMenu(
+      collapseDuplicateMenuBranches(
+        appendGeneratedReportsMenu(
+          appendGeneratedPayslipMenu(
+            appendGeneratedEssLoansAdvancesMenu(
+              removeReportsFromPayrollBranches(
+                promoteDashboardMenu(removeRetiredMenus(lstItems)),
+              ),
             ),
           ),
         ),
       ),
     ),
   );
-  return blnEssOnly ? buildEssOnlyMenu(lstPreparedItems) : groupHrEmployeeServicesMenus(canViewCtc ? appendCtcReportMenu(lstPreparedItems) : lstPreparedItems);
+  return blnEssOnly ? buildEssOnlyMenu(lstPreparedItems) : groupHrEmployeeServicesMenus(canViewCtc ? appendCtcReportMenu(lstPreparedItems) : renameCtcReportMenu(lstPreparedItems));
+}
+
+const CTC_REPORT_NAME = "CTC Statement";
+
+// A menu row saved for the route keeps its old "CTC Format" name; the screen is CTC Statement.
+function renameCtcReportMenu(items: MenuItem[]): MenuItem[] {
+  return items.map(node => ({
+    ...node,
+    strModuleName: node.strRoute === "/reports/ctc-format" ? CTC_REPORT_NAME : node.strModuleName,
+    lstChildren: renameCtcReportMenu(node.lstChildren),
+  }));
 }
 
 function appendCtcReportMenu(items: MenuItem[]): MenuItem[] {
-  if (hasRoute(items, "/reports/ctc-format") || !hasRoute(items, "/employee-salary")) return items;
+  if (hasRoute(items, "/reports/ctc-format")) return renameCtcReportMenu(items);
+  if (!hasRoute(items, "/employee-salary")) return items;
   const report: MenuItem = {
-    strModuleCode: "REPORT_CTC_FORMAT", strModuleName: "CTC Format",
+    strModuleCode: "REPORT_CTC_FORMAT", strModuleName: CTC_REPORT_NAME,
     strRoute: "/reports/ctc-format", strIconName: "ReceiptLong",
     lstPermissionCodes: [], blnIsHome: false, lstChildren: [],
   };
@@ -1031,6 +1092,36 @@ const objGeneratedStatutoryReportMenu: MenuItem = {
   lstChildren: [],
 };
 
+const objGeneratedPfEcrReportMenu: MenuItem = {
+  strModuleCode: "PF_ECR_REPORT",
+  strModuleName: "PF ECR Report",
+  strRoute: "/reports/pf-ecr",
+  strIconName: "Source",
+  lstPermissionCodes: ["PF_ECR_REPORT_VIEW", "PF_ECR_REPORT_EXPORT"],
+  blnIsHome: false,
+  lstChildren: [],
+};
+
+const objGeneratedForm14ReportMenu: MenuItem = {
+  strModuleCode: "FORM14_REPORT",
+  strModuleName: "Form 14 – Leave with Wages Register",
+  strRoute: "/reports/form14",
+  strIconName: "Source",
+  lstPermissionCodes: ["FORM14_VIEW", "FORM14_EXPORT"],
+  blnIsHome: false,
+  lstChildren: [],
+};
+
+const objGeneratedForm12ReportMenu: MenuItem = {
+  strModuleCode: "FORM12_REPORT",
+  strModuleName: "Form 12 – Register of Adult Workers",
+  strRoute: "/reports/form12",
+  strIconName: "Source",
+  lstPermissionCodes: ["FORM12_VIEW", "FORM12_EXPORT"],
+  blnIsHome: false,
+  lstChildren: [],
+};
+
 const objGeneratedSalaryRegisterMenu: MenuItem = {
   strModuleCode: "SALARY_REGISTER",
   strModuleName: "Salary Register",
@@ -1065,7 +1156,7 @@ function isReportsMenuBranch(objItem: MenuItem): boolean {
 }
 
 function appendGeneratedReportsMenu(lstItems: MenuItem[]): MenuItem[] {
-  if (hasRoute(lstItems, "/reports/statutory") && hasRoute(lstItems, "/reports/salary-register") && hasRoute(lstItems, "/reports/salary-statement")) {
+  if (hasRoute(lstItems, "/reports/statutory") && hasRoute(lstItems, "/reports/pf-ecr") && hasRoute(lstItems, "/reports/salary-register") && hasRoute(lstItems, "/reports/salary-statement")) {
     return lstItems;
   }
 
@@ -1081,7 +1172,7 @@ function appendGeneratedReportsMenu(lstItems: MenuItem[]): MenuItem[] {
       objItem.lstChildren.length > 0 &&
       isReportsMenuBranch(objItem) &&
       (hasRoute(lstChildren, "/reports/payroll-register") || hasRoute(lstChildren, "/reports/bank-file")) &&
-      (!hasRoute(lstChildren, "/reports/statutory") || !hasRoute(lstChildren, "/reports/salary-register") || !hasRoute(lstChildren, "/reports/salary-statement"));
+      (!hasRoute(lstChildren, "/reports/statutory") || !hasRoute(lstChildren, "/reports/pf-ecr") || !hasRoute(lstChildren, "/reports/salary-register") || !hasRoute(lstChildren, "/reports/salary-statement"));
 
     if (!blnShouldAppendHere) {
       return lstChildren === objItem.lstChildren ? objItem : { ...objItem, lstChildren };
@@ -1097,6 +1188,15 @@ function appendGeneratedReportsMenu(lstItems: MenuItem[]): MenuItem[] {
     }
     if (!hasRoute(lstGeneratedChildren, "/reports/statutory")) {
       lstGeneratedChildren.push(objGeneratedStatutoryReportMenu);
+    }
+    if (!hasRoute(lstGeneratedChildren, "/reports/pf-ecr")) {
+      lstGeneratedChildren.push(objGeneratedPfEcrReportMenu);
+    }
+    if (!hasRoute(lstGeneratedChildren, "/reports/form14")) {
+      lstGeneratedChildren.push(objGeneratedForm14ReportMenu);
+    }
+    if (!hasRoute(lstGeneratedChildren, "/reports/form12")) {
+      lstGeneratedChildren.push(objGeneratedForm12ReportMenu);
     }
     return {
       ...objItem,
@@ -1128,6 +1228,7 @@ export default function DynamicMenu({
   const { t: tDepartment } = useModuleLabels("department");
   const { t: tDesignation } = useModuleLabels("designation");
   const { t: tEmployee } = useModuleLabels("employee");
+  const { t: tEmployeeCategory } = useModuleLabels("employee_category");
   const { t: tState } = useModuleLabels("state");
   const { t: tCountry } = useModuleLabels("country");
   const { t: tBank } = useModuleLabels("bank");
@@ -1374,6 +1475,11 @@ export default function DynamicMenu({
       );
     }
 
+    // Must come before the generic "employee" rule below, which would label it "Employee".
+    if (strRoute.includes("/employee-separations") || strModuleCode.includes("employee_separation")) {
+      return resolveKnownMenuLabel(strModuleName, "Employee Separation", "कर्मचारी पृथक्करण");
+    }
+
     if (strRoute.includes("/payroll/reimbursements") || strModuleCode.includes("reimbursement")) {
       return resolveKnownMenuLabel(strModuleName, "Employee Reimbursements", "कर्मचारी प्रतिपूर्ति");
     }
@@ -1420,12 +1526,44 @@ export default function DynamicMenu({
       return strModuleName || "Employee Leave Assignment";
     }
 
+    // Employee Monthly Tax / TDS (module code contains "employee") must not be
+    // caught by the generic employee-master branch below either; use its own menu name.
+    if (strRoute.includes("/payroll/employee-monthly-tax") || strModuleCode === "employee_monthly_tax") {
+      return strModuleName || "Employee Monthly Tax / TDS";
+    }
+
+    if (
+      strModuleCode === "employee_category" ||
+      strModuleCode === "employee_categories" ||
+      strRoute.includes("/employee-categories")
+    ) {
+      return tEmployeeCategory("page_title", strModuleName || "Employee Category");
+    }
+
+    if (strModuleCode === "employee_function" || strRoute.includes("/employee-function")) {
+      return strModuleName || "Employee Function";
+    }
+
+    if (
+      strRoute.includes("/employment-type")
+    ) {
+      return strModuleName || "Employment Type";
+    }
+
     if (strModuleCode.includes("employee") || strRoute.includes("/employees")) {
       return tEmployee("page_title", strModuleName || "Employee");
     }
 
     if (strModuleCode.includes("masters")) {
       return resolveGroupFallbackLabel("masters", strModuleName || "Masters");
+    }
+
+    if (
+      strModuleCode.includes("loan_management") ||
+      strModuleCode.includes("loans_advances") ||
+      strModuleName.trim().toLowerCase() === "loan management"
+    ) {
+      return resolveGroupFallbackLabel("loan_management", strModuleName || "Loan Management");
     }
 
     if (strModuleCode.includes("payroll")) {

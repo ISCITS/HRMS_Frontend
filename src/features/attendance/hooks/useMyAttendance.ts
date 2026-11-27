@@ -54,13 +54,18 @@ export function useMyAttendance() {
     }
   }, []);
 
-  const punch = useCallback(async (strDirection: "in" | "out") => {
+  const punch = useCallback(async (
+    strDirection: "in" | "out",
+    objGeo?: { decGeoLat?: number | null; decGeoLng?: number | null } | null,
+  ) => {
     setBlnPunching(true);
     setStrError("");
     try {
       const objResult = await attendanceService.punch({
         strDirection,
         strSource: "web",
+        decGeoLat: objGeo?.decGeoLat ?? null,
+        decGeoLng: objGeo?.decGeoLng ?? null,
       });
       setObjOverview(objResult);
       return objResult;

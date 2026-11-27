@@ -18,8 +18,8 @@ export default function LeaveBalanceReportPage() {
   const { t } = useModuleLabels("reports");
 
   const lstColumns = useMemo<CommonTableColumn<ReportDisplayRow>[]>(() => [
-    { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code"), width: 140 },
     { field: "strEmployeeName", headerName: t("employee_name", "Employee"), width: 200 },
+    { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code"), width: 140 },
     { field: "strDepartment", headerName: t("department", "Department"), width: 160 },
     { field: "strLeaveType", headerName: t("leave_type", "Leave Type"), width: 160 },
     { field: "intLeaveYear", headerName: t("leave_year", "Year"), width: 90, align: "right" },
@@ -50,6 +50,12 @@ export default function LeaveBalanceReportPage() {
         })),
       },
       {
+        strKey: "leave_type_id", strLabel: t("leave_type_id", "Leave Type"), strType: "multiselect",
+        fnLoadOptions: async () => (await leavePlanService.getActiveLeaveTypes()).map((objType) => ({
+          strValue: String(objType.intID), strLabel: `${objType.strTypeCode} - ${objType.strTypeName}`,
+        })),
+      },
+      {
         strKey: "department_id", strLabel: t("department_id", "Department"), strType: "multiselect",
         fnLoadOptions: async () => (await employeeService.getFormOptions()).lstDepartments.map((objDept) => ({
           strValue: String(objDept.intID), strLabel: objDept.strLabel,
@@ -61,14 +67,11 @@ export default function LeaveBalanceReportPage() {
           strValue: String(objLoc.intID), strLabel: objLoc.strLabel,
         })),
       },
-      {
-        strKey: "leave_type_id", strLabel: t("leave_type_id", "Leave Type"), strType: "multiselect",
-        fnLoadOptions: async () => (await leavePlanService.getActiveLeaveTypes()).map((objType) => ({
-          strValue: String(objType.intID), strLabel: `${objType.strTypeCode} - ${objType.strTypeName}`,
-        })),
-      },
     ];
   }, [t]);
+
+  // Opens on the current leave year (it loaded every year before); Clear returns to it.
+  const dicDefaultFilters = useMemo(() => ({ leave_year: String(new Date().getFullYear()) }), []);
 
   function mapRow(dicRow: LeaveBalanceRow): ReportDisplayRow {
     return {
@@ -107,10 +110,13 @@ export default function LeaveBalanceReportPage() {
   return (
     <ReportGridPage
       strTitle={t("leave_balance", "Leave Balance")}
-      strInfo={t("leave_balance_info", "Current leave balances by type — opening, entitlement, accrued, carry forward, adjustments, utilised, hold, lapsed, encashed and available.")}
+      strBreadcrumbRoot={t("reports", "Reports")}
+      strBreadcrumbSection={t("leave_reports", "Leave Reports")}
+      strBreadcrumbTitle={t("leave_balance", "Leave Balance")}
+      intInlineFilterCount={3}
       lstColumns={lstColumns}
       lstFilters={lstFilters}
-      blnSelectable
+      dicDefaultFilters={dicDefaultFilters}
       strRowIdField="__rowid"
       strCsvFileName="Leave_Balance_Report"
       lstRightsHints={["REPORTS_LEAVE_BALANCE", "REPORTS"]}

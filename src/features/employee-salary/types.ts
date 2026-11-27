@@ -85,6 +85,10 @@ export type EmployeeSalaryStructureComponentOption = {
 };
 
 export type EmployeeSalaryFormOptions = {
+  lstDesignations?: EmployeeSalaryOption[];
+  lstDepartments?: EmployeeSalaryOption[];
+  lstGrades?: EmployeeSalaryOption[];
+
   lstEmployees: EmployeeSalaryOption[];
   lstSalaryStructures: EmployeeSalaryOption[];
 };
@@ -134,9 +138,15 @@ export type EmployeeSalaryComponentLine = {
   strFormulaExpression: string | null;
   blnIsOverride: boolean;
   strRemarks: string | null;
+  strSourceType?: "structure" | "override" | "direct";
+  strVariablePayCalculationMethodCode?: string | null;
 };
 
 export type EmployeeSalaryHistoryRecord = {
+  intDesignationID?: number | null;
+  intDepartmentID?: number | null;
+  intGradeID?: number | null;
+
   intEmployeeSalaryStructureID: number;
   strStructureName: string | null;
   strStructureCode: string | null;
@@ -233,7 +243,13 @@ export type EmployeeFlexiDeclarationRecord = {
 };
 
 export type EmployeeSalaryDetailRecord = {
+  /** Only on the response of saving a revision: info when it is backdated into finalized payroll months (arrears). */
+  strArrearNotice?: string | null;
   objEmployeeSummary: {
+    intDesignationID?: number | null;
+    intDepartmentID?: number | null;
+    intGradeID?: number | null;
+
     intEmployeeID: number;
     strEmployeeRecordUUID: string;
     strEmployeeCode: string;
@@ -250,6 +266,7 @@ export type EmployeeSalaryDetailRecord = {
     intFlexiBalanceComponentID?: number | null;
     strRevisionReason: string | null;
     dtEffectiveFrom: string;
+    dtEffectiveTo?: string | null;
   } | null;
   objAssignedStructure: {
     intSalaryStructureID: number;
@@ -332,6 +349,10 @@ export type EmployeeSalaryFlexiAllocationFormValue = {
 };
 
 export type EmployeeSalaryRevisionFormValues = {
+  intDesignationID?: number | "";
+  intDepartmentID?: number | "";
+  intGradeID?: number | "";
+
   intSalaryStructureID: number | "";
   dtEffectiveFrom: string;
   dtEffectiveTo?: string;

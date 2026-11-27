@@ -8,6 +8,8 @@ import WorkHistoryRoundedIcon from "@mui/icons-material/WorkHistoryRounded";
 import { Box, Button, Stack, Typography } from "@mui/material";
 import type { FNFAuditRecord, FNFSettlementLineRecord, FNFSettlementRecord, FNFStatementRecord } from "@/features/payroll/types";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
+import { isFNFAdjustmentLine } from "@/features/payroll/utils/fnfAdjustments";
+import { findFNFBonusOverrideLine } from "@/features/payroll/utils/fnfBonus";
 
 export function formatCurrency(decValue?: number) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2 }).format(decValue || 0);
@@ -30,9 +32,9 @@ function formatAuditDateTime(strDate?: string | null) {
 
 function Section({ strTitle, children, action }: { strTitle: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <Box sx={{ borderTop: "1px solid #d9e6ef", pt: 2, mt: 2 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-        <Typography sx={{ color: "#0f172a", fontWeight: 800 }}>{strTitle}</Typography>
+    <Box sx={{ borderTop: "1px solid #d9e6ef", pt: 1.25 }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.75, minHeight: 32 }}>
+        <Typography sx={{ color: "#0f172a", fontWeight: 800, fontSize: "0.92rem" }}>{strTitle}</Typography>
         {action}
       </Stack>
       {children}
@@ -61,7 +63,7 @@ function LineTable({ lstLines, blnReadOnly, onEdit, onDelete }: { lstLines: FNFS
             <tr key={line.intID}>
               <td>{line.strLineType}{line.strRecoveryType ? ` / ${line.strRecoveryType}` : ""}</td><td>{line.strLineCode}</td><td>{line.strLineName}</td><td>{line.strCalculationBasis || "-"}</td><td>{formatCurrency(line.decActualAmount ?? line.decAmount)}</td><td>{formatCurrency(line.decAmount)}</td><td>{line.strSourceType || (line.blnIsSystemCalculated ? "system" : "manual")}</td>
               <td className={styles.actionsColumn}>
-                {!blnReadOnly && !line.blnIsSystemCalculated ? <Box className={styles.actionCell}><Button size="small" startIcon={<EditRoundedIcon />} onClick={() => onEdit?.(line)} controlId="payroll.fnf-settlement.line.edit.button" data-row-key={line.intID}>Edit</Button><Button color="error" size="small" startIcon={<DeleteRoundedIcon />} onClick={() => onDelete?.(line)} controlId="payroll.fnf-settlement.line.delete.button" data-row-key={line.intID}>Delete</Button></Box> : "-"}
+                {isFNFAdjustmentLine(line) ? <Box component="span" sx={{ color: "#64748b", fontSize: "0.78rem" }}>In Adjustments</Box> : findFNFBonusOverrideLine([line]) ? <Box component="span" sx={{ color: "#64748b", fontSize: "0.78rem" }}>In Bonus</Box> : !blnReadOnly && !line.blnIsSystemCalculated ? <Box className={styles.actionCell}><Button size="small" startIcon={<EditRoundedIcon />} onClick={() => onEdit?.(line)} controlId="payroll.fnf-settlement.line.edit.button" data-row-key={line.intID}>Edit</Button><Button color="error" size="small" startIcon={<DeleteRoundedIcon />} onClick={() => onDelete?.(line)} controlId="payroll.fnf-settlement.line.delete.button" data-row-key={line.intID}>Delete</Button></Box> : "-"}
               </td>
             </tr>
           )) : <tr><td colSpan={8} className={styles.emptyState}>No settlement lines yet.</td></tr>}
@@ -78,25 +80,32 @@ export function FNFSettlementCalculationPanel({ objSettlement, blnReadOnly, onAd
 
 export function FNFLeaveEncashmentPanel({ objSettlement, blnReadOnly = true, onAdd, onEdit, onDelete }: { objSettlement: FNFSettlementRecord; blnReadOnly?: boolean; onAdd?: () => void; onEdit?: (line: FNFSettlementLineRecord) => void; onDelete?: (line: FNFSettlementLineRecord) => void }) {
   const lstLines = (objSettlement.lstLines || []).filter((line) => line.strCalculationBasis?.includes("leave") || line.strLineCode.includes("LEAVE"));
+  // Breakdown sections are shown only when they have lines; new lines are added from the main table.
+  if (!lstLines.length) return null;
   return <Section strTitle="Leave Encashment" action={!blnReadOnly ? <Button className={styles.secondaryButton} startIcon={<AddRoundedIcon />} onClick={onAdd} controlId="payroll.fnf-settlement.leave-add-line.button">Add Leave Line</Button> : null}><LineTable lstLines={lstLines} blnReadOnly={blnReadOnly} onEdit={onEdit} onDelete={onDelete} /></Section>;
 }
 
 export function FNFNoticePayPanel({ objSettlement }: { objSettlement: FNFSettlementRecord }) {
-  return <Section strTitle="Notice Pay / Recovery"><Stack direction={{ xs: "column", sm: "row" }} spacing={3}><Typography>Notice period: {objSettlement.decNoticePeriodDays || 0} days</Typography><Typography>Served: {objSettlement.decNoticeServedDays || 0} days</Typography><Typography>Shortfall: {objSettlement.decNoticeShortfallDays || 0} days</Typography></Stack></Section>;
+  const lstLines = (objSettlement.lstLines || []).filter((line) => line.strLineCode.startsWith("NOTICE_"));
+  if (!lstLines.length) return null;
+  return <Section strTitle={`Notice Pay / Recovery (notice ${objSettlement.decNoticePeriodDays || 0}, served ${objSettlement.decNoticeServedDays || 0}, shortfall ${objSettlement.decNoticeShortfallDays || 0} days)`}><LineTable lstLines={lstLines} blnReadOnly /></Section>;
 }
 
 export function FNFGratuityPanel({ objSettlement }: { objSettlement: FNFSettlementRecord }) {
   const lstLines = (objSettlement.lstLines || []).filter((line) => line.strLineCode.includes("GRATUITY"));
+  if (!lstLines.length) return null;
   return <Section strTitle="Gratuity"><LineTable lstLines={lstLines} blnReadOnly /></Section>;
 }
 
 export function FNFRecoveryPanel({ objSettlement }: { objSettlement: FNFSettlementRecord }) {
   const lstLines = (objSettlement.lstLines || []).filter((line) => line.strLineType === "RECOVERY");
+  if (!lstLines.length) return null;
   return <Section strTitle="Recoveries"><LineTable lstLines={lstLines} blnReadOnly /></Section>;
 }
 
 export function FNFReimbursementPanel({ objSettlement }: { objSettlement: FNFSettlementRecord }) {
   const lstLines = (objSettlement.lstLines || []).filter((line) => line.strSourceType === "reimbursement_claim");
+  if (!lstLines.length) return null;
   return <Section strTitle="Pending Reimbursements"><LineTable lstLines={lstLines} blnReadOnly /></Section>;
 }
 
@@ -105,5 +114,5 @@ export function FNFStatementPreview({ objStatement }: { objStatement: FNFStateme
 }
 
 export function FNFAuditTimeline({ lstAudit }: { lstAudit: FNFAuditRecord[] }) {
-  return <Section strTitle="Audit Timeline"><Stack spacing={1}>{lstAudit.length ? lstAudit.map((audit) => <Box key={audit.intID} sx={{ borderLeft: "3px solid #2563eb", pl: 1.5 }}><Typography sx={{ fontWeight: 800 }}>{audit.strActionCode}</Typography><Typography sx={{ color: "#64748b", fontSize: "0.84rem" }}>{audit.strFromStatus || "-"} to {audit.strToStatus || "-"} {audit.dtActionOn ? `on ${formatAuditDateTime(audit.dtActionOn)}` : ""}</Typography><Typography>{audit.strRemarks || ""}</Typography></Box>) : <Typography sx={{ color: "#64748b" }}>No audit entries yet.</Typography>}</Stack></Section>;
+  return <Section strTitle="Audit Timeline"><Stack spacing={0.75}>{lstAudit.length ? lstAudit.map((audit) => <Box key={audit.intID} sx={{ borderLeft: "3px solid #2563eb", pl: 1.25 }}><Typography sx={{ fontSize: "0.84rem" }}><strong>{audit.strActionCode.replace(/_/g, " ")}</strong> <Box component="span" sx={{ color: "#64748b" }}>{audit.strFromStatus || "-"} → {audit.strToStatus || "-"}{audit.dtActionOn ? ` · ${formatAuditDateTime(audit.dtActionOn)}` : ""}</Box></Typography>{audit.strRemarks ? <Typography sx={{ color: "#334155", fontSize: "0.8rem" }}>{audit.strRemarks}</Typography> : null}</Box>) : <Typography sx={{ color: "#64748b", fontSize: "0.84rem" }}>No audit entries yet.</Typography>}</Stack></Section>;
 }

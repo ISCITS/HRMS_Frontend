@@ -11,10 +11,11 @@ import PieChartOutlineOutlinedIcon from "@mui/icons-material/PieChartOutlineOutl
 import RequestQuoteOutlinedIcon from "@mui/icons-material/RequestQuoteOutlined";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import VerifiedUserOutlinedIcon from "@mui/icons-material/VerifiedUserOutlined";
-import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Grid, MenuItem, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Grid, Stack, TextField, Typography } from "@mui/material";
 import { useEffect, useState, type ReactNode } from "react";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import FileRowActions from "@/components/shared/files/FileRowActions";
 import FileUploadButton from "@/components/shared/files/FileUploadButton";
 import { formatCurrency, toInputDate, translateKnownReimbursementText } from "@/features/reimbursements/formatters";
@@ -247,6 +248,10 @@ export default function ReimbursementClaimItemForm({ strClaimID, objItem, objOpt
     }
   }
 
+  const lstSalaryComponentSelectOptions = objOptions.lstSalaryComponents.map((objComponent) => ({
+    ...objComponent,
+    strLabel: translateKnownReimbursementText(getReimbursementTypeLabel(objComponent.strComponentName), t),
+  }));
   const objSelectedSalaryComponent = objOptions.lstSalaryComponents.find((dicComponent) => String(dicComponent.intID) === objForm.intSalaryComponentID) ?? null;
   const blnSelectedComponentProofRequired = isSupportingDocumentRequired(objSelectedSalaryComponent, objForm.blnProofRequired);
   const strReimbursementType = objItem?.strReimbursementType ?? objSelectedSalaryComponent?.strReimbursementType ?? "ctc_based";
@@ -284,10 +289,16 @@ export default function ReimbursementClaimItemForm({ strClaimID, objItem, objOpt
         <Stack spacing={1.3}>
           <Grid container spacing={1.2}>
             <Grid item xs={12} md={6}>
-              <TextField required select fullWidth size="small" label={t("reimbursement_type", "Reimbursement Type")} controlId="reimbursements.claim-item.payroll-component.select" inputProps={{ "controlId": "reimbursements.claim-item.payroll-component.select" }} value={objForm.intSalaryComponentID} disabled={blnReadOnly} onChange={(objEvent) => applySelectedSalaryComponent(objEvent.target.value)} InputProps={objReadOnlyProps} SelectProps={{ readOnly: blnReadOnly }}>
-                <MenuItem value="">{t("reimbursement_type", "Reimbursement Type")}</MenuItem>
-                {objOptions.lstSalaryComponents.map((objComponent) => <MenuItem controlId="reimbursements.claim-item.payroll-component.option" data-option-key={objComponent.intID} key={objComponent.intID} value={String(objComponent.intID)}>{translateKnownReimbursementText(getReimbursementTypeLabel(objComponent.strComponentName), t)}</MenuItem>)}
-              </TextField>
+              <CommonSearchableSelect
+                required
+                fullWidth
+                label={t("reimbursement_type", "Reimbursement Type")}
+                controlId="reimbursements.claim-item.payroll-component.select"
+                value={objForm.intSalaryComponentID ? Number(objForm.intSalaryComponentID) : ""}
+                options={lstSalaryComponentSelectOptions}
+                onChange={(intValue) => applySelectedSalaryComponent(intValue === "" ? "" : String(intValue))}
+                disabled={blnReadOnly}
+              />
               <Typography controlId="reimbursements.claim-item.supporting-document.label" sx={{ mt: 0.45, color: "#94a3b8", fontSize: "0.74rem", fontWeight: 400 }}>
                 {t("supporting_document", "Supporting Document")}:{" "}
                 <Typography component="span" sx={{ color: blnSelectedComponentProofRequired ? "#dc2626" : "#64748b", fontSize: "inherit", fontWeight: 400 }}>

@@ -1,8 +1,11 @@
 ﻿"use client";
 
 import Link from "next/link";
+import { withBasePath } from "@/lib/basePath";
+import "@/features/dashboard/ess-dashboard.css";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
+import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
 import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
 import AccountBalanceWalletRoundedIcon from "@mui/icons-material/AccountBalanceWalletRounded";
 import FingerprintRoundedIcon from "@mui/icons-material/FingerprintRounded";
@@ -15,11 +18,9 @@ import BadgeRoundedIcon from "@mui/icons-material/BadgeRounded";
 import CalendarTodayRoundedIcon from "@mui/icons-material/CalendarTodayRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import ErrorOutlineRoundedIcon from "@mui/icons-material/ErrorOutlineRounded";
-import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import DashboardCustomizeRoundedIcon from "@mui/icons-material/DashboardCustomizeRounded";
 import DescriptionRoundedIcon from "@mui/icons-material/DescriptionRounded";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import EventAvailableRoundedIcon from "@mui/icons-material/EventAvailableRounded";
 import GppGoodRoundedIcon from "@mui/icons-material/GppGoodRounded";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
@@ -38,7 +39,7 @@ import TimelineRoundedIcon from "@mui/icons-material/TimelineRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import MoreHorizRoundedIcon from "@mui/icons-material/MoreHorizRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
-import { Avatar, Box, Button, Chip, Grid, IconButton, Menu, MenuItem, Paper, Select, Stack, TextField, Tooltip, Typography, useMediaQuery } from "@mui/material";
+import { Avatar, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, IconButton, Menu, MenuItem, Paper, Select, Stack, TextField, Tooltip, Typography, useMediaQuery } from "@mui/material";
 
 import { useMyAttendance } from "@/features/attendance/hooks/useMyAttendance";
 import { useSetEssDashboardHeaderMode } from "@/components/layout/DashboardHeaderModeContext";
@@ -51,8 +52,6 @@ import {
 } from "@/features/dashboard/utils/essDashboardHelpers";
 import { employeeService } from "@/features/employee/services/employeeService";
 import type { EmployeeAddressRecord, EmployeeBankRecord, EmployeeDetailRecord, EmployeeFormOptions, EmployeeStatutoryRecord } from "@/features/employee/types";
-import { employeeSalaryService } from "@/features/employee-salary/services/employeeSalaryService";
-import type { EmployeeSalarySummaryRecord } from "@/features/employee-salary/types";
 import { leaveService } from "@/features/leave/services/leaveService";
 import { useEssPendingApprovals } from "@/features/dashboard/hooks/useEssPendingApprovals";
 import type { LeaveApplicationDto, LeaveBalanceDto } from "@/features/leave/types";
@@ -1801,27 +1800,43 @@ function QuickActionsPanel({ objWidget, t }: { objWidget?: DashboardWidget; t: R
       {lstActions.length ? (
         <Box
           sx={{
-            height: "100%",
             display: "grid",
-            gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
-            gridAutoRows: "1fr",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))",
+            gridAutoRows: "minmax(84px, auto)",
             gap: 1.25,
           }}
         >
           {lstActions.map((objAction) => (
-            <Link key={objAction.strActionCode} href={objAction.strRoutePath || "/dashboard"} style={{ display: "block", width: "100%", height: "100%", textDecoration: "none" }}>
-              <Paper sx={{ p: 1.4, height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", borderRadius: "16px", border: `1px solid ${DASHBOARD_COLORS.border}`, boxShadow: "none", backgroundColor: "#f8fafc" }}>
+            <Box
+              component={Link}
+              key={objAction.strActionCode}
+              href={objAction.strRoutePath || "/dashboard"}
+              data-control-id={`dashboard-quick-action-${objAction.strActionCode}`}
+              sx={{
+                display: "flex",
+                minWidth: 0,
+                textDecoration: "none",
+                borderRadius: "10px",
+                "&:hover > .MuiPaper-root": {
+                  borderColor: DASHBOARD_COLORS.blue,
+                  backgroundColor: "#EFF6FF",
+                  boxShadow: "0 4px 12px rgba(37,99,235,0.08)",
+                },
+                "&:focus-visible": { outline: `3px solid ${DASHBOARD_COLORS.blue}`, outlineOffset: 3 },
+              }}
+            >
+              <Paper sx={{ p: 1.5, width: "100%", minWidth: 0, boxSizing: "border-box", display: "flex", flexDirection: "column", justifyContent: "center", borderRadius: "10px", border: `1px solid ${DASHBOARD_COLORS.border}`, boxShadow: "none", backgroundColor: "#F8FAFC", transition: "border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease" }}>
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
                   <Box sx={{ width: 36, height: 36, borderRadius: "12px", backgroundColor: quickActionColor(objAction.strActionCode), display: "grid", placeItems: "center", flexShrink: 0 }}>
                     {renderQuickActionIcon(objAction.strActionCode)}
                   </Box>
-                  <Box sx={{ minWidth: 0 }}>
+                  <Box sx={{ minWidth: 0, overflowWrap: "anywhere" }}>
                     <Typography sx={{ fontWeight: 700, color: DASHBOARD_COLORS.text, fontSize: "0.82rem", lineHeight: 1.3 }}>{objAction.strActionName}</Typography>
                     <Typography sx={{ mt: 0.2, color: DASHBOARD_COLORS.muted, fontSize: "0.72rem", lineHeight: 1.35 }}>{quickActionSubtitle(objAction.strActionCode, t)}</Typography>
                   </Box>
                 </Stack>
               </Paper>
-            </Link>
+            </Box>
           ))}
         </Box>
       ) : (
@@ -1883,10 +1898,9 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
   const [objEmployeeAddress, setObjEmployeeAddress] = useState<EmployeeAddressRecord | null>(null);
   const [objEmployeeBank, setObjEmployeeBank] = useState<EmployeeBankRecord | null>(null);
   const [objEmployeeStatutory, setObjEmployeeStatutory] = useState<EmployeeStatutoryRecord | null>(null);
-  const [objEmployeeSalarySummary, setObjEmployeeSalarySummary] = useState<EmployeeSalarySummaryRecord | null>(null);
   const [lstEssLeaveBalances, setLstEssLeaveBalances] = useState<LeaveBalanceDto[]>([]);
   const [lstEssLeaveApplications, setLstEssLeaveApplications] = useState<LeaveApplicationDto[]>([]);
-  const [objMoreShortcutsAnchor, setObjMoreShortcutsAnchor] = useState<HTMLElement | null>(null);
+  const [strOpenDialog, setStrOpenDialog] = useState<"details" | "announcements" | null>(null);
   const setEssDashboardHeaderMode = useSetEssDashboardHeaderMode();
 
   useEffect(() => {
@@ -1910,20 +1924,20 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
     shellMuted: "#66779F",
     hero: "linear-gradient(90deg, #F7FAFF 0%, #EDF4FC 48%, #DCEAF8 100%)",
     heroGlow: "radial-gradient(circle at top right, rgba(153, 191, 255, 0.22), rgba(153, 191, 255, 0) 62%)",
-    navy: "#22345F",
-    blue: "#285CFF",
-    green: "#16A34A",
-    orange: "#F97316",
+    navy: "#0b1641",
+    blue: "#245cff",
+    green: "#129541",
+    orange: "#f76d13",
     violet: "#6D28D9",
     teal: "#0EA5A4",
     red: "#EF4444",
     card: "linear-gradient(135deg, #FCFEFF 0%, #F6FBFF 56%, #F2FBF6 100%)",
-    border: "#DCE7F7",
-    muted: "#667085",
-    body: "#4E6288",
-    softBlue: "#EEF4FF",
-    softGreen: "#ECFDF5",
-    softOrange: "#FFF7ED",
+    border: "#e2ecfa",
+    muted: "#5c6d8d",
+    body: "#5c6d8d",
+    softBlue: "#f3f7ff",
+    softGreen: "#e9fbf1",
+    softOrange: "#fff4e8",
     softViolet: "#F3E8FF",
     softRed: "#FEF2F2",
   };
@@ -1945,6 +1959,7 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
   const objComplianceWidget = lstWidgets.find((objWidget) => objWidget.strWidgetCode === "compliance_health");
   const objAttendanceWidget = lstWidgets.find((objWidget) => objWidget.strWidgetCode === "attendance_snapshot");
   const objLeaveWidget = lstWidgets.find((objWidget) => objWidget.strWidgetCode === "leave_summary");
+  const lstAnnouncements = ((lstWidgets.find(widget => widget.strWidgetCode === "announcements")?.objPayload as { lstItems?: InfoCardRow[] } | undefined)?.lstItems || []);
   const objWelcome = (objWelcomeWidget?.objPayload || {}) as Record<string, unknown>;
   const objPay = (objPayWidget?.objPayload || {}) as Record<string, unknown>;
   const objProfile = (objProfileWidget?.objPayload || {}) as Record<string, unknown>;
@@ -2011,55 +2026,24 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
     const intEmployeeID = intCurrentEmployeeID;
 
     async function loadEssProfileReferenceData() {
-      try {
-        const [dicEmployee, dicOptions, lstProfileDetails] = await Promise.all([
-          employeeService.getEmployeeById(intEmployeeID),
-          employeeService.getFormOptions(),
-          Promise.allSettled([
-            employeeService.getEmployeeAddress(intEmployeeID),
-            employeeService.getEmployeeBankAccount(intEmployeeID),
-            employeeService.getEmployeeStatutory(intEmployeeID),
-            employeeSalaryService.getEmployeeSalarySummary(intEmployeeID),
-            leaveService.getMyBalances(),
-            leaveService.listMyApplications(),
-          ]),
-        ]);
+      const [objEmployee, objOptions, objAddress, objBank, objStatutory, objLeaveBalances, objLeaveApplications] = await Promise.allSettled([
+        employeeService.getEmployeeById(intEmployeeID),
+        employeeService.getFormOptions(),
+        employeeService.getEmployeeAddress(intEmployeeID),
+        employeeService.getEmployeeBankAccount(intEmployeeID),
+        employeeService.getEmployeeStatutory(intEmployeeID),
+        leaveService.getMyBalances(),
+        leaveService.listMyApplications(),
+      ]);
 
-        if (!blnMounted) {
-          return;
-        }
-
-        setObjEmployeeProfile(dicEmployee);
-        setObjEmployeeOptions(dicOptions);
-
-        if (lstProfileDetails[0].status === "fulfilled") {
-          setObjEmployeeAddress(lstProfileDetails[0].value);
-        }
-
-        if (lstProfileDetails[1].status === "fulfilled") {
-          setObjEmployeeBank(lstProfileDetails[1].value);
-        }
-
-        if (lstProfileDetails[2].status === "fulfilled") {
-          setObjEmployeeStatutory(lstProfileDetails[2].value);
-        }
-
-        if (lstProfileDetails[3].status === "fulfilled") {
-          setObjEmployeeSalarySummary(lstProfileDetails[3].value);
-        }
-
-        if (lstProfileDetails[4].status === "fulfilled") {
-          setLstEssLeaveBalances(lstProfileDetails[4].value);
-        }
-
-        if (lstProfileDetails[5].status === "fulfilled") {
-          setLstEssLeaveApplications(lstProfileDetails[5].value);
-        }
-      } catch {
-        if (!blnMounted) {
-          return;
-        }
-      }
+      if (!blnMounted) return;
+      if (objEmployee.status === "fulfilled") setObjEmployeeProfile(objEmployee.value);
+      if (objOptions.status === "fulfilled") setObjEmployeeOptions(objOptions.value);
+      if (objAddress.status === "fulfilled") setObjEmployeeAddress(objAddress.value);
+      if (objBank.status === "fulfilled") setObjEmployeeBank(objBank.value);
+      if (objStatutory.status === "fulfilled") setObjEmployeeStatutory(objStatutory.value);
+      if (objLeaveBalances.status === "fulfilled") setLstEssLeaveBalances(objLeaveBalances.value);
+      if (objLeaveApplications.status === "fulfilled") setLstEssLeaveApplications(objLeaveApplications.value);
     }
 
     loadEssProfileReferenceData().catch(() => undefined);
@@ -2079,26 +2063,12 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
   const strEmployeeName = strContextEmployeeNameForGreeting || "Employee";
   const strAvatarUrl = objUserContext.strAvatarUrl || objUserContext.objEmployee?.strProfilePhotoUrl || "";
   const strAuthenticatedAvatarUrl = useAuthenticatedAvatar(strAvatarUrl);
-  const strJoinedOn = objEmployeeProfile?.dtDateOfJoining
-    ? formatDateLabel(String(objEmployeeProfile.dtDateOfJoining), t)
-    : objWelcome.strJoinedOn
-      ? formatDateLabel(String(objWelcome.strJoinedOn), t)
-      : t("not_available", "Not available");
-  const strDesignation = String(objWelcome.strDesignationName || "Employee");
   const strDepartment = objEmployeeProfile
     ? resolveEmployeeLookupLabel(objEmployeeOptions?.lstDepartments, objEmployeeProfile.intDepartmentID, "-")
     : String(objWelcome.strDepartmentName || "-");
   const strLocation = objEmployeeProfile
     ? resolveEmployeeLookupLabel(objEmployeeOptions?.lstLocations, objEmployeeProfile.intLocationID, "-")
     : String(objWelcome.strLocationName || "-");
-  const strEmployeeCode = String(objEmployeeProfile?.strEmployeeCode || objWelcome.strEmployeeCode || objUserContext.objEmployee?.strEmployeeCode || "-");
-  const strReportingManager = objEmployeeProfile
-    ? resolveEmployeeLookupLabel(objEmployeeOptions?.lstManagers, objEmployeeProfile.intManagerEmployeeID, t("not_assigned", "Not assigned"))
-    : String(objWelcome.strReportingManager || t("not_assigned", "Not assigned"));
-  const strWorkEmail = String(objEmployeeProfile?.strWorkEmail || objWelcome.strWorkEmail || objUserContext.objUser.strEmailAddress || "-");
-  const strEmploymentType = objEmployeeProfile
-    ? resolveEmployeeLookupLabel(objEmployeeOptions?.lstEmploymentTypes, objEmployeeProfile.intEmploymentTypeID, "-")
-    : String(objWelcome.strEmploymentType || "-");
   const lstComplianceChecks = lstComplianceChecksPayload;
   const objProfileCompleteness = calculateEssProfileCompleteness({
     objEmployeeProfile,
@@ -2111,8 +2081,9 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
     objProfilePayload: objProfile,
     lstComplianceChecks,
   });
-  const intProfileCompletionPercent = objProfileCompleteness.intPercent;
-  const lstProfileChartPoints = ((objProfile.lstPoints as ChartPoint[]) || []);
+  const decProfileRingPercent = objProfileCompleteness.intTotalCount > 0
+    ? Math.max(0, Math.min(100, (objProfileCompleteness.intCompletedCount / objProfileCompleteness.intTotalCount) * 100))
+    : 0;
   const lstReimbursementStats = ((((objReimbursementWidget?.objPayload as { lstStats?: SummaryStat[] } | undefined)?.lstStats) || []) as SummaryStat[]);
   const intTotalClaims = Number(lstReimbursementStats.find((objStat) => objStat.strLabel.toLowerCase().includes("total claims"))?.intValue || 0);
   const intApprovedClaims = Number(lstReimbursementStats.find((objStat) => objStat.strLabel.toLowerCase().includes("approved"))?.intValue || 0);
@@ -2120,48 +2091,24 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
   const decApprovedClaimAmount = Number(lstReimbursementStats.find((objStat) => objStat.strLabel.toLowerCase().includes("approved amount"))?.decValue || 0);
   const decPaidClaimAmount = Number(lstReimbursementStats.find((objStat) => objStat.strLabel.toLowerCase().includes("paid amount"))?.decValue || 0);
   const strItStatus = String((objItWidget?.objPayload as Record<string, unknown> | undefined)?.strStatus || "not started");
-  const intProofPendingCount = Number((objItWidget?.objPayload as Record<string, unknown> | undefined)?.intProofPendingCount || 0);
-  const strItSubmittedOn = (objItWidget?.objPayload as Record<string, unknown> | undefined)?.dtSubmittedOn
-    || (objItWidget?.objPayload as Record<string, unknown> | undefined)?.strSubmittedOn;
   const strItDeclarationType = String((objItWidget?.objPayload as Record<string, unknown> | undefined)?.strDeclarationType || "");
   const decItApprovedAmount = Number((objItWidget?.objPayload as Record<string, unknown> | undefined)?.decApprovedAmount || 0);
   const decItProofPendingAmount = Number((objItWidget?.objPayload as Record<string, unknown> | undefined)?.decProofPendingAmount || 0);
   const strItDueDate = String((objItWidget?.objPayload as Record<string, unknown> | undefined)?.strSubmissionDueDate || "");
   const strLatestClaimStatus = String((objReimbursementWidget?.objPayload as Record<string, unknown> | undefined)?.strLatestClaimStatus || "").trim();
-  const strPayslipNumber = String(objPay.strPayslipNumber || "").trim();
-  const decSalaryGrossMonthly = Number(objEmployeeSalarySummary?.objCurrentSalarySnapshot?.decGrossMonthly || 0);
-  const blnHasPayrollResult = Number(objPay.decValue || 0) > 0 || Boolean(strPayslipNumber) || lstPayslips.length > 0;
-  const decGrossEarnings = blnHasPayrollResult && Number(objPay.decGrossEarnings || 0) > 0 ? Number(objPay.decGrossEarnings || 0) : decSalaryGrossMonthly;
-  const decNetPay = blnHasPayrollResult && Number(objPay.decValue || 0) > 0 ? Number(objPay.decValue || 0) : decSalaryGrossMonthly;
-  const decTotalDeductions = Number(objPay.decTotalDeductions || 0) > 0
-    ? Number(objPay.decTotalDeductions || 0)
-    : Math.max(decGrossEarnings - decNetPay, 0);
-  const strCurrentMonthPaySubtitle = translateDashboardText(String(
-    objPay.strSubtitle
-    || objEmployeeSalarySummary?.objCurrentSalarySnapshot?.dtEffectiveFrom
-    || "Current Month"
-  ), t);
-  const strCurrentMonthPayslipHref = resolveCurrentMonthPayslipHref(lstPayslips, blnHasPayrollResult);
-  const strCurrentMonthPayTitle = blnHasPayrollResult ? t("current_month_pay", "Current Month Pay") : t("salary_estimate", "Salary Estimate");
-  const strDashboardTitle = t("ess_dashboard_heading", "Dashboard");
-  const strDashboardSubtitle = t("welcome_back", "Welcome back");
-  const lstTopNav = [
-    { strLabel: t("my_profile", "My Profile"), strRoutePath: ESS_SHORTCUT_ROUTES.myProfile, objIcon: <ManageAccountsRoundedIcon sx={{ fontSize: 18 }} /> },
-    { strLabel: t("my_attendance", "My Attendance"), strRoutePath: ESS_SHORTCUT_ROUTES.myAttendance, objIcon: <AccessTimeRoundedIcon sx={{ fontSize: 18 }} /> },
-    { strLabel: t("apply_leave", "Apply Leave"), strRoutePath: ESS_SHORTCUT_ROUTES.applyLeave, objIcon: <EventAvailableRoundedIcon sx={{ fontSize: 18 }} /> },
-    { strLabel: t("my_compensation", "My Compensation"), strRoutePath: ESS_SHORTCUT_ROUTES.myCompensation, objIcon: <PaymentsRoundedIcon sx={{ fontSize: 18 }} /> },
-    { strLabel: t("my_payslips", "My Pay Slips"), strRoutePath: ESS_SHORTCUT_ROUTES.myPayslips, objIcon: <ReceiptLongRoundedIcon sx={{ fontSize: 18 }} /> },
-    { strLabel: t("it_declaration", "IT Declaration"), strRoutePath: ESS_SHORTCUT_ROUTES.itDeclaration, objIcon: <DescriptionRoundedIcon sx={{ fontSize: 18 }} /> },
-    { strLabel: t("flexi_pay_declaration", "Flexi Pay"), strRoutePath: ESS_SHORTCUT_ROUTES.flexiPay, objIcon: <AssignmentTurnedInRoundedIcon sx={{ fontSize: 18 }} /> },
-    { strLabel: t("reimbursements", "Reimbursements"), strRoutePath: ESS_SHORTCUT_ROUTES.reimbursements, objIcon: <AccountBalanceWalletRoundedIcon sx={{ fontSize: 18 }} /> },
-  ];
-  const lstVisibleTopNav = lstTopNav.slice(0, 6);
-  const lstOverflowTopNav = lstTopNav.slice(6);
-  const lstHeroDetails = [
-    { strLabel: t("reporting_manager", "Reporting Manager"), strValue: strReportingManager, objIcon: <PeopleAltRoundedIcon sx={{ fontSize: 18 }} /> },
-    { strLabel: t("work_email", "Work Email"), strValue: strWorkEmail, objIcon: <ArticleRoundedIcon sx={{ fontSize: 18 }} /> },
-    { strLabel: t("employment_type", "Employment Type"), strValue: strEmploymentType, objIcon: <AssignmentTurnedInRoundedIcon sx={{ fontSize: 18 }} /> },
-    { strLabel: t("joined_on", "Joined On"), strValue: strJoinedOn, objIcon: <CalendarTodayRoundedIcon sx={{ fontSize: 18 }} /> },
+  const objLatestPayslip = [...lstPayslips].sort((a, b) => String(b.payroll_month || "").localeCompare(String(a.payroll_month || "")))[0];
+  const strLatestPayslipMonth = objLatestPayslip
+    ? formatLongMonth(objLatestPayslip.payroll_month, t)
+    : translateDashboardText(String(objPay.strSubtitle || ""), t);
+  const blnHasPayslip = Boolean(objLatestPayslip || objPay.strPayslipNumber);
+  const strPayslipHref = resolveCurrentMonthPayslipHref(objLatestPayslip ? [objLatestPayslip] : [], blnHasPayslip);
+  const strEmploymentStatus = objEmployeeProfile?.strEmploymentStatus;
+  const strTodayWeekday = new Intl.DateTimeFormat(shouldUseHindiDashboardFallback(t) ? "hi-IN" : "en-IN", { weekday: "long" }).format(new Date(`${getTodayIsoDate()}T12:00:00`));
+  const lstShortcuts = [
+    { strLabel: t("apply_leave", "Apply Leave"), strRoutePath: ESS_SHORTCUT_ROUTES.applyLeave, objIcon: <EventAvailableRoundedIcon />, strTone: "blue" },
+    { strLabel: t("my_compensation", "My Compensation"), strRoutePath: ESS_SHORTCUT_ROUTES.myCompensation, objIcon: <PaymentsRoundedIcon />, strTone: "orange" },
+    { strLabel: t("it_declaration", "IT Declaration"), strRoutePath: ESS_SHORTCUT_ROUTES.itDeclaration, objIcon: <DescriptionRoundedIcon />, strTone: "teal" },
+    { strLabel: t("reimbursements", "Reimbursements"), strRoutePath: ESS_SHORTCUT_ROUTES.reimbursements, objIcon: <AccountBalanceWalletRoundedIcon />, strTone: "green" },
   ];
   const objAttendance = (objAttendanceWidget?.objPayload || {}) as Record<string, unknown>;
   const objLeave = (objLeaveWidget?.objPayload || {}) as Record<string, unknown>;
@@ -2173,510 +2120,281 @@ function EssDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboardPro
   const strAttendancePunchOut = objLiveAttendanceDay?.strLastOut
     ? String(objLiveAttendanceDay.strLastOut).slice(0, 5)
     : objAttendance.strPunchOut ? String(objAttendance.strPunchOut).slice(0, 5) : "-";
-  const strAttendanceWorkingHours = objLiveAttendanceDay && Number.isFinite(objLiveAttendanceDay.decWorkedHours)
-    ? `${objLiveAttendanceDay.decWorkedHours} hrs`
-    : objAttendance.strWorkingHours ? `${objAttendance.strWorkingHours} hrs` : "-";
   const decLiveLeaveBalance = lstEssLeaveBalances.reduce((decTotal, objBalance) => decTotal + Number(objBalance.decAvailable || 0), 0);
-  const decLiveUsedLeave = lstEssLeaveBalances.reduce((decTotal, objBalance) => decTotal + Number(objBalance.decAvailed || 0), 0);
   const blnHasLiveLeaveBalances = lstEssLeaveBalances.length > 0;
   const decLeaveBalance = blnHasLiveLeaveBalances ? decLiveLeaveBalance : Number(objLeave.decLeaveBalance || 0);
-  const decUsedLeave = blnHasLiveLeaveBalances ? decLiveUsedLeave : Number(objLeave.decUsedLeave || objLeave.decAvailedLeave || 0);
   const intPendingLeaveRequests = lstEssLeaveApplications.length
     ? lstEssLeaveApplications.filter((objApplication) => String(objApplication.strStatus || "").toLowerCase() === "pending").length
     : Number(objLeave.intPendingLeaveRequests || 0);
-  const objUpcomingLeaveApplication = getUpcomingEssLeaveApplication(lstEssLeaveApplications);
-  const strUpcomingLeave = objUpcomingLeaveApplication
-    ? formatEssLeaveApplicationLabel(objUpcomingLeaveApplication, t)
-    : String(objLeave.strUpcomingLeave || "");
-  const strNextHoliday = String(objLeave.strNextHoliday || "");
+  const lstRecentRequests = [...lstEssLeaveApplications]
+    .sort((a, b) => String(b.dtAppliedOn || "").localeCompare(String(a.dtAppliedOn || "")))
+    .slice(0, 2);
+  const objAnnouncement = lstAnnouncements[0];
+  const strAnnouncementTitle = t("announcements", "Announcements");
+  const strDetailsTitle = t("more_details", "More details");
 
   return (
-    <Stack
-      sx={{
-        px: 0,
-        py: 0.5,
-        gap: 1,
-      }}
-    >
-      <Box className="pageBanner" sx={{ display: "block", p: { xs: 1.5, md: 2 }, borderRadius: "28px", boxShadow: "0 14px 32px rgba(120, 144, 186, 0.16)" }}>
-        <Box className="bannerDots" />
-        <Stack direction="row" justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }} spacing={1.5} sx={{ mb: 1.8, position: "relative", zIndex: 1 }}>
-          <Box>
-            <Typography sx={{ color: "#ffffff", fontWeight: 800, fontSize: { xs: "1.65rem", md: "2rem" }, letterSpacing: "-0.03em" }}>
-              {strDashboardTitle}
-            </Typography>
-            <Typography sx={{ mt: 0.35, color: "rgba(241,245,249,0.92)", fontSize: "1rem", fontWeight: 600 }}>
-              {strDashboardSubtitle}
-            </Typography>
-          </Box>
-        </Stack>
+    <div className="ess-dashboard ess-dashboard-layout">
+      <section className="ess-welcome" style={{ backgroundImage: `url("${withBasePath("/images/ESSBanner.png")}")` }} aria-label={t("welcome_back", "Welcome back")}>
+        <div className="ess-identity">
+          <Avatar src={strAuthenticatedAvatarUrl || undefined} className="ess-employee-avatar">{getInitials(strEmployeeName)}</Avatar>
+          <div>
+            <Typography className="ess-greeting">{t("welcome_back", "Welcome back")},</Typography>
+            <div className="ess-identity-name">
+              <Typography component="h2" className="ess-employee-name" title={strEmployeeName}>{strEmployeeName}</Typography>
+              {strEmploymentStatus && <Chip size="small" className={`badge ${strEmploymentStatus.toLowerCase() === "active" ? "approved" : ""}`} label={resolveStatusLabel(strEmploymentStatus, t)} />}
+            </div>
+          </div>
+        </div>
+        <HeroStat strLabel={t("department", "Department")} strValue={strDepartment} objIcon={<ApartmentRoundedIcon />} />
+        <HeroStat strLabel={t("location", "Location")} strValue={strLocation} objIcon={<LocationOnRoundedIcon />} />
+        <HeroStat strLabel={formatDateLabel(getTodayIsoDate(), t)} strValue={strTodayWeekday} objIcon={<CalendarTodayRoundedIcon />} />
+        <div className="progress-ring" role="progressbar" aria-label={t("profile_completeness", "Profile Completeness")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(decProfileRingPercent)} style={{ background: `conic-gradient(#16ad50 ${decProfileRingPercent}%, #d8e6fa 0)` }}>
+          <div><strong>{objProfileCompleteness.intCompletedCount}/{objProfileCompleteness.intTotalCount}</strong><small>{t("complete", "Complete")}</small></div>
+        </div>
+        <Link className="text-link" href={ESS_SHORTCUT_ROUTES.myProfile}>{t("view_profile", "View Profile")}<ArrowForwardRoundedIcon /></Link>
+      </section>
 
-        <Stack
-          direction="row"
-          spacing={{ xs: 0.6, sm: 1 }}
-          alignItems="center"
-          justifyContent="flex-end"
-          sx={{
-            flexWrap: "nowrap",
-            overflow: "hidden",
-            p: 0.7,
-            borderRadius: "22px",
-            backgroundColor: "rgba(255,255,255,0.35)",
-            border: "1px solid rgba(255,255,255,0.35)",
-            position: "relative",
-            zIndex: 1,
-            width: "fit-content",
-            maxWidth: "100%",
-            ml: "auto",
-          }}
-        >
-          {lstVisibleTopNav.map((objItem) => (
-            <Link key={objItem.strLabel} href={objItem.strRoutePath} style={{ textDecoration: "none", flexShrink: 0 }}>
-              <Stack
-                direction="row"
-                spacing={0.6}
-                alignItems="center"
-                sx={{
-                  px: { xs: 1, sm: 1.45 },
-                  py: { xs: 0.7, sm: 1.05 },
-                  borderRadius: "14px",
-                  backgroundColor: "#FFFFFF",
-                  color: ESS_COLORS.shellText,
-                  minHeight: { xs: 40, sm: 48 },
-                  whiteSpace: "nowrap",
-                  boxShadow: "0 6px 14px rgba(20, 40, 90, 0.08)",
-                  "&:hover": { backgroundColor: "#F3F6FF" },
-                }}
-              >
-                {objItem.objIcon}
-                <Typography sx={{ fontWeight: 700, fontSize: { xs: "0.72rem", sm: "0.88rem" }, whiteSpace: "nowrap" }}>{objItem.strLabel}</Typography>
-              </Stack>
+      <section className="card quick-actions">
+        <div className="card-header">
+          <Typography component="h2" className="ess-section-title">{t("quick_actions", "Quick Actions")}</Typography>
+          <button type="button" className="text-link ess-text-button" aria-haspopup="dialog" onClick={() => setStrOpenDialog("details")}>{strDetailsTitle}</button>
+        </div>
+        <div className="action-grid">
+          {lstShortcuts.map(({ strRoutePath, strLabel, objIcon, strTone }) => (
+            <Link key={strRoutePath} href={strRoutePath} className={`action-tile ess-shortcut-${strTone}`}>
+              <span className="icon-box">{objIcon}</span><span><strong>{strLabel}</strong></span><ChevronRightRoundedIcon />
             </Link>
           ))}
-          {lstOverflowTopNav.length ? (
-            <>
-              <IconButton
-                aria-label={t("more_shortcuts", "More shortcuts")}
-                onClick={(objEvent) => setObjMoreShortcutsAnchor(objEvent.currentTarget)}
-                sx={{
-                  flexShrink: 0,
-                  color: ESS_COLORS.shellText,
-                  backgroundColor: "rgba(255,255,255,0.6)",
-                  "&:hover": { backgroundColor: "rgba(255,255,255,0.85)" },
-                }}
-              >
-                <MoreHorizRoundedIcon />
-              </IconButton>
-              <Menu
-                anchorEl={objMoreShortcutsAnchor}
-                open={Boolean(objMoreShortcutsAnchor)}
-                onClose={() => setObjMoreShortcutsAnchor(null)}
-                anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-                transformOrigin={{ vertical: "top", horizontal: "right" }}
-              >
-                {lstOverflowTopNav.map((objItem) => (
-                  <MenuItem
-                    key={objItem.strLabel}
-                    component={Link}
-                    href={objItem.strRoutePath}
-                    onClick={() => setObjMoreShortcutsAnchor(null)}
-                  >
-                    <Stack direction="row" spacing={1.2} alignItems="center">
-                      {objItem.objIcon}
-                      <Typography sx={{ fontWeight: 600, fontSize: "0.88rem" }}>{objItem.strLabel}</Typography>
-                    </Stack>
-                  </MenuItem>
-                ))}
-              </Menu>
-            </>
+        </div>
+      </section>
+
+      <div className="ess-card-grid">
+        <section className="card ess-summary-card">
+          <SectionHeader strTitle={t("attendance_today", "Attendance Today")} strTone="blue" objIcon={<AccessTimeRoundedIcon />} />
+          <div className="ess-summary-content">
+            <div className="ess-attendance-status">
+              <Chip className={`badge ${strAttendancePunchIn === "-" ? "pending" : ""}`} size="small" label={strAttendancePunchIn === "-" ? t("not_punched_in", "Not punched in") : resolveStatusLabel(strAttendanceTodayStatus, t)} />
+              {strAttendancePunchIn !== "-" && <Typography className="ess-punch-times">{t("punch_in", "Punch In")} {strAttendancePunchIn}{strAttendancePunchOut !== "-" && ` · ${t("punch_out", "Punch Out")} ${strAttendancePunchOut}`}</Typography>}
+            </div>
+            <Button
+              className="primary-button"
+              data-control-id="ess.dashboard.punch.button"
+              variant="contained"
+              size="small"
+              onClick={handlePunch}
+              disabled={objPunchButtonState.blnDisabled}
+              startIcon={<FingerprintRoundedIcon sx={{ fontSize: 18 }} />}
+              sx={{
+                borderRadius: "12px",
+                px: 1.6,
+                textTransform: "none",
+                fontWeight: 700,
+                fontSize: "0.76rem",
+                backgroundColor: objPunchButtonState.strDirection === "out" ? ESS_COLORS.orange : ESS_COLORS.blue,
+              }}
+            >
+              {blnPunching
+                ? t("punching", "Punching...")
+                : blnAttendanceOverviewLoading && !objAttendanceOverview
+                  ? t("loading", "Loading...")
+                  : objPunchButtonState.strDirection === "out"
+                    ? t("punch_out", "Punch Out")
+                    : t("punch_in", "Punch In")}
+            </Button>
+          </div>
+          {strPunchError ? (
+            <Typography sx={{ mt: 0.5, color: ESS_COLORS.red, fontSize: "0.68rem" }}>{strPunchError}</Typography>
+          ) : strPunchSuccessMessage ? (
+            <Typography sx={{ mt: 0.5, color: ESS_COLORS.green, fontSize: "0.68rem", fontWeight: 700 }}>{strPunchSuccessMessage}</Typography>
+          ) : objAttendanceOverview && !objAttendanceOverview.blnCanPunch ? (
+            <Typography sx={{ mt: 0.5, color: ESS_COLORS.muted, fontSize: "0.68rem" }}>
+              {t(
+                `unavailable_${objAttendanceOverview.strUnavailableReasonCode ?? "unknown"}`,
+                objAttendanceOverview.strUnavailableReasonCode === "ATTENDANCE_POLICY_NOT_FOUND"
+                  ? "No attendance policy applies today."
+                  : "Attendance punching is unavailable today."
+              )}
+            </Typography>
           ) : null}
-        </Stack>
-      </Box>
+          <div className="ess-summary-footer">
+            <FooterLink strHref={ESS_SHORTCUT_ROUTES.myAttendance} strLabel={t("view_attendance", "View Attendance")} strColor={ESS_COLORS.blue} />
+            {blnIsRegularizationApprover && <Link className="text-link" data-control-id="ess.dashboard.pending-approvals.button" href="/ess/attendance/regularization/approvals">{t("pending_approvals", "Pending Approvals")} ({intPendingRegularizationApprovals})</Link>}
+          </div>
+        </section>
 
-      {/* Row 1: Profile Completeness, Profile & Compliance Health, Attendance Today */}
-      <Grid
-        container
-        spacing={1.5}
-        alignItems="stretch"
-        sx={{ ml: -1.5, width: "calc(100% + 12px)" }}
-      >
-        <Grid item xs={12} lg={6} sx={{ display: "flex" }}>
-          <Paper
-            sx={{
-              ...objWhiteCardSx,
-              p: 0,
-              overflow: "hidden",
-              background: ESS_COLORS.hero,
-              position: "relative",
-              border: "1px solid #D7E4F2",
-              borderRadius: "28px",
-              boxShadow: "0 4px 14px rgba(29, 93, 150, 0.08)",
-            }}
-          >
-            <Box sx={{ position: "absolute", inset: 0, background: ESS_COLORS.heroGlow, pointerEvents: "none" }} />
-            <Box sx={{ p: { xs: 1.6, md: 2.1 }, position: "relative", zIndex: 1 }}>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.6} alignItems={{ xs: "flex-start", sm: "center" }}>
-                <Box sx={{ position: "relative" }}>
-                  <Avatar src={strAuthenticatedAvatarUrl || undefined} sx={{ width: 88, height: 88, border: "3px solid rgba(255,255,255,0.92)", boxShadow: "0 14px 30px rgba(146, 163, 196, 0.2)" }}>{getInitials(strEmployeeName)}</Avatar>
-                  <Box sx={{ position: "absolute", right: 2, bottom: 2, width: 16, height: 16, borderRadius: "50%", backgroundColor: "#22C55E", border: "2px solid white" }} />
-                </Box>
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: "wrap" }} useFlexGap>
-                    <Typography sx={{ color: ESS_COLORS.navy, fontWeight: 800, fontSize: { xs: "1.7rem", md: "2rem" }, letterSpacing: "-0.02em" }}>{strEmployeeName}</Typography>
-                    <Chip label={strDesignation} size="small" sx={{ backgroundColor: "#DDE8FF", color: ESS_COLORS.blue, fontWeight: 700 }} />
-                  </Stack>
-                  <Grid container spacing={1.3} sx={{ mt: 1.05, mx: 0, width: "100%" }}>
-                    <Grid item xs={12} sm={4}>
-                      <HeroStat strLabel={t("emp_code", "Emp Code")} strValue={strEmployeeCode} />
-                    </Grid>
-                    <Grid item xs={12} sm={4}>
-                      <HeroStat strLabel={t("department", "Department")} strValue={strDepartment} />
-                    </Grid>
-                    <Grid item xs={12} sm={4}>
-                      <HeroStat strLabel={t("location", "Location")} strValue={strLocation} />
-                    </Grid>
-                  </Grid>
-                </Box>
-              </Stack>
+        <section className="card ess-summary-card">
+          <SectionHeader strTitle={t("leave_balance", "Leave Balance")} strTone="green" objIcon={<EventAvailableRoundedIcon />} />
+          <div className="ess-leave-overview balance-line">
+            <div>
+              <Typography component="div" className="ess-leave-available big-number">{formatLeaveBalanceMetric(decLeaveBalance)} <span>{t("days", "days")}</span></Typography>
+              <Typography className="ess-leave-label">{t("available_balance", "Available Balance")}</Typography>
+            </div>
+            {intPendingLeaveRequests > 0 && <Chip className="badge pending" size="small" label={`${intPendingLeaveRequests} ${t("pending", "Pending")}`} sx={{ backgroundColor: ESS_COLORS.softOrange, color: ESS_COLORS.orange, fontWeight: 700 }} />}
+          </div>
 
-              <Grid container spacing={1.15} sx={{ mt: 1.6 }}>
-                {lstHeroDetails.map((objItem) => (
-                  <Grid key={objItem.strLabel} item xs={12} sm={6} md={3} sx={{ minWidth: 0 }}>
-                    <Box sx={{ p: 1.15, minHeight: 84, borderRadius: "14px", backgroundColor: "rgba(255,255,255,0.5)", border: "1px solid rgba(208, 222, 245, 0.9)" }}>
-                      <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
-                        <Box sx={{ width: 32, height: 32, borderRadius: "10px", backgroundColor: "#E5EEFF", color: ESS_COLORS.blue, display: "grid", placeItems: "center", flexShrink: 0 }}>
-                          {objItem.objIcon}
-                        </Box>
-                        <Box sx={{ minWidth: 0 }}>
-                          <Typography sx={{ color: "#6C7EA5", fontSize: "0.7rem" }}>{objItem.strLabel}</Typography>
-                          <Typography
-                            sx={{
-                              color: ESS_COLORS.navy,
-                              fontWeight: 700,
-                              fontSize: "0.84rem",
-                              lineHeight: 1.35,
-                              minWidth: 0,
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            }}
-                            title={objItem.strValue}
-                          >
-                            {objItem.strValue}
-                          </Typography>
-                        </Box>
-                      </Stack>
-                    </Box>
-                  </Grid>
-                ))}
-              </Grid>
+          <div className="ess-summary-footer">
+            <FooterLink strHref="/ess/leave-balance" strLabel={t("view_leave_balance", "View Leave Balance")} strColor={ESS_COLORS.blue} />
+            {blnIsLeaveApprover && <Link className="text-link" data-control-id="ess.dashboard.pending-approvals.button" href="/ess/leave/approvals">{t("pending_approvals", "Pending Approvals")} ({intPendingLeaveApprovals})</Link>}
+          </div>
+        </section>
 
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.1} alignItems={{ xs: "stretch", sm: "center" }} sx={{ mt: 1.6 }}>
-                <Typography sx={{ color: ESS_COLORS.navy, fontWeight: 700, minWidth: 150 }}>{t("profile_completeness", "Profile Completeness")}</Typography>
-                <Box
-                  role="progressbar"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={intProfileCompletionPercent}
-                  title={`${objProfileCompleteness.intCompletedCount}/${objProfileCompleteness.intTotalCount} ${t("profile_checks_complete", "profile checks complete")}`}
-                  sx={{ flex: 1, height: 10, borderRadius: "999px", backgroundColor: "rgba(214, 226, 248, 0.9)", overflow: "hidden" }}
-                >
-                  <Box sx={{ width: `${intProfileCompletionPercent}%`, height: "100%", background: "linear-gradient(90deg, #285CFF 0%, #16A34A 100%)", transition: "width 360ms ease" }} />
-                </Box>
-                <Typography sx={{ color: ESS_COLORS.navy, fontWeight: 700 }}>{`${intProfileCompletionPercent}% ${t("complete", "Complete")}`}</Typography>
-                <Link href="/ess/my-profile" style={{ textDecoration: "none" }}>
-                  <Button variant="outlined" endIcon={<ArrowForwardRoundedIcon />} sx={{ color: ESS_COLORS.blue, borderColor: "#C7D9F8", backgroundColor: "rgba(255,255,255,0.72)", borderRadius: "14px", px: 2.1, textTransform: "none", fontWeight: 700 }}>
-                    {t("view_profile", "View Profile")}
-                  </Button>
-                </Link>
-              </Stack>
-            </Box>
-          </Paper>
-        </Grid>
+        <section className="card ess-summary-card">
+          <SectionHeader strTitle={t("latest_payslip", "Latest Payslip")} strTone="violet" objIcon={<ReceiptLongRoundedIcon />} />
+          <div className="ess-payslip-summary">
+            {blnHasPayslip ? (
+              <>
+                <Typography className="muted">{strLatestPayslipMonth}</Typography>
+                <Typography className="big-number" aria-label={t("payslip_amount_hidden", "Payslip amount hidden")}>₹ •••••••</Typography>
+              </>
+            ) : <Typography className="muted">{t("payslip_available_after_release", "Payslip will be available after payroll release.")}</Typography>}
+          </div>
+          <div className="ess-summary-footer">
+            <Link className="text-link" data-control-id="ess.dashboard.view-payslip.button" href={strPayslipHref || ESS_SHORTCUT_ROUTES.myPayslips}>{t("view_payslip_action", "View Payslip")}<ArrowForwardRoundedIcon /></Link>
+          </div>
+        </section>
+      </div>
 
-        <Grid item xs={12} md={6} lg={3} sx={{ display: "flex" }}>
-          <Paper sx={{ ...objWhiteCardSx, p: 1.6 }}>
-            <SectionHeader strTitle={t("profile_compliance_health", "Profile & Compliance Health")} strTone="green" objIcon={<ManageAccountsRoundedIcon sx={{ fontSize: 16 }} />} blnCompact />
-            <Stack spacing={0.6} sx={{ mt: 1 }}>
-              {lstComplianceChecks.length ? lstComplianceChecks.map((objCheck) => {
-                const strComplianceLabel = translateDashboardText(objCheck.strLabel, t, objCheck.strLabel);
-                const strComplianceHref = resolveComplianceCheckHref(objCheck.strCode, intCurrentEmployeeID) || ESS_SHORTCUT_ROUTES.myProfile;
+      <section className="card ess-requests">
+        <div className="card-header">
+          <SectionHeader strTitle={t("my_requests", "My Requests")} strTone="violet" objIcon={<AssignmentRoundedIcon />} />
+          <Link className="text-link" href={ESS_SHORTCUT_ROUTES.applyLeave}>{t("view_all", "View All")}<ArrowForwardRoundedIcon /></Link>
+        </div>
+        <div className="table-scroll" tabIndex={0} role="region" aria-label={t("recent_leave_requests", "Recent Leave Requests")}>
+          <table>
+            <thead><tr><th scope="col">{t("date", "Date")}</th><th scope="col">{t("request_type", "Request Type")}</th><th scope="col">{t("period", "Period")}</th><th scope="col">{t("status", "Status")}</th></tr></thead>
+            <tbody>
+              {lstRecentRequests.map((objRequest) => {
+                const strStatus = String(objRequest.strStatus).toLowerCase();
+                const strPeriod = objRequest.dtFromDate ? formatDateLabel(objRequest.dtFromDate, t) : "-";
                 return (
-                  <Link
-                    key={objCheck.strCode}
-                    href={strComplianceHref}
-                    aria-label={`${strComplianceLabel} - ${objCheck.blnComplete ? t("verified", "Verified") : t("pending", "Pending")}. ${t("tap_to_update", "Tap to update")}`}
-                    style={{ textDecoration: "none" }}
-                  >
-                    <Stack
-                      direction="row"
-                      justifyContent="space-between"
-                      alignItems="center"
-                      spacing={1}
-                      sx={{
-                        px: 1,
-                        py: 0.55,
-                        borderRadius: "10px",
-                        border: `1px solid ${ESS_COLORS.border}`,
-                        backgroundColor: "#FFFFFF",
-                        cursor: "pointer",
-                        transition: "background-color 120ms ease, border-color 120ms ease",
-                        "&:hover": { backgroundColor: ESS_COLORS.softBlue, borderColor: ESS_COLORS.blue },
-                        "&:focus-visible": { outline: `2px solid ${ESS_COLORS.blue}`, outlineOffset: "2px" },
-                      }}
-                    >
-                      <Typography noWrap sx={{ color: ESS_COLORS.navy, fontWeight: 700, fontSize: "0.74rem" }}>{strComplianceLabel}</Typography>
-                      <Stack direction="row" spacing={0.5} alignItems="center">
-                        <Chip size="small" label={objCheck.blnComplete ? t("verified", "Verified") : t("pending", "Pending")} sx={{ height: 20, fontSize: "0.62rem", backgroundColor: objCheck.blnComplete ? ESS_COLORS.softGreen : ESS_COLORS.softOrange, color: objCheck.blnComplete ? ESS_COLORS.green : ESS_COLORS.orange, fontWeight: 700 }} />
-                        <ArrowForwardRoundedIcon sx={{ fontSize: 14, color: ESS_COLORS.muted }} />
-                      </Stack>
-                    </Stack>
-                  </Link>
+                  <tr key={objRequest.intID}>
+                    <td>{objRequest.dtAppliedOn ? formatDateLabel(objRequest.dtAppliedOn, t) : "-"}</td>
+                    <td>{objRequest.strTypeName || t("leave", "Leave")}</td>
+                    <td>{objRequest.dtFromDate && objRequest.dtToDate && objRequest.dtToDate !== objRequest.dtFromDate ? `${strPeriod} – ${formatDateLabel(objRequest.dtToDate, t)}` : strPeriod}</td>
+                    <td><Chip className={`badge ${strStatus === "approved" || strStatus === "pending" ? strStatus : ""}`} size="small" label={resolveStatusLabel(objRequest.strStatus, t)} /></td>
+                  </tr>
                 );
-              }) : <Typography sx={{ color: ESS_COLORS.muted, fontSize: "0.8rem" }}>{t("no_compliance_data_available", "No compliance data available.")}</Typography>}
-            </Stack>
-          </Paper>
-        </Grid>
+              })}
+              {!lstRecentRequests.length && <tr><td colSpan={4}>{t("no_recent_requests", "No recent requests.")}</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-        <Grid item xs={12} md={6} lg={3} sx={{ display: "flex" }}>
-          <Paper sx={{ ...objWhiteCardSx, p: 1.6 }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center">
-              <SectionHeader strTitle={t("attendance_today", "Attendance Today")} strTone="blue" objIcon={<AccessTimeRoundedIcon sx={{ fontSize: 16 }} />} blnCompact />
-            </Stack>
-            <Chip size="small" label={resolveStatusLabel(strAttendanceTodayStatus, t)} sx={{ mt: 0.5, mb: 1, backgroundColor: ESS_COLORS.softBlue, color: ESS_COLORS.blue, fontWeight: 700 }} />
-            <Grid container spacing={0} sx={{ borderTop: "1px solid #E6ECF8", borderLeft: "1px solid #E6ECF8" }}>
-              {[
-                { strLabel: t("punch_in", "Punch In"), strValue: strAttendancePunchIn },
-                { strLabel: t("punch_out", "Punch Out"), strValue: strAttendancePunchOut },
-              ].map((objItem, intIndex) => (
-                <Grid item xs={blnIsRegularizationApprover ? 4 : 6} key={`${objItem.strLabel}-${intIndex}`}>
-                  <Box sx={{ minHeight: 74, p: 1.05, borderRight: "1px solid #E6ECF8", borderBottom: "1px solid #E6ECF8" }}>
-                    <Typography sx={{ color: "#6B7280", fontSize: "0.74rem", fontWeight: 700 }}>{objItem.strLabel}</Typography>
-                    <Typography sx={{ mt: 0.32, color: "#172554", fontSize: "1rem", fontWeight: 800, lineHeight: 1.3 }}>{objItem.strValue}</Typography>
-                  </Box>
-                </Grid>
-              ))}
-              {blnIsRegularizationApprover ? (
-                <Grid item xs={4}>
-                  <PendingApprovalMetricCell
-                    strLabel={t("pending_approvals", "Pending Approvals")}
-                    intCount={intPendingRegularizationApprovals}
-                    strHref="/ess/attendance/regularization/approvals"
-                    strTooltip={t(
-                      "pending_regularization_approvals_tooltip",
-                      `${intPendingRegularizationApprovals} attendance regularization request(s) awaiting your approval`
-                    )}
-                    strAccentColor={ESS_COLORS.orange}
-                    strAccentBg={ESS_COLORS.softOrange}
-                  />
-                </Grid>
-              ) : null}
-              <Grid item xs={6}>
-                <Box sx={{ minHeight: 74, p: 1.05, borderRight: "1px solid #E6ECF8", borderBottom: "1px solid #E6ECF8" }}>
-                  <Typography sx={{ color: "#6B7280", fontSize: "0.74rem", fontWeight: 700 }}>{t("working_hours", "Working Hours")}</Typography>
-                  <Typography sx={{ mt: 0.32, color: "#172554", fontSize: "1rem", fontWeight: 800, lineHeight: 1.3 }}>{strAttendanceWorkingHours}</Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={6}>
-                <Stack sx={{ minHeight: 74, p: 1.05, borderRight: "1px solid #E6ECF8", borderBottom: "1px solid #E6ECF8" }} justifyContent="center" alignItems="flex-start">
-                  <Button
-                    data-control-id="ess.dashboard.punch.button"
-                    variant="contained"
-                    size="small"
-                    onClick={handlePunch}
-                    disabled={objPunchButtonState.blnDisabled}
-                    startIcon={<FingerprintRoundedIcon sx={{ fontSize: 18 }} />}
-                    sx={{
-                      borderRadius: "12px",
-                      px: 1.6,
-                      textTransform: "none",
-                      fontWeight: 700,
-                      fontSize: "0.76rem",
-                      backgroundColor: objPunchButtonState.strDirection === "out" ? ESS_COLORS.orange : ESS_COLORS.blue,
-                    }}
-                  >
-                    {blnPunching
-                      ? t("punching", "Punching...")
-                      : blnAttendanceOverviewLoading && !objAttendanceOverview
-                        ? t("loading", "Loading...")
-                        : objPunchButtonState.strDirection === "out"
-                          ? t("punch_out", "Punch Out")
-                          : t("punch_in", "Punch In")}
-                  </Button>
-                </Stack>
-              </Grid>
-            </Grid>
-            {strPunchError ? (
-              <Typography sx={{ mt: 0.5, color: ESS_COLORS.red, fontSize: "0.68rem" }}>{strPunchError}</Typography>
-            ) : strPunchSuccessMessage ? (
-              <Typography sx={{ mt: 0.5, color: ESS_COLORS.green, fontSize: "0.68rem", fontWeight: 700 }}>{strPunchSuccessMessage}</Typography>
-            ) : objAttendanceOverview && !objAttendanceOverview.blnCanPunch ? (
-              <Typography sx={{ mt: 0.5, color: ESS_COLORS.muted, fontSize: "0.68rem" }}>
-                {t(
-                  `unavailable_${objAttendanceOverview.strUnavailableReasonCode ?? "unknown"}`,
-                  objAttendanceOverview.strUnavailableReasonCode === "ATTENDANCE_POLICY_NOT_FOUND"
-                    ? "No attendance policy applies today."
-                    : "Attendance punching is unavailable today."
-                )}
-              </Typography>
-            ) : null}
-            <FooterLink strHref="/ess/attendance" strLabel={t("view_attendance", "View Attendance")} strColor={ESS_COLORS.blue} />
-          </Paper>
-        </Grid>
-      </Grid>
+      <section className="card ess-announcements">
+        <SectionHeader strTitle={strAnnouncementTitle} strTone="blue" objIcon={<CampaignRoundedIcon />} />
+        {objAnnouncement ? (
+          <>
+            <Typography className="ess-announcement-preview muted" title={[objAnnouncement.strTitle, objAnnouncement.strSubtitle].filter(Boolean).join(" — ")}>
+              <strong>{objAnnouncement.strTitle}</strong>{objAnnouncement.strSubtitle && ` — ${objAnnouncement.strSubtitle}`}
+            </Typography>
+            {lstAnnouncements.length === 1 && objAnnouncement.strRoutePath ? (
+              <Link className="text-link" href={objAnnouncement.strRoutePath}>{t("view_details", "View Details")}<ArrowForwardRoundedIcon /></Link>
+            ) : (
+              <button type="button" className="text-link ess-text-button" aria-haspopup="dialog" onClick={() => setStrOpenDialog("announcements")}>
+                {lstAnnouncements.length > 1 ? t("view_all", "View All") : t("view_details", "View Details")}<ArrowForwardRoundedIcon />
+              </button>
+            )}
+          </>
+        ) : <Typography className="muted">{t("no_announcements_available", "No announcements available.")}</Typography>}
+      </section>
 
-      {/* Row 2: IT Declaration, Reimbursement Summary, Current Month Pay, Leave Balance */}
-      <Grid
-        container
-        spacing={1.5}
-        alignItems="stretch"
-        sx={{ ml: -1.5, width: "calc(100% + 12px)" }}
-      >
-        <Grid item xs={12} sm={6} lg={3} sx={{ display: "flex" }}>
-          <Paper sx={{ ...objWhiteCardSx, p: 1.6 }}>
-            <SectionHeader strTitle={`${t("it_declaration", "IT Declaration")}${String((objItWidget?.objPayload as Record<string, unknown> | undefined)?.strFinancialYearCode || "").trim() ? ` (${String((objItWidget?.objPayload as Record<string, unknown> | undefined)?.strFinancialYearCode || "").trim()})` : ""}`} strTone="blue" objIcon={<DescriptionRoundedIcon sx={{ fontSize: 16 }} />} blnCompact />
-            <Chip size="small" label={resolveStatusLabel(strItStatus, t)} sx={{ mt: 0.5, mb: 1, backgroundColor: ESS_COLORS.softOrange, color: ESS_COLORS.orange, fontWeight: 700 }} />
-            <TwoColMetricGrid lstItems={[
-              { strLabel: t("tax_regime", "Tax Regime"), strValue: strItDeclarationType || "-" },
-              { strLabel: t("declared_amount", "Declared Amount"), strValue: formatCurrency(Number((objItWidget?.objPayload as Record<string, unknown> | undefined)?.decDeclaredAmount || 0)) },
-              { strLabel: t("approved_amount", "Approved Amount"), strValue: formatCurrency(decItApprovedAmount) },
-              { strLabel: t("proof_pending", "Proof Pending"), strValue: formatCurrency(decItProofPendingAmount) },
-            ]} />
-            <Typography sx={{ mt: 1, color: ESS_COLORS.red, fontWeight: 800, fontSize: "0.8rem" }}>{strItDueDate ? formatDateLabel(strItDueDate, t) : "-"}</Typography>
-            <FooterLink strHref="/salary/it-declaration" strLabel={t("view_details", "View Details")} strColor={ESS_COLORS.blue} />
-          </Paper>
-        </Grid>
-        <Grid item xs={12} sm={6} lg={3} sx={{ display: "flex" }}>
-          <Paper sx={{ ...objWhiteCardSx, p: 1.6 }}>
-            <SectionHeader strTitle={t("reimbursement_summary", "Reimbursement Summary")} strTone="green" objIcon={<AccountBalanceWalletRoundedIcon sx={{ fontSize: 16 }} />} blnCompact />
-            <TwoColMetricGrid lstItems={[
-              { strLabel: t("total_claims", "Total Claims"), strValue: formatInteger(intTotalClaims) },
-              { strLabel: t("approved_claims", "Approved Claims"), strValue: formatInteger(intApprovedClaims) },
-              { strLabel: t("submitted_amount", "Submitted Amount"), strValue: formatCurrency(decTotalClaimAmount) },
-              { strLabel: t("approved_amount", "Approved Amount"), strValue: formatCurrency(decApprovedClaimAmount) },
-              { strLabel: t("paid_amount", "Paid Amount"), strValue: formatCurrency(decPaidClaimAmount) },
-              { strLabel: t("latest_status", "Latest Status"), strValue: strLatestClaimStatus ? resolveStatusLabel(strLatestClaimStatus, t) : "-" },
-            ]} />
-            <FooterLink strHref="/ess/reimbursements" strLabel={t("view_my_claims", "View My Claims")} strColor={ESS_COLORS.green} />
-          </Paper>
-        </Grid>
+      <Dialog open={strOpenDialog !== null} onClose={() => setStrOpenDialog(null)} fullWidth maxWidth="md" aria-labelledby="ess-dashboard-dialog-title">
+        <DialogTitle id="ess-dashboard-dialog-title">{strOpenDialog === "announcements" ? strAnnouncementTitle : strDetailsTitle}</DialogTitle>
+        <DialogContent className="ess-dashboard" dividers>
+          {strOpenDialog === "announcements" ? lstAnnouncements.map((objItem, index) => (
+            <article className="announcement" key={`${objItem.strTitle}-${index}`}>
+              <div className="announcement-title"><Typography component="h3">{objItem.strTitle}</Typography><small>{objItem.strMeta}</small></div>
+              <Typography>{objItem.strSubtitle}</Typography>
+              {objItem.strRoutePath && <FooterLink strHref={objItem.strRoutePath} strLabel={t("view_details", "View Details")} strColor={ESS_COLORS.blue} />}
+            </article>
+          )) : (
+            <>
+              <details className="ess-compliance-details">
+                <summary>{t("compliance_checks", "Compliance checks")}</summary>
+                <Paper className="card" sx={{ ...objWhiteCardSx, p: 1.6 }}>
+                  <SectionHeader strTitle={t("profile_compliance_health", "Profile & Compliance Health")} strTone="green" objIcon={<ManageAccountsRoundedIcon sx={{ fontSize: 16 }} />} blnCompact />
+                  <Stack spacing={0.6} sx={{ mt: 1 }}>
+                    {lstComplianceChecks.length ? lstComplianceChecks.map((objCheck) => {
+                      const strComplianceLabel = translateDashboardText(objCheck.strLabel, t, objCheck.strLabel);
+                      const strComplianceHref = resolveComplianceCheckHref(objCheck.strCode, intCurrentEmployeeID) || ESS_SHORTCUT_ROUTES.myProfile;
+                      return (
+                        <Link
+                          key={objCheck.strCode}
+                          href={strComplianceHref}
+                          aria-label={`${strComplianceLabel} - ${objCheck.blnComplete ? t("verified", "Verified") : t("pending", "Pending")}. ${t("tap_to_update", "Tap to update")}`}
+                          style={{ textDecoration: "none" }}
+                        >
+                          <Stack
+                            direction="row"
+                            justifyContent="space-between"
+                            alignItems="center"
+                            spacing={1}
+                            sx={{
+                              px: 1,
+                              py: 0.55,
+                              borderRadius: "10px",
+                              border: `1px solid ${ESS_COLORS.border}`,
+                              backgroundColor: "#FFFFFF",
+                              cursor: "pointer",
+                              transition: "background-color 120ms ease, border-color 120ms ease",
+                              "&:hover": { backgroundColor: ESS_COLORS.softBlue, borderColor: ESS_COLORS.blue },
+                              "&:focus-visible": { outline: `2px solid ${ESS_COLORS.blue}`, outlineOffset: "2px" },
+                            }}
+                          >
+                            <Typography sx={{ color: ESS_COLORS.navy, fontWeight: 700, fontSize: "0.74rem" }}>{strComplianceLabel}</Typography>
+                            <Stack direction="row" spacing={0.5} alignItems="center">
+                              <Chip className={`badge ${objCheck.blnComplete ? "approved" : "pending"}`} size="small" label={objCheck.blnComplete ? t("verified", "Verified") : t("pending", "Pending")} sx={{ height: 20, fontSize: "0.62rem", backgroundColor: objCheck.blnComplete ? ESS_COLORS.softGreen : ESS_COLORS.softOrange, color: objCheck.blnComplete ? ESS_COLORS.green : ESS_COLORS.orange, fontWeight: 700 }} />
+                              <ArrowForwardRoundedIcon sx={{ fontSize: 14, color: ESS_COLORS.muted }} />
+                            </Stack>
+                          </Stack>
+                        </Link>
+                      );
+                    }) : <Typography sx={{ color: ESS_COLORS.muted, fontSize: "0.8rem" }}>{t("no_compliance_data_available", "No compliance data available.")}</Typography>}
+                  </Stack>
+                </Paper>
+              </details>
 
-        <Grid item xs={12} sm={6} lg={3} sx={{ display: "flex" }}>
-          <Paper sx={{ ...objWhiteCardSx, p: 1.6 }}>
-            <Stack direction="row" justifyContent="space-between" spacing={1}>
-              <Box sx={{ minWidth: 0 }}>
-                <Typography sx={{ color: ESS_COLORS.navy, fontWeight: 800, fontSize: "1.05rem" }}>{strCurrentMonthPayTitle}</Typography>
-                <Typography sx={{ mt: 0.6, fontSize: "1.7rem", fontWeight: 900, color: ESS_COLORS.navy, lineHeight: 1.1 }}>{formatCurrency(decNetPay)}</Typography>
-                <Typography sx={{ mt: 0.2, color: ESS_COLORS.body, fontWeight: 600, fontSize: "0.76rem" }}>{strCurrentMonthPaySubtitle}</Typography>
-              </Box>
-              <Box sx={{ width: 40, height: 40, borderRadius: "12px", backgroundColor: ESS_COLORS.softBlue, display: "grid", placeItems: "center", color: ESS_COLORS.blue, flexShrink: 0 }}>
-                <AccountBalanceWalletRoundedIcon sx={{ fontSize: 20 }} />
-              </Box>
-            </Stack>
-            <Grid container spacing={0} sx={{ mt: 1.3, borderTop: `1px solid ${ESS_COLORS.border}`, borderBottom: `1px solid ${ESS_COLORS.border}` }}>
-              <Grid item xs={4}><MiniMetricBox strLabel={t("gross_earnings", "Gross Earnings")} strValue={formatCurrency(decGrossEarnings)} /></Grid>
-              <Grid item xs={4}><MiniMetricBox strLabel={t("total_deductions", "Total Deductions")} strValue={formatCurrency(decTotalDeductions)} blnBorder /></Grid>
-              <Grid item xs={4}><MiniMetricBox strLabel={t("net_pay", "Net Pay")} strValue={formatCurrency(decNetPay)} /></Grid>
-            </Grid>
-            <Stack spacing={1} sx={{ mt: 1.1 }}>
-              <Box sx={{ minWidth: 0 }}>
-                <Typography sx={{ color: ESS_COLORS.muted, fontSize: "0.7rem", fontWeight: 700 }}>{t("latest_payslip", "Latest Payslip")}</Typography>
-                <Typography noWrap sx={{ color: ESS_COLORS.navy, fontWeight: 700, fontSize: "0.78rem" }}>
-                  {blnHasPayrollResult ? `${strCurrentMonthPaySubtitle}${strPayslipNumber ? ` | ${strPayslipNumber}` : ""}` : t("payslip_available_after_release", "Payslip will be available after payroll release.")}
-                </Typography>
-              </Box>
-              <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap>
-                {blnHasPayrollResult ? (
-                  <Link href="/ess/my-payslips" style={{ textDecoration: "none" }}>
-                    <Button startIcon={<DownloadRoundedIcon sx={{ fontSize: 16 }} />} variant="contained" size="small" sx={{ borderRadius: "12px", px: 1.6, backgroundColor: ESS_COLORS.blue, textTransform: "none", fontWeight: 700, fontSize: "0.76rem" }}>
-                      {t("download_payslip", "Download Payslip")}
-                    </Button>
-                  </Link>
-                ) : null}
-                {strCurrentMonthPayslipHref ? (
-                  <Link href={strCurrentMonthPayslipHref} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
-                    <Button
-                      data-control-id="ess.dashboard.view-payslip.button"
-                      startIcon={<VisibilityRoundedIcon sx={{ fontSize: 16 }} />}
-                      variant="outlined"
-                      size="small"
-                      sx={{ borderRadius: "12px", px: 1.6, color: ESS_COLORS.blue, borderColor: "#C7D9F8", textTransform: "none", fontWeight: 700, fontSize: "0.76rem" }}
-                    >
-                      {t("view_payslip_action", "View Payslip")}
-                    </Button>
-                  </Link>
-                ) : (
-                  <Tooltip title={t("payslip_not_available", "Payslip not available yet for this month.")}>
-                    <span>
-                      <Button
-                        disabled
-                        startIcon={<VisibilityRoundedIcon sx={{ fontSize: 16 }} />}
-                        variant="outlined"
-                        size="small"
-                        sx={{ borderRadius: "12px", px: 1.6, textTransform: "none", fontWeight: 700, fontSize: "0.76rem" }}
-                      >
-                        {t("view_payslip_action", "View Payslip")}
-                      </Button>
-                    </span>
-                  </Tooltip>
-                )}
-              </Stack>
-            </Stack>
-          </Paper>
-        </Grid>
-
-        <Grid item xs={12} sm={6} lg={3} sx={{ display: "flex" }}>
-          <Paper sx={{ ...objWhiteCardSx, p: 1.6 }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center">
-              <SectionHeader strTitle={t("leave_balance", "Leave Balance")} strTone="green" objIcon={<EventAvailableRoundedIcon sx={{ fontSize: 16 }} />} blnCompact />
-              {intPendingLeaveRequests > 0 ? (
-                <Chip size="small" label={`${intPendingLeaveRequests} ${t("pending", "Pending")}`} sx={{ height: 20, fontSize: "0.62rem", backgroundColor: ESS_COLORS.softOrange, color: ESS_COLORS.orange, fontWeight: 700 }} />
-              ) : null}
-            </Stack>
-            <Grid container spacing={0} sx={{ mt: 0.5, borderTop: "1px solid #E6ECF8", borderLeft: "1px solid #E6ECF8" }}>
-              {[
-                { strLabel: t("available_balance", "Available Balance"), strValue: formatLeaveBalanceMetric(decLeaveBalance) },
-                { strLabel: t("used_leave", "Used Leave"), strValue: formatLeaveBalanceMetric(decUsedLeave) },
-              ].map((objItem, intIndex) => (
-                <Grid item xs={blnIsLeaveApprover ? 4 : 6} key={`${objItem.strLabel}-${intIndex}`}>
-                  <Box sx={{ minHeight: 74, p: 1.05, borderRight: "1px solid #E6ECF8", borderBottom: "1px solid #E6ECF8" }}>
-                    <Typography sx={{ color: "#6B7280", fontSize: "0.74rem", fontWeight: 700 }}>{objItem.strLabel}</Typography>
-                    <Typography sx={{ mt: 0.32, color: "#172554", fontSize: "1rem", fontWeight: 800, lineHeight: 1.3 }}>{objItem.strValue}</Typography>
-                  </Box>
-                </Grid>
-              ))}
-              {blnIsLeaveApprover ? (
-                <Grid item xs={4}>
-                  <PendingApprovalMetricCell
-                    strLabel={t("pending_approvals", "Pending Approvals")}
-                    intCount={intPendingLeaveApprovals}
-                    strHref="/ess/leave/approvals"
-                    strTooltip={t(
-                      "pending_leave_approvals_tooltip",
-                      `${intPendingLeaveApprovals} leave request(s) awaiting your approval`
-                    )}
-                    strAccentColor={ESS_COLORS.green}
-                    strAccentBg={ESS_COLORS.softGreen}
-                  />
-                </Grid>
-              ) : null}
-              {[
-                { strLabel: t("upcoming_leave", "Upcoming Leave"), strValue: strUpcomingLeave || "-" },
-                { strLabel: t("next_holiday", "Next Holiday"), strValue: strNextHoliday || "-" },
-              ].map((objItem, intIndex) => (
-                <Grid item xs={6} key={`${objItem.strLabel}-${intIndex}`}>
-                  <Box sx={{ minHeight: 74, p: 1.05, borderRight: "1px solid #E6ECF8", borderBottom: "1px solid #E6ECF8" }}>
-                    <Typography sx={{ color: "#6B7280", fontSize: "0.74rem", fontWeight: 700 }}>{objItem.strLabel}</Typography>
-                    <Typography sx={{ mt: 0.32, color: "#172554", fontSize: "1rem", fontWeight: 800, lineHeight: 1.3 }}>{objItem.strValue}</Typography>
-                  </Box>
-                </Grid>
-              ))}
-            </Grid>
-            <FooterLink strHref="/ess/leave-balance" strLabel={t("view_leave_balance", "View Leave Balance")} strColor={ESS_COLORS.green} />
-          </Paper>
-        </Grid>
-      </Grid>
-    </Stack>
+              <FooterLink strHref={ESS_SHORTCUT_ROUTES.flexiPay} strLabel={t("flexi_pay_declaration", "Flexi Pay")} strColor={ESS_COLORS.blue} />
+              <div className="ess-additional-grid">
+                <Paper className="card" sx={{ ...objWhiteCardSx, p: 1.6 }}>
+                  <div className="ess-card-heading card-header">
+                  <SectionHeader strTitle={`${t("it_declaration", "IT Declaration")}${String((objItWidget?.objPayload as Record<string, unknown> | undefined)?.strFinancialYearCode || "").trim() ? ` (${String((objItWidget?.objPayload as Record<string, unknown> | undefined)?.strFinancialYearCode || "").trim()})` : ""}`} strTone="blue" objIcon={<DescriptionRoundedIcon sx={{ fontSize: 16 }} />} blnCompact />
+                  <FooterLink strHref="/salary/it-declaration" strLabel={t("view_details", "View Details")} strColor={ESS_COLORS.blue} />
+                  </div>
+                  <div className="ess-leave-overview balance-line">
+                    <div><Typography className="ess-leave-available big-number">{formatCurrency(Number((objItWidget?.objPayload as Record<string, unknown> | undefined)?.decDeclaredAmount || 0))}</Typography><Typography className="ess-leave-label">{t("declared_amount", "Declared Amount")}</Typography></div>
+                    <Chip size="small" label={resolveStatusLabel(strItStatus, t)} sx={{ backgroundColor: ESS_COLORS.softOrange, color: ESS_COLORS.orange, fontWeight: 700 }} />
+                  </div>
+                  <TwoColMetricGrid lstItems={[
+                    { strLabel: t("tax_regime", "Tax Regime"), strValue: strItDeclarationType || "-" },
+                    { strLabel: t("approved_amount", "Approved Amount"), strValue: formatCurrency(decItApprovedAmount) },
+                    { strLabel: t("proof_pending", "Proof Pending"), strValue: formatCurrency(decItProofPendingAmount) },
+                  ]} />
+                  <Typography sx={{ mt: 1, color: ESS_COLORS.red, fontWeight: 800, fontSize: "0.8rem" }}>{strItDueDate ? formatDateLabel(strItDueDate, t) : "-"}</Typography>
+                </Paper>
+                <Paper className="card" sx={{ ...objWhiteCardSx, p: 1.6 }}>
+                  <div className="ess-card-heading card-header">
+                  <SectionHeader strTitle={t("reimbursement_summary", "Reimbursement Summary")} strTone="green" objIcon={<AccountBalanceWalletRoundedIcon sx={{ fontSize: 16 }} />} blnCompact />
+                  <FooterLink strHref="/ess/reimbursements" strLabel={t("view_my_claims", "View My Claims")} strColor={ESS_COLORS.blue} />
+                  </div>
+                  <div className="ess-leave-overview balance-line"><div><Typography className="ess-leave-available big-number">{formatCurrency(decTotalClaimAmount)}</Typography><Typography className="ess-leave-label">{t("submitted_amount", "Submitted Amount")}</Typography></div></div>
+                  <TwoColMetricGrid lstItems={[
+                    { strLabel: t("total_claims", "Total Claims"), strValue: formatInteger(intTotalClaims) },
+                    { strLabel: t("approved_claims", "Approved Claims"), strValue: formatInteger(intApprovedClaims) },
+                    { strLabel: t("approved_amount", "Approved Amount"), strValue: formatCurrency(decApprovedClaimAmount) },
+                    { strLabel: t("paid_amount", "Paid Amount"), strValue: formatCurrency(decPaidClaimAmount) },
+                    { strLabel: t("latest_status", "Latest Status"), strValue: strLatestClaimStatus ? resolveStatusLabel(strLatestClaimStatus, t) : "-" },
+                  ]} />
+                </Paper>
+              </div>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions><Button onClick={() => setStrOpenDialog(null)}>{t("close", "Close")}</Button></DialogActions>
+      </Dialog>
+    </div>
   );
 }
 
@@ -2695,12 +2413,15 @@ function FallbackDashboard({ objDashboard, objUserContext, t }: RoleBasedDashboa
   );
 }
 
-function HeroStat({ strLabel, strValue }: { strLabel: string; strValue: string }) {
+function HeroStat({ strLabel, strValue, objIcon }: { strLabel: string; strValue: string; objIcon: ReactNode }) {
   return (
-    <Box>
-      <Typography sx={{ color: "#6C7EA5", fontSize: "0.75rem" }}>{strLabel}</Typography>
-      <Typography sx={{ mt: 0.2, color: "#22345F", fontWeight: 800, fontSize: "1rem" }}>{strValue}</Typography>
-    </Box>
+    <div className="ess-hero-stat">
+      <span className="ess-date-icon">{objIcon}</span>
+      <div>
+        <strong title={strValue}>{strValue}</strong>
+        <span>{strLabel}</span>
+      </div>
+    </div>
   );
 }
 
@@ -2724,91 +2445,32 @@ function SectionHeader({
     violet: { bg: "#F3E8FF", color: "#6D28D9" },
   }[strTone];
   return (
-    <Stack direction="row" spacing={1} alignItems="center" sx={sx}>
-      <Box sx={{ width: blnCompact ? 28 : 32, height: blnCompact ? 28 : 32, borderRadius: "10px", backgroundColor: dicTone.bg, color: dicTone.color, display: "grid", placeItems: "center", flexShrink: 0 }}>
+    <Stack className="ess-section-heading" direction="row" spacing={1} alignItems="center" sx={sx}>
+      <Box className={`ess-section-heading-icon icon-box ${strTone}`} sx={{ width: blnCompact ? 28 : 32, height: blnCompact ? 28 : 32, borderRadius: "10px", backgroundColor: dicTone.bg, color: dicTone.color, display: "grid", placeItems: "center", flexShrink: 0 }}>
         {objIcon}
       </Box>
-      <Typography sx={{ color: "#172554", fontWeight: 800, fontSize: blnCompact ? "0.98rem" : "1.05rem" }}>{strTitle}</Typography>
+      <Typography component="h2" className="ess-section-heading-text" sx={{ color: "#172554", fontWeight: 800, fontSize: blnCompact ? "0.98rem" : "1.05rem" }}>{strTitle}</Typography>
     </Stack>
-  );
-}
-
-// Pending-approvals metric cell for line managers: sits inline with the other stat boxes
-// (Punch In / Punch Out, Available Balance / Used Leave) at the same size and alignment, so
-// a manager sees the count and can jump straight into the approval queue without leaving
-// the dashboard. Only rendered for employees who actually hold approver rights.
-function PendingApprovalMetricCell({
-  strLabel,
-  intCount,
-  strHref,
-  strTooltip,
-  strAccentColor,
-  strAccentBg,
-}: {
-  strLabel: string;
-  intCount: number;
-  strHref: string;
-  strTooltip: string;
-  strAccentColor: string;
-  strAccentBg: string;
-}) {
-  return (
-    <Box sx={{ minHeight: 74, p: 1.05, borderRight: "1px solid #E6ECF8", borderBottom: "1px solid #E6ECF8" }}>
-      <Typography sx={{ color: "#6B7280", fontSize: "0.74rem", fontWeight: 700 }}>{strLabel}</Typography>
-      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mt: 0.32 }}>
-        <Typography sx={{ color: intCount > 0 ? strAccentColor : "#172554", fontSize: "1rem", fontWeight: 800, lineHeight: 1.3 }}>
-          {intCount > 99 ? "99+" : intCount}
-        </Typography>
-        <Tooltip title={strTooltip} arrow>
-          <Link href={strHref} style={{ textDecoration: "none" }} aria-label={strTooltip}>
-            <IconButton
-              data-control-id="ess.dashboard.pending-approvals.button"
-              size="small"
-              sx={{
-                width: 26,
-                height: 26,
-                backgroundColor: strAccentBg,
-                color: strAccentColor,
-                "&:hover": { backgroundColor: strAccentBg, opacity: 0.82 },
-              }}
-            >
-              <ArrowForwardRoundedIcon sx={{ fontSize: 15 }} />
-            </IconButton>
-          </Link>
-        </Tooltip>
-      </Stack>
-    </Box>
-  );
-}
-
-function MiniMetricBox({ strLabel, strValue, blnBorder = false }: { strLabel: string; strValue: string; blnBorder?: boolean }) {
-  return (
-    <Box sx={{ py: 1.05, px: 1.05, borderLeft: blnBorder ? "1px solid #E6ECF8" : "none", borderRight: blnBorder ? "1px solid #E6ECF8" : "none" }}>
-      <Typography sx={{ color: "#6B7280", fontSize: "0.74rem", fontWeight: 700 }}>{strLabel}</Typography>
-      <Typography sx={{ mt: 0.28, color: "#172554", fontSize: "1.02rem", fontWeight: 800 }}>{strValue}</Typography>
-    </Box>
   );
 }
 
 function TwoColMetricGrid({ lstItems }: { lstItems: Array<{ strLabel: string; strValue: string }> }) {
   return (
-    <Grid container spacing={0} sx={{ borderTop: "1px solid #E6ECF8", borderLeft: "1px solid #E6ECF8" }}>
+    <div className="ess-detail-grid">
       {lstItems.map((objItem, intIndex) => (
-        <Grid item xs={6} key={`${objItem.strLabel}-${intIndex}`}>
-          <Box sx={{ minHeight: 74, p: 1.05, borderRight: "1px solid #E6ECF8", borderBottom: "1px solid #E6ECF8" }}>
-            <Typography sx={{ color: "#6B7280", fontSize: "0.74rem", fontWeight: 700 }}>{objItem.strLabel}</Typography>
-            <Typography sx={{ mt: 0.32, color: "#172554", fontSize: "1rem", fontWeight: 800, lineHeight: 1.3 }}>{objItem.strValue}</Typography>
-          </Box>
-        </Grid>
+        <div key={`${objItem.strLabel}-${intIndex}`}>
+          <Typography className="ess-leave-label">{objItem.strLabel}</Typography>
+          <Typography className="ess-leave-value">{objItem.strValue}</Typography>
+        </div>
       ))}
-    </Grid>
+    </div>
   );
 }
 
 function FooterLink({ strHref, strLabel, strColor }: { strHref: string; strLabel: string; strColor: string }) {
   return (
     <Box sx={{ mt: 1.25 }}>
-      <Link href={strHref} style={{ color: strColor, textDecoration: "none", fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 6 }}>
+      <Link href={strHref} className="ess-view-link text-link" style={{ color: `var(--ess-link-color, ${strColor})` }}>
         {strLabel}
         <ArrowForwardRoundedIcon sx={{ fontSize: 16 }} />
       </Link>
@@ -3001,20 +2663,22 @@ function PanelShell({
   return (
     <Paper
       sx={{
-        p: blnCompactPanel ? 1.05 : 1.7,
+        p: blnCompactPanel ? 1.05 : { xs: 1.75, sm: 2 },
         width: "100%",
+        minWidth: 0,
+        boxSizing: "border-box",
         height: blnAutoHeight ? "auto" : "100%",
-        borderRadius: "18px",
+        borderRadius: "12px",
         border: `1px solid ${DASHBOARD_COLORS.border}`,
         backgroundColor: DASHBOARD_COLORS.surface,
-        boxShadow: "0 8px 24px rgba(15,23,42,0.08)",
+        boxShadow: "0 4px 18px rgba(15,23,42,0.05)",
         position: "relative",
         overflow: "hidden",
       }}
     >
-      <Box sx={{ position: "absolute", inset: 0, borderTop: `3px solid ${strAccent}`, pointerEvents: "none", opacity: 0.9 }} />
+      <Box sx={{ position: "absolute", top: 0, left: 12, right: 12, borderTop: `3px solid ${strAccent}`, pointerEvents: "none", opacity: 0.9 }} />
       <Box sx={{ mb: blnCompactPanel ? 0.55 : 1.2, textAlign: blnCenterHeader ? "center" : "left" }}>
-        <Typography variant="h6" sx={{ color: DASHBOARD_COLORS.text, fontWeight: 800, fontSize: blnCompactPanel ? "0.86rem" : "0.96rem", lineHeight: 1.15 }}>
+        <Typography variant="h6" sx={{ color: DASHBOARD_COLORS.text, fontWeight: 800, fontSize: blnCompactPanel ? "0.86rem" : "0.96rem", lineHeight: 1.35, overflowWrap: "anywhere" }}>
           {strTitle}
         </Typography>
         {strSubtitle ? (
@@ -3422,32 +3086,6 @@ function formatLeaveBalanceMetric(decValue: number) {
     return "0";
   }
   return Number.isInteger(decValue) ? String(decValue) : decValue.toFixed(2).replace(/\.?0+$/, "");
-}
-
-function getUpcomingEssLeaveApplication(lstApplications: LeaveApplicationDto[]) {
-  const objToday = new Date();
-  objToday.setHours(0, 0, 0, 0);
-  const lstAllowedStatuses = new Set(["approved", "pending"]);
-
-  return lstApplications
-    .filter((objApplication) => {
-      const strStatus = String(objApplication.strStatus || "").toLowerCase();
-      const objFromDate = parseDashboardDate(String(objApplication.dtFromDate || ""));
-      return lstAllowedStatuses.has(strStatus) && !Number.isNaN(objFromDate.getTime()) && objFromDate >= objToday;
-    })
-    .sort((objLeft, objRight) => {
-      const intLeftTime = parseDashboardDate(String(objLeft.dtFromDate || "")).getTime();
-      const intRightTime = parseDashboardDate(String(objRight.dtFromDate || "")).getTime();
-      return intLeftTime - intRightTime;
-    })[0] || null;
-}
-
-function formatEssLeaveApplicationLabel(objApplication: LeaveApplicationDto, t: RoleBasedDashboardProps["t"]) {
-  const strTypeName = String(objApplication.strTypeName || objApplication.strTypeCode || t("leave", "Leave"));
-  const strFromDate = objApplication.dtFromDate ? formatDateLabel(objApplication.dtFromDate, t) : "";
-  const strToDate = objApplication.dtToDate ? formatDateLabel(objApplication.dtToDate, t) : "";
-  const strDateRange = strFromDate && strToDate && strFromDate !== strToDate ? `${strFromDate} - ${strToDate}` : strFromDate || strToDate;
-  return strDateRange ? `${strTypeName} - ${strDateRange}` : strTypeName;
 }
 
 function chartPointValue(objPoint: ChartPoint | undefined) {

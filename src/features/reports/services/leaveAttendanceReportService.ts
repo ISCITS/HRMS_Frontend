@@ -106,24 +106,49 @@ async function getReport<TRow>(strPath: string, strMenuAction: string): Promise<
   return objResult.Data;
 }
 
-// A generous single-page fetch; the grid paginates client-side (POC data volumes).
+// The backend caps page_size at 100; the grid paginates client-side.
 const REPORT_PAGE_SIZE = 100;
+// Remaining pages are fetched a few at a time instead of one after another.
+const REPORT_PAGE_CONCURRENCY = 4;
+
+/**
+ * Fetches every page so the grid and the Excel export hold all matching rows (fetching only page 1
+ * silently dropped everything after the first 100 rows).
+ */
+async function getAllPages<TRow>(
+  strPath: string,
+  dicFilters: Record<string, string | number | undefined>,
+  strMenuAction: string,
+): Promise<ReportEnvelope<TRow>> {
+  const fnFetchPage = (intPage: number) => getReport<TRow>(
+    `${strPath}${buildQuery({ ...dicFilters, page: intPage, page_size: REPORT_PAGE_SIZE })}`,
+    strMenuAction,
+  );
+  const objFirst = await fnFetchPage(1);
+  const lstItems = [...objFirst.lstItems];
+  const intPages = Math.ceil((objFirst.intTotal || 0) / REPORT_PAGE_SIZE);
+  for (let intStart = 2; intStart <= intPages; intStart += REPORT_PAGE_CONCURRENCY) {
+    const lstPageNumbers = Array.from(
+      { length: Math.min(REPORT_PAGE_CONCURRENCY, intPages - intStart + 1) },
+      (_, intIndex) => intStart + intIndex,
+    );
+    const lstPages = await Promise.all(lstPageNumbers.map(fnFetchPage));
+    lstPages.forEach((objPage) => lstItems.push(...objPage.lstItems));
+  }
+  return { ...objFirst, lstItems, intPage: 1, intPageSize: lstItems.length };
+}
 
 export const leaveAttendanceReportService = {
   async getLeaveBalance(dicFilters: Record<string, string | number | undefined>): Promise<ReportEnvelope<LeaveBalanceRow>> {
-    const strQuery = buildQuery({ ...dicFilters, page: 1, page_size: REPORT_PAGE_SIZE });
-    return getReport<LeaveBalanceRow>(`/reports/leave/balance${strQuery}`, "REPORTS_LEAVE_BALANCE");
+    return getAllPages<LeaveBalanceRow>("/reports/leave/balance", dicFilters, "REPORTS_LEAVE_BALANCE");
   },
   async getLeaveRegister(dicFilters: Record<string, string | number | undefined>): Promise<ReportEnvelope<LeaveRegisterRow>> {
-    const strQuery = buildQuery({ ...dicFilters, page: 1, page_size: REPORT_PAGE_SIZE });
-    return getReport<LeaveRegisterRow>(`/reports/leave/applications${strQuery}`, "REPORTS_LEAVE_REGISTER");
+    return getAllPages<LeaveRegisterRow>("/reports/leave/applications", dicFilters, "REPORTS_LEAVE_REGISTER");
   },
   async getMonthlyAttendance(dicFilters: Record<string, string | number | undefined>): Promise<ReportEnvelope<MonthlyAttendanceRow>> {
-    const strQuery = buildQuery({ ...dicFilters, page: 1, page_size: REPORT_PAGE_SIZE });
-    return getReport<MonthlyAttendanceRow>(`/reports/attendance/monthly-summary${strQuery}`, "REPORTS_ATTENDANCE_SUMMARY");
+    return getAllPages<MonthlyAttendanceRow>("/reports/attendance/monthly-summary", dicFilters, "REPORTS_ATTENDANCE_SUMMARY");
   },
   async getAttendanceExceptions(dicFilters: Record<string, string | number | undefined>): Promise<ReportEnvelope<AttendanceExceptionRow>> {
-    const strQuery = buildQuery({ ...dicFilters, page: 1, page_size: REPORT_PAGE_SIZE });
-    return getReport<AttendanceExceptionRow>(`/reports/attendance/exceptions${strQuery}`, "REPORTS_ATTENDANCE_EXCEPTION");
+    return getAllPages<AttendanceExceptionRow>("/reports/attendance/exceptions", dicFilters, "REPORTS_ATTENDANCE_EXCEPTION");
   },
 };

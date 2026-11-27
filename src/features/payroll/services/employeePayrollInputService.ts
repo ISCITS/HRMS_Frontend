@@ -79,10 +79,13 @@ async function requestApi<TData>(objOptions: {
 function mapLineForForm(dicLine: EmployeePayrollInputDetailRecord["lstLines"][number], intIndex: number): EmployeePayrollInputFormLine {
   return {
     intTempID: dicLine.intID || getTodayDateSeed() + intIndex,
+    intID: dicLine.intID || undefined,
     intSalaryComponentID: dicLine.intSalaryComponentID,
     strLineType: normalizeLineType(dicLine.strLineType),
     strAmount: String(dicLine.decAmount ?? ""),
     strRemarks: dicLine.strRemarks ?? "",
+    strSourceType: dicLine.strSourceType ?? null,
+    blnIsProtected: Boolean(dicLine.blnIsProtected),
   };
 }
 
@@ -109,6 +112,8 @@ function toPayload(dicValues: EmployeePayrollInputFormValues) {
     strStatus: dicValues.strStatus,
     blnIsLocked: dicValues.blnIsLocked,
     lstLines: dicValues.lstLines.map((dicLine) => ({
+      // Lets the server recognise system/imported lines it keeps as they are.
+      intID: dicLine.intID || undefined,
       intSalaryComponentID: Number(dicLine.intSalaryComponentID),
       strLineType: normalizeLineType(dicLine.strLineType),
       decAmount: Number(dicLine.strAmount),

@@ -1,18 +1,23 @@
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
-import { requestEncryptedApi, type ApiEnvelope } from "@/Common/utils/apiErrorHandler";
+import { createApiRequestError, requestEncryptedApi, type ApiEnvelope } from "@/Common/utils/apiErrorHandler";
+import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
 import type {
+  ArrearLineRecord,
+  ArrearRegisterRow,
   PayrollRunDetailRecord,
   PayrollRunFormOptions,
   PayrollRunFormValues,
   PayrollRunListRecord,
+  PayrollJobStatus,
   PayrollProcessSummary,
   PayrollRunStatus,
   PayrollValidationSummary,
+  RunArrearsRecord,
 } from "@/features/payroll/types";
 
 async function requestApi<TData>(objOptions: {
   strPath: string;
-  strMethod: ApiRequestMethod | "GET" | "POST" | "PUT";
+  strMethod: ApiRequestMethod | "GET" | "POST" | "PUT" | "DELETE";
   objBody?: unknown;
   strMenuAction: string;
 }): Promise<ApiEnvelope<TData>> {
@@ -32,6 +37,7 @@ export function createInitialPayrollRunForm(): PayrollRunFormValues {
     strScopeType: "All",
     strProcessFor: "PayrollGroup",
     intScopedEmployeeID: "",
+    lstScopedEmployeeIDs: [],
     dtPayrollMonth: new Date().toISOString().slice(0, 10),
     strRunStatus: "DRAFT",
     blnIsLocked: false,
@@ -43,15 +49,29 @@ export function createInitialPayrollRunForm(): PayrollRunFormValues {
   };
 }
 
+// One employee selected keeps sending the existing 'SelectedEmployee' scope (unchanged wire
+// behavior); two or more switches to the new 'EmployeeGroup' scope. The dropdown only ever sets
+// strScopeType to "SelectedEmployee" as a mode marker - the actual employee count decides which
+// of the two scope types is actually sent.
+function resolveEffectiveScopeType(dicValues: PayrollRunFormValues): PayrollRunFormValues["strScopeType"] {
+  if (dicValues.strScopeType !== "SelectedEmployee") {
+    return dicValues.strScopeType;
+  }
+  return dicValues.lstScopedEmployeeIDs.length >= 2 ? "EmployeeGroup" : "SelectedEmployee";
+}
+
 function toPayload(dicValues: PayrollRunFormValues) {
+  const strEffectiveScopeType = resolveEffectiveScopeType(dicValues);
   return {
     intPayrollCycleID: dicValues.intPayrollCycleID || undefined,
     strRunName: dicValues.strRunName.trim(),
-    strScopeType: dicValues.strScopeType,
+    strScopeType: strEffectiveScopeType,
     intScopedEmployeeID:
-      dicValues.strScopeType === "SelectedEmployee"
-        ? Number(dicValues.intScopedEmployeeID)
+      strEffectiveScopeType === "SelectedEmployee"
+        ? Number(dicValues.lstScopedEmployeeIDs[0] ?? dicValues.intScopedEmployeeID)
         : null,
+    lstScopedEmployeeIDs:
+      strEffectiveScopeType === "EmployeeGroup" ? dicValues.lstScopedEmployeeIDs : undefined,
     dtPayrollMonth: dicValues.dtPayrollMonth,
     strRunStatus: dicValues.strRunStatus,
     blnIsLocked: dicValues.blnIsLocked,
@@ -175,6 +195,136 @@ export const payrollRunService = {
         lstEmployeeIDs: lstEmployeeIDs?.length ? lstEmployeeIDs : undefined,
       },
       strMenuAction: "PAYROLL_RUN_REPROCESS",
+    });
+    return objResult.Data;
+  },
+
+  /** Starts validation in the background and returns at once; follow it with getRunJobStatus. */
+  async startValidatePayrollRun(strRunID: string): Promise<PayrollJobStatus> {
+    const objResult = await requestApi<PayrollJobStatus>({
+      strPath: `/payroll/runs/${strRunID}/validate?blnBackground=true`,
+      strMethod: "POST",
+      strMenuAction: "PAYROLL_RUN_VALIDATE",
+    });
+    return objResult.Data;
+  },
+
+  /** Starts process in the background and returns at once; follow it with getRunJobStatus. */
+  async startProcessPayrollRun(strRunID: string): Promise<PayrollJobStatus> {
+    const objResult = await requestApi<PayrollJobStatus>({
+      strPath: `/payroll/runs/${strRunID}/process?blnBackground=true`,
+      strMethod: "POST",
+      strMenuAction: "PAYROLL_RUN_PROCESS",
+    });
+    return objResult.Data;
+  },
+
+  // ---- Arrear automation (run screen) ----
+  async getRunArrears(strRunID: string): Promise<RunArrearsRecord> {
+    const objResult = await requestApi<RunArrearsRecord>({
+      strPath: `/payroll/runs/${strRunID}/arrears`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_RUN_VIEW",
+    });
+    return objResult.Data;
+  },
+
+  async getEmployeeArrearLines(strRunID: string, intEmployeeID: number): Promise<ArrearLineRecord[]> {
+    const objResult = await requestApi<ArrearLineRecord[]>({
+      strPath: `/payroll/runs/${strRunID}/employees/${intEmployeeID}/arrear-lines`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_RUN_VIEW",
+    });
+    return objResult.Data;
+  },
+
+  async setEmployeeArrearHold(strRunID: string, intEmployeeID: number, blnHold: boolean, strReason?: string): Promise<void> {
+    await requestApi<unknown>({
+      strPath: `/payroll/runs/${strRunID}/employees/${intEmployeeID}/arrear-hold`,
+      strMethod: blnHold ? "POST" : "DELETE",
+      objBody: blnHold ? { strReason: strReason || null } : undefined,
+      strMenuAction: "PAYROLL_RUN_REPROCESS",
+    });
+  },
+
+  /** Arrear Register (CSV) of one run: employee x original month x item. */
+  async downloadArrearRegister(strRunID: string): Promise<void> {
+    try {
+      const objResponse = await axiosInstance.request<Blob>({
+        method: ApiRequestMethod.Get,
+        url: `${ApiRoutePrefix.ApiV1}/payroll/runs/${strRunID}/arrears/register`,
+        responseType: "blob",
+        csrfMenuAction: "SALARY_REGISTER_ARREAR_REGISTER",
+      } as ApiRequestConfig);
+      const strObjectUrl = URL.createObjectURL(objResponse.data);
+      const objAnchor = document.createElement("a");
+      objAnchor.href = strObjectUrl;
+      objAnchor.download = `arrear_register_${strRunID}.csv`;
+      document.body.appendChild(objAnchor);
+      objAnchor.click();
+      document.body.removeChild(objAnchor);
+      URL.revokeObjectURL(strObjectUrl);
+    } catch (objError) {
+      throw await createApiRequestError<void>(objError);
+    }
+  },
+
+  /** Arrear Register (Reports > Salary Register > Arrear Register): rows of the runs paid in a month range. */
+  async getArrearRegister(strFromMonth: string, strToMonth: string): Promise<ArrearRegisterRow[]> {
+    const objResult = await requestApi<ArrearRegisterRow[]>({
+      strPath: `/payroll/arrear-register?from_month=${encodeURIComponent(strFromMonth)}&to_month=${encodeURIComponent(strToMonth)}&format=json`,
+      strMethod: "GET",
+      strMenuAction: "SALARY_REGISTER_ARREAR_REGISTER",
+    });
+    return objResult.Data ?? [];
+  },
+
+  /** Same register as CSV, downloaded. */
+  async downloadArrearRegisterRange(strFromMonth: string, strToMonth: string): Promise<void> {
+    try {
+      const objResponse = await axiosInstance.request<Blob>({
+        method: ApiRequestMethod.Get,
+        url: `${ApiRoutePrefix.ApiV1}/payroll/arrear-register?from_month=${encodeURIComponent(strFromMonth)}&to_month=${encodeURIComponent(strToMonth)}&format=csv`,
+        responseType: "blob",
+        csrfMenuAction: "SALARY_REGISTER_ARREAR_REGISTER",
+      } as ApiRequestConfig);
+      const strObjectUrl = URL.createObjectURL(objResponse.data);
+      const objAnchor = document.createElement("a");
+      objAnchor.href = strObjectUrl;
+      objAnchor.download = `arrear_register_${strFromMonth}_${strToMonth}.csv`;
+      document.body.appendChild(objAnchor);
+      objAnchor.click();
+      document.body.removeChild(objAnchor);
+      URL.revokeObjectURL(strObjectUrl);
+    } catch (objError) {
+      throw await createApiRequestError<void>(objError);
+    }
+  },
+
+  async acknowledgeRunArrears(strRunID: string): Promise<void> {
+    await requestApi<unknown>({
+      strPath: `/payroll/runs/${strRunID}/arrears/review-ack`,
+      strMethod: "POST",
+      strMenuAction: "PAYROLL_RUN_FINALIZE",
+    });
+  },
+
+  /** Starts reprocess in the background and returns at once; follow it with getRunJobStatus. */
+  async startReprocessPayrollRun(strRunID: string, strReason: string): Promise<PayrollJobStatus> {
+    const objResult = await requestApi<PayrollJobStatus>({
+      strPath: `/payroll/runs/${strRunID}/reprocess?blnBackground=true`,
+      strMethod: "POST",
+      objBody: { strReason },
+      strMenuAction: "PAYROLL_RUN_REPROCESS",
+    });
+    return objResult.Data;
+  },
+
+  async getRunJobStatus(strRunID: string): Promise<PayrollJobStatus> {
+    const objResult = await requestApi<PayrollJobStatus>({
+      strPath: `/payroll/runs/${strRunID}/job-status`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_RUN_VIEW",
     });
     return objResult.Data;
   },

@@ -1,20 +1,20 @@
 "use client";
 
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
-import LockRoundedIcon from "@mui/icons-material/LockRounded";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import RadioButtonUncheckedRoundedIcon from "@mui/icons-material/RadioButtonUncheckedRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
-import { yupResolver } from "@hookform/resolvers/yup";
+import {
+  yupResolver } from "@hookform/resolvers/yup";
 import {
   Alert,
+  Avatar,
   Box,
   Button,
-  CircularProgress,
   Divider,
   IconButton,
   InputAdornment,
-  MenuItem,
   Stack,
   TextField,
   Typography
@@ -23,7 +23,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import * as yup from "yup";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
+import CommonSearchableSelect from "@/Common/components/CommonSearchableSelect";
 import { useChangePassword } from "@/features/change-password/hooks/useChangePassword";
 import { changePasswordService } from "@/features/change-password/services/changePasswordService";
 import type { ChangePasswordFormValues, PasswordResetEmployeeOption } from "@/features/change-password/types/ChangePasswordTypes";
@@ -71,20 +73,13 @@ type PasswordFieldProps = {
 function PasswordField(objProps: PasswordFieldProps) {
   const strVisibilityLabel = objProps.blnVisible ? `Hide ${objProps.strLabel}` : `Show ${objProps.strLabel}`;
   return (
-    <Box>
-      <Typography
-        sx={{
-          display: "block",
-          mb: 1,
-          color: "#0f172a",
-          fontSize: "0.95rem",
-          fontWeight: 600
-        }}
-      >
-        {objProps.strLabel}
-      </Typography>
+    <Box sx={{ pt: 0.5 }}>
       <TextField
         {...objProps.objRegister(objProps.strName)}
+        className="app-mui-text-field"
+        label={objProps.strLabel}
+        required
+        size="small"
         type={objProps.blnVisible ? "text" : "password"}
         autoComplete={objProps.strAutoComplete}
         autoCorrect="off"
@@ -98,22 +93,29 @@ function PasswordField(objProps: PasswordFieldProps) {
           "aria-invalid": Boolean(objProps.strError)
         }}
         InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <LockRoundedIcon sx={{ color: "#94a3b8", fontSize: 20 }} />
-            </InputAdornment>
-          ),
           endAdornment: (
             <InputAdornment position="end">
               <IconButton
                 type="button"
                 edge="end"
+                size="small"
                 aria-label={strVisibilityLabel}
                 title={strVisibilityLabel}
                 onClick={objProps.fnToggleVisibility}
                 data-controlid={`${objProps.strControlPrefix}.visibility.toggle`}
+                sx={{
+                  width: 30,
+                  height: 30,
+                  mr: -0.25,
+                  p: 0,
+                  color: "var(--app-primary-color)",
+                  backgroundColor: "transparent",
+                  "&:hover": {
+                    backgroundColor: "var(--app-primary-soft)"
+                  }
+                }}
               >
-                {objProps.blnVisible ? <VisibilityOffRoundedIcon /> : <VisibilityRoundedIcon />}
+                {objProps.blnVisible ? <VisibilityOffRoundedIcon sx={{ fontSize: "1.5rem" }} /> : <VisibilityRoundedIcon sx={{ fontSize: "1.5rem" }} />}
               </IconButton>
             </InputAdornment>
           )
@@ -144,7 +146,9 @@ export default function ChangePasswordForm({
   const [strEmployeeID, setStrEmployeeID] = useState("");
   const [objCurrentEmployeeIdentity, setObjCurrentEmployeeIdentity] = useState({
     lstEmployeeIDs: [] as number[],
-    strEmployeeCode: ""
+    strEmployeeCode: "",
+    strEmployeeName: "",
+    strEmailAddress: ""
   });
   const [blnLoadingEmployees, setBlnLoadingEmployees] = useState(false);
   function isCurrentEmployee(objEmployee?: PasswordResetEmployeeOption) {
@@ -162,6 +166,17 @@ export default function ChangePasswordForm({
   }
   const objSelectedEmployee = lstEmployees.find(
     (objEmployee) => objEmployee.intEmployeeID === Number(strEmployeeID)
+  );
+  const lstEmployeeSelectOptions = useMemo(
+    () => lstEmployees.map((objEmployee) => ({
+      intID: String(objEmployee.intEmployeeID),
+      strLabel: [
+        objEmployee.strEmployeeName,
+        objEmployee.strEmployeeCode,
+        objEmployee.strEmailAddress
+      ].filter(Boolean).join(" - ") + (isCurrentEmployee(objEmployee) ? " (You)" : "")
+    })),
+    [lstEmployees, objCurrentEmployeeIdentity]
   );
   const blnSelectedEmployeeIsCurrentUser = blnAdminResetMode
     && isCurrentEmployee(objSelectedEmployee);
@@ -193,7 +208,14 @@ export default function ChangePasswordForm({
     if (!blnAdminResetMode) {
       setLstEmployees([]);
       setStrEmployeeID("");
-      setObjCurrentEmployeeIdentity({ lstEmployeeIDs: [], strEmployeeCode: "" });
+      setBlnLoadingEmployees(true);
+      changePasswordService.getCurrentEmployeeIdentity()
+        .then((objIdentity) => setObjCurrentEmployeeIdentity(objIdentity))
+        .catch(() => setObjCurrentEmployeeIdentity({ lstEmployeeIDs: [], strEmployeeCode: "", strEmployeeName: "", strEmailAddress: "" }))
+        .finally(() => {
+          setBlnLoadingEmployees(false);
+          fnOnEmployeeOptionsLoaded?.();
+        });
       return;
     }
 
@@ -281,160 +303,168 @@ export default function ChangePasswordForm({
     { strLabel: "One special character", blnSatisfied: objPasswordRules.blnSpecial(strNewPassword) }
   ];
 
+  const strSelfEmployeeLabel = [
+    objCurrentEmployeeIdentity.strEmployeeName || "Current Employee",
+    objCurrentEmployeeIdentity.strEmployeeCode,
+    objCurrentEmployeeIdentity.strEmailAddress
+  ].filter(Boolean).join(" - ");
+  const strSelfEmployeeInitials = (objCurrentEmployeeIdentity.strEmployeeName || objCurrentEmployeeIdentity.strEmployeeCode || "ME")
+    .split(/\s+/)
+    .map((strPart) => strPart.charAt(0))
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
-    <Stack component="form" noValidate spacing={2.25} onSubmit={objForm.handleSubmit(handleSubmit)}>
+    <Stack component="form" noValidate spacing={1.5} onSubmit={objForm.handleSubmit(handleSubmit)}>
       {strSuccessMessage ? <Alert severity="success" data-controlid="change-password.success.alert">{strSuccessMessage}</Alert> : null}
       {strServerError ? <Alert severity="error" data-controlid="change-password.error.alert">{strServerError}</Alert> : null}
 
-      {blnAdminResetMode ? (
-        <Box>
-          <Typography sx={{ display: "block", mb: 1, color: "#0f172a", fontSize: "0.95rem", fontWeight: 600 }}>
-            Employee
-          </Typography>
-          <TextField
-            select
-            fullWidth
-            value={strEmployeeID}
-            disabled={blnLoadingEmployees || blnSubmitting}
-            onChange={(objEvent) => setStrEmployeeID(objEvent.target.value)}
-            inputProps={{ "data-controlid": "change-password.employee.select" }}
-            helperText={blnLoadingEmployees
-              ? "Loading employees..."
-              : (!lstEmployees.length ? "No employees are available for this company." : undefined)}
-          >
-            <MenuItem value="" disabled>Select an employee</MenuItem>
-            {lstEmployees.map((objEmployee) => (
-              <MenuItem key={objEmployee.intEmployeeID} value={String(objEmployee.intEmployeeID)}>
-                {objEmployee.strEmployeeCode} - {objEmployee.strEmployeeName}
-                {isCurrentEmployee(objEmployee) ? " (You)" : ""}
-              </MenuItem>
-            ))}
-          </TextField>
-        </Box>
-      ) : null}
-      {blnRequireCurrentPassword ? (
-        <PasswordField
-          strName="strCurrentPassword"
-          strLabel="Current Password"
-          strAutoComplete="current-password"
-          strControlPrefix="change-password.current-password"
-          blnVisible={blnCurrentVisible}
-          fnToggleVisibility={() => setBlnCurrentVisible((blnValue) => !blnValue)}
-          objRegister={objForm.register}
-          strError={strCurrentPasswordError}
-        />
-      ) : null}
-      <Box>
-        <PasswordField
-          strName="strNewPassword"
-          strLabel="New Password"
-          strAutoComplete="new-password"
-          strControlPrefix="change-password.new-password"
-          blnVisible={blnNewVisible}
-          fnToggleVisibility={() => setBlnNewVisible((blnValue) => !blnValue)}
-          objRegister={objForm.register}
-          strError={objForm.formState.errors.strNewPassword?.message}
-        />
-        <Box
-          sx={{
-            mt: 1.5,
-            p: 2,
-            border: "1px solid #dbeafe",
-            borderRadius: "6px",
-            backgroundColor: "#f8fbff"
-          }}
-          aria-label="Password requirements"
-        >
-          <Typography sx={{ mb: 1.25, color: "#2563eb", fontSize: "0.85rem", fontWeight: 700 }}>
-            Your password must include:
-          </Typography>
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
-              gridTemplateRows: { sm: "repeat(3, auto)" },
-              gridAutoFlow: { sm: "column" },
-              columnGap: 3,
-              rowGap: 0.75
-            }}
-          >
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1fr) 310px" }, gap: { xs: 2, md: 3 }, alignItems: "stretch" }}>
+        <Stack spacing={2.25}>
+          {blnAdminResetMode ? (
+            <Box sx={{ pt: 0.5 }}>
+              <CommonSearchableSelect
+                className="app-mui-text-field"
+                label="Employee"
+                placeholder="Search employee"
+                fullWidth
+                value={strEmployeeID}
+                options={lstEmployeeSelectOptions}
+                disabled={blnLoadingEmployees || blnSubmitting}
+                onChange={(strValue) => setStrEmployeeID(strValue ? String(strValue) : "")}
+                controlId="change-password.employee.select"
+                helperText={blnLoadingEmployees
+                  ? "Loading employees..."
+                  : (!lstEmployees.length ? "No employees are available for this company." : undefined)}
+              />
+            </Box>
+          ) : (
+            <Box>
+              <Typography component="label" sx={{ display: "block", mb: 0.75, color: "#0f172a", fontSize: "0.78rem", fontWeight: 800 }}>
+                Employee
+              </Typography>
+              <TextField
+                className="app-mui-text-field"
+                value={strSelfEmployeeLabel}
+                size="small"
+                fullWidth
+                disabled
+                InputProps={{
+                  readOnly: true,
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Avatar sx={{ width: 24, height: 24, fontSize: "0.72rem", fontWeight: 800, bgcolor: "var(--app-primary-soft)", color: "var(--app-primary-color)" }}>
+                        {strSelfEmployeeInitials}
+                      </Avatar>
+                    </InputAdornment>
+                  )
+                }}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    backgroundColor: "#f5f7fb"
+                  },
+                  "& .MuiInputBase-input.Mui-disabled": {
+                    WebkitTextFillColor: "#0f172a",
+                    fontWeight: 700
+                  },
+                  "& .MuiAvatar-root": {
+                    opacity: 1
+                  }
+                }}
+                inputProps={{ "data-controlid": "change-password.employee.current.input" }}
+              />
+            </Box>
+          )}
+          {blnRequireCurrentPassword ? (
+            <PasswordField
+              strName="strCurrentPassword"
+              strLabel="Current Password"
+              strAutoComplete="current-password"
+              strControlPrefix="change-password.current-password"
+              blnVisible={blnCurrentVisible}
+              fnToggleVisibility={() => setBlnCurrentVisible((blnValue) => !blnValue)}
+              objRegister={objForm.register}
+              strError={strCurrentPasswordError}
+            />
+          ) : null}
+          <PasswordField
+            strName="strNewPassword"
+            strLabel="New Password"
+            strAutoComplete="new-password"
+            strControlPrefix="change-password.new-password"
+            blnVisible={blnNewVisible}
+            fnToggleVisibility={() => setBlnNewVisible((blnValue) => !blnValue)}
+            objRegister={objForm.register}
+            strError={objForm.formState.errors.strNewPassword?.message}
+          />
+          <PasswordField
+            strName="strConfirmPassword"
+            strLabel="Confirm New Password"
+            strAutoComplete="new-password"
+            strControlPrefix="change-password.confirm-password"
+            blnVisible={blnConfirmVisible}
+            fnToggleVisibility={() => setBlnConfirmVisible((blnValue) => !blnValue)}
+            objRegister={objForm.register}
+            strError={objForm.formState.errors.strConfirmPassword?.message}
+          />
+        </Stack>
+
+        <Box sx={{ p: 2.25, borderRadius: "8px", backgroundColor: "#f8fbff", border: "1px solid #e5edf5" }} aria-label="Password requirements">
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
+            <InfoOutlinedIcon sx={{ color: "var(--app-primary-color)", fontSize: 24 }} />
+            <Typography sx={{ color: "#0f172a", fontSize: "0.92rem", fontWeight: 800, lineHeight: "24px" }}>
+              Password rules
+            </Typography>
+          </Stack>
+          <Stack spacing={1.25}>
             {lstPolicyRules.map((objRule) => (
-              <Stack key={objRule.strLabel} direction="row" spacing={0.8} alignItems="center">
+              <Stack key={objRule.strLabel} direction="row" spacing={1} alignItems="center">
                 {objRule.blnSatisfied
-                  ? <CheckCircleRoundedIcon sx={{ color: "#16a34a", fontSize: 16 }} />
-                  : <RadioButtonUncheckedRoundedIcon sx={{ color: "#94a3b8", fontSize: 16 }} />}
-                <Typography sx={{ color: objRule.blnSatisfied ? "#15803d" : "#475569", fontSize: "0.8rem" }}>
+                  ? <CheckCircleRoundedIcon sx={{ color: "#2f7e3d", fontSize: 18 }} />
+                  : <RadioButtonUncheckedRoundedIcon sx={{ color: "var(--app-primary-color)", fontSize: 18 }} />}
+                <Typography sx={{ color: "#475569", fontSize: "0.82rem", fontWeight: 600 }}>
                   {objRule.strLabel}
                 </Typography>
               </Stack>
             ))}
-          </Box>
+          </Stack>
         </Box>
       </Box>
-      <PasswordField
-        strName="strConfirmPassword"
-        strLabel="Confirm New Password"
-        strAutoComplete="new-password"
-        strControlPrefix="change-password.confirm-password"
-        blnVisible={blnConfirmVisible}
-        fnToggleVisibility={() => setBlnConfirmVisible((blnValue) => !blnValue)}
-        objRegister={objForm.register}
-        strError={objForm.formState.errors.strConfirmPassword?.message}
-      />
 
-      <Divider sx={{ borderColor: "#e5e7eb" }} />
+      <Divider sx={{ borderColor: "#e5e7eb", mt: 0.25 }} />
 
-      <Stack direction={{ xs: "column-reverse", sm: "row" }} spacing={1.25} justifyContent="flex-end">
-        <Button
-          type="button"
-          variant="outlined"
-          disabled={blnSubmitting}
-          onClick={() => objRouter.push(strReturnTo)}
-          data-controlid="change-password.cancel.button"
-          sx={{
-            minHeight: 42,
-            borderRadius: "8px",
-            px: 3,
-            color: "var(--app-primary-color)",
-            borderColor: "var(--app-primary-color)",
-            fontWeight: 600,
-            "&:hover": {
-              borderColor: "var(--app-primary-hover)",
-              color: "var(--app-primary-hover)",
-              backgroundColor: "var(--app-primary-soft)"
-            }
-          }}
-        >
-          Cancel
-        </Button>
-        <Button
-          type="submit"
-          variant="contained"
-          disabled={blnSubmitting || blnLoadingEmployees || !objForm.formState.isValid || (blnAdminResetMode && !strEmployeeID)}
-          data-controlid="change-password.submit.button"
-          startIcon={blnSubmitting ? <CircularProgress size={18} color="inherit" /> : undefined}
-          sx={{
-            minHeight: 42,
-            borderRadius: "8px",
-            px: 3,
-            background: "linear-gradient(135deg, #132a63 0%, #184a8b 100%)",
-            boxShadow: "0 10px 20px rgba(24, 74, 139, 0.24)",
-            fontWeight: 600,
-            "&:hover": {
-              background: "linear-gradient(135deg, #132a63 0%, #184a8b 100%)",
-              boxShadow: "0 12px 24px rgba(24, 74, 139, 0.30)"
-            },
-            "&.Mui-disabled": {
-              background: "#dddddd",
-              color: "#a6a6a6",
-              boxShadow: "none"
-            }
-          }}
-        >
-          {blnSubmitting
-            ? (blnAdminResetMode ? "Resetting Password..." : "Changing Password...")
-            : (blnAdminResetMode ? "Reset Password" : "Change Password")}
-        </Button>
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }} justifyContent="space-between" sx={{ mt: -0.25 }}>
+        <Typography className="app-master-dialog-required-fields">
+          Required fields are marked <Box component="span" className="app-master-dialog-required-asterisk">*</Box>{" "}
+        </Typography>
+
+        <Stack direction={{ xs: "column-reverse", sm: "row" }} spacing={1} justifyContent="flex-end">
+          <Button
+            type="button"
+            variant="outlined"
+            size="small"
+            className="app-btn app-btn-outline"
+            disabled={blnSubmitting}
+            onClick={() => objRouter.push(strReturnTo)}
+            data-controlid="change-password.cancel.button"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            variant="contained"
+            size="small"
+            className="app-btn app-btn-primary"
+            disabled={blnSubmitting || blnLoadingEmployees || !objForm.formState.isValid || (blnAdminResetMode && !strEmployeeID)}
+            data-controlid="change-password.submit.button"
+            startIcon={blnSubmitting ? <DottedLoader intSize={18} color="inherit" /> : undefined}
+          >
+            {blnSubmitting
+              ? (blnAdminResetMode ? "Resetting Password..." : "Changing Password...")
+              : (blnAdminResetMode ? "Reset Password" : "Change Password")}
+          </Button>
+        </Stack>
       </Stack>
     </Stack>
   );

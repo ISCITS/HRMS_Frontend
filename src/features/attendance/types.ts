@@ -184,12 +184,30 @@ export type AttendanceImportRow = {
   strStatus: string;
   strFirstIn: string | null;
   strLastOut: string | null;
+  strRawShift: string | null;
+  intShiftID: number | null;
+  intLateMinutes: number;
+  intEarlyMinutes: number;
+  blnClientLate: boolean | null;
+  blnClientEarly: boolean | null;
+  strWarning: string | null;
   blnValid: boolean;
   strErrorMessage: string | null;
   blnWillOverwrite: boolean;
 };
 
+export type AttendanceImportSourceColumn = { intIndex: number; strName: string };
+export type AttendanceImportField = { strKey: string; strLabel: string; blnRequired: boolean };
+export type AttendanceImportMapping = Record<string, number | null>;
+export type AttendanceImportMappingIssue = { strFieldKey: string; strMessage: string };
+
 export type AttendanceImportPreviewResult = {
+  lstSourceColumns: AttendanceImportSourceColumn[];
+  lstFields: AttendanceImportField[];
+  dicMapping: AttendanceImportMapping;
+  intHeaderRowNumber: number;
+  lstMappingIssues: AttendanceImportMappingIssue[];
+  blnNeedsMapping: boolean;
   lstRows: AttendanceImportRow[];
   intTotal: number;
   intValid: number;
@@ -204,6 +222,7 @@ export type AttendanceImportCommitRow = {
   strStatus: string;
   tmFirstIn: string | null;
   tmLastOut: string | null;
+  intShiftID: number | null;
 };
 
 export type AttendanceImportCommitFailure = {
@@ -217,6 +236,28 @@ export type AttendanceImportCommitResult = {
   intUpdated: number;
   intSkipped: number;
   lstFailures: AttendanceImportCommitFailure[];
+};
+
+export type ScheduledImportFileResult = {
+  strFile: string;
+  strOutcome: "processed" | "failed" | "deferred";
+  strMessage?: string;
+  intTotal?: number;
+  intCreated?: number;
+  intUpdated?: number;
+  intSkipped?: number;
+};
+
+export type ScheduledImportRunResult = {
+  intFilesFound: number;
+  intFilesProcessed: number;
+  intFilesFailed: number;
+  intFilesDeferred: number;
+  intCreated: number;
+  intUpdated: number;
+  intSkipped: number;
+  strNote?: string;
+  lstFiles: ScheduledImportFileResult[];
 };
 
 export type DailyAttendanceFinalizeResult = {

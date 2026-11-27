@@ -14,7 +14,9 @@ import type {
 import type {
   AttendanceImportCommitResult,
   AttendanceImportCommitRow,
+  AttendanceImportMapping,
   AttendanceImportPreviewResult,
+  ScheduledImportRunResult,
   AttendancePolicy,
   AttendancePolicyAssignmentEmployee,
   AttendancePolicyAssignmentHistory,
@@ -428,9 +430,10 @@ export const attendanceService = {
   // FormData bodies skip JSON payload-encryption automatically (see axiosInstance.ts),
   // so this bypasses requestEncryptedApi and calls axiosInstance directly - same pattern
   // as fileUploadService.uploadFile/reimbursementService.
-  async previewImport(objFile: File): Promise<AttendanceImportPreviewResult> {
+  async previewImport(objFile: File, dicMapping?: AttendanceImportMapping): Promise<AttendanceImportPreviewResult> {
     const objFormData = new FormData();
     objFormData.append("objFile", objFile);
+    if (dicMapping) objFormData.append("strMapping", JSON.stringify(dicMapping));
     try {
       const objResponse = await axiosInstance.request<{ Data: AttendanceImportPreviewResult }>({
         method: ApiRequestMethod.Post,
@@ -449,6 +452,16 @@ export const attendanceService = {
       strPath: "/attendance/import/commit",
       strMethod: ApiRequestMethod.Post,
       objBody: { lstRows },
+      strMenuAction: ATTENDANCE_MANAGE,
+    });
+    return objResult.Data;
+  },
+
+  // Runs the same folder-import job the daily scheduler runs, on demand.
+  async runScheduledImport(): Promise<ScheduledImportRunResult> {
+    const objResult = await requestApi<ScheduledImportRunResult>({
+      strPath: "/attendance/import/scheduled/run",
+      strMethod: ApiRequestMethod.Post,
       strMenuAction: ATTENDANCE_MANAGE,
     });
     return objResult.Data;

@@ -1,15 +1,37 @@
-import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
+﻿import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { requestEncryptedApi, type ApiEnvelope } from "@/Common/utils/apiErrorHandler";
 import type {
+  FNFAdjustmentFormRow,
+  FNFAdjustmentsResponse,
   FNFAuditRecord,
-  FNFDefaultPayrollRunOption,
+  FNFBonusOverrideResponse,
+  FNFBonusOverrideValues,
+  FNFBulkCreateItem,
+  FNFPayableDaysResponse,
+  FNFPayableDaysRow,
+  FNFBulkCreateResponse,
   FNFEmployeeOption,
+  FNFEmployeePrefill,
+  FNFLeaverInactiveResult,
+  FNFLeaversResponse,
+  FNFReportResponse,
   FNFLineFormValues,
+  FNFPaymentAdviceResponse,
+  FNFPayslipDocument,
+  FNFPayslipEmployeeOption,
+  FNFPayslipRecord,
+  FNFRegularPayslipRecord,
+  FNFPolicy,
+  FNFPolicyResponse,
+  FNFRegisterResponse,
   FNFSettlementFormValues,
   FNFSettlementLineRecord,
   FNFSettlementRecord,
   FNFStatementRecord,
 } from "@/features/payroll/types";
+import type { PayslipFormat } from "@/features/payroll/services/payslipService";
+import type { FNFReportFormat } from "@/features/payroll/utils/payrollDocumentFormat";
+import { buildFNFAdjustmentPayload } from "@/features/payroll/utils/fnfAdjustments";
 
 async function requestApi<TData>(objOptions: {
   strPath: string;
@@ -26,18 +48,25 @@ async function requestApi<TData>(objOptions: {
   });
 }
 
+/** Local date as yyyy-mm-dd (toISOString is UTC and gives yesterday before 05:30 IST). */
+function toLocalDateText(dtValue: Date): string {
+  return `${dtValue.getFullYear()}-${String(dtValue.getMonth() + 1).padStart(2, "0")}-${String(dtValue.getDate()).padStart(2, "0")}`;
+}
+
 export function createInitialFNFSettlementForm(): FNFSettlementFormValues {
-  const strToday = new Date().toISOString().slice(0, 10);
+  const dtNow = new Date();
+  const strToday = toLocalDateText(dtNow);
+  // Settlement date = last day of the month in which the F&F is made.
+  const strMonthEnd = toLocalDateText(new Date(dtNow.getFullYear(), dtNow.getMonth() + 1, 0));
   return {
     strEmployeeCode: "",
     strSettlementNumber: "",
-    intPayrollRunID: "",
     strExitType: "resignation",
     strExitReason: "",
     dtResignationDate: "",
     dtLastWorkingDate: strToday,
-    dtSettlementDate: strToday,
-    dtSettlementMonth: strToday.slice(0, 8) + "01",
+    dtSettlementDate: strMonthEnd,
+    dtSettlementMonth: strMonthEnd.slice(0, 8) + "01",
     decNoticePeriodDays: "0",
     decNoticeServedDays: "0",
     decNoticeShortfallDays: "0",
@@ -47,8 +76,10 @@ export function createInitialFNFSettlementForm(): FNFSettlementFormValues {
 }
 
 function toSettlementPayload(dicValues: FNFSettlementFormValues) {
-  const lstLeaveEncashments = (dicValues.lstLeaveEncashments || [])
-    .filter((dicLeave) => Number(dicLeave.decEncashableDays || dicLeave.decBalanceDays || 0) > 0)
+  // Leave rows are sent only by forms that edit them (the create wizard); the Edit Details dialog
+  // leaves them out so saving the header never replaces the settlement's leave rows.
+  const lstLeaveEncashments = dicValues.lstLeaveEncashments
+    ?.filter((dicLeave) => Number(dicLeave.decEncashableDays || dicLeave.decBalanceDays || 0) > 0)
     .map((dicLeave) => ({
       strLeaveTypeCode: dicLeave.strLeaveTypeCode,
       strLeaveTypeName: dicLeave.strLeaveTypeName,
@@ -59,7 +90,6 @@ function toSettlementPayload(dicValues: FNFSettlementFormValues) {
     intEmployeeID: dicValues.intEmployeeID ? Number(dicValues.intEmployeeID) : undefined,
     strEmployeeCode: dicValues.strEmployeeCode.trim(),
     strSettlementNumber: dicValues.strSettlementNumber.trim() || undefined,
-    intPayrollRunID: dicValues.intPayrollRunID ? Number(dicValues.intPayrollRunID) : undefined,
     strExitType: dicValues.strExitType.trim(),
     strExitReason: dicValues.strExitReason.trim() || undefined,
     dtResignationDate: dicValues.dtResignationDate || undefined,
@@ -71,7 +101,7 @@ function toSettlementPayload(dicValues: FNFSettlementFormValues) {
     decNoticeShortfallDays: Number(dicValues.decNoticeShortfallDays || 0),
     strCurrencyCode: dicValues.strCurrencyCode.trim() || "INR",
     strRemarks: dicValues.strRemarks.trim() || undefined,
-    lstLeaveEncashments,
+    ...(lstLeaveEncashments ? { lstLeaveEncashments } : {}),
   };
 }
 
@@ -83,6 +113,7 @@ function toLinePayload(dicValues: FNFLineFormValues) {
     strLineName: dicValues.strLineName.trim(),
     decActualAmount: Number(dicValues.decActualAmount || dicValues.decAmount || 0),
     decAmount: Number(dicValues.decAmount || 0),
+    decTaxableAmount: dicValues.strLineType === "EARNING" ? Number(dicValues.decTaxableAmount || 0) : 0,
     blnIsManualOverride: dicValues.blnIsManualOverride,
     strOverrideReason: dicValues.strOverrideReason.trim() || undefined,
     strRemarks: dicValues.strRemarks.trim() || undefined,
@@ -90,19 +121,170 @@ function toLinePayload(dicValues: FNFLineFormValues) {
 }
 
 export const fnfSettlementService = {
-  async listEmployeeOptions(): Promise<FNFEmployeeOption[]> {
+  /** blnEligibleForNew: only employees with a date of exit in the employee master and no settlement yet. */
+  async listEmployeeOptions(blnEligibleForNew = false): Promise<FNFEmployeeOption[]> {
     const objResult = await requestApi<FNFEmployeeOption[]>({
-      strPath: "/payroll/fnf-settlements/employee-options",
+      strPath: `/payroll/fnf-settlements/employee-options${blnEligibleForNew ? "?eligible_for_new=true" : ""}`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_FNF_VIEW",
     });
     return objResult.Data;
   },
-  async getDefaultPayrollRunForEmployee(intEmployeeID: number): Promise<FNFDefaultPayrollRunOption | null> {
-    const objResult = await requestApi<FNFDefaultPayrollRunOption | null>({
-      strPath: `/payroll/fnf-settlements/employee-options/${intEmployeeID}/default-payroll-run`,
+  async getEmployeePrefill(intEmployeeID: number, strLastWorkingDate?: string): Promise<FNFEmployeePrefill> {
+    const objParams = new URLSearchParams({ employee_id: String(intEmployeeID) });
+    if (strLastWorkingDate) objParams.set("last_working_date", strLastWorkingDate);
+    const objResult = await requestApi<FNFEmployeePrefill>({
+      strPath: `/payroll/fnf-settlements/employee-prefill?${objParams.toString()}`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_FNF_CREATE",
+    });
+    return objResult.Data;
+  },
+  async bulkCreate(lstItems: FNFBulkCreateItem[], blnCalculate: boolean): Promise<FNFBulkCreateResponse> {
+    const objResult = await requestApi<FNFBulkCreateResponse>({
+      strPath: "/payroll/fnf-settlements/bulk",
+      strMethod: "POST",
+      objBody: { lstItems, blnCalculate },
+      strMenuAction: "PAYROLL_FNF_CREATE",
+    });
+    return objResult.Data;
+  },
+  async getReport(objFilters: { lwd_from?: string; lwd_to?: string; status?: string; employee_id?: number | ""; department?: string }): Promise<FNFReportResponse> {
+    const objParams = new URLSearchParams();
+    Object.entries(objFilters).forEach(([strKey, objValue]) => {
+      if (objValue !== undefined && objValue !== "" && objValue !== "All" && objValue !== 0) objParams.set(strKey, String(objValue));
+    });
+    const strQuery = objParams.toString();
+    const objResult = await requestApi<FNFReportResponse>({
+      strPath: `/payroll/fnf-settlements/report${strQuery ? `?${strQuery}` : ""}`,
       strMethod: "GET",
       strMenuAction: "PAYROLL_FNF_VIEW",
+    });
+    return objResult.Data;
+  },
+  /** Generates a new F&F report version; returns it in the chosen format (both are kept with the version). */
+  async generatePayslip(strRecordUUID: string, strFormat: FNFReportFormat = "default"): Promise<FNFPayslipDocument> {
+    const objResult = await requestApi<FNFPayslipDocument>({
+      strPath: `/payroll/fnf-settlements/${strRecordUUID}/payslip?format=${strFormat}`,
+      strMethod: "POST",
+      strMenuAction: "PAYROLL_FNF_EDIT",
+    });
+    return objResult.Data;
+  },
+  async listPayslips(objFilters: { employee_id?: number | ""; latest_only?: boolean; generated_from?: string; generated_to?: string }): Promise<FNFPayslipRecord[]> {
+    const objParams = new URLSearchParams();
+    if (objFilters.employee_id) objParams.set("employee_id", String(objFilters.employee_id));
+    objParams.set("latest_only", String(objFilters.latest_only ?? true));
+    if (objFilters.generated_from) objParams.set("generated_from", objFilters.generated_from);
+    if (objFilters.generated_to) objParams.set("generated_to", objFilters.generated_to);
+    const objResult = await requestApi<FNFPayslipRecord[]>({
+      strPath: `/payroll/fnf-settlements/payslips?${objParams.toString()}`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_FNF_VIEW",
+    });
+    return objResult.Data;
+  },
+  async listPayslipEmployees(): Promise<FNFPayslipEmployeeOption[]> {
+    const objResult = await requestApi<FNFPayslipEmployeeOption[]>({
+      strPath: "/payroll/fnf-settlements/payslips/employees",
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_FNF_VIEW",
+    });
+    return objResult.Data;
+  },
+  async listRegularPayslips(intEmployeeID: number, strFromMonth: string, strToMonth: string): Promise<FNFRegularPayslipRecord[]> {
+    const objResult = await requestApi<FNFRegularPayslipRecord[]>({
+      strPath: `/payroll/fnf-settlements/payslips/regular?employee_id=${intEmployeeID}&from_month=${strFromMonth}&to_month=${strToMonth}`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_FNF_VIEW",
+    });
+    return objResult.Data;
+  },
+  /** An F&F report: our format, or the client format (shown as a page, downloaded as a PDF). */
+  async getPayslipDocument(strRecordUUID: string, strFormat: FNFReportFormat = "default"): Promise<FNFPayslipDocument> {
+    const objResult = await requestApi<FNFPayslipDocument>({
+      strPath: `/payroll/fnf-settlements/payslips/${strRecordUUID}/document?format=${strFormat}`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_FNF_EXPORT",
+    });
+    return objResult.Data;
+  },
+  async getRegularPayslipDocument(strRecordUUID: string, strFormat: PayslipFormat = "default"): Promise<FNFPayslipDocument> {
+    const objResult = await requestApi<FNFPayslipDocument>({
+      strPath: `/payroll/fnf-settlements/payslips/regular/${strRecordUUID}/document?format=${strFormat}`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_FNF_EXPORT",
+    });
+    return objResult.Data;
+  },
+  /** strFormat: the F&F reports' format; strPayslipFormat: the regular payslips' (strFormat when not given). */
+  async getPayslipBundle(lstFNFPayslipIDs: string[], lstRegularPayslipIDs: string[], strFormat: FNFReportFormat = "default", strPayslipFormat?: PayslipFormat): Promise<FNFPayslipDocument> {
+    const objResult = await requestApi<FNFPayslipDocument>({
+      strPath: "/payroll/fnf-settlements/payslips/bundle",
+      strMethod: "POST",
+      objBody: { lstFNFPayslipIDs, lstRegularPayslipIDs, strFormat, ...(strPayslipFormat ? { strPayslipFormat } : {}) },
+      strMenuAction: "PAYROLL_FNF_EXPORT",
+    });
+    return objResult.Data;
+  },
+  async getPolicy(): Promise<FNFPolicyResponse> {
+    const objResult = await requestApi<FNFPolicyResponse>({
+      strPath: "/payroll/fnf-settlements/policy",
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_FNF_VIEW",
+    });
+    return objResult.Data;
+  },
+  async savePolicy(objPolicy: FNFPolicy): Promise<FNFPolicyResponse> {
+    const objResult = await requestApi<FNFPolicyResponse>({
+      strPath: "/payroll/fnf-settlements/policy",
+      strMethod: "PUT",
+      objBody: objPolicy,
+      strMenuAction: "PAYROLL_FNF_APPROVE",
+    });
+    return objResult.Data;
+  },
+  async getRegister(objFilters: { lwd_from?: string; lwd_to?: string; status?: string }): Promise<FNFRegisterResponse> {
+    const objParams = new URLSearchParams();
+    Object.entries(objFilters).forEach(([strKey, strValue]) => {
+      if (strValue && strValue !== "All") objParams.set(strKey, strValue);
+    });
+    const strQuery = objParams.toString();
+    const objResult = await requestApi<FNFRegisterResponse>({
+      strPath: `/payroll/fnf-settlements/register${strQuery ? `?${strQuery}` : ""}`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_FNF_VIEW",
+    });
+    return objResult.Data;
+  },
+  /** Leavers whose F&F is finalized and given (paid/recovered); employee_status: All / active / inactive. */
+  async getLeavers(objFilters: { lwd_from?: string; lwd_to?: string; employee_status?: string }): Promise<FNFLeaversResponse> {
+    const objParams = new URLSearchParams();
+    Object.entries(objFilters).forEach(([strKey, strValue]) => {
+      if (strValue && strValue !== "All") objParams.set(strKey, strValue);
+    });
+    const strQuery = objParams.toString();
+    const objResult = await requestApi<FNFLeaversResponse>({
+      strPath: `/payroll/fnf-settlements/leavers${strQuery ? `?${strQuery}` : ""}`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_FNF_VIEW",
+    });
+    return objResult.Data;
+  },
+  async setLeaversInactive(lstSettlementIDs: number[]): Promise<FNFLeaverInactiveResult> {
+    const objResult = await requestApi<FNFLeaverInactiveResult>({
+      strPath: "/payroll/fnf-settlements/leavers/set-inactive",
+      strMethod: "POST",
+      objBody: { lstSettlementIDs },
+      strMenuAction: "PAYROLL_FNF_SET_INACTIVE",
+    });
+    return objResult.Data;
+  },
+  async getPaymentAdvice(): Promise<FNFPaymentAdviceResponse> {
+    const objResult = await requestApi<FNFPaymentAdviceResponse>({
+      strPath: "/payroll/fnf-settlements/payment-advice",
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_FNF_MARK_PAID",
     });
     return objResult.Data;
   },
@@ -204,5 +386,62 @@ export const fnfSettlementService = {
       strMethod: "DELETE",
       strMenuAction: "PAYROLL_FNF_EDIT",
     });
+  },
+  /** F&F adjustments (component-wise amounts entered by HR) and the components to choose from. */
+  async getAdjustments(strRecordUUID: string): Promise<FNFAdjustmentsResponse> {
+    const objResult = await requestApi<FNFAdjustmentsResponse>({
+      strPath: `/payroll/fnf-settlements/${strRecordUUID}/adjustments`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_FNF_VIEW",
+    });
+    return objResult.Data;
+  },
+  /** Replaces the settlement's adjustments; the settlement then needs Calculate. */
+  async saveAdjustments(strRecordUUID: string, lstRows: FNFAdjustmentFormRow[]): Promise<FNFAdjustmentsResponse> {
+    const objResult = await requestApi<FNFAdjustmentsResponse>({
+      strPath: `/payroll/fnf-settlements/${strRecordUUID}/adjustments`,
+      strMethod: "PUT",
+      objBody: buildFNFAdjustmentPayload(lstRows),
+      strMenuAction: "PAYROLL_FNF_EDIT",
+    });
+    return objResult.Data;
+  },
+  /** HR's own bonus amount, paid instead of the calculated Bonus FNF; the settlement then needs Calculate. */
+  async saveBonusOverride(strRecordUUID: string, objValues: FNFBonusOverrideValues): Promise<FNFBonusOverrideResponse> {
+    const objResult = await requestApi<FNFBonusOverrideResponse>({
+      strPath: `/payroll/fnf-settlements/${strRecordUUID}/bonus-override`,
+      strMethod: "PUT",
+      objBody: { decAmount: objValues.decAmount, strReason: objValues.strReason.trim(), blnTaxable: objValues.blnTaxable },
+      strMenuAction: "PAYROLL_FNF_EDIT",
+    });
+    return objResult.Data;
+  },
+  /** Payable days entered on the settlement and the days its last calculation used. */
+  async getPayableDays(strRecordUUID: string): Promise<FNFPayableDaysResponse> {
+    const objResult = await requestApi<FNFPayableDaysResponse>({
+      strPath: `/payroll/fnf-settlements/${strRecordUUID}/payable-days`,
+      strMethod: "GET",
+      strMenuAction: "PAYROLL_FNF_VIEW",
+    });
+    return objResult.Data;
+  },
+  /** Replaces the settlement's payable days (empty = use attendance); the settlement then needs Calculate. */
+  async savePayableDays(strRecordUUID: string, lstRows: FNFPayableDaysRow[]): Promise<FNFPayableDaysResponse> {
+    const objResult = await requestApi<FNFPayableDaysResponse>({
+      strPath: `/payroll/fnf-settlements/${strRecordUUID}/payable-days`,
+      strMethod: "PUT",
+      objBody: { lstPayableDays: lstRows.map((objRow) => ({ dtMonth: objRow.dtMonth, decPayableDays: objRow.decPayableDays, strRemarks: objRow.strRemarks?.trim() || null })) },
+      strMenuAction: "PAYROLL_FNF_EDIT",
+    });
+    return objResult.Data;
+  },
+  /** Removes the bonus override; the calculated bonus applies after Calculate. */
+  async removeBonusOverride(strRecordUUID: string): Promise<FNFBonusOverrideResponse> {
+    const objResult = await requestApi<FNFBonusOverrideResponse>({
+      strPath: `/payroll/fnf-settlements/${strRecordUUID}/bonus-override`,
+      strMethod: "DELETE",
+      strMenuAction: "PAYROLL_FNF_EDIT",
+    });
+    return objResult.Data;
   },
 };

@@ -6,14 +6,18 @@ import {
   Alert,
   Box,
   Button,
+  InputAdornment,
+  Link,
   MenuItem,
   TextField,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import EmployeeFilterSelect, { type EmployeeFilterOption } from "@/components/shared/EmployeeFilterSelect";
+import { employeeService } from "@/features/employee/services/employeeService";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import { MasterAddColumnsControl, MasterBreadcrumbs, MasterGridSkeleton, dicMasterRowSx, onSearchEnter, type MasterOptionalColumn } from "@/components/master/MasterListUi";
 import styles from "@/components/master/MasterScreen.module.css";
 import ITDeclarationStatusBadge from "@/features/it-declaration/components/ITDeclarationStatusBadge";
 import {
@@ -21,9 +25,12 @@ import {
   type HrItDeclarationListRecord,
 } from "@/features/it-declaration/services/itDeclarationService";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import { buildFinancialYearOptions } from "@/features/payroll/utils/form16Document";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 const objInrFormatter = new Intl.NumberFormat("en-IN");
+
+type OptionalColumnKey = "submittedOn" | "lastUpdated";
 
 type ItDeclarationFilters = {
   strFinancialYearCode: string;
@@ -32,8 +39,11 @@ type ItDeclarationFilters = {
   strStatus: string;
 };
 
+// Opens on the current financial year (it loaded every year before); "All" is still a choice.
+const lstFinancialYearOptions = buildFinancialYearOptions(6);
+
 const dicEmptyFilters: ItDeclarationFilters = {
-  strFinancialYearCode: "",
+  strFinancialYearCode: lstFinancialYearOptions[0],
   strEmployee: "",
   strTaxRegime: "",
   strStatus: "",
@@ -52,10 +62,34 @@ export default function ITDeclarationReviewListPage() {
   const { blnLoading: blnRightsLoading, canDoAny, canViewAny, objRights } =
     useModuleActionAccess(["it_declaration_review", "PAYROLL_IT_DECLARATION_REVIEW", "PAYROLL_IT_DECLARATION"]);
   const [lstRows, setLstRows] = useState<HrItDeclarationListRecord[]>([]);
-  const [blnLoading, setBlnLoading] = useState(true);
+  const [blnLoading, setBlnLoading] = useState(false);
   const [strError, setStrError] = useState("");
+  // Search-first: the grid stays empty until the user clicks Search.
+  const [blnHasSearched, setBlnHasSearched] = useState(false);
   const [blnDismissNoPermission, setBlnDismissNoPermission] = useState(false);
   const [dicFiltersDraft, setDicFiltersDraft] = useState<ItDeclarationFilters>(dicEmptyFilters);
+  const [dicFiltersApplied, setDicFiltersApplied] = useState<ItDeclarationFilters>(dicEmptyFilters);
+  const [lstEmployeeFilterOptions, setLstEmployeeFilterOptions] = useState<EmployeeFilterOption[]>([]);
+
+  // Employee dropdown (searchable) - the light employee lookup, not the declarations.
+  useEffect(() => {
+    if (blnRightsLoading) return;
+    let blnActive = true;
+    employeeService.getEmployees()
+      .then((lstEmployees) => {
+        if (!blnActive) return;
+        setLstEmployeeFilterOptions(lstEmployees
+          .filter((objEmployee) => !objEmployee.blnIsPartialSave && objEmployee.strEmployeeCode)
+          .map((objEmployee) => ({
+            strValue: objEmployee.strEmployeeCode,
+            strEmployeeCode: objEmployee.strEmployeeCode,
+            strEmployeeName: objEmployee.strFullName,
+          })));
+      })
+      .catch(() => { if (blnActive) setLstEmployeeFilterOptions([]); });
+    return () => { blnActive = false; };
+  }, [blnRightsLoading]);
+  const [lstVisibleOptionalColumns, setLstVisibleOptionalColumns] = useState<OptionalColumnKey[]>([]);
 
   function hasPermissionCode(strCode: string) {
     const strNormalized = strCode.trim().toUpperCase();
@@ -69,6 +103,8 @@ export default function ITDeclarationReviewListPage() {
   async function loadData(objFilters: ItDeclarationFilters = dicFiltersDraft) {
     setBlnLoading(true);
     setStrError("");
+    setBlnHasSearched(true);
+    setDicFiltersApplied(objFilters);
     try {
       const objData = await hrItDeclarationReviewService.getList(objFilters);
       setLstRows(objData.lstRows || []);
@@ -79,17 +115,21 @@ export default function ITDeclarationReviewListPage() {
     }
   }
 
-  useEffect(() => {
-    if (blnRightsLoading) return;
-    void loadData(dicEmptyFilters);
-  }, [blnRightsLoading]);
-
   const blnCanView =
     canViewAny() ||
     canDoAny("view") ||
     hasPermissionCode("PAYROLL_IT_DECLARATION_VIEW") ||
     hasPermissionCode("PAYROLL_IT_DECLARATION_REVIEW");
   const blnCanExport = canDoAny("export");
+  const blnBusy = blnLoading || blnRightsLoading;
+  const lstOptionalColumns: MasterOptionalColumn<OptionalColumnKey>[] = [
+    { strKey: "submittedOn", strLabel: t("IT_DECLARATION_REVIEW_SUBMITTED_ON", "Submitted On") },
+    { strKey: "lastUpdated", strLabel: t("IT_DECLARATION_REVIEW_LAST_UPDATED", "Last Updated") },
+  ];
+  function openDeclaration(strRecordUUID: string) {
+    if (!blnCanView) return;
+    objRouter.push(`/payroll/it-declaration-review/${strRecordUUID}`);
+  }
   function getStatusLabel(strStatus: string) {
     const strNormalized = String(strStatus || "").trim().toLowerCase().replace(/\s+/g, "_");
     const dicStatusKeys: Record<string, [string, string]> = {
@@ -117,21 +157,30 @@ export default function ITDeclarationReviewListPage() {
     }
     return formatDisplayLabel(strRegime);
   }
+  // The employee filter holds the picked employee's code: match it exactly (E1 must not match E10).
+  const lstShownRows = useMemo(() => {
+    const strEmployeeCode = dicFiltersApplied.strEmployee.trim().toLowerCase();
+    return strEmployeeCode ? lstRows.filter((objRow) => String(objRow.strEmployeeCode || "").toLowerCase() === strEmployeeCode) : lstRows;
+  }, [dicFiltersApplied.strEmployee, lstRows]);
+
   const lstTableRows = useMemo(
-    () => lstRows.map((objRow) => ({
+    () => lstShownRows.map((objRow) => ({
       id: objRow.strRecordUUID,
-      action: (
-        <Button
-          size="small"
+      strEmployeeCode: (
+        <Link
+          className="app-master-first-column-link"
+          component="button"
+          type="button"
+          underline="none"
           disabled={!blnCanView}
-          onClick={() => objRouter.push(`/payroll/it-declaration-review/${objRow.strRecordUUID}`)}
-          controlId="it-declaration.review-list.row.view.button"
+          controlId="it-declaration.review-list.row.view.link"
           data-row-key={objRow.strRecordUUID}
+          onClick={(objEvent) => { objEvent.stopPropagation(); openDeclaration(objRow.strRecordUUID); }}
         >
-          {t("IT_DECLARATION_REVIEW_VIEW", "View")}
-        </Button>
+          {objRow.strEmployeeCode || "-"}
+        </Link>
       ),
-      strEmployeeCode: objRow.strEmployeeCode || "-",
+      strEmployeeCodeSort: objRow.strEmployeeCode || "",
       strEmployeeName: objRow.strEmployeeName || "-",
       strFinancialYearCode: objRow.strFinancialYearCode || "-",
       strTaxRegime: getTaxRegimeLabel(objRow.strTaxRegime),
@@ -147,44 +196,61 @@ export default function ITDeclarationReviewListPage() {
       strSubmittedOn: objRow.strSubmittedOn || "-",
       strLastUpdated: objRow.strLastUpdated || "-",
     })),
-    [blnCanView, lstRows, objRouter, t],
+    [blnCanView, lstShownRows, objRouter, t],
   );
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      { field: "action", headerName: t("IT_DECLARATION_REVIEW_ACTIONS", "Actions"), align: "center", sortable: false, filterable: false, exportable: false, width: 110 },
-      { field: "strEmployeeCode", headerName: t("IT_DECLARATION_REVIEW_EMPLOYEE_CODE", "Employee Code"), width: 140 },
+      { field: "strEmployeeCode", headerName: t("IT_DECLARATION_REVIEW_EMPLOYEE_CODE", "Employee Code"), width: 140, sortAccessor: (objRow) => String(objRow.strEmployeeCodeSort) },
       { field: "strEmployeeName", headerName: t("IT_DECLARATION_REVIEW_EMPLOYEE_NAME", "Employee Name"), width: 220 },
       { field: "strFinancialYearCode", headerName: t("IT_DECLARATION_REVIEW_FINANCIAL_YEAR", "Financial Year"), width: 150 },
       { field: "strTaxRegime", headerName: t("IT_DECLARATION_REVIEW_TAX_REGIME", "Tax Regime"), width: 150, sortAccessor: (objRow) => String(objRow.strTaxRegimeSort) },
       { field: "decDeclaredTotalAmount", headerName: t("IT_DECLARATION_REVIEW_DECLARED_TOTAL", "Declared Total"), align: "right", width: 160, sortAccessor: (objRow) => objRow.decDeclaredTotalAmountSort },
       { field: "decApprovedTotalAmount", headerName: t("IT_DECLARATION_REVIEW_APPROVED_TOTAL", "Approved Total"), align: "right", width: 160, sortAccessor: (objRow) => objRow.decApprovedTotalAmountSort },
       { field: "intProofPendingCount", headerName: t("IT_DECLARATION_REVIEW_PROOF_PENDING", "Proof Pending"), align: "center", width: 130, sortAccessor: (objRow) => objRow.intProofPendingCountSort },
-      { field: "strStatus", headerName: t("IT_DECLARATION_REVIEW_STATUS", "Status"), sortable: false, filterable: false, exportable: false, width: 160 },
-      { field: "strSubmittedOn", headerName: t("IT_DECLARATION_REVIEW_SUBMITTED_ON", "Submitted On"), width: 140 },
-      { field: "strLastUpdated", headerName: t("IT_DECLARATION_REVIEW_LAST_UPDATED", "Last Updated"), width: 140 },
+      { field: "strStatus", headerName: t("IT_DECLARATION_REVIEW_STATUS", "Status"), filterable: false, exportable: false, width: 160, sortAccessor: (objRow) => String(objRow.strStatusSort) },
+      ...(lstVisibleOptionalColumns.includes("submittedOn") ? [{ field: "strSubmittedOn", headerName: t("IT_DECLARATION_REVIEW_SUBMITTED_ON", "Submitted On"), width: 140 } as CommonTableColumn<(typeof lstTableRows)[number]>] : []),
+      ...(lstVisibleOptionalColumns.includes("lastUpdated") ? [{ field: "strLastUpdated", headerName: t("IT_DECLARATION_REVIEW_LAST_UPDATED", "Last Updated"), width: 140 } as CommonTableColumn<(typeof lstTableRows)[number]>] : []),
     ],
-    [lstTableRows, t],
+    [lstTableRows, lstVisibleOptionalColumns, t],
   );
 
-  if (blnLoading || blnRightsLoading) {
-    return <BlockingLoader blnOpen strLabel={t("IT_DECLARATION_REVIEW_LOADING", "Loading IT declaration review...")} />;
-  }
-
   return (
-    <Box className={styles.page}>
-      {!blnCanView && !blnDismissNoPermission ? <Alert severity="warning" onClose={() => setBlnDismissNoPermission(true)}>{t("IT_DECLARATION_REVIEW_NO_PERMISSION", "You do not have permission to view this screen.")}</Alert> : null}
+    <Box className={styles.page} data-controlid="it-declaration.review-list.page">
+      <MasterBreadcrumbs strSection={t("IT_DECLARATION_REVIEW_BREADCRUMB_SECTION", "Employee Services")} strTitle={t("IT_DECLARATION_REVIEW_BREADCRUMB_TITLE", "IT Declaration Review")} />
+      {!blnRightsLoading && !blnCanView && !blnDismissNoPermission ? <Alert severity="warning" onClose={() => setBlnDismissNoPermission(true)}>{t("IT_DECLARATION_REVIEW_NO_PERMISSION", "You do not have permission to view this screen.")}</Alert> : null}
       {strError ? <Alert severity="error" onClose={() => setStrError("")}>{strError}</Alert> : null}
 
-      <Box className={styles.controlsCard}>
-        <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1 }}>
-          <TextField size="small" label={t("IT_DECLARATION_REVIEW_FINANCIAL_YEAR", "Financial Year")} value={dicFiltersDraft.strFinancialYearCode} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strFinancialYearCode: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 140 } }} controlId="it-declaration.review-list.financial-year.input" />
-          <TextField size="small" label={t("IT_DECLARATION_REVIEW_EMPLOYEE_CODE_NAME", "Employee Code/Name")} value={dicFiltersDraft.strEmployee} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strEmployee: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 170 } }} controlId="it-declaration.review-list.employee.input" />
-          <TextField select size="small" label={t("IT_DECLARATION_REVIEW_TAX_REGIME", "Tax Regime")} value={dicFiltersDraft.strTaxRegime} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strTaxRegime: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 130 } }} controlId="it-declaration.review-list.tax-regime.select">
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        <Box
+          className={styles.searchRow}
+          aria-busy={blnBusy}
+          onKeyDown={onSearchEnter(() => { if (!blnBusy) void loadData(dicFiltersDraft); })}
+          sx={{
+            gridTemplateColumns: "minmax(240px, 1.4fr) minmax(150px, 0.8fr) minmax(140px, 0.7fr) minmax(150px, 0.7fr) auto auto",
+            alignItems: "center",
+            "& .MuiButton-root": { alignSelf: "center" },
+          }}
+        >
+          <EmployeeFilterSelect
+            lstOptions={lstEmployeeFilterOptions}
+            strValue={dicFiltersDraft.strEmployee}
+            fnOnChange={(strValue) => setDicFiltersDraft((d) => ({ ...d, strEmployee: strValue }))}
+            strLabel={t("IT_DECLARATION_REVIEW_EMPLOYEE", "Employee")}
+            strPlaceholder="Search by employee code or name"
+            strControlId="it-declaration.review-list.employee.input"
+            blnDisabled={blnBusy}
+            intMinWidth={0}
+          />
+          <TextField className="app-mui-text-field" select size="small" label={t("IT_DECLARATION_REVIEW_FINANCIAL_YEAR", "Financial Year")} value={dicFiltersDraft.strFinancialYearCode} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strFinancialYearCode: e.target.value }))} disabled={blnBusy} fullWidth controlId="it-declaration.review-list.financial-year.input">
+            <MenuItem value="">{t("IT_DECLARATION_REVIEW_ALL", "All")}</MenuItem>
+            {lstFinancialYearOptions.map((strYear) => <MenuItem key={strYear} value={strYear}>{strYear}</MenuItem>)}
+          </TextField>
+          <TextField className="app-mui-text-field" select size="small" label={t("IT_DECLARATION_REVIEW_TAX_REGIME", "Tax Regime")} value={dicFiltersDraft.strTaxRegime} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strTaxRegime: e.target.value }))} disabled={blnBusy} fullWidth controlId="it-declaration.review-list.tax-regime.select">
             <MenuItem value="">{t("IT_DECLARATION_REVIEW_ALL", "All")}</MenuItem>
             <MenuItem value="old">{t("IT_DECLARATION_REVIEW_OLD", "Old")}</MenuItem>
             <MenuItem value="new">{t("IT_DECLARATION_REVIEW_NEW", "New")}</MenuItem>
           </TextField>
-          <TextField select size="small" label={t("IT_DECLARATION_REVIEW_STATUS", "Status")} value={dicFiltersDraft.strStatus} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strStatus: e.target.value }))} sx={{ minWidth: { xs: "100%", sm: 140 } }} controlId="it-declaration.review-list.status.select">
+          <TextField className="app-mui-text-field" select size="small" label={t("IT_DECLARATION_REVIEW_STATUS", "Status")} value={dicFiltersDraft.strStatus} onChange={(e) => setDicFiltersDraft((d) => ({ ...d, strStatus: e.target.value }))} disabled={blnBusy} fullWidth controlId="it-declaration.review-list.status.select">
             <MenuItem value="">{t("IT_DECLARATION_REVIEW_ALL", "All")}</MenuItem>
             <MenuItem value="submitted">{t("IT_DECLARATION_REVIEW_SUBMITTED", "Submitted")}</MenuItem>
             <MenuItem value="under_review">{t("IT_DECLARATION_REVIEW_UNDER_REVIEW", "Under Review")}</MenuItem>
@@ -192,15 +258,20 @@ export default function ITDeclarationReviewListPage() {
             <MenuItem value="released">{t("IT_DECLARATION_REVIEW_RELEASED", "Released")}</MenuItem>
             <MenuItem value="locked">{t("IT_DECLARATION_REVIEW_LOCKED", "Locked")}</MenuItem>
           </TextField>
-          <Box className={styles.searchActions} sx={{ ml: { md: "auto" } }}>
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => void loadData(dicFiltersDraft)} controlId="it-declaration.review-list.search.button">{t("IT_DECLARATION_REVIEW_SEARCH", "Search")}</Button>
+          <Box className={styles.searchActions}>
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => void loadData(dicFiltersDraft)} disabled={blnBusy} controlId="it-declaration.review-list.search.button">{t("IT_DECLARATION_REVIEW_SEARCH", "Search")}</Button>
+          </Box>
+          <Box className={styles.searchActions}>
             <Button
               className={styles.secondaryButton}
               startIcon={<ClearRoundedIcon />}
               onClick={() => {
                 setDicFiltersDraft(dicEmptyFilters);
-                void loadData(dicEmptyFilters);
+                setLstRows([]);
+                setBlnHasSearched(false);
+                setStrError("");
               }}
+              disabled={blnBusy}
               controlId="it-declaration.review-list.clear.button"
             >
               {t("IT_DECLARATION_REVIEW_CLEAR", "Clear")}
@@ -209,18 +280,36 @@ export default function ITDeclarationReviewListPage() {
         </Box>
       </Box>
 
-      <Box className={styles.tableCard} sx={{ mt: 0 }}>
-        <CommonTable
-          columns={lstTableColumns}
-          rows={lstTableRows}
-          rowIdField="id"
-          exportFileName="it_declaration_review"
-          showExportOptions={blnCanExport}
-          showPaginationSummary
-          emptyMessage={t("IT_DECLARATION_REVIEW_NO_RECORDS_FOUND", "No records found.")}
-          testIdPrefix="it-declaration.review-list"
-          sx={{ p: 0, boxShadow: "none", background: "transparent" }}
-        />
+      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        {blnBusy ? (
+          <MasterGridSkeleton strControlId="it-declaration.review-list.skeleton" intColumns={9} />
+        ) : (
+          <CommonTable
+            columns={lstTableColumns}
+            rows={lstTableRows}
+            rowIdField="id"
+            exportFileName="it_declaration_review"
+            showExportOptions={blnCanExport}
+            showPaginationSummary
+            emptyMessage={t("IT_DECLARATION_REVIEW_NO_RECORDS_FOUND", "No records found.")}
+            searchPromptMessage={blnHasSearched ? undefined : "Select filters and click Search to view declarations."}
+            testIdPrefix="it-declaration.review-list"
+            toolbarAfterExport={(
+              <MasterAddColumnsControl
+                strControlPrefix="it-declaration.review-list"
+                strButtonLabel={t("IT_DECLARATION_REVIEW_ADD_COLUMNS", "Add columns")}
+                lstColumns={lstOptionalColumns}
+                lstVisibleKeys={lstVisibleOptionalColumns}
+                onChange={setLstVisibleOptionalColumns}
+              />
+            )}
+            onRowClick={(objRow) => openDeclaration(String(objRow.id))}
+            minTableWidth={1200}
+            hideRowClickHint
+            getRowSx={() => dicMasterRowSx}
+            sx={{ p: 0, boxShadow: "none", background: "transparent" }}
+          />
+        )}
       </Box>
     </Box>
   );

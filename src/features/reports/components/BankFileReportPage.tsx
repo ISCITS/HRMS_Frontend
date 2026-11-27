@@ -1,17 +1,25 @@
 "use client";
 
+import PayrollDataChangedNotice from "@/features/payroll/components/PayrollDataChangedNotice";
+import { usePayrollDataFreshness } from "@/features/payroll/hooks/usePayrollDataFreshness";
+
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField, Typography } from "@mui/material";
-import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
+import { Box, Breadcrumbs, Button, Checkbox, Stack, Typography } from "@mui/material";
+import { useMemo, useState, type InputHTMLAttributes } from "react";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import PageNotices from "@/Common/components/PageNotices";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
-import ReportMultiSelectField, { getUniqueOptions } from "@/features/reports/components/ReportMultiSelectField";
+import { ReportMoreFilters, SingleSelectFilter } from "@/features/reports/components/ReportFilterUi";
+import {
+  hasPayrollReportCriteria,
+  strPayrollReportCriteriaMessage,
+  usePayrollReportFilterOptions,
+} from "@/features/reports/hooks/usePayrollReportFilterOptions";
 import { payrollReportService } from "@/features/reports/services/payrollReportService";
 import type { PayrollResultListRecord } from "@/features/payroll/types";
 
@@ -21,6 +29,7 @@ type SearchForm = {
   strStatus: string;
   strDepartment: string;
   strLocation: string;
+  strAllocationEntity: string;
   strPayrollMonth: string;
 };
 
@@ -30,9 +39,12 @@ const dicEmptySearch: SearchForm = {
   strStatus: "All",
   strDepartment: "",
   strLocation: "",
+  strAllocationEntity: "",
   strPayrollMonth: "",
 };
 const lstRowsPerPageOptions = [10, 20, 50];
+type MoreFiltersForm = Pick<SearchForm, "strDepartment" | "strLocation" | "strAllocationEntity">;
+const dicEmptyMoreFilters: MoreFiltersForm = { strDepartment: "", strLocation: "", strAllocationEntity: "" };
 
 function formatMonth(strDate: string | null) {
   if (!strDate) {
@@ -157,20 +169,33 @@ export default function BankFileReportPage() {
   ]);
   const [lstRows, setLstRows] = useState<PayrollResultListRecord[]>([]);
   const [blnLoading, setBlnLoading] = useState(false);
-  const [blnHasLoadedRows, setBlnHasLoadedRows] = useState(false);
-  const [blnFilterDialogOpen, setBlnFilterDialogOpen] = useState(false);
+  const [dicMoreFiltersDraft, setDicMoreFiltersDraft] = useState<MoreFiltersForm>(dicEmptyMoreFilters);
   const [strError, setStrError] = useState("");
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [setSelectedRowIDs, setSetSelectedRowIDs] = useState<Set<number>>(new Set());
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
+  const blnPageLoading = blnRightsLoading || blnLoading;
+  const objPayrollFreshness = usePayrollDataFreshness(blnCanView);
+  // Search-first: nothing loads on open; dropdowns come from a light lookup.
+  const { dicFilterOptions: dicLookupOptions, strLookupError, setStrLookupError } = usePayrollReportFilterOptions(blnCanView);
+  const [blnHasSearched, setBlnHasSearched] = useState(false);
+  const [blnShowCriteriaHint, setBlnShowCriteriaHint] = useState(false);
 
   async function loadRows(objFilters: SearchForm) {
+    if (!hasPayrollReportCriteria(objFilters)) {
+      setLstRows([]);
+      setSetSelectedRowIDs(new Set());
+      setBlnHasSearched(false);
+      return;
+    }
+    setBlnShowCriteriaHint(false);
     setBlnLoading(true);
     setStrError("");
     try {
-      setLstRows(await payrollReportService.getBankFileRows(objFilters));
-      setBlnHasLoadedRows(true);
+      // Remembers the figures' version so a later reprocess shows the Refresh notice.
+      setLstRows(await objPayrollFreshness.trackLoad(() => payrollReportService.getBankFileRows(objFilters), objFilters.strPayrollMonth, () => loadRows(objFilters)));
       setSetSelectedRowIDs(new Set());
+      setBlnHasSearched(true);
     } catch (objError) {
       setStrError(objError instanceof Error ? objError.message : "Unable to load bank file rows.");
     } finally {
@@ -179,17 +204,11 @@ export default function BankFileReportPage() {
   }
   const lstFilteredRows = useMemo(() => lstRows.filter((dicRow) => dicRow.decNetPayAmount > 0), [lstRows]);
   const dicFilterOptions = useMemo(() => ({
-    lstEmployees: getUniqueOptions(lstRows.flatMap((dicRow) => [
-      dicRow.strEmployeeCode,
-      dicRow.strEmployeeName,
-      `${dicRow.strEmployeeCode} - ${dicRow.strEmployeeName}`,
-    ])),
-    lstRuns: getUniqueOptions(lstRows.flatMap((dicRow) => [dicRow.strRunCode, dicRow.strRunName])),
-    lstMonths: getUniqueOptions(lstRows.map((dicRow) => dicRow.dtPayrollMonth?.slice(0, 7))),
-    lstDepartments: getUniqueOptions(lstRows.map((dicRow) => dicRow.strDepartmentName)),
-    lstLocations: getUniqueOptions(lstRows.map((dicRow) => dicRow.strLocationName)),
-    lstStatuses: getUniqueOptions(lstRows.map((dicRow) => dicRow.strStatus)),
-  }), [lstRows]);
+    ...dicLookupOptions,
+    // Only statuses a bank file is built from.
+    lstStatuses: dicLookupOptions.lstStatuses.filter((strStatus) =>
+      ["Approved", "Published", "Paid", "Generated", "Calculated"].includes(strStatus)),
+  }), [dicLookupOptions]);
   const decNetTotal = lstFilteredRows.reduce((decTotal, dicRow) => decTotal + (dicRow.decNetPayAmount || 0), 0);
   const lstExportRows = setSelectedRowIDs.size > 0
     ? lstFilteredRows.filter((dicRow) => setSelectedRowIDs.has(dicRow.intID))
@@ -226,21 +245,23 @@ export default function BankFileReportPage() {
   function applyFilters(dicFilters: SearchForm) {
     setDicSearchDraft(dicFilters);
     setStrError("");
-    setBlnFilterDialogOpen(false);
+    if (!hasPayrollReportCriteria(dicFilters)) {
+      setBlnShowCriteriaHint(true);
+      return;
+    }
     loadRows(dicFilters).catch(() => undefined);
   }
 
   function clearFilters() {
     setDicSearchDraft(dicEmptySearch);
+    setDicMoreFiltersDraft(dicEmptyMoreFilters);
+    setBlnShowCriteriaHint(false);
     loadRows(dicEmptySearch).catch(() => undefined);
   }
 
-  useEffect(() => {
-    if (!blnCanView) {
-      return;
-    }
-    loadRows(dicEmptySearch).catch(() => undefined);
-  }, [blnCanView]);
+  function applyMoreFilters() {
+    applyFilters({ ...dicSearchDraft, ...dicMoreFiltersDraft });
+  }
 
   const lstTableRows = useMemo(
     () =>
@@ -287,8 +308,8 @@ export default function BankFileReportPage() {
         exportable: false,
         width: 56,
       },
-      { field: "strEmployeeCode", headerName: "Employee Code", width: 150 },
       { field: "strEmployeeName", headerName: "Employee Name", width: 220 },
+      { field: "strEmployeeCode", headerName: "Employee Code", width: 150 },
       { field: "strPayrollPeriod", headerName: "Payroll Period", width: 140, sortAccessor: (dicRow) => dicRow.strPayrollPeriodSortValue },
       { field: "strBankName", headerName: "Bank Name", width: 180 },
       { field: "strBankAccountMasked", headerName: "Account Number", width: 180 },
@@ -299,65 +320,58 @@ export default function BankFileReportPage() {
     [blnAllFilteredSelected, blnSomeFilteredSelected, lstFilteredRows.length]
   );
 
-  if (blnRightsLoading || (blnLoading && !blnHasLoadedRows)) {
-    return <BlockingLoader blnOpen strLabel="Loading bank file..." />;
-  }
-
   return (
     <Box className={styles.page}>
-      <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>Bank File</Typography>
-      <Box className={styles.controlsCard}>
-        <Box className={styles.controlsHeader} sx={{ mb: 1.25 }}>
-          <Box />
-        </Box>
-        <Box className={styles.reportSearchPanelRow}>
-          <Box className={styles.reportSearchField}>
-            <ReportMultiSelectField value={dicSearchDraft.strSearchEmployee} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: strValue }))} options={dicFilterOptions.lstEmployees} placeholder="Search by employee code or name" controlId="reports.bank-file.employee-search.input" />
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ minWidth: 0 }}>
+        <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />} sx={{ ml: "3px" }}>
+          <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>Reports</Typography>
+          <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">Bank File</Typography>
+        </Breadcrumbs>
+        <PageNotices
+          strControlId="reports.bank-file.notices"
+          lstNotices={[
+            !blnRightsLoading && !blnCanView && !strError ? { strKey: "rights", strSeverity: "warning", objMessage: "Bank file view access is not available for your user group." } : null,
+            { strKey: "criteria", strSeverity: "warning", objMessage: blnShowCriteriaHint ? strPayrollReportCriteriaMessage : "", fnDismiss: () => setBlnShowCriteriaHint(false) },
+            { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+            { strKey: "lookup-error", strSeverity: "error", objMessage: strLookupError, fnDismiss: () => setStrLookupError("") },
+          ]}
+        />
+      </Stack>
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        <Box className={styles.reportSearchPanelRow} sx={{ py: "0 !important" }}>
+          <Box className={styles.reportSearchField} sx={{ flex: "2 1 340px", minWidth: { xs: "100%", md: 320 } }}>
+            <SingleSelectFilter strLabel="Employee" strValue={dicSearchDraft.strSearchEmployee} fnOnChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchEmployee: strValue }))} lstOptions={dicFilterOptions.lstEmployees} strPlaceholder="Search by employee code or name" strControlId="reports.bank-file.employee-search.input" blnDisabled={blnPageLoading} />
           </Box>
           <Box className={styles.reportSearchField}>
-            <ReportMultiSelectField value={dicSearchDraft.strSearchRun} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: strValue }))} options={dicFilterOptions.lstRuns} placeholder="Payroll period or run" controlId="reports.bank-file.run-search.input" />
+            <SingleSelectFilter strLabel="Payroll Period / Run" strValue={dicSearchDraft.strSearchRun} fnOnChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strSearchRun: strValue }))} lstOptions={dicFilterOptions.lstRuns} strPlaceholder="Payroll period or run" strControlId="reports.bank-file.run-search.input" blnDisabled={blnPageLoading} />
           </Box>
           <Box className={styles.reportSearchField}>
-            <ReportMultiSelectField value={dicSearchDraft.strPayrollMonth} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: strValue }))} options={dicFilterOptions.lstMonths} label="Payroll Month" placeholder="Payroll Month" controlId="reports.bank-file.payroll-month.input" />
-          </Box>
-          <Box className={styles.reportSearchField}>
-            <ReportMultiSelectField value={dicSearchDraft.strDepartment} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: strValue }))} options={dicFilterOptions.lstDepartments} placeholder="Department" controlId="reports.bank-file.department.input" />
+            <SingleSelectFilter strLabel="Payroll Month" strValue={dicSearchDraft.strPayrollMonth} fnOnChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: strValue }))} lstOptions={dicFilterOptions.lstMonths} strPlaceholder="Payroll Month" strControlId="reports.bank-file.payroll-month.input" blnDisabled={blnPageLoading} />
           </Box>
           <Box className={styles.reportSearchField} sx={{ flexBasis: 160, minWidth: 160 }}>
-            <ReportMultiSelectField value={dicSearchDraft.strLocation} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: strValue }))} options={dicFilterOptions.lstLocations} placeholder="Location" controlId="reports.bank-file.location.input" />
-          </Box>
-          <Box className={styles.reportSearchField} sx={{ flexBasis: 160, minWidth: 160 }}>
-            <ReportMultiSelectField label="Status" value={dicSearchDraft.strStatus === "All" ? "" : dicSearchDraft.strStatus} onChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: strValue || "All" }))} options={dicFilterOptions.lstStatuses.length ? dicFilterOptions.lstStatuses : ["Calculated", "Approved", "Published", "Paid"]} placeholder="All" controlId="reports.bank-file.status.select" />
+            <SingleSelectFilter strLabel="Status" strValue={dicSearchDraft.strStatus === "All" ? "" : dicSearchDraft.strStatus} fnOnChange={(strValue) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: strValue || "All" }))} lstOptions={dicFilterOptions.lstStatuses.length ? dicFilterOptions.lstStatuses : ["Calculated", "Approved", "Published", "Paid"]} strPlaceholder="All Statuses" strControlId="reports.bank-file.status.select" blnDisabled={blnPageLoading} />
           </Box>
           <Box className={styles.searchActions}>
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} controlId="reports.bank-file.search.button">Search</Button>
-            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} controlId="reports.bank-file.clear.button">Clear</Button>
+            <ReportMoreFilters
+              strControlPrefix="reports.bank-file"
+              intActiveCount={(dicSearchDraft.strDepartment ? 1 : 0) + (dicSearchDraft.strLocation ? 1 : 0) + (dicSearchDraft.strAllocationEntity ? 1 : 0)}
+              blnDisabled={blnPageLoading}
+              onOpen={() => setDicMoreFiltersDraft({ strDepartment: dicSearchDraft.strDepartment, strLocation: dicSearchDraft.strLocation, strAllocationEntity: dicSearchDraft.strAllocationEntity })}
+              onApply={applyMoreFilters}
+              onClearAll={() => setDicMoreFiltersDraft(dicEmptyMoreFilters)}
+            >
+              <SingleSelectFilter strLabel="Department" strValue={dicMoreFiltersDraft.strDepartment} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: strValue }))} lstOptions={dicFilterOptions.lstDepartments} strPlaceholder="All" strControlId="reports.bank-file.department.input" blnDisabled={blnPageLoading} />
+              <SingleSelectFilter strLabel="Location" strValue={dicMoreFiltersDraft.strLocation} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strLocation: strValue }))} lstOptions={dicFilterOptions.lstLocations} strPlaceholder="All" strControlId="reports.bank-file.location.input" blnDisabled={blnPageLoading} />
+              <SingleSelectFilter strLabel="Allocation Entity" strValue={dicMoreFiltersDraft.strAllocationEntity} fnOnChange={(strValue) => setDicMoreFiltersDraft((dicPrevious) => ({ ...dicPrevious, strAllocationEntity: strValue }))} lstOptions={dicFilterOptions.lstAllocationEntities} strPlaceholder="All" strControlId="reports.bank-file.allocation-entity.input" blnDisabled={blnPageLoading} />
+            </ReportMoreFilters>
+            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} disabled={blnPageLoading} data-controlid="reports.bank-file.search.button">Search</Button>
+            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} disabled={blnPageLoading} data-controlid="reports.bank-file.clear.button">Clear</Button>
           </Box>
         </Box>
       </Box>
 
-      <Box
-        sx={{
-          alignItems: "center",
-          backgroundColor: "#f8fbff",
-          border: "1px solid rgba(191,219,254,0.7)",
-          borderRadius: "16px",
-          color: "#1f2937",
-          display: "flex",
-          gap: 1,
-          px: 1.5,
-          py: 1.25,
-        }}
-      >
-        <InfoOutlinedIcon sx={{ color: "#2b6cb0", fontSize: 20 }} />
-        <Typography sx={{ color: "inherit", lineHeight: 1.5 }}>
-          Payment-required net salary data for approved, published, or paid payroll results.
-        </Typography>
-      </Box>
-
-      <Box className={styles.tableCard}>
-        {!blnCanView && !strError ? <Alert severity="warning" sx={{ mb: 1.5 }}>Bank file view access is not available for your user group.</Alert> : null}
-        {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
+      <Box className={styles.tableCard} sx={{ p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        <PayrollDataChangedNotice objFreshness={objPayrollFreshness} blnRefreshing={blnPageLoading} />
         <CommonTable
           columns={lstTableColumns}
           rows={lstTableRows}
@@ -365,9 +379,15 @@ export default function BankFileReportPage() {
           defaultPageSize={lstRowsPerPageOptions[0]}
           pageSizeOptions={lstRowsPerPageOptions}
           emptyMessage="No eligible bank file rows found for the current filters."
+          searchPromptMessage={blnHasSearched ? undefined : strPayrollReportCriteriaMessage}
           showPaginationSummary
           withPaper={false}
           testIdPrefix="reports.bank-file"
+          loading={blnPageLoading}
+          loadingHeaderSkeleton
+          skeletonRowCount={10}
+          hideRowClickHint
+          onRowClick={() => undefined}
           toolbarLeft={(
             <Box className={styles.listUtilityActions}>
               {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadCsv("bank-file.csv", lstExportRows)} data-controlid="reports.bank-file.generate.button">Generate Bank File</Button> : null}
@@ -388,29 +408,6 @@ export default function BankFileReportPage() {
           sx={{ p: 0, boxShadow: "none", background: "transparent" }}
         />
       </Box>
-
-      <Dialog open={blnFilterDialogOpen} maxWidth="sm" fullWidth>
-        <DialogTitle>Bank File</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2, pt: 1 }}>
-            <TextField label="Payroll Month" type="month" value={dicSearchDraft.strPayrollMonth} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strPayrollMonth: objEvent.target.value }))} fullWidth InputLabelProps={{ shrink: true }} />
-            <TextField label="Department" value={dicSearchDraft.strDepartment} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strDepartment: objEvent.target.value }))} fullWidth />
-            <TextField label="Location" value={dicSearchDraft.strLocation} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strLocation: objEvent.target.value }))} fullWidth />
-            <TextField label="Status" select value={dicSearchDraft.strStatus} onChange={(objEvent) => setDicSearchDraft((dicPrevious) => ({ ...dicPrevious, strStatus: objEvent.target.value as SearchForm["strStatus"] }))} fullWidth>
-              <MenuItem value="All">Eligible statuses</MenuItem>
-              <MenuItem value="Calculated">Calculated</MenuItem>
-              <MenuItem value="Approved">Approved</MenuItem>
-              <MenuItem value="Published">Published</MenuItem>
-              <MenuItem value="Paid">Paid</MenuItem>
-            </TextField>
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={() => setDicSearchDraft(dicEmptySearch)}>Reset</Button>
-          {blnHasLoadedRows ? <Button className={styles.secondaryButton} onClick={() => setBlnFilterDialogOpen(false)}>Close</Button> : null}
-          <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applyFilters(dicSearchDraft)} disabled={blnLoading}>Show Report</Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 }

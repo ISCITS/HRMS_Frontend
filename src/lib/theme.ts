@@ -101,6 +101,7 @@ export const getTheme = (mode: PaletteMode, preset: ThemePreset = "ocean") => {
   const dicPreset = dicPresetMap[preset];
   const strPrimary = mode === "light" ? dicPreset.lightPrimary : dicPreset.darkPrimary;
   const strSecondary = mode === "light" ? dicPreset.lightSecondary : dicPreset.darkSecondary;
+  const strFieldLabel = mode === "light" ? "#334155" : "#cbd5e1";
 
   return createTheme({
     palette: {
@@ -137,7 +138,7 @@ export const getTheme = (mode: PaletteMode, preset: ThemePreset = "ocean") => {
     },
     spacing: 8,
     typography: {
-      fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif",
+      fontFamily: "'Segoe UI Variable', 'Segoe UI', Arial, sans-serif",
       h4: {
         fontWeight: 700
       },
@@ -248,6 +249,16 @@ export const getTheme = (mode: PaletteMode, preset: ThemePreset = "ocean") => {
           variant: "outlined"
         }
       },
+      MuiInputLabel: {
+        styleOverrides: {
+          root: {
+            color: strFieldLabel,
+            "&.Mui-focused:not(.Mui-error)": {
+              color: strFieldLabel
+            }
+          }
+        }
+      },
       MuiFormLabel: {
         styleOverrides: {
           asterisk: {
@@ -270,7 +281,21 @@ export const getTheme = (mode: PaletteMode, preset: ThemePreset = "ocean") => {
       MuiOutlinedInput: {
         styleOverrides: {
           root: {
-            borderRadius: 12
+            borderRadius: 12,
+            "&.Mui-focused:not(.Mui-error)": {
+              boxShadow: "none"
+            },
+            "&.Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline": {
+              borderColor: strPrimary,
+              borderWidth: 1
+            },
+            "&.Mui-error, &.Mui-error.Mui-focused": {
+              boxShadow: "none"
+            },
+            "&.Mui-error .MuiOutlinedInput-notchedOutline, &.Mui-error.Mui-focused .MuiOutlinedInput-notchedOutline": {
+              borderColor: "#ef4444",
+              borderWidth: 1
+            }
           }
         }
       }

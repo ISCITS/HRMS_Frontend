@@ -4,7 +4,6 @@ import {
   Alert,
   Box,
   Chip,
-  CircularProgress,
   Grid,
   Paper,
   Snackbar,
@@ -14,6 +13,7 @@ import {
 import { useEffect, useState } from "react";
 
 import { createApiRequestError } from "@/Common/utils/apiErrorHandler";
+import { MasterBreadcrumbs, MasterGridSkeleton } from "@/components/master/MasterListUi";
 import { leaveService } from "@/features/leave/services/leaveService";
 import type { LeaveBalanceDto } from "@/features/leave/types";
 
@@ -51,10 +51,9 @@ export default function LeaveBalancePanel() {
 
   return (
     <Stack spacing={1.5}>
+      <MasterBreadcrumbs strSection="Leave" strTitle="My Leave Balance" />
       {blnLoading ? (
-        <Box sx={{ display: "grid", placeItems: "center", py: 6 }}>
-          <CircularProgress />
-        </Box>
+        <MasterGridSkeleton strControlId="ess.leave-balance.skeleton" intColumns={5} />
       ) : lstBalances.length === 0 ? (
         <Paper sx={{ p: 3, borderRadius: "18px", border: "1px solid #e2e8f0", textAlign: "center" }}>
           <Typography sx={{ color: "#475569", fontWeight: 600 }}>

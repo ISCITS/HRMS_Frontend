@@ -34,6 +34,7 @@ export const dicEmptyEmployeeForm: EmployeeFormValues = {
   intPayrollGroupID: "",
   intManagerEmployeeID: "",
   intLineManagerEmployeeID: "",
+  intAllocationEntityID: "",
   strWorkEmail: "",
   strPersonalEmail: "",
   strMobileNumber: "",
@@ -58,7 +59,7 @@ export const dicEmptyEmployeeForm: EmployeeFormValues = {
   strWhatsappNumber: "", strReferredBy: "", strAccommodationType: "", decHousingAllowance: "",
   intNoticePeriodDays: "", strEmergencyContactPerson: "", strEmergencyCountryCode: "",
   strEmergencyMobileNumber: "", strEmergencyEmail: "", strEmployeeRemark: "",
-  strInitialPostingLocation: "", dtProbationStartDate: "", dtProbationEndDate: "",
+  strInitialPostingLocation: "", intInitialPostingLocationID: "", dtProbationStartDate: "", dtProbationEndDate: "",
   strEmployeeWorkgroup: "", strEmployeeReservation: "", strSwon: "",
   dtFromDate: "", dtToDate: "", strPrefixLogic: ""
 };
@@ -101,9 +102,11 @@ export const dicEmptyEmployeeStatutoryForm: EmployeeStatutoryFormValues = {
   strEsiCode: "",
   strSsnNumber: "",
   strPranNumber: "",
+  strPtRegistrationNumber: "",
   blnPfApplicable: false,
   blnEsiApplicable: false,
-  blnPtApplicable: false
+  blnPtApplicable: false,
+  blnEpsEligible: true
 };
 
 export const dicEmptyEmployeeExperienceForm: EmployeeExperienceFormValues = {
@@ -162,6 +165,7 @@ export function toEmployeeFormValues(dicRecord: EmployeeDetailRecord): EmployeeF
     intPayrollGroupID: dicRecord.intPayrollGroupID ?? "",
     intManagerEmployeeID: dicRecord.intManagerEmployeeID ?? "",
     intLineManagerEmployeeID: dicRecord.intLineManagerEmployeeID ?? dicRecord.intManagerEmployeeID ?? "",
+    intAllocationEntityID: dicRecord.intAllocationEntityID ?? "",
     strWorkEmail: dicRecord.strWorkEmail ?? "",
     strPersonalEmail: dicRecord.strPersonalEmail ?? "",
     strMobileNumber: dicRecord.strMobileNumber ?? "",
@@ -202,6 +206,7 @@ export function toEmployeeFormValues(dicRecord: EmployeeDetailRecord): EmployeeF
     strEmergencyContactPerson: dicRecord.strEmergencyContactPerson ?? "", strEmergencyCountryCode: dicRecord.strEmergencyCountryCode ?? "",
     strEmergencyMobileNumber: dicRecord.strEmergencyMobileNumber ?? "", strEmergencyEmail: dicRecord.strEmergencyEmail ?? "",
     strEmployeeRemark: dicRecord.strEmployeeRemark ?? "", strInitialPostingLocation: dicRecord.strInitialPostingLocation ?? "",
+    intInitialPostingLocationID: dicRecord.intInitialPostingLocationID ?? "",
     dtProbationStartDate: dicRecord.dtProbationStartDate ?? "", dtProbationEndDate: dicRecord.dtProbationEndDate ?? "",
     strEmployeeWorkgroup: dicRecord.strEmployeeWorkgroup ?? "", strEmployeeReservation: dicRecord.strEmployeeReservation ?? "",
     strSwon: dicRecord.strSwon ?? "", dtFromDate: dicRecord.dtFromDate ?? "",
@@ -252,9 +257,11 @@ export function toEmployeeStatutoryFormValues(dicRecord: EmployeeStatutoryRecord
     strEsiCode: dicRecord.strEsiCode ?? "",
     strSsnNumber: dicRecord.strSsnNumber ?? "",
     strPranNumber: dicRecord.strPranNumber ?? "",
+    strPtRegistrationNumber: dicRecord.strPtRegistrationNumber ?? "",
     blnPfApplicable: dicRecord.blnPfApplicable,
     blnEsiApplicable: dicRecord.blnEsiApplicable,
-    blnPtApplicable: dicRecord.blnPtApplicable
+    blnPtApplicable: dicRecord.blnPtApplicable,
+    blnEpsEligible: dicRecord.blnEpsEligible ?? true
   };
 }
 
@@ -319,6 +326,7 @@ export function validateEmployeeForm(
     locationRequired: dicConstant.employeeMaster.validation.locationRequired,
     reportingManagerRequired: dicConstant.employeeMaster.validation.reportingManagerRequired,
     lineManagerRequired: dicConstant.employeeMaster.validation.lineManagerRequired,
+    workEmailRequired: dicConstant.employeeMaster.validation.workEmailRequired,
     workEmailInvalid: dicConstant.employeeMaster.validation.workEmailInvalid,
     personalEmailInvalid: dicConstant.employeeMaster.validation.personalEmailInvalid,
     mobileNumberInvalid: dicConstant.employeeMaster.validation.mobileNumberInvalid,
@@ -369,7 +377,9 @@ export function validateEmployeeForm(
     dicNextErrors.intLineManagerEmployeeID = dicValidationLabels.lineManagerRequired;
   }
 
-  if (strWorkEmail && !isEmailValid(strWorkEmail)) {
+  if (!strWorkEmail) {
+    dicNextErrors.strWorkEmail = dicValidationLabels.workEmailRequired;
+  } else if (!isEmailValid(strWorkEmail)) {
     dicNextErrors.strWorkEmail = dicValidationLabels.workEmailInvalid;
   }
 

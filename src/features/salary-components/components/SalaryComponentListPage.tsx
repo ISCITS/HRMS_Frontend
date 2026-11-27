@@ -3,26 +3,31 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import ViewColumnRoundedIcon from "@mui/icons-material/ViewColumnRounded";
 import {
   Alert,
   Box,
+  Breadcrumbs,
   Button,
   Checkbox,
-  CircularProgress,
+  InputAdornment,
+  Link,
+  Menu,
   MenuItem,
+  Skeleton,
   Snackbar,
   TextField,
   Typography
 } from "@mui/material";
-import { useEffect, useMemo, useState, type InputHTMLAttributes, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useState, type InputHTMLAttributes, type KeyboardEvent, type MouseEvent } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
-import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import BlockingLoader, { DottedLoader } from "@/components/shared/BlockingLoader";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useSalaryComponentLabels } from "@/features/salary-components/hooks/useSalaryComponentLabels";
 import { salaryComponentService } from "@/features/salary-components/services/salaryComponentService";
@@ -30,8 +35,8 @@ import type { SalaryComponentListRecord } from "@/features/salary-components/typ
 
 type Status = "Active" | "Inactive";
 type SearchForm = {
-  code: string;
-  name: string;
+  query: string;
+  category: string;
   status: "All" | Status;
 };
 type ConfirmDialogState = {
@@ -45,9 +50,12 @@ type ToastState = {
   strMessage: string;
   strSeverity: "success" | "error";
 };
+type OptionalColumnKey = "pfEsic" | "declaration";
 
-const dicEmptySearch: SearchForm = { code: "", name: "", status: "All" };
+const dicEmptySearch: SearchForm = { query: "", category: "All", status: "All" };
 const lstSalaryComponentModuleCodes = ["SALARY_COMPONENT", "SALARY_COMPONENTS", "MASTER_SALARY_COMPONENT"];
+const intSalaryComponentSkeletonRows = 8;
+const lstOptionalColumnKeys: OptionalColumnKey[] = ["pfEsic", "declaration"];
 
 function parseStatus(strValue: string | null): SearchForm["status"] {
   return strValue === "Active" || strValue === "Inactive" ? strValue : "All";
@@ -55,29 +63,28 @@ function parseStatus(strValue: string | null): SearchForm["status"] {
 
 function buildSearchFromParams(objSearchParams: URLSearchParams): SearchForm {
   return {
-    code: objSearchParams.get("code") ?? "",
-    name: objSearchParams.get("name") ?? "",
+    query: objSearchParams.get("q") ?? objSearchParams.get("name") ?? objSearchParams.get("code") ?? "",
+    category: objSearchParams.get("category") ?? "All",
     status: parseStatus(objSearchParams.get("status")),
   };
 }
 
 function buildSalaryComponentListUrl(dicSearch: SearchForm) {
   const objParams = new URLSearchParams();
-  const strName = dicSearch.name.trim();
-  const strCode = dicSearch.code.trim();
+  const strQuery = dicSearch.query.trim();
 
-  if (strName) {
-    objParams.set("name", strName);
+  if (strQuery) {
+    objParams.set("q", strQuery);
   }
-  if (strCode) {
-    objParams.set("code", strCode);
+  if (dicSearch.category !== "All") {
+    objParams.set("category", dicSearch.category);
   }
   if (dicSearch.status !== "All") {
     objParams.set("status", dicSearch.status);
   }
 
-  const strQuery = objParams.toString();
-  return strQuery ? `/salary-components?${strQuery}` : "/salary-components";
+  const strUrlQuery = objParams.toString();
+  return strUrlQuery ? `/salary-components?${strUrlQuery}` : "/salary-components";
 }
 
 function normalizeSelectToken(strValue: string) {
@@ -139,6 +146,61 @@ function getPfEsicLabel(blnIncludeInPF: boolean, blnIncludeInESIC: boolean) {
   return "-";
 }
 
+function SalaryComponentGridSkeleton() {
+  return (
+    <Box
+      data-controlid="salary-components.list.skeleton"
+      sx={{
+        border: "1px solid #e8eef5",
+        borderRadius: "8px",
+        overflow: "hidden",
+        backgroundColor: "#fff",
+      }}
+    >
+      <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, px: 1.75, py: 1.25, flexWrap: "wrap" }}>
+        <Skeleton variant="rounded" width={142} height={36} />
+        <Box sx={{ display: "flex", gap: 1.25, alignItems: "center", flexWrap: "wrap" }}>
+          <Skeleton variant="rounded" width={64} height={36} />
+          <Skeleton variant="text" width={72} height={24} />
+          <Skeleton variant="rounded" width={116} height={32} />
+        </Box>
+      </Box>
+      <Box sx={{ minWidth: 1200 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "48px 1.5fr 1fr 1fr 1fr 0.9fr 0.9fr 0.8fr 0.8fr 0.8fr", bgcolor: "#edf3f9", borderTop: "1px solid #e8eef5", borderBottom: "1px solid #d9e3ee" }}>
+          {Array.from({ length: 10 }).map((_, intColumn) => (
+            <Box key={intColumn} sx={{ px: 2, py: 1 }}>
+              <Skeleton variant="text" width={intColumn === 0 ? 18 : intColumn === 9 ? 74 : 112} height={22} />
+            </Box>
+          ))}
+        </Box>
+        {Array.from({ length: intSalaryComponentSkeletonRows }).map((_, intIndex) => (
+          <Box
+            key={intIndex}
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "48px 1.5fr 1fr 1fr 1fr 0.9fr 0.9fr 0.8fr 0.8fr 0.8fr",
+              borderBottom: "1px solid #edf1f6",
+              minHeight: 40,
+              alignItems: "center",
+            }}
+          >
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="rounded" width={18} height={18} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${62 + (intIndex % 3) * 8}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${44 + (intIndex % 2) * 10}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width="58%" height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width="52%" height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width="48%" height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width="56%" height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width="46%" height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width="54%" height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="rounded" width={72} height={22} /></Box>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+}
+
 export default function SalaryComponentListPage() {
   const objRouter = useRouter();
   const strPathname = usePathname();
@@ -149,6 +211,8 @@ export default function SalaryComponentListPage() {
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
   const [lstSelectedIds, setLstSelectedIds] = useState<number[]>([]);
+  const [lstVisibleOptionalColumns, setLstVisibleOptionalColumns] = useState<OptionalColumnKey[]>([]);
+  const [objAddColumnsAnchor, setObjAddColumnsAnchor] = useState<HTMLElement | null>(null);
   const [blnLoading, setBlnLoading] = useState(true);
   const [blnSubmitting, setBlnSubmitting] = useState(false);
   const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
@@ -198,14 +262,19 @@ export default function SalaryComponentListPage() {
 
   const lstFilteredRows = useMemo(() => {
     return lstComponents.filter((dicRow) => {
-      const blnNameMatch = !dicSearchApplied.name || dicRow.strComponentName.toLowerCase().includes(dicSearchApplied.name.toLowerCase());
-      const blnCodeMatch = !dicSearchApplied.code || dicRow.strComponentCode.toLowerCase().includes(dicSearchApplied.code.toLowerCase());
+      const strQuery = dicSearchApplied.query.trim().toLowerCase();
+      const blnQueryMatch = !strQuery || dicRow.strComponentName.toLowerCase().includes(strQuery) || dicRow.strComponentCode.toLowerCase().includes(strQuery);
+      const blnCategoryMatch = dicSearchApplied.category === "All" || getCategoryLabel(dicRow.strComponentCategory) === dicSearchApplied.category;
       const blnStatusMatch =
         dicSearchApplied.status === "All" ||
         (dicSearchApplied.status === "Active" ? dicRow.blnIsActive : !dicRow.blnIsActive);
-      return blnNameMatch && blnCodeMatch && blnStatusMatch;
+      return blnQueryMatch && blnCategoryMatch && blnStatusMatch;
     });
   }, [dicSearchApplied, lstComponents]);
+  const lstCategoryFilterOptions = useMemo(
+    () => Array.from(new Set(lstComponents.map((dicRow) => getCategoryLabel(dicRow.strComponentCategory)).filter(Boolean))).sort(),
+    [lstComponents]
+  );
   const blnAllFilteredSelected = lstFilteredRows.length > 0 && lstFilteredRows.every((dicRow) => lstSelectedIds.includes(dicRow.intID));
   const blnSomeFilteredSelected = !blnAllFilteredSelected && lstFilteredRows.some((dicRow) => lstSelectedIds.includes(dicRow.intID));
 
@@ -228,8 +297,7 @@ export default function SalaryComponentListPage() {
   function applySearch(dicSearch: SearchForm) {
     const dicNextSearch = {
       ...dicSearch,
-      code: dicSearch.code.trim(),
-      name: dicSearch.name.trim(),
+      query: dicSearch.query.trim(),
     };
     setDicSearchDraft(dicNextSearch);
     setDicSearchApplied(dicNextSearch);
@@ -241,6 +309,22 @@ export default function SalaryComponentListPage() {
       objEvent.preventDefault();
       applySearch(dicSearchDraft);
     }
+  }
+
+  function handleAddColumnsClick(objEvent: MouseEvent<HTMLButtonElement>) {
+    setObjAddColumnsAnchor(objEvent.currentTarget);
+  }
+
+  function closeAddColumnsMenu() {
+    setObjAddColumnsAnchor(null);
+  }
+
+  function toggleOptionalColumn(strColumnKey: OptionalColumnKey) {
+    setLstVisibleOptionalColumns((lstPrevious) => (
+      lstPrevious.includes(strColumnKey)
+        ? lstPrevious.filter((strKey) => strKey !== strColumnKey)
+        : [...lstPrevious, strColumnKey]
+    ));
   }
 
   async function executeConfirmedAction() {
@@ -304,19 +388,6 @@ export default function SalaryComponentListPage() {
     });
   }
 
-  function deleteSalaryComponent(strRecordUUID: string) {
-    openConfirmDialog({
-      strTitle: t("confirm_delete_title", "Delete Salary Component"),
-      strMessage: t("confirm_delete_message", "Are you sure you want to delete this salary component record?"),
-      strConfirmLabel: t("delete_button", "Delete"),
-      fnOnConfirm: async () => {
-        await salaryComponentService.deleteSalaryComponent(strRecordUUID);
-        await loadComponents();
-        showToast(t("delete_success", "Salary component deleted successfully."));
-      }
-    });
-  }
-
   const lstTableRows = useMemo(
     () =>
       lstFilteredRows.map((dicRow) => {
@@ -324,19 +395,21 @@ export default function SalaryComponentListPage() {
         return {
           id: dicRow.intID,
           select: <Checkbox data-controlid="salary-components.list.row.select.checkbox" data-row-key={String(dicRow.intID)} inputProps={{ "data-controlid": "salary-components.list.row.select.checkbox", "data-row-key": String(dicRow.intID) } as InputHTMLAttributes<HTMLInputElement>} checked={blnSelected} onChange={() => toggleSelection(dicRow.intID)} />,
-          action: (
-            <CommonRowActions
-              testIdPrefix="salary-components.list.row"
-              rowKey={dicRow.intID}
-              blnCanView={blnCanView}
-              blnCanEdit={blnCanEdit}
-              blnCanDelete={blnCanDelete}
-              onView={() => objRouter.push(`/salary-components/view/${dicRow.strRecordUUID}?backRoute=${encodeURIComponent(strCurrentListRoute)}`)}
-              onEdit={() => objRouter.push(`/salary-components/edit/${dicRow.strRecordUUID}?backRoute=${encodeURIComponent(strCurrentListRoute)}`)}
-              onDelete={() => deleteSalaryComponent(dicRow.strRecordUUID)}
-            />
+          strRecordUUID: dicRow.strRecordUUID,
+          strComponentNameSort: dicRow.strComponentName,
+          strComponentName: (
+            <Link
+              className="app-master-first-column-link"
+              component="button"
+              type="button"
+              underline="none"
+              data-controlid="salary-components.list.row.name.link"
+              data-row-key={String(dicRow.intID)}
+              onClick={() => objRouter.push(`/salary-components/${blnCanEdit ? "edit" : "view"}/${dicRow.strRecordUUID}?backRoute=${encodeURIComponent(strCurrentListRoute)}`)}
+            >
+              {dicRow.strComponentName}
+            </Link>
           ),
-          strComponentName: dicRow.strComponentName,
           strComponentCode: dicRow.strComponentCode,
           strComponentCategory: getCategoryLabel(dicRow.strComponentCategory),
           strComponentGroup: dicRow.strComponentGroup ?? "-",
@@ -344,18 +417,21 @@ export default function SalaryComponentListPage() {
           strTaxTreatment: getTaxTreatmentLabel(dicRow.strTaxTreatment),
           strPfEsic: getPfEsicLabel(dicRow.blnIncludeInPF, dicRow.blnIncludeInESIC),
           blnDeclarationRequired: dicRow.blnDeclarationRequired ? t("yes", "Yes") : t("no", "No"),
+          strStatus: dicRow.blnIsActive ? t("status_active", "Active") : t("status_inactive", "Inactive"),
+          intStatusSort: dicRow.blnIsActive ? 1 : 0,
           blnIsActive: (
-            <span data-controlid="salary-components.list.row.status.pill" data-row-key={String(dicRow.intID)} className={`${styles.statusPill} ${dicRow.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
+            <span data-controlid="salary-components.list.row.status.pill" data-row-key={String(dicRow.intID)} className={`app-master-status-pill ${dicRow.blnIsActive ? "app-master-status-active" : "app-master-status-inactive"}`}>
               {dicRow.blnIsActive ? t("status_active", "Active") : t("status_inactive", "Inactive")}
             </span>
           ),
         };
       }),
-    [blnCanDelete, blnCanEdit, lstFilteredRows, lstSelectedIds, objRouter, strCurrentListRoute, t]
+    [blnCanEdit, lstFilteredRows, lstSelectedIds, objRouter, strCurrentListRoute, t]
   );
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
-    () => [
+    () => {
+      const lstBaseColumns: CommonTableColumn<(typeof lstTableRows)[number]>[] = [
       {
         field: "select",
         headerName: (
@@ -373,18 +449,66 @@ export default function SalaryComponentListPage() {
         exportable: false,
         width: 56
       },
-      { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 110 },
-      { field: "strComponentName", headerName: t("component_name", "Component Name") },
+      { field: "strComponentName", headerName: t("component_name", "Component Name"), width: 220, sortAccessor: (dicRow) => String(dicRow.strComponentNameSort) },
       { field: "strComponentCode", headerName: t("component_code", "Component Code") },
       { field: "strComponentCategory", headerName: t("category", "Category") },
       { field: "strComponentGroup", headerName: t("payroll_group", "Payroll Group") },
       { field: "strCalcMethod", headerName: t("calc_method", "Calc Method") },
       { field: "strTaxTreatment", headerName: t("tax_treatment", "Tax Treatment") },
-      { field: "strPfEsic", headerName: t("pf_esic", "PF / ESIC") },
-      { field: "blnDeclarationRequired", headerName: t("declaration", "Declaration") },
-      { field: "blnIsActive", headerName: t("status", "Status"), sortable: false, filterable: false, width: 130 },
-    ],
-    [blnAllFilteredSelected, blnSomeFilteredSelected, lstFilteredRows.length, t]
+      { field: "blnIsActive", headerName: t("status", "Status"), filterable: false, width: 130, sortAccessor: (dicRow) => Number(dicRow.intStatusSort) },
+      ];
+      const lstOptionalColumns: CommonTableColumn<(typeof lstTableRows)[number]>[] = [];
+      if (lstVisibleOptionalColumns.includes("pfEsic")) {
+        lstOptionalColumns.push({ field: "strPfEsic", headerName: t("pf_esic", "PF / ESIC") });
+      }
+      if (lstVisibleOptionalColumns.includes("declaration")) {
+        lstOptionalColumns.push({ field: "blnDeclarationRequired", headerName: t("declaration", "Declaration") });
+      }
+      return [...lstBaseColumns, ...lstOptionalColumns];
+    },
+    [blnAllFilteredSelected, blnSomeFilteredSelected, lstFilteredRows.length, lstVisibleOptionalColumns, t]
+  );
+  const dicOptionalColumnLabels: Record<OptionalColumnKey, string> = {
+    pfEsic: t("pf_esic", "PF / ESIC"),
+    declaration: t("declaration", "Declaration"),
+  };
+  const nodeAddColumnsControl = (
+    <>
+      <Button
+        id="salary-components-add-columns-button"
+        data-controlid="salary-components.list.add-columns.button"
+        className={styles.secondaryButton}
+        startIcon={<ViewColumnRoundedIcon />}
+        onClick={handleAddColumnsClick}
+        disabled={blnLoading || blnRightsLoading || blnSubmitting}
+        sx={{ borderRadius: "8px !important", minHeight: "36px !important" }}
+      >
+        {t("add_columns", "Add columns")}
+      </Button>
+      <Menu
+        id="salary-components-add-columns-menu"
+        anchorEl={objAddColumnsAnchor}
+        open={Boolean(objAddColumnsAnchor)}
+        onClose={closeAddColumnsMenu}
+        MenuListProps={{ "aria-labelledby": "salary-components-add-columns-button" }}
+      >
+        {lstOptionalColumnKeys.map((strColumnKey) => (
+          <MenuItem
+            key={strColumnKey}
+            data-controlid={`salary-components.list.add-columns.${strColumnKey}.option`}
+            onClick={() => toggleOptionalColumn(strColumnKey)}
+          >
+            <Checkbox
+              size="small"
+              checked={lstVisibleOptionalColumns.includes(strColumnKey)}
+              inputProps={{ "aria-label": dicOptionalColumnLabels[strColumnKey] }}
+              sx={{ p: 0.5, mr: 1 }}
+            />
+            {dicOptionalColumnLabels[strColumnKey]}
+          </MenuItem>
+        ))}
+      </Menu>
+    </>
   );
 
   return (
@@ -395,7 +519,12 @@ export default function SalaryComponentListPage() {
         </Button>
       </Box>
 
-      <Box className={styles.controlsCard}>
+      <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />}>
+        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{t("breadcrumb_salary", "Salary")}</Typography>
+        <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{t("breadcrumb_salary_components", "Salary Components")}</Typography>
+      </Breadcrumbs>
+
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {strRightsError ? (
           <Typography data-controlid="salary-components.list.rights-error.message" sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography>
         ) : null}
@@ -405,40 +534,64 @@ export default function SalaryComponentListPage() {
           </Typography>
         ) : null}
 
-        <Box className={styles.searchRow}>
+        <Box
+          className={styles.searchRow}
+          aria-busy={blnLoading || blnRightsLoading}
+          sx={{
+            gridTemplateColumns: "minmax(260px, 1.4fr) minmax(180px, 0.85fr) minmax(150px, 0.7fr) auto auto",
+            alignItems: "center",
+            "& .MuiButton-root": { alignSelf: "center" },
+          }}
+        >
           <TextField
+            className="app-mui-text-field"
             data-controlid="salary-components.list.search-name.input"
             inputProps={{ "data-controlid": "salary-components.list.search-name.input" }}
-            value={dicSearchDraft.name}
-            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, name: objEvent.target.value }))}
+            label={t("search_component_name_or_code_label", "Search component name or code")}
+            value={dicSearchDraft.query}
+            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, query: objEvent.target.value }))}
             onKeyDown={handleSearchTextKeyDown}
-            placeholder={t("search_component_name", "Search component name")}
+            placeholder={t("search_component_name_or_code", "Search component name or code")}
+            size="small"
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }}
+            disabled={blnLoading || blnRightsLoading || blnSubmitting}
             fullWidth
           />
           <TextField
-            data-controlid="salary-components.list.search-code.input"
-            inputProps={{ "data-controlid": "salary-components.list.search-code.input" }}
-            value={dicSearchDraft.code}
-            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, code: objEvent.target.value.toUpperCase() }))}
-            onKeyDown={handleSearchTextKeyDown}
-            placeholder={t("search_component_code", "Search component code")}
+            className="app-mui-text-field"
+            data-controlid="salary-components.list.search-category.select"
+            inputProps={{ "data-controlid": "salary-components.list.search-category.select" }}
+            select
+            label={t("category", "Category")}
+            value={dicSearchDraft.category}
+            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, category: objEvent.target.value }))}
+            size="small"
+            disabled={blnLoading || blnRightsLoading || blnSubmitting}
             fullWidth
-          />
+          >
+            <MenuItem data-controlid="salary-components.list.search-category.all.option" value="All">{t("all_categories", "All categories")}</MenuItem>
+            {lstCategoryFilterOptions.map((strCategory) => (
+              <MenuItem key={strCategory} data-controlid="salary-components.list.search-category.option" value={strCategory}>{strCategory}</MenuItem>
+            ))}
+          </TextField>
           <TextField
+            className="app-mui-text-field"
             data-controlid="salary-components.list.search-status.select"
             inputProps={{ "data-controlid": "salary-components.list.search-status.select" }}
             select
-            label={t("search_status_label", "Status")}
+            label={t("status", "Status")}
             value={dicSearchDraft.status}
             onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, status: objEvent.target.value as SearchForm["status"] }))}
+            size="small"
+            disabled={blnLoading || blnRightsLoading || blnSubmitting}
             fullWidth
           >
-            <MenuItem data-controlid="salary-components.list.search-status.all.option" value="All">{t("all_status", "All Status")}</MenuItem>
+            <MenuItem data-controlid="salary-components.list.search-status.all.option" value="All">{t("all_status", "All statuses")}</MenuItem>
             <MenuItem data-controlid="salary-components.list.search-status.active.option" value="Active">{t("status_active", "Active")}</MenuItem>
             <MenuItem data-controlid="salary-components.list.search-status.inactive.option" value="Inactive">{t("status_inactive", "Inactive")}</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
-            <Button data-controlid="salary-components.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applySearch(dicSearchDraft)} disabled={blnLoading || blnSubmitting}>
+            <Button data-controlid="salary-components.list.search.button" className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={() => applySearch(dicSearchDraft)} disabled={blnLoading || blnRightsLoading || blnSubmitting}>
               {t("search_button", "Search")}
             </Button>
           </Box>
@@ -450,7 +603,7 @@ export default function SalaryComponentListPage() {
               onClick={() => {
                 applySearch(dicEmptySearch);
               }}
-              disabled={blnLoading || blnSubmitting}
+              disabled={blnLoading || blnRightsLoading || blnSubmitting}
             >
               {t("clear_button", "Clear")}
             </Button>
@@ -459,7 +612,7 @@ export default function SalaryComponentListPage() {
 
         {blnSubmitting ? (
           <Box className={styles.bulkBar} data-controlid="salary-components.list.bulk-processing.state">
-            <CircularProgress size={20} />
+            <DottedLoader intSize={20} />
             <Typography className={styles.bulkCount}>{t("bulk_applying_changes", "Applying changes...")}</Typography>
           </Box>
         ) : lstSelectedIds.length > 0 && !blnReadOnly && (blnCanEdit || blnCanDelete) ? (
@@ -472,8 +625,10 @@ export default function SalaryComponentListPage() {
         ) : null}
       </Box>
 
-      <Box className={styles.tableCard}>
-        {!blnCanView ? (
+      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        {(blnLoading || blnRightsLoading) ? (
+          <SalaryComponentGridSkeleton />
+        ) : !blnCanView ? (
           <Box className={styles.emptyState} data-controlid="salary-components.list.access-denied.state">
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", "Salary component access is not available for your user group.")}</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>{t("access_denied_help", "Contact your administrator if you need salary component visibility.")}</Typography>
@@ -492,8 +647,19 @@ export default function SalaryComponentListPage() {
                 {blnCanAdd ? <Button data-controlid="salary-components.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push(`/salary-components/add?backRoute=${encodeURIComponent(strCurrentListRoute)}`)} disabled={blnLoading || blnSubmitting || blnRightsLoading}>{t("add_component", "Add Component")}</Button> : null}
               </Box>
             )}
+            toolbarAfterExport={nodeAddColumnsControl}
             testIdPrefix="salary-components.list"
-            getRowSx={(dicRow) => lstSelectedIds.includes(dicRow.id) ? { backgroundColor: "rgba(37, 99, 235, 0.08)" } : {}}
+            onRowClick={(dicRow) => {
+              if (blnSubmitting || (!blnCanEdit && !blnCanView)) return;
+              objRouter.push(`/salary-components/${blnCanEdit ? "edit" : "view"}/${dicRow.strRecordUUID}?backRoute=${encodeURIComponent(strCurrentListRoute)}`);
+            }}
+            minTableWidth={1200}
+            hideRowClickHint
+            getRowSx={(dicRow) => ({
+              backgroundColor: lstSelectedIds.includes(dicRow.id) ? "rgba(37, 99, 235, 0.08)" : "#fff",
+              "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
+              "&.MuiTableRow-hover:hover td:first-of-type .MuiLink-root": { textDecoration: "underline" },
+            })}
             sx={{ p: 0, boxShadow: "none", background: "transparent" }}
           />
         )}
@@ -510,7 +676,7 @@ export default function SalaryComponentListPage() {
         onConfirm={executeConfirmedAction}
       />
 
-      <BlockingLoader blnOpen={blnLoading || blnRightsLoading || blnSubmitting} strLabel={blnLoading || blnRightsLoading ? t("loading_salary_components", "Loading salary components...") : t("processing", "Processing...")} intZIndex={1400} />
+      <BlockingLoader blnOpen={blnSubmitting} strLabel={t("processing", "Processing...")} intZIndex={1400} blnLocal />
 
       <Snackbar data-controlid="salary-components.list.toast" open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert data-controlid="salary-components.list.toast.alert" onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>

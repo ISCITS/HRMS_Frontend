@@ -25,7 +25,9 @@ export const changePasswordService = {
 
     return {
       lstEmployeeIDs: Array.from(new Set(lstEmployeeIDs)),
-      strEmployeeCode: (objResult.Data.objEmployee?.strEmployeeCode ?? "").trim()
+      strEmployeeCode: (objResult.Data.objEmployee?.strEmployeeCode ?? "").trim(),
+      strEmployeeName: (objResult.Data.objEmployee?.strFullName ?? objResult.Data.objUser.strLoginName ?? "").trim(),
+      strEmailAddress: (objResult.Data.objUser.strEmailAddress ?? "").trim()
     };
   }
 };

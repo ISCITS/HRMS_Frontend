@@ -67,6 +67,8 @@ export type RequestAction = {
   strRemarks?: string | null;
   dtActionOn: string;
   intActionBy?: number | null;
+  strActionByName?: string | null;
+  strActionByCode?: string | null;
 };
 
 export type RequestAttachment = {

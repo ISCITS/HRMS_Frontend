@@ -1,18 +1,20 @@
 "use client";
 
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import {
   Alert,
   Box,
-  CircularProgress,
+  IconButton,
   MenuItem,
   Stack,
   Tab,
   Tabs,
   TextField,
   Tooltip,
-  Typography,
+  Typography
 } from "@mui/material";
 import { type HTMLAttributes, useEffect, useMemo, useState } from "react";
+import { DottedLoader } from "@/components/shared/BlockingLoader";
 
 import CommonMasterDialog from "@/Common/components/CommonMasterDialog";
 import ActiveStatusSwitch from "@/components/master/ActiveStatusSwitch";
@@ -38,6 +40,101 @@ type UserGroupMasterDialogProps = {
   onSave: (lstRights: UserGroupRightSaveItem[]) => void;
 };
 
+const dicUserGroupDialogTabsSx = {
+  minHeight: 40,
+  mb: 0.5,
+  borderBottom: "1px solid #e2e8f0",
+  "& .MuiTabs-scroller": {
+    overflowY: "visible",
+  },
+  "& .MuiTabs-flexContainer": {
+    gap: 0.25,
+  },
+  "& .MuiTabs-indicator": {
+    height: 3,
+    borderRadius: "999px 999px 0 0",
+    bgcolor: "transparent",
+    transition: "left 260ms cubic-bezier(0.4, 0, 0.2, 1), width 260ms cubic-bezier(0.4, 0, 0.2, 1)",
+  },
+  "& .MuiTab-root": {
+    position: "relative",
+    minHeight: 40,
+    px: 1.75,
+    py: 0,
+    mx: 0.25,
+    borderRadius: "8px 8px 0 0",
+    overflow: "hidden",
+    color: "#475569",
+    fontSize: 13,
+    fontWeight: 600,
+    letterSpacing: 0,
+    textTransform: "none",
+    transition: "color 180ms ease, background-color 180ms ease, box-shadow 180ms ease",
+    "& .app-user-group-tab-label": {
+      position: "relative",
+      display: "flex",
+      alignItems: "center",
+      height: "100%",
+    },
+    "& .app-user-group-tab-label::after": {
+      content: '""',
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: 3,
+      borderRadius: "999px 999px 0 0",
+      bgcolor: "#5b8fba",
+      opacity: 0,
+      transition: "left 260ms cubic-bezier(0.4, 0, 0.2, 1), right 260ms cubic-bezier(0.4, 0, 0.2, 1), opacity 190ms ease, background-color 180ms ease",
+    },
+    "&:hover": {
+      color: "#215f91",
+      bgcolor: "#f3f4f6",
+      boxShadow: "inset 0 -1px 0 #d1d5db",
+    },
+    "&.Mui-selected": {
+      color: "#123f63",
+      bgcolor: "transparent",
+      fontWeight: 800,
+      "& .app-user-group-tab-label::after": {
+        opacity: 1,
+      },
+    },
+    "&.Mui-selected:hover": {
+      color: "#0f3554",
+      bgcolor: "#f3f4f6",
+      boxShadow: "inset 0 -1px 0 #d1d5db",
+      "& .app-user-group-tab-label::after": {
+        opacity: 1,
+        left: -14,
+        right: -14,
+      },
+    },
+    "&.Mui-focusVisible": {
+      bgcolor: "#f3f4f6",
+      outline: "2px solid #d1d5db",
+      outlineOffset: -2,
+    },
+    "&.Mui-selected.Mui-focusVisible": {
+      bgcolor: "transparent",
+      outlineColor: "#8fb9d8",
+    },
+  },
+} as const;
+
+const dicUserGroupSummarySx = {
+  display: "grid",
+  gridTemplateColumns: { xs: "1fr", sm: "repeat(3, minmax(0, 1fr))" },
+  alignItems: "center",
+  bgcolor: "#eef7ff",
+  borderRadius: "8px",
+  border: "1px solid #d8eafa",
+  overflow: "hidden",
+  minHeight: 100,
+  flexShrink: 0,
+} as const;
+
 export default function UserGroupMasterDialog({
   blnOpen,
   strMode,
@@ -54,6 +151,12 @@ export default function UserGroupMasterDialog({
   const blnReadOnly = strMode === "view";
   const intCurrentCompanyID = authHelpers.getCompanyID();
   const [intActiveTab, setIntActiveTab] = useState(0);
+  const [intSaveAttempt, setIntSaveAttempt] = useState(0);
+
+  useEffect(() => {
+    if (!intSaveAttempt || (!dicFieldErrors.strGroupCode && !dicFieldErrors.strGroupName)) return;
+    setIntActiveTab(0);
+  }, [dicFieldErrors, intSaveAttempt]);
   const [objMetadata, setObjMetadata] = useState<UserGroupAuthorizationMetadata | null>(null);
   const [blnMetadataLoading, setBlnMetadataLoading] = useState(false);
   const [lstRightsNodes, setLstRightsNodes] = useState<SecurityMenuNode[]>([]);
@@ -181,6 +284,7 @@ export default function UserGroupMasterDialog({
     dialogViewTitle: t("dialog_view_title", "View User Group"),
     tabBasicDetails: t("tab_basic_details", "Basic Details"),
     tabRights: t("tab_rights", "Menu & Action Rights"),
+    basicDetailsHelp: t("basic_details_help", "Maintain group identity, scope, and portal type."),
     fieldGroupCode: t("field_group_code", "Group Code"),
     fieldGroupName: t("field_group_name", "Group Name"),
     fieldGroupDescription: t("field_group_description", "Group Description"),
@@ -220,36 +324,78 @@ export default function UserGroupMasterDialog({
     <CommonMasterDialog
       blnOpen={blnOpen}
       onClose={onClose}
+      onDialogClose={(_, strReason) => { if (strReason !== "backdropClick") onClose(); }}
       strTitle={strMode === "add" ? dicLabels.dialogAddTitle : strMode === "edit" ? dicLabels.dialogEditTitle : dicLabels.dialogViewTitle}
       strSecondaryLabel={blnReadOnly ? dicLabels.closeButton : dicLabels.cancelButton}
       strPrimaryLabel={strMode === "add" ? dicLabels.saveButton : dicLabels.saveChangesButton}
-      onPrimaryAction={() => onSave(serializeRights(lstRightsNodes))}
+      onPrimaryAction={() => {
+        setIntSaveAttempt((intPrevious) => intPrevious + 1);
+        onSave(serializeRights(lstRightsNodes));
+      }}
       blnPrimaryDisabled={blnSaving || blnMetadataLoading || blnRightsLoading}
       blnHidePrimary={blnReadOnly}
-      paperClassName={styles.dialogPaperDapartment}
+      strSecondaryButtonClassName="app-btn app-btn-outline"
+      strPrimaryButtonClassName="app-btn app-btn-primary"
+      nodeTitleAction={
+        <Box className={`${styles.switchRow} app-master-dialog-status-row`}>
+          <Tooltip
+            title={blnProtectCurrentUserGroup && !blnReadOnly ? strOwnGroupInactiveWarning : ""}
+            arrow
+          >
+            <span>
+              <ActiveStatusSwitch
+                className="app-master-dialog-status-switch"
+                blnIsActive={objForm.blnIsActive}
+                onChange={(blnChecked) => updateField("blnIsActive", blnChecked)}
+                disabled={blnReadOnly || blnProtectCurrentUserGroup}
+                controlId="security.user-group.dialog.is-active.switch"
+                testId="security.user-group.dialog.is-active.switch"
+              />
+            </span>
+          </Tooltip>
+          <Typography className={`${styles.switchLabel} app-master-dialog-status-text`}>
+            {dicLabels.fieldIsActive}
+          </Typography>
+          <IconButton aria-label={dicLabels.closeButton} onClick={onClose} size="small" className="app-master-dialog-close-button app-master-dialog-close-button-spaced">
+            <CloseRoundedIcon fontSize="small" />
+          </IconButton>
+        </Box>
+      }
+      nodeFooterStart={<Typography className="app-master-dialog-required-fields">Required fields are marked <Box component="span" className="app-master-dialog-required-asterisk">*</Box></Typography>}
+      paperClassName={`${styles.dialogPaperDapartment} app-master-dialog-compact-buttons`}
+      paperSx={{ "&&": { maxWidth: 700, width: "min(90vw, 700px)", height: "85dvh" } }}
       maxWidth={false}
       fullWidth={false}
       titleSx={{ px: 2.25, py: 1.25, fontSize: "1rem", maxHeight: 50 }}
-      contentSx={{ px: 2.5, py: 2.5, display: "flex", flexDirection: "column", minHeight: 0, overflowX: "hidden" }}
+      contentClassName="app-master-dialog-content-compact"
+      contentSx={{ display: "flex", flexDirection: "column", minHeight: 0, "&&": { paddingTop: 0, overflow: "hidden" } }}
       nodeContent={(
         <>
           <Tabs
             value={intActiveTab}
             onChange={(_, intNextValue) => setIntActiveTab(intNextValue)}
             data-control-id="security.user-group.dialog.tabs"
-            sx={{ px: 0, borderBottom: "1px solid #e2e8f0", minHeight: 42, mb: 2 }}
+            sx={dicUserGroupDialogTabsSx}
           >
-            <Tab label={dicLabels.tabBasicDetails} sx={{ textTransform: "none", fontWeight: 800, minHeight: 42, py: 0.5 }} data-control-id="security.user-group.dialog.basic-details.tab" />
-            <Tab label={dicLabels.tabRights} sx={{ textTransform: "none", fontWeight: 800, minHeight: 42, py: 0.5 }} data-control-id="security.user-group.dialog.rights.tab" />
+            <Tab label={<Box component="span" className="app-user-group-tab-label">{dicLabels.tabBasicDetails}</Box>} data-control-id="security.user-group.dialog.basic-details.tab" />
+            <Tab label={<Box component="span" className="app-user-group-tab-label">{dicLabels.tabRights}</Box>} data-control-id="security.user-group.dialog.rights.tab" />
           </Tabs>
 
           {intActiveTab === 0 ? (
-            <Stack spacing={2.25} sx={{ pt: 1 }}>
+            <Stack spacing={2.25} sx={{ pt: 1, minHeight: 0, overflowY: "auto" }}>
             {strSaveError ? (
               <Alert severity="error" variant="outlined" sx={{ borderRadius: 2 }}>
                 {strSaveError}
               </Alert>
             ) : null}
+            <Box>
+              <Typography className="app-master-dialog-section-heading">
+                {dicLabels.tabBasicDetails}
+              </Typography>
+              <Typography className="app-master-dialog-section-subheading app-master-dialog-section-subheading-spaced">
+                {dicLabels.basicDetailsHelp}
+              </Typography>
+            </Box>
             <Box
               sx={{
                 display: "grid",
@@ -258,6 +404,7 @@ export default function UserGroupMasterDialog({
               }}
             >
               <TextField
+                className="app-mui-text-field"
                 label={dicLabels.fieldGroupCode}
                 value={objForm.strGroupCode}
                 onChange={(objEvent) => updateField("strGroupCode", objEvent.target.value)}
@@ -268,6 +415,7 @@ export default function UserGroupMasterDialog({
                 inputProps={{ controlId: "security.user-group.dialog.group-code.input" }}
               />
               <TextField
+                className="app-mui-text-field"
                 label={dicLabels.fieldGroupName}
                 value={objForm.strGroupName}
                 onChange={(objEvent) => updateField("strGroupName", objEvent.target.value)}
@@ -280,28 +428,28 @@ export default function UserGroupMasterDialog({
             </Box>
 
             <TextField
+              className="app-mui-text-field"
               label={dicLabels.fieldGroupDescription}
               value={objForm.strGroupDescription ?? ""}
               onChange={(objEvent) => updateField("strGroupDescription", objEvent.target.value)}
               disabled={blnReadOnly}
               multiline
-              minRows={3}
+              minRows={2}
+              sx={{
+                "& .MuiInputBase-root": {
+                  alignItems: "flex-start",
+                  minHeight: 40,
+                  pl: 0.25,
+                  pr: 0.75,
+                  py: "8.5px",
+                },
+                "& .MuiInputBase-inputMultiline": {
+                  py: 0,
+                  lineHeight: 1.45,
+                },
+              }}
               inputProps={{ controlId: "security.user-group.dialog.group-description.input" }}
             />
-
-            <TextField
-              select
-              label={dicLabels.fieldGroupScope}
-              value={objForm.intCompanyID == null ? "tenant" : "company"}
-              onChange={(objEvent) => updateField("intCompanyID", objEvent.target.value === "tenant" ? null : intCurrentCompanyID)}
-              disabled={blnReadOnly || intCurrentCompanyID == null}
-              SelectProps={{
-                SelectDisplayProps: { "data-control-id": "security.user-group.dialog.group-scope.select" } as HTMLAttributes<HTMLDivElement>,
-              }}
-            >
-              <MenuItem value="tenant" data-control-id="security.user-group.dialog.group-scope.tenant.option">{dicLabels.scopeTenantOption}</MenuItem>
-              <MenuItem value="company" data-control-id="security.user-group.dialog.group-scope.company.option">{dicLabels.scopeCompanyOption}</MenuItem>
-            </TextField>
 
             <Box
               sx={{
@@ -312,6 +460,21 @@ export default function UserGroupMasterDialog({
               }}
             >
               <TextField
+                className="app-mui-text-field"
+                select
+                label={dicLabels.fieldGroupScope}
+                value={objForm.intCompanyID == null ? "tenant" : "company"}
+                onChange={(objEvent) => updateField("intCompanyID", objEvent.target.value === "tenant" ? null : intCurrentCompanyID)}
+                disabled={blnReadOnly || intCurrentCompanyID == null}
+                SelectProps={{
+                  SelectDisplayProps: { "data-control-id": "security.user-group.dialog.group-scope.select" } as HTMLAttributes<HTMLDivElement>,
+                }}
+              >
+                <MenuItem value="tenant" data-control-id="security.user-group.dialog.group-scope.tenant.option">{dicLabels.scopeTenantOption}</MenuItem>
+                <MenuItem value="company" data-control-id="security.user-group.dialog.group-scope.company.option">{dicLabels.scopeCompanyOption}</MenuItem>
+              </TextField>
+              <TextField
+                className="app-mui-text-field"
                 select
                 label={dicLabels.fieldGroupType}
                 value={objForm.strGroupType === "BOTH" ? "HR" : objForm.strGroupType}
@@ -325,32 +488,6 @@ export default function UserGroupMasterDialog({
                 <MenuItem value="HR" data-control-id="security.user-group.dialog.group-type.hr.option">{dicLabels.groupTypeHR}</MenuItem>
                 <MenuItem value="ESS" data-control-id="security.user-group.dialog.group-type.ess.option">{dicLabels.groupTypeESS}</MenuItem>
               </TextField>
-
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  px: 0,
-                  py: 1,
-                }}
-              >
-                <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{dicLabels.fieldIsActive}</Typography>
-                <Tooltip
-                  title={blnProtectCurrentUserGroup && !blnReadOnly ? strOwnGroupInactiveWarning : ""}
-                  arrow
-                >
-                  <span>
-                    <ActiveStatusSwitch
-                      blnIsActive={objForm.blnIsActive}
-                      onChange={(blnChecked) => updateField("blnIsActive", blnChecked)}
-                      disabled={blnReadOnly || blnProtectCurrentUserGroup}
-                      controlId="security.user-group.dialog.is-active.switch"
-                      testId="security.user-group.dialog.is-active.switch"
-                    />
-                  </span>
-                </Tooltip>
-              </Box>
             </Box>
 
             {blnProtectCurrentUserGroup ? (
@@ -361,23 +498,19 @@ export default function UserGroupMasterDialog({
 
             {objMetadata ? (
               <Box
-                sx={{
-                  display: "grid",
-                  gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" },
-                  gap: 1.25,
-                }}
+                sx={dicUserGroupSummarySx}
               >
-                <Box sx={{ p: 1.6 }}>
-                  <Typography sx={{ color: "#64748b", fontSize: "0.78rem", fontWeight: 800, textTransform: "uppercase" }}>{dicLabels.summaryVisibleMenus}</Typography>
-                  <Typography sx={{ mt: 0.9, color: "#0f172a", fontWeight: 400, fontSize: "1.5rem", lineHeight: 1 }}>{objMetadata.objSummary.intVisibleMenuCount}</Typography>
+                <Box sx={{ px: 2, py: 1.25, textAlign: "center", borderRight: { xs: 0, sm: "1px solid #bdd5ea" }, borderBottom: { xs: "1px solid #bdd5ea", sm: 0 } }}>
+                  <Typography sx={{ color: "#17496f", fontSize: "0.95rem", fontWeight: 700 }}>{dicLabels.summaryVisibleMenus}</Typography>
+                  <Typography sx={{ mt: 0.35, color: "#0f2f4d", fontWeight: 900, fontSize: "1rem", lineHeight: 1.1 }}>{objMetadata.objSummary.intVisibleMenuCount}</Typography>
                 </Box>
-                <Box sx={{ p: 1.6 }}>
-                  <Typography sx={{ color: "#64748b", fontSize: "0.78rem", fontWeight: 800, textTransform: "uppercase" }}>{dicLabels.summaryAllowedActions}</Typography>
-                  <Typography sx={{ mt: 0.9, color: "#0f172a", fontWeight: 400, fontSize: "1.5rem", lineHeight: 1 }}>{objMetadata.objSummary.intAllowedActionCount}</Typography>
+                <Box sx={{ px: 2, py: 1.25, textAlign: "center", borderRight: { xs: 0, sm: "1px solid #bdd5ea" }, borderBottom: { xs: "1px solid #bdd5ea", sm: 0 } }}>
+                  <Typography sx={{ color: "#17496f", fontSize: "0.95rem", fontWeight: 700 }}>{dicLabels.summaryAllowedActions}</Typography>
+                  <Typography sx={{ mt: 0.35, color: "#0f2f4d", fontWeight: 900, fontSize: "1rem", lineHeight: 1.1 }}>{objMetadata.objSummary.intAllowedActionCount}</Typography>
                 </Box>
-                <Box sx={{ p: 1.6 }}>
-                  <Typography sx={{ color: "#64748b", fontSize: "0.78rem", fontWeight: 800, textTransform: "uppercase" }}>{dicLabels.summaryAssignedUsers}</Typography>
-                  <Typography sx={{ mt: 0.9, color: "#0f172a", fontWeight: 400, fontSize: "1.5rem", lineHeight: 1 }}>{objMetadata.objSummary.intAssignedUserCount}</Typography>
+                <Box sx={{ px: 2, py: 1.25, textAlign: "center" }}>
+                  <Typography sx={{ color: "#17496f", fontSize: "0.95rem", fontWeight: 700 }}>{dicLabels.summaryAssignedUsers}</Typography>
+                  <Typography sx={{ mt: 0.35, color: "#0f2f4d", fontWeight: 900, fontSize: "1rem", lineHeight: 1.1 }}>{objMetadata.objSummary.intAssignedUserCount}</Typography>
                 </Box>
               </Box>
             ) : null}
@@ -385,8 +518,8 @@ export default function UserGroupMasterDialog({
         ) : (
           <Box sx={{ flex: 1, minHeight: 0, pt: 1 }}>
             {blnRightsLoading ? (
-              <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1.5, minHeight: 240 }}>
-                <CircularProgress size={28} />
+              <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1.5, height: "100%", minHeight: 0 }}>
+                <DottedLoader />
                 <Typography sx={{ color: "#64748b", fontSize: "0.85rem" }}>{dicLabels.rightsLoading}</Typography>
               </Box>
             ) : lstRightsNodes.length > 0 ? (

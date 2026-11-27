@@ -2,18 +2,22 @@
 
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Alert, Autocomplete, Box, Button, CircularProgress, MenuItem, TextField, Typography } from "@mui/material";
+import { Autocomplete, Box, Breadcrumbs, Button, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import PageNotices from "@/Common/components/PageNotices";
+import BlockingLoader, { DottedLoader } from "@/components/shared/BlockingLoader";
 import { employeeService } from "@/features/employee/services/employeeService";
 import type { EmployeeListRecord } from "@/features/employee/types";
 import { payrollResultService } from "@/features/payroll/services/payrollResultService";
+import screen from "@/components/master/MasterScreen.module.css";
 import styles from "@/features/payroll/components/PayrollScreen.module.css";
 import { payrollReportService } from "@/features/reports/services/payrollReportService";
 import { getUniqueOptions } from "@/features/reports/components/ReportMultiSelectField";
+import { usePayrollReportFilterOptions } from "@/features/reports/hooks/usePayrollReportFilterOptions";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import type { PayrollResultDetailRecord, PayrollResultLineRecord, PayrollResultListRecord } from "@/features/payroll/types";
 
@@ -107,11 +111,14 @@ function buildSalaryStatementLines(lstDetails: PayrollResultDetailRecord[], lstM
       if (!dicLine.blnIncludeInPayslip && !dicLine.blnIncludeInGross && !dicLine.blnIncludeInNetPay && !dicLine.blnIsEmployerContribution) return;
       const strSection = getLineSection(dicLine);
       const strKey = `${strSection}:${dicLine.strComponentCode || dicLine.intSalaryComponentID}:${dicLine.strComponentName}`;
+      // Sections keep their fixed block (earnings, deductions, employer); within a block the
+      // rows follow the display order set on the Salary Component screen.
+      const intSectionBase = strSection === "earnings" ? 1_000_000 : strSection === "deductions" ? 3_000_000 : 5_000_000;
       const dicExisting = mapLines.get(strKey) ?? {
         strKey,
         strComponent: dicLine.strComponentName || dicLine.strComponentCode || "Salary Component",
         strSection,
-        intOrder: strSection === "earnings" ? 10 : strSection === "deductions" ? 30 : 50,
+        intOrder: intSectionBase + Number(dicLine.intDisplayOrder ?? 999_999),
         dicAmounts: {},
       };
       addAmount(dicExisting.dicAmounts, strMonthKey, getNumber(dicLine.decAmount));
@@ -174,7 +181,6 @@ export default function SalaryStatementReportPage() {
   ]);
   const blnCanView = canViewAny() || canDoAny("view") || canDoAny("list");
   const [lstEmployees, setLstEmployees] = useState<EmployeeListRecord[]>([]);
-  const [lstPayrollRows, setLstPayrollRows] = useState<PayrollResultListRecord[]>([]);
   const [lstDetails, setLstDetails] = useState<PayrollResultDetailRecord[]>([]);
   const [blnLoadingMasters, setBlnLoadingMasters] = useState(true);
   const [blnLoadingReport, setBlnLoadingReport] = useState(false);
@@ -185,22 +191,19 @@ export default function SalaryStatementReportPage() {
     strStatus: "All",
   });
 
+  // The financial-year choices come from a light lookup of payroll months; the employee's results
+  // load only on Generate (previously every payroll result was fetched on open just for this list).
+  const { dicFilterOptions, strLookupError, setStrLookupError } = usePayrollReportFilterOptions(blnCanView);
+  const [blnFinancialYearDefaulted, setBlnFinancialYearDefaulted] = useState(false);
+
   useEffect(() => {
     if (!blnCanView) return;
     let blnActive = true;
     setBlnLoadingMasters(true);
-    Promise.all([employeeService.getEmployees(), payrollReportService.getPayrollRegisterRows({})])
-      .then(([lstEmployeeRows, lstResultRows]) => {
+    employeeService.getEmployees()
+      .then((lstEmployeeRows) => {
         if (!blnActive) return;
         setLstEmployees(lstEmployeeRows.filter((dicEmployee) => !dicEmployee.blnIsPartialSave));
-        setLstPayrollRows(lstResultRows);
-        const intLatestFinancialYear = lstResultRows
-          .map((dicRow) => getFinancialYearStart(dicRow.dtPayrollMonth))
-          .filter((intYear): intYear is number => intYear !== null)
-          .sort((intLeft, intRight) => intRight - intLeft)[0];
-        if (intLatestFinancialYear) {
-          setDicSearch((dicPrevious) => ({ ...dicPrevious, intFinancialYearStart: intLatestFinancialYear }));
-        }
       })
       .catch((objError) => setStrError(objError instanceof Error ? objError.message : "Unable to load salary statement filters."))
       .finally(() => {
@@ -211,27 +214,43 @@ export default function SalaryStatementReportPage() {
     };
   }, [blnCanView]);
 
+  const lstResultFinancialYears = useMemo(
+    () => dicFilterOptions.lstMonths
+      .map((strMonth) => getFinancialYearStart(`${strMonth}-01`))
+      .filter((intYear): intYear is number => intYear !== null),
+    [dicFilterOptions.lstMonths],
+  );
+
+  useEffect(() => {
+    // Default once to the latest financial year that has payroll results.
+    if (blnFinancialYearDefaulted || !lstResultFinancialYears.length) return;
+    setBlnFinancialYearDefaulted(true);
+    setDicSearch((dicPrevious) => ({ ...dicPrevious, intFinancialYearStart: Math.max(...lstResultFinancialYears) }));
+  }, [blnFinancialYearDefaulted, lstResultFinancialYears]);
+
   const mapEmployeeByID = useMemo(() => new Map(lstEmployees.map((dicEmployee) => [dicEmployee.intID, dicEmployee])), [lstEmployees]);
   const lstMonths = useMemo(() => buildMonthColumns(dicSearch.intFinancialYearStart), [dicSearch.intFinancialYearStart]);
   const lstFinancialYears = useMemo(() => {
     const lstYears = getUniqueOptions([
-      ...lstPayrollRows.map((dicRow) => String(getFinancialYearStart(dicRow.dtPayrollMonth) ?? "")),
+      ...lstResultFinancialYears.map(String),
       String(getCurrentFinancialYearStart()),
     ]).map(Number).filter(Boolean);
     return lstYears.sort((intLeft, intRight) => intRight - intLeft);
-  }, [lstPayrollRows]);
+  }, [lstResultFinancialYears]);
   const dicSelectedEmployee = dicSearch.intEmployeeID ? mapEmployeeByID.get(dicSearch.intEmployeeID) : null;
   const lstStatementLines = useMemo(() => buildSalaryStatementLines(lstDetails, lstMonths), [lstDetails, lstMonths]);
 
-  function getFilteredPayrollRows() {
-    return lstPayrollRows.filter((dicRow) => {
-      const dicEmployee = mapEmployeeByID.get(dicRow.intEmployeeID);
-      const blnMatchesEmployee = dicSearch.intEmployeeID ? dicRow.intEmployeeID === dicSearch.intEmployeeID : false;
-      return blnMatchesEmployee
-        && getFinancialYearStart(dicRow.dtPayrollMonth) === dicSearch.intFinancialYearStart
-        && Boolean(dicEmployee)
-        && (dicSearch.strStatus === "All" || dicRow.strStatus === dicSearch.strStatus);
+  async function loadEmployeePayrollRows(): Promise<PayrollResultListRecord[]> {
+    // Server-side: only this employee's results for the 12 months of the selected financial year.
+    const strEmployeeCode = dicSelectedEmployee?.strEmployeeCode ?? "";
+    const lstRows = await payrollReportService.getPayrollRegisterRows({
+      strSearchEmployee: strEmployeeCode,
+      strPayrollMonth: lstMonths.map((dicMonth) => dicMonth.strKey).join(","),
     });
+    return lstRows.filter((dicRow) =>
+      dicRow.intEmployeeID === dicSearch.intEmployeeID
+      && getFinancialYearStart(dicRow.dtPayrollMonth) === dicSearch.intFinancialYearStart
+      && (dicSearch.strStatus === "All" || dicRow.strStatus === dicSearch.strStatus));
   }
 
   async function loadReport() {
@@ -241,13 +260,13 @@ export default function SalaryStatementReportPage() {
       setStrError("Select an employee to generate the Salary statement.");
       return;
     }
-    const lstRows = getFilteredPayrollRows();
-    if (!lstRows.length) {
-      setStrError("No payroll results found for the selected employee and filters.");
-      return;
-    }
     setBlnLoadingReport(true);
     try {
+      const lstRows = await loadEmployeePayrollRows();
+      if (!lstRows.length) {
+        setStrError("No payroll results found for the selected employee and filters.");
+        return;
+      }
       const lstDetailRows = await Promise.all(lstRows.map((dicRow) => payrollResultService.getPayrollResultById(dicRow.strRecordUUID)));
       setLstDetails(lstDetailRows);
     } catch (objError) {
@@ -322,10 +341,23 @@ export default function SalaryStatementReportPage() {
   }
 
   return (
-    <Box className={styles.page}>
-      <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>Salary Statement</Typography>
+    <Box className={screen.page}>
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ minWidth: 0 }}>
+        <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />}>
+          <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>Reports</Typography>
+          <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">Salary Statement</Typography>
+        </Breadcrumbs>
+        <PageNotices
+          strControlId="reports.salary-statement.notices"
+          lstNotices={[
+            !blnCanView && !strError ? { strKey: "rights", strSeverity: "warning", objMessage: "Salary statement view access is not available for your user group." } : null,
+            { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+            { strKey: "lookup-error", strSeverity: "error", objMessage: strLookupError, fnDismiss: () => setStrLookupError("") },
+          ]}
+        />
+      </Stack>
 
-      <Box className={styles.controlsCard}>
+      <Box className={screen.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <Box className={styles.reportSearchPanelRow}>
           <Box className={styles.reportSearchField} sx={{ flex: "1 1 320px", minWidth: 260 }}>
             <Autocomplete
@@ -333,7 +365,7 @@ export default function SalaryStatementReportPage() {
               value={dicSelectedEmployee ?? null}
               getOptionLabel={(dicEmployee) => `${dicEmployee.strEmployeeCode} - ${dicEmployee.strFullName}`}
               onChange={(_, dicEmployee) => setDicSearch((dicPrevious) => ({ ...dicPrevious, intEmployeeID: dicEmployee?.intID ?? "" }))}
-              renderInput={(objParams) => <TextField {...objParams} label="Employee Name" placeholder="Search employee..."
+              renderInput={(objParams) => <TextField {...objParams} InputLabelProps={{ shrink: true }} label="Employee Name" placeholder="Search employee..."
                 InputProps={{ ...objParams.InputProps, startAdornment: (<><SearchRoundedIcon fontSize="small" sx={{ color: "action.active", ml: 0.5, mr: -0.5 }} />{objParams.InputProps.startAdornment}</>) }} />}
             />
           </Box>
@@ -348,29 +380,31 @@ export default function SalaryStatementReportPage() {
             </TextField>
           </Box>
           <Box className={styles.searchActions} sx={{ flex: "0 0 auto", ml: "auto" }}>
-            <Button className={styles.primaryButton} startIcon={<SearchRoundedIcon />} onClick={loadReport} disabled={blnLoadingReport} sx={{ whiteSpace: "nowrap" }}>Search</Button>
-            <Button className={styles.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} disabled={blnLoadingReport} sx={{ whiteSpace: "nowrap" }}>Clear</Button>
+            <Button className={screen.primaryButton} startIcon={<SearchRoundedIcon />} onClick={loadReport} disabled={blnLoadingReport} sx={{ minHeight: "30px !important", px: "8px !important", whiteSpace: "nowrap" }}>Search</Button>
+            <Button className={screen.secondaryButton} startIcon={<ClearRoundedIcon />} onClick={clearFilters} disabled={blnLoadingReport} sx={{ minHeight: "30px !important", px: "8px !important", whiteSpace: "nowrap" }}>Clear</Button>
           </Box>
         </Box>
       </Box>
 
-      {!blnCanView && !strError ? <Alert severity="warning">Salary statement view access is not available for your user group.</Alert> : null}
-      {strError ? <Alert severity="error">{strError}</Alert> : null}
-
-      <Box className={styles.tableCard}>
+      <Box className={screen.tableCard} sx={{ position: "relative", p: "10px !important", borderRadius: "10px !important", boxShadow: "none" }}>
         <Box sx={{ alignItems: "center", display: "flex", flex: "0 0 auto", justifyContent: "space-between", gap: 2, mb: 1 }}>
           <Typography sx={{ fontWeight: 700 }}>Salary Statement</Typography>
           <Box sx={{ display: "flex", flexWrap: "nowrap", gap: 1 }}>
-            {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadExcel(`salary-statement-${strFinancialYearLabel}.xls`, strReportMarkup)} disabled={!lstStatementLines.length} sx={{ whiteSpace: "nowrap" }}>Export Excel</Button> : null}
-            {canDoAny("export") ? <Button className={styles.secondaryButton} startIcon={<PrintRoundedIcon />} onClick={() => printReport(strReportMarkup)} disabled={!lstStatementLines.length} sx={{ whiteSpace: "nowrap" }}>Download PDF</Button> : null}
+            {canDoAny("export") ? <Button className={screen.secondaryButton} startIcon={<DownloadRoundedIcon />} onClick={() => downloadExcel(`salary-statement-${strFinancialYearLabel}.xls`, strReportMarkup)} disabled={!lstStatementLines.length} sx={{ whiteSpace: "nowrap" }}>Export Excel</Button> : null}
+            {canDoAny("export") ? <Button className={screen.secondaryButton} startIcon={<PrintRoundedIcon />} onClick={() => printReport(strReportMarkup)} disabled={!lstStatementLines.length} sx={{ whiteSpace: "nowrap" }}>Download PDF</Button> : null}
           </Box>
         </Box>
 
         <Box sx={{ flex: "1 1 auto", minHeight: 0, overflow: "auto", pr: 0.5, scrollbarGutter: "stable" }}>
           {blnLoadingReport ? (
-            <Box sx={{ alignItems: "center", display: "flex", gap: 1.5, justifyContent: "center", minHeight: 220 }}>
-              <CircularProgress size={24} />
+            <Box sx={{ alignItems: "center", display: "flex", flexDirection: "column", gap: 1, justifyContent: "center", minHeight: 220 }}>
+              <DottedLoader />
               <Typography>Building salary statement...</Typography>
+            </Box>
+          ) : lstDetails.length === 0 ? (
+            <Box data-controlid="reports.salary-statement.select-criteria" sx={{ alignItems: "center", display: "flex", flexDirection: "column", gap: 1, justifyContent: "center", minHeight: 220, textAlign: "center" }}>
+              <SearchRoundedIcon sx={{ fontSize: 40, color: "#94a3b8" }} />
+              <Typography sx={{ fontWeight: 600, color: "#334155" }}>Select an employee and financial year, then click Search to view the salary statement.</Typography>
             </Box>
           ) : (
             <Box sx={{ border: "1px solid #4b5563", minWidth: 1280 }}>

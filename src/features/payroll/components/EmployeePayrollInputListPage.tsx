@@ -1,36 +1,45 @@
 "use client";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
 import {
   Alert,
   Box,
   Button,
+  Chip,
+  InputAdornment,
+  Link,
   MenuItem,
   Snackbar,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
-import CommonRowActions from "@/components/master/CommonRowActions";
-import styles from "@/features/payroll/components/PayrollScreen.module.css";
-import BlockingLoader from "@/components/shared/BlockingLoader";
+import { MasterBreadcrumbs, MasterGridSkeleton, MasterStatusPill, dicMasterRowSx, onSearchEnter } from "@/components/master/MasterListUi";
+import styles from "@/components/master/MasterScreen.module.css";
+import { withBasePath } from "@/lib/basePath";
+import EmployeeFilterSelect, { type EmployeeFilterOption } from "@/components/shared/EmployeeFilterSelect";
 import { useModuleLabels } from "@/features/labels/hooks/useModuleLabels";
+import PayrollInputPayableDaysImportDialog from "@/features/payroll/components/PayrollInputPayableDaysImportDialog";
+import PayrollInputTdsImportDialog from "@/features/payroll/components/PayrollInputTdsImportDialog";
 import { employeePayrollInputService } from "@/features/payroll/services/employeePayrollInputService";
+import { payableDaysImportService, type PayableDaysImportStatus } from "@/features/payroll/services/payableDaysImportService";
+import { tdsService, type TdsImportStatus } from "@/features/payroll/services/tdsService";
 import type {
   EmployeePayrollInputListRecord,
+  PayrollRunOption,
 } from "@/features/payroll/types";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 
 type SearchForm = {
   strSearchEmployee: string;
-  strSearchRun: string;
+  intPayrollRunID: number | null;
   strStatus: "All" | "Draft" | "Submitted" | "Locked";
 };
 
@@ -42,10 +51,16 @@ type ToastState = {
 
 const dicEmptySearch: SearchForm = {
   strSearchEmployee: "",
-  strSearchRun: "",
+  intPayrollRunID: null,
   strStatus: "All",
 };
-const lstEmployeePayrollInputModuleCodes = ["EMPLOYEE_PAYROLL_INPUT", "EMPLOYEE_PAYROLL_INPUTS", "PAYROLL_INPUT", "PAYROLL_INPUTS"];
+const strInputCriteriaMessage = "Select a payroll run and/or an employee, then click Search.";
+
+function hasInputSearchCriteria(objFilters: SearchForm) {
+  return Boolean(objFilters.intPayrollRunID || objFilters.strSearchEmployee.trim());
+}
+
+const lstEmployeePayrollInputModuleCodes =["EMPLOYEE_PAYROLL_INPUT", "EMPLOYEE_PAYROLL_INPUTS", "PAYROLL_INPUT", "PAYROLL_INPUTS"];
 function formatDate(strDate: string | null) {
   if (!strDate) {
     return "-";
@@ -68,15 +83,36 @@ function formatNumber(decValue: number | null) {
 }
 
 export default function EmployeePayrollInputListPage() {
-  const objRouter = useRouter();
+  return (
+    <Suspense fallback={<MasterGridSkeleton strControlId="employee-payroll-input.list.skeleton" intColumns={11} />}>
+      <EmployeePayrollInputSearchPage />
+    </Suspense>
+  );
+}
+
+function EmployeePayrollInputSearchPage() {
+  const objSearchParams = useSearchParams();
+  const strRunID = objSearchParams.get("runId") ?? objSearchParams.get("intPayrollRunID");
+  const intQueryRunID = strRunID && Number.isSafeInteger(Number(strRunID)) && Number(strRunID) > 0
+    ? Number(strRunID)
+    : null;
+  return <EmployeePayrollInputList key={intQueryRunID ?? "all"} intInitialRunID={intQueryRunID} />;
+}
+
+function EmployeePayrollInputList({ intInitialRunID }: { intInitialRunID: number | null }) {
+  const dicInitialSearch = useMemo(() => ({ ...dicEmptySearch, intPayrollRunID: intInitialRunID }), [intInitialRunID]);
   const { t } = useModuleLabels("employee-payroll-input");
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny } = useModuleActionAccess(lstEmployeePayrollInputModuleCodes);
   const [lstInputs, setLstInputs] = useState<EmployeePayrollInputListRecord[]>([]);
   const [blnLoading, setBlnLoading] = useState(true);
   const [strError, setStrError] = useState("");
+  const [lstPayrollRuns, setLstPayrollRuns] = useState<PayrollRunOption[]>([]);
+  const [blnRunsLoading, setBlnRunsLoading] = useState(true);
+  const [lstEmployeeFilterOptions, setLstEmployeeFilterOptions] = useState<EmployeeFilterOption[]>([]);
+  const [strRunOptionsError, setStrRunOptionsError] = useState("");
   const [dicSearchDraft, setDicSearchDraft] =
-    useState<SearchForm>(dicEmptySearch);
-  const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
+    useState<SearchForm>(dicInitialSearch);
+  const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicInitialSearch);
   const [objToast, setObjToast] = useState<ToastState>({
     blnOpen: false,
     strMessage: "",
@@ -86,20 +122,74 @@ export default function EmployeePayrollInputListPage() {
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
   const blnCanExport = canDoAny("export");
+  const blnCanImportTds = blnCanAdd || blnCanEdit;
+  const intSelectedRunID = dicSearchApplied.intPayrollRunID;
+  const [objTdsStatus, setObjTdsStatus] = useState<TdsImportStatus | null>(null);
+  const [blnTdsDialogOpen, setBlnTdsDialogOpen] = useState(false);
 
-  async function loadInputs(objFilters: SearchForm = dicSearchApplied) {
-    if (!blnCanView) {
+  const loadTdsStatus = useCallback(async (intRunID: number | null) => {
+    if (!intRunID || !blnCanView) {
+      setObjTdsStatus(null);
+      return;
+    }
+    try {
+      setObjTdsStatus(await tdsService.getImportStatus(intRunID));
+    } catch {
+      setObjTdsStatus(null);
+    }
+  }, [blnCanView]);
+
+  useEffect(() => {
+    if (blnRightsLoading) return;
+    loadTdsStatus(intSelectedRunID).catch(() => undefined);
+  }, [blnRightsLoading, intSelectedRunID, loadTdsStatus]);
+
+  const [objPayableDaysStatus, setObjPayableDaysStatus] = useState<PayableDaysImportStatus | null>(null);
+  const [blnPayableDaysDialogOpen, setBlnPayableDaysDialogOpen] = useState(false);
+
+  const loadPayableDaysStatus = useCallback(async (intRunID: number | null) => {
+    if (!intRunID || !blnCanView) {
+      setObjPayableDaysStatus(null);
+      return;
+    }
+    try {
+      setObjPayableDaysStatus(await payableDaysImportService.getImportStatus(intRunID));
+    } catch {
+      setObjPayableDaysStatus(null);
+    }
+  }, [blnCanView]);
+
+  useEffect(() => {
+    if (blnRightsLoading) return;
+    loadPayableDaysStatus(intSelectedRunID).catch(() => undefined);
+  }, [blnRightsLoading, intSelectedRunID, loadPayableDaysStatus]);
+
+  const strSelectedRunLabel = useMemo(() => {
+    const objRun = lstPayrollRuns.find((dicRun) => dicRun.intID === intSelectedRunID);
+    return objRun ? `${objRun.strLabel} (${objRun.strCode})` : `#${intSelectedRunID ?? ""}`;
+  }, [lstPayrollRuns, intSelectedRunID]);
+
+  // Search-first: nothing loads on open (every run x every employee was fetched before); the user
+  // picks a payroll run and/or employee and searches. A ?runId= link still opens that run directly.
+  const [blnHasSearched, setBlnHasSearched] = useState(false);
+  const [blnShowCriteriaHint, setBlnShowCriteriaHint] = useState(false);
+
+  const loadInputs = useCallback(async (objFilters: SearchForm) => {
+    if (!blnCanView || !hasInputSearchCriteria(objFilters)) {
       setLstInputs([]);
+      setBlnHasSearched(false);
       setBlnLoading(false);
       return;
     }
 
+    setBlnShowCriteriaHint(false);
     setBlnLoading(true);
     setStrError("");
     try {
       setLstInputs(
         await employeePayrollInputService.getEmployeePayrollInputs(objFilters)
       );
+      setBlnHasSearched(true);
     } catch (objError) {
       setStrError(
         objError instanceof Error
@@ -109,31 +199,53 @@ export default function EmployeePayrollInputListPage() {
     } finally {
       setBlnLoading(false);
     }
-  }
+  }, [blnCanView]);
 
   useEffect(() => {
     if (blnRightsLoading) {
       return;
     }
 
-    loadInputs().catch(() => undefined);
+    loadInputs(dicInitialSearch).catch(() => undefined);
+  }, [blnRightsLoading, dicInitialSearch, loadInputs]);
+
+  useEffect(() => {
+    if (blnRightsLoading || !blnCanView) return;
+    let blnCancelled = false;
+    employeePayrollInputService.getFormOptions()
+      .then((dicOptions) => {
+        if (!blnCancelled) {
+          setLstPayrollRuns(dicOptions.lstPayrollRuns);
+          setLstEmployeeFilterOptions((dicOptions.lstEmployees ?? []).map((dicEmployee) => ({
+            strValue: dicEmployee.strCode,
+            strEmployeeCode: dicEmployee.strCode,
+            strEmployeeName: dicEmployee.strLabel,
+          })));
+          setStrRunOptionsError("");
+        }
+      })
+      .catch((objError: unknown) => {
+        if (!blnCancelled) setStrRunOptionsError(objError instanceof Error ? objError.message : "Unable to load payroll runs.");
+      })
+      .finally(() => {
+        if (!blnCancelled) setBlnRunsLoading(false);
+      });
+    return () => { blnCancelled = true; };
   }, [blnRightsLoading, blnCanView]);
 
   const lstFilteredRows = useMemo(() => {
     return lstInputs.filter((dicRow) => {
-      const strEmployeeSearch = dicSearchApplied.strSearchEmployee.toLowerCase();
-      const strRunSearch = dicSearchApplied.strSearchRun.toLowerCase();
+      // The employee filter holds the picked employee's code: match it exactly (E1 must not match E10).
+      const strEmployeeSearch = dicSearchApplied.strSearchEmployee.trim().toLowerCase();
       const blnEmployeeMatch =
         !strEmployeeSearch ||
-        dicRow.strEmployeeCode.toLowerCase().includes(strEmployeeSearch) ||
-        dicRow.strEmployeeName.toLowerCase().includes(strEmployeeSearch);
+        dicRow.strEmployeeCode.toLowerCase() === strEmployeeSearch;
       const blnRunMatch =
-        !strRunSearch ||
-        dicRow.strRunCode.toLowerCase().includes(strRunSearch) ||
-        dicRow.strRunName.toLowerCase().includes(strRunSearch);
+        !dicSearchApplied.intPayrollRunID ||
+        dicRow.intPayrollRunID === dicSearchApplied.intPayrollRunID;
       const blnStatusMatch =
         dicSearchApplied.strStatus === "All" ||
-        dicRow.strStatus === dicSearchApplied.strStatus;
+        dicRow.strStatus.toLowerCase() === dicSearchApplied.strStatus.toLowerCase();
       return blnEmployeeMatch && blnRunMatch && blnStatusMatch;
     });
   }, [dicSearchApplied, lstInputs]);
@@ -146,58 +258,67 @@ export default function EmployeePayrollInputListPage() {
   }
 
   function navigateToFullScreen(strPath: string) {
-    window.location.assign(strPath);
+    window.location.assign(withBasePath(strPath));
   }
+
+  const openInput = useCallback((strRecordUUID: string) => {
+    window.location.assign(withBasePath(`/payroll/employee-payroll-inputs/${strRecordUUID}/edit`));
+  }, []);
 
   const lstTableRows = useMemo(
     () =>
       lstFilteredRows.map((dicRow) => ({
         id: dicRow.intID,
-        action: (
-          <CommonRowActions
-            testIdPrefix="employee-payroll-inputs.list.row"
-            rowKey={dicRow.intID}
-            blnCanView={blnCanView}
-            blnCanEdit={blnCanEdit && !dicRow.blnIsLocked}
-            onView={() =>
-              navigateToFullScreen(`/payroll/employee-payroll-inputs/${dicRow.strRecordUUID}/edit`)
-            }
-            onEdit={blnCanEdit ? () => navigateToFullScreen(`/payroll/employee-payroll-inputs/${dicRow.strRecordUUID}/edit`) : undefined}
-          />
+        strRecordUUID: dicRow.strRecordUUID,
+        strEmployeeNameSort: dicRow.strEmployeeName,
+        strEmployeeName: (
+          <Link
+            className="app-master-first-column-link"
+            component="button"
+            type="button"
+            underline="none"
+            data-controlid="employee-payroll-inputs.list.row.name.link"
+            data-row-key={String(dicRow.intID)}
+            onClick={(objEvent) => { objEvent.stopPropagation(); openInput(dicRow.strRecordUUID); }}
+          >
+            {dicRow.strEmployeeName}
+          </Link>
         ),
-        strEmployeeName: dicRow.strEmployeeName,
         strEmployeeCode: dicRow.strEmployeeCode,
         strRunName: dicRow.strRunName,
         dtPayrollMonth: formatDate(dicRow.dtPayrollMonth),
         dtPayrollMonthSortValue: dicRow.dtPayrollMonth ? new Date(dicRow.dtPayrollMonth).getTime() : 0,
         strAttendanceSource:
-          dicRow.strManualLwpSource === "SYSTEM_ATTENDANCE"
+          dicRow.strManualLwpSource === "CLIENT_PAYABLE_DAYS_IMPORT"
+            ? t("source_client_import", "Client Payable Days Import")
+            : dicRow.strManualLwpSource === "SYSTEM_ATTENDANCE"
             ? t("source_attendance", "Attendance & Leave Inputs")
             : dicRow.strManualLwpSource
               ? t("source_manual", "Manual")
               : t("source_not_set", "Not Set"),
+        decPayableDays: formatNumber(dicRow.decPayableDays),
+        decPayableDaysSortValue: Number(dicRow.decPayableDays ?? 0),
+        decPaidDays: formatNumber(dicRow.decPaidDays),
+        decPaidDaysSortValue: Number(dicRow.decPaidDays ?? 0),
         decLwpDays: formatNumber(dicRow.decLwpDays),
         decLwpDaysSortValue: Number(dicRow.decLwpDays ?? 0),
         decLopDays: formatNumber(dicRow.decLopDays),
         decLopDaysSortValue: Number(dicRow.decLopDays ?? 0),
         intAdjustmentLineCount: dicRow.intAdjustmentLineCount ?? 0,
-        strStatus: (
-          <span className={`${styles.statusPill} ${dicRow.strStatus === "Locked" ? styles.statusInactive : styles.statusActive}`}>
-            {dicRow.strStatus}
-          </span>
-        ),
+        strStatus: <MasterStatusPill blnActive={dicRow.strStatus !== "Locked"} strActiveLabel={dicRow.strStatus} strInactiveLabel={dicRow.strStatus} />,
       })),
-    [blnCanEdit, blnCanView, lstFilteredRows, t]
+    [lstFilteredRows, t, openInput]
   );
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      { field: "action", headerName: t("actions", "Actions"), sortable: false, filterable: false, exportable: false, width: 110 },
-      { field: "strEmployeeName", headerName: t("employee_name", "Employee Name") },
+      { field: "strEmployeeName", headerName: t("employee_name", "Employee Name"), sortAccessor: (dicRow) => dicRow.strEmployeeNameSort },
       { field: "strEmployeeCode", headerName: t("employee_code", "Employee Code") },
       { field: "strRunName", headerName: t("payroll_run", "Payroll Run") },
       { field: "dtPayrollMonth", headerName: t("payroll_month", "Payroll Period"), sortAccessor: (dicRow) => dicRow.dtPayrollMonthSortValue },
       { field: "strAttendanceSource", headerName: t("attendance_source", "Attendance Source") },
+      { field: "decPayableDays", headerName: t("payable_days", "Payable Days"), align: "right", sortAccessor: (dicRow) => dicRow.decPayableDaysSortValue },
+      { field: "decPaidDays", headerName: t("paid_days", "Paid Days"), align: "right", sortAccessor: (dicRow) => dicRow.decPaidDaysSortValue },
       { field: "decLwpDays", headerName: t("lwp_days", "LWP"), align: "right", sortAccessor: (dicRow) => dicRow.decLwpDaysSortValue },
       { field: "decLopDays", headerName: t("lop_days", "LOP"), align: "right", sortAccessor: (dicRow) => dicRow.decLopDaysSortValue },
       { field: "intAdjustmentLineCount", headerName: t("adjustments", "Adjustments"), align: "right" },
@@ -206,65 +327,91 @@ export default function EmployeePayrollInputListPage() {
     [t]
   );
 
-  if (blnLoading || blnRightsLoading) {
-    return (
-      <BlockingLoader
-        blnOpen
-        strLabel={t(
-          "loading_employee_payroll_inputs",
-          "Loading payroll inputs..."
-        )}
-      />
-    );
+  const blnBusy = blnLoading || blnRightsLoading;
+
+  function applySearch() {
+    if (blnBusy) return;
+    if (!hasInputSearchCriteria(dicSearchDraft)) {
+      setBlnShowCriteriaHint(true);
+      return;
+    }
+    setDicSearchApplied(dicSearchDraft);
+    loadInputs(dicSearchDraft).catch(() => undefined);
   }
 
   return (
     <Box className={styles.page}>
-      <Typography className={`${styles.breadcrumbs} ${styles.hiddenHeader}`}>
-        {t("breadcrumbs", "Payroll / Payroll Input")}
-      </Typography>
+      <MasterBreadcrumbs
+        strSection={t("breadcrumb_section", "Payroll")}
+        strTitle={t("breadcrumb_title", "Payroll Input")}
+        lstNotices={[
+          { strKey: "rights", strSeverity: "warning", objMessage: strRightsError },
+          { strKey: "criteria", strSeverity: "warning", objMessage: blnShowCriteriaHint ? strInputCriteriaMessage : "", fnDismiss: () => setBlnShowCriteriaHint(false) },
+          { strKey: "error", strSeverity: "error", objMessage: strError, fnDismiss: () => setStrError("") },
+          { strKey: "run-options-error", strSeverity: "error", objMessage: strRunOptionsError, fnDismiss: () => setStrRunOptionsError("") },
+        ]}
+      />
 
-      <Box className={`${styles.topBar} ${styles.hiddenHeader}`}>
-        <Button
-          controlId="employee-payroll-input.list.back.button"
-          className={styles.secondaryButton}
-          startIcon={<ArrowBackRoundedIcon />}
-          onClick={() => objRouter.push("/payroll")}
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        <Box
+          className={styles.searchRow}
+          aria-busy={blnBusy}
+          onKeyDown={onSearchEnter(applySearch)}
+          sx={{
+            alignItems: "center",
+            "&&": { gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "minmax(220px, 1fr) minmax(280px, 1.5fr) minmax(150px, 0.8fr) max-content max-content" } },
+            "& .MuiButton-root": { alignSelf: "center", whiteSpace: "nowrap" },
+          }}
         >
-          {t("back_button", "Back to Payroll")}
-        </Button>
-      </Box>
-
-      <Box className={styles.controlsCard}>
-        <Box className={`${styles.searchRow} ${styles.employeePayrollInputSearchRow}`}>
-          <TextField
-            controlId="employee-payroll-input.list.employee-search.input"
-            value={dicSearchDraft.strSearchEmployee}
-            onChange={(objEvent) =>
+          <EmployeeFilterSelect
+            lstOptions={lstEmployeeFilterOptions}
+            strValue={dicSearchDraft.strSearchEmployee}
+            fnOnChange={(strValue) =>
               setDicSearchDraft((dicPrevious) => ({
                 ...dicPrevious,
-                strSearchEmployee: objEvent.target.value,
+                strSearchEmployee: strValue,
               }))
             }
-            placeholder={t(
-              "employee_search_placeholder",
-              "Search by employee code or name"
-            )}
-            fullWidth
+            strLabel={t("employee", "Employee")}
+            strPlaceholder={t("employee_search_placeholder", "Search by employee code or name")}
+            strControlId="employee-payroll-input.list.employee-search.input"
+            blnDisabled={blnBusy}
+            blnLoading={blnRunsLoading}
+            intMinWidth={0}
           />
           <TextField
-            value={dicSearchDraft.strSearchRun}
-            onChange={(objEvent) =>
-              setDicSearchDraft((dicPrevious) => ({
-                ...dicPrevious,
-                strSearchRun: objEvent.target.value,
-              }))
-            }
-            placeholder={t("run_search_placeholder", "Search by payroll run")}
-            fullWidth
-          />
-          <TextField
+            className="app-mui-text-field"
+            size="small"
             select
+            controlId="employee-payroll-input.list.payroll-run.select"
+            label={t("payroll_run", "Payroll Run")}
+            value={dicSearchDraft.intPayrollRunID ?? ""}
+            onChange={(objEvent) =>
+              setDicSearchDraft((dicPrevious) => ({
+                ...dicPrevious,
+                intPayrollRunID: objEvent.target.value ? Number(objEvent.target.value) : null,
+              }))
+            }
+            disabled={blnBusy || blnRunsLoading}
+            fullWidth
+          >
+            <MenuItem value="">{t("all_payroll_runs", "All payroll runs")}</MenuItem>
+            {dicSearchDraft.intPayrollRunID && !lstPayrollRuns.some((dicRun) => dicRun.intID === dicSearchDraft.intPayrollRunID) ? (
+              <MenuItem value={dicSearchDraft.intPayrollRunID}>
+                {t("payroll_run", "Payroll Run")} #{dicSearchDraft.intPayrollRunID}
+              </MenuItem>
+            ) : null}
+            {lstPayrollRuns.map((dicRun) => (
+              <MenuItem key={dicRun.intID} value={dicRun.intID}>
+                {dicRun.strLabel} ({dicRun.strCode})
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            className="app-mui-text-field"
+            size="small"
+            select
+            label={t("status", "Status")}
             value={dicSearchDraft.strStatus}
             onChange={(objEvent) =>
               setDicSearchDraft((dicPrevious) => ({
@@ -272,6 +419,7 @@ export default function EmployeePayrollInputListPage() {
                 strStatus: objEvent.target.value as SearchForm["strStatus"],
               }))
             }
+            disabled={blnBusy}
             fullWidth
           >
             <MenuItem value="All">{t("status_all", "All statuses")}</MenuItem>
@@ -284,21 +432,24 @@ export default function EmployeePayrollInputListPage() {
               controlId="employee-payroll-input.list.search.button"
               className={styles.primaryButton}
               startIcon={<SearchRoundedIcon />}
-              onClick={() => {
-                setDicSearchApplied(dicSearchDraft);
-                loadInputs(dicSearchDraft).catch(() => undefined);
-              }}
+              onClick={applySearch}
+              disabled={blnBusy}
             >
               {t("search", "Search")}
             </Button>
+          </Box>
+          <Box className={styles.searchActions}>
             <Button
+              controlId="employee-payroll-input.list.clear.button"
               className={styles.secondaryButton}
               startIcon={<ClearRoundedIcon />}
               onClick={() => {
                 setDicSearchDraft(dicEmptySearch);
                 setDicSearchApplied(dicEmptySearch);
+                setBlnShowCriteriaHint(false);
                 loadInputs(dicEmptySearch).catch(() => undefined);
               }}
+              disabled={blnBusy}
             >
               {t("clear", "Clear")}
             </Button>
@@ -306,16 +457,15 @@ export default function EmployeePayrollInputListPage() {
         </Box>
       </Box>
 
-      <Box className={styles.tableCard}>
-        {strRightsError ? <Alert severity="warning" sx={{ mb: 1.5 }}>{strRightsError}</Alert> : null}
-        {strError ? <Alert severity="error" sx={{ mb: 1.5 }}>{strError}</Alert> : null}
-        {!blnCanView ? (
+      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
+        {blnBusy ? (
+          <MasterGridSkeleton strControlId="employee-payroll-input.list.skeleton" intColumns={11} />
+        ) : !blnCanView ? (
           <Box className={styles.emptyState}>
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", "Payroll input access is not available for your user group.")}</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>{t("access_denied_help", "Contact your administrator if you need payroll input visibility.")}</Typography>
           </Box>
-        ) : null}
-        {blnCanView ? (
+        ) : (
           <CommonTable
             columns={lstTableColumns}
             rows={lstTableRows}
@@ -324,22 +474,110 @@ export default function EmployeePayrollInputListPage() {
             showExportOptions={blnCanExport}
             showPaginationSummary
             emptyMessage={t("empty_message", "No payroll inputs found for the current filters.")}
+            searchPromptMessage={blnHasSearched ? undefined : t("select_criteria_message", strInputCriteriaMessage)}
             testIdPrefix="employee-payroll-input.list"
-            toolbarLeft={blnCanAdd ? (
-              <Button
-                controlId="employee-payroll-input.list.add.button"
-                className={styles.primaryButton}
-                startIcon={<AddRoundedIcon />}
-                onClick={() => navigateToFullScreen("/payroll/employee-payroll-inputs/new")}
-              >
-                {t("employee_payroll_input_add_button", "Add Payroll Input")}
-              </Button>
+            toolbarLeft={blnCanAdd || (blnCanImportTds && intSelectedRunID) ? (
+              <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap" }}>
+                {blnCanAdd ? (
+                  <Button
+                    controlId="employee-payroll-input.list.add.button"
+                    className={styles.primaryButton}
+                    startIcon={<AddRoundedIcon />}
+                    onClick={() => navigateToFullScreen("/payroll/employee-payroll-inputs/new")}
+                  >
+                    {t("employee_payroll_input_add_button", "Add Payroll Input")}
+                  </Button>
+                ) : null}
+                {blnCanImportTds && intSelectedRunID ? (
+                  <>
+                    {objTdsStatus ? (
+                      <Tooltip title={objTdsStatus.blnImportEnabled ? "" : objTdsStatus.strImportDisabledReason ?? ""}>
+                        <span>
+                          <Button
+                            controlId="employee-payroll-input.list.tds-import.button"
+                            className={styles.secondaryButton}
+                            startIcon={<UploadFileIcon />}
+                            disabled={!objTdsStatus.blnImportEnabled}
+                            onClick={() => setBlnTdsDialogOpen(true)}
+                          >
+                            {t("tds_import_button", "Import TDS")}
+                          </Button>
+                        </span>
+                      </Tooltip>
+                    ) : null}
+                    {objPayableDaysStatus ? (
+                      <Tooltip title={objPayableDaysStatus.blnImportEnabled ? "" : objPayableDaysStatus.strImportDisabledReason ?? ""}>
+                        <span>
+                          <Button
+                            controlId="employee-payroll-input.list.payable-days-import.button"
+                            className={styles.secondaryButton}
+                            startIcon={<UploadFileIcon />}
+                            disabled={!objPayableDaysStatus.blnImportEnabled}
+                            onClick={() => setBlnPayableDaysDialogOpen(true)}
+                          >
+                            {t("payable_days_import_button", "Import Payable Days")}
+                          </Button>
+                        </span>
+                      </Tooltip>
+                    ) : null}
+                    {objTdsStatus ? (
+                      <Chip
+                        size="small"
+                        data-controlid="employee-payroll-input.list.tds-mode.chip"
+                        color={objTdsStatus.strTdsMode === "CLIENT_PROVIDED" ? "warning" : "default"}
+                        label={`${t("tds_mode", "TDS mode")}: ${objTdsStatus.strTdsModeLabel}${
+                          objTdsStatus.strTdsMode === "CLIENT_PROVIDED"
+                            ? ` · ${objTdsStatus.intEmployeesWithClientTds} ${t("tds_with_client_tds", "with manual TDS")}`
+                            : ""
+                        }`}
+                      />
+                    ) : null}
+                  </>
+                ) : null}
+              </Box>
             ) : undefined}
+            onRowClick={(dicRow) => openInput(dicRow.strRecordUUID)}
+            minTableWidth={1300}
+            hideRowClickHint
+            getRowSx={() => dicMasterRowSx}
             sx={{ p: 0, boxShadow: "none", background: "transparent" }}
           />
-        ) : null}
-
+        )}
       </Box>
+
+      {intSelectedRunID ? (
+        <PayrollInputTdsImportDialog
+          blnOpen={blnTdsDialogOpen}
+          intPayrollRunID={intSelectedRunID}
+          strRunLabel={strSelectedRunLabel}
+          objStatus={objTdsStatus}
+          t={t}
+          onClose={() => setBlnTdsDialogOpen(false)}
+          onImported={(strMessage) => {
+            setBlnTdsDialogOpen(false);
+            showToast(strMessage);
+            loadInputs(dicSearchApplied).catch(() => undefined);
+            loadTdsStatus(intSelectedRunID).catch(() => undefined);
+          }}
+        />
+      ) : null}
+
+      {intSelectedRunID ? (
+        <PayrollInputPayableDaysImportDialog
+          blnOpen={blnPayableDaysDialogOpen}
+          intPayrollRunID={intSelectedRunID}
+          strRunLabel={strSelectedRunLabel}
+          objStatus={objPayableDaysStatus}
+          t={t}
+          onClose={() => setBlnPayableDaysDialogOpen(false)}
+          onImported={(strMessage) => {
+            setBlnPayableDaysDialogOpen(false);
+            showToast(strMessage);
+            loadInputs(dicSearchApplied).catch(() => undefined);
+            loadPayableDaysStatus(intSelectedRunID).catch(() => undefined);
+          }}
+        />
+      ) : null}
 
       <Snackbar
         open={objToast.blnOpen}

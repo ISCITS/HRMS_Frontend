@@ -1,0 +1,26 @@
+.timeline { position: relative; display: grid; gap: 12px; padding-left: 20px; }
+.timeline::before { content: ""; position: absolute; top: 25px; bottom: 75px; left: 4px; width: 1px; background: #d6deea; }
+.entry { position: relative; min-width: 0; }
+.dot { position: absolute; top: 20px; left: -21px; box-sizing: border-box; width: 10px; height: 10px; border: 2px solid #fff; border-radius: 50%; background: #a7b1c4; box-shadow: 0 0 0 1px #d8dfeb; }
+.currentDot { background: #3266e5; box-shadow: 0 0 0 1px #c5d5ff; }
+.card { min-width: 0; border: 1px solid #dce5f1; border-radius: 5px; background: #fff; box-shadow: 0 2px 8px rgb(35 61 107 / 3%); }
+.summary { display: grid; grid-template-columns: 36px minmax(150px, 1.5fr) minmax(125px, 1.1fr) minmax(92px, .8fr) minmax(120px, 1.4fr) 22px; align-items: center; gap: 14px; box-sizing: border-box; min-height: 65px; padding: 12px 14px; }
+.avatar { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 5px; font-size: 13px; font-weight: 700; }
+.avatar0 { color: #174097; background: #e9f0fc; }
+.avatar1 { color: #327650; background: #eaf4ef; }
+.avatar2 { color: #5e43b3; background: #f0ecfa; }
+.company { min-width: 0; }
+.companyName { color: #17243f; font-size: 13px !important; font-weight: 700 !important; line-height: 1.4 !important; }
+.jobTitle { color: #72809a; font-size: 11px !important; line-height: 1.4 !important; }
+.metric { min-width: 0; border-left: 1px solid #e4eaf3; padding-left: 14px; }
+.metricLabel { color: #8290a7; font-size: 10px !important; line-height: 1.4 !important; }
+.metricValue { color: #25324e; font-size: 11px !important; font-weight: 500 !important; line-height: 1.5 !important; }
+.moreButton { color: #70819e !important; padding: 2px !important; }
+.details { margin: 0 14px; border-top: 1px solid #e8edf5; }
+.expandButton { display: inline-flex; align-items: center; gap: 7px; min-height: 33px; padding: 0; border: 0; background: none; color: #2e67df; font: inherit; font-size: 11px; cursor: pointer; }
+.expandButton svg { transition: transform .2s ease; }
+.rotated { transform: rotate(180deg); }
+.detailContent { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; padding: 3px 0 14px 23px; }
+.detailValue { color: #34415a; font-size: 12px !important; white-space: pre-wrap; }
+.empty { padding: 30px; border: 1px dashed #cbd5e1; border-radius: 6px; color: #64748b; text-align: center; }
+@media (max-width: 700px) { .summary { grid-template-columns: 36px 1fr 22px; gap: 10px; } .company { grid-column: 2; } .metric { grid-column: 2 / 4; padding-left: 0; border-left: 0; } .moreButton { grid-column: 3; grid-row: 1; } .detailContent { grid-template-columns: 1fr; } }

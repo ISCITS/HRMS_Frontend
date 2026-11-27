@@ -20,6 +20,7 @@ import { masterApiService, type EmployeeDetailApiRecord } from "@/services/maste
 import { ApiRequestMethod, ApiRoutePrefix } from "@/Common/enums/AppEnums";
 import { createApiRequestError, requestEncryptedApi } from "@/Common/utils/apiErrorHandler";
 import { authHelpers } from "@/lib/auth";
+import { withBasePath } from "@/lib/basePath";
 import { axiosInstance, type ApiRequestConfig } from "@/lib/axiosInstance";
 import type { FileMetadataDto, ListFilesFilter, UploadFileRequest } from "@/lib/fileUploadService";
 import { openBlobUrlInNewTab } from "@/lib/openBlobUrlInNewTab";
@@ -30,6 +31,14 @@ type EmployeeServiceRequestOptions = {
 
 function normalizeOptionalNumber(intValue: number | ""): number | null {
   return intValue === "" ? null : intValue;
+}
+
+function normalizeApiOptionalNumber(objValue: unknown): number | null {
+  if (objValue === null || objValue === undefined || objValue === "") {
+    return null;
+  }
+  const intValue = Number(objValue);
+  return Number.isFinite(intValue) ? intValue : null;
 }
 
 const lstExtendedEmployeeFields: Array<keyof EmployeeFormValues> = [
@@ -79,9 +88,11 @@ function mapEmployeePayload(dicValues: EmployeeFormValues): Record<string, unkno
     intGradeID: normalizeOptionalNumber(dicValues.intGradeID),
     intCostCenterID: normalizeOptionalNumber(dicValues.intCostCenterID),
     intLocationID: dicValues.intLocationID,
+    intInitialPostingLocationID: normalizeOptionalNumber(dicValues.intInitialPostingLocationID),
     intPayrollGroupID: normalizeOptionalNumber(dicValues.intPayrollGroupID),
     intManagerEmployeeID: normalizeOptionalNumber(dicValues.intManagerEmployeeID),
     intLineManagerEmployeeID: normalizeOptionalNumber(dicValues.intLineManagerEmployeeID || dicValues.intManagerEmployeeID),
+    intAllocationEntityID: normalizeOptionalNumber(dicValues.intAllocationEntityID),
     strWorkEmail: dicValues.strWorkEmail.trim() || null,
     strPersonalEmail: dicValues.strPersonalEmail.trim() || null,
     strMobileNumber: dicValues.strMobileNumber.trim() || null,
@@ -114,9 +125,18 @@ function mapEmployeeDetailRecord(dicRecord: EmployeeDetailApiRecord): EmployeeDe
     intGradeID: dicRecord.intGradeID,
     intCostCenterID: dicRecord.intCostCenterID,
     intLocationID: dicRecord.intLocationID,
+    intInitialPostingLocationID: normalizeApiOptionalNumber(dicRecord.intInitialPostingLocationID),
     intPayrollGroupID: dicRecord.intPayrollGroupID,
     intManagerEmployeeID: dicRecord.intManagerEmployeeID,
     intLineManagerEmployeeID: dicRecord.intLineManagerEmployeeID ?? null,
+    intAllocationEntityID: normalizeApiOptionalNumber(
+      dicRecord.intAllocationEntityID
+      ?? dicRecord.intAllocationEntityId
+      ?? dicRecord.allocation_entity_id
+    ),
+    strAllocationEntityCode: dicRecord.strAllocationEntityCode ?? null,
+    strAllocationEntityName: dicRecord.strAllocationEntityName ?? null,
+    strAllocationEntityLabel: dicRecord.strAllocationEntityLabel ?? null,
     strWorkEmail: dicRecord.strWorkEmail,
     strPersonalEmail: dicRecord.strPersonalEmail,
     strMobileNumber: dicRecord.strMobileNumber,
@@ -167,7 +187,7 @@ export const employeeService = {
       objHeaders["X-Company-Id"] = String(intCompanyID);
     }
 
-    const objResponse = await fetch(`/api/employees/avatar/${intEmployeeID}`, {
+    const objResponse = await fetch(withBasePath(`/api/employees/avatar/${intEmployeeID}`), {
       method: "PUT",
       headers: Object.keys(objHeaders).length ? objHeaders : undefined,
       body: objFormData,
@@ -268,9 +288,11 @@ export const employeeService = {
       strEsiCode: dicValues.strEsiCode.trim() || null,
       strSsnNumber: dicValues.strSsnNumber.trim() || null,
       strPranNumber: dicValues.strPranNumber.trim() || null,
+      strPtRegistrationNumber: dicValues.strPtRegistrationNumber.trim() || null,
       blnPfApplicable: dicValues.blnPfApplicable,
       blnEsiApplicable: dicValues.blnEsiApplicable,
-      blnPtApplicable: dicValues.blnPtApplicable
+      blnPtApplicable: dicValues.blnPtApplicable,
+      blnEpsEligible: dicValues.blnEpsEligible
     }, objOptions?.strMenuAction);
     return objResult.Data;
   },

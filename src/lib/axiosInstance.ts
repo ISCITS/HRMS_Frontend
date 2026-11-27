@@ -10,11 +10,13 @@ import { isEncryptablePayload, isPayloadEncryptionMethod } from "@/lib/security/
 export type ApiRequestConfig = AxiosRequestConfig & {
   csrfMenuAction?: string;
   csrfToken?: string;
+  blnSkipAuthHeader?: boolean;
 };
 
 type ApiInterceptorConfig = InternalAxiosRequestConfig & {
   csrfMenuAction?: string;
   csrfToken?: string;
+  blnSkipAuthHeader?: boolean;
 };
 
 function ensureHeaders(headers?: InternalAxiosRequestConfig["headers"]) {
@@ -38,6 +40,7 @@ function shouldRedirectToSessionExpired(objError: unknown) {
   const strRequestUrl = String(objError.config?.url ?? "");
   const blnIsPublicAuthEndpoint =
     /\/auth\/login(\/generic)?$/i.test(strRequestUrl) ||
+    /\/auth\/forgot-password$/i.test(strRequestUrl) ||
     /\/auth\/sso\/callback/i.test(strRequestUrl) ||
     /\/auth\/sso\/mfa\/(setup\/verify|verify|backup-code\/verify)$/i.test(strRequestUrl) ||
     /\/tenant\/[^/]+\/auth-details/i.test(strRequestUrl) ||
@@ -74,7 +77,7 @@ axiosInstance.interceptors.request.use(async (config) => {
       const strSessionToken = authHelpers.getAccessToken();
       const strTenantID = window.localStorage.getItem(AuthStorageKey.TenantId);
       const strCompanyID = window.localStorage.getItem(AuthStorageKey.CompanyId);
-      if (strSessionToken) {
+      if (!dicConfig.blnSkipAuthHeader && strSessionToken) {
         headers.set("Authorization", `Bearer ${strSessionToken}`);
       }
     // Send these ONLY when the context is actually known. They used to default to "1", which the

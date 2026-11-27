@@ -3,53 +3,37 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
+import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
   Box,
+  Breadcrumbs,
   Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
+  InputAdornment,
+  Link,
   MenuItem,
+  Skeleton,
   Snackbar,
-  Stack,
   TextField,
   Typography
 } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import CommonTable, { type CommonTableColumn } from "@/Common/components/CommonTable";
-import CommonConfirmDialog from "@/Common/components/CommonConfirmDialog";
-import CommonRowActions from "@/components/master/CommonRowActions";
 import styles from "@/components/master/MasterScreen.module.css";
-import BlockingLoader from "@/components/shared/BlockingLoader";
 import { useModuleActionAccess } from "@/features/security/hooks/useModuleActionAccess";
 import { useSalaryStructureLabels } from "@/features/salary-structures/hooks/useSalaryStructureLabels";
-import {
-  createCloneForm,
-  salaryStructureService
-} from "@/features/salary-structures/services/salaryStructureService";
-import type {
-  SalaryStructureCloneValues,
-  SalaryStructureDetailRecord,
-  SalaryStructureListRecord
-} from "@/features/salary-structures/types";
+import { salaryStructureService } from "@/features/salary-structures/services/salaryStructureService";
+import type { SalaryStructureListRecord } from "@/features/salary-structures/types";
 
 type Status = "Active" | "Inactive";
 type SearchForm = {
-  strName: string;
-  strCode: string;
+  query: string;
+  dtEffectiveFrom: string;
+  dtEffectiveTo: string;
   strStatus: "All" | Status;
-};
-type ConfirmDialogState = {
-  strTitle: string;
-  strMessage: string;
-  strConfirmLabel: string;
-  fnOnConfirm: () => Promise<void>;
 };
 type ToastState = {
   blnOpen: boolean;
@@ -57,8 +41,43 @@ type ToastState = {
   strSeverity: "success" | "error";
 };
 
-const dicEmptySearch: SearchForm = { strName: "", strCode: "", strStatus: "All" };
+const dicEmptySearch: SearchForm = { query: "", dtEffectiveFrom: "", dtEffectiveTo: "", strStatus: "All" };
 const lstSalaryStructureModuleCodes = ["SALARY_STRUCTURE", "SALARY_STRUCTURES", "MASTER_SALARY_STRUCTURE"];
+const intSalaryStructureSkeletonRows = 8;
+
+function parseStatus(strValue: string | null): SearchForm["strStatus"] {
+  return strValue === "Active" || strValue === "Inactive" ? strValue : "All";
+}
+
+function buildSearchFromParams(objSearchParams: URLSearchParams): SearchForm {
+  return {
+    query: objSearchParams.get("q") ?? objSearchParams.get("name") ?? objSearchParams.get("code") ?? "",
+    dtEffectiveFrom: objSearchParams.get("effective_from") ?? "",
+    dtEffectiveTo: objSearchParams.get("effective_to") ?? "",
+    strStatus: parseStatus(objSearchParams.get("status")),
+  };
+}
+
+function buildSalaryStructureListUrl(dicSearch: SearchForm) {
+  const objParams = new URLSearchParams();
+  const strQuery = dicSearch.query.trim();
+
+  if (strQuery) {
+    objParams.set("q", strQuery);
+  }
+  if (dicSearch.dtEffectiveFrom) {
+    objParams.set("effective_from", dicSearch.dtEffectiveFrom);
+  }
+  if (dicSearch.dtEffectiveTo) {
+    objParams.set("effective_to", dicSearch.dtEffectiveTo);
+  }
+  if (dicSearch.strStatus !== "All") {
+    objParams.set("status", dicSearch.strStatus);
+  }
+
+  const strUrlQuery = objParams.toString();
+  return strUrlQuery ? `/salary-structures?${strUrlQuery}` : "/salary-structures";
+}
 
 function formatDate(strDate: string | null) {
   if (!strDate) {
@@ -71,52 +90,74 @@ function formatDate(strDate: string | null) {
   }).format(new Date(strDate));
 }
 
+function SalaryStructureGridSkeleton() {
+  return (
+    <Box
+      data-controlid="salary-structures.list.skeleton"
+      sx={{
+        border: "1px solid #e8eef5",
+        borderRadius: "8px",
+        overflow: "hidden",
+        backgroundColor: "#fff",
+      }}
+    >
+      <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, px: 1.75, py: 1.25, flexWrap: "wrap" }}>
+        <Skeleton variant="rounded" width={176} height={36} />
+        <Box sx={{ display: "flex", gap: 1.25, alignItems: "center", flexWrap: "wrap" }}>
+          <Skeleton variant="rounded" width={64} height={36} />
+          <Skeleton variant="text" width={72} height={24} />
+          <Skeleton variant="rounded" width={116} height={32} />
+        </Box>
+      </Box>
+      <Box sx={{ minWidth: 1100 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 0.9fr 0.7fr 0.9fr 0.9fr 0.8fr 0.8fr", bgcolor: "#edf3f9", borderTop: "1px solid #e8eef5", borderBottom: "1px solid #d9e3ee" }}>
+          {Array.from({ length: 8 }).map((_, intColumn) => (
+            <Box key={intColumn} sx={{ px: 2, py: 1 }}>
+              <Skeleton variant="text" width={intColumn === 7 ? 76 : 112} height={22} />
+            </Box>
+          ))}
+        </Box>
+        {Array.from({ length: intSalaryStructureSkeletonRows }).map((_, intIndex) => (
+          <Box
+            key={intIndex}
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "1.4fr 1fr 0.9fr 0.7fr 0.9fr 0.9fr 0.8fr 0.8fr",
+              borderBottom: "1px solid #edf1f6",
+              minHeight: 40,
+              alignItems: "center",
+            }}
+          >
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width="68%" height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${62 + (intIndex % 3) * 8}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width={`${48 + (intIndex % 2) * 10}%`} height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width="58%" height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width="46%" height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width="60%" height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="text" width="54%" height={20} /></Box>
+            <Box sx={{ px: 2, py: 0.75 }}><Skeleton variant="rounded" width={72} height={22} /></Box>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+}
+
 export default function SalaryStructureListPage() {
   const objRouter = useRouter();
+  const strPathname = usePathname();
+  const objSearchParams = useSearchParams();
   const { t } = useSalaryStructureLabels();
   const { blnLoading: blnRightsLoading, strError: strRightsError, canDoAny, canViewAny, isReadOnly } = useModuleActionAccess(lstSalaryStructureModuleCodes);
   const [lstStructures, setLstStructures] = useState<SalaryStructureListRecord[]>([]);
   const [dicSearchDraft, setDicSearchDraft] = useState<SearchForm>(dicEmptySearch);
   const [dicSearchApplied, setDicSearchApplied] = useState<SearchForm>(dicEmptySearch);
   const [blnLoading, setBlnLoading] = useState(true);
-  const [blnSubmitting, setBlnSubmitting] = useState(false);
-  const [objConfirmDialog, setObjConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [objToast, setObjToast] = useState<ToastState>({ blnOpen: false, strMessage: "", strSeverity: "success" });
-  const [blnCloneOpen, setBlnCloneOpen] = useState(false);
-  const [objCloneSource, setObjCloneSource] = useState<SalaryStructureDetailRecord | null>(null);
-  const [dicCloneForm, setDicCloneForm] = useState<SalaryStructureCloneValues | null>(null);
-  const [blnCloneSaving, setBlnCloneSaving] = useState(false);
-  const [strCloneError, setStrCloneError] = useState("");
-
-  function closeCloneDialog() {
-    if (blnCloneSaving) {
-      return;
-    }
-    setBlnCloneOpen(false);
-    setStrCloneError("");
-  }
-
-  function updateCloneField<K extends keyof SalaryStructureCloneValues>(key: K, value: SalaryStructureCloneValues[K]) {
-    setStrCloneError("");
-    setDicCloneForm((dicPrev) => {
-      if (!dicPrev) {
-        return dicPrev;
-      }
-      const dicNext = {
-        ...dicPrev,
-        [key]: value
-      };
-      if (key === "strStructureName") {
-        return {
-          ...dicNext,
-          lstTexts: dicPrev.lstTexts.map((dicText, intIndex) => intIndex === 0
-            ? { ...dicText, strStructureName: String(value) }
-            : dicText)
-        };
-      }
-      return dicNext;
-    });
-  }
+  const strCurrentListRoute = useMemo(() => {
+    const strQuery = objSearchParams.toString();
+    return strQuery ? `${strPathname}?${strQuery}` : strPathname;
+  }, [strPathname, objSearchParams]);
 
   async function loadStructures() {
     if (!canViewAny()) {
@@ -141,57 +182,52 @@ export default function SalaryStructureListPage() {
     loadStructures().catch(() => undefined);
   }, [blnRightsLoading]);
 
+  useEffect(() => {
+    const dicUrlSearch = buildSearchFromParams(objSearchParams);
+    setDicSearchDraft(dicUrlSearch);
+    setDicSearchApplied(dicUrlSearch);
+  }, [objSearchParams]);
+
   const blnCanView = canViewAny();
   const blnCanAdd = canDoAny("add");
   const blnCanEdit = canDoAny("edit");
-  const blnCanDelete = canDoAny("delete");
   const blnCanExport = canDoAny("export");
   const blnReadOnly = isReadOnly();
-  const blnCanClone = blnCanAdd;
 
   const lstFilteredRows = useMemo(() => {
     return lstStructures.filter((dicRow) => {
-      const blnNameMatch = !dicSearchApplied.strName || dicRow.strStructureName.toLowerCase().includes(dicSearchApplied.strName.toLowerCase());
-      const blnCodeMatch = !dicSearchApplied.strCode || dicRow.strStructureCode.toLowerCase().includes(dicSearchApplied.strCode.toLowerCase());
+      const strQuery = dicSearchApplied.query.trim().toLowerCase();
+      const blnQueryMatch = !strQuery || dicRow.strStructureName.toLowerCase().includes(strQuery) || dicRow.strStructureCode.toLowerCase().includes(strQuery);
+      const strRowEffectiveFrom = dicRow.dtEffectiveFrom ?? "";
+      const strRowEffectiveTo = dicRow.dtEffectiveTo ?? "";
+      const blnEffectiveFromMatch = !dicSearchApplied.dtEffectiveFrom || strRowEffectiveFrom >= dicSearchApplied.dtEffectiveFrom;
+      const blnEffectiveToMatch = !dicSearchApplied.dtEffectiveTo || (strRowEffectiveTo && strRowEffectiveTo <= dicSearchApplied.dtEffectiveTo);
       const blnStatusMatch =
         dicSearchApplied.strStatus === "All" ||
         (dicSearchApplied.strStatus === "Active" ? dicRow.blnIsActive : !dicRow.blnIsActive);
-      return blnNameMatch && blnCodeMatch && blnStatusMatch;
+      return blnQueryMatch && blnEffectiveFromMatch && blnEffectiveToMatch && blnStatusMatch;
     });
   }, [dicSearchApplied, lstStructures]);
 
   const lstTableRows = useMemo(
     () => lstFilteredRows.map((dicRow) => ({
       id: dicRow.intID,
-      action: (
-        <Box className={styles.actionCell}>
-          <CommonRowActions
-            testIdPrefix="salary-structures.list.row"
-            rowKey={dicRow.intID}
-            blnCanView={!blnCanEdit && blnCanView}
-            blnCanEdit={blnCanEdit}
-            blnCanDelete={blnCanDelete}
-            onView={() => objRouter.push(`/salary-structures/edit/${dicRow.strRecordUUID}`)}
-            onEdit={() => objRouter.push(`/salary-structures/edit/${dicRow.strRecordUUID}`)}
-            onDelete={() => deleteStructure(dicRow.strRecordUUID)}
-          />
-          {blnCanClone ? (
-            <button
-              data-controlid="salary-structures.list.row.clone.button"
-              data-row-key={String(dicRow.intID)}
-              className={`${styles.iconButton} ${styles.editIcon}`}
-              style={{ color: "#6D6D6D" }}
-              type="button"
-              onClick={() => handleCloneOpen(dicRow.strRecordUUID)}
-              title={t("clone_button", "Clone")}
-            >
-              <ContentCopyRoundedIcon data-testid={undefined} data-controlid="salary-structures.list.row.clone.button.icon" fontSize="small" />
-            </button>
-          ) : null}
-        </Box>
-      ),
+      strRecordUUID: dicRow.strRecordUUID,
       strStructureCode: dicRow.strStructureCode,
-      strStructureName: dicRow.strStructureName,
+      strStructureNameSort: dicRow.strStructureName,
+      strStructureName: (
+        <Link
+          className="app-master-first-column-link"
+          component="button"
+          type="button"
+          underline="none"
+          data-controlid="salary-structures.list.row.name.link"
+          data-row-key={String(dicRow.intID)}
+          onClick={() => objRouter.push(`/salary-structures/edit/${dicRow.strRecordUUID}?backRoute=${encodeURIComponent(strCurrentListRoute)}`)}
+        >
+          {dicRow.strStructureName}
+        </Link>
+      ),
       strScopeLabel: dicRow.strScopeLabel,
       strCurrencyCode: dicRow.strCurrencyCode,
       dtEffectiveFrom: formatDate(dicRow.dtEffectiveFrom),
@@ -200,25 +236,25 @@ export default function SalaryStructureListPage() {
       strEffectiveToSort: dicRow.dtEffectiveTo ?? "",
       intComponentCount: dicRow.intComponentCount,
       strStatus: (
-        <span className={`${styles.statusPill} ${dicRow.blnIsActive ? styles.statusActive : styles.statusInactive}`}>
+        <span data-controlid="salary-structures.list.row.status.pill" data-row-key={String(dicRow.intID)} className={`app-master-status-pill ${dicRow.blnIsActive ? "app-master-status-active" : "app-master-status-inactive"}`}>
           {dicRow.blnIsActive ? t("status_active", "Active") : t("status_inactive", "Inactive")}
         </span>
-      )
+      ),
+      strStatusSort: dicRow.blnIsActive ? t("status_active", "Active") : t("status_inactive", "Inactive")
     })),
-    [blnCanClone, blnCanDelete, blnCanEdit, blnCanView, lstFilteredRows, objRouter, t]
+    [lstFilteredRows, objRouter, strCurrentListRoute, t]
   );
 
   const lstTableColumns = useMemo<CommonTableColumn<(typeof lstTableRows)[number]>[]>(
     () => [
-      { field: "action", headerName: t("action", "Action"), sortable: false, filterable: false, exportable: false, width: 120 },
-      { field: "strStructureName", headerName: t("structure_name", "Structure Name") },
+      { field: "strStructureName", headerName: t("structure_name", "Structure Name"), width: 220, sortAccessor: (dicRow) => String(dicRow.strStructureNameSort) },
       { field: "strStructureCode", headerName: t("structure_code", "Structure Code") },
       { field: "strScopeLabel", headerName: t("scope", "Scope") },
       { field: "strCurrencyCode", headerName: t("currency", "Currency") },
       { field: "dtEffectiveFrom", headerName: t("effective_from", "Effective From"), sortAccessor: (dicRow) => dicRow.strEffectiveFromSort },
       { field: "dtEffectiveTo", headerName: t("effective_to", "Effective To"), sortAccessor: (dicRow) => dicRow.strEffectiveToSort },
       { field: "intComponentCount", headerName: t("components", "Components"), align: "right" },
-      { field: "strStatus", headerName: t("status", "Status"), sortable: false, filterable: false, width: 140 }
+      { field: "strStatus", headerName: t("status", "Status"), filterable: false, width: 140, sortAccessor: (dicRow) => dicRow.strStatusSort }
     ],
     [t]
   );
@@ -231,148 +267,132 @@ export default function SalaryStructureListPage() {
     setObjToast((objPrevious) => ({ ...objPrevious, blnOpen: false }));
   }
 
-  function openConfirmDialog(objDialog: ConfirmDialogState) {
-    setObjConfirmDialog(objDialog);
+  function applySearch(dicSearch: SearchForm) {
+    const dicNextSearch = {
+      ...dicSearch,
+      query: dicSearch.query.trim(),
+    };
+    setDicSearchDraft(dicNextSearch);
+    setDicSearchApplied(dicNextSearch);
+    objRouter.replace(buildSalaryStructureListUrl(dicNextSearch));
   }
 
-  function closeConfirmDialog() {
-    setObjConfirmDialog(null);
-  }
-
-  async function executeConfirmedAction() {
-    if (!objConfirmDialog) {
-      return;
-    }
-    setBlnSubmitting(true);
-    try {
-      await objConfirmDialog.fnOnConfirm();
-    } catch (objError) {
-      showToast(objError instanceof Error ? objError.message : "Request failed.", "error");
-    } finally {
-      setBlnSubmitting(false);
-      closeConfirmDialog();
-    }
-  }
-
-  function deleteStructure(strRecordUUID: string) {
-    openConfirmDialog({
-      strTitle: t("confirm_delete_title", "Delete Salary Structure"),
-      strMessage: t("confirm_delete_message", "Are you sure you want to delete this salary structure record?"),
-      strConfirmLabel: t("delete_button", "Delete"),
-      fnOnConfirm: async () => {
-        await salaryStructureService.deleteSalaryStructure(strRecordUUID);
-        await loadStructures();
-        showToast(t("delete_success", "Salary structure deleted successfully."));
-      }
-    });
-  }
-
-  async function handleCloneOpen(strRecordUUID: string) {
-    try {
-      const dicDetail = await salaryStructureService.getSalaryStructureById(strRecordUUID);
-      setObjCloneSource(dicDetail);
-      setDicCloneForm(createCloneForm(dicDetail));
-      setStrCloneError("");
-      setBlnCloneOpen(true);
-    } catch (objError) {
-      showToast(objError instanceof Error ? objError.message : "Unable to load salary structure for clone.", "error");
-    }
-  }
-
-  async function handleCloneSave() {
-    if (!objCloneSource || !dicCloneForm) {
-      return;
-    }
-    if (!dicCloneForm.strStructureCode.trim() || !dicCloneForm.strStructureName.trim() || !dicCloneForm.dtEffectiveFrom) {
-      setStrCloneError("New structure code, new structure name, and effective from date are required.");
-      return;
-    }
-    setStrCloneError("");
-    setBlnCloneSaving(true);
-    try {
-      const dicRecord = await salaryStructureService.cloneSalaryStructure(objCloneSource.strRecordUUID, dicCloneForm);
-      setBlnCloneOpen(false);
-      setStrCloneError("");
-      showToast("Salary structure cloned successfully.");
-      objRouter.push(`/salary-structures/edit/${dicRecord.intID}`);
-    } catch (objError) {
-      setStrCloneError(objError instanceof Error ? objError.message : "Unable to clone salary structure.");
-    } finally {
-      setBlnCloneSaving(false);
+  function handleSearchTextKeyDown(objEvent: KeyboardEvent<HTMLInputElement>) {
+    if (objEvent.key === "Enter") {
+      objEvent.preventDefault();
+      applySearch(dicSearchDraft);
     }
   }
 
   return (
-    <Box className={styles.page}>
+    <Box className={styles.page} data-controlid="salary-structures.list.page">
       <Box className={styles.topBar}>
-        <Button controlId="salary-structures.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>
+        <Button data-controlid="salary-structures.list.back.button" className={styles.backButton} startIcon={<ArrowBackRoundedIcon />} onClick={() => objRouter.back()}>
           {t("back_button", "Back")}
         </Button>
       </Box>
 
-      <Box className={styles.controlsCard}>
-        {strRightsError ? <Typography sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography> : null}
+      <Breadcrumbs className="app-breadcrumbs" aria-label="breadcrumb" separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />}>
+        <Typography sx={{ fontSize: "inherit", color: "text.secondary" }}>{t("breadcrumb_salary", "Salary")}</Typography>
+        <Typography component="h1" className="app-breadcrumb-heading" aria-current="page">{t("breadcrumb_salary_structures", "Salary Structures")}</Typography>
+      </Breadcrumbs>
+
+      <Box className={styles.controlsCard} sx={{ p: "12px !important", borderRadius: "10px !important", boxShadow: "none", overflowX: "auto" }}>
+        {strRightsError ? <Typography data-controlid="salary-structures.list.rights-error.message" sx={{ mt: 1, color: "#b45309", fontSize: "0.85rem" }}>{strRightsError}</Typography> : null}
         {!blnRightsLoading && blnCanView && blnReadOnly ? (
-          <Typography sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>
+          <Typography data-controlid="salary-structures.list.read-only.message" sx={{ mt: 1, color: "#1d4ed8", fontSize: "0.85rem", fontWeight: 700 }}>
             {t("read_only_mode", "You have view-only access for Salary Structure.")}
           </Typography>
         ) : null}
 
-        <Box className={styles.searchRow}>
+        <Box
+          className={`${styles.searchRow} ${styles.salaryStructureSearchRow}`}
+          aria-busy={blnLoading || blnRightsLoading}
+          sx={{
+            alignItems: "center",
+          }}
+        >
           <TextField
-            controlId="salary-structures.list.search-name.input"
-            inputProps={{ "controlId": "salary-structures.list.search-name.input" }}
-            value={dicSearchDraft.strName}
-            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, strName: objEvent.target.value }))}
-            placeholder={t("search_structure_name", "Search structure name")}
+            className="app-mui-text-field"
+            data-controlid="salary-structures.list.search-name.input"
+            inputProps={{ "data-controlid": "salary-structures.list.search-name.input" }}
+            label={t("search_structure_name_or_code_label", "Search structure name or code")}
+            value={dicSearchDraft.query}
+            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, query: objEvent.target.value }))}
+            onKeyDown={handleSearchTextKeyDown}
+            placeholder={t("search_structure_name_or_code", "Search structure name or code")}
+            size="small"
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "#94a3b8" }} /></InputAdornment> }}
+            disabled={blnLoading || blnRightsLoading}
             fullWidth
           />
 
           <TextField
-            controlId="salary-structures.list.search-code.input"
-            inputProps={{ "controlId": "salary-structures.list.search-code.input" }}
-            value={dicSearchDraft.strCode}
-            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, strCode: objEvent.target.value.toUpperCase() }))}
-            placeholder={t("search_structure_code", "Search structure code")}
+            className="app-mui-text-field"
+            data-controlid="salary-structures.list.search-effective-from.input"
+            inputProps={{ "data-controlid": "salary-structures.list.search-effective-from.input" }}
+            label={t("effective_from", "Effective From")}
+            type="date"
+            value={dicSearchDraft.dtEffectiveFrom}
+            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, dtEffectiveFrom: objEvent.target.value }))}
+            onKeyDown={handleSearchTextKeyDown}
+            size="small"
+            InputLabelProps={{ shrink: true }}
+            disabled={blnLoading || blnRightsLoading}
             fullWidth
           />
 
           <TextField
-            controlId="salary-structures.list.search-status.select"
-            inputProps={{ "controlId": "salary-structures.list.search-status.select" }}
+            className="app-mui-text-field"
+            data-controlid="salary-structures.list.search-effective-to.input"
+            inputProps={{ "data-controlid": "salary-structures.list.search-effective-to.input" }}
+            label={t("effective_to", "Effective To")}
+            type="date"
+            value={dicSearchDraft.dtEffectiveTo}
+            onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, dtEffectiveTo: objEvent.target.value }))}
+            onKeyDown={handleSearchTextKeyDown}
+            size="small"
+            InputLabelProps={{ shrink: true }}
+            disabled={blnLoading || blnRightsLoading}
+            fullWidth
+          />
+
+          <TextField
+            className="app-mui-text-field"
+            data-controlid="salary-structures.list.search-status.select"
+            inputProps={{ "data-controlid": "salary-structures.list.search-status.select" }}
             select
-            label={t("search_status_label", "Status")}
+            label={t("status", "Status")}
             value={dicSearchDraft.strStatus}
             onChange={(objEvent) => setDicSearchDraft((dicPrev) => ({ ...dicPrev, strStatus: objEvent.target.value as SearchForm["strStatus"] }))}
+            size="small"
+            disabled={blnLoading || blnRightsLoading}
             fullWidth
           >
-            <MenuItem controlId="salary-structures.list.search-status.all.option" value="All">{t("all_status", "All Status")}</MenuItem>
-            <MenuItem controlId="salary-structures.list.search-status.active.option" value="Active">{t("status_active", "Active")}</MenuItem>
-            <MenuItem controlId="salary-structures.list.search-status.inactive.option" value="Inactive">{t("status_inactive", "Inactive")}</MenuItem>
+            <MenuItem data-controlid="salary-structures.list.search-status.all.option" value="All">{t("all_status", "All statuses")}</MenuItem>
+            <MenuItem data-controlid="salary-structures.list.search-status.active.option" value="Active">{t("status_active", "Active")}</MenuItem>
+            <MenuItem data-controlid="salary-structures.list.search-status.inactive.option" value="Inactive">{t("status_inactive", "Inactive")}</MenuItem>
           </TextField>
           <Box className={styles.searchActions}>
             <Button
-              controlId="salary-structures.list.search.button"
+              data-controlid="salary-structures.list.search.button"
               className={styles.primaryButton}
+              size="small"
               startIcon={<SearchRoundedIcon />}
-              onClick={() => {
-                setDicSearchApplied(dicSearchDraft);
-              }}
-              disabled={blnLoading || blnSubmitting}
+              onClick={() => applySearch(dicSearchDraft)}
+              disabled={blnLoading || blnRightsLoading}
             >
               {t("search_button", "Search")}
             </Button>
           </Box>
           <Box className={styles.searchActions}>
             <Button
-              controlId="salary-structures.list.clear.button"
+              data-controlid="salary-structures.list.clear.button"
               className={styles.secondaryButton}
+              size="small"
               startIcon={<ClearRoundedIcon />}
-              onClick={() => {
-                setDicSearchDraft(dicEmptySearch);
-                setDicSearchApplied(dicEmptySearch);
-              }}
-              disabled={blnLoading || blnSubmitting}
+              onClick={() => applySearch(dicEmptySearch)}
+              disabled={blnLoading || blnRightsLoading}
             >
               {t("clear_button", "Clear")}
             </Button>
@@ -380,11 +400,11 @@ export default function SalaryStructureListPage() {
         </Box>
       </Box>
 
-      <Box className={styles.tableCard}>
+      <Box className={styles.tableCard} sx={{ position: "relative", p: "0 !important", borderRadius: "10px !important", boxShadow: "none" }}>
         {blnLoading || blnRightsLoading ? (
-          <BlockingLoader blnOpen strLabel={t("loading_salary_structures", "Loading salary structures...")} />
+          <SalaryStructureGridSkeleton />
         ) : !blnCanView ? (
-          <Box className={styles.emptyState}>
+          <Box className={styles.emptyState} data-controlid="salary-structures.list.access-denied.state">
             <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{t("access_denied", "Salary structure access is not available for your user group.")}</Typography>
             <Typography sx={{ mt: 1, color: "#64748b" }}>{t("access_denied_help", "Contact your administrator if you need salary structure visibility.")}</Typography>
           </Box>
@@ -400,110 +420,27 @@ export default function SalaryStructureListPage() {
             toolbarLeft={(
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
                 {blnCanAdd ? (
-                  <Button controlId="salary-structures.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push("/salary-structures/add")} disabled={blnLoading || blnSubmitting || blnRightsLoading}>
+                  <Button data-controlid="salary-structures.list.add.button" className={styles.primaryButton} startIcon={<AddRoundedIcon />} onClick={() => objRouter.push(`/salary-structures/add?backRoute=${encodeURIComponent(strCurrentListRoute)}`)} disabled={blnLoading || blnRightsLoading}>
                     {t("add_salary_structure", "Add Salary Structure")}
                   </Button>
                 ) : null}
               </Box>
             )}
             testIdPrefix="salary-structures.list"
-            withPaper={false}
+            onRowClick={(dicRow) => {
+              if (!blnCanEdit && !blnCanView) return;
+              objRouter.push(`/salary-structures/edit/${dicRow.strRecordUUID}?backRoute=${encodeURIComponent(strCurrentListRoute)}`);
+            }}
+            minTableWidth={1100}
+            hideRowClickHint
+            getRowSx={() => ({
+              "&.MuiTableRow-hover:hover": { backgroundColor: "#f8fbff" },
+              "&.MuiTableRow-hover:hover td:nth-of-type(1) .MuiLink-root": { textDecoration: "underline" },
+            })}
             sx={{ p: 0, boxShadow: "none", background: "transparent" }}
           />
         )}
       </Box>
-
-      <Dialog open={blnCloneOpen} onClose={closeCloneDialog} fullWidth maxWidth="md" controlId="salary-structures.list.clone.dialog">
-        <DialogTitle>{t("clone_salary_structure", "Clone Salary Structure")}</DialogTitle>
-        <DialogContent>
-          {dicCloneForm ? (
-            <Stack spacing={2} sx={{ pt: 1 }}>
-              <Typography sx={{ color: "#64748b", fontSize: "0.92rem" }}>
-                {t("clone_salary_structure_help", "Create a new structure by copying component configuration and multilingual text from the selected structure.")}
-              </Typography>
-              <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" } }}>
-                <TextField
-                  label={t("new_structure_code", "New Structure Code")}
-                  value={dicCloneForm.strStructureCode}
-                  onChange={(objEvent) => updateCloneField("strStructureCode", objEvent.target.value.toUpperCase())}
-                  disabled={blnCloneSaving}
-                  fullWidth
-                  required
-                  error={Boolean(strCloneError) && !dicCloneForm.strStructureCode.trim()}
-                  helperText={Boolean(strCloneError) && !dicCloneForm.strStructureCode.trim() ? strCloneError : " "}
-                  controlId="salary-structures.list.clone.structure-code.input"
-                  inputProps={{ "controlId": "salary-structures.list.clone.structure-code.input" }}
-                />
-                <TextField
-                  label={t("new_structure_name", "New Structure Name")}
-                  value={dicCloneForm.strStructureName}
-                  onChange={(objEvent) => updateCloneField("strStructureName", objEvent.target.value)}
-                  disabled={blnCloneSaving}
-                  fullWidth
-                  required
-                  error={Boolean(strCloneError) && !dicCloneForm.strStructureName.trim()}
-                  helperText={Boolean(strCloneError) && !dicCloneForm.strStructureName.trim() ? strCloneError : " "}
-                  controlId="salary-structures.list.clone.structure-name.input"
-                  inputProps={{ "controlId": "salary-structures.list.clone.structure-name.input" }}
-                />
-                <TextField
-                  label={t("effective_from", "Effective From")}
-                  type="date"
-                  value={dicCloneForm.dtEffectiveFrom}
-                  onChange={(objEvent) => updateCloneField("dtEffectiveFrom", objEvent.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                  disabled={blnCloneSaving}
-                  fullWidth
-                  error={Boolean(strCloneError) && !dicCloneForm.dtEffectiveFrom}
-                  helperText={Boolean(strCloneError) && !dicCloneForm.dtEffectiveFrom ? strCloneError : " "}
-                  controlId="salary-structures.list.clone.effective-from.input"
-                  inputProps={{ "controlId": "salary-structures.list.clone.effective-from.input" }}
-                />
-                <TextField
-                  label={t("effective_to", "Effective To")}
-                  type="date"
-                  value={dicCloneForm.dtEffectiveTo}
-                  onChange={(objEvent) => updateCloneField("dtEffectiveTo", objEvent.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                  disabled={blnCloneSaving}
-                  fullWidth
-                  controlId="salary-structures.list.clone.effective-to.input"
-                  inputProps={{ "controlId": "salary-structures.list.clone.effective-to.input" }}
-                />
-              </Box>
-              {strCloneError && dicCloneForm.strStructureCode.trim() && dicCloneForm.strStructureName.trim() && dicCloneForm.dtEffectiveFrom ? (
-                <Typography sx={{ color: "#d32f2f", fontSize: "0.8rem", mt: -0.5 }}>
-                  {strCloneError}
-                </Typography>
-              ) : null}
-              {objCloneSource ? (
-                <Alert severity="info">
-                  {t("clone_source", "Clone source")}: {objCloneSource.strStructureName}
-                </Alert>
-              ) : null}
-            </Stack>
-          ) : null}
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2.5 }}>
-          <Button controlId="salary-structures.list.clone.cancel.button" className={styles.secondaryButton} onClick={closeCloneDialog} disabled={blnCloneSaving}>{t("cancel_button", "Cancel")}</Button>
-          <Button controlId="salary-structures.list.clone.confirm.button" className={styles.primaryButton} variant="contained" onClick={handleCloneSave} disabled={blnCloneSaving}>
-            {blnCloneSaving ? t("cloning", "Cloning...") : t("clone_button", "Clone")}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <CommonConfirmDialog
-        blnOpen={Boolean(objConfirmDialog)}
-        strTitle={objConfirmDialog?.strTitle}
-        strMessage={objConfirmDialog?.strMessage}
-        strCancelLabel={t("cancel_button", "Cancel")}
-        strConfirmLabel={objConfirmDialog?.strConfirmLabel ?? t("confirm_button", "Confirm")}
-        blnConfirmDisabled={blnSubmitting}
-        onClose={closeConfirmDialog}
-        onConfirm={executeConfirmedAction}
-      />
-
-      <BlockingLoader blnOpen={blnSubmitting} strLabel={t("processing", "Processing...")} intZIndex={1400} />
 
       <Snackbar open={objToast.blnOpen} autoHideDuration={3500} onClose={closeToast} anchorOrigin={{ vertical: "top", horizontal: "right" }}>
         <Alert onClose={closeToast} severity={objToast.strSeverity} variant="filled" sx={{ width: "100%" }}>

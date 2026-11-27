@@ -1,6 +1,7 @@
 "use client";
 
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle } from "@mui/material";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Typography } from "@mui/material";
 import type { ReactNode } from "react";
 import type { DialogProps } from "@mui/material";
 import type { SxProps, Theme } from "@mui/material/styles";
@@ -13,6 +14,7 @@ type CommonMasterDialogProps = {
   strTitle: string;
   nodeContent: ReactNode;
   nodeTitleAction?: ReactNode;
+  nodeFooterStart?: ReactNode;
   titleSx?: SxProps<Theme>;
   strSecondaryLabel: string;
   onClose: () => void;
@@ -24,6 +26,7 @@ type CommonMasterDialogProps = {
   fullWidth?: boolean;
   paperClassName?: string;
   paperSx?: object;
+  contentClassName?: string;
   contentSx?: SxProps<Theme>;
   onDialogClose?: DialogProps["onClose"];
   strSecondaryButtonClassName?: string;
@@ -43,6 +46,7 @@ export default function CommonMasterDialog({
   strTitle,
   nodeContent,
   nodeTitleAction,
+  nodeFooterStart,
   titleSx,
   strSecondaryLabel,
   onClose,
@@ -54,6 +58,7 @@ export default function CommonMasterDialog({
   fullWidth = true,
   paperClassName = masterStyles.compactDialogPaper,
   paperSx,
+  contentClassName,
   contentSx,
   onDialogClose,
   strSecondaryButtonClassName = masterStyles.secondaryButton,
@@ -68,45 +73,63 @@ export default function CommonMasterDialog({
   const strRootControlId = rootTestId ?? rootControlId;
   const strCancelButtonControlId = cancelButtonTestId ?? cancelButtonControlId;
   const strPrimaryButtonControlId = primaryButtonTestId ?? primaryButtonControlId;
+  const blnDepartmentReferenceLayout = paperClassName === masterStyles.referenceMasterDialogPaper;
+  function handlePrimaryAction() {
+    onPrimaryAction?.();
+    if (blnDepartmentReferenceLayout) {
+      window.setTimeout(() => {
+        const objDialog = document.querySelector(`[data-control-id="${strRootControlId}"]`);
+        objDialog?.querySelector<HTMLElement>(".Mui-error input, .Mui-error textarea, input[aria-invalid='true'], textarea[aria-invalid='true']")?.focus();
+      }, 0);
+    }
+  }
   return (
     <Dialog
       data-control-id={strRootControlId}
       open={blnOpen}
-      onClose={onDialogClose ?? (() => onClose())}
+      onClose={onDialogClose ?? ((_, strReason) => {
+        if (!blnDepartmentReferenceLayout || strReason !== "backdropClick") {
+          onClose();
+        }
+      })}
       onKeyDown={handleSingleDialogActionEnter}
-      fullWidth={fullWidth}
-      maxWidth={maxWidth}
+      fullWidth={blnDepartmentReferenceLayout ? false : fullWidth}
+      maxWidth={blnDepartmentReferenceLayout ? false : maxWidth}
       PaperProps={{ className: paperClassName, sx: paperSx }}
     >
       <DialogTitle
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: { xs: 1, sm: 2 },
-          fontSize: "1.25rem",
-          ...titleSx,
-        }}
+        className="app-master-dialog-heading"
+        sx={titleSx}
       >
-        <Box component="span" sx={{ minWidth: 0, overflowWrap: "anywhere" }}>{strTitle}</Box>
+        <Box component="span" className="app-master-dialog-title-text">{strTitle}</Box>
         {/* Callers pass a compact control here (usually a status toggle) via the `.switchRow`
             CSS-module class, which forces min-height:68px. Emotion runs with prepend:true, so a
             caller's `sx={{ minHeight: "auto" }}` loses the cascade and the row overflows the
             short DialogTitle - DialogContent then paints over the lower half of the control and
             eats its clicks. Force the row back to its natural height here, where !important wins. */}
         {nodeTitleAction ? (
-          <Box sx={{ display: "flex", alignItems: "center", ml: "auto", flexShrink: 0, "& > *": { minHeight: "unset !important" } }}>
+          <Box className="app-master-dialog-title-action">
             {nodeTitleAction}
           </Box>
         ) : null}
+        {blnDepartmentReferenceLayout ? (
+          <IconButton aria-label="Close" onClick={onClose} size="small" className={nodeTitleAction ? "app-master-dialog-close-button" : "app-master-dialog-close-button app-master-dialog-close-button-auto"}>
+            <CloseRoundedIcon fontSize="small" />
+          </IconButton>
+        ) : null}
       </DialogTitle>
-      <DialogContent dividers sx={contentSx}>{nodeContent}</DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
+      <DialogContent dividers className={contentClassName} sx={contentSx}>{nodeContent}</DialogContent>
+      <DialogActions className="app-master-dialog-actions">
+        {nodeFooterStart ? <Box className="app-master-dialog-footer-start">{nodeFooterStart}</Box> : blnDepartmentReferenceLayout ? (
+          <Typography className="app-master-dialog-required-fields app-master-dialog-footer-start">
+            Required fields are marked <Box component="span" className="app-master-dialog-required-asterisk">*</Box>
+          </Typography>
+        ) : null}
         <Button data-control-id={strCancelButtonControlId} className={strSecondaryButtonClassName} onClick={onClose}>
           {strSecondaryLabel}
         </Button>
         {!blnHidePrimary && strPrimaryLabel && onPrimaryAction ? (
-          <Button data-control-id={strPrimaryButtonControlId} className={strPrimaryButtonClassName} onClick={onPrimaryAction} disabled={blnPrimaryDisabled}>
+          <Button data-control-id={strPrimaryButtonControlId} className={strPrimaryButtonClassName} onClick={handlePrimaryAction} disabled={blnPrimaryDisabled}>
             {strPrimaryLabel}
           </Button>
         ) : null}
